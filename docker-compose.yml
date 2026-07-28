@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  db:
+    image: mariadb:10.11
+    restart: always
+    env_file: .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
+      start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    ports:
+      - "8085:80"
+    environment:
+      PMA_HOST: db
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./client
+    restart: always
+    ports:
+      - "8083:80"
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./server
+      network: host
+    restart: always
+    init: true
+    ports:
+      - "5001:5001"
+    env_file: .env
+    environment:
+      PORT: 5001
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./server/data:/app/data

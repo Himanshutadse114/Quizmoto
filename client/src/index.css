@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@theme {
+  --color-quizmoto-red: #eb1736;
+  --color-quizmoto-blue: #1368ce;
+  --color-quizmoto-yellow: #ffa602;
+  --color-quizmoto-green: #26890c;
+  --color-quizmoto-purple: #46178f;
+  --color-quizmoto-lightPurple: #864cbf;
+  --color-quizmoto-darkPurple: #25076b;
+
+  --animate-bounce-slow: bounce 3s infinite;
+}
+
+:root {
+  background-color: #25076b;
+  color: white;
+  font-family: 'Montserrat', sans-serif;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: radial-gradient(circle at 50% 50%, #46178f 0%, #25076b 100%);
+}
+
+#root {
+  width: 100%;
+  position: relative;
+  z-index: 10;
+}
+
+/* Floating Shapes Animation */
+.bg-shape {
+  position: fixed;
+  z-index: 1;
+  opacity: 0.15;
+  filter: blur(1px);
+  pointer-events: none;
+}
+
+@keyframes float {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  33% {
+    transform: translate(10vw, 5vh) rotate(120deg);
+  }
+
+  66% {
+    transform: translate(-5vw, 15vh) rotate(240deg);
+  }
+
+  100% {
+    transform: translate(0, 0) rotate(360deg);
+  }
+}
+
+.shape-1 {
+  top: 10%;
+  left: 10%;
+  animation: float 15s infinite linear;
+}
+
+.shape-2 {
+  top: 60%;
+  left: 80%;
+  animation: float 20s infinite linear reverse;
+}
+
+.shape-3 {
+  top: 80%;
+  left: 20%;
+  animation: float 18s infinite linear;
+}
+
+.shape-4 {
+  top: 20%;
+  left: 70%;
+  animation: float 25s infinite linear reverse;
+}
