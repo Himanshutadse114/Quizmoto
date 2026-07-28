@@ -3,29 +3,30 @@ const path = require('path');
 
 const dialect = process.env.DB_DIALECT || 'sqlite';
 const dbName = process.env.DB_NAME || 'kahoot_awareness';
+const isPostgres = dialect === 'postgres';
+const isMysql = dialect === 'mysql';
 
 let sequelize;
 
-const sslOptions = process.env.DB_SSL === 'true' ? {
-    ssl: { require: true, rejectUnauthorized: true }
-} : {};
+const sslOptions = process.env.DB_SSL === 'true'
+    ? (isPostgres
+        ? { ssl: { require: true, rejectUnauthorized: false } }
+        : { ssl: { require: true, rejectUnauthorized: true } })
+    : {};
 
-const createSequelizeInstance = (database) => new Sequelize(
-    database,
-    process.env.DB_USER || 'root',
-    process.env.DB_PASS || '',
-    {
-        host: process.env.DB_HOST || 'localhost',
-        dialect: 'mysql',
-        logging: false,
-        port: parseInt(process.env.DB_PORT || '3306'),
-        dialectOptions: sslOptions
-    }
-);
-
-if (dialect === 'mysql') {
-    // Start by connecting to 'sys' (always exists) so we can CREATE our own DB
-    sequelize = createSequelizeInstance(dbName);
+if (isMysql || isPostgres) {
+    sequelize = new Sequelize(
+        dbName,
+        process.env.DB_USER || 'root',
+        process.env.DB_PASS || '',
+        {
+            host: process.env.DB_HOST || 'localhost',
+            dialect: dialect,
+            logging: false,
+            port: parseInt(process.env.DB_PORT || (isPostgres ? '5432' : '3306')),
+            dialectOptions: sslOptions
+        }
+    );
 } else {
     sequelize = new Sequelize({
         dialect: 'sqlite',
@@ -74,23 +75,34 @@ const connectDB = async () => {
         PlayerProfile.hasMany(Player, { as: 'sessionPlayers', foreignKey: 'playerProfileId' });
         Player.belongsTo(PlayerProfile, { foreignKey: 'playerProfileId', as: 'profile' });
 
-        // Add columns individually - catch error 1060 (duplicate column) to support MySQL & MariaDB
+        // Add columns individually - handle duplicate column errors for MySQL & PostgreSQL
         const addColumnIfMissing = async (sql) => {
             try {
                 await sequelize.query(sql);
             } catch (e) {
-                if (e.original && e.original.errno === 1060) {
-                    // Column already exists - safe to ignore
-                } else {
+                const isDuplicateCol =
+                    (e.original && e.original.errno === 1060) ||           // MySQL
+                    (e.original && e.original.code === '42701') ||          // PostgreSQL
+                    (e.message && e.message.includes('already exists'));     // fallback
+                if (!isDuplicateCol) {
                     console.warn('Database migration note:', e.message);
                 }
             }
         };
 
-        await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`gameMode\` VARCHAR(255) DEFAULT 'classic' AFTER \`status\``);
-        await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`analytics\` JSON NULL AFTER \`questionStartTime\``);
-        await addColumnIfMissing(`ALTER TABLE \`Players\` ADD COLUMN \`teamName\` VARCHAR(255) NULL AFTER \`nickname\``);
-        await addColumnIfMissing(`ALTER TABLE \`Players\` ADD COLUMN \`playerProfileId\` INTEGER NULL AFTER \`teamName\``);
+        if (isPostgres) {
+            // PostgreSQL syntax: double quotes, no AFTER clause
+            await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "gameMode" VARCHAR(255) DEFAULT 'classic'`);
+            await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "analytics" JSON NULL`);
+            await addColumnIfMissing(`ALTER TABLE "Players" ADD COLUMN "teamName" VARCHAR(255) NULL`);
+            await addColumnIfMissing(`ALTER TABLE "Players" ADD COLUMN "playerProfileId" INTEGER NULL`);
+        } else if (isMysql) {
+            // MySQL syntax: backticks, supports AFTER clause
+            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`gameMode\` VARCHAR(255) DEFAULT 'classic' AFTER \`status\``);
+            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`analytics\` JSON NULL AFTER \`questionStartTime\``);
+            await addColumnIfMissing(`ALTER TABLE \`Players\` ADD COLUMN \`teamName\` VARCHAR(255) NULL AFTER \`nickname\``);
+            await addColumnIfMissing(`ALTER TABLE \`Players\` ADD COLUMN \`playerProfileId\` INTEGER NULL AFTER \`teamName\``);
+        }
 
         // Standard sync (without alter) to ensure basic table existence
         try {
