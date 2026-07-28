@@ -2,27 +2,30 @@ const { Sequelize } = require('sequelize');
 const path = require('path');
 
 const dialect = process.env.DB_DIALECT || 'sqlite';
+const dbName = process.env.DB_NAME || 'kahoot_awareness';
 
 let sequelize;
 
+const sslOptions = process.env.DB_SSL === 'true' ? {
+    ssl: { require: true, rejectUnauthorized: true }
+} : {};
+
+const createSequelizeInstance = (database) => new Sequelize(
+    database,
+    process.env.DB_USER || 'root',
+    process.env.DB_PASS || '',
+    {
+        host: process.env.DB_HOST || 'localhost',
+        dialect: 'mysql',
+        logging: false,
+        port: parseInt(process.env.DB_PORT || '3306'),
+        dialectOptions: sslOptions
+    }
+);
+
 if (dialect === 'mysql') {
-    sequelize = new Sequelize(
-        process.env.DB_NAME || 'kahoot_awareness',
-        process.env.DB_USER || 'root',
-        process.env.DB_PASS || '',
-        {
-            host: process.env.DB_HOST || 'localhost',
-            dialect: 'mysql',
-            logging: false,
-            port: process.env.DB_PORT || 3306,
-            dialectOptions: process.env.DB_SSL === 'true' ? {
-                ssl: {
-                    require: true,
-                    rejectUnauthorized: true
-                }
-            } : {}
-        }
-    );
+    // Start by connecting to 'sys' (always exists) so we can CREATE our own DB
+    sequelize = createSequelizeInstance(dbName);
 } else {
     sequelize = new Sequelize({
         dialect: 'sqlite',
@@ -37,7 +40,26 @@ module.exports.sequelize = sequelize;
 
 const connectDB = async () => {
     try {
-        await sequelize.authenticate();
+        if (dialect === 'mysql') {
+            // Step 1: Connect to 'sys' first (a safe system DB that always exists)
+            // so we can issue CREATE DATABASE for our own DB.
+            const bootstrapSequelize = createSequelizeInstance('sys');
+            await bootstrapSequelize.authenticate();
+            console.log('Bootstrap connection established...');
+            await bootstrapSequelize.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
+            console.log(`Database '${dbName}' ensured.`);
+            await bootstrapSequelize.close();
+
+            // Step 2: Reconnect pointing at the real database
+            const newConn = createSequelizeInstance(dbName);
+            // Reassign to module-level sequelize so models pick it up
+            sequelize.config.database = dbName;
+            // Update the underlying connection pool by closing and reassigning
+            Object.assign(sequelize, newConn);
+            await sequelize.authenticate();
+        } else {
+            await sequelize.authenticate();
+        }
         console.log(`${dialect.charAt(0).toUpperCase() + dialect.slice(1)} Connected (Sequelize)...`);
 
         // IMPORTANT: Import ALL models and register associations BEFORE sync()
