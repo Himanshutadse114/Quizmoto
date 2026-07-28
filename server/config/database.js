@@ -40,26 +40,7 @@ module.exports.sequelize = sequelize;
 
 const connectDB = async () => {
     try {
-        if (dialect === 'mysql') {
-            // Step 1: Connect to 'sys' first (a safe system DB that always exists)
-            // so we can issue CREATE DATABASE for our own DB.
-            const bootstrapSequelize = createSequelizeInstance('sys');
-            await bootstrapSequelize.authenticate();
-            console.log('Bootstrap connection established...');
-            await bootstrapSequelize.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
-            console.log(`Database '${dbName}' ensured.`);
-            await bootstrapSequelize.close();
-
-            // Step 2: Reconnect pointing at the real database
-            const newConn = createSequelizeInstance(dbName);
-            // Reassign to module-level sequelize so models pick it up
-            sequelize.config.database = dbName;
-            // Update the underlying connection pool by closing and reassigning
-            Object.assign(sequelize, newConn);
-            await sequelize.authenticate();
-        } else {
-            await sequelize.authenticate();
-        }
+        await sequelize.authenticate();
         console.log(`${dialect.charAt(0).toUpperCase() + dialect.slice(1)} Connected (Sequelize)...`);
 
         // IMPORTANT: Import ALL models and register associations BEFORE sync()
