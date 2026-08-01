@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import { Plus, Play, Trash2, Edit, FileText, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { apiUrl } from '../../config';
 
 const Dashboard = () => {
     const [quizzes, setQuizzes] = useState([]);
@@ -13,7 +14,7 @@ const Dashboard = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState('newest');
 
-    const API_BASE_URL = `/api/quizzes`;
+    const API_BASE_URL = apiUrl('/api/quizzes');
 
     useEffect(() => {
         if (!token) {

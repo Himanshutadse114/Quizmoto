@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { apiUrl } from '../../config';
 
 const PlayerLogin = () => {
     const [username, setUsername] = useState('');
@@ -15,7 +16,7 @@ const PlayerLogin = () => {
         setError('');
         
         try {
-            const res = await fetch('/api/player/login', {
+            const res = await fetch(apiUrl('/api/player/login'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })

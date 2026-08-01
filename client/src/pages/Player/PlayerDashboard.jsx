@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { apiUrl } from '../../config';
 
 const PlayerDashboard = () => {
     const [profile, setProfile] = useState(null);
@@ -21,11 +22,11 @@ const PlayerDashboard = () => {
             }
 
             try {
-                const res = await fetch('/api/player/profile', {
+                const res = await fetch(apiUrl('/api/player/profile'), {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
-                const histRes = await fetch('/api/player/history', {
+                const histRes = await fetch(apiUrl('/api/player/history'), {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
@@ -74,7 +75,7 @@ const PlayerDashboard = () => {
         const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
         try {
             const token = localStorage.getItem('playerToken');
-            const res = await fetch('/api/player/avatar', {
+            const res = await fetch(apiUrl('/api/player/avatar'), {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

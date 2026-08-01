@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import { ArrowLeft, Trophy, Users, Calendar, ChevronDown, ChevronUp, Download, Crown, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { apiUrl } from '../../config';
 
 const Reports = () => {
     const [reports, setReports] = useState([]);
@@ -13,7 +14,7 @@ const Reports = () => {
     const { token } = useAuth();
     const navigate = useNavigate();
 
-    const API_URL = `/api/quizzes/reports/all`;
+    const API_URL = apiUrl('/api/quizzes/reports/all');
 
     useEffect(() => {
         const fetchReports = async () => {
@@ -33,7 +34,7 @@ const Reports = () => {
 
     const downloadReport = async (session, format) => {
         try {
-            const res = await axios.get(`/api/quizzes/reports/${session.id}/export?format=${format}`, {
+            const res = await axios.get(apiUrl(`/api/quizzes/reports/${session.id}/export?format=${format}`)), {
                 headers: { Authorization: `Bearer ${token}` },
                 responseType: 'blob'
             });

@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import { Plus, Trash2, Save, Sparkles, Loader2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { apiUrl } from '../../config';
 
 const CreateQuiz = () => {
     const [title, setTitle] = useState('');
@@ -16,9 +17,9 @@ const CreateQuiz = () => {
     const { token } = useAuth();
     const navigate = useNavigate();
 
-    const GEN_API_URL = `/api/quizzes/generate-ai`;
+    const GEN_API_URL = apiUrl('/api/quizzes/generate-ai');
 
-    const API_URL = `/api/quizzes`;
+    const API_URL = apiUrl('/api/quizzes');
 
     const addQuestion = () => {
         setQuestions([...questions, { questionText: '', options: ['', '', '', ''], correctIndex: 0, timer: 20 }]);

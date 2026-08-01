@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import { Plus, Trash2, Save, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { apiUrl } from '../../config';
 
 const EditQuiz = () => {
     const { id } = useParams();
@@ -13,7 +14,7 @@ const EditQuiz = () => {
     const { token } = useAuth();
     const navigate = useNavigate();
 
-    const API_URL = `/api/quizzes`;
+    const API_URL = apiUrl('/api/quizzes');
 
     useEffect(() => {
         const fetchQuiz = async () => {
