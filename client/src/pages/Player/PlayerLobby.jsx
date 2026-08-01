@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../context/SocketContext';
 import { motion } from 'framer-motion';
 import ReactionBar from '../../components/ReactionBar';
+import AvatarDisplay from '../../components/AvatarDisplay';
 
 const PlayerLobby = () => {
     const socket = useSocket();
@@ -79,7 +80,7 @@ const PlayerLobby = () => {
                 transition={{ repeat: Infinity, duration: 2 }}
                 className="mb-8"
             >
-                <span className="text-8xl">{playerInfo?.avatar || '🎮'}</span>
+                <AvatarDisplay avatar={playerInfo?.avatar} imgClass="w-32 h-32" textClass="text-8xl" />
             </motion.div>
             <h2 className="text-3xl font-black mb-2 uppercase tracking-tight">You're in!</h2>
             <p className="text-xl font-bold opacity-80 mb-12">See your name on screen?</p>

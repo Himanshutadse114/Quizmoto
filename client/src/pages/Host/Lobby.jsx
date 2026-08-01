@@ -6,6 +6,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Users, Play, Copy, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactionCanvas from '../../components/ReactionCanvas';
+import AvatarDisplay from '../../components/AvatarDisplay';
 
 const PlayerCard = ({ player }) => (
     <motion.div
@@ -14,7 +15,7 @@ const PlayerCard = ({ player }) => (
         exit={{ scale: 0, opacity: 0 }}
         className={`bg-white/5 border border-white/10 p-3 rounded-2xl flex items-center gap-3 transition-all ${!player.socketId ? 'grayscale pointer-events-none' : 'hover:bg-white/10'}`}
     >
-        <span className="text-2xl">{player.avatar || '🛡️'}</span>
+        <AvatarDisplay avatar={player.avatar} imgClass="w-8 h-8" textClass="text-2xl" />
         <div className="flex flex-col min-w-0">
             <span className="font-black text-sm truncate text-white/80">{player.nickname}</span>
             {!player.socketId && <span className="text-[8px] font-black text-red-400 uppercase tracking-widest leading-none">Offline</span>}

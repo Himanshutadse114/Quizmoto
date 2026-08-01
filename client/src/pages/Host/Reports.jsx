@@ -5,6 +5,7 @@ import axios from 'axios';
 import { ArrowLeft, Trophy, Users, Calendar, ChevronDown, ChevronUp, Download, Crown, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiUrl } from '../../config';
+import AvatarDisplay from '../../components/AvatarDisplay';
 
 const Reports = () => {
     const [reports, setReports] = useState([]);
@@ -212,7 +213,7 @@ const Reports = () => {
                                                                     {[...(session.analytics.studentAnalytics || [])].sort((a, b) => b.accuracy - a.accuracy).map((s, idx) => (
                                                                         <div key={idx} className={`flex items-center justify-between p-3 rounded-xl border ${s.needsAttention ? 'bg-quizmoto-yellow/10 border-quizmoto-yellow/30' : 'bg-white/3 border-white/5'}`}>
                                                                             <div className="flex items-center gap-2">
-                                                                                <span className="text-lg">{s.avatar || '🎓'}</span>
+                                                                                <AvatarDisplay avatar={s.avatar} imgClass="w-6 h-6" textClass="text-lg" />
                                                                                 <span className="font-bold text-sm">{s.name}</span>
                                                                             </div>
                                                                             <div className={`text-sm font-black ${s.accuracy >= 70 ? 'text-green-400' : s.accuracy >= 50 ? 'text-white' : 'text-quizmoto-yellow'}`}>
@@ -256,8 +257,8 @@ const Reports = () => {
                                                                         </td>
                                                                         <td className="py-2.5 px-3">
                                                                             <div className="flex items-center gap-2">
-                                                                                {player.avatar && <span className="text-base">{player.avatar}</span>}
-                                                                                <span className="font-medium text-white/90">{player.nickname}</span>
+                                                                                <AvatarDisplay avatar={player.avatar} imgClass="w-5 h-5" textClass="text-base" />
+                                                                                <span className="font-semibold">{player.nickname}</span>
                                                                             </div>
                                                                         </td>
                                                                         {session.players.some(p => p.teamName) && (

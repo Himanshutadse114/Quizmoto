@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Users, Volume2, VolumeX, Trophy, Crown, ArrowUp, Zap, ChevronRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import ReactionCanvas from '../../components/ReactionCanvas';
+import AvatarDisplay from '../../components/AvatarDisplay';
 import { audio } from '../../utils/audioEngine';
 
 const GameView = () => {
@@ -436,7 +437,7 @@ const GameView = () => {
                                                         )}
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        {p.avatar && <span className="text-base leading-none">{p.avatar}</span>}
+                                                        <AvatarDisplay avatar={p.avatar} imgClass="w-6 h-6" textClass="text-base leading-none" />
                                                         <span className="font-medium text-white/85 text-sm">{name}</span>
                                                     </div>
                                                 </div>
@@ -523,7 +524,7 @@ const GameView = () => {
                                     {analyticsData.studentAnalytics.sort((a, b) => b.accuracy - a.accuracy).map((s, idx) => (
                                         <div key={idx} className={`flex items-center justify-between p-4 rounded-xl border ${s.needsAttention ? 'bg-quizmoto-yellow/10 border-quizmoto-yellow/30' : 'bg-white/3 border-white/5'}`}>
                                             <div className="flex items-center gap-3">
-                                                <span className="text-2xl">{s.avatar || '🎓'}</span>
+                                                <AvatarDisplay avatar={s.avatar} imgClass="w-8 h-8" textClass="text-2xl" />
                                                 <div>
                                                     <p className="font-bold text-base">{s.name}</p>
                                                     <span className="text-xs text-white/50">{s.correctAnswers} / {s.totalAnswered} Correct</span>
@@ -572,7 +573,9 @@ const GameView = () => {
                                         transition={{ delay: 0.9, duration: 0.6 }}
                                         className="flex flex-col items-center mb-3"
                                     >
-                                        <div className="text-4xl mb-1 drop-shadow-lg">{top3[1].avatar || '🤖'}</div>
+                                        <div className="mb-1 drop-shadow-lg flex items-center justify-center">
+                                            <AvatarDisplay avatar={top3[1].avatar} imgClass="w-10 h-10" textClass="text-4xl" />
+                                        </div>
                                         <div className="bg-white/15 px-3 py-0.5 rounded-full text-xs font-semibold text-white truncate max-w-[90px]">{top3[1].nickname}</div>
                                         <div className="text-slate-300 text-xs font-bold mt-1">{top3[1].score.toLocaleString()} pts</div>
                                     </motion.div>
@@ -604,7 +607,9 @@ const GameView = () => {
                                         >
                                             <Crown size={26} className="text-quizmoto-yellow mb-1 mx-auto" />
                                         </motion.div>
-                                        <div className="text-5xl mb-1 drop-shadow-lg">{top3[0].avatar || '🛡️'}</div>
+                                        <div className="mb-1 drop-shadow-lg flex items-center justify-center">
+                                            <AvatarDisplay avatar={top3[0].avatar} imgClass="w-14 h-14" textClass="text-5xl" />
+                                        </div>
                                         <div className="bg-quizmoto-yellow/20 border border-quizmoto-yellow/40 px-3 py-0.5 rounded-full text-xs font-bold text-quizmoto-yellow truncate max-w-[110px]">{top3[0].nickname}</div>
                                         <div className="text-quizmoto-yellow text-xs font-bold mt-1">{top3[0].score.toLocaleString()} pts</div>
                                     </motion.div>
@@ -629,7 +634,9 @@ const GameView = () => {
                                         transition={{ delay: 0.4, duration: 0.5 }}
                                         className="flex flex-col items-center mb-3"
                                     >
-                                        <div className="text-4xl mb-1 drop-shadow-lg">{top3[2].avatar || '🦊'}</div>
+                                        <div className="mb-1 drop-shadow-lg flex items-center justify-center">
+                                            <AvatarDisplay avatar={top3[2].avatar} imgClass="w-10 h-10" textClass="text-4xl" />
+                                        </div>
                                         <div className="bg-white/15 px-3 py-0.5 rounded-full text-xs font-semibold text-white truncate max-w-[90px]">{top3[2].nickname}</div>
                                         <div className="text-amber-400 text-xs font-bold mt-1">{top3[2].score.toLocaleString()} pts</div>
                                     </motion.div>
