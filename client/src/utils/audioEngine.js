@@ -10,6 +10,7 @@ export class AudioEngine {
                 countdown: new Audio('/sounds/countdown.wav'),
                 countdownEnd: new Audio('/sounds/countdown_end.wav'),
                 playful: new Audio('/sounds/playful.wav'),
+                waiting: new Audio('/sounds/waiting.wav'),
                 correct: new Audio('/sounds/correct.wav'),
                 wrong: new Audio('/sounds/wrong.wav'),
                 leaderboard: new Audio('/sounds/leaderboard.wav')
@@ -19,6 +20,10 @@ export class AudioEngine {
             if (this.sounds.playful) {
                 this.sounds.playful.loop = true;
                 this.sounds.playful.volume = 0.15; // Softer background
+            }
+            if (this.sounds.waiting) {
+                this.sounds.waiting.loop = true;
+                this.sounds.waiting.volume = 0.3; 
             }
         }
     }
@@ -37,12 +42,12 @@ export class AudioEngine {
         
         try {
             // Clone node to allow overlapping sounds (e.g. rapid ticks)
-            if (name !== 'playful') {
+            if (name !== 'playful' && name !== 'waiting') {
                 const soundClone = this.sounds[name].cloneNode();
                 soundClone.volume = name === 'tick' ? 0.3 : 0.6;
                 soundClone.play().catch(e => console.warn('Audio play prevented:', e));
             } else {
-                this.sounds.playful.play().catch(e => console.warn('Audio play prevented:', e));
+                this.sounds[name].play().catch(e => console.warn('Audio play prevented:', e));
             }
         } catch (e) {
             console.warn('Error playing audio:', e);
@@ -53,6 +58,10 @@ export class AudioEngine {
         if (this.sounds.playful) {
             this.sounds.playful.pause();
             this.sounds.playful.currentTime = 0;
+        }
+        if (this.sounds.waiting) {
+            this.sounds.waiting.pause();
+            this.sounds.waiting.currentTime = 0;
         }
     }
 

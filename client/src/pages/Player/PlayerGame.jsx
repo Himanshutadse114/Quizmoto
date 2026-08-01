@@ -254,6 +254,8 @@ const PlayerGame = () => {
     useEffect(() => {
         if (gameState === 'lobby' || gameState === 'loading') {
             audio.play('playful');
+        } else if (gameState === 'submitted') {
+            audio.play('waiting');
         } else {
             audio.stopBg();
         }
