@@ -600,6 +600,7 @@ const GameView = () => {
                     </div>
 
                 )}
+                </AnimatePresence>
             </main>
 
             <ReactionCanvas />
