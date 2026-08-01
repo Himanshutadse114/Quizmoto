@@ -92,3 +92,15 @@ const startServer = async () => {
 };
 
 startServer();
+
+// --- Keep-Alive Ping for Render Free Tier ---
+// Pings the /health endpoint every 14 minutes to prevent the server from sleeping.
+const externalUrl = process.env.RENDER_EXTERNAL_URL;
+if (externalUrl) {
+    const https = require('https');
+    setInterval(() => {
+        https.get(`${externalUrl}/health`).on('error', (err) => {
+            console.error('Keep-alive ping error:', err.message);
+        });
+    }, 14 * 60 * 1000); // 14 minutes
+}
