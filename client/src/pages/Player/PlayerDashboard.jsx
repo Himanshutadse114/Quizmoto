@@ -96,22 +96,22 @@ const PlayerDashboard = () => {
     };
 
     return (
-        <div className="flex h-screen bg-quizmoto-darkPurple font-sans overflow-hidden">
+        <div className="flex flex-col md:flex-row h-screen bg-quizmoto-darkPurple font-sans overflow-y-auto md:overflow-hidden">
             
             {/* Sidebar Navigation */}
             <motion.div 
                 initial={{ x: -50, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
-                className="w-72 bg-black/20 border-r border-white/5 p-6 flex flex-col relative z-20 backdrop-blur-xl"
+                className="w-full md:w-72 shrink-0 bg-black/20 border-b md:border-b-0 md:border-r border-white/5 p-6 flex flex-col relative z-20 backdrop-blur-xl"
             >
-                <div className="text-center mb-10 mt-4">
+                <div className="text-center mb-6 md:mb-10 mt-2 md:mt-4">
                     <h1 className="text-3xl font-black italic tracking-tighter text-white drop-shadow-lg">
                         Quizmoto<span className="text-quizmoto-yellow">!</span>
                     </h1>
                 </div>
 
                 {/* Sidebar Profile */}
-                <div className="flex flex-col items-center mb-10">
+                <div className="flex flex-col items-center mb-6 md:mb-10">
                     <div className="relative cursor-pointer mb-4" onClick={() => setShowAvatarModal(true)}>
                         <motion.div 
                             whileHover={{ scale: 1.05, rotate: 5 }}
@@ -130,7 +130,7 @@ const PlayerDashboard = () => {
                 </div>
 
                 {/* Sidebar Actions */}
-                <div className="flex-1 space-y-4">
+                <div className="flex-1 space-y-4 mb-6 md:mb-0">
                     <Link to="/join" className="block">
                         <motion.div 
                             whileHover={{ scale: 1.02, translateY: -2 }}
@@ -153,7 +153,7 @@ const PlayerDashboard = () => {
             </motion.div>
 
             {/* Main Content Area */}
-            <div className="flex-1 h-full overflow-y-auto relative p-8 md:p-12 custom-scrollbar">
+            <div className="flex-1 w-full md:h-full overflow-y-visible md:overflow-y-auto relative p-6 md:p-12 custom-scrollbar">
                 {/* Ambient Background Elements */}
                 <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-quizmoto-blue rounded-full blur-[120px] opacity-30 pointer-events-none"></div>
                 <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-quizmoto-purple rounded-full blur-[120px] opacity-40 pointer-events-none"></div>
