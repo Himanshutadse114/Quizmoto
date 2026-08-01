@@ -1,0 +1,56 @@
+databases:
+  - name: kahoot-db
+    databaseName: kahoot
+    user: kahoot_user
+
+services:
+  - type: web
+    name: kahoot-awareness-backend
+    env: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_DIALECT
+        value: postgres
+      - key: DB_HOST
+        fromDatabase:
+          name: kahoot-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: kahoot-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: kahoot-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: kahoot-db
+          property: user
+      - key: DB_PASS
+        fromDatabase:
+          name: kahoot-db
+          property: password
+      - key: DB_SSL
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: "*"
+
+  - type: web
+    name: kahoot-awareness-frontend
+    env: static
+    rootDir: client
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_BACKEND_URL
+        fromService:
+          type: web
+          name: kahoot-awareness-backend
+          envVarKey: RENDER_EXTERNAL_URL

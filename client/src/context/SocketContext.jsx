@@ -7,11 +7,12 @@ export const SocketProvider = ({ children }) => {
     const [socket, setSocket] = useState(null);
 
     useEffect(() => {
-        // In production, the socket server might be on the same host but different port
-        // Or if using a reverse proxy, it might be the same origin
-        const socketUrl = window.location.origin;
-
-        const newSocket = io(socketUrl);
+        // In production (Vercel), point to the Koyeb backend URL.
+        // In local development, use the same origin (Docker nginx proxy).
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || window.location.origin;
+        const newSocket = io(backendUrl, {
+            transports: ['websocket', 'polling']
+        });
         setSocket(newSocket);
 
         return () => newSocket.close();
