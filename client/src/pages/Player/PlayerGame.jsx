@@ -13,6 +13,7 @@ const PlayerGame = () => {
     const [gameState, setGameState] = useState('loading'); // 'loading', 'question', 'submitted', 'result', 'finished', 'countdown'
     const [playerInfo, setPlayerInfo] = useState(null);
     const [countdown, setCountdown] = useState(0);
+    const [clockOffset, setClockOffset] = useState(0);
     const [result, setResult] = useState(null);
     const [timeLeft, setTimeLeft] = useState(0);
     const [lastAnswer, setLastAnswer] = useState(-1);
@@ -45,15 +46,19 @@ const PlayerGame = () => {
         });
 
         socket.on('question_started', (data) => {
-            const clockOffset = data.serverTime ? data.serverTime - Date.now() : 0;
-            const syncedNow = Date.now() + clockOffset;
+            const offset = data.serverTime ? data.serverTime - Date.now() : 0;
+            setClockOffset(offset);
+            const syncedNow = Date.now() + offset;
             
-            // Re-sync with absolute startTime
-            const delay = data.startTime - syncedNow;
-            if (delay > 0) {
-                setGameState('countdown');
-                setCountdown(Math.ceil(delay / 1000));
-            } else {
+            setQuestion(data);
+            setGameState('countdown');
+            setResult(null);
+            resultRef.current = null;
+            setLastAnswer(-1);
+            lastAnswerRef.current = -1;
+            setPointsWon(0);
+
+            if (syncedNow >= data.startTime) {
                 setGameState('question');
             }
 
@@ -64,12 +69,6 @@ const PlayerGame = () => {
             };
 
             setTimeLeft(calculateTimeLeft());
-            setQuestion(data);
-            setResult(null);
-            resultRef.current = null;
-            setLastAnswer(-1);
-            lastAnswerRef.current = -1;
-            setPointsWon(0);
 
             if (timerRef.current) clearInterval(timerRef.current);
 
@@ -125,8 +124,9 @@ const PlayerGame = () => {
                 const qData = data.question;
                 setQuestion(qData);
                 
-                const clockOffset = data.serverTime ? data.serverTime - Date.now() : 0;
-                const syncedNow = Date.now() + clockOffset;
+                const offset = data.serverTime ? data.serverTime - Date.now() : 0;
+                setClockOffset(offset);
+                const syncedNow = Date.now() + offset;
 
                 const delay = qData.startTime - syncedNow;
                 if (delay > 0 && !data.answered) {
@@ -219,10 +219,8 @@ const PlayerGame = () => {
     useEffect(() => {
         if (gameState === 'countdown' && question) {
             const interval = setInterval(() => {
-                // Approximate clock offset if we don't have it saved globally, 
-                // but since countdown is very short, normal Date.now is usually okay here.
-                // However, to be safe, we just use question.startTime
-                const delay = question.startTime - Date.now();
+                const now = Date.now() + clockOffset;
+                const delay = question.startTime - now;
                 if (delay <= 0) {
                     clearInterval(interval);
                     setGameState('question');
@@ -232,7 +230,7 @@ const PlayerGame = () => {
             }, 100);
             return () => clearInterval(interval);
         }
-    }, [gameState, question]);
+    }, [gameState, question, clockOffset]);
 
     const submitAnswer = (idx) => {
         if (gameState !== 'question') return;
@@ -288,17 +286,19 @@ const PlayerGame = () => {
                         transition={{ duration: 0.3 }}
                         className="flex-1 flex flex-col items-center justify-center text-center"
                     >
-                        <motion.div 
-                            key={countdown}
-                            initial={{ scale: 0.5, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 1.5, opacity: 0 }}
-                            transition={{ duration: 0.5, ease: "easeOut" }}
-                            className="text-9xl font-black text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] mb-4"
-                        >
-                            {countdown}
-                        </motion.div>
-                        <p className="text-2xl font-bold uppercase tracking-widest text-white/80">Get Ready!</p>
+                        <AnimatePresence mode="wait">
+                            <motion.div 
+                                key={countdown}
+                                initial={{ scale: 0.5, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 1.5, opacity: 0 }}
+                                transition={{ duration: 0.3, ease: "easeOut" }}
+                                className="text-9xl font-black text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] mb-4"
+                            >
+                                {countdown}
+                            </motion.div>
+                        </AnimatePresence>
+                        <p className="text-2xl font-black opacity-80 uppercase tracking-[0.2em]">Get Ready!</p>
                     </motion.div>
                 )}
                 

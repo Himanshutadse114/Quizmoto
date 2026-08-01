@@ -16,7 +16,9 @@ const GameView = () => {
 
     const [gameState, setGameState] = useState('question'); // 'question', 'result', 'leaderboard', 'finished'
     const [question, setQuestion] = useState(null);
-    const [timer, setTimer] = useState(null);
+    const [timer, setTimer] = useState(0);
+    const [countdown, setCountdown] = useState(0);
+    const [clockOffset, setClockOffset] = useState(0);
     const [answersCount, setAnswersCount] = useState(0);
     const [answerDistribution, setAnswerDistribution] = useState([0, 0, 0, 0]);
     const [results, setResults] = useState(null);
@@ -26,7 +28,7 @@ const GameView = () => {
     const [viewMode, setViewMode] = useState('players'); // 'players', 'teams', 'analytics'
     const [isProcessingNext, setIsProcessingNext] = useState(false); // Prevents double-click on Next
     const [analyticsData, setAnalyticsData] = useState(null);
-    const [countdown, setCountdown] = useState(0);
+    const [isMuted, setIsMuted] = useState(false);
 
     useEffect(() => {
         if (!socket) return;
@@ -74,12 +76,13 @@ const GameView = () => {
         });
 
         socket.on('question_started', (data) => {
+            const offset = data.serverTime ? data.serverTime - Date.now() : 0;
+            setClockOffset(offset);
+            const syncedNow = Date.now() + offset;
+
             setQuestion(data);
-            const calculateTimeLeft = () => {
-                const now = Date.now();
-                const diff = Math.floor((now - data.startTime) / 1000);
-                return Math.max(0, data.timer - diff);
-            };
+            setTimer(data.timer);
+            setGameState('countdown');
             setAnswersCount(0);
             setAnswerDistribution([0, 0, 0, 0]);
             setResults(null);
@@ -143,7 +146,8 @@ const GameView = () => {
     useEffect(() => {
         if (gameState === 'countdown' && question) {
             const interval = setInterval(() => {
-                const delay = question.startTime - Date.now();
+                const now = Date.now() + clockOffset;
+                const delay = question.startTime - now;
                 if (delay <= 0) {
                     clearInterval(interval);
                     setGameState('question');
@@ -154,6 +158,7 @@ const GameView = () => {
             }, 100);
             return () => clearInterval(interval);
         }
+    }, [gameState, question, clockOffset]);
 
         if (gameState !== 'question' || !question) return;
 
@@ -228,17 +233,19 @@ const GameView = () => {
 
     if (gameState === 'countdown') return (
         <div className="flex flex-col items-center justify-center h-screen gap-6 relative overflow-hidden">
-            <motion.div 
-                key={countdown}
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 1.5, opacity: 0 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                className="text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]"
-            >
-                {countdown}
-            </motion.div>
-            <p className="text-white/70 text-xl font-medium tracking-widest uppercase">Get Ready!</p>
+            <AnimatePresence mode="wait">
+                <motion.div 
+                    key={countdown}
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 1.5, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    className="text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]"
+                >
+                    {countdown}
+                </motion.div>
+            </AnimatePresence>
+            <p className="text-white/70 text-xl font-medium tracking-widest uppercase mt-4">Get Ready!</p>
         </div>
     );
 
