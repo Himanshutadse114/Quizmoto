@@ -6,10 +6,8 @@ databases:
 services:
   - type: web
     name: kahoot-awareness-backend
-    env: node
+    env: docker
     rootDir: server
-    buildCommand: npm install
-    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
