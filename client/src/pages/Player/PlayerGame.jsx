@@ -120,7 +120,14 @@ const PlayerGame = () => {
             if (data.status === 'question') {
                 const qData = data.question;
                 setQuestion(qData);
-                setGameState(data.answered ? 'submitted' : 'question');
+                
+                const delay = qData.startTime - Date.now();
+                if (delay > 0 && !data.answered) {
+                    setGameState('countdown');
+                    setCountdown(Math.ceil(delay / 1000));
+                } else {
+                    setGameState(data.answered ? 'submitted' : 'question');
+                }
 
                 // Calculate real time left based on absolute server startTime
                 const calculateTimeLeft = () => {

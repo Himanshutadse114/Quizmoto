@@ -40,7 +40,20 @@ const GameView = () => {
             if (sessionData.status === 'question' || sessionData.status === 'result') {
                 if (sessionData.currentQuestion) {
                     setQuestion(sessionData.currentQuestion);
-                    setGameState(sessionData.status);
+                    
+                    if (sessionData.status === 'question') {
+                        const delay = sessionData.currentQuestion.startTime - Date.now();
+                        if (delay > 0) {
+                            setGameState('countdown');
+                            setCountdown(Math.ceil(delay / 1000));
+                        } else {
+                            setGameState('question');
+                            const diff = Math.floor((Date.now() - sessionData.currentQuestion.startTime) / 1000);
+                            setTimer(Math.max(0, sessionData.currentQuestion.timer - diff));
+                        }
+                    } else {
+                        setGameState('result');
+                    }
                 }
             } else if (sessionData.status === 'finished') {
                 const sortedPlayers = sessionData.players
