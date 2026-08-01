@@ -44,9 +44,11 @@ const PlayerGame = () => {
         });
 
         socket.on('question_started', (data) => {
-            setQuestion(data);
+            const clockOffset = data.serverTime ? data.serverTime - Date.now() : 0;
+            const syncedNow = Date.now() + clockOffset;
             
-            const delay = data.startTime - Date.now();
+            // Re-sync with absolute startTime
+            const delay = data.startTime - syncedNow;
             if (delay > 0) {
                 setGameState('countdown');
                 setCountdown(Math.ceil(delay / 1000));
@@ -55,12 +57,13 @@ const PlayerGame = () => {
             }
 
             const calculateTimeLeft = () => {
-                const now = Date.now();
+                const now = Date.now() + clockOffset;
                 const diff = Math.floor((now - data.startTime) / 1000);
                 return Math.max(0, data.timer - diff);
             };
 
             setTimeLeft(calculateTimeLeft());
+            setQuestion(data);
             setResult(null);
             resultRef.current = null;
             setLastAnswer(-1);
@@ -121,7 +124,10 @@ const PlayerGame = () => {
                 const qData = data.question;
                 setQuestion(qData);
                 
-                const delay = qData.startTime - Date.now();
+                const clockOffset = data.serverTime ? data.serverTime - Date.now() : 0;
+                const syncedNow = Date.now() + clockOffset;
+
+                const delay = qData.startTime - syncedNow;
                 if (delay > 0 && !data.answered) {
                     setGameState('countdown');
                     setCountdown(Math.ceil(delay / 1000));
@@ -131,7 +137,7 @@ const PlayerGame = () => {
 
                 // Calculate real time left based on absolute server startTime
                 const calculateTimeLeft = () => {
-                    const now = Date.now();
+                    const now = Date.now() + clockOffset;
                     const diff = Math.floor((now - qData.startTime) / 1000);
                     return Math.max(0, qData.timer - diff);
                 };
@@ -166,6 +172,11 @@ const PlayerGame = () => {
             setGameState('finished');
         });
 
+        socket.on('host_disconnected', () => {
+            alert('The host has ended or disconnected from the session.');
+            navigate('/');
+        });
+
         socket.on('answer_confirmed', (data) => {
             setStreak(data.streak);
             setPointsWon(data.points);
@@ -195,6 +206,7 @@ const PlayerGame = () => {
             socket.off('game_finished');
             socket.off('session_info');
             socket.off('answer_confirmed');
+            socket.off('host_disconnected');
             if (timerRef.current) clearInterval(timerRef.current);
         };
     }, [socket, navigate]);
@@ -202,6 +214,9 @@ const PlayerGame = () => {
     useEffect(() => {
         if (gameState === 'countdown' && question) {
             const interval = setInterval(() => {
+                // Approximate clock offset if we don't have it saved globally, 
+                // but since countdown is very short, normal Date.now is usually okay here.
+                // However, to be safe, we just use question.startTime
                 const delay = question.startTime - Date.now();
                 if (delay <= 0) {
                     clearInterval(interval);
@@ -338,7 +353,7 @@ const PlayerGame = () => {
                                 transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
                                 className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full mb-6"
                             />
-                            <h2 className="text-3xl font-black italic mb-2">Answer Submitted!</h2>
+                            <h2 className="text-3xl font-black italic mb-2 text-center">Answer Submitted!</h2>
                             <p className="text-lg font-bold opacity-70 mb-6">Waiting for others...</p>
                             
                             <div className="w-full bg-black/20 rounded-2xl p-4 flex flex-col items-center mb-6">

@@ -1,10 +1,12 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import axios from 'axios';
 import { apiUrl } from '../config';
 
 const AuthContext = createContext();
 
 const API_URL = apiUrl('/api/auth');
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1001652255296-695gf3vjul0fjh1oden4k2n6tvvdvncn.apps.googleusercontent.com';
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -31,19 +33,9 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, [token]);
 
-    const login = async (username, password) => {
-        const res = await axios.post(`${API_URL}/login`, { username, password });
-        const userData = { username: res.data.username };
-        setToken(res.data.token);
-        setUser(userData);
-        localStorage.setItem('token', res.data.token);
-        localStorage.setItem('user', JSON.stringify(userData));
-        return res.data;
-    };
-
-    const register = async (username, password) => {
-        const res = await axios.post(`${API_URL}/register`, { username, password });
-        const userData = { username: res.data.username };
+    const loginWithGoogle = async (credential) => {
+        const res = await axios.post(`${API_URL}/google`, { credential });
+        const userData = { username: res.data.username, avatar: res.data.avatar };
         setToken(res.data.token);
         setUser(userData);
         localStorage.setItem('token', res.data.token);
@@ -57,8 +49,10 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, login, register, logout, loading }}>
-            {children}
+        <AuthContext.Provider value={{ user, token, loginWithGoogle, logout, loading }}>
+            <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+                {children}
+            </GoogleOAuthProvider>
         </AuthContext.Provider>
     );
 };

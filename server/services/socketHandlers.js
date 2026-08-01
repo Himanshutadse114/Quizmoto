@@ -140,6 +140,7 @@ module.exports = (io) => {
                                 totalQuestions: quiz.questions.length,
                                 startTime: session.questionStartTime ? session.questionStartTime.getTime() : Date.now()
                             } : null,
+                            serverTime: Date.now(),
                             score: player.score,
                             lastAnswerIndex: player.lastAnswerIndex,
                             answered: player.lastAnswerIndex !== -1,
@@ -257,7 +258,8 @@ module.exports = (io) => {
                     explanation: question.explanation,
                     index: session.currentQuestionIndex,
                     totalQuestions: quiz.questions.length,
-                    startTime: session.questionStartTime.getTime()
+                    startTime: session.questionStartTime.getTime(),
+                    serverTime: Date.now()
                 };
 
                 io.to(pin).emit('question_started', questionData);

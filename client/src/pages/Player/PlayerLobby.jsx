@@ -36,9 +36,15 @@ const PlayerLobby = () => {
             }
         });
 
+        socket.on('host_disconnected', () => {
+            alert('The host has ended or disconnected from the session.');
+            navigate('/');
+        });
+
         return () => {
             socket.off('question_started');
             socket.off('session_info');
+            socket.off('host_disconnected');
         };
     }, [socket, navigate]);
 

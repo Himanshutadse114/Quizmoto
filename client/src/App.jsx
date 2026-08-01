@@ -6,7 +6,6 @@ import { SocketProvider } from './context/SocketContext';
 // Pages
 import Home from './pages/Home';
 import Login from './pages/Host/Login';
-import Register from './pages/Host/Register';
 import Dashboard from './pages/Host/Dashboard';
 import CreateQuiz from './pages/Host/CreateQuiz';
 import EditQuiz from './pages/Host/EditQuiz';
@@ -36,7 +35,6 @@ function App() {
               {/* Public Routes */}
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
 
               {/* Player Routes */}
               <Route path="/player/login" element={<PlayerLogin />} />

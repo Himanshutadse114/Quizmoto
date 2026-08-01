@@ -97,6 +97,10 @@ const connectDB = async () => {
             await addColumnIfMissing(`ALTER TABLE "Players" ADD COLUMN "teamName" VARCHAR(255) NULL`);
             await addColumnIfMissing(`ALTER TABLE "Players" ADD COLUMN "playerProfileId" INTEGER NULL`);
             await addColumnIfMissing(`ALTER TABLE "Questions" ADD COLUMN "explanation" TEXT NULL`);
+            await addColumnIfMissing(`ALTER TABLE "Users" ADD COLUMN "googleId" VARCHAR(255) NULL`);
+            await addColumnIfMissing(`ALTER TABLE "Users" ADD COLUMN "email" VARCHAR(255) NULL`);
+            await addColumnIfMissing(`ALTER TABLE "Users" ADD COLUMN "avatar" VARCHAR(255) NULL`);
+            await addColumnIfMissing(`ALTER TABLE "Users" ALTER COLUMN "password" DROP NOT NULL`);
         } else if (isMysql) {
             // MySQL syntax: backticks, supports AFTER clause
             await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`gameMode\` VARCHAR(255) DEFAULT 'classic' AFTER \`status\``);
@@ -104,6 +108,10 @@ const connectDB = async () => {
             await addColumnIfMissing(`ALTER TABLE \`Players\` ADD COLUMN \`teamName\` VARCHAR(255) NULL AFTER \`nickname\``);
             await addColumnIfMissing(`ALTER TABLE \`Players\` ADD COLUMN \`playerProfileId\` INTEGER NULL AFTER \`teamName\``);
             await addColumnIfMissing(`ALTER TABLE \`Questions\` ADD COLUMN \`explanation\` TEXT NULL`);
+            await addColumnIfMissing(`ALTER TABLE \`Users\` ADD COLUMN \`googleId\` VARCHAR(255) NULL`);
+            await addColumnIfMissing(`ALTER TABLE \`Users\` ADD COLUMN \`email\` VARCHAR(255) NULL`);
+            await addColumnIfMissing(`ALTER TABLE \`Users\` ADD COLUMN \`avatar\` VARCHAR(255) NULL`);
+            await addColumnIfMissing(`ALTER TABLE \`Users\` MODIFY \`password\` VARCHAR(255) NULL`);
         }
 
         // Standard sync (without alter) to ensure basic table existence
