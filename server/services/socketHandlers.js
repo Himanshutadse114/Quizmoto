@@ -140,6 +140,7 @@ module.exports = (io) => {
                                 options: currentQuestion.options,
                                 timer: currentQuestion.timer,
                                 explanation: currentQuestion.explanation,
+                                image: currentQuestion.image,
                                 index: session.currentQuestionIndex,
                                 totalQuestions: quiz.questions.length,
                                 startTime: session.questionStartTime ? session.questionStartTime.getTime() : Date.now()
@@ -194,6 +195,7 @@ module.exports = (io) => {
                                 options: currentQuestion.options,
                                 timer: currentQuestion.timer,
                                 explanation: currentQuestion.explanation,
+                                image: currentQuestion.image,
                                 index: session.currentQuestionIndex,
                                 totalQuestions: quiz.questions.length,
                                 correctIndex: currentQuestion.correctIndex,
@@ -263,6 +265,7 @@ module.exports = (io) => {
                     options: question.options,
                     timer: question.timer,
                     explanation: question.explanation,
+                    image: question.image,
                     index: session.currentQuestionIndex,
                     totalQuestions: quiz.questions.length,
                     startTime: session.questionStartTime.getTime(),
