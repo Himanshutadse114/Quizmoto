@@ -58,7 +58,11 @@ const PlayerGame = () => {
             lastAnswerRef.current = -1;
             setPointsWon(0);
 
-            if (syncedNow >= data.startTime) {
+            const delay = data.startTime - syncedNow;
+            if (delay > 0) {
+                setGameState('countdown');
+                setCountdown(Math.ceil(delay / 1000));
+            } else {
                 setGameState('question');
             }
 
@@ -196,10 +200,18 @@ const PlayerGame = () => {
 
         socket.on('error', (msg) => {
             console.error('Socket error in PlayerGame:', msg);
+            
+            if (msg === 'Game not found' || msg === 'Game is already finished' || msg === 'Unauthorized Host Entry') {
+                alert(msg);
+                navigate('/');
+                return;
+            }
+
             // Check state via a ref or functional update to avoid adding gameState to dependencies
             setGameState(prev => {
                 if (prev === 'loading') {
                     alert(`Error: ${msg}`);
+                    navigate('/');
                 }
                 return prev;
             });

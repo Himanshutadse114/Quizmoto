@@ -37,6 +37,10 @@ module.exports = (io) => {
                     return socket.emit('error', 'Game not found');
                 }
 
+                if (session.status === 'finished' && role !== 'host') {
+                    return socket.emit('error', 'Game is already finished');
+                }
+
                 if (role === 'player') {
                     if (!cleanNickname) return socket.emit('error', 'Nickname required');
 

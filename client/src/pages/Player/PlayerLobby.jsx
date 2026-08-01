@@ -45,11 +45,19 @@ const PlayerLobby = () => {
             setIsHostDisconnected(false);
         });
 
+        socket.on('error', (msg) => {
+            if (msg === 'Game not found' || msg === 'Game is already finished' || msg === 'Unauthorized Host Entry') {
+                alert(msg);
+                navigate('/');
+            }
+        });
+
         return () => {
             socket.off('question_started');
             socket.off('session_info');
             socket.off('host_disconnected');
             socket.off('host_reconnected');
+            socket.off('error');
         };
     }, [socket, navigate]);
 
