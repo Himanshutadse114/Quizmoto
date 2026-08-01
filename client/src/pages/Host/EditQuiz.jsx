@@ -117,7 +117,8 @@ const EditQuiz = () => {
                     options: validOptions,
                     correctIndex: newCorrectIndex,
                     timer: q.timer,
-                    explanation: q.explanation || ''
+                    explanation: q.explanation || '',
+                    image: q.image || null
                 };
             });
 
