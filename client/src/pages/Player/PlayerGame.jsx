@@ -63,7 +63,7 @@ const PlayerGame = () => {
             }
 
             const calculateTimeLeft = () => {
-                const now = Date.now() + clockOffset;
+                const now = Date.now() + offset;
                 const diff = Math.floor((now - data.startTime) / 1000);
                 return Math.max(0, data.timer - diff);
             };
@@ -120,47 +120,55 @@ const PlayerGame = () => {
         });
 
         socket.on('session_info', (data) => {
-            if (data.status === 'question') {
-                const qData = data.question;
-                setQuestion(qData);
-                
-                const offset = data.serverTime ? data.serverTime - Date.now() : 0;
-                setClockOffset(offset);
-                const syncedNow = Date.now() + offset;
+            try {
+                if (data.status === 'question') {
+                    const qData = data.question;
+                    if (!qData) {
+                        console.error('Received session_info with question status but no question data!');
+                        return;
+                    }
+                    setQuestion(qData);
+                    
+                    const offset = data.serverTime ? data.serverTime - Date.now() : 0;
+                    setClockOffset(offset);
+                    const syncedNow = Date.now() + offset;
 
-                const delay = qData.startTime - syncedNow;
-                if (delay > 0 && !data.answered) {
-                    setGameState('countdown');
-                    setCountdown(Math.ceil(delay / 1000));
-                } else {
-                    setGameState(data.answered ? 'submitted' : 'question');
+                    const delay = qData.startTime - syncedNow;
+                    if (delay > 0 && !data.answered) {
+                        setGameState('countdown');
+                        setCountdown(Math.ceil(delay / 1000));
+                    } else {
+                        setGameState(data.answered ? 'submitted' : 'question');
+                    }
+
+                    // Calculate real time left based on absolute server startTime
+                    const calculateTimeLeft = () => {
+                        const now = Date.now() + offset;
+                        const diff = Math.floor((now - qData.startTime) / 1000);
+                        return Math.max(0, qData.timer - diff);
+                    };
+
+                    const remaining = calculateTimeLeft();
+                    setTimeLeft(remaining);
+                    setLastAnswer(data.lastAnswerIndex);
+                    lastAnswerRef.current = data.lastAnswerIndex;
+
+                    if (timerRef.current) clearInterval(timerRef.current);
+                    timerRef.current = setInterval(() => {
+                        const currentRemaining = calculateTimeLeft();
+                        setTimeLeft(currentRemaining);
+                        if (currentRemaining <= 0) clearInterval(timerRef.current);
+                    }, 1000);
+
+                } else if (data.status === 'result') {
+                    setResult(data.result);
+                    resultRef.current = data.result;
+                    setGameState('result');
+                } else if (data.status === 'lobby') {
+                    navigate('/player/lobby');
                 }
-
-                // Calculate real time left based on absolute server startTime
-                const calculateTimeLeft = () => {
-                    const now = Date.now() + clockOffset;
-                    const diff = Math.floor((now - qData.startTime) / 1000);
-                    return Math.max(0, qData.timer - diff);
-                };
-
-                const remaining = calculateTimeLeft();
-                setTimeLeft(remaining);
-                setLastAnswer(data.lastAnswerIndex);
-                lastAnswerRef.current = data.lastAnswerIndex;
-
-                if (timerRef.current) clearInterval(timerRef.current);
-                timerRef.current = setInterval(() => {
-                    const currentRemaining = calculateTimeLeft();
-                    setTimeLeft(currentRemaining);
-                    if (currentRemaining <= 0) clearInterval(timerRef.current);
-                }, 1000);
-
-            } else if (data.status === 'result') {
-                setResult(data.result);
-                resultRef.current = data.result;
-                setGameState('result');
-            } else if (data.status === 'lobby') {
-                navigate('/player/lobby');
+            } catch (err) {
+                console.error("Error in session_info handler:", err);
             }
         });
 
@@ -184,6 +192,14 @@ const PlayerGame = () => {
         socket.on('answer_confirmed', (data) => {
             setStreak(data.streak);
             setPointsWon(data.points);
+        });
+
+        socket.on('error', (msg) => {
+            console.error('Socket error in PlayerGame:', msg);
+            // Don't change game state if it's just a warning, but if we're stuck loading, we could alert
+            if (gameState === 'loading') {
+                alert(`Error: ${msg}`);
+            }
         });
 
         // Proactive Re-sync on Tab Focus (Mobile Sleep Recovery)
@@ -212,9 +228,10 @@ const PlayerGame = () => {
             socket.off('answer_confirmed');
             socket.off('host_disconnected');
             socket.off('host_reconnected');
+            socket.off('error');
             if (timerRef.current) clearInterval(timerRef.current);
         };
-    }, [socket, navigate]);
+    }, [socket, navigate, gameState]);
 
     useEffect(() => {
         if (gameState === 'countdown' && question) {
