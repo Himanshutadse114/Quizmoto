@@ -196,10 +196,13 @@ const PlayerGame = () => {
 
         socket.on('error', (msg) => {
             console.error('Socket error in PlayerGame:', msg);
-            // Don't change game state if it's just a warning, but if we're stuck loading, we could alert
-            if (gameState === 'loading') {
-                alert(`Error: ${msg}`);
-            }
+            // Check state via a ref or functional update to avoid adding gameState to dependencies
+            setGameState(prev => {
+                if (prev === 'loading') {
+                    alert(`Error: ${msg}`);
+                }
+                return prev;
+            });
         });
 
         // Proactive Re-sync on Tab Focus (Mobile Sleep Recovery)
@@ -231,7 +234,7 @@ const PlayerGame = () => {
             socket.off('error');
             if (timerRef.current) clearInterval(timerRef.current);
         };
-    }, [socket, navigate, gameState]);
+    }, [socket, navigate]);
 
     useEffect(() => {
         if (gameState === 'countdown' && question) {
@@ -352,19 +355,19 @@ const PlayerGame = () => {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 flex-1 pb-2 md:pb-4 overflow-y-auto">
+                        <div className="grid grid-cols-2 gap-2 md:gap-4 flex-1 pb-4">
                             {['red', 'blue', 'yellow', 'green'].map((color, idx) => (
                                 <motion.button
                                     key={idx}
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.9 }}
                                     onClick={() => submitAnswer(idx)}
-                                    className={`bg-quizmoto-${color} rounded-xl shadow-[0_6px_0_0_rgba(0,0,0,0.2)] flex flex-row sm:flex-col items-center justify-start sm:justify-center p-4 sm:p-6 text-left sm:text-center transition-all hover:brightness-110 gap-4 sm:gap-0 min-h-[70px] sm:min-h-0`}
+                                    className={`bg-quizmoto-${color} rounded-2xl shadow-[0_8px_0_0_rgba(0,0,0,0.2)] flex flex-col items-center justify-center p-2 md:p-6 text-center transition-all hover:brightness-110 min-h-[120px] md:min-h-0`}
                                 >
-                                    <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-white/30 rounded-full sm:mb-3 flex-shrink-0 flex items-center justify-center">
-                                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full" />
+                                    <div className="w-6 h-6 md:w-10 md:h-10 border-2 md:border-4 border-white/30 rounded-full mb-1 md:mb-3 flex items-center justify-center">
+                                        <div className="w-1 h-1 md:w-2 md:h-2 bg-white rounded-full" />
                                     </div>
-                                    <span className="text-base sm:text-xl font-black leading-snug drop-shadow-md break-words flex-1">
+                                    <span className="text-sm md:text-xl font-black leading-tight drop-shadow-md break-words">
                                         {question?.options[idx]}
                                     </span>
                                 </motion.button>

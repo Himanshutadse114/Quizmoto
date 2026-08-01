@@ -44,13 +44,14 @@ const GameView = () => {
                     setQuestion(sessionData.currentQuestion);
                     
                     if (sessionData.status === 'question') {
-                        const delay = sessionData.currentQuestion.startTime - Date.now();
+                        const now = Date.now() + clockOffset;
+                        const delay = sessionData.currentQuestion.startTime - now;
                         if (delay > 0) {
                             setGameState('countdown');
                             setCountdown(Math.ceil(delay / 1000));
                         } else {
                             setGameState('question');
-                            const diff = Math.floor((Date.now() - sessionData.currentQuestion.startTime) / 1000);
+                            const diff = Math.floor((now - sessionData.currentQuestion.startTime) / 1000);
                             setTimer(Math.max(0, sessionData.currentQuestion.timer - diff));
                         }
                     } else {
@@ -88,7 +89,7 @@ const GameView = () => {
             setResults(null);
             setIsProcessingNext(false); // Re-enable the Next button for next round
 
-            const delay = data.startTime - Date.now();
+            const delay = data.startTime - syncedNow;
             if (delay > 0) {
                 setGameState('countdown');
                 setCountdown(Math.ceil(delay / 1000));
