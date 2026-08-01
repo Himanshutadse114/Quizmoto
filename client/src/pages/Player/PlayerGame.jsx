@@ -352,19 +352,19 @@ const PlayerGame = () => {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 flex-1 pb-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 flex-1 pb-2 md:pb-4 overflow-y-auto">
                             {['red', 'blue', 'yellow', 'green'].map((color, idx) => (
                                 <motion.button
                                     key={idx}
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.9 }}
                                     onClick={() => submitAnswer(idx)}
-                                    className={`bg-quizmoto-${color} rounded-2xl shadow-[0_8px_0_0_rgba(0,0,0,0.2)] flex flex-col items-center justify-center p-6 text-center transition-all hover:brightness-110`}
+                                    className={`bg-quizmoto-${color} rounded-xl shadow-[0_6px_0_0_rgba(0,0,0,0.2)] flex flex-row sm:flex-col items-center justify-start sm:justify-center p-4 sm:p-6 text-left sm:text-center transition-all hover:brightness-110 gap-4 sm:gap-0 min-h-[70px] sm:min-h-0`}
                                 >
-                                    <div className="w-10 h-10 border-4 border-white/30 rounded-full mb-3 flex items-center justify-center">
-                                        <div className="w-2 h-2 bg-white rounded-full" />
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-white/30 rounded-full sm:mb-3 flex-shrink-0 flex items-center justify-center">
+                                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full" />
                                     </div>
-                                    <span className="text-xl font-black leading-tight drop-shadow-md">
+                                    <span className="text-base sm:text-xl font-black leading-snug drop-shadow-md break-words flex-1">
                                         {question?.options[idx]}
                                     </span>
                                 </motion.button>
@@ -548,7 +548,9 @@ const PlayerGame = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
-            <ReactionBar pin={playerInfo?.pin} />
+            {(gameState === 'submitted' || gameState === 'result' || gameState === 'finished') && (
+                <ReactionBar pin={playerInfo?.pin} />
+            )}
         </div>
     );
 };
