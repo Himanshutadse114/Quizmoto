@@ -5,7 +5,7 @@ const { Sequelize } = require('sequelize');
 const jwt = require('jsonwebtoken');
 const { PlayerProfile } = require('../models/PlayerProfile');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key_here';
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
 module.exports = (io) => {
     io.on('connection', (socket) => {
