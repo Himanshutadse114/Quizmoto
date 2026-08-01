@@ -327,7 +327,7 @@ class KahootReport:
             for q_idx, q in enumerate(questions):
                 ans = next((a for a in answers if a.get("questionIndex") == q_idx), None)
                 opts = q.get("options", [])
-                correct_idx = q.get("correctOption", 0)
+                correct_idx = q.get("correctIndex", 0)
                 correct_text = opts[correct_idx] if 0 <= correct_idx < len(opts) else "Unknown"
                 
                 ev_bg = colors.white
