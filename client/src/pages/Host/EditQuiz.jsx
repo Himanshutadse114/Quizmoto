@@ -40,7 +40,7 @@ const EditQuiz = () => {
     }, [id, token, navigate, API_URL]);
 
     const addQuestion = () => {
-        setQuestions([...questions, { questionText: '', options: ['', '', '', ''], correctIndex: 0, timer: 20 }]);
+        setQuestions([...questions, { questionText: '', options: ['', '', '', ''], correctIndex: 0, timer: 20, explanation: '' }]);
     };
 
     const removeQuestion = (index) => {
@@ -81,7 +81,8 @@ const EditQuiz = () => {
                     questionText: q.questionText,
                     options: validOptions,
                     correctIndex: newCorrectIndex,
-                    timer: q.timer
+                    timer: q.timer,
+                    explanation: q.explanation || ''
                 };
             });
 
@@ -195,6 +196,16 @@ const EditQuiz = () => {
                                 <option value={30}>30 sec</option>
                                 <option value={60}>60 sec</option>
                             </select>
+                        </div>
+
+                        <div className="mt-4">
+                            <label className="block text-[10px] font-black text-gray-400 mb-1 tracking-widest">EXPLANATION / FUN FACT (Optional)</label>
+                            <textarea
+                                placeholder="Explain the correct answer or share a fun fact to show players while they wait..."
+                                className="w-full text-sm font-bold border border-gray-200 rounded-lg p-2 outline-none focus:border-quizmoto-purple transition-all resize-none h-16"
+                                value={q.explanation || ''}
+                                onChange={(e) => updateQuestion(qIndex, 'explanation', e.target.value)}
+                            />
                         </div>
                     </motion.div>
                 ))}

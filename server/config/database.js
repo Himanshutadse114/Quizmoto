@@ -96,12 +96,14 @@ const connectDB = async () => {
             await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "analytics" JSON NULL`);
             await addColumnIfMissing(`ALTER TABLE "Players" ADD COLUMN "teamName" VARCHAR(255) NULL`);
             await addColumnIfMissing(`ALTER TABLE "Players" ADD COLUMN "playerProfileId" INTEGER NULL`);
+            await addColumnIfMissing(`ALTER TABLE "Questions" ADD COLUMN "explanation" TEXT NULL`);
         } else if (isMysql) {
             // MySQL syntax: backticks, supports AFTER clause
             await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`gameMode\` VARCHAR(255) DEFAULT 'classic' AFTER \`status\``);
             await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`analytics\` JSON NULL AFTER \`questionStartTime\``);
             await addColumnIfMissing(`ALTER TABLE \`Players\` ADD COLUMN \`teamName\` VARCHAR(255) NULL AFTER \`nickname\``);
             await addColumnIfMissing(`ALTER TABLE \`Players\` ADD COLUMN \`playerProfileId\` INTEGER NULL AFTER \`teamName\``);
+            await addColumnIfMissing(`ALTER TABLE \`Questions\` ADD COLUMN \`explanation\` TEXT NULL`);
         }
 
         // Standard sync (without alter) to ensure basic table existence

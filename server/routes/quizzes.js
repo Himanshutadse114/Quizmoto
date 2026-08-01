@@ -25,7 +25,8 @@ const quizSchema = Joi.object({
         questionText: Joi.string().required(),
         options: Joi.array().items(Joi.string()).min(2).max(6).required(),
         correctIndex: Joi.number().integer().min(0).max(5).required(),
-        timer: Joi.number().integer().min(5).max(300).required()
+        timer: Joi.number().integer().min(5).max(300).required(),
+        explanation: Joi.string().allow('', null).optional()
     })).min(1).required()
 }).unknown(true);
 
@@ -51,7 +52,8 @@ Respond ONLY with a JSON object in this format:
       "questionText": "The question string",
       "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
       "correctIndex": 0,
-      "timer": 20
+      "timer": 20,
+      "explanation": "A short, fun fact or explanation about the correct answer (max 2 sentences)"
     }
   ]
 }

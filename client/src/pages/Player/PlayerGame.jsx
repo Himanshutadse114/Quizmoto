@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../context/SocketContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, XCircle, Flame } from 'lucide-react';
+import { CheckCircle, XCircle, Flame, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import ReactionBar from '../../components/ReactionBar';
 
@@ -277,7 +277,7 @@ const PlayerGame = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="flex-1 flex flex-col pt-8"
+                        className="flex-1 flex flex-col pt-8 pb-24 px-4 overflow-y-auto custom-scrollbar"
                     >
                         <div className="text-center mb-6 md:mb-8">
                             <h3 className="font-black text-sm md:text-xl mb-1 mt-2 uppercase tracking-widest opacity-60">Question {question?.index + 1} of {question?.totalQuestions}</h3>
@@ -330,15 +330,33 @@ const PlayerGame = () => {
                         key="submitted"
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className="flex-1 flex flex-col items-center justify-center text-center"
+                        className="flex-1 flex flex-col items-center justify-center px-4 w-full"
                     >
-                        <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                            className="w-24 h-24 border-8 border-white/20 border-t-white rounded-full mb-8"
-                        />
-                        <h2 className="text-4xl font-black italic">Answer Submitted!</h2>
-                        <p className="mt-4 text-xl font-bold opacity-70">Waiting for others...</p>
+                        <div className="bg-white/10 w-full max-w-sm rounded-[32px] p-6 shadow-2xl border border-white/20 backdrop-blur-md flex flex-col items-center">
+                            <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                                className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full mb-6"
+                            />
+                            <h2 className="text-3xl font-black italic mb-2">Answer Submitted!</h2>
+                            <p className="text-lg font-bold opacity-70 mb-6">Waiting for others...</p>
+                            
+                            <div className="w-full bg-black/20 rounded-2xl p-4 flex flex-col items-center mb-6">
+                                <span className="text-xs font-black opacity-60 uppercase tracking-widest mb-1">Time Remaining</span>
+                                <span className="text-4xl font-black text-quizmoto-yellow">{timeLeft}s</span>
+                            </div>
+
+                            {question?.explanation && (
+                                <div className="w-full text-left bg-quizmoto-purple/40 border border-white/10 rounded-2xl p-5 shadow-inner">
+                                    <h3 className="text-sm font-black uppercase tracking-widest text-quizmoto-yellow mb-2 flex items-center gap-2">
+                                        <Sparkles size={16} /> Did you know?
+                                    </h3>
+                                    <p className="text-sm font-bold opacity-90 leading-relaxed">
+                                        {question.explanation}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     </motion.div>
                 )}
 

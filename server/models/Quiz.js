@@ -40,6 +40,10 @@ const Question = sequelize.define('Question', {
         type: DataTypes.INTEGER,
         defaultValue: 20
     },
+    explanation: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
     image: {
         type: DataTypes.STRING
     }
