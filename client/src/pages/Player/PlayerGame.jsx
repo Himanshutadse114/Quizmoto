@@ -10,8 +10,9 @@ const PlayerGame = () => {
     const socket = useSocket();
     const navigate = useNavigate();
     const [question, setQuestion] = useState(null);
-    const [gameState, setGameState] = useState('loading'); // 'loading', 'question', 'submitted', 'result', 'finished'
+    const [gameState, setGameState] = useState('loading'); // 'loading', 'question', 'submitted', 'result', 'finished', 'countdown'
     const [playerInfo, setPlayerInfo] = useState(null);
+    const [countdown, setCountdown] = useState(0);
     const [result, setResult] = useState(null);
     const [timeLeft, setTimeLeft] = useState(0);
     const [lastAnswer, setLastAnswer] = useState(-1);
@@ -42,24 +43,16 @@ const PlayerGame = () => {
             token: info.token
         });
 
-        socket.on('get_ready', (data) => {
-            setGameState('get_ready');
-            setTimeLeft(data.countdown);
-            if (timerRef.current) clearInterval(timerRef.current);
-            timerRef.current = setInterval(() => {
-                setTimeLeft(t => {
-                    if (t <= 1) {
-                        clearInterval(timerRef.current);
-                        return 0;
-                    }
-                    return t - 1;
-                });
-            }, 1000);
-        });
-
         socket.on('question_started', (data) => {
             setQuestion(data);
-            setGameState('question');
+            
+            const delay = data.startTime - Date.now();
+            if (delay > 0) {
+                setGameState('countdown');
+                setCountdown(Math.ceil(delay / 1000));
+            } else {
+                setGameState('question');
+            }
 
             const calculateTimeLeft = () => {
                 const now = Date.now();
@@ -199,6 +192,21 @@ const PlayerGame = () => {
         };
     }, [socket, navigate]);
 
+    useEffect(() => {
+        if (gameState === 'countdown' && question) {
+            const interval = setInterval(() => {
+                const delay = question.startTime - Date.now();
+                if (delay <= 0) {
+                    clearInterval(interval);
+                    setGameState('question');
+                } else {
+                    setCountdown(Math.ceil(delay / 1000));
+                }
+            }, 100);
+            return () => clearInterval(interval);
+        }
+    }, [gameState, question]);
+
     const submitAnswer = (idx) => {
         if (gameState !== 'question') return;
 
@@ -232,20 +240,30 @@ const PlayerGame = () => {
                         <p className="text-xl font-bold opacity-60 italic">Connecting to question...</p>
                     </motion.div>
                 )}
-                {gameState === 'get_ready' && (
-                    <motion.div 
-                        key="get_ready"
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 1.2, opacity: 0 }}
-                        className="flex flex-col items-center justify-center h-full text-center"
+                
+                {gameState === 'countdown' && (
+                    <motion.div
+                        key="countdown"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 1.2 }}
+                        transition={{ duration: 0.3 }}
+                        className="flex-1 flex flex-col items-center justify-center text-center"
                     >
-                        <h2 className="text-4xl font-bold text-white mb-6 drop-shadow-lg">Get Ready!</h2>
-                        <div className="text-9xl font-black text-quizmoto-yellow animate-pulse drop-shadow-2xl">
-                            {timeLeft}
-                        </div>
+                        <motion.div 
+                            key={countdown}
+                            initial={{ scale: 0.5, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 1.5, opacity: 0 }}
+                            transition={{ duration: 0.5, ease: "easeOut" }}
+                            className="text-9xl font-black text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] mb-4"
+                        >
+                            {countdown}
+                        </motion.div>
+                        <p className="text-2xl font-bold uppercase tracking-widest text-white/80">Get Ready!</p>
                     </motion.div>
                 )}
+                
                 {gameState === 'question' && (
                     <motion.div
                         key="question"

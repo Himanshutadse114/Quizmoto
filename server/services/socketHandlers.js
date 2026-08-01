@@ -237,44 +237,27 @@ module.exports = (io) => {
                 }
 
                 session.currentQuestionIndex = nextIndex;
-                session.status = 'get_ready';
+                session.status = 'question';
+                session.questionStartTime = new Date(Date.now() + 3000); // 3 seconds in the future for countdown
                 await session.save();
 
+                // Reset player states for the new question
+                await Player.update(
+                    { lastAnswerCorrect: false, lastAnswerTime: 0, lastAnswerIndex: -1 },
+                    { where: { sessionId: session.id } }
+                );
+
                 const question = quiz.questions[session.currentQuestionIndex];
-                
-                io.to(pin).emit('get_ready', { 
-                    countdown: 3, 
+                const questionData = {
+                    questionText: question.questionText,
+                    options: question.options,
+                    timer: question.timer,
                     index: session.currentQuestionIndex,
-                    totalQuestions: quiz.questions.length
-                });
+                    totalQuestions: quiz.questions.length,
+                    startTime: session.questionStartTime.getTime()
+                };
 
-                setTimeout(async () => {
-                    try {
-                        const activeSession = await GameSession.findByPk(session.id);
-                        if (!activeSession || activeSession.status !== 'get_ready') return;
-                        
-                        activeSession.status = 'question';
-                        activeSession.questionStartTime = new Date();
-                        await activeSession.save();
-
-                        await Player.update(
-                            { lastAnswerCorrect: false, lastAnswerTime: 0, lastAnswerIndex: -1 },
-                            { where: { sessionId: activeSession.id } }
-                        );
-
-                        const questionData = {
-                            questionText: question.questionText,
-                            options: question.options,
-                            timer: question.timer,
-                            index: activeSession.currentQuestionIndex,
-                            totalQuestions: quiz.questions.length,
-                            startTime: activeSession.questionStartTime.getTime()
-                        };
-                        io.to(pin).emit('question_started', questionData);
-                    } catch (err) {
-                        console.error('Error in get_ready timeout:', err);
-                    }
-                }, 3000);
+                io.to(pin).emit('question_started', questionData);
             } catch (err) {
                 console.error('Error in start_question:', err);
             }
@@ -388,6 +371,10 @@ module.exports = (io) => {
                 // Calculate time remaining based on server time
                 const startTime = new Date(session.questionStartTime).getTime();
                 const now = Date.now();
+
+                if (now < startTime) {
+                    return socket.emit('error', 'Question has not started yet');
+                }
                 const serverTimeRemaining = Math.max(0, question.timer - Math.floor((now - startTime) / 1000));
 
                 const optionsCount = (typeof question.options === 'string' ? JSON.parse(question.options) : question.options).length;

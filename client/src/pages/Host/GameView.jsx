@@ -26,6 +26,7 @@ const GameView = () => {
     const [viewMode, setViewMode] = useState('players'); // 'players', 'teams', 'analytics'
     const [isProcessingNext, setIsProcessingNext] = useState(false); // Prevents double-click on Next
     const [analyticsData, setAnalyticsData] = useState(null);
+    const [countdown, setCountdown] = useState(0);
 
     useEffect(() => {
         if (!socket) return;
@@ -59,13 +60,6 @@ const GameView = () => {
             setPlayersCount(players.length);
         });
 
-        socket.on('get_ready', (data) => {
-            setGameState('get_ready');
-            setTimer(data.countdown);
-            setQuestion(prev => ({ ...prev, index: data.index, totalQuestions: data.totalQuestions }));
-            setIsProcessingNext(false);
-        });
-
         socket.on('question_started', (data) => {
             setQuestion(data);
             const calculateTimeLeft = () => {
@@ -73,11 +67,19 @@ const GameView = () => {
                 const diff = Math.floor((now - data.startTime) / 1000);
                 return Math.max(0, data.timer - diff);
             };
-            setTimer(calculateTimeLeft());
-            setGameState('question');
             setAnswersCount(0);
             setAnswerDistribution([0, 0, 0, 0]);
             setResults(null);
+            setIsProcessingNext(false); // Re-enable the Next button for next round
+
+            const delay = data.startTime - Date.now();
+            if (delay > 0) {
+                setGameState('countdown');
+                setCountdown(Math.ceil(delay / 1000));
+            } else {
+                setGameState('question');
+                setTimer(calculateTimeLeft());
+            }
         });
 
         socket.on('answer_received_host', ({ answerIndex }) => {
@@ -126,27 +128,35 @@ const GameView = () => {
 
 
     useEffect(() => {
-        if (gameState === 'get_ready') {
+        if (gameState === 'countdown' && question) {
             const interval = setInterval(() => {
-                setTimer(t => (t <= 1 ? 0 : t - 1));
-            }, 1000);
+                const delay = question.startTime - Date.now();
+                if (delay <= 0) {
+                    clearInterval(interval);
+                    setGameState('question');
+                    setTimer(question.timer);
+                } else {
+                    setCountdown(Math.ceil(delay / 1000));
+                }
+            }, 100);
             return () => clearInterval(interval);
         }
 
-        if (gameState === 'question' && question) {
-            const interval = setInterval(() => {
-                setTimer(t => {
-                    if (t <= 1) {
-                        clearInterval(interval);
-                        socket.emit('end_question', { pin, token });
-                        return 0;
-                    }
-                    return t - 1;
-                });
-            }, 1000);
-            return () => clearInterval(interval);
-        }
-    }, [gameState, question?.index, pin, socket, token]);
+        if (gameState !== 'question' || !question) return;
+
+        const interval = setInterval(() => {
+            setTimer(t => {
+                if (t <= 1) {
+                    clearInterval(interval);
+                    socket.emit('end_question', { pin, token });
+                    return 0;
+                }
+                return t - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [gameState, question?.index, pin, socket, token, question?.startTime]);
 
     useEffect(() => {
         if (gameState === 'finished') {
@@ -200,6 +210,22 @@ const GameView = () => {
         <div className="flex flex-col items-center justify-center h-screen gap-4">
             <div className="w-10 h-10 border-2 border-white/20 border-t-white rounded-full animate-spin" />
             <p className="text-white/50 text-sm font-medium">Starting session...</p>
+        </div>
+    );
+
+    if (gameState === 'countdown') return (
+        <div className="flex flex-col items-center justify-center h-screen gap-6 relative overflow-hidden">
+            <motion.div 
+                key={countdown}
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 1.5, opacity: 0 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]"
+            >
+                {countdown}
+            </motion.div>
+            <p className="text-white/70 text-xl font-medium tracking-widest uppercase">Get Ready!</p>
         </div>
     );
 
@@ -263,24 +289,9 @@ const GameView = () => {
                 </div>
             </header>
 
-            {/* Main Content Area */}
-            <main className="flex-1 flex flex-col items-center justify-center max-w-5xl mx-auto w-full">
-                <AnimatePresence mode="wait">
-                    {gameState === 'get_ready' && (
-                        <motion.div
-                            key="get_ready"
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 1.2, opacity: 0 }}
-                            className="flex flex-col items-center justify-center h-full"
-                        >
-                            <h2 className="text-5xl font-bold mb-8 drop-shadow-lg">Get Ready!</h2>
-                            <div className="text-9xl font-black text-quizmoto-yellow animate-pulse drop-shadow-2xl">
-                                {timer}
-                            </div>
-                        </motion.div>
-                    )}
-                    {gameState === 'question' && (
+            <main className="flex-1 flex flex-col items-center justify-center">
+                {/* Question State */}
+                {gameState === 'question' && (
                     <div className="w-full max-w-5xl">
                         <motion.div
                             initial={{ y: -20, opacity: 0 }}
@@ -600,7 +611,6 @@ const GameView = () => {
                     </div>
 
                 )}
-                </AnimatePresence>
             </main>
 
             <ReactionCanvas />
