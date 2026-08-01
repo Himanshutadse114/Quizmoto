@@ -237,27 +237,44 @@ module.exports = (io) => {
                 }
 
                 session.currentQuestionIndex = nextIndex;
-                session.status = 'question';
-                session.questionStartTime = new Date();
+                session.status = 'get_ready';
                 await session.save();
 
-                // Reset player states for the new question
-                await Player.update(
-                    { lastAnswerCorrect: false, lastAnswerTime: 0, lastAnswerIndex: -1 },
-                    { where: { sessionId: session.id } }
-                );
-
                 const question = quiz.questions[session.currentQuestionIndex];
-                const questionData = {
-                    questionText: question.questionText,
-                    options: question.options,
-                    timer: question.timer,
+                
+                io.to(pin).emit('get_ready', { 
+                    countdown: 3, 
                     index: session.currentQuestionIndex,
-                    totalQuestions: quiz.questions.length,
-                    startTime: session.questionStartTime.getTime()
-                };
+                    totalQuestions: quiz.questions.length
+                });
 
-                io.to(pin).emit('question_started', questionData);
+                setTimeout(async () => {
+                    try {
+                        const activeSession = await GameSession.findByPk(session.id);
+                        if (!activeSession || activeSession.status !== 'get_ready') return;
+                        
+                        activeSession.status = 'question';
+                        activeSession.questionStartTime = new Date();
+                        await activeSession.save();
+
+                        await Player.update(
+                            { lastAnswerCorrect: false, lastAnswerTime: 0, lastAnswerIndex: -1 },
+                            { where: { sessionId: activeSession.id } }
+                        );
+
+                        const questionData = {
+                            questionText: question.questionText,
+                            options: question.options,
+                            timer: question.timer,
+                            index: activeSession.currentQuestionIndex,
+                            totalQuestions: quiz.questions.length,
+                            startTime: activeSession.questionStartTime.getTime()
+                        };
+                        io.to(pin).emit('question_started', questionData);
+                    } catch (err) {
+                        console.error('Error in get_ready timeout:', err);
+                    }
+                }, 3000);
             } catch (err) {
                 console.error('Error in start_question:', err);
             }

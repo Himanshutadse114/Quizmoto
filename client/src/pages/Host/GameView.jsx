@@ -59,6 +59,13 @@ const GameView = () => {
             setPlayersCount(players.length);
         });
 
+        socket.on('get_ready', (data) => {
+            setGameState('get_ready');
+            setTimer(data.countdown);
+            setQuestion(prev => ({ ...prev, index: data.index, totalQuestions: data.totalQuestions }));
+            setIsProcessingNext(false);
+        });
+
         socket.on('question_started', (data) => {
             setQuestion(data);
             const calculateTimeLeft = () => {
@@ -71,7 +78,6 @@ const GameView = () => {
             setAnswersCount(0);
             setAnswerDistribution([0, 0, 0, 0]);
             setResults(null);
-            setIsProcessingNext(false); // Re-enable the Next button for next round
         });
 
         socket.on('answer_received_host', ({ answerIndex }) => {
@@ -120,20 +126,26 @@ const GameView = () => {
 
 
     useEffect(() => {
-        if (gameState !== 'question' || !question) return;
+        if (gameState === 'get_ready') {
+            const interval = setInterval(() => {
+                setTimer(t => (t <= 1 ? 0 : t - 1));
+            }, 1000);
+            return () => clearInterval(interval);
+        }
 
-        const interval = setInterval(() => {
-            setTimer(t => {
-                if (t <= 1) {
-                    clearInterval(interval);
-                    socket.emit('end_question', { pin, token });
-                    return 0;
-                }
-                return t - 1;
-            });
-        }, 1000);
-
-        return () => clearInterval(interval);
+        if (gameState === 'question' && question) {
+            const interval = setInterval(() => {
+                setTimer(t => {
+                    if (t <= 1) {
+                        clearInterval(interval);
+                        socket.emit('end_question', { pin, token });
+                        return 0;
+                    }
+                    return t - 1;
+                });
+            }, 1000);
+            return () => clearInterval(interval);
+        }
     }, [gameState, question?.index, pin, socket, token]);
 
     useEffect(() => {
@@ -251,9 +263,24 @@ const GameView = () => {
                 </div>
             </header>
 
-            <main className="flex-1 flex flex-col items-center justify-center">
-                {/* Question State */}
-                {gameState === 'question' && (
+            {/* Main Content Area */}
+            <main className="flex-1 flex flex-col items-center justify-center max-w-5xl mx-auto w-full">
+                <AnimatePresence mode="wait">
+                    {gameState === 'get_ready' && (
+                        <motion.div
+                            key="get_ready"
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 1.2, opacity: 0 }}
+                            className="flex flex-col items-center justify-center h-full"
+                        >
+                            <h2 className="text-5xl font-bold mb-8 drop-shadow-lg">Get Ready!</h2>
+                            <div className="text-9xl font-black text-quizmoto-yellow animate-pulse drop-shadow-2xl">
+                                {timer}
+                            </div>
+                        </motion.div>
+                    )}
+                    {gameState === 'question' && (
                     <div className="w-full max-w-5xl">
                         <motion.div
                             initial={{ y: -20, opacity: 0 }}

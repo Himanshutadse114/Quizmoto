@@ -42,6 +42,21 @@ const PlayerGame = () => {
             token: info.token
         });
 
+        socket.on('get_ready', (data) => {
+            setGameState('get_ready');
+            setTimeLeft(data.countdown);
+            if (timerRef.current) clearInterval(timerRef.current);
+            timerRef.current = setInterval(() => {
+                setTimeLeft(t => {
+                    if (t <= 1) {
+                        clearInterval(timerRef.current);
+                        return 0;
+                    }
+                    return t - 1;
+                });
+            }, 1000);
+        });
+
         socket.on('question_started', (data) => {
             setQuestion(data);
             setGameState('question');
@@ -215,6 +230,20 @@ const PlayerGame = () => {
                             className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full mb-4"
                         />
                         <p className="text-xl font-bold opacity-60 italic">Connecting to question...</p>
+                    </motion.div>
+                )}
+                {gameState === 'get_ready' && (
+                    <motion.div 
+                        key="get_ready"
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 1.2, opacity: 0 }}
+                        className="flex flex-col items-center justify-center h-full text-center"
+                    >
+                        <h2 className="text-4xl font-bold text-white mb-6 drop-shadow-lg">Get Ready!</h2>
+                        <div className="text-9xl font-black text-quizmoto-yellow animate-pulse drop-shadow-2xl">
+                            {timeLeft}
+                        </div>
                     </motion.div>
                 )}
                 {gameState === 'question' && (
