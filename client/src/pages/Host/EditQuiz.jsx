@@ -131,7 +131,8 @@ const EditQuiz = () => {
             navigate('/dashboard');
         } catch (err) {
             console.error(err);
-            alert(err.message || 'Failed to update quiz');
+            const message = err.response?.data?.message || err.message || 'Failed to update quiz';
+            alert(message);
         }
     };
 

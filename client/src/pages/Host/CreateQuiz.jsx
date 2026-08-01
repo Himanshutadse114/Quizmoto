@@ -123,7 +123,7 @@ const CreateQuiz = () => {
             navigate('/dashboard');
         } catch (err) {
             console.error(err);
-            const message = err.message || err.response?.data?.message || 'Failed to save quiz. Please check your connection.';
+            const message = err.response?.data?.message || err.message || 'Failed to save quiz. Please check your connection.';
             alert(message);
         }
     };
