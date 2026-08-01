@@ -34,7 +34,7 @@ const Reports = () => {
 
     const downloadReport = async (session, format) => {
         try {
-            const res = await axios.get(apiUrl(`/api/quizzes/reports/${session.id}/export?format=${format}`)), {
+            const res = await axios.get(apiUrl(`/api/quizzes/reports/${session.id}/export?format=${format}`), {
                 headers: { Authorization: `Bearer ${token}` },
                 responseType: 'blob'
             });
