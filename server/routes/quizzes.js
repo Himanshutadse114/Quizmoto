@@ -204,6 +204,25 @@ router.put('/:id', auth, async (req, res) => {
     }
 });
 
+// Get active sessions for host
+router.get('/active-sessions', auth, async (req, res) => {
+    try {
+        const { Op } = require('sequelize');
+        const activeSessions = await GameSession.findAll({
+            where: {
+                hostId: req.userId,
+                status: { [Op.ne]: 'finished' }
+            },
+            include: [{ model: Quiz, attributes: ['title'] }],
+            order: [['updatedAt', 'DESC']]
+        });
+        res.json(activeSessions);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // Import default quizzes
 router.post('/import-defaults', auth, async (req, res) => {
     try {

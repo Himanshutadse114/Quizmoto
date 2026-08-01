@@ -8,6 +8,7 @@ import { apiUrl } from '../../config';
 
 const Dashboard = () => {
     const [quizzes, setQuizzes] = useState([]);
+    const [activeSessions, setActiveSessions] = useState([]);
     const { token, user, logout } = useAuth();
     const navigate = useNavigate();
 
@@ -23,6 +24,7 @@ const Dashboard = () => {
         }
 
         fetchQuizzes();
+        fetchActiveSessions();
     }, [token, navigate, API_BASE_URL]);
 
     const fetchQuizzes = async () => {
@@ -31,6 +33,17 @@ const Dashboard = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setQuizzes(res.data);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const fetchActiveSessions = async () => {
+        try {
+            const res = await axios.get(`${API_BASE_URL}/active-sessions`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setActiveSessions(res.data);
         } catch (err) {
             console.error(err);
         }
@@ -118,6 +131,38 @@ const Dashboard = () => {
                     <button onClick={logout} className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl font-black transition-colors border border-white/10 text-xs">LOGOUT</button>
                 </div>
             </header>
+
+            {/* Active Sessions Banner */}
+            {activeSessions.length > 0 && (
+                <div className="mb-8 flex flex-col gap-3">
+                    {activeSessions.map(session => (
+                        <motion.div 
+                            key={session.id}
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-quizmoto-purple/20 border border-quizmoto-yellow/50 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_15px_rgba(242,169,0,0.1)]"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="bg-quizmoto-yellow/20 p-3 rounded-full animate-pulse">
+                                    <Play size={24} className="text-quizmoto-yellow" />
+                                </div>
+                                <div>
+                                    <h3 className="text-white font-black text-lg">Active Game: {session.Quiz?.title || 'Unknown Quiz'}</h3>
+                                    <p className="text-white/60 font-bold text-xs uppercase tracking-widest">
+                                        PIN: {session.pin} • Status: {session.status}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => navigate(session.status === 'lobby' ? `/host/lobby/${session.pin}` : `/host/game/${session.pin}`)}
+                                className="w-full md:w-auto bg-quizmoto-yellow text-quizmoto-darkPurple font-black px-6 py-3 rounded-xl uppercase tracking-widest text-sm hover:shadow-[0_0_20px_rgba(242,169,0,0.4)] transition-all hover:-translate-y-1"
+                            >
+                                Rejoin Game
+                            </button>
+                        </motion.div>
+                    ))}
+                </div>
+            )}
 
             {/* Statistics Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
