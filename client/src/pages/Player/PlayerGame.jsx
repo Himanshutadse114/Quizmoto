@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, Flame, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import ReactionBar from '../../components/ReactionBar';
+import { audio } from '../../utils/audioEngine';
 
 const PlayerGame = () => {
     const socket = useSocket();
@@ -245,19 +246,37 @@ const PlayerGame = () => {
             socket.off('host_reconnected');
             socket.off('error');
             if (timerRef.current) clearInterval(timerRef.current);
+            audio.stopAll();
         };
     }, [socket, navigate]);
+
+    useEffect(() => {
+        if (gameState === 'submitted' || gameState === 'result' || gameState === 'finished' || gameState === 'lobby') {
+            audio.play('playful');
+        } else {
+            audio.stopBg();
+        }
+    }, [gameState]);
+
+    useEffect(() => {
+        if (gameState === 'question' && timeLeft > 0) {
+            audio.play('tick');
+        }
+    }, [timeLeft, gameState]);
 
     useEffect(() => {
         if (gameState === 'countdown' && question) {
             const interval = setInterval(() => {
                 const now = Date.now() + clockOffset;
                 const delay = question.startTime - now;
+                const nextVal = Math.ceil(delay / 1000);
                 if (delay <= 0) {
                     clearInterval(interval);
                     setGameState('question');
                 } else {
-                    setCountdown(Math.ceil(delay / 1000));
+                    setCountdown(nextVal);
+                    if (nextVal === 1) audio.play('countdownEnd');
+                    else audio.play('countdown');
                 }
             }, 100);
             return () => clearInterval(interval);

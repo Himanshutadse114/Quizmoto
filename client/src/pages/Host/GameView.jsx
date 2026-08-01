@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Users, Volume2, VolumeX, Trophy, Crown, ArrowUp, Zap, ChevronRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import ReactionCanvas from '../../components/ReactionCanvas';
-import audioService from '../../services/audio';
+import { audio } from '../../utils/audioEngine';
 
 const GameView = () => {
     const { pin } = useParams();
@@ -140,9 +140,23 @@ const GameView = () => {
             socket.off('answer_received_host');
             socket.off('question_ended');
             socket.off('game_finished');
+            audio.stopAll();
         };
     }, [socket, pin, token]);
 
+    useEffect(() => {
+        if (gameState === 'lobby' || gameState === 'result' || gameState === 'finished') {
+            audio.play('playful');
+        } else {
+            audio.stopBg();
+        }
+    }, [gameState]);
+
+    useEffect(() => {
+        if (gameState === 'question' && timer > 0) {
+            audio.play('tick');
+        }
+    }, [timer, gameState]);
 
     useEffect(() => {
         if (gameState === 'countdown' && question) {
@@ -154,7 +168,10 @@ const GameView = () => {
                     setGameState('question');
                     setTimer(question.timer);
                 } else {
-                    setCountdown(Math.ceil(delay / 1000));
+                    const nextVal = Math.ceil(delay / 1000);
+                    setCountdown(nextVal);
+                    if (nextVal === 1) audio.play('countdownEnd');
+                    else audio.play('countdown');
                 }
             }, 100);
             return () => clearInterval(interval);
@@ -221,8 +238,7 @@ const GameView = () => {
         : leaderboard.slice(0, 3);
 
     const toggleMute = () => {
-        audioService.resume(); // Unlock on first toggle
-        audioService.toggleMute();
+        audio.setMute(!isMuted);
         setIsMuted(!isMuted);
     };
 
