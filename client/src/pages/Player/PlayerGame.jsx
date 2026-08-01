@@ -81,7 +81,7 @@ const PlayerGame = () => {
                 const remaining = calculateTimeLeft();
                 setTimeLeft(remaining);
                 if (remaining <= 0) clearInterval(timerRef.current);
-            }, 1000);
+            }, 100);
         });
 
         socket.on('question_result', (data) => {
@@ -164,7 +164,7 @@ const PlayerGame = () => {
                         const currentRemaining = calculateTimeLeft();
                         setTimeLeft(currentRemaining);
                         if (currentRemaining <= 0) clearInterval(timerRef.current);
-                    }, 1000);
+                    }, 100);
 
                 } else if (data.status === 'result') {
                     setResult(data.result);
@@ -252,7 +252,7 @@ const PlayerGame = () => {
     }, [socket, navigate]);
 
     useEffect(() => {
-        if (gameState === 'submitted' || gameState === 'result' || gameState === 'finished' || gameState === 'lobby') {
+        if (gameState === 'lobby' || gameState === 'loading') {
             audio.play('playful');
         } else {
             audio.stopBg();

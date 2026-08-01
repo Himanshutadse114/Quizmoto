@@ -146,8 +146,11 @@ const GameView = () => {
     }, [socket, pin, token]);
 
     useEffect(() => {
-        if (gameState === 'lobby' || gameState === 'result' || gameState === 'finished') {
+        if (gameState === 'lobby') {
             audio.play('playful');
+        } else if (gameState === 'result' || gameState === 'finished') {
+            audio.stopBg();
+            audio.play('leaderboard');
         } else {
             audio.stopBg();
         }
@@ -183,18 +186,24 @@ const GameView = () => {
         if (gameState !== 'question' || !question) return;
 
         const interval = setInterval(() => {
+            const now = Date.now() + clockOffset;
+            const diff = Math.floor((now - question.startTime) / 1000);
+            const remaining = Math.max(0, question.timer - diff);
+            
             setTimer(t => {
-                if (t <= 1) {
+                if (remaining <= 0) {
                     clearInterval(interval);
-                    socket.emit('end_question', { pin, token });
+                    if (t > 0) {
+                        socket.emit('end_question', { pin, token });
+                    }
                     return 0;
                 }
-                return t - 1;
+                return remaining;
             });
-        }, 1000);
+        }, 100);
 
         return () => clearInterval(interval);
-    }, [gameState, question ? question.index : null, pin, socket, token, question ? question.startTime : null]);
+    }, [gameState, question, pin, socket, token, clockOffset]);
 
     useEffect(() => {
         if (gameState === 'finished') {

@@ -11,7 +11,8 @@ export class AudioEngine {
                 countdownEnd: new Audio('/sounds/countdown_end.wav'),
                 playful: new Audio('/sounds/playful.wav'),
                 correct: new Audio('/sounds/correct.wav'),
-                wrong: new Audio('/sounds/wrong.wav')
+                wrong: new Audio('/sounds/wrong.wav'),
+                leaderboard: new Audio('/sounds/leaderboard.wav')
             };
 
             // Configure background loop
