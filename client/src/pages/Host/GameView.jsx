@@ -340,54 +340,102 @@ const GameView = () => {
             <main className="flex-1 flex flex-col items-center justify-center">
                 {/* Question State */}
                 {gameState === 'question' && (
-                    <div className="w-full max-w-5xl">
-                        <motion.div
-                            initial={{ y: -20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            className="bg-white/8 border border-white/12 rounded-2xl overflow-hidden mb-8 shadow-xl"
-                        >
-                            {/* Vivid gradient top bar */}
-                            <div className="h-1.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-indigo-500" />
-                            <div className="p-10 text-center">
-                                <div className="inline-flex items-center justify-center bg-white/10 border border-white/15 px-4 py-1.5 rounded-full mb-5">
-                                    <span className="text-xs font-bold text-white/50 uppercase tracking-[0.25em]">Question {question.index + 1}</span>
-                                </div>
-                                <h1 className="text-3xl md:text-4xl font-bold leading-snug tracking-tight mb-4">{question.questionText}</h1>
-                                {question.image && (
-                                    <motion.img 
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        src={question.image} 
-                                        alt="Question" 
-                                        className="mx-auto max-h-64 rounded-xl shadow-lg border border-white/20 mt-4" 
-                                    />
-                                )}
-                            </div>
-                        </motion.div>
-                        <div className="flex justify-center gap-4 h-[280px] w-full items-end bg-white/3 px-8 py-6 rounded-2xl border border-white/8">
-                            {['red', 'blue', 'yellow', 'green'].map((color, idx) => {
-                                const count = answerDistribution[idx];
-                                const labels = ['A', 'B', 'C', 'D'];
-                                const height = playersCount > 0 ? (count / playersCount) * 100 : 0;
-                                return (
-                                    <div key={idx} className="flex flex-col items-center gap-3 h-full flex-1">
-                                        <div className="flex-1 w-full flex items-end relative">
-                                            {count > 0 && (
-                                                <div className="absolute left-1/2 -translate-x-1/2 -top-7 font-bold text-lg text-white/80">{count}</div>
-                                            )}
-                                            <motion.div
-                                                initial={{ height: 0 }}
-                                                animate={{ height: `${Math.max(4, height)}%` }}
-                                                className={`w-full bg-quizmoto-${color} rounded-t-lg`}
-                                            />
+                    <div className="w-full max-w-6xl">
+                        {question.image ? (
+                            <div className="flex flex-col gap-6">
+                                {/* Title Top */}
+                                <motion.div
+                                    initial={{ y: -20, opacity: 0 }}
+                                    animate={{ y: 0, opacity: 1 }}
+                                    className="bg-white/8 border border-white/12 rounded-2xl overflow-hidden shadow-xl"
+                                >
+                                    <div className="h-1.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-indigo-500" />
+                                    <div className="p-8 text-center">
+                                        <div className="inline-flex items-center justify-center bg-white/10 border border-white/15 px-4 py-1.5 rounded-full mb-3">
+                                            <span className="text-xs font-bold text-white/50 uppercase tracking-[0.25em]">Question {question.index + 1}</span>
                                         </div>
-                                        <div className={`w-12 h-12 rounded-xl bg-quizmoto-${color} flex items-center justify-center shadow-lg`}>
-                                            <span className="font-bold text-white text-base">{labels[idx]}</span>
-                                        </div>
+                                        <h1 className="text-3xl md:text-4xl font-bold leading-snug tracking-tight">{question.questionText}</h1>
                                     </div>
-                                );
-                            })}
-                        </div>
+                                </motion.div>
+                                
+                                {/* Image Left, Bars Right */}
+                                <div className="flex flex-col md:flex-row gap-6 h-[320px]">
+                                    <div className="w-full md:w-1/2 flex items-center justify-center bg-white/5 border border-white/10 rounded-2xl p-4 shadow-xl">
+                                        <motion.img 
+                                            initial={{ opacity: 0, scale: 0.9 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            src={question.image} 
+                                            alt="Question" 
+                                            className="max-h-full max-w-full object-contain rounded-xl shadow-lg border border-white/20" 
+                                        />
+                                    </div>
+                                    <div className="w-full md:w-1/2 flex justify-center gap-3 items-end bg-white/3 px-6 py-6 rounded-2xl border border-white/8 shadow-xl">
+                                        {['red', 'blue', 'yellow', 'green'].map((color, idx) => {
+                                            const count = answerDistribution[idx];
+                                            const labels = ['A', 'B', 'C', 'D'];
+                                            const height = playersCount > 0 ? (count / playersCount) * 100 : 0;
+                                            return (
+                                                <div key={idx} className="flex flex-col items-center gap-3 h-full flex-1">
+                                                    <div className="flex-1 w-full flex items-end relative">
+                                                        {count > 0 && (
+                                                            <div className="absolute left-1/2 -translate-x-1/2 -top-7 font-bold text-lg text-white/80">{count}</div>
+                                                        )}
+                                                        <motion.div
+                                                            initial={{ height: 0 }}
+                                                            animate={{ height: `${Math.max(4, height)}%` }}
+                                                            className={`w-full bg-quizmoto-${color} rounded-t-lg`}
+                                                        />
+                                                    </div>
+                                                    <div className={`w-10 h-10 rounded-xl bg-quizmoto-${color} flex items-center justify-center shadow-lg`}>
+                                                        <span className="font-bold text-white text-sm">{labels[idx]}</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <motion.div
+                                    initial={{ y: -20, opacity: 0 }}
+                                    animate={{ y: 0, opacity: 1 }}
+                                    className="bg-white/8 border border-white/12 rounded-2xl overflow-hidden mb-8 shadow-xl"
+                                >
+                                    <div className="h-1.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-indigo-500" />
+                                    <div className="p-10 text-center">
+                                        <div className="inline-flex items-center justify-center bg-white/10 border border-white/15 px-4 py-1.5 rounded-full mb-5">
+                                            <span className="text-xs font-bold text-white/50 uppercase tracking-[0.25em]">Question {question.index + 1}</span>
+                                        </div>
+                                        <h1 className="text-3xl md:text-4xl font-bold leading-snug tracking-tight">{question.questionText}</h1>
+                                    </div>
+                                </motion.div>
+                                <div className="flex justify-center gap-4 h-[280px] w-full items-end bg-white/3 px-8 py-6 rounded-2xl border border-white/8">
+                                    {['red', 'blue', 'yellow', 'green'].map((color, idx) => {
+                                        const count = answerDistribution[idx];
+                                        const labels = ['A', 'B', 'C', 'D'];
+                                        const height = playersCount > 0 ? (count / playersCount) * 100 : 0;
+                                        return (
+                                            <div key={idx} className="flex flex-col items-center gap-3 h-full flex-1">
+                                                <div className="flex-1 w-full flex items-end relative">
+                                                    {count > 0 && (
+                                                        <div className="absolute left-1/2 -translate-x-1/2 -top-7 font-bold text-lg text-white/80">{count}</div>
+                                                    )}
+                                                    <motion.div
+                                                        initial={{ height: 0 }}
+                                                        animate={{ height: `${Math.max(4, height)}%` }}
+                                                        className={`w-full bg-quizmoto-${color} rounded-t-lg`}
+                                                    />
+                                                </div>
+                                                <div className={`w-12 h-12 rounded-xl bg-quizmoto-${color} flex items-center justify-center shadow-lg`}>
+                                                    <span className="font-bold text-white text-base">{labels[idx]}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
 
