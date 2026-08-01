@@ -171,6 +171,9 @@ module.exports = (io) => {
                     socket.join(`host_${pin}`);
                     socket.data = { pin, role: 'host' };
 
+                    // Notify players that host has rejoined
+                    io.to(pin).emit('host_reconnected');
+
                     // State Recovery: If game is in progress, restore full state
                     if (session.status === 'question' || session.status === 'result') {
                         const quiz = await Quiz.findByPk(session.quizId, {
@@ -662,6 +665,9 @@ module.exports = (io) => {
                 } catch (err) {
                     console.error('Error in disconnect cleanup:', err);
                 }
+            } else if (role === 'host' && pin) {
+                // Notify players that the host disconnected (so they can pause/wait)
+                io.to(pin).emit('host_disconnected');
             }
         });
     });

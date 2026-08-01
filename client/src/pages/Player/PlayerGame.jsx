@@ -21,6 +21,7 @@ const PlayerGame = () => {
     const [leaderboard, setLeaderboard] = useState([]);
     const [teamStandings, setTeamStandings] = useState([]);
     const [viewMode, setViewMode] = useState('players'); // 'players' or 'teams'
+    const [isHostDisconnected, setIsHostDisconnected] = useState(false);
 
     const timerRef = useRef(null);
     const lastAnswerRef = useRef(-1);
@@ -173,8 +174,11 @@ const PlayerGame = () => {
         });
 
         socket.on('host_disconnected', () => {
-            alert('The host has ended or disconnected from the session.');
-            navigate('/');
+            setIsHostDisconnected(true);
+        });
+
+        socket.on('host_reconnected', () => {
+            setIsHostDisconnected(false);
         });
 
         socket.on('answer_confirmed', (data) => {
@@ -207,6 +211,7 @@ const PlayerGame = () => {
             socket.off('session_info');
             socket.off('answer_confirmed');
             socket.off('host_disconnected');
+            socket.off('host_reconnected');
             if (timerRef.current) clearInterval(timerRef.current);
         };
     }, [socket, navigate]);
@@ -245,6 +250,17 @@ const PlayerGame = () => {
 
     return (
         <div className="h-screen flex flex-col p-4 bg-quizmoto-purple overflow-hidden fixed inset-0">
+            {isHostDisconnected && (
+                <div className="absolute inset-0 z-50 bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+                    <div className="bg-white text-quizmoto-purple p-8 rounded-3xl text-center max-w-sm shadow-2xl">
+                        <h2 className="text-2xl font-black mb-4 uppercase tracking-tight">Host Disconnected</h2>
+                        <p className="font-bold opacity-80 mb-6">Waiting for the host to reconnect... Don't leave!</p>
+                        <div className="w-8 h-8 border-4 border-quizmoto-purple/20 border-t-quizmoto-purple rounded-full animate-spin mx-auto mb-6" />
+                        <button onClick={() => navigate('/')} className="text-sm underline opacity-60 font-black tracking-widest hover:opacity-100">LEAVE GAME</button>
+                    </div>
+                </div>
+            )}
+            
             <AnimatePresence mode="wait">
                 {gameState === 'loading' && (
                     <motion.div
