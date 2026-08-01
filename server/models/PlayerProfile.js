@@ -15,7 +15,12 @@ const PlayerProfile = sequelize.define('PlayerProfile', {
     },
     password: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true
+    },
+    googleId: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        unique: true
     },
     xp: {
         type: DataTypes.INTEGER,
@@ -36,12 +41,20 @@ const PlayerProfile = sequelize.define('PlayerProfile', {
 }, {
     hooks: {
         beforeCreate: async (player) => {
-            player.password = await bcrypt.hash(player.password, 10);
+            if (player.password) {
+                player.password = await bcrypt.hash(player.password, 10);
+            }
+        },
+        beforeUpdate: async (player) => {
+            if (player.changed('password') && player.password) {
+                player.password = await bcrypt.hash(player.password, 10);
+            }
         }
     }
 });
 
 PlayerProfile.prototype.comparePassword = function (candidatePassword) {
+    if (!this.password) return false;
     return bcrypt.compare(candidatePassword, this.password);
 };
 

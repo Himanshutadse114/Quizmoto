@@ -16,7 +16,6 @@ import Join from './pages/Player/Join';
 import PlayerLobby from './pages/Player/PlayerLobby';
 import PlayerGame from './pages/Player/PlayerGame';
 import PlayerLogin from './pages/Player/PlayerLogin';
-import PlayerRegister from './pages/Player/PlayerRegister';
 import PlayerDashboard from './pages/Player/PlayerDashboard';
 
 function App() {
@@ -38,7 +37,6 @@ function App() {
 
               {/* Player Routes */}
               <Route path="/player/login" element={<PlayerLogin />} />
-              <Route path="/player/register" element={<PlayerRegister />} />
               <Route path="/player/dashboard" element={<PlayerDashboard />} />
               <Route path="/join" element={<Join />} />
               <Route path="/player/lobby" element={<PlayerLobby />} />

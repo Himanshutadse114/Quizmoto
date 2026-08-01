@@ -4,8 +4,11 @@ const jwt = require('jsonwebtoken');
 const { PlayerProfile } = require('../models/PlayerProfile');
 const { Player, GameSession, PlayerAnswer } = require('../models/GameSession');
 const { Quiz, Question } = require('../models/Quiz');
+const { OAuth2Client } = require('google-auth-library');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1001652255296-695gf3vjul0fjh1oden4k2n6tvvdvncn.apps.googleusercontent.com';
+const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // Middleware to protect routes
 const auth = (req, res, next) => {
@@ -20,44 +23,46 @@ const auth = (req, res, next) => {
     }
 };
 
-// Register Player
-router.post('/register', async (req, res) => {
+// Google Sign-In for Player
+router.post('/google', async (req, res) => {
     try {
-        const { username, email, password } = req.body;
-        let player = await PlayerProfile.findOne({ where: { username } });
-        if (player) return res.status(400).json({ message: 'Username already taken' });
+        const { credential } = req.body;
         
-        let playerEmail = await PlayerProfile.findOne({ where: { email } });
-        if (playerEmail) return res.status(400).json({ message: 'Email already registered' });
+        if (!credential) {
+            return res.status(400).json({ message: 'Google credential missing' });
+        }
 
-        player = await PlayerProfile.create({ username, email, password });
-
-        const token = jwt.sign({ playerId: player.id }, JWT_SECRET, { expiresIn: '30d' });
-        res.status(201).json({ 
-            token, 
-            player: {
-                id: player.id,
-                username: player.username,
-                xp: player.xp,
-                level: player.level,
-                avatar: player.avatar
-            } 
+        const ticket = await client.verifyIdToken({
+            idToken: credential,
+            audience: GOOGLE_CLIENT_ID
         });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
 
-// Login Player
-router.post('/login', async (req, res) => {
-    try {
-        const { username, password } = req.body;
-        const player = await PlayerProfile.findOne({ where: { username } });
-        if (!player) return res.status(400).json({ message: 'Invalid credentials' });
+        const payload = ticket.getPayload();
+        const { sub: googleId, email, name, picture } = payload;
 
-        const isMatch = await player.comparePassword(password);
-        if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+        let player = await PlayerProfile.findOne({ where: { googleId } });
+
+        if (!player) {
+            player = await PlayerProfile.findOne({ where: { email } });
+
+            if (player) {
+                player.googleId = googleId;
+                player.avatar = picture;
+                await player.save();
+            } else {
+                player = await PlayerProfile.create({
+                    username: name || email.split('@')[0],
+                    email,
+                    googleId,
+                    avatar: picture
+                });
+            }
+        } else {
+            if (player.avatar !== picture) {
+                player.avatar = picture;
+                await player.save();
+            }
+        }
 
         const token = jwt.sign({ playerId: player.id }, JWT_SECRET, { expiresIn: '30d' });
         res.json({ 
@@ -71,8 +76,8 @@ router.post('/login', async (req, res) => {
             }
         });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Server error' });
+        console.error('Google Auth Error:', err);
+        res.status(500).json({ message: 'Authentication failed' });
     }
 });
 

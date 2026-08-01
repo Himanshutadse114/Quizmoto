@@ -2,24 +2,18 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { apiUrl } from '../../config';
+import { GoogleLogin } from '@react-oauth/google';
 
 const PlayerLogin = () => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
-        
+    const handleGoogleSuccess = async (credentialResponse) => {
         try {
-            const res = await fetch(apiUrl('/api/player/login'), {
+            const res = await fetch(apiUrl('/api/player-profile/google'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ credential: credentialResponse.credential })
             });
             const data = await res.json();
             
@@ -28,13 +22,15 @@ const PlayerLogin = () => {
                 localStorage.setItem('playerProfile', JSON.stringify(data.player));
                 navigate('/player/dashboard');
             } else {
-                setError(data.message || 'Login failed');
+                setError(data.message || 'Authentication failed');
             }
         } catch (err) {
             setError('Network error');
-        } finally {
-            setLoading(false);
         }
+    };
+
+    const handleGoogleError = () => {
+        setError('Google Sign-In failed');
     };
 
     return (
@@ -47,9 +43,9 @@ const PlayerLogin = () => {
                 initial={{ y: 40, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className="w-full max-w-md bg-white/10 backdrop-blur-2xl border border-white/20 p-8 md:p-12 rounded-[40px] shadow-[0_30px_60px_rgba(0,0,0,0.4)] mx-auto relative z-10"
+                className="w-full max-w-md bg-white/10 backdrop-blur-2xl border border-white/20 p-8 md:p-12 rounded-[40px] shadow-[0_30px_60px_rgba(0,0,0,0.4)] mx-auto relative z-10 flex flex-col items-center"
             >
-                <div className="text-center mb-8">
+                <div className="text-center mb-10">
                     <h1 className="text-4xl md:text-5xl font-black mb-2 text-white italic tracking-tighter drop-shadow-md">Quizmoto<span className="text-quizmoto-yellow">!</span></h1>
                     <p className="text-xs font-black uppercase tracking-[0.3em] text-white/60">Player Login</p>
                 </div>
@@ -58,52 +54,26 @@ const PlayerLogin = () => {
                     <motion.p 
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className="bg-red-500/20 text-red-200 p-4 rounded-2xl mb-8 text-center font-bold text-sm uppercase tracking-wider border border-red-500/30 shadow-inner"
+                        className="w-full bg-red-500/20 text-red-200 p-4 rounded-2xl mb-8 text-center font-bold text-sm uppercase tracking-wider border border-red-500/30 shadow-inner"
                     >
                         {error}
                     </motion.p>
                 )}
 
-                <form onSubmit={handleLogin} className="space-y-6">
-                    <div>
-                        <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/70 mb-3 ml-2">Username</label>
-                        <input
-                            type="text"
-                            placeholder="Enter your hero name"
-                            className="w-full p-5 bg-black/20 border-2 border-white/10 rounded-2xl text-center font-bold text-lg text-white focus:border-quizmoto-yellow focus:bg-black/40 outline-none transition-all placeholder:text-white/30"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/70 mb-3 ml-2">Password</label>
-                        <input
-                            type="password"
-                            placeholder="••••••••"
-                            className="w-full p-5 bg-black/20 border-2 border-white/10 rounded-2xl text-center font-bold text-lg text-white focus:border-quizmoto-yellow focus:bg-black/40 outline-none transition-all placeholder:text-white/30 tracking-[0.3em]"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
-                    </div>
-                    
-                    <div className="pt-4">
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-gradient-to-r from-quizmoto-yellow to-orange-500 text-quizmoto-darkPurple font-black py-5 rounded-[24px] text-lg hover:shadow-[0_0_30px_rgba(242,169,0,0.5)] transition-all uppercase tracking-widest disabled:opacity-50"
-                        >
-                            {loading ? 'Logging in...' : 'Login & Play'}
-                        </motion.button>
-                    </div>
-                </form>
+                <div className="w-full flex justify-center py-6 bg-black/20 rounded-[24px] border border-white/10 shadow-inner">
+                    <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={handleGoogleError}
+                        theme="outline"
+                        size="large"
+                        shape="pill"
+                        text="continue_with"
+                    />
+                </div>
 
-                <div className="mt-8 text-center">
-                    <p className="text-sm text-white/60 font-bold">
-                        Don't have a profile? <Link to="/player/register" className="text-quizmoto-yellow underline hover:text-white transition-colors ml-1">Register Now</Link>
+                <div className="mt-10 text-center">
+                    <p className="text-sm text-white/60 font-bold uppercase tracking-widest text-[10px]">
+                        Secure player authentication
                     </p>
                 </div>
             </motion.div>
