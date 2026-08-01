@@ -160,6 +160,7 @@ const GameView = () => {
         }
     }, [gameState, question, clockOffset]);
 
+    useEffect(() => {
         if (gameState !== 'question' || !question) return;
 
         const interval = setInterval(() => {
@@ -174,7 +175,7 @@ const GameView = () => {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [gameState, question?.index, pin, socket, token, question?.startTime]);
+    }, [gameState, question ? question.index : null, pin, socket, token, question ? question.startTime : null]);
 
     useEffect(() => {
         if (gameState === 'finished') {
