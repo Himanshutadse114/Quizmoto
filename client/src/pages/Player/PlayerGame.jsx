@@ -86,13 +86,14 @@ const PlayerGame = () => {
 
         socket.on('question_result', (data) => {
             if (data.correct) {
+                audio.play('correct');
                 confetti({
                     particleCount: 100,
                     spread: 70,
                     origin: { y: 0.6 }
                 });
             } else {
-                // Audio call removed
+                audio.play('wrong');
             }
             const newResult = {
                 ...data,

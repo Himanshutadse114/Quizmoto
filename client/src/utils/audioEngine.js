@@ -9,7 +9,9 @@ export class AudioEngine {
                 tick: new Audio('/sounds/tick.wav'),
                 countdown: new Audio('/sounds/countdown.wav'),
                 countdownEnd: new Audio('/sounds/countdown_end.wav'),
-                playful: new Audio('/sounds/playful.wav')
+                playful: new Audio('/sounds/playful.wav'),
+                correct: new Audio('/sounds/correct.wav'),
+                wrong: new Audio('/sounds/wrong.wav')
             };
 
             // Configure background loop
