@@ -45,7 +45,8 @@ const Question = sequelize.define('Question', {
         allowNull: true
     },
     image: {
-        type: DataTypes.STRING
+        type: DataTypes.TEXT('long'),
+        allowNull: true
     }
 });
 

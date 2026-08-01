@@ -97,6 +97,7 @@ const connectDB = async () => {
             await addColumnIfMissing(`ALTER TABLE "Players" ADD COLUMN "teamName" VARCHAR(255) NULL`);
             await addColumnIfMissing(`ALTER TABLE "Players" ADD COLUMN "playerProfileId" INTEGER NULL`);
             await addColumnIfMissing(`ALTER TABLE "Questions" ADD COLUMN "explanation" TEXT NULL`);
+            await addColumnIfMissing(`ALTER TABLE "Questions" ALTER COLUMN "image" TYPE TEXT`);
             await addColumnIfMissing(`ALTER TABLE "Users" ADD COLUMN "googleId" VARCHAR(255) NULL`);
             await addColumnIfMissing(`ALTER TABLE "Users" ADD COLUMN "email" VARCHAR(255) NULL`);
             await addColumnIfMissing(`ALTER TABLE "Users" ADD COLUMN "avatar" VARCHAR(255) NULL`);
@@ -110,6 +111,7 @@ const connectDB = async () => {
             await addColumnIfMissing(`ALTER TABLE \`Players\` ADD COLUMN \`teamName\` VARCHAR(255) NULL AFTER \`nickname\``);
             await addColumnIfMissing(`ALTER TABLE \`Players\` ADD COLUMN \`playerProfileId\` INTEGER NULL AFTER \`teamName\``);
             await addColumnIfMissing(`ALTER TABLE \`Questions\` ADD COLUMN \`explanation\` TEXT NULL`);
+            await addColumnIfMissing(`ALTER TABLE \`Questions\` MODIFY \`image\` LONGTEXT NULL`);
             await addColumnIfMissing(`ALTER TABLE \`Users\` ADD COLUMN \`googleId\` VARCHAR(255) NULL`);
             await addColumnIfMissing(`ALTER TABLE \`Users\` ADD COLUMN \`email\` VARCHAR(255) NULL`);
             await addColumnIfMissing(`ALTER TABLE \`Users\` ADD COLUMN \`avatar\` VARCHAR(255) NULL`);

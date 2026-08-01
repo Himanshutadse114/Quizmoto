@@ -378,6 +378,15 @@ const PlayerGame = () => {
                             <h2 className="text-2xl md:text-3xl font-black mb-4 md:mb-6 leading-tight drop-shadow-lg">
                                 {question?.questionText}
                             </h2>
+                            {question?.image && (
+                                <motion.img 
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    src={question.image} 
+                                    alt="Question" 
+                                    className="mx-auto max-h-48 rounded-xl shadow-lg border border-white/20 mb-6" 
+                                />
+                            )}
                             {/* Small progress bar */}
                             <div className="w-full bg-white/20 h-2 md:h-3 rounded-full overflow-hidden mb-6 md:mb-8 border border-white/5">
                                 <motion.div

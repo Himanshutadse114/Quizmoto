@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
-import { Plus, Trash2, Save, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, Image as ImageIcon, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { apiUrl } from '../../config';
 
@@ -40,7 +40,7 @@ const EditQuiz = () => {
     }, [id, token, navigate, API_URL]);
 
     const addQuestion = () => {
-        setQuestions([...questions, { questionText: '', options: ['', '', '', ''], correctIndex: 0, timer: 20, explanation: '' }]);
+        setQuestions([...questions, { questionText: '', options: ['', '', '', ''], correctIndex: 0, timer: 20, explanation: '', image: null }]);
     };
 
     const removeQuestion = (index) => {
@@ -57,6 +57,41 @@ const EditQuiz = () => {
         const newQuestions = [...questions];
         newQuestions[qIndex].options[oIndex] = value;
         setQuestions(newQuestions);
+    };
+
+    const handleImageUpload = (qIndex, e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image must be under 5MB');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                const MAX_WIDTH = 800;
+                
+                if (width > MAX_WIDTH) {
+                    height = Math.round((height * MAX_WIDTH) / width);
+                    width = MAX_WIDTH;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                const base64Str = canvas.toDataURL('image/jpeg', 0.8);
+                updateQuestion(qIndex, 'image', base64Str);
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
     };
 
     const handleSave = async () => {
@@ -157,6 +192,27 @@ const EditQuiz = () => {
                                 value={q.questionText}
                                 onChange={(e) => updateQuestion(qIndex, 'questionText', e.target.value)}
                             />
+                        </div>
+
+                        <div className="mb-6">
+                            {q.image ? (
+                                <div className="relative inline-block mt-2">
+                                    <img src={q.image} alt="Question" className="max-h-48 rounded-lg shadow-sm border border-gray-200" />
+                                    <button 
+                                        onClick={() => updateQuestion(qIndex, 'image', null)}
+                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:scale-110 transition-transform"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="mt-2">
+                                    <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold transition-colors">
+                                        <ImageIcon size={14} /> Add Image
+                                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(qIndex, e)} />
+                                    </label>
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

@@ -26,7 +26,8 @@ const quizSchema = Joi.object({
         options: Joi.array().items(Joi.string()).min(2).max(6).required(),
         correctIndex: Joi.number().integer().min(0).max(5).required(),
         timer: Joi.number().integer().min(5).max(300).required(),
-        explanation: Joi.string().allow('', null).optional()
+        explanation: Joi.string().allow('', null).optional(),
+        image: Joi.string().allow('', null).optional()
     })).min(1).required()
 }).unknown(true);
 

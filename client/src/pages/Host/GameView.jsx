@@ -352,7 +352,16 @@ const GameView = () => {
                                 <div className="inline-flex items-center justify-center bg-white/10 border border-white/15 px-4 py-1.5 rounded-full mb-5">
                                     <span className="text-xs font-bold text-white/50 uppercase tracking-[0.25em]">Question {question.index + 1}</span>
                                 </div>
-                                <h1 className="text-3xl md:text-4xl font-bold leading-snug tracking-tight">{question.questionText}</h1>
+                                <h1 className="text-3xl md:text-4xl font-bold leading-snug tracking-tight mb-4">{question.questionText}</h1>
+                                {question.image && (
+                                    <motion.img 
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        src={question.image} 
+                                        alt="Question" 
+                                        className="mx-auto max-h-64 rounded-xl shadow-lg border border-white/20 mt-4" 
+                                    />
+                                )}
                             </div>
                         </motion.div>
                         <div className="flex justify-center gap-4 h-[280px] w-full items-end bg-white/3 px-8 py-6 rounded-2xl border border-white/8">
