@@ -27,9 +27,12 @@ describe('Backend Integration Tests', function() {
         });
     });
 
-    after(() => {
+    after((done) => {
         if (serverProcess) {
+            serverProcess.on('exit', () => done());
             serverProcess.kill();
+        } else {
+            done();
         }
     });
 

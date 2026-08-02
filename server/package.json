@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node index.js",
     "test:start": "node index.js",
-    "test": "mocha tests/**/*.test.js --exit"
+    "test": "cross-env NODE_ENV=test mocha tests/**/*.test.js --exit",
+    "test:coverage": "cross-env NODE_ENV=test nyc --all --reporter=lcov --reporter=text mocha tests/**/*.test.js --exit"
   },
   "keywords": [],
   "author": "",
@@ -32,7 +33,9 @@
   },
   "devDependencies": {
     "chai": "^6.2.2",
+    "cross-env": "^10.1.0",
     "mocha": "^11.7.6",
+    "nyc": "^18.0.0",
     "socket.io-client": "^4.8.3",
     "supertest": "^7.2.2"
   }

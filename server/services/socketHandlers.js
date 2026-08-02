@@ -4,8 +4,11 @@ const { sequelize } = require('../config/database');
 const { Sequelize } = require('sequelize');
 const jwt = require('jsonwebtoken');
 const { PlayerProfile } = require('../models/PlayerProfile');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const ScoringService = require('./ScoringService');
+const AnswerSubmissionService = require('./AnswerSubmissionService');
+const SessionAuthorizationService = require('./SessionAuthorizationService');
+const SessionRecoveryService = require('./SessionRecoveryService');
+const { validateSocketPayload } = require('../validators/socketSchemas');
 
 const logDiag = (event, pin, state, details = {}) => {
     console.log(JSON.stringify({
@@ -22,18 +25,12 @@ module.exports = (io) => {
     io.on('connection', (socket) => {
         console.log('New connection:', socket.id);
 
-        // Helper to verify host identity
-        const verifyHost = (token, pin) => {
-            try {
-                const decoded = jwt.verify(token, JWT_SECRET);
-                return decoded.userId; // Returns hostId
-            } catch (err) {
-                return null;
-            }
-        };
-
         // Join Room (Host or Player)
-        socket.on('join_room', async ({ pin: rawPin, nickname, role, avatar, token, teamName, playerProfileToken }) => {
+        socket.on('join_room', async (payload) => {
+            const { error, value } = validateSocketPayload('join_room', payload);
+            if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
+            const { pin: rawPin, nickname, role, avatar, token, teamName, playerProfileToken } = value;
+            
             const pin = String(rawPin).trim();
             // Basic Sanitization
             const cleanNickname = nickname ? String(nickname).replace(/<[^>]*>?/gm, '').trim() : '';
@@ -60,16 +57,12 @@ module.exports = (io) => {
 
                     // Persistence Check: If token provided, try to find existing player
                     if (token) {
-                        try {
-                            const decoded = jwt.verify(token, JWT_SECRET);
-                            if (decoded.sessionId === session.id && decoded.nickname === cleanNickname) {
-                                player = await Player.findOne({
-                                    where: { sessionId: session.id, nickname: cleanNickname }
-                                });
-                                if (player) isReentry = true;
-                            }
-                        } catch (err) {
-                            console.log('Invalid player token, falling back to new join');
+                        const decoded = SessionAuthorizationService.verifyPlayerToken(token);
+                        if (decoded && decoded.sessionId === session.id && decoded.nickname === cleanNickname) {
+                            player = await Player.findOne({
+                                where: { sessionId: session.id, nickname: cleanNickname }
+                            });
+                            if (player) isReentry = true;
                         }
                     }
 
@@ -77,7 +70,7 @@ module.exports = (io) => {
                         let playerProfileId = null;
                         if (playerProfileToken) {
                             try {
-                                const decoded = jwt.verify(playerProfileToken, JWT_SECRET);
+                                const decoded = SessionAuthorizationService.verifyPlayerToken(playerProfileToken);
                                 playerProfileId = decoded.playerId;
                             } catch (e) {}
                         }
@@ -112,10 +105,7 @@ module.exports = (io) => {
                     }
 
                     // Generate persistence token for the player
-                    const playerToken = jwt.sign(
-                        { sessionId: session.id, nickname: cleanNickname, playerId: player.id },
-                        JWT_SECRET
-                    );
+                    const playerToken = SessionAuthorizationService.generatePlayerToken(session.id, player.id, cleanNickname);
 
                     socket.join(pin);
 
@@ -142,45 +132,14 @@ module.exports = (io) => {
                             include: [{ model: Question, as: 'questions' }],
                             order: [[{ model: Question, as: 'questions' }, 'id', 'ASC']]
                         });
-                        const currentQuestion = quiz.questions[session.currentQuestionIndex];
 
-                        let stateData = {
-                            status: session.status,
-                            question: currentQuestion ? {
-                                questionText: currentQuestion.questionText,
-                                options: currentQuestion.options,
-                                timer: currentQuestion.timer,
-                                explanation: currentQuestion.explanation,
-                                image: currentQuestion.image,
-                                index: session.currentQuestionIndex,
-                                totalQuestions: quiz.questions.length,
-                                startTime: session.questionStartTime ? session.questionStartTime.getTime() : Date.now()
-                            } : null,
-                            serverTime: Date.now(),
-                            score: player.score,
-                            lastAnswerIndex: player.lastAnswerIndex,
-                            answered: player.lastAnswerIndex !== -1,
-                            timeLeft: session.status === 'question' ? Math.max(0, currentQuestion.timer - Math.floor((Date.now() - session.questionStartTime?.getTime()) / 1000)) : 0,
-                            gameMode: session.gameMode
-                        };
-
-                        if (session.status === 'result') {
-                            stateData.result = {
-                                correct: player.lastAnswerCorrect,
-                                score: player.score,
-                                answered: player.lastAnswerIndex !== -1,
-                                correctIndex: currentQuestion?.correctIndex,
-                                leaderboard: [] // Will be populated if needed, or handled via separate event
-                            };
-                        }
-
+                        const stateData = SessionRecoveryService.buildPlayerRecoveryState(session, player, quiz);
                         socket.emit('session_info', stateData);
                     }
                 } else if (role === 'host') {
-                    // Security Check: Verify host token
-                    const hostId = verifyHost(token);
-                    if (!hostId || hostId !== session.hostId) {
-                        return socket.emit('error', 'Unauthorized Host Entry');
+                    const hostId = SessionAuthorizationService.verifyHostToken(token);
+                    if (!hostId || session.hostId !== hostId) {
+                        return socket.emit('error', 'Unauthorized: Invalid host token');
                     }
 
                     socket.join(pin);
@@ -196,23 +155,9 @@ module.exports = (io) => {
                             include: [{ model: Question, as: 'questions' }],
                             order: [[{ model: Question, as: 'questions' }, 'id', 'ASC']]
                         });
-                        const currentQuestion = quiz.questions[session.currentQuestionIndex];
 
-                        // Send room info with current question details
-                        socket.emit('room_info', {
-                            ...session.toJSON(),
-                            currentQuestion: currentQuestion ? {
-                                questionText: currentQuestion.questionText,
-                                options: currentQuestion.options,
-                                timer: currentQuestion.timer,
-                                explanation: currentQuestion.explanation,
-                                image: currentQuestion.image,
-                                index: session.currentQuestionIndex,
-                                totalQuestions: quiz.questions.length,
-                                correctIndex: currentQuestion.correctIndex,
-                                startTime: session.questionStartTime ? session.questionStartTime.getTime() : Date.now()
-                            } : null
-                        });
+                        const stateData = SessionRecoveryService.buildHostRecoveryState(session, quiz);
+                        socket.emit('room_info', stateData);
                     } else {
                         socket.emit('room_info', session);
                     }
@@ -227,17 +172,16 @@ module.exports = (io) => {
         });
 
         // Start Question
-        socket.on('start_question', async ({ pin: rawPin, token }) => {
+        socket.on('start_question', async (payload) => {
+            const { error, value } = validateSocketPayload('start_question', payload);
+            if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
+            const { pin: rawPin, token } = value;
+
             const pin = String(rawPin).trim();
             try {
-                const session = await GameSession.findOne({
-                    where: { pin }
-                });
-                if (!session) return;
-
-                // Security Check
-                const hostId = verifyHost(token);
-                if (!hostId || hostId !== session.hostId) {
+                const session = await GameSession.findOne({ where: { pin } });
+                const hostId = SessionAuthorizationService.verifyHostToken(token);
+                if (!hostId || session.hostId !== hostId) {
                     return socket.emit('error', 'Unauthorized: Only the host can start questions');
                 }
 
@@ -365,98 +309,26 @@ module.exports = (io) => {
             }
         };
 
-        // Scoring Helper
-        const calculateReward = (timeRemaining, currentStreak, isCorrect) => {
-            if (!isCorrect) return { points: 0, multiplier: 1.0, streak: 0 };
-
-            const newStreak = (currentStreak || 0) + 1;
-            let multiplier = 1.0;
-            if (newStreak >= 7) multiplier = 2.0;
-            else if (newStreak >= 5) multiplier = 1.5;
-            else if (newStreak >= 3) multiplier = 1.2;
-
-            const basePoints = 1000 + (Number(timeRemaining || 0) * 10);
-            return {
-                points: Math.round(basePoints * multiplier),
-                multiplier,
-                streak: newStreak
-            };
-        };
 
         // Submit Answer
-        socket.on('submit_answer', async ({ pin: rawPin, nickname, answerIndex, timeRemaining }) => {
+        socket.on('submit_answer', async (payload) => {
+            const { error, value } = validateSocketPayload('submit_answer', payload);
+            if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
+            const { pin: rawPin, nickname, answerIndex, timeRemaining } = value;
+
             const pin = String(rawPin).trim();
             try {
-                const session = await GameSession.findOne({ where: { pin } });
-                if (!session || session.status !== 'question') return;
+                const result = await AnswerSubmissionService.submitAnswer(pin, nickname, answerIndex);
 
-                const quiz = await Quiz.findByPk(session.quizId, {
-                    include: [{ model: Question, as: 'questions' }],
-                    order: [[{ model: Question, as: 'questions' }, 'id', 'ASC']]
-                });
-
-                const question = quiz.questions[session.currentQuestionIndex];
-                const player = await Player.findOne({ where: { sessionId: session.id, nickname } });
-
-                if (!player) return;
-
-                if (player.lastAnswerIndex !== -1) {
-                    return socket.emit('error', 'Answer already submitted');
+                if (result.error) {
+                    if (result.error === 'Player not found') return;
+                    return socket.emit('error', result.error);
                 }
-
-                // Calculate time remaining based on server time
-                const startTime = new Date(session.questionStartTime).getTime();
-                const now = Date.now();
-
-                if (now < startTime) {
-                    return socket.emit('error', 'Question has not started yet');
-                }
-                const serverTimeRemaining = Math.max(0, question.timer - Math.floor((now - startTime) / 1000));
-
-                const optionsCount = (typeof question.options === 'string' ? JSON.parse(question.options) : question.options).length;
-                if (answerIndex < 0 || answerIndex >= optionsCount) {
-                    return socket.emit('error', 'Invalid answer index');
-                }
-
-                const isCorrect = Number(answerIndex) === Number(question.correctIndex);
-                const reward = calculateReward(serverTimeRemaining, player.streak, isCorrect);
-
-                // Calculate time taken (the inverse of timeRemaining)
-                const timeTaken = Math.max(0, question.timer - serverTimeRemaining);
-
-                // ATOMIC UPDATE: Ensure scores are accurate even with race conditions
-                await Player.update({
-                    streak: reward.streak,
-                    score: sequelize.literal(`score + ${reward.points}`),
-                    lastAnswerCorrect: isCorrect,
-                    lastAnswerTime: serverTimeRemaining,
-                    lastAnswerIndex: answerIndex
-                }, {
-                    where: { id: player.id }
-                });
-
-                // RECORD HISTORICAL ANSWER FOR POST-GAME ANALYTICS (Resilient)
-                try {
-                    await PlayerAnswer.create({
-                        sessionId: session.id,
-                        playerId: player.id,
-                        questionIndex: session.currentQuestionIndex,
-                        answerIndex: answerIndex,
-                        isCorrect: isCorrect,
-                        timeTaken: timeTaken
-                    });
-                } catch (analyticsErr) {
-                    console.error('Analytics logging failed:', analyticsErr.message);
-                    // We don't return here so the game continues
-                }
-
-                // Get updated score for emission
-                const updatedPlayer = await Player.findByPk(player.id, { attributes: ['score', 'streak'] });
 
                 socket.emit('answer_confirmed', {
-                    streak: updatedPlayer.streak,
-                    score: updatedPlayer.score,
-                    points: reward.points
+                    streak: result.streak,
+                    score: result.score,
+                    points: result.points
                 });
 
                 io.to(pin).emit('answer_received', { nickname });
@@ -467,15 +339,19 @@ module.exports = (io) => {
         });
 
         // End Question / Show Result
-        socket.on('end_question', async ({ pin: rawPin, token }) => {
+        socket.on('next_question', async (payload) => {
+            const { error, value } = validateSocketPayload('next_question', payload);
+            if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
+            const { pin: rawPin, token } = value;
+
             const pin = String(rawPin).trim();
 
             // Security Check
             const session = await GameSession.findOne({ where: { pin } });
             if (!session) return;
 
-            const hostId = verifyHost(token);
-            if (!hostId || hostId !== session.hostId) {
+            const hostId = SessionAuthorizationService.verifyHostToken(token);
+            if (!hostId || session.hostId !== hostId) {
                 return socket.emit('error', 'Unauthorized');
             }
 
@@ -484,7 +360,11 @@ module.exports = (io) => {
 
         // Live Reactions
         const lastReaction = new Map();
-        socket.on('send_reaction', ({ pin: rawPin, emoji }) => {
+        socket.on('send_reaction', (payload) => {
+            const { error, value } = validateSocketPayload('send_reaction', payload);
+            if (error) return; // silent fail for reactions to avoid spam
+            const { pin: rawPin, emoji } = value;
+            
             const pin = String(rawPin).trim();
             const now = Date.now();
             const lastTime = lastReaction.get(socket.id) || 0;
@@ -499,14 +379,18 @@ module.exports = (io) => {
         });
 
         // Toggle Game Mode (Host Only)
-        socket.on('set_game_mode', async ({ pin: rawPin, mode, token }) => {
+        socket.on('change_mode', async (payload) => {
+            const { error, value } = validateSocketPayload('change_mode', payload);
+            if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
+            const { pin: rawPin, token, mode } = value;
+
             const pin = String(rawPin).trim();
             try {
                 const session = await GameSession.findOne({ where: { pin } });
                 if (!session) return;
 
-                const hostId = verifyHost(token);
-                if (!hostId || hostId !== session.hostId) return;
+                const hostId = SessionAuthorizationService.verifyHostToken(token);
+                if (!hostId || session.hostId !== hostId) return;
 
                 session.gameMode = mode; // 'classic' or 'team'
                 await session.save();
@@ -518,15 +402,19 @@ module.exports = (io) => {
         });
 
         // End Game
-        socket.on('end_game', async ({ pin: rawPin, token }) => {
+        socket.on('end_game', async (payload) => {
+            const { error, value } = validateSocketPayload('end_game', payload);
+            if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
+            const { pin: rawPin, token } = value;
+
             const pin = String(rawPin).trim();
             try {
                 const session = await GameSession.findOne({ where: { pin } });
                 if (!session) return;
 
                 // Security Check
-                const hostId = verifyHost(token);
-                if (!hostId || hostId !== session.hostId) {
+                const hostId = SessionAuthorizationService.verifyHostToken(token);
+                if (!hostId || session.hostId !== hostId) {
                     return socket.emit('error', 'Unauthorized');
                 }
 

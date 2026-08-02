@@ -76,6 +76,11 @@ const startServer = async () => {
     try {
         await connectDB();
 
+        if (process.env.NODE_ENV === 'test') {
+            const { seedTestFixtures } = require('./tests/fixtures');
+            await seedTestFixtures();
+        }
+
         // Routes
         app.use('/api/auth', require('./routes/auth'));
         app.use('/api/player', require('./routes/playerAuth'));

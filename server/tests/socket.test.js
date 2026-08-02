@@ -6,7 +6,7 @@ const { spawn } = require('child_process');
 describe('Socket.IO Integration Tests', function() {
     this.timeout(20000); // 20s for server start and connections
     let serverProcess;
-    const PORT = 5007;
+    const PORT = 5010;
     const URL = `http://localhost:${PORT}`;
 
     before((done) => {
@@ -32,9 +32,12 @@ describe('Socket.IO Integration Tests', function() {
         });
     });
 
-    after(() => {
+    after((done) => {
         if (serverProcess) {
+            serverProcess.on('exit', () => done());
             serverProcess.kill();
+        } else {
+            done();
         }
     });
 
