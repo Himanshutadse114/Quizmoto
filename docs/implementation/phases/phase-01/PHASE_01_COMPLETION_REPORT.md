@@ -12,7 +12,7 @@ Phase 1 focused on extracting the monolithic `socketHandlers.js` into safe, isol
 - **Schema Validation**: Created `socketSchemas.js` using Joi to validate all incoming socket payloads and strip unknown or malicious fields before business logic.
 
 ## 3. Coverage & Test Results
-- All unit and integration tests successfully pass (43 passing).
+- All unit and integration tests successfully pass (68 passing in PostgreSQL, 62 in SQLite).
 - Branch coverage for all extracted modules exceeds the 90% requirement.
   - `AnswerSubmissionService.js`: 93.75% Branch
   - `ScoringService.js`: 100% Branch
