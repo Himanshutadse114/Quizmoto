@@ -7,6 +7,17 @@ const { PlayerProfile } = require('../models/PlayerProfile');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
+const logDiag = (event, pin, state, details = {}) => {
+    console.log(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        module: 'socketHandlers',
+        event,
+        pin,
+        state,
+        ...details
+    }));
+};
+
 module.exports = (io) => {
     io.on('connection', (socket) => {
         console.log('New connection:', socket.id);
@@ -253,6 +264,12 @@ module.exports = (io) => {
                 session.questionStartTime = new Date(Date.now() + 3000); // 3 seconds in the future for countdown
                 await session.save();
 
+                logDiag('start_question_transition', pin, 'question', {
+                    questionIndex: nextIndex,
+                    hostId,
+                    startTime: session.questionStartTime
+                });
+
                 // Reset player states for the new question
                 await Player.update(
                     { lastAnswerCorrect: false, lastAnswerTime: 0, lastAnswerIndex: -1 },
@@ -290,6 +307,10 @@ module.exports = (io) => {
 
                 session.status = 'result';
                 await session.save();
+
+                logDiag('end_question_transition', pin, 'result', {
+                    questionIndex: session.currentQuestionIndex
+                });
 
                 const allPlayers = await Player.findAll({
                     where: { sessionId: session.id }

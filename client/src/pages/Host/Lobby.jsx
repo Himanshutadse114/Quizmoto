@@ -52,16 +52,20 @@ const Lobby = () => {
             alert(msg);
         });
 
+        socket.on('question_started', () => {
+            navigate(`/host/game/${pin}`);
+        });
+
         return () => {
             socket.off('player_joined');
             socket.off('room_info');
             socket.off('error');
+            socket.off('question_started');
         };
-    }, [socket, pin, token]);
+    }, [socket, pin, token, navigate]);
 
     const startGame = () => {
         socket.emit('start_question', { pin, token });
-        navigate(`/host/game/${pin}`);
     };
 
     const toggleMode = (mode) => {

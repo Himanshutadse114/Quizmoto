@@ -2,5 +2,11 @@
   "dependencies": {
     "redis": "^5.11.0",
     "redis-adapter": "^0.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  },
+  "scripts": {
+    "test:e2e": "playwright test"
   }
 }
