@@ -29,7 +29,10 @@ test.describe('Golden Flow', () => {
         playerBPage = await playerBContext.newPage();
         
         // 1 & 2: Test auth
-        const loginRes = await request.post('http://localhost:5002/api/auth/test-login');
+        const testRunId = process.env.TEST_RUN_ID || '';
+        const loginRes = await request.post('http://localhost:5002/api/auth/test-login', {
+            data: { testRunId }
+        });
         const loginData = await loginRes.json();
         const token = loginData.token;
 
@@ -135,6 +138,23 @@ test.describe('Golden Flow', () => {
         if (await exportBtn.isVisible()) {
             // We just ensure it's there
         }
+
+        // 24. Deterministic Application Cleanup
+        const cleanupRes = await request.post('http://localhost:5002/api/test-only/cleanup', {
+            headers: {
+                'x-test-secret': process.env.TEST_SECRET || 'fallback_secret'
+            },
+            data: { testRunId }
+        });
+        expect(cleanupRes.ok()).toBeTruthy();
+
+        // Also assert browser state cleanup
+        await hostPage.evaluate(() => {
+            localStorage.clear();
+            sessionStorage.clear();
+        });
+        const tokenAfter = await hostPage.evaluate(() => localStorage.getItem('token'));
+        expect(tokenAfter).toBeNull();
 
     });
 });

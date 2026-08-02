@@ -86,6 +86,10 @@ const startServer = async () => {
         app.use('/api/player', require('./routes/playerAuth'));
         app.use('/api/quizzes', require('./routes/quizzes'));
 
+        if (process.env.NODE_ENV === 'test') {
+            app.use('/api/test-only', require('./routes/testOnly'));
+        }
+
         // Socket.io Logic
         const socketHandlers = require('./services/socketHandlers');
         socketHandlers(io);

@@ -50,4 +50,15 @@ describe('SessionTokenService', () => {
         const decoded = SessionTokenService.verifyPlayerToken(undefined);
         expect(decoded).to.be.null;
     });
+
+    it('should gracefully reject expired tokens without throwing', () => {
+        const token = jwt.sign({ userId: 42, role: 'host' }, JWT_SECRET, { expiresIn: '-1h' });
+        
+        let hostId;
+        expect(() => {
+            hostId = SessionTokenService.verifyHostToken(token);
+        }).to.not.throw();
+        
+        expect(hostId).to.be.null;
+    });
 });

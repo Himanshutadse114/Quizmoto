@@ -21,11 +21,14 @@ const clearDatabase = async () => {
 const seedTestFixtures = async () => {
   await clearDatabase();
   
+  const testRunId = process.env.TEST_RUN_ID ? `-${process.env.TEST_RUN_ID}` : '';
+  const username = `testhost${testRunId}`;
+  
   // 1. Create a Test Host
   const hashedPassword = await bcrypt.hash('password123', 10);
   const host = await User.create({
-    username: 'testhost',
-    email: 'test@example.com',
+    username,
+    email: `test${testRunId}@example.com`,
     password: hashedPassword,
   });
 

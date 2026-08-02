@@ -320,7 +320,11 @@ router.get('/reports/:id/export', auth, async (req, res) => {
 
         if (!session) return res.status(404).json({ message: 'Session not found' });
 
-        const tmpDir = path.join(__dirname, '../data/tmp');
+        const tmpRoot = process.env.TEST_TEMP_DIR_ROOT || path.join(__dirname, '../data/tmp');
+        const tmpDir = process.env.NODE_ENV === 'test' && req.headers['x-test-run-id'] 
+            ? path.join(tmpRoot, `test_${req.headers['x-test-run-id']}`)
+            : tmpRoot;
+
         if (!fs.existsSync(tmpDir)) {
             fs.mkdirSync(tmpDir, { recursive: true });
         }
@@ -338,6 +342,7 @@ router.get('/reports/:id/export', auth, async (req, res) => {
             if (error) {
                 console.error(`exec error: ${error}`);
                 console.error(`stderr: ${stderr}`);
+                if (fs.existsSync(jsonPath)) fs.unlinkSync(jsonPath);
                 return res.status(500).json({ message: 'Report generation failed' });
             }
             

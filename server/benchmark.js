@@ -112,6 +112,7 @@ async function runBenchmark() {
     server.close();
     
     fs.writeFileSync('benchmark_results.json', JSON.stringify(stats, null, 2));
+    process.exit(0);
 }
 
-runBenchmark().catch(console.error);
+runBenchmark().catch(e => { console.error(e); process.exit(1); });

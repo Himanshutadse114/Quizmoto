@@ -37,4 +37,31 @@ describe('socketSchemas', () => {
         expect(error).to.be.undefined;
         expect(value).to.deep.equal(payload);
     });
+
+    it('should reject prototype pollution attempts and not mutate Object.prototype', () => {
+        const payload = JSON.parse('{"pin":"123456", "token":"abc", "__proto__": {"polluted": "yes"}}');
+        const { error, value } = validateSocketPayload('start_question', payload);
+        
+        // Ensure it doesn't pollute Object.prototype.
+        expect({}.polluted).to.be.undefined;
+        // Joi strips the __proto__ field
+        expect(value.polluted).to.be.undefined;
+    });
+
+    it('should reject oversized payloads for strings', () => {
+        const hugeNickname = 'A'.repeat(60);
+        const payload = { pin: '123456', nickname: hugeNickname, role: 'player' };
+        const { error } = validateSocketPayload('join_room', payload);
+        expect(error).to.not.be.undefined;
+        expect(error.details[0].message).to.include('less than or equal to 50 characters');
+    });
+
+    it('should accept valid reactions and reject invalid ones', () => {
+        const valid = validateSocketPayload('send_reaction', { pin: '123', emoji: '❤️' });
+        expect(valid.error).to.be.undefined;
+
+        const invalid = validateSocketPayload('send_reaction', { pin: '123', emoji: '😈' });
+        expect(invalid.error).to.not.be.undefined;
+        expect(invalid.error.details[0].message).to.include('"emoji" must be one of');
+    });
 });

@@ -575,6 +575,14 @@ module.exports = (io) => {
             }
         });
 
+        socket.on('send_reaction', (payload) => {
+            const { error, value } = validateSocketPayload('send_reaction', payload);
+            if (error) return socket.emit('error', 'Invalid reaction');
+            const { pin: rawPin, emoji } = value;
+            const pin = String(rawPin).trim();
+            io.to(pin).emit('reaction_received', { emoji, socketId: socket.id });
+        });
+
         socket.on('disconnect', async () => {
             console.log('User disconnected:', socket.id);
             const { pin, nickname, role } = socket.data || {};

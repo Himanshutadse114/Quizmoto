@@ -72,9 +72,13 @@ router.post('/test-login', async (req, res, next) => {
     }
     
     try {
-        let user = await User.findOne({ where: { username: 'testhost' } });
+        const testRunId = req.body?.testRunId ? `-${req.body.testRunId}` : (process.env.TEST_RUN_ID ? `-${process.env.TEST_RUN_ID}` : '');
+        const username = `testhost${testRunId}`;
+        const email = `test${testRunId}@example.com`;
+
+        let user = await User.findOne({ where: { username } });
         if (!user) {
-            user = await User.create({ username: 'testhost', email: 'test@example.com' });
+            user = await User.create({ username, email });
         }
         const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1d' });
         res.json({ token, username: user.username, avatar: user.avatar });

@@ -46,7 +46,7 @@ describe('Backend Integration Tests', function() {
         const res = await request(app).post('/api/auth/test-login');
         expect(res.status).to.equal(200);
         expect(res.body).to.have.property('token');
-        expect(res.body).to.have.property('username', 'testhost');
+        expect(res.body.username).to.match(/^testhost/);
     });
 
     it('test login should return 404 outside test mode', () => {

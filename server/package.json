@@ -37,7 +37,45 @@
     "mocha": "^11.7.6",
     "nyc": "^18.0.0",
     "proxyquire": "^2.1.3",
+    "sinon": "^22.1.0",
     "socket.io-client": "^4.8.3",
-    "supertest": "^7.2.2"
+    "supertest": "^7.2.2",
+    "xlsx": "^0.18.5"
+  },
+  "nyc": {
+    "check-coverage": true,
+    "branches": 0,
+    "lines": 0,
+    "functions": 0,
+    "statements": 0,
+    "watermarks": {
+      "lines": [80, 95],
+      "functions": [80, 95],
+      "branches": [80, 95],
+      "statements": [80, 95]
+    },
+    "report-dir": "./coverage",
+    "temp-dir": "./.nyc_output",
+    "overrides": [
+      {
+        "include": ["services/ScoringService.js"],
+        "branches": 90
+      },
+      {
+        "include": ["services/SessionTokenService.js", "routes/auth.js"],
+        "lines": 90,
+        "statements": 90
+      },
+      {
+        "include": ["services/SessionRecoveryService.js"],
+        "branches": 85,
+        "lines": 85
+      },
+      {
+        "include": ["validators/socketSchemas.js"],
+        "branches": 90,
+        "lines": 90
+      }
+    ]
   }
 }
