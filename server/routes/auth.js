@@ -66,20 +66,22 @@ router.post('/google', async (req, res) => {
 });
 
 // Test Auth for E2E
-if (process.env.NODE_ENV === 'test') {
-    router.post('/test-login', async (req, res) => {
-        try {
-            let user = await User.findOne({ where: { username: 'testhost' } });
-            if (!user) {
-                user = await User.create({ username: 'testhost', email: 'test@example.com' });
-            }
-            const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1d' });
-            res.json({ token, username: user.username, avatar: user.avatar });
-        } catch (err) {
-            console.error('Test Auth Error:', err);
-            res.status(500).json({ message: 'Auth failed' });
+router.post('/test-login', async (req, res, next) => {
+    if (process.env.NODE_ENV !== 'test') {
+        return res.status(404).json({ message: 'Not found' });
+    }
+    
+    try {
+        let user = await User.findOne({ where: { username: 'testhost' } });
+        if (!user) {
+            user = await User.create({ username: 'testhost', email: 'test@example.com' });
         }
-    });
-}
+        const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1d' });
+        res.json({ token, username: user.username, avatar: user.avatar });
+    } catch (err) {
+        console.error('Test Auth Error:', err);
+        res.status(500).json({ message: 'Auth failed' });
+    }
+});
 
 module.exports = router;

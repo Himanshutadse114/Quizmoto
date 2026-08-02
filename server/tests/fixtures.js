@@ -42,7 +42,7 @@ const seedTestFixtures = async () => {
       questionText: 'What is 2 + 2?',
       options: JSON.stringify(['3', '4', '5', '22']),
       correctIndex: 1, // '4'
-      timer: 30,
+      timer: 5,
       explanation: 'Basic math',
     },
     {
@@ -50,7 +50,7 @@ const seedTestFixtures = async () => {
       questionText: 'Which planet is known as the Red Planet?',
       options: JSON.stringify(['Earth', 'Mars', 'Jupiter', 'Saturn']),
       correctIndex: 1, // 'Mars'
-      timer: 30,
+      timer: 5,
       explanation: 'Mars is red due to iron oxide.',
     },
     {
@@ -58,7 +58,7 @@ const seedTestFixtures = async () => {
       questionText: 'Is the sky blue?',
       options: JSON.stringify(['Yes', 'No']),
       correctIndex: 0, // 'Yes'
-      timer: 20,
+      timer: 5,
       explanation: 'Rayleigh scattering.',
     }
   ]);

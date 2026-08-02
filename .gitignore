@@ -9,3 +9,9 @@ mysql_data_local/
 .idea
 .vscode
 *.log
+
+# Phase 0 Artifacts
+ffmpeg.zip
+ffmpeg_extracted/
+playwright-report/
+test-results/
