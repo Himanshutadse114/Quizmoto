@@ -14,16 +14,17 @@
 
 | Requirement ID | Phase | Task | Source section | Priority | Status | Files/Modules | Tests | Evidence | Commit/Change Reference | Blocker/Risk | Next Action |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| P1-T01 | 1 | Inventory the monolithic socket handler | Phase 1 Prompt | P1 | COMPLETED | socketHandlers.js | - | SOCKET_HANDLER_RESPONSIBILITY_MAP.md | - | None | - |
-| P1-T02 | 1 | Establish code coverage | Phase 1 Prompt | P1 | COMPLETED | package.json | nyc tests | 100% pure branch cov | - | None | - |
-| P1-T03 | 1 | Add PostgreSQL integration-test environment | Phase 1 Prompt | P1 | COMPLETED | database.js | - | Clean isolated memory DB | - | None | - |
-| P1-T04 | 1 | Extract the scoring service | Phase 1 Prompt | P1 | COMPLETED | ScoringService.js | ScoringService.test.js | 100% Branch Coverage | - | None | - |
-| P1-T05 | 1 | Extract the authorization service | Phase 1 Prompt | P1 | COMPLETED | SessionAuthorizationService.js | SessionAuthorizationService.test.js | 100% Branch Coverage | - | None | - |
-| P1-T06 | 1 | Extract session query/recovery | Phase 1 Prompt | P1 | COMPLETED | SessionRecoveryService.js | SessionRecoveryService.test.js | ~90% Branch Coverage | - | None | - |
-| P1-T07 | 1 | Add schema validation (Joi) | Phase 1 Prompt | P1 | COMPLETED | socketSchemas.js | socketSchemas.test.js | 100% Branch Coverage | - | None | - |
-| P1-T08 | 1 | Thin orchestration refactor | Phase 1 Prompt | P1 | COMPLETED | socketHandlers.js | socket.test.js | Tests pass flawlessly | - | None | - |
-| P1-T09 | 1 | Add stable socket error contracts | Phase 1 Prompt | P1 | COMPLETED | - | - | E2E passes | - | None | - |
-| P1-T10 | 1 | Preserve and expand regression coverage | Phase 1 Prompt | P1 | COMPLETED | E2E Tests | 43 passing | golden flow passes | - | None | - |
-| P1-T11 | 1 | Security and code-quality review | Phase 1 Prompt | P1 | COMPLETED | - | - | Joi strips unknown | - | None | - |
-| P1-T12 | 1 | Performance comparison | Phase 1 Prompt | P1 | COMPLETED | - | - | Isolated memory DB faster | - | None | - |
-| P1-T13 | 1 | Documentation and handoff | Phase 1 Prompt | P1 | COMPLETED | docs/implementation/* | - | PHASE_01_COMPLETION_REPORT | - | None | READY FOR PHASE 2 |
+| P1-T01 | 1 | Inventory the monolithic socket handler | Phase 1 Prompt | P1 | PASSED WITH LIMITATIONS | socketHandlers.js | - | SOCKET_HANDLER_RESPONSIBILITY_MAP.md | - | None | - |
+| P1-T02 | 1 | Establish code coverage | Phase 1 Prompt | P1 | PASSED WITH LIMITATIONS | package.json | nyc tests | 100% pure branch cov | - | None | - |
+| P1-T03 | 1 | Add PostgreSQL integration-test environment | Phase 1 Prompt | P1 | PASSED WITH LIMITATIONS | database.js | - | Clean isolated memory DB | - | None | - |
+| P1-T04 | 1 | Extract the scoring service | Phase 1 Prompt | P1 | PASSED WITH LIMITATIONS | ScoringService.js | ScoringService.test.js | 100% Branch Coverage | - | None | - |
+| P1-T05 | 1 | Extract the authorization service | Phase 1 Prompt | P1 | PASSED WITH LIMITATIONS | SessionAuthorizationService.js | SessionAuthorizationService.test.js | 100% Branch Coverage | - | None | - |
+| P1-T06 | 1 | Extract session query/recovery | Phase 1 Prompt | P1 | PASSED WITH LIMITATIONS | SessionRecoveryService.js | SessionRecoveryService.test.js | ~90% Branch Coverage | - | None | - |
+| P1-T07 | 1 | Add schema validation (Joi) | Phase 1 Prompt | P1 | PASSED WITH LIMITATIONS | socketSchemas.js | socketSchemas.test.js | 100% Branch Coverage | - | None | - |
+| P1-T08 | 1 | Thin orchestration refactor | Phase 1 Prompt | P1 | PASSED WITH LIMITATIONS | socketHandlers.js | socket.test.js | Tests pass flawlessly | - | None | - |
+| P1-T09 | 1 | Add stable socket error contracts | Phase 1 Prompt | P1 | PASSED WITH LIMITATIONS | - | - | E2E passes | - | None | - |
+| P1-T10 | 1 | Preserve and expand regression coverage | Phase 1 Prompt | P1 | PASSED WITH LIMITATIONS | E2E Tests | 43 passing | golden flow passes | - | None | - |
+| P1-T11 | 1 | Security and code-quality review | Phase 1 Prompt | P1 | PASSED WITH LIMITATIONS | - | - | Joi strips unknown | - | None | - |
+| P1-T12 | 1 | Performance comparison | Phase 1 Prompt | P1 | PASSED WITH LIMITATIONS | - | - | Isolated memory DB faster | - | None | - |
+| P1-T13 | 1 | Documentation and handoff | Phase 1 Prompt | P1 | PASSED WITH LIMITATIONS | docs/implementation/* | - | PHASE_01_COMPLETION_REPORT | - | None | NOT READY FOR PHASE 2 |
+

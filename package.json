@@ -8,6 +8,6 @@
   },
   "scripts": {
     "test:e2e": "playwright test",
-    "test:critical": "cd server && npm run test && cd ../client && npm run build && cd .. && npm run test:e2e"
+    "test:critical": "node scripts/run_critical.js"
   }
 }

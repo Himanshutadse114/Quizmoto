@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 const { PlayerProfile } = require('../models/PlayerProfile');
 const ScoringService = require('./ScoringService');
 const AnswerSubmissionService = require('./AnswerSubmissionService');
-const SessionAuthorizationService = require('./SessionAuthorizationService');
+const SessionTokenService = require('./SessionTokenService');
 const SessionRecoveryService = require('./SessionRecoveryService');
 const { validateSocketPayload } = require('../validators/socketSchemas');
 
@@ -27,8 +27,12 @@ module.exports = (io) => {
 
         // Join Room (Host or Player)
         socket.on('join_room', async (payload) => {
+            console.log('RECEIVED join_room', payload);
             const { error, value } = validateSocketPayload('join_room', payload);
-            if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
+            if (error) {
+                console.error('Validation Error', error);
+                return socket.emit('error', `Validation Error: ${error.details[0].message}`);
+            }
             const { pin: rawPin, nickname, role, avatar, token, teamName, playerProfileToken } = value;
             
             const pin = String(rawPin).trim();
@@ -57,7 +61,7 @@ module.exports = (io) => {
 
                     // Persistence Check: If token provided, try to find existing player
                     if (token) {
-                        const decoded = SessionAuthorizationService.verifyPlayerToken(token);
+                        const decoded = SessionTokenService.verifyPlayerToken(token);
                         if (decoded && decoded.sessionId === session.id && decoded.nickname === cleanNickname) {
                             player = await Player.findOne({
                                 where: { sessionId: session.id, nickname: cleanNickname }
@@ -70,7 +74,7 @@ module.exports = (io) => {
                         let playerProfileId = null;
                         if (playerProfileToken) {
                             try {
-                                const decoded = SessionAuthorizationService.verifyPlayerToken(playerProfileToken);
+                                const decoded = SessionTokenService.verifyPlayerToken(playerProfileToken);
                                 playerProfileId = decoded.playerId;
                             } catch (e) {}
                         }
@@ -105,7 +109,7 @@ module.exports = (io) => {
                     }
 
                     // Generate persistence token for the player
-                    const playerToken = SessionAuthorizationService.generatePlayerToken(session.id, player.id, cleanNickname);
+                    const playerToken = SessionTokenService.generatePlayerToken(session.id, player.id, cleanNickname);
 
                     socket.join(pin);
 
@@ -137,7 +141,7 @@ module.exports = (io) => {
                         socket.emit('session_info', stateData);
                     }
                 } else if (role === 'host') {
-                    const hostId = SessionAuthorizationService.verifyHostToken(token);
+                    const hostId = SessionTokenService.verifyHostToken(token);
                     if (!hostId || session.hostId !== hostId) {
                         return socket.emit('error', 'Unauthorized: Invalid host token');
                     }
@@ -180,7 +184,7 @@ module.exports = (io) => {
             const pin = String(rawPin).trim();
             try {
                 const session = await GameSession.findOne({ where: { pin } });
-                const hostId = SessionAuthorizationService.verifyHostToken(token);
+                const hostId = SessionTokenService.verifyHostToken(token);
                 if (!hostId || session.hostId !== hostId) {
                     return socket.emit('error', 'Unauthorized: Only the host can start questions');
                 }
@@ -290,7 +294,7 @@ module.exports = (io) => {
                             [sequelize.fn('SUM', sequelize.col('score')), 'totalScore']
                         ],
                         group: ['teamName'],
-                        order: [[sequelize.literal('totalScore'), 'DESC']]
+                        order: [[sequelize.literal('"totalScore"'), 'DESC']]
                     });
                     teamStandings = teamScores.map(t => ({
                         teamName: t.teamName,
@@ -309,6 +313,23 @@ module.exports = (io) => {
             }
         };
 
+        socket.on('end_question', async (payload) => {
+            const { error, value } = validateSocketPayload('end_question', payload);
+            if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
+            const { pin: rawPin, token } = value;
+            const pin = String(rawPin).trim();
+            try {
+                const session = await GameSession.findOne({ where: { pin } });
+                if (!session) return;
+                const hostId = SessionTokenService.verifyHostToken(token);
+                if (!hostId || session.hostId !== hostId) {
+                    return socket.emit('error', 'Unauthorized: Only the host can end questions');
+                }
+                await handleEndQuestion(pin);
+            } catch (err) {
+                console.error('Error in end_question:', err);
+            }
+        });
 
         // Submit Answer
         socket.on('submit_answer', async (payload) => {
@@ -350,7 +371,7 @@ module.exports = (io) => {
             const session = await GameSession.findOne({ where: { pin } });
             if (!session) return;
 
-            const hostId = SessionAuthorizationService.verifyHostToken(token);
+            const hostId = SessionTokenService.verifyHostToken(token);
             if (!hostId || session.hostId !== hostId) {
                 return socket.emit('error', 'Unauthorized');
             }
@@ -389,7 +410,7 @@ module.exports = (io) => {
                 const session = await GameSession.findOne({ where: { pin } });
                 if (!session) return;
 
-                const hostId = SessionAuthorizationService.verifyHostToken(token);
+                const hostId = SessionTokenService.verifyHostToken(token);
                 if (!hostId || session.hostId !== hostId) return;
 
                 session.gameMode = mode; // 'classic' or 'team'
@@ -413,7 +434,7 @@ module.exports = (io) => {
                 if (!session) return;
 
                 // Security Check
-                const hostId = SessionAuthorizationService.verifyHostToken(token);
+                const hostId = SessionTokenService.verifyHostToken(token);
                 if (!hostId || session.hostId !== hostId) {
                     return socket.emit('error', 'Unauthorized');
                 }
@@ -435,7 +456,7 @@ module.exports = (io) => {
                             [sequelize.fn('SUM', sequelize.col('score')), 'totalScore']
                         ],
                         group: ['teamName'],
-                        order: [[sequelize.literal('totalScore'), 'DESC']]
+                        order: [[sequelize.literal('"totalScore"'), 'DESC']]
                     });
                     teamStandings = teamScores.map(t => ({
                         teamName: t.teamName,

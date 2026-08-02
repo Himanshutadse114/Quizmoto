@@ -325,14 +325,16 @@ router.get('/reports/:id/export', auth, async (req, res) => {
             fs.mkdirSync(tmpDir, { recursive: true });
         }
 
-        const jsonPath = path.join(tmpDir, `report_${session.id}.json`);
+        const timestamp = Date.now();
+        const jsonPath = path.join(tmpDir, `report_${session.id}_${timestamp}.json`);
         const ext = format === 'pdf' ? '.pdf' : '.xlsx';
-        const outputPath = path.join(tmpDir, `report_${session.id}_${Date.now()}${ext}`);
+        const outputPath = path.join(tmpDir, `report_${session.id}_${timestamp}${ext}`);
 
         fs.writeFileSync(jsonPath, JSON.stringify(session.toJSON()));
 
         const scriptPath = path.join(__dirname, '../utils/generate_report.py');
-        exec(`python3 ${scriptPath} ${jsonPath} ${outputPath} ${format}`, (error, stdout, stderr) => {
+        const pyCmd = process.env.TEST_PYTHON_FAIL ? 'invalid_python_cmd_xyz' : (process.platform === 'win32' ? 'python' : 'python3');
+        exec(`${pyCmd} ${scriptPath} ${jsonPath} ${outputPath} ${format}`, (error, stdout, stderr) => {
             if (error) {
                 console.error(`exec error: ${error}`);
                 console.error(`stderr: ${stderr}`);

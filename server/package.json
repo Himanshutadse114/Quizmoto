@@ -5,15 +5,15 @@
   "scripts": {
     "start": "node index.js",
     "test:start": "node index.js",
-    "test": "cross-env NODE_ENV=test mocha tests/**/*.test.js --exit",
-    "test:coverage": "cross-env NODE_ENV=test nyc --all --reporter=lcov --reporter=text mocha tests/**/*.test.js --exit"
+    "test": "cross-env NODE_ENV=test mocha tests/**/*.test.js --exclude tests/postgres.test.js --exit",
+    "test:coverage": "cross-env NODE_ENV=test nyc --all --reporter=lcov --reporter=text mocha tests/**/*.test.js --exclude tests/postgres.test.js --exit",
+    "test:postgres": "cross-env DB_DIALECT=postgres DB_HOST=localhost DB_PORT=5434 DB_NAME=quizmototest DB_USER=testuser DB_PASS=testpass NODE_ENV=test mocha tests/**/*.test.js --exit"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@socket.io/redis-adapter": "^8.3.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
@@ -36,6 +36,7 @@
     "cross-env": "^10.1.0",
     "mocha": "^11.7.6",
     "nyc": "^18.0.0",
+    "proxyquire": "^2.1.3",
     "socket.io-client": "^4.8.3",
     "supertest": "^7.2.2"
   }

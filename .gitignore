@@ -10,8 +10,12 @@ mysql_data_local/
 .vscode
 *.log
 
-# Phase 0 Artifacts
+# Phase 0 & 1 Artifacts
 ffmpeg.zip
 ffmpeg_extracted/
 playwright-report/
 test-results/
+server/coverage/
+server/.nyc_output/
+server/data/tmp/
+server/data/*.sqlite

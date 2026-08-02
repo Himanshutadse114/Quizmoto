@@ -39,7 +39,9 @@ if (isMysql || isPostgres) {
 // when models are required inside connectDB.
 module.exports.sequelize = sequelize;
 
+let isConnected = false;
 const connectDB = async () => {
+    if (isConnected) return;
     try {
         await sequelize.authenticate();
         console.log(`${dialect.charAt(0).toUpperCase() + dialect.slice(1)} Connected (Sequelize)...`);
@@ -127,6 +129,8 @@ const connectDB = async () => {
         } catch (syncErr) {
             console.error('Sequelize sync error:', syncErr.message);
         }
+
+        isConnected = true;
     } catch (err) {
         console.error('Sequelize connection error:', err);
         process.exit(1);

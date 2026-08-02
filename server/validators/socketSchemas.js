@@ -5,7 +5,7 @@ const schemas = {
         pin: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
         nickname: Joi.string().allow('', null).optional(),
         role: Joi.string().valid('host', 'player', 'player_check').required(),
-        avatar: Joi.number().integer().min(1).max(10).optional().allow(null),
+        avatar: Joi.string().optional().allow('', null),
         token: Joi.string().optional().allow('', null),
         teamName: Joi.string().optional().allow('', null),
         playerProfileToken: Joi.string().optional().allow('', null)
@@ -21,6 +21,11 @@ const schemas = {
         nickname: Joi.string().required(),
         answerIndex: Joi.number().integer().min(0).max(3).required(),
         timeRemaining: Joi.number().min(0).optional()
+    }),
+
+    end_question: Joi.object({
+        pin: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
+        token: Joi.string().required()
     }),
 
     next_question: Joi.object({
