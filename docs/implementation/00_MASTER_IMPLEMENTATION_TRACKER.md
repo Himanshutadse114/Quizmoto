@@ -2,34 +2,24 @@
 
 | Requirement ID | Phase | Task | Source section | Priority | Status | Files/Modules | Tests | Evidence | Commit/Change Reference | Blocker/Risk | Next Action |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| P0-T01 | 0 | Baseline Verification | Phase 0 Prompt | P0 | **PASSED** | `docs/implementation/*` | E2E Testing Foundation | Ready for Phase 1 | - | None | - |
-| P0-T02 | 0 | Establish deterministic local/test environment | Phase 0 Prompt | P0 | COMPLETED | `server/index.js`, `server/tests/fixtures.js` | `npm run test:e2e` | DB fixes applied | - | None | - |
-| P0-T03 | 0 | Create the golden-flow browser test | Phase 0 Prompt | P0 | COMPLETED | `tests/e2e/golden-flow.spec.js` | `golden-flow.spec.js` | Steps 1-24 verified | - | None | - |
-| P0-T04 | 0 | Reproduce the Starting Session defect | Phase 0 Prompt | P0 | COMPLETED | `client/src/pages/Host/Lobby.jsx` | `golden-flow.spec.js` | Fixed race condition | - | None | - |
-| P0-T05 | 0 | Build the regression test matrix | Phase 0 Prompt | P0 | COMPLETED | `docs/implementation/*` | - | `03_REGRESSION_TEST_MATRIX.md` | - | None | - |
-| P0-T06 | 0 | Establish CI quality gate | Phase 0 Prompt | P0 | COMPLETED | `.github/workflows/ci.yml` | - | Github actions config | - | None | - |
-| P0-T07 | 0 | Manual QA Walk-Through | Phase 0 Prompt | P0 | COMPLETED | `docs/MANUAL_QA.md` | Manual | Visual state verified | - | None | - |
-| P0-T08 | 0 | Final Validation Gate | Phase 0 Prompt | P0 | COMPLETED | `package.json` | `npm run test:critical` | Three consecutive passes | - | None | READY FOR PHASE 1 |
-
-## Phase 1: Test Harness and Module Extraction
-
-| Requirement ID | Phase | Task | Source section | Priority | Status | Files/Modules | Tests | Evidence | Commit/Change Reference | Blocker/Risk | Next Action |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| P1-T01–P1-T13 | 1 | (see prior rows; all PASSED) | Phase 1 | P1 | **PASSED** | services, tests | critical gate | Phase 1 handoff | - | None | READY FOR PHASE 2 |
+| P0-T01–P0-T08 | 0 | Baseline + golden flow | Phase 0 | P0 | **PASSED** | docs, e2e | critical gate | Phase 0 complete | - | None | - |
+| P1-T01–P1-T13 | 1 | Harness + extraction | Phase 1 | P1 | **PASSED** | services, tests | critical gate | Phase 1 complete | - | None | READY FOR PHASE 2 |
 
 ## Phase 2: Session Engine V2
 
 | Requirement ID | Phase | Task | Source section | Priority | Status | Files/Modules | Tests | Evidence | Commit/Change Reference | Blocker/Risk | Next Action |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| P2-T01 | 2 | Expand GameSession schema | Blueprint §4.2 | P0 | **PARTIALLY IMPLEMENTED** | GameSession.js, database.js | fixtures sync | additive columns | foundation | Local critical gate | Verify dialects |
-| P2-T02 | 2 | Round, SessionEvent, IdempotencyRecord | Blueprint §4.4 | P0 | **PARTIALLY IMPLEMENTED** | models | fixtures | registered | foundation | Create integration | |
-| P2-T03 | 2 | SessionStateMachine | Blueprint §4.1 | P0 | **IMPLEMENTED** | SessionStateMachine.js | SessionStateMachine.test.js | pure unit | foundation | None | - |
-| P2-T04 | 2 | SessionCommandService | Blueprint §4.3–4.5 | P0 | **IMPLEMENTED** | SessionCommandService.js | SessionCommandService.test.js | pipeline + idempotency | command commits | Local mocha | - |
-| P2-T05 | 2 | Command IDs + acks + expectedStateVersion | Blueprint §4.4–4.5 | P0 | **IMPLEMENTED** (flag-gated) | socketSchemas.js, socketHandlers.js | socketSchemas.test.js | optional envelope; V2 if flag + commandId | T05 commits | Local verify | - |
-| P2-T06 | 2 | Canonical recovery endpoint | Blueprint §4.7 | P0 | **IMPLEMENTED** | routes/sessions.js, SessionRecoveryService | sessionsRecovery.test.js | GET /api/sessions/:id/recovery role-safe | T06 commits | **Run mocha recovery tests locally** | P2-T08 watchdog (or T07) |
-| P2-T07 | 2 | Host lease | Blueprint §4.11 | P1 | PLANNED | - | - | - | - | None | After watchdog or parallel |
-| P2-T08 | 2 | Transient-state watchdog | Blueprint §4.6 | P0 | PLANNED | - | - | - | - | None | **NEXT recommended** |
-| P2-T09 | 2 | Client session reducer | Blueprint §3.2 | P1 | PLANNED | - | - | - | - | None | After server stable |
-| P2-T10 | 2 | Feature flag NEW_SESSION_ENGINE | Blueprint §5.5 | P0 | **IMPLEMENTED** | featureFlags.js | default false | gated in handlers | foundation | None | - |
-| P2-T11 | 2 | Reliability suite + golden flow | Blueprint §4.14 | P0 | **NOT VERIFIED** | - | critical gate | - | - | None | After T07–T08 |
-| P2-T12 | 2 | Completion report | Governance | P0 | PLANNED | phase-02/* | - | plan only | - | None | At exit |
+| P2-T01 | 2 | Expand GameSession schema | Blueprint §4.2 | P0 | **IMPLEMENTED** | GameSession.js, database.js | fixtures | additive columns | foundation | **User runs npm test** | - |
+| P2-T02 | 2 | Round, SessionEvent, IdempotencyRecord | Blueprint §4.4 | P0 | **IMPLEMENTED** (Outbox deferred) | models | fixtures | models registered | foundation | User verifies sync | - |
+| P2-T03 | 2 | SessionStateMachine | Blueprint §4.1 | P0 | **IMPLEMENTED** | SessionStateMachine.js | SessionStateMachine.test.js | pure unit | foundation | User runs tests | - |
+| P2-T04 | 2 | SessionCommandService | Blueprint §4.3–4.5 | P0 | **IMPLEMENTED** | SessionCommandService.js | SessionCommandService.test.js | pipeline + idempotency | command commits | User runs tests | - |
+| P2-T05 | 2 | Command IDs + acks | Blueprint §4.4–4.5 | P0 | **IMPLEMENTED** (flag-gated) | socketSchemas, socketHandlers | socketSchemas.test.js | optional envelope | T05 | User runs tests | - |
+| P2-T06 | 2 | Recovery endpoint | Blueprint §4.7 | P0 | **IMPLEMENTED** | routes/sessions.js | sessionsRecovery.test.js | role-safe REST | T06 | User runs tests | - |
+| P2-T07 | 2 | Host lease | Blueprint §4.11 | P1 | **IMPLEMENTED** (service) | HostLeaseService.js | HostLeaseService.test.js | acquire/renew/takeover | T07 | Optional: tighter socket wiring | - |
+| P2-T08 | 2 | Transient-state watchdog | Blueprint §4.6 | P0 | **IMPLEMENTED** | SessionWatchdogService.js | SessionWatchdogService.test.js | STARTING/LOCKED/FINISHING | T08 | Starts only if flag ON | - |
+| P2-T09 | 2 | Client session reducer | Blueprint §3.2 | P1 | **PARTIAL** | client/.../sessionReducer.js | - | pure reducer scaffold; UI not wired | T09 scaffold | Wire pages later | - |
+| P2-T10 | 2 | Feature flag | Blueprint §5.5 | P0 | **IMPLEMENTED** | featureFlags.js | default false | gated | foundation | Keep OFF until acceptance | - |
+| P2-T11 | 2 | Reliability + golden flow | Blueprint §4.14 | P0 | **NOT VERIFIED** | - | critical gate | awaiting user run | - | **USER ACTION** | Run tests |
+| P2-T12 | 2 | Completion report | Governance | P0 | **NOT STARTED** | PHASE_02_COMPLETION_REPORT.md | - | placeholder | - | After T11 green | Fill report |
+
+**Phase 2 exit gate:** not met until P2-T11 evidence exists and P2-T12 is truthful.
