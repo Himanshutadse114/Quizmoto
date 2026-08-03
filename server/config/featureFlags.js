@@ -16,6 +16,14 @@ const featureFlags = {
      */
     get newSessionEngine() {
         return envBool('NEW_SESSION_ENGINE', false);
+    },
+
+    /**
+     * Phase 3: when false (default), report export runs in-process (legacy).
+     * When true, report jobs are enqueued to a background worker.
+     */
+    get reportsAsync() {
+        return envBool('REPORTS_ASYNC', false);
     }
 };
 

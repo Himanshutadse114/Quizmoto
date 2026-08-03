@@ -3,6 +3,16 @@ if (process.env.NODE_ENV === 'test') {
 } else {
     require('dotenv').config();
 }
+
+// Phase 3: refuse unsafe production DB configuration before anything else
+const { assertProductionDatabase } = require('./config/productionGuards');
+try {
+    assertProductionDatabase();
+} catch (guardErr) {
+    console.error('[productionGuards]', guardErr.message);
+    process.exit(1);
+}
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
