@@ -1,11 +1,14 @@
 /**
- * Phase 3 report job handlers — real generation via ReportGenerationService.
+ * Phase 3 report job handlers — generation + object storage.
  * Never touches live session sockets.
  */
 
+const fs = require('fs');
+const path = require('path');
 const { JOB_TYPES } = require('../jobTypes');
 const JobQueueService = require('../JobQueueService');
 const ReportGenerationService = require('../../services/ReportGenerationService');
+const { getObjectStorage } = require('../../storage/ObjectStorage');
 
 async function handleReportJob(payload, job) {
     const sessionId = payload && payload.sessionId;
@@ -22,21 +25,42 @@ async function handleReportJob(payload, job) {
         throw new Error('hostId is required in report job payload');
     }
 
-    const result = await ReportGenerationService.generateReportFile({
+    const generated = await ReportGenerationService.generateReportFile({
         sessionId,
         hostId,
         format,
         testRunId,
-        keepFiles: true // worker keeps artifact for download
+        keepFiles: true
     });
+
+    const storage = getObjectStorage();
+    const ext = format === 'pdf' ? 'pdf' : 'xlsx';
+    const storageKey = `reports/${sessionId}/${job.id}.${ext}`;
+
+    const body = fs.readFileSync(generated.outputPath);
+    await storage.putObject({
+        key: storageKey,
+        body,
+        contentType: generated.contentType
+    });
+
+    // Prefer storage key; keep local path only for local driver convenience
+    const localPath = storage.resolveLocalPath
+        ? storage.resolveLocalPath(storageKey)
+        : null;
+
+    // Clean temp generation files (artifact lives in storage)
+    ReportGenerationService.safeUnlink(generated.outputPath);
+    ReportGenerationService.safeUnlink(generated.jsonPath);
 
     return {
         ok: true,
         sessionId,
         format,
-        artifactPath: result.outputPath,
-        contentType: result.contentType,
-        downloadName: result.downloadName
+        storageKey,
+        artifactPath: localPath || generated.outputPath,
+        contentType: generated.contentType,
+        downloadName: generated.downloadName
     };
 }
 

@@ -8,6 +8,7 @@ const path = require('path');
 const auth = require('./middleware');
 const JobQueueService = require('../jobs/JobQueueService');
 const { JOB_STATUS } = require('../jobs/jobTypes');
+const { getObjectStorage } = require('../storage/ObjectStorage');
 
 const router = express.Router();
 
@@ -18,7 +19,6 @@ router.get('/:id', auth, async (req, res) => {
             return res.status(404).json({ message: 'Job not found' });
         }
 
-        // Owner-only: actorId stored as host user id string
         if (job.actorId && String(job.actorId) !== String(req.userId)) {
             return res.status(403).json({ message: 'Unauthorized' });
         }
@@ -39,9 +39,10 @@ router.get('/:id', auth, async (req, res) => {
                 sessionId: job.result.sessionId,
                 format: job.result.format,
                 downloadName: job.result.downloadName,
-                hasArtifact: !!job.result.artifactPath
+                storageKey: job.result.storageKey || null,
+                hasArtifact: !!(job.result.storageKey || job.result.artifactPath)
             };
-            if (job.result.artifactPath) {
+            if (job.result.storageKey || job.result.artifactPath) {
                 body.downloadPath = `/api/jobs/${job.id}/download`;
             }
         }
@@ -62,16 +63,42 @@ router.get('/:id/download', auth, async (req, res) => {
         if (job.actorId && String(job.actorId) !== String(req.userId)) {
             return res.status(403).json({ message: 'Unauthorized' });
         }
-        if (job.status !== JOB_STATUS.COMPLETED || !job.result || !job.result.artifactPath) {
+        if (job.status !== JOB_STATUS.COMPLETED || !job.result) {
             return res.status(409).json({ message: 'Artifact not ready' });
         }
 
+        const downloadName = job.result.downloadName || 'Report.bin';
+        const contentType = job.result.contentType || 'application/octet-stream';
+
+        // Prefer object storage key
+        if (job.result.storageKey) {
+            const storage = getObjectStorage();
+            try {
+                const obj = await storage.getObjectStream(job.result.storageKey);
+                res.setHeader('Content-Type', obj.contentType || contentType);
+                if (obj.contentLength != null) {
+                    res.setHeader('Content-Length', obj.contentLength);
+                }
+                res.setHeader(
+                    'Content-Disposition',
+                    `attachment; filename="${downloadName}"`
+                );
+                obj.stream.pipe(res);
+                return;
+            } catch (err) {
+                if (err.code !== 'OBJECT_NOT_FOUND') {
+                    console.error(err);
+                    return res.status(500).json({ message: 'Storage read failed' });
+                }
+                // fall through to legacy local path
+            }
+        }
+
         const filePath = job.result.artifactPath;
-        if (!fs.existsSync(filePath)) {
+        if (!filePath || !fs.existsSync(filePath)) {
             return res.status(404).json({ message: 'Artifact file missing' });
         }
 
-        const downloadName = job.result.downloadName || path.basename(filePath);
         res.download(filePath, downloadName);
     } catch (err) {
         console.error(err);
