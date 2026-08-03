@@ -8,6 +8,7 @@ const ScoringService = require('./ScoringService');
 const AnswerSubmissionService = require('./AnswerSubmissionService');
 const SessionTokenService = require('./SessionTokenService');
 const SessionRecoveryService = require('./SessionRecoveryService');
+const SessionCommandService = require('./SessionCommandService');
 const { validateSocketPayload } = require('../validators/socketSchemas');
 
 const logDiag = (event, pin, state, details = {}) => {
@@ -19,6 +20,23 @@ const logDiag = (event, pin, state, details = {}) => {
         state,
         ...details
     }));
+};
+
+/** Emit structured command acknowledgement (Phase 2 clients). Safe no-op payload. */
+const emitCommandAck = (socket, result) => {
+    if (!result) return;
+    socket.emit('command_ack', {
+        ok: !!result.ok,
+        code: result.code,
+        commandId: result.commandId || undefined,
+        stateVersion: result.stateVersion,
+        toState: result.toState,
+        fromState: result.fromState,
+        replay: result.replay || false,
+        message: result.message,
+        currentStateVersion: result.currentStateVersion,
+        currentState: result.currentState
+    });
 };
 
 module.exports = (io) => {
@@ -179,11 +197,12 @@ module.exports = (io) => {
         socket.on('start_question', async (payload) => {
             const { error, value } = validateSocketPayload('start_question', payload);
             if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
-            const { pin: rawPin, token } = value;
+            const { pin: rawPin, token, commandId, expectedStateVersion } = value;
 
             const pin = String(rawPin).trim();
             try {
                 const session = await GameSession.findOne({ where: { pin } });
+                if (!session) return;
                 const hostId = SessionTokenService.verifyHostToken(token);
                 if (!hostId || session.hostId !== hostId) {
                     return socket.emit('error', 'Unauthorized: Only the host can start questions');
@@ -207,15 +226,46 @@ module.exports = (io) => {
                     return;
                 }
 
-                session.currentQuestionIndex = nextIndex;
-                session.status = 'question';
-                session.questionStartTime = new Date(Date.now() + 3000); // 3 seconds in the future for countdown
-                await session.save();
+                const useV2 = SessionCommandService.isEnabled() && commandId;
+
+                if (useV2) {
+                    const cmdResult = await SessionCommandService.executeStartQuestion({
+                        commandId,
+                        sessionId: session.id,
+                        actorId: String(hostId),
+                        expectedStateVersion: expectedStateVersion != null ? expectedStateVersion : undefined,
+                        questionIndex: nextIndex,
+                        questionStartTime: Date.now() + 3000
+                    });
+
+                    emitCommandAck(socket, { ...cmdResult, commandId });
+
+                    if (!cmdResult.ok && !cmdResult.replay) {
+                        if (cmdResult.code === 'SESSION_STATE_CONFLICT') {
+                            return socket.emit('error', 'Session state conflict; refresh and retry');
+                        }
+                        if (cmdResult.code === 'ALREADY_IN_PROGRESS') {
+                            return;
+                        }
+                        return socket.emit('error', cmdResult.message || cmdResult.code || 'Start question failed');
+                    }
+
+                    // Reload after command path (or use replay result)
+                    await session.reload();
+                } else {
+                    // Legacy path (default): unchanged behaviour when flag OFF or no commandId
+                    session.currentQuestionIndex = nextIndex;
+                    session.status = 'question';
+                    session.questionStartTime = new Date(Date.now() + 3000);
+                    await session.save();
+                }
 
                 logDiag('start_question_transition', pin, 'question', {
-                    questionIndex: nextIndex,
+                    questionIndex: session.currentQuestionIndex,
                     hostId,
-                    startTime: session.questionStartTime
+                    startTime: session.questionStartTime,
+                    v2: !!useV2,
+                    stateVersion: session.stateVersion
                 });
 
                 // Reset player states for the new question
@@ -237,13 +287,19 @@ module.exports = (io) => {
                     serverTime: Date.now()
                 };
 
+                // Optional V2 envelope fields for newer clients (ignored by legacy)
+                if (useV2 && session.stateVersion != null) {
+                    questionData.stateVersion = Number(session.stateVersion);
+                    questionData.schemaVersion = 1;
+                }
+
                 io.to(pin).emit('question_started', questionData);
             } catch (err) {
                 console.error('Error in start_question:', err);
             }
         });
 
-        const handleEndQuestion = async (pin) => {
+        const handleEndQuestion = async (pin, options = {}) => {
             try {
                 const session = await GameSession.findOne({ where: { pin } });
                 if (!session || session.status !== 'question') return;
@@ -253,11 +309,33 @@ module.exports = (io) => {
                     order: [[{ model: Question, as: 'questions' }, 'id', 'ASC']]
                 });
 
-                session.status = 'result';
-                await session.save();
+                const useV2 = SessionCommandService.isEnabled() && options.commandId && options.hostId;
+
+                if (useV2) {
+                    const cmdResult = await SessionCommandService.executeEndQuestion({
+                        commandId: options.commandId,
+                        sessionId: session.id,
+                        actorId: String(options.hostId),
+                        expectedStateVersion: options.expectedStateVersion
+                    });
+                    if (options.ackSocket) {
+                        emitCommandAck(options.ackSocket, { ...cmdResult, commandId: options.commandId });
+                    }
+                    if (!cmdResult.ok && !cmdResult.replay) {
+                        if (options.ackSocket) {
+                            options.ackSocket.emit('error', cmdResult.message || cmdResult.code || 'End question failed');
+                        }
+                        return;
+                    }
+                    await session.reload();
+                } else {
+                    session.status = 'result';
+                    await session.save();
+                }
 
                 logDiag('end_question_transition', pin, 'result', {
-                    questionIndex: session.currentQuestionIndex
+                    questionIndex: session.currentQuestionIndex,
+                    v2: !!useV2
                 });
 
                 const allPlayers = await Player.findAll({
@@ -266,11 +344,13 @@ module.exports = (io) => {
 
                 // Send individual results to each player
                 allPlayers.forEach(player => {
-                    io.to(player.socketId).emit('question_result', {
-                        correct: player.lastAnswerCorrect,
-                        score: player.score,
-                        answered: player.lastAnswerIndex !== -1
-                    });
+                    if (player.socketId) {
+                        io.to(player.socketId).emit('question_result', {
+                            correct: player.lastAnswerCorrect,
+                            score: player.score,
+                            answered: player.lastAnswerIndex !== -1
+                        });
+                    }
                 });
 
                 const leaderboard = await Player.findAll({
@@ -281,8 +361,8 @@ module.exports = (io) => {
                 });
 
                 const currentQuestion = quiz.questions[session.currentQuestionIndex];
-                const options = typeof currentQuestion.options === 'string' ? JSON.parse(currentQuestion.options) : currentQuestion.options;
-                const distribution = options.map((_, i) => allPlayers.filter(p => p.lastAnswerIndex === i).length);
+                const optionsList = typeof currentQuestion.options === 'string' ? JSON.parse(currentQuestion.options) : currentQuestion.options;
+                const distribution = optionsList.map((_, i) => allPlayers.filter(p => p.lastAnswerIndex === i).length);
 
                 let teamStandings = [];
                 if (session.gameMode === 'team') {
@@ -316,7 +396,7 @@ module.exports = (io) => {
         socket.on('end_question', async (payload) => {
             const { error, value } = validateSocketPayload('end_question', payload);
             if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
-            const { pin: rawPin, token } = value;
+            const { pin: rawPin, token, commandId, expectedStateVersion } = value;
             const pin = String(rawPin).trim();
             try {
                 const session = await GameSession.findOne({ where: { pin } });
@@ -325,7 +405,7 @@ module.exports = (io) => {
                 if (!hostId || session.hostId !== hostId) {
                     return socket.emit('error', 'Unauthorized: Only the host can end questions');
                 }
-                await handleEndQuestion(pin);
+                await handleEndQuestion(pin, { commandId, expectedStateVersion, hostId, ackSocket: socket });
             } catch (err) {
                 console.error('Error in end_question:', err);
             }
@@ -359,11 +439,11 @@ module.exports = (io) => {
             }
         });
 
-        // End Question / Show Result
+        // End Question / Show Result (legacy alias used by some clients)
         socket.on('next_question', async (payload) => {
             const { error, value } = validateSocketPayload('next_question', payload);
             if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
-            const { pin: rawPin, token } = value;
+            const { pin: rawPin, token, commandId, expectedStateVersion } = value;
 
             const pin = String(rawPin).trim();
 
@@ -376,7 +456,7 @@ module.exports = (io) => {
                 return socket.emit('error', 'Unauthorized');
             }
 
-            await handleEndQuestion(pin);
+            await handleEndQuestion(pin, { commandId, expectedStateVersion, hostId, ackSocket: socket });
         });
 
         // Live Reactions
@@ -426,7 +506,7 @@ module.exports = (io) => {
         socket.on('end_game', async (payload) => {
             const { error, value } = validateSocketPayload('end_game', payload);
             if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
-            const { pin: rawPin, token } = value;
+            const { pin: rawPin, token, commandId, expectedStateVersion } = value;
 
             const pin = String(rawPin).trim();
             try {
@@ -439,8 +519,24 @@ module.exports = (io) => {
                     return socket.emit('error', 'Unauthorized');
                 }
 
-                session.status = 'finished';
-                await session.save();
+                const useV2 = SessionCommandService.isEnabled() && commandId;
+
+                if (useV2) {
+                    const cmdResult = await SessionCommandService.executeEndGame({
+                        commandId,
+                        sessionId: session.id,
+                        actorId: String(hostId),
+                        expectedStateVersion
+                    });
+                    emitCommandAck(socket, { ...cmdResult, commandId });
+                    if (!cmdResult.ok && !cmdResult.replay) {
+                        return socket.emit('error', cmdResult.message || cmdResult.code || 'End game failed');
+                    }
+                    await session.reload();
+                } else {
+                    session.status = 'finished';
+                    await session.save();
+                }
 
                 const players = await Player.findAll({
                     where: { sessionId: session.id },
@@ -573,14 +669,6 @@ module.exports = (io) => {
             } catch (err) {
                 console.error(err);
             }
-        });
-
-        socket.on('send_reaction', (payload) => {
-            const { error, value } = validateSocketPayload('send_reaction', payload);
-            if (error) return socket.emit('error', 'Invalid reaction');
-            const { pin: rawPin, emoji } = value;
-            const pin = String(rawPin).trim();
-            io.to(pin).emit('reaction_received', { emoji, socketId: socket.id });
         });
 
         socket.on('disconnect', async () => {
