@@ -1,7 +1,7 @@
 /**
- * Phase 2 client session reducer (flag-gated usage).
+ * Phase 2 client session reducer.
  * Pure functions only — apply events only when stateVersion is newer.
- * Not wired into pages until NEW_SESSION_ENGINE client path is enabled.
+ * Opt-in via VITE_NEW_SESSION_ENGINE; live pages are not required to use this yet.
  */
 
 export const initialSessionState = {
@@ -17,7 +17,8 @@ export const initialSessionState = {
     score: 0,
     lastErrorCode: null,
     serverTimeSkewMs: 0,
-    needsRecovery: false
+    needsRecovery: false,
+    lastCommandId: null
 };
 
 export function sessionReducer(state = initialSessionState, action) {
@@ -46,7 +47,10 @@ export function sessionReducer(state = initialSessionState, action) {
                         ? payload.currentQuestionIndex
                         : state.currentQuestionIndex,
                 activeRoundId: payload.activeRoundId ?? state.activeRoundId,
-                question: payload.payload?.question || payload.payload?.currentQuestion || state.question,
+                question:
+                    payload.payload?.question ||
+                    payload.payload?.currentQuestion ||
+                    state.question,
                 score: payload.payload?.score != null ? payload.payload.score : state.score,
                 lastErrorCode: payload.lastErrorCode ?? null,
                 needsRecovery: false
@@ -75,11 +79,34 @@ export function sessionReducer(state = initialSessionState, action) {
             };
         }
 
+        case 'SESSION_COMMAND_ACK': {
+            const ack = action.payload || {};
+            if (ack.ok && ack.stateVersion != null) {
+                const incomingVersion = Number(ack.stateVersion);
+                if (incomingVersion > Number(state.stateVersion || 0)) {
+                    return {
+                        ...state,
+                        stateVersion: incomingVersion,
+                        state: ack.toState || state.state,
+                        lastCommandId: ack.commandId || state.lastCommandId,
+                        needsRecovery: false
+                    };
+                }
+            }
+            if (ack.code === 'SESSION_STATE_CONFLICT') {
+                return { ...state, needsRecovery: true };
+            }
+            return state;
+        }
+
         case 'SESSION_MARK_NEEDS_RECOVERY':
             return { ...state, needsRecovery: true };
 
         case 'SESSION_SET_SCORE':
             return { ...state, score: action.payload };
+
+        case 'SESSION_SET_SKEW':
+            return { ...state, serverTimeSkewMs: Number(action.payload) || 0 };
 
         default:
             return state;
@@ -88,4 +115,16 @@ export function sessionReducer(state = initialSessionState, action) {
 
 export function selectIsStaleEvent(state, incomingStateVersion) {
     return Number(incomingStateVersion) <= Number(state.stateVersion || 0);
+}
+
+/** Create a new client command id (UUID v4). */
+export function newCommandId() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        const v = c === 'x' ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+    });
 }
