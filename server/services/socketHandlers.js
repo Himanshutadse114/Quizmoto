@@ -22,7 +22,6 @@ const logDiag = (event, pin, state, details = {}) => {
     }));
 };
 
-/** Emit structured command acknowledgement (Phase 2 clients). Safe no-op payload. */
 const emitCommandAck = (socket, result) => {
     if (!result) return;
     socket.emit('command_ack', {
@@ -39,7 +38,6 @@ const emitCommandAck = (socket, result) => {
     });
 };
 
-/** Safely parse question options into an array. */
 function parseOptions(raw) {
     try {
         if (raw == null) return [];
@@ -54,17 +52,205 @@ function parseOptions(raw) {
     }
 }
 
+/** pin -> Timeout — server auto-ends question if host client never emits end_question */
+const questionEndTimers = new Map();
+
+function clearQuestionEndTimer(pin) {
+    const h = questionEndTimers.get(pin);
+    if (h) {
+        clearTimeout(h);
+        questionEndTimers.delete(pin);
+    }
+}
+
 module.exports = (io) => {
+    const handleEndQuestion = async (pin, opts = {}) => {
+        let session;
+        try {
+            session = await GameSession.findOne({ where: { pin } });
+            if (!session) {
+                logDiag('end_question_skip', pin, null, { reason: 'SESSION_NOT_FOUND' });
+                return;
+            }
+            if (session.status !== 'question') {
+                logDiag('end_question_skip', pin, session.status, {
+                    reason: 'NOT_IN_QUESTION',
+                    status: session.status,
+                    source: opts.source || 'client'
+                });
+                return;
+            }
+
+            clearQuestionEndTimer(pin);
+
+            const quiz = await Quiz.findByPk(session.quizId, {
+                include: [{ model: Question, as: 'questions' }],
+                order: [[{ model: Question, as: 'questions' }, 'id', 'ASC']]
+            });
+
+            const useV2 = SessionCommandService.isEnabled() && !!opts.commandId && !!opts.hostId;
+
+            if (useV2) {
+                const cmdResult = await SessionCommandService.executeEndQuestion({
+                    commandId: opts.commandId,
+                    sessionId: session.id,
+                    actorId: String(opts.hostId),
+                    expectedStateVersion: opts.expectedStateVersion
+                });
+                if (opts.ackSocket) {
+                    emitCommandAck(opts.ackSocket, { ...cmdResult, commandId: opts.commandId });
+                }
+                if (!cmdResult.ok && !cmdResult.replay) {
+                    console.warn('[handleEndQuestion] V2 end failed, falling back to legacy', cmdResult.code);
+                    session.status = 'result';
+                    await session.save({ fields: ['status'] });
+                } else {
+                    await session.reload();
+                    if (session.status !== 'result') {
+                        session.status = 'result';
+                        await session.save({ fields: ['status'] });
+                    }
+                }
+            } else {
+                session.status = 'result';
+                await session.save({ fields: ['status'] });
+            }
+
+            logDiag('end_question_transition', pin, 'result', {
+                questionIndex: session.currentQuestionIndex,
+                v2: !!useV2,
+                source: opts.source || 'client'
+            });
+
+            const allPlayers = await Player.findAll({ where: { sessionId: session.id } });
+
+            for (const player of allPlayers) {
+                const resultPayload = {
+                    correct: !!player.lastAnswerCorrect,
+                    score: player.score,
+                    answered: player.lastAnswerIndex !== -1,
+                    nickname: player.nickname
+                };
+                try {
+                    if (player.socketId) {
+                        io.to(player.socketId).emit('question_result', resultPayload);
+                    }
+                } catch (emitErr) {
+                    console.error('[handleEndQuestion] question_result emit failed', player.nickname, emitErr.message);
+                }
+            }
+            try {
+                io.to(pin).emit('question_result_broadcast', {
+                    results: allPlayers.map((p) => ({
+                        nickname: p.nickname,
+                        correct: !!p.lastAnswerCorrect,
+                        score: p.score,
+                        answered: p.lastAnswerIndex !== -1
+                    }))
+                });
+            } catch (_) {}
+
+            let leaderboard = [];
+            try {
+                leaderboard = await Player.findAll({
+                    where: { sessionId: session.id },
+                    order: [['score', 'DESC']],
+                    limit: 5,
+                    attributes: ['nickname', 'score', 'avatar']
+                });
+            } catch (lbErr) {
+                console.error('[handleEndQuestion] leaderboard query failed', lbErr.message);
+            }
+
+            const qIndex = session.currentQuestionIndex;
+            const currentQuestion =
+                quiz && Array.isArray(quiz.questions) && quiz.questions[qIndex]
+                    ? quiz.questions[qIndex]
+                    : null;
+            const optionsList = parseOptions(currentQuestion ? currentQuestion.options : null);
+            const distribution = optionsList.map((_, i) =>
+                allPlayers.filter((p) => p.lastAnswerIndex === i).length
+            );
+
+            let teamStandings = [];
+            if (session.gameMode === 'team') {
+                try {
+                    const teamScores = await Player.findAll({
+                        where: { sessionId: session.id },
+                        attributes: [
+                            'teamName',
+                            [sequelize.fn('SUM', sequelize.col('score')), 'totalScore']
+                        ],
+                        group: ['teamName'],
+                        order: [[sequelize.literal('"totalScore"'), 'DESC']]
+                    });
+                    teamStandings = teamScores.map((t) => ({
+                        teamName: t.teamName,
+                        score: parseInt(t.get('totalScore'), 10) || 0
+                    }));
+                } catch (teamErr) {
+                    console.error('[handleEndQuestion] team standings failed', teamErr.message);
+                }
+            }
+
+            io.to(pin).emit('question_ended', {
+                leaderboard,
+                teamStandings,
+                correctIndex: currentQuestion != null ? currentQuestion.correctIndex : null,
+                distribution
+            });
+
+            logDiag('end_question_emitted', pin, 'result', {
+                playerCount: allPlayers.length,
+                hasCurrentQuestion: !!currentQuestion,
+                source: opts.source || 'client'
+            });
+        } catch (err) {
+            console.error('Error in handleEndQuestion:', err);
+            try {
+                if (session && session.status === 'question') {
+                    session.status = 'result';
+                    await session.save({ fields: ['status'] });
+                }
+                io.to(pin).emit('question_ended', {
+                    leaderboard: [],
+                    teamStandings: [],
+                    correctIndex: null,
+                    distribution: []
+                });
+            } catch (fallbackErr) {
+                console.error('handleEndQuestion fallback emit failed:', fallbackErr.message);
+            }
+        }
+    };
+
+    const scheduleQuestionEnd = (pin, startMs, timerSeconds) => {
+        clearQuestionEndTimer(pin);
+        const timerMs = (Number(timerSeconds) || 20) * 1000;
+        const endsAt = startMs + timerMs + 500;
+        const delay = Math.max(300, endsAt - Date.now());
+        const handle = setTimeout(() => {
+            questionEndTimers.delete(pin);
+            logDiag('server_auto_end_question', pin, 'question', {
+                reason: 'TIMER_EXPIRED',
+                delayMs: delay
+            });
+            handleEndQuestion(pin, { source: 'server_timer' }).catch((err) => {
+                console.error('[server_auto_end_question] failed', pin, err.message);
+            });
+        }, delay);
+        questionEndTimers.set(pin, handle);
+    };
+
     io.on('connection', (socket) => {
         console.log('New connection:', socket.id);
 
-        // Join Room (Host or Player)
         socket.on('join_room', async (payload) => {
             console.log('RECEIVED join_room', payload);
             const { error, value } = validateSocketPayload('join_room', payload);
             if (error) {
                 console.error('Validation Error', error);
-                return socket.emit('error', `Validation Error: ${error.details[0].message}`);
+                return socket.emit('error', 'Validation Error: ' + error.details[0].message);
             }
             const { pin: rawPin, nickname, role, avatar, token, teamName, playerProfileToken } = value;
 
@@ -170,7 +356,7 @@ module.exports = (io) => {
                     }
 
                     socket.join(pin);
-                    socket.join(`host_${pin}`);
+                    socket.join('host_' + pin);
                     socket.data = { pin, role: 'host', hostId };
 
                     io.to(pin).emit('host_reconnected');
@@ -195,10 +381,9 @@ module.exports = (io) => {
             }
         });
 
-        // Start Question
         socket.on('start_question', async (payload) => {
             const { error, value } = validateSocketPayload('start_question', payload);
-            if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
+            if (error) return socket.emit('error', 'Validation Error: ' + error.details[0].message);
             const { pin: rawPin, token, commandId, expectedStateVersion } = value;
 
             const pin = String(rawPin).trim();
@@ -211,7 +396,7 @@ module.exports = (io) => {
                 }
 
                 if (session.status === 'question') {
-                    console.log(`[Guard] start_question ignored for pin ${pin}: session already in question state.`);
+                    console.log('[Guard] start_question ignored for pin ' + pin + ': session already in question state.');
                     return;
                 }
 
@@ -226,11 +411,10 @@ module.exports = (io) => {
 
                 const nextIndex = session.currentQuestionIndex + 1;
                 if (nextIndex >= quiz.questions.length) {
-                    console.log(`[Guard] start_question ignored for pin ${pin}: no more questions.`);
+                    console.log('[Guard] start_question ignored for pin ' + pin + ': no more questions.');
                     return;
                 }
 
-                // V2 only when flag ON *and* client sent commandId; otherwise pure legacy
                 const useV2 = SessionCommandService.isEnabled() && !!commandId;
 
                 if (useV2) {
@@ -260,7 +444,6 @@ module.exports = (io) => {
                     session.currentQuestionIndex = nextIndex;
                     session.status = 'question';
                     session.questionStartTime = new Date(Date.now() + 3000);
-                    // Only touch legacy fields so Phase 2 columns never block live play
                     await session.save({
                         fields: ['currentQuestionIndex', 'status', 'questionStartTime']
                     });
@@ -280,7 +463,7 @@ module.exports = (io) => {
 
                 const question = quiz.questions[session.currentQuestionIndex];
                 if (!question) {
-                    console.error(`[start_question] missing question at index ${session.currentQuestionIndex} pin=${pin}`);
+                    console.error('[start_question] missing question at index ' + session.currentQuestionIndex + ' pin=' + pin);
                     return socket.emit('error', 'Question not found');
                 }
 
@@ -306,185 +489,16 @@ module.exports = (io) => {
                 }
 
                 io.to(pin).emit('question_started', questionData);
+                scheduleQuestionEnd(pin, startMs, question.timer);
             } catch (err) {
                 console.error('Error in start_question:', err);
                 try { socket.emit('error', 'Failed to start question'); } catch (_) {}
             }
         });
 
-        /**
-         * End current question and emit results.
-         * CRITICAL: must always emit question_result + question_ended when status was question,
-         * even if optional analytics pieces fail.
-         */
-        const handleEndQuestion = async (pin, opts = {}) => {
-            let session;
-            try {
-                session = await GameSession.findOne({ where: { pin } });
-                if (!session) {
-                    logDiag('end_question_skip', pin, null, { reason: 'SESSION_NOT_FOUND' });
-                    return;
-                }
-                if (session.status !== 'question') {
-                    logDiag('end_question_skip', pin, session.status, {
-                        reason: 'NOT_IN_QUESTION',
-                        status: session.status
-                    });
-                    return;
-                }
-
-                const quiz = await Quiz.findByPk(session.quizId, {
-                    include: [{ model: Question, as: 'questions' }],
-                    order: [[{ model: Question, as: 'questions' }, 'id', 'ASC']]
-                });
-
-                // V2 only when flag ON and commandId provided; never block legacy live path
-                const useV2 = SessionCommandService.isEnabled() && !!opts.commandId && !!opts.hostId;
-
-                if (useV2) {
-                    const cmdResult = await SessionCommandService.executeEndQuestion({
-                        commandId: opts.commandId,
-                        sessionId: session.id,
-                        actorId: String(opts.hostId),
-                        expectedStateVersion: opts.expectedStateVersion
-                    });
-                    if (opts.ackSocket) {
-                        emitCommandAck(opts.ackSocket, { ...cmdResult, commandId: opts.commandId });
-                    }
-                    if (!cmdResult.ok && !cmdResult.replay) {
-                        // Fall back to legacy status write so the room is never stuck
-                        console.warn('[handleEndQuestion] V2 end failed, falling back to legacy', cmdResult.code);
-                        session.status = 'result';
-                        await session.save({ fields: ['status'] });
-                    } else {
-                        await session.reload();
-                        // Ensure legacy status is result for clients still on status field
-                        if (session.status !== 'result') {
-                            session.status = 'result';
-                            await session.save({ fields: ['status'] });
-                        }
-                    }
-                } else {
-                    session.status = 'result';
-                    await session.save({ fields: ['status'] });
-                }
-
-                logDiag('end_question_transition', pin, 'result', {
-                    questionIndex: session.currentQuestionIndex,
-                    v2: !!useV2
-                });
-
-                const allPlayers = await Player.findAll({
-                    where: { sessionId: session.id }
-                });
-
-                // 1) Always notify each player (and room fallback)
-                for (const player of allPlayers) {
-                    const resultPayload = {
-                        correct: !!player.lastAnswerCorrect,
-                        score: player.score,
-                        answered: player.lastAnswerIndex !== -1,
-                        nickname: player.nickname
-                    };
-                    try {
-                        if (player.socketId) {
-                            io.to(player.socketId).emit('question_result', resultPayload);
-                        }
-                    } catch (emitErr) {
-                        console.error('[handleEndQuestion] question_result emit failed', player.nickname, emitErr.message);
-                    }
-                }
-                // Room-level fallback so clients that only listen on the pin room still update
-                try {
-                    io.to(pin).emit('question_result_broadcast', {
-                        results: allPlayers.map((p) => ({
-                            nickname: p.nickname,
-                            correct: !!p.lastAnswerCorrect,
-                            score: p.score,
-                            answered: p.lastAnswerIndex !== -1
-                        }))
-                    });
-                } catch (_) {}
-
-                // 2) Build leaderboard / distribution defensively
-                let leaderboard = [];
-                try {
-                    leaderboard = await Player.findAll({
-                        where: { sessionId: session.id },
-                        order: [['score', 'DESC']],
-                        limit: 5,
-                        attributes: ['nickname', 'score', 'avatar']
-                    });
-                } catch (lbErr) {
-                    console.error('[handleEndQuestion] leaderboard query failed', lbErr.message);
-                }
-
-                const qIndex = session.currentQuestionIndex;
-                const currentQuestion =
-                    quiz && Array.isArray(quiz.questions) && quiz.questions[qIndex]
-                        ? quiz.questions[qIndex]
-                        : null;
-                const optionsList = parseOptions(currentQuestion ? currentQuestion.options : null);
-                const distribution = optionsList.map((_, i) =>
-                    allPlayers.filter((p) => p.lastAnswerIndex === i).length
-                );
-
-                let teamStandings = [];
-                if (session.gameMode === 'team') {
-                    try {
-                        const teamScores = await Player.findAll({
-                            where: { sessionId: session.id },
-                            attributes: [
-                                'teamName',
-                                [sequelize.fn('SUM', sequelize.col('score')), 'totalScore']
-                            ],
-                            group: ['teamName'],
-                            order: [[sequelize.literal('"totalScore"'), 'DESC']]
-                        });
-                        teamStandings = teamScores.map((t) => ({
-                            teamName: t.teamName,
-                            score: parseInt(t.get('totalScore'), 10) || 0
-                        }));
-                    } catch (teamErr) {
-                        console.error('[handleEndQuestion] team standings failed', teamErr.message);
-                    }
-                }
-
-                // 3) Always emit question_ended to the room
-                io.to(pin).emit('question_ended', {
-                    leaderboard,
-                    teamStandings,
-                    correctIndex: currentQuestion != null ? currentQuestion.correctIndex : null,
-                    distribution
-                });
-
-                logDiag('end_question_emitted', pin, 'result', {
-                    playerCount: allPlayers.length,
-                    hasCurrentQuestion: !!currentQuestion
-                });
-            } catch (err) {
-                console.error('Error in handleEndQuestion:', err);
-                // Last-resort emit so clients are not stuck on the question screen
-                try {
-                    if (session && session.status === 'question') {
-                        session.status = 'result';
-                        await session.save({ fields: ['status'] });
-                    }
-                    io.to(pin).emit('question_ended', {
-                        leaderboard: [],
-                        teamStandings: [],
-                        correctIndex: null,
-                        distribution: []
-                    });
-                } catch (fallbackErr) {
-                    console.error('handleEndQuestion fallback emit failed:', fallbackErr.message);
-                }
-            }
-        };
-
         socket.on('end_question', async (payload) => {
             const { error, value } = validateSocketPayload('end_question', payload);
-            if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
+            if (error) return socket.emit('error', 'Validation Error: ' + error.details[0].message);
             const { pin: rawPin, token, commandId, expectedStateVersion } = value;
             const pin = String(rawPin).trim();
             try {
@@ -500,10 +514,9 @@ module.exports = (io) => {
             }
         });
 
-        // Submit Answer
         socket.on('submit_answer', async (payload) => {
             const { error, value } = validateSocketPayload('submit_answer', payload);
-            if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
+            if (error) return socket.emit('error', 'Validation Error: ' + error.details[0].message);
             const { pin: rawPin, nickname, answerIndex } = value;
 
             const pin = String(rawPin).trim();
@@ -522,16 +535,15 @@ module.exports = (io) => {
                 });
 
                 io.to(pin).emit('answer_received', { nickname });
-                io.to(`host_${pin}`).emit('answer_received_host', { answerIndex, nickname });
+                io.to('host_' + pin).emit('answer_received_host', { answerIndex, nickname });
             } catch (err) {
                 console.error('Error in submit_answer:', err);
             }
         });
 
-        // Legacy alias: some clients use next_question to end the current question
         socket.on('next_question', async (payload) => {
             const { error, value } = validateSocketPayload('next_question', payload);
-            if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
+            if (error) return socket.emit('error', 'Validation Error: ' + error.details[0].message);
             const { pin: rawPin, token, commandId, expectedStateVersion } = value;
 
             const pin = String(rawPin).trim();
@@ -547,7 +559,6 @@ module.exports = (io) => {
             await handleEndQuestion(pin, { commandId, expectedStateVersion, hostId, ackSocket: socket });
         });
 
-        // Live Reactions
         const lastReaction = new Map();
         socket.on('send_reaction', (payload) => {
             const { error, value } = validateSocketPayload('send_reaction', payload);
@@ -562,13 +573,12 @@ module.exports = (io) => {
 
             lastReaction.set(socket.id, now);
 
-            io.to(pin).emit('new_reaction', { emoji, id: `${socket.id}_${now}` });
+            io.to(pin).emit('new_reaction', { emoji, id: socket.id + '_' + now });
         });
 
-        // Toggle Game Mode (Host Only)
         socket.on('change_mode', async (payload) => {
             const { error, value } = validateSocketPayload('change_mode', payload);
-            if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
+            if (error) return socket.emit('error', 'Validation Error: ' + error.details[0].message);
             const { pin: rawPin, token, mode } = value;
 
             const pin = String(rawPin).trim();
@@ -588,10 +598,9 @@ module.exports = (io) => {
             }
         });
 
-        // End Game
         socket.on('end_game', async (payload) => {
             const { error, value } = validateSocketPayload('end_game', payload);
-            if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
+            if (error) return socket.emit('error', 'Validation Error: ' + error.details[0].message);
             const { pin: rawPin, token, commandId, expectedStateVersion } = value;
 
             const pin = String(rawPin).trim();
@@ -603,6 +612,8 @@ module.exports = (io) => {
                 if (!hostId || session.hostId !== hostId) {
                     return socket.emit('error', 'Unauthorized');
                 }
+
+                clearQuestionEndTimer(pin);
 
                 const useV2 = SessionCommandService.isEnabled() && !!commandId;
 
