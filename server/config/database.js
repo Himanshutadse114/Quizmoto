@@ -48,7 +48,14 @@ const connectDB = async () => {
 
         // IMPORTANT: Import ALL models and register associations BEFORE sync()
         const { Quiz, Question } = require('../models/Quiz');
-        const { GameSession, Player, PlayerAnswer } = require('../models/GameSession');
+        const {
+            GameSession,
+            Player,
+            PlayerAnswer,
+            Round,
+            SessionEvent,
+            IdempotencyRecord
+        } = require('../models/GameSession');
         const { User } = require('../models/User');
         const { PlayerProfile } = require('../models/PlayerProfile');
 
@@ -76,6 +83,16 @@ const connectDB = async () => {
         // Player <-> PlayerProfile
         PlayerProfile.hasMany(Player, { as: 'sessionPlayers', foreignKey: 'playerProfileId' });
         Player.belongsTo(PlayerProfile, { foreignKey: 'playerProfileId', as: 'profile' });
+
+        // Phase 2: Round / SessionEvent / IdempotencyRecord
+        GameSession.hasMany(Round, { as: 'rounds', foreignKey: 'sessionId', onDelete: 'CASCADE' });
+        Round.belongsTo(GameSession, { foreignKey: 'sessionId' });
+
+        GameSession.hasMany(SessionEvent, { as: 'events', foreignKey: 'sessionId', onDelete: 'CASCADE' });
+        SessionEvent.belongsTo(GameSession, { foreignKey: 'sessionId' });
+
+        GameSession.hasMany(IdempotencyRecord, { as: 'idempotencyRecords', foreignKey: 'sessionId', onDelete: 'CASCADE' });
+        IdempotencyRecord.belongsTo(GameSession, { foreignKey: 'sessionId' });
 
         // Add columns individually - handle duplicate column errors for MySQL & PostgreSQL
         const addColumnIfMissing = async (sql) => {
@@ -106,6 +123,20 @@ const connectDB = async () => {
             await addColumnIfMissing(`ALTER TABLE "Users" ALTER COLUMN "password" DROP NOT NULL`);
             await addColumnIfMissing(`ALTER TABLE "PlayerProfiles" ADD COLUMN "googleId" VARCHAR(255) NULL`);
             await addColumnIfMissing(`ALTER TABLE "PlayerProfiles" ALTER COLUMN "password" DROP NOT NULL`);
+
+            // Phase 2 additive columns on GameSessions
+            await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "state" VARCHAR(32) DEFAULT 'LOBBY'`);
+            await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "stateVersion" BIGINT NOT NULL DEFAULT 0`);
+            await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "activeRoundId" VARCHAR(36) NULL`);
+            await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "stateEnteredAt" TIMESTAMP NULL`);
+            await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "questionOpensAt" TIMESTAMP NULL`);
+            await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "questionClosesAt" TIMESTAMP NULL`);
+            await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "hostLeaseOwner" VARCHAR(128) NULL`);
+            await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "hostLeaseExpiresAt" TIMESTAMP NULL`);
+            await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "lastEventSequence" BIGINT NOT NULL DEFAULT 0`);
+            await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "recoverySchemaVersion" INTEGER NOT NULL DEFAULT 1`);
+            await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "lastErrorCode" VARCHAR(64) NULL`);
+            await addColumnIfMissing(`ALTER TABLE "PlayerAnswers" ADD COLUMN "roundId" VARCHAR(36) NULL`);
         } else if (isMysql) {
             // MySQL syntax: backticks, supports AFTER clause
             await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`gameMode\` VARCHAR(255) DEFAULT 'classic' AFTER \`status\``);
@@ -120,9 +151,23 @@ const connectDB = async () => {
             await addColumnIfMissing(`ALTER TABLE \`Users\` MODIFY \`password\` VARCHAR(255) NULL`);
             await addColumnIfMissing(`ALTER TABLE \`PlayerProfiles\` ADD COLUMN \`googleId\` VARCHAR(255) NULL`);
             await addColumnIfMissing(`ALTER TABLE \`PlayerProfiles\` MODIFY \`password\` VARCHAR(255) NULL`);
+
+            // Phase 2 additive columns on GameSessions
+            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`state\` VARCHAR(32) DEFAULT 'LOBBY'`);
+            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`stateVersion\` BIGINT NOT NULL DEFAULT 0`);
+            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`activeRoundId\` VARCHAR(36) NULL`);
+            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`stateEnteredAt\` DATETIME NULL`);
+            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`questionOpensAt\` DATETIME NULL`);
+            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`questionClosesAt\` DATETIME NULL`);
+            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`hostLeaseOwner\` VARCHAR(128) NULL`);
+            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`hostLeaseExpiresAt\` DATETIME NULL`);
+            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`lastEventSequence\` BIGINT NOT NULL DEFAULT 0`);
+            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`recoverySchemaVersion\` INTEGER NOT NULL DEFAULT 1`);
+            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`lastErrorCode\` VARCHAR(64) NULL`);
+            await addColumnIfMissing(`ALTER TABLE \`PlayerAnswers\` ADD COLUMN \`roundId\` VARCHAR(36) NULL`);
         }
 
-        // Standard sync (without alter) to ensure basic table existence
+        // Standard sync (without alter) to ensure basic table existence including Phase 2 models
         try {
             await sequelize.sync();
             console.log('Database models synced ✅');
