@@ -33,15 +33,15 @@
 
 | Requirement ID | Phase | Task | Source section | Priority | Status | Files/Modules | Tests | Evidence | Commit/Change Reference | Blocker/Risk | Next Action |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| P2-T01 | 2 | Expand GameSession schema (stateVersion, lease, timestamps) | Blueprint §4.2, §12 | P0 | **PARTIALLY IMPLEMENTED** | `GameSession.js`, `database.js` | sync via fixtures | additive columns + migrations | schema foundation commit | Run full critical gate locally | Verify SQLite+Postgres sync |
-| P2-T02 | 2 | Add Round, SessionEvent, IdempotencyRecord tables | Blueprint §4.4, §4.8 | P0 | **PARTIALLY IMPLEMENTED** | models in `GameSession.js` | fixtures clear new tables | models registered + associations | schema foundation commit | Integration tests on create | |
-| P2-T03 | 2 | Implement SessionStateMachine (pure transitions) | Blueprint §4.1 | P0 | **IMPLEMENTED** | `SessionStateMachine.js` | `SessionStateMachine.test.js` | pure unit tests added | schema foundation commit | None | Wire into CommandService |
-| P2-T04 | 2 | Implement SessionCommandService | Blueprint §4.3–4.5 | P0 | PLANNED | `SessionCommandService.js` | command + txn tests | - | - | None | **NEXT** |
-| P2-T05 | 2 | Command IDs + acks + expectedStateVersion | Blueprint §4.4–4.5 | P0 | PLANNED | socketSchemas, handlers | socket contract tests | - | - | None | After P2-T04 |
-| P2-T06 | 2 | Canonical recovery endpoint GET /api/sessions/:id/recovery | Blueprint §4.7 | P0 | PLANNED | routes + SessionRecoveryService | API + role tests | - | - | None | After P2-T01 |
-| P2-T07 | 2 | Host lease and takeover | Blueprint §4.11 | P1 | PLANNED | HostLease / GameSession fields | unit + socket | - | - | None | After P2-T01 |
-| P2-T08 | 2 | Transient-state watchdog | Blueprint §4.6 | P0 | PLANNED | SessionWatchdogService | watchdog unit tests | - | - | None | After P2-T04 |
-| P2-T09 | 2 | Client session reducer / FSM | Blueprint §3.2, §4.2 | P1 | PLANNED | client live-session state | component + E2E | - | - | None | After T05+T06 |
-| P2-T10 | 2 | Feature flag new_session_engine (default OFF) | Blueprint §5.5 | P0 | **IMPLEMENTED** | `config/featureFlags.js` | env default false | NEW_SESSION_ENGINE default off | schema foundation commit | None | Use in handlers |
+| P2-T01 | 2 | Expand GameSession schema (stateVersion, lease, timestamps) | Blueprint §4.2, §12 | P0 | **PARTIALLY IMPLEMENTED** | `GameSession.js`, `database.js` | sync via fixtures | additive columns + migrations | schema foundation | Local critical gate | Verify dialects |
+| P2-T02 | 2 | Add Round, SessionEvent, IdempotencyRecord tables | Blueprint §4.4, §4.8 | P0 | **PARTIALLY IMPLEMENTED** | models in `GameSession.js` | fixtures | models + associations | schema foundation | Integration create tests | |
+| P2-T03 | 2 | Implement SessionStateMachine (pure transitions) | Blueprint §4.1 | P0 | **IMPLEMENTED** | `SessionStateMachine.js` | `SessionStateMachine.test.js` | pure unit tests | foundation commit | None | - |
+| P2-T04 | 2 | Implement SessionCommandService | Blueprint §4.3–4.5 | P0 | **IMPLEMENTED** | `SessionCommandService.js` | `SessionCommandService.test.js` | txn, idempotency, dual-write, flag gate | command service commit | Run mocha locally | Wire into sockets (P2-T05) |
+| P2-T05 | 2 | Command IDs + acks + expectedStateVersion | Blueprint §4.4–4.5 | P0 | PLANNED | socketSchemas, handlers | socket contract tests | - | - | None | **NEXT** |
+| P2-T06 | 2 | Canonical recovery endpoint GET /api/sessions/:id/recovery | Blueprint §4.7 | P0 | PLANNED | routes + SessionRecoveryService | API + role tests | - | - | None | After schemas |
+| P2-T07 | 2 | Host lease and takeover | Blueprint §4.11 | P1 | PLANNED | HostLease / GameSession fields | unit + socket | - | - | None | After handlers |
+| P2-T08 | 2 | Transient-state watchdog | Blueprint §4.6 | P0 | PLANNED | SessionWatchdogService | watchdog unit tests | - | - | None | After handlers |
+| P2-T09 | 2 | Client session reducer / FSM | Blueprint §3.2, §4.2 | P1 | PLANNED | client live-session state | component + E2E | - | - | None | After recovery |
+| P2-T10 | 2 | Feature flag new_session_engine (default OFF) | Blueprint §5.5 | P0 | **IMPLEMENTED** | `config/featureFlags.js` | default false + command gate | NEW_SESSION_ENGINE | foundation | None | Use in handlers |
 | P2-T11 | 2 | Reliability acceptance suite + golden-flow regression | Blueprint §4.14 | P0 | PLANNED | tests/* | critical gate 3x | - | - | None | After core path |
-| P2-T12 | 2 | Phase 2 completion report and docs | Governance | P0 | PLANNED | docs/implementation/phases/phase-02/* | - | plan created 2026-08-03 | - | None | At exit gate |
+| P2-T12 | 2 | Phase 2 completion report and docs | Governance | P0 | PLANNED | docs/implementation/phases/phase-02/* | - | plan only | - | None | At exit gate |
