@@ -3,7 +3,6 @@ const { expect } = require('chai');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-const fs = require('fs');
 
 const { sequelize } = require('../config/database');
 const { Quiz } = require('../models/Quiz');
@@ -12,7 +11,8 @@ const User = require('../models/User');
 const JobQueueService = require('../jobs/JobQueueService');
 
 describe('Reports async path (REPORTS_ASYNC)', function () {
-    this.timeout(25000);
+    // Must stay low — these tests never call real Python
+    this.timeout(10000);
 
     let app;
     let hostToken;
@@ -21,15 +21,21 @@ describe('Reports async path (REPORTS_ASYNC)', function () {
     let testRunId;
     let prevAsync;
     let prevInline;
+    let prevStub;
 
     before(async () => {
         prevAsync = process.env.REPORTS_ASYNC;
         prevInline = process.env.REPORTS_PROCESS_INLINE;
+        prevStub = process.env.REPORT_GEN_STUB;
+
         process.env.REPORTS_ASYNC = 'true';
         process.env.REPORTS_PROCESS_INLINE = '1';
+        // Critical: never invoke Python in this suite (was hanging on Windows)
+        process.env.REPORT_GEN_STUB = '1';
 
-        // Re-require routes after env so featureFlags sees the value
         delete require.cache[require.resolve('../config/featureFlags')];
+        delete require.cache[require.resolve('../services/ReportGenerationService')];
+        delete require.cache[require.resolve('../jobs/handlers/reportHandlers')];
         delete require.cache[require.resolve('../routes/quizzes')];
         delete require.cache[require.resolve('../routes/jobs')];
 
@@ -81,6 +87,8 @@ describe('Reports async path (REPORTS_ASYNC)', function () {
         else process.env.REPORTS_ASYNC = prevAsync;
         if (prevInline === undefined) delete process.env.REPORTS_PROCESS_INLINE;
         else process.env.REPORTS_PROCESS_INLINE = prevInline;
+        if (prevStub === undefined) delete process.env.REPORT_GEN_STUB;
+        else process.env.REPORT_GEN_STUB = prevStub;
 
         delete require.cache[require.resolve('../config/featureFlags')];
         JobQueueService._resetForTests();
@@ -94,9 +102,6 @@ describe('Reports async path (REPORTS_ASYNC)', function () {
 
         expect(res.status).to.equal(202);
         expect(res.body.jobId).to.be.a('string');
-        expect(res.body.status).to.be.oneOf(['pending', 'completed', 'failed', 'active']);
-
-        // With INLINE=1, should complete in same request path
         expect(res.body.status).to.equal('completed');
         expect(res.body.downloadPath).to.match(/\/api\/jobs\/.+\/download/);
     });
@@ -136,5 +141,24 @@ describe('Reports async path (REPORTS_ASYNC)', function () {
             .set('Authorization', `Bearer ${otherToken}`);
 
         expect(statusRes.status).to.equal(403);
+    });
+
+    it('enqueue-only path returns pending without inline process', async () => {
+        process.env.REPORTS_PROCESS_INLINE = '0';
+
+        const res = await request(app)
+            .get(`/api/quizzes/reports/${sessionId}/export?format=pdf`)
+            .set('Authorization', `Bearer ${hostToken}`)
+            .set('x-test-run-id', testRunId);
+
+        expect(res.status).to.equal(202);
+        expect(res.body.jobId).to.be.a('string');
+        // Without inline, status is pending (or completed if idempotent replay of prior completed job)
+        expect(res.body.status).to.be.oneOf(['pending', 'completed']);
+        if (res.body.status === 'pending') {
+            expect(res.body.statusPath).to.match(/\/api\/jobs\//);
+        }
+
+        process.env.REPORTS_PROCESS_INLINE = '1';
     });
 });

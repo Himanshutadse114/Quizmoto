@@ -63,6 +63,20 @@ async function loadSessionForExport(sessionId, hostId) {
 }
 
 /**
+ * Fast path for unit tests — no Python subprocess.
+ * Enabled with REPORT_GEN_STUB=1.
+ */
+function writeStubArtifact(outputPath, format) {
+    if (format === 'pdf') {
+        // Minimal PDF header so content-type checks can pass if needed
+        fs.writeFileSync(outputPath, Buffer.from('%PDF-1.4\n% stub report\n'));
+    } else {
+        // Minimal ZIP/XLSX signature (PK)
+        fs.writeFileSync(outputPath, Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00, 0x00]));
+    }
+}
+
+/**
  * Generate a report file for a session.
  * @returns {Promise<{ outputPath: string, jsonPath: string, format: string, contentType: string, downloadName: string }>}
  */
@@ -94,13 +108,37 @@ async function generateReportFile({
 
     fs.writeFileSync(jsonPath, JSON.stringify(session.toJSON()));
 
+    // Test stub: skip Python entirely (prevents hangs in CI / Windows)
+    if (process.env.REPORT_GEN_STUB === '1') {
+        writeStubArtifact(outputPath, format);
+        if (!keepFiles && fs.existsSync(jsonPath)) {
+            try {
+                fs.unlinkSync(jsonPath);
+            } catch (_) {
+                /* ignore */
+            }
+        }
+        return {
+            outputPath,
+            jsonPath,
+            format,
+            contentType:
+                format === 'pdf'
+                    ? 'application/pdf'
+                    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            downloadName: `Report${ext}`
+        };
+    }
+
     const scriptPath = path.join(__dirname, '../utils/generate_report.py');
     const pyCmd = resolvePythonCmd();
+    const timeoutMs = Number(process.env.REPORT_GEN_TIMEOUT_MS) || 30000;
 
     try {
         await execFileAsync(pyCmd, [scriptPath, jsonPath, outputPath, format], {
-            timeout: Number(process.env.REPORT_GEN_TIMEOUT_MS) || 60000,
-            windowsHide: true
+            timeout: timeoutMs,
+            windowsHide: true,
+            killSignal: 'SIGTERM'
         });
     } catch (err) {
         if (fs.existsSync(jsonPath) && !keepFiles) {
