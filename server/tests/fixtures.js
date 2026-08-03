@@ -1,15 +1,25 @@
 const { sequelize } = require('../config/database');
 const User = require('../models/User');
 const { Quiz, Question } = require('../models/Quiz');
-const { GameSession, Player, PlayerAnswer } = require('../models/GameSession');
+const {
+  GameSession,
+  Player,
+  PlayerAnswer,
+  Round,
+  SessionEvent,
+  IdempotencyRecord
+} = require('../models/GameSession');
 const { PlayerProfile } = require('../models/PlayerProfile');
 const bcrypt = require('bcryptjs');
 
 const clearDatabase = async () => {
   // Sync in case tables don't exist, use force: true to drop old schemas
   await sequelize.sync({ force: true });
-  
+
   await PlayerAnswer.destroy({ where: {} });
+  await IdempotencyRecord.destroy({ where: {} });
+  await SessionEvent.destroy({ where: {} });
+  await Round.destroy({ where: {} });
   await Player.destroy({ where: {} });
   await GameSession.destroy({ where: {} });
   await Question.destroy({ where: {} });
@@ -20,10 +30,10 @@ const clearDatabase = async () => {
 
 const seedTestFixtures = async () => {
   await clearDatabase();
-  
+
   const testRunId = process.env.TEST_RUN_ID ? `-${process.env.TEST_RUN_ID}` : '';
   const username = `testhost${testRunId}`;
-  
+
   // 1. Create a Test Host
   const hashedPassword = await bcrypt.hash('password123', 10);
   const host = await User.create({
