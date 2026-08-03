@@ -25,11 +25,11 @@
 | P2-T02 | 2 | Round, SessionEvent, IdempotencyRecord | Blueprint §4.4 | P0 | **PARTIALLY IMPLEMENTED** | models | fixtures | registered | foundation | Create integration | |
 | P2-T03 | 2 | SessionStateMachine | Blueprint §4.1 | P0 | **IMPLEMENTED** | SessionStateMachine.js | SessionStateMachine.test.js | pure unit | foundation | None | - |
 | P2-T04 | 2 | SessionCommandService | Blueprint §4.3–4.5 | P0 | **IMPLEMENTED** | SessionCommandService.js | SessionCommandService.test.js | pipeline + idempotency | command commits | Local mocha | - |
-| P2-T05 | 2 | Command IDs + acks + expectedStateVersion | Blueprint §4.4–4.5 | P0 | **IMPLEMENTED** (flag-gated) | socketSchemas.js, socketHandlers.js | socketSchemas.test.js + command tests | optional envelope; V2 only if NEW_SESSION_ENGINE + commandId | T05 commits | **Run `npm test` + golden flow flag OFF** | P2-T06 recovery |
-| P2-T06 | 2 | Canonical recovery endpoint | Blueprint §4.7 | P0 | PLANNED | routes | API tests | - | - | None | **NEXT** |
-| P2-T07 | 2 | Host lease | Blueprint §4.11 | P1 | PLANNED | - | - | - | - | None | After recovery |
-| P2-T08 | 2 | Transient-state watchdog | Blueprint §4.6 | P0 | PLANNED | - | - | - | - | None | After recovery |
+| P2-T05 | 2 | Command IDs + acks + expectedStateVersion | Blueprint §4.4–4.5 | P0 | **IMPLEMENTED** (flag-gated) | socketSchemas.js, socketHandlers.js | socketSchemas.test.js | optional envelope; V2 if flag + commandId | T05 commits | Local verify | - |
+| P2-T06 | 2 | Canonical recovery endpoint | Blueprint §4.7 | P0 | **IMPLEMENTED** | routes/sessions.js, SessionRecoveryService | sessionsRecovery.test.js | GET /api/sessions/:id/recovery role-safe | T06 commits | **Run mocha recovery tests locally** | P2-T08 watchdog (or T07) |
+| P2-T07 | 2 | Host lease | Blueprint §4.11 | P1 | PLANNED | - | - | - | - | None | After watchdog or parallel |
+| P2-T08 | 2 | Transient-state watchdog | Blueprint §4.6 | P0 | PLANNED | - | - | - | - | None | **NEXT recommended** |
 | P2-T09 | 2 | Client session reducer | Blueprint §3.2 | P1 | PLANNED | - | - | - | - | None | After server stable |
 | P2-T10 | 2 | Feature flag NEW_SESSION_ENGINE | Blueprint §5.5 | P0 | **IMPLEMENTED** | featureFlags.js | default false | gated in handlers | foundation | None | - |
-| P2-T11 | 2 | Reliability suite + golden flow | Blueprint §4.14 | P0 | **NOT VERIFIED** | - | critical gate | - | - | None | After T06–T08 |
+| P2-T11 | 2 | Reliability suite + golden flow | Blueprint §4.14 | P0 | **NOT VERIFIED** | - | critical gate | - | - | None | After T07–T08 |
 | P2-T12 | 2 | Completion report | Governance | P0 | PLANNED | phase-02/* | - | plan only | - | None | At exit |
