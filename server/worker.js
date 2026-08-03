@@ -17,6 +17,7 @@ if (process.env.NODE_ENV === 'test') {
     require('dotenv').config();
 }
 
+const logger = require('./utils/logger');
 const JobQueueService = require('./jobs/JobQueueService');
 const { registerReportHandlers } = require('./jobs/handlers/reportHandlers');
 
@@ -27,24 +28,27 @@ let stopping = false;
 function requestStop() {
     if (stopping) return;
     stopping = true;
-    console.log('[worker] shutdown requested');
+    logger.info('worker_shutdown_requested', { module: 'worker' });
 }
 
 process.on('SIGINT', requestStop);
 process.on('SIGTERM', requestStop);
 
 (async () => {
-    console.log('[worker] Quizmoto job worker starting');
-    console.log(`[worker] NODE_ENV=${process.env.NODE_ENV || 'development'}`);
-    console.log(`[worker] REDIS_URL=${process.env.REDIS_URL ? 'set' : 'not set (memory queue)'}`);
+    logger.info('worker_starting', {
+        module: 'worker',
+        nodeEnv: process.env.NODE_ENV || 'development',
+        redis: process.env.REDIS_URL ? 'set' : 'memory'
+    });
 
     await JobQueueService.runWorkerLoop({
         stopFn: () => stopping,
         idleMs: Number(process.env.WORKER_IDLE_MS) || 500
     });
 
+    logger.info('worker_stopped', { module: 'worker' });
     process.exit(0);
 })().catch((err) => {
-    console.error('[worker] fatal:', err);
+    logger.error('worker_fatal', { module: 'worker', error: err.message, stack: err.stack });
     process.exit(1);
 });

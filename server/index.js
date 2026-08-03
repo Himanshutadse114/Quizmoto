@@ -21,6 +21,8 @@ const cors = require('cors');
 const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
+const logger = require('./utils/logger');
 
 const app = express();
 const server = http.createServer(app);
@@ -44,18 +46,18 @@ if (process.env.REDIS_URL) {
 
     Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
         io.adapter(createAdapter(pubClient, subClient));
-        console.log('Socket.IO Redis Adapter connected 🚀');
+        logger.info('socket_redis_adapter_connected', { module: 'socket' });
     }).catch(err => {
-        console.error('Socket.IO Redis Adapter connection failed:', err);
+        logger.error('socket_redis_adapter_failed', { module: 'socket', error: err.message });
     });
 }
 
-// Middleware (Enhanced for Debugging)
+// Structured HTTP access log (P3-T08)
 app.use((req, res, next) => {
+    req.requestId = req.headers['x-request-id'] || crypto.randomUUID();
     const start = Date.now();
     res.on('finish', () => {
-        const duration = Date.now() - start;
-        console.log(`${req.method} ${req.url} ${res.statusCode} - ${duration}ms`);
+        logger.http(req, res, Date.now() - start);
     });
     next();
 });
@@ -107,10 +109,10 @@ const startServer = async () => {
 
         const PORT = process.env.PORT || 5001;
         server.listen(PORT, '0.0.0.0', () => {
-            console.log(`Server running on port ${PORT}`);
+            logger.info('server_listening', { module: 'http', port: PORT });
         });
     } catch (err) {
-        console.error('Failed to start server:', err);
+        logger.error('server_start_failed', { module: 'http', error: err.message, stack: err.stack });
         process.exit(1);
     }
 };
@@ -122,7 +124,7 @@ if (externalUrl) {
     const https = require('https');
     setInterval(() => {
         https.get(`${externalUrl}/health`).on('error', (err) => {
-            console.error('Keep-alive ping error:', err.message);
+            logger.warn('keepalive_ping_error', { module: 'http', error: err.message });
         });
     }, 14 * 60 * 1000);
 }
