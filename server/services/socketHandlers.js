@@ -39,6 +39,21 @@ const emitCommandAck = (socket, result) => {
     });
 };
 
+/** Safely parse question options into an array. */
+function parseOptions(raw) {
+    try {
+        if (raw == null) return [];
+        if (Array.isArray(raw)) return raw;
+        if (typeof raw === 'string') {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        }
+        return [];
+    } catch (_) {
+        return [];
+    }
+}
+
 module.exports = (io) => {
     io.on('connection', (socket) => {
         console.log('New connection:', socket.id);
@@ -52,9 +67,8 @@ module.exports = (io) => {
                 return socket.emit('error', `Validation Error: ${error.details[0].message}`);
             }
             const { pin: rawPin, nickname, role, avatar, token, teamName, playerProfileToken } = value;
-            
+
             const pin = String(rawPin).trim();
-            // Basic Sanitization
             const cleanNickname = nickname ? String(nickname).replace(/<[^>]*>?/gm, '').trim() : '';
 
             try {
@@ -77,7 +91,6 @@ module.exports = (io) => {
                     let player;
                     let isReentry = false;
 
-                    // Persistence Check: If token provided, try to find existing player
                     if (token) {
                         const decoded = SessionTokenService.verifyPlayerToken(token);
                         if (decoded && decoded.sessionId === session.id && decoded.nickname === cleanNickname) {
@@ -98,7 +111,6 @@ module.exports = (io) => {
                         }
 
                         if (player) {
-                            // If re-entry, check if someone else is using the socket
                             if (!isReentry && player.socketId) {
                                 return socket.emit('error', 'That name is already taken');
                             }
@@ -107,7 +119,6 @@ module.exports = (io) => {
                             if (playerProfileId && !player.playerProfileId) player.playerProfileId = playerProfileId;
                             await player.save();
                         } else {
-                            // ATOMIC: Attempt to create, catch unique constraint error if race condition occurs
                             player = await Player.create({
                                 nickname: cleanNickname,
                                 teamName: teamName || null,
@@ -120,23 +131,19 @@ module.exports = (io) => {
                         }
                     } catch (dbErr) {
                         if (dbErr.name === 'SequelizeUniqueConstraintError') {
-                            // Race condition happened, name was taken between our find and create
                             return socket.emit('error', 'That name is already taken');
                         }
-                        throw dbErr; // Let the outer catch handle unexpected server errors
+                        throw dbErr;
                     }
 
-                    // Generate persistence token for the player
                     const playerToken = SessionTokenService.generatePlayerToken(session.id, player.id, cleanNickname);
 
                     socket.join(pin);
 
-                    // Refresh session to get updated players list
                     const updatedSession = await GameSession.findByPk(session.id, {
                         include: [{ model: Player, as: 'players' }]
                     });
 
-                    // Notify host and players in lobby
                     io.to(pin).emit('player_joined', updatedSession.players);
                     socket.emit('joined_successfully', {
                         pin,
@@ -145,10 +152,8 @@ module.exports = (io) => {
                         token: playerToken
                     });
 
-                    // Store session/player info on the socket for cleanup
                     socket.data = { pin, nickname: cleanNickname, role: 'player' };
 
-                    // State Recovery: If game is in progress, send current state to player
                     if (session.status === 'question' || session.status === 'result') {
                         const quiz = await Quiz.findByPk(session.quizId, {
                             include: [{ model: Question, as: 'questions' }],
@@ -166,12 +171,10 @@ module.exports = (io) => {
 
                     socket.join(pin);
                     socket.join(`host_${pin}`);
-                    socket.data = { pin, role: 'host' };
+                    socket.data = { pin, role: 'host', hostId };
 
-                    // Notify players that host has rejoined
                     io.to(pin).emit('host_reconnected');
 
-                    // State Recovery: If game is in progress, restore full state
                     if (session.status === 'question' || session.status === 'result') {
                         const quiz = await Quiz.findByPk(session.quizId, {
                             include: [{ model: Question, as: 'questions' }],
@@ -184,7 +187,6 @@ module.exports = (io) => {
                         socket.emit('room_info', session);
                     }
                 } else if (role === 'player_check') {
-                    // Special role to just get room info before joining
                     socket.emit('room_info', session);
                 }
             } catch (err) {
@@ -208,7 +210,6 @@ module.exports = (io) => {
                     return socket.emit('error', 'Unauthorized: Only the host can start questions');
                 }
 
-                // Guard: Ignore duplicate start_question calls while a question is already in progress
                 if (session.status === 'question') {
                     console.log(`[Guard] start_question ignored for pin ${pin}: session already in question state.`);
                     return;
@@ -219,14 +220,18 @@ module.exports = (io) => {
                     order: [[{ model: Question, as: 'questions' }, 'id', 'ASC']]
                 });
 
-                // Guard: Don't go past the last question
+                if (!quiz || !Array.isArray(quiz.questions) || quiz.questions.length === 0) {
+                    return socket.emit('error', 'Quiz has no questions');
+                }
+
                 const nextIndex = session.currentQuestionIndex + 1;
                 if (nextIndex >= quiz.questions.length) {
                     console.log(`[Guard] start_question ignored for pin ${pin}: no more questions.`);
                     return;
                 }
 
-                const useV2 = SessionCommandService.isEnabled() && commandId;
+                // V2 only when flag ON *and* client sent commandId; otherwise pure legacy
+                const useV2 = SessionCommandService.isEnabled() && !!commandId;
 
                 if (useV2) {
                     const cmdResult = await SessionCommandService.executeStartQuestion({
@@ -250,31 +255,39 @@ module.exports = (io) => {
                         return socket.emit('error', cmdResult.message || cmdResult.code || 'Start question failed');
                     }
 
-                    // Reload after command path (or use replay result)
                     await session.reload();
                 } else {
-                    // Legacy path (default): unchanged behaviour when flag OFF or no commandId
                     session.currentQuestionIndex = nextIndex;
                     session.status = 'question';
                     session.questionStartTime = new Date(Date.now() + 3000);
-                    await session.save();
+                    // Only touch legacy fields so Phase 2 columns never block live play
+                    await session.save({
+                        fields: ['currentQuestionIndex', 'status', 'questionStartTime']
+                    });
                 }
 
                 logDiag('start_question_transition', pin, 'question', {
                     questionIndex: session.currentQuestionIndex,
                     hostId,
                     startTime: session.questionStartTime,
-                    v2: !!useV2,
-                    stateVersion: session.stateVersion
+                    v2: !!useV2
                 });
 
-                // Reset player states for the new question
                 await Player.update(
                     { lastAnswerCorrect: false, lastAnswerTime: 0, lastAnswerIndex: -1 },
                     { where: { sessionId: session.id } }
                 );
 
                 const question = quiz.questions[session.currentQuestionIndex];
+                if (!question) {
+                    console.error(`[start_question] missing question at index ${session.currentQuestionIndex} pin=${pin}`);
+                    return socket.emit('error', 'Question not found');
+                }
+
+                const startMs = session.questionStartTime
+                    ? new Date(session.questionStartTime).getTime()
+                    : Date.now() + 3000;
+
                 const questionData = {
                     questionText: question.questionText,
                     options: question.options,
@@ -283,11 +296,10 @@ module.exports = (io) => {
                     image: question.image,
                     index: session.currentQuestionIndex,
                     totalQuestions: quiz.questions.length,
-                    startTime: session.questionStartTime.getTime(),
+                    startTime: startMs,
                     serverTime: Date.now()
                 };
 
-                // Optional V2 envelope fields for newer clients (ignored by legacy)
                 if (useV2 && session.stateVersion != null) {
                     questionData.stateVersion = Number(session.stateVersion);
                     questionData.schemaVersion = 1;
@@ -296,41 +308,65 @@ module.exports = (io) => {
                 io.to(pin).emit('question_started', questionData);
             } catch (err) {
                 console.error('Error in start_question:', err);
+                try { socket.emit('error', 'Failed to start question'); } catch (_) {}
             }
         });
 
-        const handleEndQuestion = async (pin, options = {}) => {
+        /**
+         * End current question and emit results.
+         * CRITICAL: must always emit question_result + question_ended when status was question,
+         * even if optional analytics pieces fail.
+         */
+        const handleEndQuestion = async (pin, opts = {}) => {
+            let session;
             try {
-                const session = await GameSession.findOne({ where: { pin } });
-                if (!session || session.status !== 'question') return;
+                session = await GameSession.findOne({ where: { pin } });
+                if (!session) {
+                    logDiag('end_question_skip', pin, null, { reason: 'SESSION_NOT_FOUND' });
+                    return;
+                }
+                if (session.status !== 'question') {
+                    logDiag('end_question_skip', pin, session.status, {
+                        reason: 'NOT_IN_QUESTION',
+                        status: session.status
+                    });
+                    return;
+                }
 
                 const quiz = await Quiz.findByPk(session.quizId, {
                     include: [{ model: Question, as: 'questions' }],
                     order: [[{ model: Question, as: 'questions' }, 'id', 'ASC']]
                 });
 
-                const useV2 = SessionCommandService.isEnabled() && options.commandId && options.hostId;
+                // V2 only when flag ON and commandId provided; never block legacy live path
+                const useV2 = SessionCommandService.isEnabled() && !!opts.commandId && !!opts.hostId;
 
                 if (useV2) {
                     const cmdResult = await SessionCommandService.executeEndQuestion({
-                        commandId: options.commandId,
+                        commandId: opts.commandId,
                         sessionId: session.id,
-                        actorId: String(options.hostId),
-                        expectedStateVersion: options.expectedStateVersion
+                        actorId: String(opts.hostId),
+                        expectedStateVersion: opts.expectedStateVersion
                     });
-                    if (options.ackSocket) {
-                        emitCommandAck(options.ackSocket, { ...cmdResult, commandId: options.commandId });
+                    if (opts.ackSocket) {
+                        emitCommandAck(opts.ackSocket, { ...cmdResult, commandId: opts.commandId });
                     }
                     if (!cmdResult.ok && !cmdResult.replay) {
-                        if (options.ackSocket) {
-                            options.ackSocket.emit('error', cmdResult.message || cmdResult.code || 'End question failed');
+                        // Fall back to legacy status write so the room is never stuck
+                        console.warn('[handleEndQuestion] V2 end failed, falling back to legacy', cmdResult.code);
+                        session.status = 'result';
+                        await session.save({ fields: ['status'] });
+                    } else {
+                        await session.reload();
+                        // Ensure legacy status is result for clients still on status field
+                        if (session.status !== 'result') {
+                            session.status = 'result';
+                            await session.save({ fields: ['status'] });
                         }
-                        return;
                     }
-                    await session.reload();
                 } else {
                     session.status = 'result';
-                    await session.save();
+                    await session.save({ fields: ['status'] });
                 }
 
                 logDiag('end_question_transition', pin, 'result', {
@@ -342,54 +378,107 @@ module.exports = (io) => {
                     where: { sessionId: session.id }
                 });
 
-                // Send individual results to each player
-                allPlayers.forEach(player => {
-                    if (player.socketId) {
-                        io.to(player.socketId).emit('question_result', {
-                            correct: player.lastAnswerCorrect,
-                            score: player.score,
-                            answered: player.lastAnswerIndex !== -1
-                        });
+                // 1) Always notify each player (and room fallback)
+                for (const player of allPlayers) {
+                    const resultPayload = {
+                        correct: !!player.lastAnswerCorrect,
+                        score: player.score,
+                        answered: player.lastAnswerIndex !== -1,
+                        nickname: player.nickname
+                    };
+                    try {
+                        if (player.socketId) {
+                            io.to(player.socketId).emit('question_result', resultPayload);
+                        }
+                    } catch (emitErr) {
+                        console.error('[handleEndQuestion] question_result emit failed', player.nickname, emitErr.message);
                     }
-                });
+                }
+                // Room-level fallback so clients that only listen on the pin room still update
+                try {
+                    io.to(pin).emit('question_result_broadcast', {
+                        results: allPlayers.map((p) => ({
+                            nickname: p.nickname,
+                            correct: !!p.lastAnswerCorrect,
+                            score: p.score,
+                            answered: p.lastAnswerIndex !== -1
+                        }))
+                    });
+                } catch (_) {}
 
-                const leaderboard = await Player.findAll({
-                    where: { sessionId: session.id },
-                    order: [['score', 'DESC']],
-                    limit: 5,
-                    attributes: ['nickname', 'score', 'avatar']
-                });
+                // 2) Build leaderboard / distribution defensively
+                let leaderboard = [];
+                try {
+                    leaderboard = await Player.findAll({
+                        where: { sessionId: session.id },
+                        order: [['score', 'DESC']],
+                        limit: 5,
+                        attributes: ['nickname', 'score', 'avatar']
+                    });
+                } catch (lbErr) {
+                    console.error('[handleEndQuestion] leaderboard query failed', lbErr.message);
+                }
 
-                const currentQuestion = quiz.questions[session.currentQuestionIndex];
-                const optionsList = typeof currentQuestion.options === 'string' ? JSON.parse(currentQuestion.options) : currentQuestion.options;
-                const distribution = optionsList.map((_, i) => allPlayers.filter(p => p.lastAnswerIndex === i).length);
+                const qIndex = session.currentQuestionIndex;
+                const currentQuestion =
+                    quiz && Array.isArray(quiz.questions) && quiz.questions[qIndex]
+                        ? quiz.questions[qIndex]
+                        : null;
+                const optionsList = parseOptions(currentQuestion ? currentQuestion.options : null);
+                const distribution = optionsList.map((_, i) =>
+                    allPlayers.filter((p) => p.lastAnswerIndex === i).length
+                );
 
                 let teamStandings = [];
                 if (session.gameMode === 'team') {
-                    // Aggregate scores by team
-                    const teamScores = await Player.findAll({
-                        where: { sessionId: session.id },
-                        attributes: [
-                            'teamName',
-                            [sequelize.fn('SUM', sequelize.col('score')), 'totalScore']
-                        ],
-                        group: ['teamName'],
-                        order: [[sequelize.literal('"totalScore"'), 'DESC']]
-                    });
-                    teamStandings = teamScores.map(t => ({
-                        teamName: t.teamName,
-                        score: parseInt(t.get('totalScore'))
-                    }));
+                    try {
+                        const teamScores = await Player.findAll({
+                            where: { sessionId: session.id },
+                            attributes: [
+                                'teamName',
+                                [sequelize.fn('SUM', sequelize.col('score')), 'totalScore']
+                            ],
+                            group: ['teamName'],
+                            order: [[sequelize.literal('"totalScore"'), 'DESC']]
+                        });
+                        teamStandings = teamScores.map((t) => ({
+                            teamName: t.teamName,
+                            score: parseInt(t.get('totalScore'), 10) || 0
+                        }));
+                    } catch (teamErr) {
+                        console.error('[handleEndQuestion] team standings failed', teamErr.message);
+                    }
                 }
 
+                // 3) Always emit question_ended to the room
                 io.to(pin).emit('question_ended', {
                     leaderboard,
                     teamStandings,
-                    correctIndex: currentQuestion ? currentQuestion.correctIndex : null,
+                    correctIndex: currentQuestion != null ? currentQuestion.correctIndex : null,
                     distribution
+                });
+
+                logDiag('end_question_emitted', pin, 'result', {
+                    playerCount: allPlayers.length,
+                    hasCurrentQuestion: !!currentQuestion
                 });
             } catch (err) {
                 console.error('Error in handleEndQuestion:', err);
+                // Last-resort emit so clients are not stuck on the question screen
+                try {
+                    if (session && session.status === 'question') {
+                        session.status = 'result';
+                        await session.save({ fields: ['status'] });
+                    }
+                    io.to(pin).emit('question_ended', {
+                        leaderboard: [],
+                        teamStandings: [],
+                        correctIndex: null,
+                        distribution: []
+                    });
+                } catch (fallbackErr) {
+                    console.error('handleEndQuestion fallback emit failed:', fallbackErr.message);
+                }
             }
         };
 
@@ -415,7 +504,7 @@ module.exports = (io) => {
         socket.on('submit_answer', async (payload) => {
             const { error, value } = validateSocketPayload('submit_answer', payload);
             if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
-            const { pin: rawPin, nickname, answerIndex, timeRemaining } = value;
+            const { pin: rawPin, nickname, answerIndex } = value;
 
             const pin = String(rawPin).trim();
             try {
@@ -439,7 +528,7 @@ module.exports = (io) => {
             }
         });
 
-        // End Question / Show Result (legacy alias used by some clients)
+        // Legacy alias: some clients use next_question to end the current question
         socket.on('next_question', async (payload) => {
             const { error, value } = validateSocketPayload('next_question', payload);
             if (error) return socket.emit('error', `Validation Error: ${error.details[0].message}`);
@@ -447,7 +536,6 @@ module.exports = (io) => {
 
             const pin = String(rawPin).trim();
 
-            // Security Check
             const session = await GameSession.findOne({ where: { pin } });
             if (!session) return;
 
@@ -463,19 +551,17 @@ module.exports = (io) => {
         const lastReaction = new Map();
         socket.on('send_reaction', (payload) => {
             const { error, value } = validateSocketPayload('send_reaction', payload);
-            if (error) return; // silent fail for reactions to avoid spam
+            if (error) return;
             const { pin: rawPin, emoji } = value;
-            
+
             const pin = String(rawPin).trim();
             const now = Date.now();
             const lastTime = lastReaction.get(socket.id) || 0;
 
-            // Rate limit: 2 reactions per second per socket
             if (now - lastTime < 500) return;
 
             lastReaction.set(socket.id, now);
 
-            // Broadcast the reaction to everyone in the room
             io.to(pin).emit('new_reaction', { emoji, id: `${socket.id}_${now}` });
         });
 
@@ -493,10 +579,10 @@ module.exports = (io) => {
                 const hostId = SessionTokenService.verifyHostToken(token);
                 if (!hostId || session.hostId !== hostId) return;
 
-                session.gameMode = mode; // 'classic' or 'team'
-                await session.save();
+                session.gameMode = mode;
+                await session.save({ fields: ['gameMode'] });
 
-                io.to(pin).emit('room_info', session); // Update everyone
+                io.to(pin).emit('room_info', session);
             } catch (err) {
                 console.error(err);
             }
@@ -513,13 +599,12 @@ module.exports = (io) => {
                 const session = await GameSession.findOne({ where: { pin } });
                 if (!session) return;
 
-                // Security Check
                 const hostId = SessionTokenService.verifyHostToken(token);
                 if (!hostId || session.hostId !== hostId) {
                     return socket.emit('error', 'Unauthorized');
                 }
 
-                const useV2 = SessionCommandService.isEnabled() && commandId;
+                const useV2 = SessionCommandService.isEnabled() && !!commandId;
 
                 if (useV2) {
                     const cmdResult = await SessionCommandService.executeEndGame({
@@ -530,12 +615,18 @@ module.exports = (io) => {
                     });
                     emitCommandAck(socket, { ...cmdResult, commandId });
                     if (!cmdResult.ok && !cmdResult.replay) {
-                        return socket.emit('error', cmdResult.message || cmdResult.code || 'End game failed');
+                        session.status = 'finished';
+                        await session.save({ fields: ['status'] });
+                    } else {
+                        await session.reload();
+                        if (session.status !== 'finished') {
+                            session.status = 'finished';
+                            await session.save({ fields: ['status'] });
+                        }
                     }
-                    await session.reload();
                 } else {
                     session.status = 'finished';
-                    await session.save();
+                    await session.save({ fields: ['status'] });
                 }
 
                 const players = await Player.findAll({
@@ -554,15 +645,12 @@ module.exports = (io) => {
                         group: ['teamName'],
                         order: [[sequelize.literal('"totalScore"'), 'DESC']]
                     });
-                    teamStandings = teamScores.map(t => ({
+                    teamStandings = teamScores.map((t) => ({
                         teamName: t.teamName,
-                        score: parseInt(t.get('totalScore'))
+                        score: parseInt(t.get('totalScore'), 10) || 0
                     }));
                 }
 
-                // END OF TEAM STANDING LOGIC
-
-                // === 🌟 NEW: ANALYTICS GENERATION 🌟 ===
                 let classAnalytics = { totalStudents: 0, totalQuestions: 0, averageScore: 0, averageAccuracy: 0, participationRate: 0 };
                 let questionAnalytics = [];
                 let studentAnalytics = [];
@@ -580,11 +668,10 @@ module.exports = (io) => {
                     const totalQuestions = quiz.questions.length;
                     const totalStudents = players.length;
 
-                    // 1. Question Analytics
                     questionAnalytics = quiz.questions.map((q, index) => {
-                        const answersForQ = allAnswers.filter(a => a.questionIndex === index);
+                        const answersForQ = allAnswers.filter((a) => a.questionIndex === index);
                         const totalResponses = answersForQ.length;
-                        const correctCount = answersForQ.filter(a => a.isCorrect).length;
+                        const correctCount = answersForQ.filter((a) => a.isCorrect).length;
                         const incorrectCount = totalResponses - correctCount;
                         const correctPercentage = totalResponses > 0 ? Math.round((correctCount / totalResponses) * 100) : 0;
 
@@ -595,18 +682,18 @@ module.exports = (io) => {
                             correctCount,
                             incorrectCount,
                             correctPercentage,
-                            difficulty: totalResponses > 0 ?
-                                (correctPercentage >= 80) ? 'easy' :
-                                    (correctPercentage >= 60) ? 'medium' : 'hard' : 'unknown',
+                            difficulty: totalResponses > 0
+                                ? (correctPercentage >= 80) ? 'easy'
+                                    : (correctPercentage >= 60) ? 'medium' : 'hard'
+                                : 'unknown',
                             needsReview: correctPercentage < 60
                         };
                     });
 
-                    // 2. Student Analytics
-                    studentAnalytics = players.map(p => {
-                        const studentAnswers = allAnswers.filter(a => a.playerId === p.id);
+                    studentAnalytics = players.map((p) => {
+                        const studentAnswers = allAnswers.filter((a) => a.playerId === p.id);
                         const totalAnswered = studentAnswers.length;
-                        const correctAnswers = studentAnswers.filter(a => a.isCorrect).length;
+                        const correctAnswers = studentAnswers.filter((a) => a.isCorrect).length;
                         const incorrectAnswers = totalAnswered - correctAnswers;
                         const accuracy = totalAnswered > 0 ? Math.round((correctAnswers / totalAnswered) * 100) : 0;
 
@@ -624,27 +711,23 @@ module.exports = (io) => {
                         };
                     });
 
-                    // 3. Class Analytics
                     const totalAnsweredQuestions = allAnswers.length;
                     classAnalytics = {
                         totalStudents,
                         totalQuestions,
                         averageScore: totalStudents > 0 ? Math.round(players.reduce((sum, p) => sum + p.score, 0) / totalStudents) : 0,
                         averageAccuracy: studentAnalytics.length > 0 ? Math.round(studentAnalytics.reduce((sum, s) => sum + s.accuracy, 0) / studentAnalytics.length) : 0,
-                        questionsNeedingReview: questionAnalytics.filter(q => q.needsReview).length,
-                        studentsNeedingAttention: studentAnalytics.filter(s => s.needsAttention).length,
+                        questionsNeedingReview: questionAnalytics.filter((q) => q.needsReview).length,
+                        studentsNeedingAttention: studentAnalytics.filter((s) => s.needsAttention).length,
                         participationRate: (totalStudents > 0 && totalQuestions > 0) ? Math.round((totalAnsweredQuestions / (totalStudents * totalQuestions)) * 100) : 0
                     };
-
                 } catch (analyticsErr) {
                     console.error('Error generating analytics:', analyticsErr);
                 }
 
-                // === 💾 PERSIST ANALYTICS 💾 ===
                 session.analytics = { classAnalytics, questionAnalytics, studentAnalytics };
-                await session.save();
+                await session.save({ fields: ['analytics', 'status'] });
 
-                // === 🏆 AWARD XP TO PERSISTENT PLAYERS 🏆 ===
                 for (const p of players) {
                     if (p.playerProfileId) {
                         try {
@@ -652,7 +735,7 @@ module.exports = (io) => {
                             if (profile) {
                                 profile.xp += p.score;
                                 profile.gamesPlayed += 1;
-                                profile.level = Math.floor(profile.xp / 1000) + 1; // 1 level per 1000 XP
+                                profile.level = Math.floor(profile.xp / 1000) + 1;
                                 await profile.save();
                             }
                         } catch (e) {
@@ -682,11 +765,9 @@ module.exports = (io) => {
                     });
 
                     if (player) {
-                        // Mark socket as null, but keep player record for persistence/re-join
                         player.socketId = null;
                         await player.save();
 
-                        // Notify host that player is gone (visually)
                         const session = await GameSession.findOne({
                             where: { pin },
                             include: [{ model: Player, as: 'players' }]
@@ -699,7 +780,6 @@ module.exports = (io) => {
                     console.error('Error in disconnect cleanup:', err);
                 }
             } else if (role === 'host' && pin) {
-                // Notify players that the host disconnected (so they can pause/wait)
                 io.to(pin).emit('host_disconnected');
             }
         });
