@@ -17,6 +17,26 @@ router.use((req, res, next) => {
     next();
 });
 
+/** Re-seed deterministic host + quiz used by golden flow (safe for multi-project Playwright runs). */
+router.post('/seed', async (req, res) => {
+    try {
+        if (req.body && req.body.testRunId) {
+            process.env.TEST_RUN_ID = String(req.body.testRunId);
+        }
+        const { seedTestFixtures } = require('../tests/fixtures');
+        const fixtures = await seedTestFixtures();
+        res.json({
+            success: true,
+            hostId: fixtures.host.id,
+            quizId: fixtures.quiz.id,
+            quizTitle: fixtures.quiz.title
+        });
+    } catch (error) {
+        console.error('Seed error:', error);
+        res.status(500).json({ error: 'Seed failed', message: error.message });
+    }
+});
+
 router.post('/cleanup', async (req, res) => {
     try {
         const { testRunId } = req.body;
@@ -25,11 +45,10 @@ router.post('/cleanup', async (req, res) => {
         const suffix = `-${testRunId}`;
         const { Op } = require('sequelize');
 
-        // Cleanup test users with the suffix
-        const testUsers = await User.findAll({ 
-            where: { 
-                username: { [Op.endsWith]: suffix } 
-            } 
+        const testUsers = await User.findAll({
+            where: {
+                username: { [Op.endsWith]: suffix }
+            }
         });
 
         for (const user of testUsers) {
