@@ -22,23 +22,22 @@ test.describe('Golden Flow', () => {
     });
 
     test('reproduce starting session defect', async ({ request }) => {
-        test.setTimeout(90000); // Mobile + multi-question flow needs headroom
+        test.setTimeout(90000);
 
         hostPage = await hostContext.newPage();
         playerAPage = await playerAContext.newPage();
         playerBPage = await playerBContext.newPage();
 
-        // Chromium project cleanup can wipe the DB before Mobile Chrome runs.
-        // Re-seed at the start of every project run so the quiz always exists.
         const testRunId = process.env.TEST_RUN_ID || '';
-        const seedRes = await request.post('http://localhost:5002/api/test-only/seed', {
-            headers: {
-                'x-test-secret': process.env.TEST_SECRET || 'fallback_secret'
-            },
-            data: { testRunId }
-        }).catch(() => null);
+        const testSecret = process.env.TEST_SECRET || 'fallback_secret';
 
-        // Fallback: if seed endpoint is missing, rely on global-setup seed + test-login
+        // Always re-seed so Mobile Chrome is not empty after Chromium cleanup
+        const seedRes = await request.post('http://localhost:5002/api/test-only/seed', {
+            headers: { 'x-test-secret': testSecret },
+            data: { testRunId }
+        });
+        expect(seedRes.ok(), `seed failed: ${seedRes.status()}`).toBeTruthy();
+
         const loginRes = await request.post('http://localhost:5002/api/auth/test-login', {
             data: { testRunId }
         });
@@ -122,18 +121,13 @@ test.describe('Golden Flow', () => {
         await quizHeading.waitFor({ state: 'attached', timeout: 20000 });
         await expect(quizHeading).toBeAttached();
 
-        const exportBtn = hostPage.getByRole('button', { name: 'PDF' }).first();
-        if (await exportBtn.isVisible()) {
-            // presence only
+        if (testRunId) {
+            const cleanupRes = await request.post('http://localhost:5002/api/test-only/cleanup', {
+                headers: { 'x-test-secret': testSecret },
+                data: { testRunId }
+            });
+            expect(cleanupRes.ok()).toBeTruthy();
         }
-
-        const cleanupRes = await request.post('http://localhost:5002/api/test-only/cleanup', {
-            headers: {
-                'x-test-secret': process.env.TEST_SECRET || 'fallback_secret'
-            },
-            data: { testRunId }
-        });
-        expect(cleanupRes.ok()).toBeTruthy();
 
         await hostPage.evaluate(() => {
             localStorage.clear();
@@ -141,8 +135,5 @@ test.describe('Golden Flow', () => {
         });
         const tokenAfter = await hostPage.evaluate(() => localStorage.getItem('token'));
         expect(tokenAfter).toBeNull();
-
-        // silence unused seedRes if endpoint missing
-        void seedRes;
     });
 });
