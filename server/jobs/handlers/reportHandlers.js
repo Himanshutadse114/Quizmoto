@@ -1,45 +1,42 @@
 /**
- * Phase 3 report job handlers (foundation stubs).
- * Full Python export wiring lands in P3-T05.
- * Handlers must be side-effect safe and never touch live session sockets.
+ * Phase 3 report job handlers — real generation via ReportGenerationService.
+ * Never touches live session sockets.
  */
 
-const path = require('path');
-const fs = require('fs');
 const { JOB_TYPES } = require('../jobTypes');
 const JobQueueService = require('../JobQueueService');
+const ReportGenerationService = require('../../services/ReportGenerationService');
 
-function ensureDir(dir) {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-}
-
-/**
- * Placeholder: validates payload and records intent.
- * P3-T05 will invoke generate_report.py / Excel path here.
- */
 async function handleReportJob(payload, job) {
     const sessionId = payload && payload.sessionId;
-    const format = (payload && payload.format) || (job.type === JOB_TYPES.REPORT_EXCEL ? 'excel' : 'pdf');
+    const hostId = payload && payload.hostId;
+    const format =
+        (payload && payload.format) ||
+        (job.type === JOB_TYPES.REPORT_EXCEL ? 'excel' : 'pdf');
+    const testRunId = (payload && payload.testRunId) || null;
 
     if (!sessionId) {
         throw new Error('sessionId is required in report job payload');
     }
+    if (hostId == null) {
+        throw new Error('hostId is required in report job payload');
+    }
 
-    const artifactsRoot =
-        process.env.REPORT_ARTIFACTS_DIR ||
-        path.join(__dirname, '../../data/artifacts');
-    ensureDir(artifactsRoot);
+    const result = await ReportGenerationService.generateReportFile({
+        sessionId,
+        hostId,
+        format,
+        testRunId,
+        keepFiles: true // worker keeps artifact for download
+    });
 
-    // Foundation: do not run Python yet — mark as accepted skeleton result.
-    // T05 replaces this with real generation and storage path.
     return {
         ok: true,
         sessionId,
         format,
-        artifactPath: null,
-        note: 'handler_stub_pending_P3_T05'
+        artifactPath: result.outputPath,
+        contentType: result.contentType,
+        downloadName: result.downloadName
     };
 }
 

@@ -2,11 +2,18 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
 const { Quiz, Question } = require('../models/Quiz');
 const { GameSession, Player, PlayerAnswer } = require('../models/GameSession');
 const auth = require('./middleware');
 const defaultQuizzes = require('../utils/seedData');
+const { featureFlags } = require('../config/featureFlags');
+const ReportGenerationService = require('../services/ReportGenerationService');
+const JobQueueService = require('../jobs/JobQueueService');
+const { JOB_TYPES } = require('../jobs/jobTypes');
+const { registerReportHandlers } = require('../jobs/handlers/reportHandlers');
+
+// Ensure handlers exist when API process enqueues (inline process in tests)
+registerReportHandlers();
 
 const Joi = require('joi');
 
@@ -64,7 +71,6 @@ Each quiz must have 5-10 questions. Ensure options are distinct and one index is
         const response = await result.response;
         let text = response.text();
 
-        // Clean text if Gemini wraps it in markdown code blocks
         text = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
         const quizData = JSON.parse(text);
@@ -75,7 +81,6 @@ Each quiz must have 5-10 questions. Ensure options are distinct and one index is
     }
 });
 
-// Get all quizzes for host
 router.get('/', auth, async (req, res) => {
     try {
         const quizzes = await Quiz.findAll({
@@ -90,7 +95,6 @@ router.get('/', auth, async (req, res) => {
     }
 });
 
-// Create new quiz
 router.post('/', auth, async (req, res) => {
     try {
         console.log('Quiz Creation Request:', JSON.stringify(req.body, null, 2));
@@ -125,18 +129,15 @@ router.post('/', auth, async (req, res) => {
     }
 });
 
-// Start a game session
 router.post('/:id/start', auth, async (req, res) => {
     try {
         const quiz = await Quiz.findByPk(req.params.id);
         if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
 
-        // DEFECT FIX: Authorization - ensure host owns the quiz
         if (quiz.hostId !== req.userId) {
             return res.status(403).json({ message: 'Unauthorized' });
         }
 
-        // Generate 6-digit PIN
         let pin;
         let isUnique = false;
         while (!isUnique) {
@@ -159,7 +160,6 @@ router.post('/:id/start', auth, async (req, res) => {
     }
 });
 
-// Get single quiz for editing
 router.get('/:id', auth, async (req, res) => {
     try {
         const quiz = await Quiz.findByPk(req.params.id, {
@@ -174,7 +174,6 @@ router.get('/:id', auth, async (req, res) => {
     }
 });
 
-// Update quiz
 router.put('/:id', auth, async (req, res) => {
     try {
         const { error } = quizSchema.validate(req.body);
@@ -187,7 +186,6 @@ router.put('/:id', auth, async (req, res) => {
         const { title, questions } = req.body;
         await quiz.update({ title });
 
-        // Delete old questions and recreate
         await Question.destroy({ where: { quizId: quiz.id } });
         if (questions && questions.length > 0) {
             const questionsWithQuizId = questions.map(q => ({
@@ -205,7 +203,6 @@ router.put('/:id', auth, async (req, res) => {
     }
 });
 
-// Get active sessions for host
 router.get('/active-sessions', auth, async (req, res) => {
     try {
         const { Op } = require('sequelize');
@@ -224,7 +221,6 @@ router.get('/active-sessions', auth, async (req, res) => {
     }
 });
 
-// Import default quizzes
 router.post('/import-defaults', auth, async (req, res) => {
     try {
         for (const qData of defaultQuizzes) {
@@ -245,7 +241,6 @@ router.post('/import-defaults', auth, async (req, res) => {
     }
 });
 
-// Get reports (finished sessions)
 router.get('/reports/all', auth, async (req, res) => {
     try {
         const reports = await GameSession.findAll({
@@ -254,13 +249,13 @@ router.get('/reports/all', auth, async (req, res) => {
                 status: 'finished'
             },
             include: [
-                { 
-                    model: Player, 
+                {
+                    model: Player,
                     as: 'players',
                     include: [{ model: PlayerAnswer, as: 'answers' }]
                 },
-                { 
-                    model: Quiz, 
+                {
+                    model: Quiz,
                     attributes: ['title'],
                     include: [{ model: Question, as: 'questions' }]
                 }
@@ -275,13 +270,11 @@ router.get('/reports/all', auth, async (req, res) => {
     }
 });
 
-// Delete a quiz
 router.delete('/:id', auth, async (req, res) => {
     try {
         const quiz = await Quiz.findByPk(req.params.id);
         if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
 
-        // Authorization check
         if (quiz.hostId !== req.userId) {
             return res.status(403).json({ message: 'Unauthorized' });
         }
@@ -294,7 +287,11 @@ router.delete('/:id', auth, async (req, res) => {
     }
 });
 
-// Export report as PDF or Excel
+/**
+ * Export report as PDF or Excel.
+ * - REPORTS_ASYNC=false (default): sync download (legacy behaviour)
+ * - REPORTS_ASYNC=true: enqueue job, return 202 + jobId (does not block on Python)
+ */
 router.get('/reports/:id/export', auth, async (req, res) => {
     try {
         const format = req.query.format || 'pdf';
@@ -302,58 +299,81 @@ router.get('/reports/:id/export', auth, async (req, res) => {
             return res.status(400).json({ message: 'Invalid format' });
         }
 
-        const session = await GameSession.findOne({
-            where: { id: req.params.id, hostId: req.userId },
-            include: [
-                { 
-                    model: Player, 
-                    as: 'players',
-                    include: [{ model: PlayerAnswer, as: 'answers' }]
-                },
-                { 
-                    model: Quiz, 
-                    attributes: ['title'],
-                    include: [{ model: Question, as: 'questions' }]
-                }
-            ]
+        const sessionId = req.params.id;
+        const testRunId = req.headers['x-test-run-id'] || null;
+
+        // Ownership check early (both paths)
+        const owned = await GameSession.findOne({
+            where: { id: sessionId, hostId: req.userId },
+            attributes: ['id']
         });
+        if (!owned) return res.status(404).json({ message: 'Session not found' });
 
-        if (!session) return res.status(404).json({ message: 'Session not found' });
+        if (featureFlags.reportsAsync) {
+            const jobType = format === 'excel' ? JOB_TYPES.REPORT_EXCEL : JOB_TYPES.REPORT_PDF;
+            const idempotencyKey = `report:${sessionId}:${format}:${req.userId}`;
 
-        const tmpRoot = process.env.TEST_TEMP_DIR_ROOT || path.join(__dirname, '../data/tmp');
-        const tmpDir = process.env.NODE_ENV === 'test' && req.headers['x-test-run-id'] 
-            ? path.join(tmpRoot, `test_${req.headers['x-test-run-id']}`)
-            : tmpRoot;
+            const job = await JobQueueService.enqueue({
+                type: jobType,
+                payload: {
+                    sessionId: Number(sessionId) || sessionId,
+                    hostId: req.userId,
+                    format,
+                    testRunId
+                },
+                idempotencyKey,
+                actorId: String(req.userId)
+            });
 
-        if (!fs.existsSync(tmpDir)) {
-            fs.mkdirSync(tmpDir, { recursive: true });
+            // Optional inline process for tests / single-process without a worker
+            if (process.env.REPORTS_PROCESS_INLINE === '1') {
+                await JobQueueService.processJob(job.id);
+                const updated = await JobQueueService.getJob(job.id);
+                return res.status(202).json({
+                    jobId: updated.id,
+                    status: updated.status,
+                    downloadPath: updated.status === 'completed'
+                        ? `/api/jobs/${updated.id}/download`
+                        : null,
+                    error: updated.error || null
+                });
+            }
+
+            return res.status(202).json({
+                jobId: job.id,
+                status: job.status,
+                message: 'Report job enqueued',
+                statusPath: `/api/jobs/${job.id}`
+            });
         }
 
-        const timestamp = Date.now();
-        const jsonPath = path.join(tmpDir, `report_${session.id}_${timestamp}.json`);
-        const ext = format === 'pdf' ? '.pdf' : '.xlsx';
-        const outputPath = path.join(tmpDir, `report_${session.id}_${timestamp}${ext}`);
+        // —— Legacy sync path (default) ——
+        const generated = await ReportGenerationService.generateReportFile({
+            sessionId,
+            hostId: req.userId,
+            format,
+            testRunId,
+            keepFiles: false
+        });
 
-        fs.writeFileSync(jsonPath, JSON.stringify(session.toJSON()));
-
-        const scriptPath = path.join(__dirname, '../utils/generate_report.py');
-        const pyCmd = process.env.TEST_PYTHON_FAIL ? 'invalid_python_cmd_xyz' : (process.platform === 'win32' ? 'python' : 'python3');
-        exec(`${pyCmd} ${scriptPath} ${jsonPath} ${outputPath} ${format}`, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`exec error: ${error}`);
-                console.error(`stderr: ${stderr}`);
-                if (fs.existsSync(jsonPath)) fs.unlinkSync(jsonPath);
-                return res.status(500).json({ message: 'Report generation failed' });
+        res.download(generated.outputPath, generated.downloadName, (err) => {
+            ReportGenerationService.safeUnlink(generated.outputPath);
+            ReportGenerationService.safeUnlink(generated.jsonPath);
+            if (err && !res.headersSent) {
+                res.status(500).json({ message: 'Report download failed' });
             }
-            
-            res.download(outputPath, `Report${ext}`, (err) => {
-                // Cleanup temp files after sending
-                if (fs.existsSync(jsonPath)) fs.unlinkSync(jsonPath);
-                if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-            });
         });
     } catch (err) {
         console.error(err);
+        if (err.code === 'SESSION_NOT_FOUND') {
+            return res.status(404).json({ message: 'Session not found' });
+        }
+        if (err.code === 'INVALID_FORMAT') {
+            return res.status(400).json({ message: 'Invalid format' });
+        }
+        if (err.code === 'REPORT_GEN_FAILED') {
+            return res.status(500).json({ message: 'Report generation failed' });
+        }
         res.status(500).json({ message: 'Server error' });
     }
 });

@@ -62,7 +62,6 @@ app.use((req, res, next) => {
 
 app.use(cors({
     origin: (origin, callback) => {
-        // Reflect origin to satisfy credentials: true
         callback(null, true);
     },
     credentials: true
@@ -71,13 +70,10 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-
-// DB Connection & Start Server
 const startServer = async () => {
-    // Health Check / Root Route (Moved here for better visibility)
     app.get(['/api', '/api/', '/health'], (req, res) => {
-        res.json({ 
-            message: 'Kahoot Awareness Backend is running 🚀', 
+        res.json({
+            message: 'Kahoot Awareness Backend is running 🚀',
             status: 'healthy',
             timestamp: new Date().toISOString()
         });
@@ -91,21 +87,19 @@ const startServer = async () => {
             await seedTestFixtures();
         }
 
-        // Routes
         app.use('/api/auth', require('./routes/auth'));
         app.use('/api/player', require('./routes/playerAuth'));
         app.use('/api/quizzes', require('./routes/quizzes'));
         app.use('/api/sessions', require('./routes/sessions'));
+        app.use('/api/jobs', require('./routes/jobs'));
 
         if (process.env.NODE_ENV === 'test') {
             app.use('/api/test-only', require('./routes/testOnly'));
         }
 
-        // Socket.io Logic
         const socketHandlers = require('./services/socketHandlers');
         socketHandlers(io);
 
-        // Phase 2: transient-state watchdog (no-op when NEW_SESSION_ENGINE is off)
         const SessionWatchdogService = require('./services/SessionWatchdogService');
         SessionWatchdogService.startPeriodic(
             Number(process.env.SESSION_WATCHDOG_INTERVAL_MS) || 15000
@@ -123,8 +117,6 @@ const startServer = async () => {
 
 startServer();
 
-// --- Keep-Alive Ping for Render Free Tier ---
-// Pings the /health endpoint every 14 minutes to prevent the server from sleeping.
 const externalUrl = process.env.RENDER_EXTERNAL_URL;
 if (externalUrl) {
     const https = require('https');
@@ -132,5 +124,5 @@ if (externalUrl) {
         https.get(`${externalUrl}/health`).on('error', (err) => {
             console.error('Keep-alive ping error:', err.message);
         });
-    }, 14 * 60 * 1000); // 14 minutes
+    }, 14 * 60 * 1000);
 }

@@ -1,7 +1,6 @@
 const { expect } = require('chai');
 const JobQueueService = require('../jobs/JobQueueService');
 const { JOB_TYPES, JOB_STATUS } = require('../jobs/jobTypes');
-const { registerReportHandlers } = require('../jobs/handlers/reportHandlers');
 const { featureFlags } = require('../config/featureFlags');
 
 describe('JobQueueService (Phase 3 foundation)', function () {
@@ -9,7 +8,15 @@ describe('JobQueueService (Phase 3 foundation)', function () {
 
     beforeEach(() => {
         JobQueueService._resetForTests();
-        registerReportHandlers();
+        // Minimal handler — full report path covered in reports.async.test.js
+        JobQueueService.registerHandler(JOB_TYPES.REPORT_PDF, async (payload) => {
+            if (!payload.sessionId) throw new Error('sessionId is required in report job payload');
+            return { ok: true, sessionId: payload.sessionId, format: 'pdf' };
+        });
+        JobQueueService.registerHandler(JOB_TYPES.REPORT_EXCEL, async (payload) => {
+            if (!payload.sessionId) throw new Error('sessionId is required in report job payload');
+            return { ok: true, sessionId: payload.sessionId, format: 'excel' };
+        });
     });
 
     it('REPORTS_ASYNC remains default false (flag does not auto-enable queue path)', () => {
@@ -60,7 +67,6 @@ describe('JobQueueService (Phase 3 foundation)', function () {
         expect(outcome.code).to.equal('COMPLETED');
         expect(outcome.job.status).to.equal(JOB_STATUS.COMPLETED);
         expect(outcome.job.result.sessionId).to.equal(7);
-        expect(outcome.job.result.note).to.equal('handler_stub_pending_P3_T05');
     });
 
     it('processJob fails when sessionId missing', async () => {
