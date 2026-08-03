@@ -10,9 +10,9 @@
 | P3-T04 | Queue + worker foundation | **DONE** |
 | P3-T05 | Async reports | **DONE** |
 | P3-T06 | Object storage abstraction | **DONE** |
-| P3-T07 | Backup / restore runbook | **DONE** — runbook + scripts; drill pending operator Postgres |
-| P3-T08 | Structured logging | **NEXT** |
-| P3-T09 | Metrics hooks | NOT STARTED |
+| P3-T07 | Backup / restore runbook | **DONE** — runbook + scripts; drill pending operator |
+| P3-T08 | Structured logging | **DONE** — `server/utils/logger.js`; HTTP + job + worker wired |
+| P3-T09 | Metrics hooks | **NEXT** |
 | P3-T10 | REPORTS_ASYNC flag | **DONE** (default OFF) |
 | P3-T11 | Acceptance tests | PARTIAL |
 | P3-T12 | Completion report | NOT STARTED |
@@ -31,3 +31,11 @@
 - Scripts: `scripts/postgres_backup.sh`, `scripts/postgres_restore.sh`
 - Restore refuses common prod DB names unless `ALLOW_PROD_RESTORE=yes`
 - Operator drill evidence still needed when staging Postgres is available (or mark BLOCKED)
+
+## P3-T08 notes
+
+- `server/utils/logger.js` — JSON lines (default in production/test); `LOG_LEVEL`, `LOG_FORMAT`
+- HTTP access log via middleware in `server/index.js`
+- Job enqueue/process lifecycle logs in `JobQueueService`
+- Worker start/stop uses logger
+- Unit: `server/tests/logger.test.js`
