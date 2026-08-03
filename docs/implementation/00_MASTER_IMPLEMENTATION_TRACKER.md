@@ -15,33 +15,21 @@
 
 | Requirement ID | Phase | Task | Source section | Priority | Status | Files/Modules | Tests | Evidence | Commit/Change Reference | Blocker/Risk | Next Action |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| P1-T01 | 1 | Inventory the monolithic socket handler | Phase 1 Prompt | P1 | PASSED | socketHandlers.js | - | SOCKET_HANDLER_RESPONSIBILITY_MAP.md | - | None | - |
-| P1-T02 | 1 | Establish code coverage | Phase 1 Prompt | P1 | PASSED | package.json | nyc tests | 100% pure branch cov | - | None | - |
-| P1-T03 | 1 | Add PostgreSQL integration-test environment | Phase 1 Prompt | P1 | PASSED | database.js | - | Clean isolated memory DB | - | None | - |
-| P1-T04 | 1 | Extract the scoring service | Phase 1 Prompt | P1 | PASSED | ScoringService.js | ScoringService.test.js | 100% Branch Coverage | - | None | - |
-| P1-T05 | 1 | Extract the authorization service | Phase 1 Prompt | P1 | PASSED | SessionAuthorizationService.js | SessionAuthorizationService.test.js | 100% Branch Coverage | - | None | - |
-| P1-T06 | 1 | Extract session query/recovery | Phase 1 Prompt | P1 | PASSED | SessionRecoveryService.js | SessionRecoveryService.test.js | ~90% Branch Coverage | - | None | - |
-| P1-T07 | 1 | Add schema validation (Joi) | Phase 1 Prompt | P1 | PASSED | socketSchemas.js | socketSchemas.test.js | 100% Branch Coverage | - | None | - |
-| P1-T08 | 1 | Thin orchestration refactor | Phase 1 Prompt | P1 | PASSED | socketHandlers.js | socket.test.js | Tests pass flawlessly | - | None | - |
-| P1-T09 | 1 | Add stable socket error contracts | Phase 1 Prompt | P1 | PASSED | - | - | E2E passes | - | None | - |
-| P1-T10 | 1 | Preserve and expand regression coverage | Phase 1 Prompt | P1 | PASSED | E2E Tests | 43 passing | golden flow passes | - | None | - |
-| P1-T11 | 1 | Security and code-quality review | Phase 1 Prompt | P1 | PASSED | - | - | Joi strips unknown | - | None | - |
-| P1-T12 | 1 | Performance comparison | Phase 1 Prompt | P1 | PASSED | - | - | Isolated memory DB faster | - | None | - |
-| P1-T13 | 1 | Final Phase 1 Handoff | Phase 1 Prompt | P1 | PASSED | - | - | Verification matrix completed | - | None | READY FOR PHASE 2 |
+| P1-T01–P1-T13 | 1 | (see prior rows; all PASSED) | Phase 1 | P1 | **PASSED** | services, tests | critical gate | Phase 1 handoff | - | None | READY FOR PHASE 2 |
 
 ## Phase 2: Session Engine V2
 
 | Requirement ID | Phase | Task | Source section | Priority | Status | Files/Modules | Tests | Evidence | Commit/Change Reference | Blocker/Risk | Next Action |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| P2-T01 | 2 | Expand GameSession schema (stateVersion, lease, timestamps) | Blueprint §4.2, §12 | P0 | **PARTIALLY IMPLEMENTED** | `GameSession.js`, `database.js` | sync via fixtures | additive columns + migrations | schema foundation | Local critical gate | Verify dialects |
-| P2-T02 | 2 | Add Round, SessionEvent, IdempotencyRecord tables | Blueprint §4.4, §4.8 | P0 | **PARTIALLY IMPLEMENTED** | models in `GameSession.js` | fixtures | models + associations | schema foundation | Integration create tests | |
-| P2-T03 | 2 | Implement SessionStateMachine (pure transitions) | Blueprint §4.1 | P0 | **IMPLEMENTED** | `SessionStateMachine.js` | `SessionStateMachine.test.js` | pure unit tests | foundation commit | None | - |
-| P2-T04 | 2 | Implement SessionCommandService | Blueprint §4.3–4.5 | P0 | **IMPLEMENTED** | `SessionCommandService.js` | `SessionCommandService.test.js` | txn, idempotency, dual-write, flag gate | command service commit | Run mocha locally | Wire into sockets (P2-T05) |
-| P2-T05 | 2 | Command IDs + acks + expectedStateVersion | Blueprint §4.4–4.5 | P0 | PLANNED | socketSchemas, handlers | socket contract tests | - | - | None | **NEXT** |
-| P2-T06 | 2 | Canonical recovery endpoint GET /api/sessions/:id/recovery | Blueprint §4.7 | P0 | PLANNED | routes + SessionRecoveryService | API + role tests | - | - | None | After schemas |
-| P2-T07 | 2 | Host lease and takeover | Blueprint §4.11 | P1 | PLANNED | HostLease / GameSession fields | unit + socket | - | - | None | After handlers |
-| P2-T08 | 2 | Transient-state watchdog | Blueprint §4.6 | P0 | PLANNED | SessionWatchdogService | watchdog unit tests | - | - | None | After handlers |
-| P2-T09 | 2 | Client session reducer / FSM | Blueprint §3.2, §4.2 | P1 | PLANNED | client live-session state | component + E2E | - | - | None | After recovery |
-| P2-T10 | 2 | Feature flag new_session_engine (default OFF) | Blueprint §5.5 | P0 | **IMPLEMENTED** | `config/featureFlags.js` | default false + command gate | NEW_SESSION_ENGINE | foundation | None | Use in handlers |
-| P2-T11 | 2 | Reliability acceptance suite + golden-flow regression | Blueprint §4.14 | P0 | PLANNED | tests/* | critical gate 3x | - | - | None | After core path |
-| P2-T12 | 2 | Phase 2 completion report and docs | Governance | P0 | PLANNED | docs/implementation/phases/phase-02/* | - | plan only | - | None | At exit gate |
+| P2-T01 | 2 | Expand GameSession schema | Blueprint §4.2 | P0 | **PARTIALLY IMPLEMENTED** | GameSession.js, database.js | fixtures sync | additive columns | foundation | Local critical gate | Verify dialects |
+| P2-T02 | 2 | Round, SessionEvent, IdempotencyRecord | Blueprint §4.4 | P0 | **PARTIALLY IMPLEMENTED** | models | fixtures | registered | foundation | Create integration | |
+| P2-T03 | 2 | SessionStateMachine | Blueprint §4.1 | P0 | **IMPLEMENTED** | SessionStateMachine.js | SessionStateMachine.test.js | pure unit | foundation | None | - |
+| P2-T04 | 2 | SessionCommandService | Blueprint §4.3–4.5 | P0 | **IMPLEMENTED** | SessionCommandService.js | SessionCommandService.test.js | pipeline + idempotency | command commits | Local mocha | - |
+| P2-T05 | 2 | Command IDs + acks + expectedStateVersion | Blueprint §4.4–4.5 | P0 | **IMPLEMENTED** (flag-gated) | socketSchemas.js, socketHandlers.js | socketSchemas.test.js + command tests | optional envelope; V2 only if NEW_SESSION_ENGINE + commandId | T05 commits | **Run `npm test` + golden flow flag OFF** | P2-T06 recovery |
+| P2-T06 | 2 | Canonical recovery endpoint | Blueprint §4.7 | P0 | PLANNED | routes | API tests | - | - | None | **NEXT** |
+| P2-T07 | 2 | Host lease | Blueprint §4.11 | P1 | PLANNED | - | - | - | - | None | After recovery |
+| P2-T08 | 2 | Transient-state watchdog | Blueprint §4.6 | P0 | PLANNED | - | - | - | - | None | After recovery |
+| P2-T09 | 2 | Client session reducer | Blueprint §3.2 | P1 | PLANNED | - | - | - | - | None | After server stable |
+| P2-T10 | 2 | Feature flag NEW_SESSION_ENGINE | Blueprint §5.5 | P0 | **IMPLEMENTED** | featureFlags.js | default false | gated in handlers | foundation | None | - |
+| P2-T11 | 2 | Reliability suite + golden flow | Blueprint §4.14 | P0 | **NOT VERIFIED** | - | critical gate | - | - | None | After T06–T08 |
+| P2-T12 | 2 | Completion report | Governance | P0 | PLANNED | phase-02/* | - | plan only | - | None | At exit |
