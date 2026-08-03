@@ -34,21 +34,7 @@ class SessionCommandService {
     }
 
     /**
-     * Execute a state-changing command against a session.
-     *
-     * @param {Object} params
-     * @param {string} params.commandId - Client-generated UUID (idempotency key)
-     * @param {string} params.commandType - e.g. START_SESSION, LOCK_QUESTION, FINISH_GAME
-     * @param {number|string} params.sessionId - GameSession primary key
-     * @param {string} [params.pin] - Optional pin lookup if sessionId not used alone
-     * @param {number|null} params.expectedStateVersion - Optimistic concurrency; null skips check
-     * @param {string} params.toState - Target V2 state
-     * @param {string} params.actorId - Host/player identity string
-     * @param {string} [params.actorType='host']
-     * @param {Object} [params.payload={}] - Extra fields (e.g. questionIndex)
-     * @param {string} [params.correlationId]
-     * @param {boolean} [params.force=false] - Bypass feature flag (tests only)
-     * @returns {Promise<Object>} Result envelope
+     * Execute a single state-changing command against a session.
      */
     static async execute(params) {
         const {
@@ -89,225 +75,286 @@ class SessionCommandService {
             };
         }
 
-        const requestHash = hashRequest({
+        return this._runPipeline({
+            commandId,
             commandType,
             sessionId,
             pin,
             expectedStateVersion,
-            toState,
-            payload
+            actorId,
+            actorType,
+            correlationId,
+            steps: [{ toState, payload, eventType: commandType }]
         });
-
-        try {
-            return await sequelize.transaction(async (t) => {
-                // 1. Idempotency: same commandId returns original result
-                const existing = await IdempotencyRecord.findOne({
-                    where: { commandId },
-                    transaction: t,
-                    lock: t.LOCK.UPDATE
-                });
-
-                if (existing) {
-                    if (existing.requestHash && existing.requestHash !== requestHash) {
-                        return {
-                            ok: false,
-                            code: 'IDEMPOTENCY_KEY_REUSED',
-                            message: 'commandId was reused with a different payload'
-                        };
-                    }
-                    return {
-                        ok: true,
-                        code: existing.resultCode === 'ACCEPTED' ? 'DUPLICATE' : existing.resultCode,
-                        replay: true,
-                        result: existing.resultPayload
-                    };
-                }
-
-                // 2. Load and lock session
-                const where = sessionId != null ? { id: sessionId } : { pin: String(pin) };
-                const session = await GameSession.findOne({
-                    where,
-                    transaction: t,
-                    lock: t.LOCK.UPDATE
-                });
-
-                if (!session) {
-                    return this._reject(t, {
-                        commandId,
-                        actorId,
-                        sessionId: sessionId || 0,
-                        commandType,
-                        requestHash,
-                        resultCode: 'SESSION_NOT_FOUND',
-                        resultPayload: { ok: false, code: 'SESSION_NOT_FOUND' }
-                    });
-                }
-
-                // Ensure V2 fields are initialized from legacy if needed
-                let fromState = session.state || SessionStateMachine.fromLegacyStatus(session.status);
-                if (!session.state) {
-                    session.state = fromState;
-                }
-                const currentVersion = Number(session.stateVersion || 0);
-
-                // 3. Optimistic concurrency
-                if (expectedStateVersion != null && Number(expectedStateVersion) !== currentVersion) {
-                    return this._reject(t, {
-                        commandId,
-                        actorId,
-                        sessionId: session.id,
-                        commandType,
-                        requestHash,
-                        resultCode: 'SESSION_STATE_CONFLICT',
-                        resultPayload: {
-                            ok: false,
-                            code: 'SESSION_STATE_CONFLICT',
-                            currentStateVersion: currentVersion,
-                            currentState: fromState
-                        }
-                    });
-                }
-
-                // 4. State machine validation
-                const transition = SessionStateMachine.canTransition(fromState, toState);
-                if (!transition.allowed) {
-                    return this._reject(t, {
-                        commandId,
-                        actorId,
-                        sessionId: session.id,
-                        commandType,
-                        requestHash,
-                        resultCode: transition.reason || 'TRANSITION_NOT_ALLOWED',
-                        resultPayload: {
-                            ok: false,
-                            code: transition.reason || 'TRANSITION_NOT_ALLOWED',
-                            fromState,
-                            toState
-                        }
-                    });
-                }
-
-                // 5. Apply transition + dual-write legacy status
-                const newVersion = currentVersion + 1;
-                const now = new Date();
-                const legacyStatus = SessionStateMachine.toLegacyStatus(toState);
-
-                session.state = toState;
-                session.stateVersion = newVersion;
-                session.stateEnteredAt = now;
-                session.status = legacyStatus;
-                session.lastErrorCode = null;
-
-                // Optional timing / round bookkeeping from payload
-                if (payload.questionIndex != null) {
-                    session.currentQuestionIndex = payload.questionIndex;
-                }
-                if (payload.questionStartTime != null) {
-                    session.questionStartTime = new Date(payload.questionStartTime);
-                }
-                if (payload.questionOpensAt != null) {
-                    session.questionOpensAt = new Date(payload.questionOpensAt);
-                }
-                if (payload.questionClosesAt != null) {
-                    session.questionClosesAt = new Date(payload.questionClosesAt);
-                }
-
-                let activeRoundId = session.activeRoundId;
-                if (payload.createRound) {
-                    activeRoundId = newId();
-                    await Round.create({
-                        sessionId: session.id,
-                        roundId: activeRoundId,
-                        questionIndex: payload.questionIndex != null
-                            ? payload.questionIndex
-                            : session.currentQuestionIndex,
-                        status: toState,
-                        opensAt: payload.questionOpensAt ? new Date(payload.questionOpensAt) : null,
-                        closesAt: payload.questionClosesAt ? new Date(payload.questionClosesAt) : null
-                    }, { transaction: t });
-                    session.activeRoundId = activeRoundId;
-                } else if (payload.roundId) {
-                    activeRoundId = payload.roundId;
-                    session.activeRoundId = activeRoundId;
-                }
-
-                const nextSequence = Number(session.lastEventSequence || 0) + 1;
-                session.lastEventSequence = nextSequence;
-
-                await session.save({ transaction: t });
-
-                // 6. Event ledger
-                const eventId = newId();
-                await SessionEvent.create({
-                    sessionId: session.id,
-                    sequence: nextSequence,
-                    eventType: commandType,
-                    stateVersion: newVersion,
-                    roundId: activeRoundId || null,
-                    actorType,
-                    actorId: String(actorId),
-                    payloadJson: {
-                        eventId,
-                        fromState,
-                        toState,
-                        ...payload
-                    },
-                    correlationId: correlationId || commandId
-                }, { transaction: t });
-
-                const successPayload = {
-                    ok: true,
-                    code: 'ACCEPTED',
-                    sessionId: session.id,
-                    pin: session.pin,
-                    fromState,
-                    toState,
-                    stateVersion: newVersion,
-                    legacyStatus,
-                    activeRoundId: activeRoundId || null,
-                    lastEventSequence: nextSequence,
-                    eventId,
-                    serverTime: now.toISOString()
-                };
-
-                // 7. Persist idempotency record
-                await IdempotencyRecord.create({
-                    commandId,
-                    actorId: String(actorId),
-                    sessionId: session.id,
-                    commandType,
-                    requestHash,
-                    resultCode: 'ACCEPTED',
-                    resultPayload: successPayload,
-                    expiresAt: new Date(Date.now() + IDEMPOTENCY_TTL_MS)
-                }, { transaction: t });
-
-                return successPayload;
-            });
-        } catch (err) {
-            // Unique constraint on commandId under race → treat as duplicate lookup
-            if (err && (err.name === 'SequelizeUniqueConstraintError' || err.code === 'SQLITE_CONSTRAINT')) {
-                const existing = await IdempotencyRecord.findOne({ where: { commandId } });
-                if (existing) {
-                    return {
-                        ok: true,
-                        code: 'DUPLICATE',
-                        replay: true,
-                        result: existing.resultPayload
-                    };
-                }
-            }
-            return {
-                ok: false,
-                code: 'INTERNAL_ERROR',
-                message: err.message || 'Command failed'
-            };
-        }
     }
 
     /**
-     * Convenience: LOBBY -> STARTING (start session accepted).
+     * Host start_question equivalent: advance to QUESTION_OPEN with a new Round.
+     * Applies the legal multi-step path from the current V2/legacy state.
+     * One commandId covers the whole pipeline (idempotent double-click safe).
      */
+    static async executeStartQuestion(params) {
+        const {
+            commandId,
+            sessionId,
+            pin,
+            expectedStateVersion,
+            actorId,
+            actorType = 'host',
+            questionIndex,
+            questionStartTime,
+            force = false
+        } = params;
+
+        if (!force && !this.isEnabled()) {
+            return {
+                ok: false,
+                code: 'FEATURE_DISABLED',
+                message: 'new_session_engine is disabled'
+            };
+        }
+
+        if (!commandId || !actorId || questionIndex == null) {
+            return {
+                ok: false,
+                code: 'VALIDATION_ERROR',
+                message: 'commandId, actorId, and questionIndex are required'
+            };
+        }
+
+        // Resolve current state first (read-only) to build the step list
+        const where = sessionId != null ? { id: sessionId } : { pin: String(pin) };
+        const session = await GameSession.findOne({ where });
+        if (!session) {
+            return { ok: false, code: 'SESSION_NOT_FOUND' };
+        }
+
+        const fromState = session.state || SessionStateMachine.fromLegacyStatus(session.status);
+
+        if (fromState === 'QUESTION_OPEN' || fromState === 'QUESTION_COUNTDOWN') {
+            return {
+                ok: false,
+                code: 'ALREADY_IN_PROGRESS',
+                fromState,
+                stateVersion: Number(session.stateVersion || 0)
+            };
+        }
+
+        const startTime = questionStartTime || (Date.now() + 3000);
+        const openPayload = {
+            createRound: true,
+            questionIndex,
+            questionStartTime: startTime,
+            questionOpensAt: startTime
+        };
+
+        /** @type {Array<{toState: string, payload?: object, eventType: string}>} */
+        let steps = [];
+
+        if (fromState === 'LOBBY' || fromState === 'CREATED') {
+            steps = [
+                { toState: 'STARTING', eventType: 'START_SESSION', payload: {} },
+                { toState: 'QUESTION_COUNTDOWN', eventType: 'QUESTION_COUNTDOWN', payload: { questionIndex } },
+                { toState: 'QUESTION_OPEN', eventType: 'OPEN_QUESTION', payload: openPayload }
+            ];
+        } else if (
+            fromState === 'ANSWER_REVEAL' ||
+            fromState === 'LEADERBOARD' ||
+            fromState === 'NEXT_ROUND_READY' ||
+            fromState === 'PAUSED'
+        ) {
+            // Normalize toward next round then open
+            if (fromState === 'ANSWER_REVEAL') {
+                steps.push({ toState: 'NEXT_ROUND_READY', eventType: 'NEXT_ROUND_READY', payload: {} });
+            } else if (fromState === 'LEADERBOARD') {
+                steps.push({ toState: 'NEXT_ROUND_READY', eventType: 'NEXT_ROUND_READY', payload: {} });
+            } else if (fromState === 'PAUSED') {
+                // Resume into next-round ready then open
+                steps.push({ toState: 'NEXT_ROUND_READY', eventType: 'RESUME_TO_NEXT', payload: {} });
+            }
+            steps.push(
+                { toState: 'QUESTION_COUNTDOWN', eventType: 'QUESTION_COUNTDOWN', payload: { questionIndex } },
+                { toState: 'QUESTION_OPEN', eventType: 'OPEN_QUESTION', payload: openPayload }
+            );
+        } else {
+            return {
+                ok: false,
+                code: 'TRANSITION_NOT_ALLOWED',
+                fromState,
+                message: `Cannot start question from ${fromState}`
+            };
+        }
+
+        return this._runPipeline({
+            commandId,
+            commandType: 'START_QUESTION',
+            sessionId: session.id,
+            pin: session.pin,
+            expectedStateVersion,
+            actorId,
+            actorType,
+            correlationId: commandId,
+            steps
+        });
+    }
+
+    /**
+     * Host end_question equivalent: QUESTION_OPEN -> QUESTION_LOCKED -> ANSWER_REVEAL.
+     */
+    static async executeEndQuestion(params) {
+        const {
+            commandId,
+            sessionId,
+            pin,
+            expectedStateVersion,
+            actorId,
+            actorType = 'host',
+            force = false
+        } = params;
+
+        if (!force && !this.isEnabled()) {
+            return {
+                ok: false,
+                code: 'FEATURE_DISABLED',
+                message: 'new_session_engine is disabled'
+            };
+        }
+
+        if (!commandId || !actorId) {
+            return {
+                ok: false,
+                code: 'VALIDATION_ERROR',
+                message: 'commandId and actorId are required'
+            };
+        }
+
+        const where = sessionId != null ? { id: sessionId } : { pin: String(pin) };
+        const session = await GameSession.findOne({ where });
+        if (!session) {
+            return { ok: false, code: 'SESSION_NOT_FOUND' };
+        }
+
+        const fromState = session.state || SessionStateMachine.fromLegacyStatus(session.status);
+        if (fromState !== 'QUESTION_OPEN' && fromState !== 'QUESTION_LOCKED') {
+            return {
+                ok: false,
+                code: 'TRANSITION_NOT_ALLOWED',
+                fromState,
+                message: `Cannot end question from ${fromState}`
+            };
+        }
+
+        const steps = [];
+        if (fromState === 'QUESTION_OPEN') {
+            steps.push({ toState: 'QUESTION_LOCKED', eventType: 'LOCK_QUESTION', payload: {} });
+        }
+        steps.push({ toState: 'ANSWER_REVEAL', eventType: 'REVEAL_ANSWER', payload: {} });
+
+        return this._runPipeline({
+            commandId,
+            commandType: 'END_QUESTION',
+            sessionId: session.id,
+            pin: session.pin,
+            expectedStateVersion,
+            actorId,
+            actorType,
+            correlationId: commandId,
+            steps
+        });
+    }
+
+    /**
+     * Host end_game: transition to FINISHED from an allowed non-terminal state.
+     */
+    static async executeEndGame(params) {
+        const {
+            commandId,
+            sessionId,
+            pin,
+            expectedStateVersion,
+            actorId,
+            actorType = 'host',
+            force = false
+        } = params;
+
+        if (!force && !this.isEnabled()) {
+            return {
+                ok: false,
+                code: 'FEATURE_DISABLED',
+                message: 'new_session_engine is disabled'
+            };
+        }
+
+        if (!commandId || !actorId) {
+            return {
+                ok: false,
+                code: 'VALIDATION_ERROR',
+                message: 'commandId and actorId are required'
+            };
+        }
+
+        const where = sessionId != null ? { id: sessionId } : { pin: String(pin) };
+        const session = await GameSession.findOne({ where });
+        if (!session) {
+            return { ok: false, code: 'SESSION_NOT_FOUND' };
+        }
+
+        const fromState = session.state || SessionStateMachine.fromLegacyStatus(session.status);
+        if (SessionStateMachine.isTerminal(fromState)) {
+            return {
+                ok: false,
+                code: 'TERMINAL_STATE',
+                fromState,
+                stateVersion: Number(session.stateVersion || 0)
+            };
+        }
+
+        // Prefer a legal path into FINISHED
+        const steps = [];
+        if (fromState === 'QUESTION_OPEN') {
+            steps.push(
+                { toState: 'QUESTION_LOCKED', eventType: 'LOCK_QUESTION', payload: {} },
+                { toState: 'ANSWER_REVEAL', eventType: 'REVEAL_ANSWER', payload: {} }
+            );
+        } else if (fromState === 'QUESTION_LOCKED') {
+            steps.push({ toState: 'ANSWER_REVEAL', eventType: 'REVEAL_ANSWER', payload: {} });
+        }
+
+        const mid = steps.length
+            ? steps[steps.length - 1].toState
+            : fromState;
+
+        if (mid === 'ANSWER_REVEAL' || mid === 'LEADERBOARD' || mid === 'NEXT_ROUND_READY') {
+            steps.push(
+                { toState: 'FINISHING', eventType: 'FINISHING', payload: {} },
+                { toState: 'FINISHED', eventType: 'FINISH_GAME', payload: {} }
+            );
+        } else if (mid === 'LOBBY' || mid === 'STARTING' || mid === 'PAUSED') {
+            steps.push({ toState: 'CANCELLED', eventType: 'CANCEL_GAME', payload: {} });
+        } else if (mid === 'FINISHING') {
+            steps.push({ toState: 'FINISHED', eventType: 'FINISH_GAME', payload: {} });
+        } else {
+            return {
+                ok: false,
+                code: 'TRANSITION_NOT_ALLOWED',
+                fromState,
+                message: `Cannot end game from ${fromState}`
+            };
+        }
+
+        return this._runPipeline({
+            commandId,
+            commandType: 'END_GAME',
+            sessionId: session.id,
+            pin: session.pin,
+            expectedStateVersion,
+            actorId,
+            actorType,
+            correlationId: commandId,
+            steps
+        });
+    }
+
     static async startSession(params) {
         return this.execute({
             ...params,
@@ -316,9 +363,6 @@ class SessionCommandService {
         });
     }
 
-    /**
-     * STARTING -> QUESTION_COUNTDOWN or QUESTION_OPEN after first round prepared.
-     */
     static async openQuestion(params) {
         const toState = params.toState || 'QUESTION_OPEN';
         return this.execute({
@@ -353,7 +397,6 @@ class SessionCommandService {
     }
 
     static async finishGame(params) {
-        // Prefer FINISHING then FINISHED; allow direct FINISHED from reveal/leaderboard paths
         return this.execute({
             ...params,
             commandType: params.commandType || 'FINISH_GAME',
@@ -362,9 +405,241 @@ class SessionCommandService {
     }
 
     /**
-     * Record a rejected command for audit/idempotency (still stores the commandId).
+     * Apply one or more transitions under a single commandId (one idempotency record).
      * @private
      */
+    static async _runPipeline({
+        commandId,
+        commandType,
+        sessionId,
+        pin,
+        expectedStateVersion,
+        actorId,
+        actorType = 'host',
+        correlationId = null,
+        steps
+    }) {
+        const requestHash = hashRequest({
+            commandType,
+            sessionId,
+            pin,
+            expectedStateVersion,
+            steps: steps.map((s) => ({ toState: s.toState, payload: s.payload || {} }))
+        });
+
+        try {
+            return await sequelize.transaction(async (t) => {
+                const existing = await IdempotencyRecord.findOne({
+                    where: { commandId },
+                    transaction: t,
+                    lock: t.LOCK.UPDATE
+                });
+
+                if (existing) {
+                    if (existing.requestHash && existing.requestHash !== requestHash) {
+                        return {
+                            ok: false,
+                            code: 'IDEMPOTENCY_KEY_REUSED',
+                            message: 'commandId was reused with a different payload'
+                        };
+                    }
+                    return {
+                        ok: true,
+                        code: existing.resultCode === 'ACCEPTED' ? 'DUPLICATE' : existing.resultCode,
+                        replay: true,
+                        result: existing.resultPayload
+                    };
+                }
+
+                const where = sessionId != null ? { id: sessionId } : { pin: String(pin) };
+                const session = await GameSession.findOne({
+                    where,
+                    transaction: t,
+                    lock: t.LOCK.UPDATE
+                });
+
+                if (!session) {
+                    return this._reject(t, {
+                        commandId,
+                        actorId,
+                        sessionId: sessionId || 0,
+                        commandType,
+                        requestHash,
+                        resultCode: 'SESSION_NOT_FOUND',
+                        resultPayload: { ok: false, code: 'SESSION_NOT_FOUND' }
+                    });
+                }
+
+                let fromState = session.state || SessionStateMachine.fromLegacyStatus(session.status);
+                if (!session.state) {
+                    session.state = fromState;
+                }
+                let currentVersion = Number(session.stateVersion || 0);
+
+                if (expectedStateVersion != null && Number(expectedStateVersion) !== currentVersion) {
+                    return this._reject(t, {
+                        commandId,
+                        actorId,
+                        sessionId: session.id,
+                        commandType,
+                        requestHash,
+                        resultCode: 'SESSION_STATE_CONFLICT',
+                        resultPayload: {
+                            ok: false,
+                            code: 'SESSION_STATE_CONFLICT',
+                            currentStateVersion: currentVersion,
+                            currentState: fromState
+                        }
+                    });
+                }
+
+                const applied = [];
+                let activeRoundId = session.activeRoundId;
+                const initialFrom = fromState;
+
+                for (const step of steps) {
+                    const transition = SessionStateMachine.canTransition(fromState, step.toState);
+                    if (!transition.allowed) {
+                        return this._reject(t, {
+                            commandId,
+                            actorId,
+                            sessionId: session.id,
+                            commandType,
+                            requestHash,
+                            resultCode: transition.reason || 'TRANSITION_NOT_ALLOWED',
+                            resultPayload: {
+                                ok: false,
+                                code: transition.reason || 'TRANSITION_NOT_ALLOWED',
+                                fromState,
+                                toState: step.toState,
+                                appliedSteps: applied
+                            }
+                        });
+                    }
+
+                    currentVersion += 1;
+                    const now = new Date();
+                    const payload = step.payload || {};
+
+                    session.state = step.toState;
+                    session.stateVersion = currentVersion;
+                    session.stateEnteredAt = now;
+                    session.status = SessionStateMachine.toLegacyStatus(step.toState);
+                    session.lastErrorCode = null;
+
+                    if (payload.questionIndex != null) {
+                        session.currentQuestionIndex = payload.questionIndex;
+                    }
+                    if (payload.questionStartTime != null) {
+                        session.questionStartTime = new Date(payload.questionStartTime);
+                    }
+                    if (payload.questionOpensAt != null) {
+                        session.questionOpensAt = new Date(payload.questionOpensAt);
+                    }
+                    if (payload.questionClosesAt != null) {
+                        session.questionClosesAt = new Date(payload.questionClosesAt);
+                    }
+
+                    if (payload.createRound) {
+                        activeRoundId = newId();
+                        await Round.create({
+                            sessionId: session.id,
+                            roundId: activeRoundId,
+                            questionIndex: payload.questionIndex != null
+                                ? payload.questionIndex
+                                : session.currentQuestionIndex,
+                            status: step.toState,
+                            opensAt: payload.questionOpensAt ? new Date(payload.questionOpensAt) : null,
+                            closesAt: payload.questionClosesAt ? new Date(payload.questionClosesAt) : null
+                        }, { transaction: t });
+                        session.activeRoundId = activeRoundId;
+                    }
+
+                    const nextSequence = Number(session.lastEventSequence || 0) + 1;
+                    session.lastEventSequence = nextSequence;
+                    await session.save({ transaction: t });
+
+                    const eventId = newId();
+                    await SessionEvent.create({
+                        sessionId: session.id,
+                        sequence: nextSequence,
+                        eventType: step.eventType || commandType,
+                        stateVersion: currentVersion,
+                        roundId: activeRoundId || null,
+                        actorType,
+                        actorId: String(actorId),
+                        payloadJson: {
+                            eventId,
+                            fromState,
+                            toState: step.toState,
+                            ...payload
+                        },
+                        correlationId: correlationId || commandId
+                    }, { transaction: t });
+
+                    applied.push({
+                        fromState,
+                        toState: step.toState,
+                        stateVersion: currentVersion,
+                        eventId
+                    });
+                    fromState = step.toState;
+                }
+
+                const finalStep = applied[applied.length - 1];
+                const successPayload = {
+                    ok: true,
+                    code: 'ACCEPTED',
+                    sessionId: session.id,
+                    pin: session.pin,
+                    fromState: initialFrom,
+                    toState: finalStep.toState,
+                    stateVersion: finalStep.stateVersion,
+                    legacyStatus: session.status,
+                    activeRoundId: activeRoundId || null,
+                    lastEventSequence: Number(session.lastEventSequence),
+                    eventId: finalStep.eventId,
+                    appliedSteps: applied,
+                    questionIndex: session.currentQuestionIndex,
+                    questionStartTime: session.questionStartTime
+                        ? session.questionStartTime.getTime()
+                        : null,
+                    serverTime: new Date().toISOString()
+                };
+
+                await IdempotencyRecord.create({
+                    commandId,
+                    actorId: String(actorId),
+                    sessionId: session.id,
+                    commandType,
+                    requestHash,
+                    resultCode: 'ACCEPTED',
+                    resultPayload: successPayload,
+                    expiresAt: new Date(Date.now() + IDEMPOTENCY_TTL_MS)
+                }, { transaction: t });
+
+                return successPayload;
+            });
+        } catch (err) {
+            if (err && (err.name === 'SequelizeUniqueConstraintError' || err.code === 'SQLITE_CONSTRAINT')) {
+                const existing = await IdempotencyRecord.findOne({ where: { commandId } });
+                if (existing) {
+                    return {
+                        ok: true,
+                        code: 'DUPLICATE',
+                        replay: true,
+                        result: existing.resultPayload
+                    };
+                }
+            }
+            return {
+                ok: false,
+                code: 'INTERNAL_ERROR',
+                message: err.message || 'Command failed'
+            };
+        }
+    }
+
     static async _reject(t, {
         commandId,
         actorId,

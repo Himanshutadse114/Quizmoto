@@ -1,5 +1,11 @@
 const Joi = require('joi');
 
+/** Optional Phase 2 command envelope fields (backward compatible). */
+const commandEnvelope = {
+    commandId: Joi.string().uuid().optional(),
+    expectedStateVersion: Joi.number().integer().min(0).optional()
+};
+
 const schemas = {
     join_room: Joi.object({
         pin: Joi.alternatives().try(Joi.string().max(10), Joi.number()).required(),
@@ -13,29 +19,34 @@ const schemas = {
 
     start_question: Joi.object({
         pin: Joi.alternatives().try(Joi.string().max(10), Joi.number()).required(),
-        token: Joi.string().max(1024).required()
+        token: Joi.string().max(1024).required(),
+        ...commandEnvelope
     }),
 
     submit_answer: Joi.object({
         pin: Joi.alternatives().try(Joi.string().max(10), Joi.number()).required(),
         nickname: Joi.string().max(50).required(),
         answerIndex: Joi.number().integer().min(0).max(3).required(),
-        timeRemaining: Joi.number().min(0).optional()
+        timeRemaining: Joi.number().min(0).optional(),
+        ...commandEnvelope
     }),
 
     end_question: Joi.object({
         pin: Joi.alternatives().try(Joi.string().max(10), Joi.number()).required(),
-        token: Joi.string().max(1024).required()
+        token: Joi.string().max(1024).required(),
+        ...commandEnvelope
     }),
 
     next_question: Joi.object({
         pin: Joi.alternatives().try(Joi.string().max(10), Joi.number()).required(),
-        token: Joi.string().max(1024).required()
+        token: Joi.string().max(1024).required(),
+        ...commandEnvelope
     }),
 
     end_game: Joi.object({
         pin: Joi.alternatives().try(Joi.string().max(10), Joi.number()).required(),
-        token: Joi.string().max(1024).required()
+        token: Joi.string().max(1024).required(),
+        ...commandEnvelope
     }),
 
     host_kick_player: Joi.object({
@@ -43,7 +54,7 @@ const schemas = {
         token: Joi.string().max(1024).required(),
         playerId: Joi.number().integer().required()
     }),
-    
+
     change_mode: Joi.object({
         pin: Joi.alternatives().try(Joi.string().max(10), Joi.number()).required(),
         token: Joi.string().max(1024).required(),
