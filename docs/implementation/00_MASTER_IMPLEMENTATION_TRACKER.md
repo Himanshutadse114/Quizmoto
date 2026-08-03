@@ -5,7 +5,7 @@
 | Phase 0 | **PASSED** |
 | Phase 1 | **PASSED** |
 | Phase 2 | **PASSED (flag OFF)** — Session Engine V2 foundation |
-| Phase 3 | **IN PROGRESS** — T01/T04/T10 landed 2026-08-04 |
+| Phase 3 | **IN PROGRESS** — T01/T04/T05/T10 landed 2026-08-04 |
 
 ## Phase 3 — Production Infrastructure and Background Jobs
 
@@ -14,14 +14,14 @@
 | P3-T01 | Postgres production posture | **DONE** | Refuse sqlite in production |
 | P3-T02 | Redis Socket.IO adapter hardening | NOT STARTED | Env-gated |
 | P3-T03 | Multi-node / sticky session docs + smoke | NOT STARTED | |
-| P3-T04 | Durable queue + worker entrypoint | **DONE** | Memory + optional Redis; report handler stubs |
-| P3-T05 | Async reports via worker | **NEXT** | Flag-gated; wire real export |
-| P3-T06 | Object storage abstraction | NOT STARTED | Local + optional S3 |
+| P3-T04 | Durable queue + worker entrypoint | **DONE** | Memory + optional Redis |
+| P3-T05 | Async reports via worker | **DONE** | Flag OFF = sync; ON = 202 + jobId |
+| P3-T06 | Object storage abstraction | **NEXT** | Local + optional S3 |
 | P3-T07 | Backup / restore runbook + drill | NOT STARTED | |
 | P3-T08 | Structured JSON logging | NOT STARTED | |
 | P3-T09 | Metrics hooks | NOT STARTED | |
 | P3-T10 | `REPORTS_ASYNC` default OFF | **DONE** | |
-| P3-T11 | Acceptance tests | PARTIAL | Queue unit tests |
+| P3-T11 | Acceptance tests | PARTIAL | Queue + async report tests |
 | P3-T12 | Completion report | NOT STARTED | |
 
 **Plan:** `docs/implementation/phases/phase-03/PHASE_03_PLAN.md`  
