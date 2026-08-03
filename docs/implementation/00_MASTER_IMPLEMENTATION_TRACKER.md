@@ -10,6 +10,7 @@
 | P0-T06 | 0 | Establish CI quality gate | Phase 0 Prompt | P0 | COMPLETED | `.github/workflows/ci.yml` | - | Github actions config | - | None | - |
 | P0-T07 | 0 | Manual QA Walk-Through | Phase 0 Prompt | P0 | COMPLETED | `docs/MANUAL_QA.md` | Manual | Visual state verified | - | None | - |
 | P0-T08 | 0 | Final Validation Gate | Phase 0 Prompt | P0 | COMPLETED | `package.json` | `npm run test:critical` | Three consecutive passes | - | None | READY FOR PHASE 1 |
+
 ## Phase 1: Test Harness and Module Extraction
 
 | Requirement ID | Phase | Task | Source section | Priority | Status | Files/Modules | Tests | Evidence | Commit/Change Reference | Blocker/Risk | Next Action |
@@ -26,4 +27,21 @@
 | P1-T10 | 1 | Preserve and expand regression coverage | Phase 1 Prompt | P1 | PASSED | E2E Tests | 43 passing | golden flow passes | - | None | - |
 | P1-T11 | 1 | Security and code-quality review | Phase 1 Prompt | P1 | PASSED | - | - | Joi strips unknown | - | None | - |
 | P1-T12 | 1 | Performance comparison | Phase 1 Prompt | P1 | PASSED | - | - | Isolated memory DB faster | - | None | - |
-| P1-T13 | 1 | Final Phase 1 Handoff | Phase 1 Prompt | P1 | PASSED | - | - | Verification matrix completed | - | None | - |
+| P1-T13 | 1 | Final Phase 1 Handoff | Phase 1 Prompt | P1 | PASSED | - | - | Verification matrix completed | - | None | READY FOR PHASE 2 |
+
+## Phase 2: Session Engine V2
+
+| Requirement ID | Phase | Task | Source section | Priority | Status | Files/Modules | Tests | Evidence | Commit/Change Reference | Blocker/Risk | Next Action |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| P2-T01 | 2 | Expand GameSession schema (stateVersion, lease, timestamps) | Blueprint §4.2, §12 | P0 | PLANNED | `server/models/GameSession.js`, `database.js` | schema load tests | `PHASE_02_PLAN.md` | - | None | START — additive columns |
+| P2-T02 | 2 | Add Round, SessionEvent, IdempotencyRecord, Outbox tables | Blueprint §4.4, §4.8 | P0 | PLANNED | new models + migrations | integration | `PHASE_02_PLAN.md` | - | None | After P2-T01 |
+| P2-T03 | 2 | Implement SessionStateMachine (pure transitions) | Blueprint §4.1 | P0 | PLANNED | `SessionStateMachine.js` | unit transition tests | - | - | None | After P2-T01 |
+| P2-T04 | 2 | Implement SessionCommandService | Blueprint §4.3–4.5 | P0 | PLANNED | `SessionCommandService.js` | command + txn tests | - | - | None | After T02+T03 |
+| P2-T05 | 2 | Command IDs + acks + expectedStateVersion | Blueprint §4.4–4.5 | P0 | PLANNED | socketSchemas, handlers | socket contract tests | - | - | None | After P2-T04 |
+| P2-T06 | 2 | Canonical recovery endpoint GET /api/sessions/:id/recovery | Blueprint §4.7 | P0 | PLANNED | routes + SessionRecoveryService | API + role tests | - | - | None | After P2-T01 |
+| P2-T07 | 2 | Host lease and takeover | Blueprint §4.11 | P1 | PLANNED | HostLease / GameSession fields | unit + socket | - | - | None | After P2-T01 |
+| P2-T08 | 2 | Transient-state watchdog | Blueprint §4.6 | P0 | PLANNED | SessionWatchdogService | watchdog unit tests | - | - | None | After P2-T04 |
+| P2-T09 | 2 | Client session reducer / FSM | Blueprint §3.2, §4.2 | P1 | PLANNED | client live-session state | component + E2E | - | - | None | After T05+T06 |
+| P2-T10 | 2 | Feature flag new_session_engine (default OFF) | Blueprint §5.5 | P0 | PLANNED | config + dual-path handlers | flag off regression | - | - | None | Early with T04 |
+| P2-T11 | 2 | Reliability acceptance suite + golden-flow regression | Blueprint §4.14 | P0 | PLANNED | tests/* | critical gate 3x | - | - | None | After core path |
+| P2-T12 | 2 | Phase 2 completion report and docs | Governance | P0 | PLANNED | docs/implementation/phases/phase-02/* | - | plan created 2026-08-03 | - | None | At exit gate |
