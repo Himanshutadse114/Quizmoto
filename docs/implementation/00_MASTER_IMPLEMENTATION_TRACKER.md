@@ -1,24 +1,35 @@
 # Master Implementation Tracker
 
-| Requirement ID | Phase | Task | Status | Notes |
-|---|---|---|---|---|
-| P0 / P1 | 0–1 | All tasks | **PASSED** | Golden flow baseline |
+| Phase | Status |
+|---|---|
+| Phase 0 | **PASSED** |
+| Phase 1 | **PASSED** |
+| Phase 2 | **IN PROGRESS** — code complete for T01–T11 suite; exit gate pending operator evidence + T12 |
 
-## Phase 2: Session Engine V2
+## Phase 2 tasks
 
-| ID | Task | Status | Notes |
-|---|---|---|---|
-| P2-T01 | GameSession schema | **IMPLEMENTED** | Additive columns |
-| P2-T02 | Round / Event / Idempotency | **IMPLEMENTED** | Outbox deferred |
-| P2-T03 | SessionStateMachine | **IMPLEMENTED** | Pure unit tests |
-| P2-T04 | SessionCommandService | **IMPLEMENTED** | Pipelines + idempotency |
-| P2-T05 | commandId + acks | **IMPLEMENTED** | Flag-gated sockets |
-| P2-T06 | Recovery REST | **IMPLEMENTED** | Role-safe |
-| P2-T07 | Host lease | **IMPLEMENTED** | HostLeaseService |
-| P2-T08 | Watchdog | **IMPLEMENTED** | Transient remediation |
-| P2-T09 | Client session FSM | **IMPLEMENTED** | Reducer + hook + recovery helper; **pages unchanged**; `VITE_NEW_SESSION_ENGINE` default off |
-| P2-T10 | Feature flag | **IMPLEMENTED** | Server + client defaults OFF |
-| P2-T11 | Reliability + golden flow | **NEXT** | Add suite + user runs critical gate |
-| P2-T12 | Completion report | PENDING | After T11 evidence |
+| ID | Task | Status |
+|---|---|---|
+| P2-T01 | Schema | **IMPLEMENTED** |
+| P2-T02 | Round/Event/Idempotency | **IMPLEMENTED** |
+| P2-T03 | State machine | **IMPLEMENTED** |
+| P2-T04 | Command service | **IMPLEMENTED** |
+| P2-T05 | commandId + acks | **IMPLEMENTED** (flag-gated) |
+| P2-T06 | Recovery REST | **IMPLEMENTED** |
+| P2-T07 | Host lease | **IMPLEMENTED** |
+| P2-T08 | Watchdog | **IMPLEMENTED** |
+| P2-T09 | Client FSM module | **IMPLEMENTED** (opt-in; pages unchanged) |
+| P2-T10 | Feature flags | **IMPLEMENTED** (default OFF) |
+| P2-T11 | Reliability suite | **SUITE ADDED** — operator must run `npm test` + `test:critical` |
+| P2-T12 | Completion report | **NEXT** after you paste test results |
 
-**Live safety:** `NEW_SESSION_ENGINE` / `VITE_NEW_SESSION_ENGINE` default OFF. End-question path hardened 2026-08-03.
+## Commands for you
+
+```bash
+cd server && npm test
+cd server && npm run test:reliability
+# repo root:
+npm run test:critical
+```
+
+Live: keep `NEW_SESSION_ENGINE` unset/false.
