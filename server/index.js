@@ -85,6 +85,7 @@ const startServer = async () => {
         app.use('/api/auth', require('./routes/auth'));
         app.use('/api/player', require('./routes/playerAuth'));
         app.use('/api/quizzes', require('./routes/quizzes'));
+        app.use('/api/sessions', require('./routes/sessions'));
 
         if (process.env.NODE_ENV === 'test') {
             app.use('/api/test-only', require('./routes/testOnly'));
