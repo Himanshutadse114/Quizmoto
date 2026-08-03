@@ -6,6 +6,8 @@
     "start": "node index.js",
     "test:start": "node index.js",
     "test": "cross-env NODE_ENV=test mocha tests/**/*.test.js --exclude tests/postgres.test.js --exit",
+    "test:reliability": "cross-env NODE_ENV=test mocha tests/reliability.acceptance.test.js --exit",
+    "test:phase2": "cross-env NODE_ENV=test mocha tests/SessionStateMachine.test.js tests/SessionCommandService.test.js tests/HostLeaseService.test.js tests/SessionWatchdogService.test.js tests/sessionsRecovery.test.js tests/reliability.acceptance.test.js tests/sessionReducer.mirror.test.js --exit",
     "test:coverage": "cross-env NODE_ENV=test nyc --all --reporter=lcov --reporter=text mocha tests/**/*.test.js --exclude tests/postgres.test.js --exit",
     "test:postgres": "cross-env DB_DIALECT=postgres DB_HOST=localhost DB_PORT=5434 DB_NAME=quizmototest DB_USER=testuser DB_PASS=testpass NODE_ENV=test mocha tests/**/*.test.js --exit"
   },
