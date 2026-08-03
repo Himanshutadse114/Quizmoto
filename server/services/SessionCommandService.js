@@ -23,6 +23,22 @@ function newId() {
     return crypto.randomUUID();
 }
 
+/** Replay envelope for a stored idempotency record. */
+function replayFromRecord(existing) {
+    const accepted = existing.resultCode === 'ACCEPTED';
+    return {
+        ok: accepted || !!existing.resultPayload?.ok,
+        code: accepted ? 'DUPLICATE' : existing.resultCode,
+        replay: true,
+        result: existing.resultPayload,
+        // Flatten success fields for callers that read result.ok / result.stateVersion
+        ...(accepted && existing.resultPayload ? existing.resultPayload : {}),
+        // Keep duplicate markers authoritative after spread
+        code: accepted ? 'DUPLICATE' : existing.resultCode,
+        replay: true
+    };
+}
+
 /**
  * Transactional session command executor (Phase 2).
  * Used only when NEW_SESSION_ENGINE is enabled (or when callers pass force: true in tests).
@@ -33,9 +49,6 @@ class SessionCommandService {
         return featureFlags.newSessionEngine;
     }
 
-    /**
-     * Execute a single state-changing command against a session.
-     */
     static async execute(params) {
         const {
             commandId,
@@ -90,8 +103,8 @@ class SessionCommandService {
 
     /**
      * Host start_question equivalent: advance to QUESTION_OPEN with a new Round.
-     * Applies the legal multi-step path from the current V2/legacy state.
-     * One commandId covers the whole pipeline (idempotent double-click safe).
+     * Idempotency is checked BEFORE state guards so double-clicks with the same
+     * commandId replay instead of returning ALREADY_IN_PROGRESS.
      */
     static async executeStartQuestion(params) {
         const {
@@ -122,7 +135,12 @@ class SessionCommandService {
             };
         }
 
-        // Resolve current state first (read-only) to build the step list
+        // CRITICAL: idempotent replay must win over ALREADY_IN_PROGRESS
+        const existing = await IdempotencyRecord.findOne({ where: { commandId } });
+        if (existing) {
+            return replayFromRecord(existing);
+        }
+
         const where = sessionId != null ? { id: sessionId } : { pin: String(pin) };
         const session = await GameSession.findOne({ where });
         if (!session) {
@@ -148,7 +166,6 @@ class SessionCommandService {
             questionOpensAt: startTime
         };
 
-        /** @type {Array<{toState: string, payload?: object, eventType: string}>} */
         let steps = [];
 
         if (fromState === 'LOBBY' || fromState === 'CREATED') {
@@ -163,14 +180,8 @@ class SessionCommandService {
             fromState === 'NEXT_ROUND_READY' ||
             fromState === 'PAUSED'
         ) {
-            // Normalize toward next round then open
-            if (fromState === 'ANSWER_REVEAL') {
+            if (fromState === 'ANSWER_REVEAL' || fromState === 'LEADERBOARD' || fromState === 'PAUSED') {
                 steps.push({ toState: 'NEXT_ROUND_READY', eventType: 'NEXT_ROUND_READY', payload: {} });
-            } else if (fromState === 'LEADERBOARD') {
-                steps.push({ toState: 'NEXT_ROUND_READY', eventType: 'NEXT_ROUND_READY', payload: {} });
-            } else if (fromState === 'PAUSED') {
-                // Resume into next-round ready then open
-                steps.push({ toState: 'NEXT_ROUND_READY', eventType: 'RESUME_TO_NEXT', payload: {} });
             }
             steps.push(
                 { toState: 'QUESTION_COUNTDOWN', eventType: 'QUESTION_COUNTDOWN', payload: { questionIndex } },
@@ -198,9 +209,6 @@ class SessionCommandService {
         });
     }
 
-    /**
-     * Host end_question equivalent: QUESTION_OPEN -> QUESTION_LOCKED -> ANSWER_REVEAL.
-     */
     static async executeEndQuestion(params) {
         const {
             commandId,
@@ -226,6 +234,11 @@ class SessionCommandService {
                 code: 'VALIDATION_ERROR',
                 message: 'commandId and actorId are required'
             };
+        }
+
+        const existing = await IdempotencyRecord.findOne({ where: { commandId } });
+        if (existing) {
+            return replayFromRecord(existing);
         }
 
         const where = sessionId != null ? { id: sessionId } : { pin: String(pin) };
@@ -263,9 +276,6 @@ class SessionCommandService {
         });
     }
 
-    /**
-     * Host end_game: transition to FINISHED from an allowed non-terminal state.
-     */
     static async executeEndGame(params) {
         const {
             commandId,
@@ -293,6 +303,11 @@ class SessionCommandService {
             };
         }
 
+        const existing = await IdempotencyRecord.findOne({ where: { commandId } });
+        if (existing) {
+            return replayFromRecord(existing);
+        }
+
         const where = sessionId != null ? { id: sessionId } : { pin: String(pin) };
         const session = await GameSession.findOne({ where });
         if (!session) {
@@ -309,7 +324,6 @@ class SessionCommandService {
             };
         }
 
-        // Prefer a legal path into FINISHED
         const steps = [];
         if (fromState === 'QUESTION_OPEN') {
             steps.push(
@@ -320,9 +334,7 @@ class SessionCommandService {
             steps.push({ toState: 'ANSWER_REVEAL', eventType: 'REVEAL_ANSWER', payload: {} });
         }
 
-        const mid = steps.length
-            ? steps[steps.length - 1].toState
-            : fromState;
+        const mid = steps.length ? steps[steps.length - 1].toState : fromState;
 
         if (mid === 'ANSWER_REVEAL' || mid === 'LEADERBOARD' || mid === 'NEXT_ROUND_READY') {
             steps.push(
@@ -404,10 +416,6 @@ class SessionCommandService {
         });
     }
 
-    /**
-     * Apply one or more transitions under a single commandId (one idempotency record).
-     * @private
-     */
     static async _runPipeline({
         commandId,
         commandType,
@@ -443,12 +451,7 @@ class SessionCommandService {
                             message: 'commandId was reused with a different payload'
                         };
                     }
-                    return {
-                        ok: true,
-                        code: existing.resultCode === 'ACCEPTED' ? 'DUPLICATE' : existing.resultCode,
-                        replay: true,
-                        result: existing.resultPayload
-                    };
+                    return replayFromRecord(existing);
                 }
 
                 const where = sessionId != null ? { id: sessionId } : { pin: String(pin) };
@@ -624,12 +627,7 @@ class SessionCommandService {
             if (err && (err.name === 'SequelizeUniqueConstraintError' || err.code === 'SQLITE_CONSTRAINT')) {
                 const existing = await IdempotencyRecord.findOne({ where: { commandId } });
                 if (existing) {
-                    return {
-                        ok: true,
-                        code: 'DUPLICATE',
-                        replay: true,
-                        result: existing.resultPayload
-                    };
+                    return replayFromRecord(existing);
                 }
             }
             return {
