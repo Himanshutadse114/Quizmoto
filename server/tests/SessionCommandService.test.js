@@ -1,8 +1,7 @@
 const { expect } = require('chai');
 const crypto = require('crypto');
-const { sequelize } = require('../config/database');
 const { connectDB } = require('../config/database');
-const { GameSession, SessionEvent, IdempotencyRecord } = require('../models/GameSession');
+const { GameSession, SessionEvent, IdempotencyRecord, Round } = require('../models/GameSession');
 const { seedTestFixtures, clearDatabase } = require('./fixtures');
 const SessionCommandService = require('../services/SessionCommandService');
 
@@ -124,34 +123,79 @@ describe('SessionCommandService (Phase 2)', function () {
             commandType: 'CANCEL',
             expectedStateVersion: 1
         }));
-        // First call already stored hash for STARTING; reuse with different toState
         expect(result.ok).to.equal(false);
         expect(result.code).to.equal('IDEMPOTENCY_KEY_REUSED');
     });
 
-    it('openQuestion creates a Round and moves STARTING -> QUESTION_OPEN', async () => {
-        await SessionCommandService.execute(cmd());
-        const result = await SessionCommandService.openQuestion({
+    it('executeStartQuestion pipelines LOBBY to QUESTION_OPEN with Round', async () => {
+        const commandId = crypto.randomUUID();
+        const result = await SessionCommandService.executeStartQuestion({
+            commandId,
+            sessionId: session.id,
+            actorId: String(host.id),
+            expectedStateVersion: 0,
+            questionIndex: 0,
+            force: true
+        });
+
+        expect(result.ok).to.equal(true);
+        expect(result.toState).to.equal('QUESTION_OPEN');
+        expect(result.legacyStatus).to.equal('question');
+        expect(result.activeRoundId).to.be.a('string');
+        expect(result.appliedSteps).to.have.length(3);
+        expect(Number(result.stateVersion)).to.equal(3);
+
+        await session.reload();
+        expect(session.state).to.equal('QUESTION_OPEN');
+        expect(session.status).to.equal('question');
+        expect(session.currentQuestionIndex).to.equal(0);
+
+        const rounds = await Round.findAll({ where: { sessionId: session.id } });
+        expect(rounds).to.have.length(1);
+
+        // Idempotent replay
+        const replay = await SessionCommandService.executeStartQuestion({
+            commandId,
+            sessionId: session.id,
+            actorId: String(host.id),
+            expectedStateVersion: 0,
+            questionIndex: 0,
+            force: true
+        });
+        expect(replay.replay).to.equal(true);
+        await session.reload();
+        expect(Number(session.stateVersion)).to.equal(3);
+    });
+
+    it('executeEndQuestion moves QUESTION_OPEN to ANSWER_REVEAL', async () => {
+        await SessionCommandService.executeStartQuestion({
             commandId: crypto.randomUUID(),
             sessionId: session.id,
-            expectedStateVersion: 1,
             actorId: String(host.id),
             questionIndex: 0,
             force: true
         });
+        await session.reload();
+        const v = Number(session.stateVersion);
+
+        const result = await SessionCommandService.executeEndQuestion({
+            commandId: crypto.randomUUID(),
+            sessionId: session.id,
+            actorId: String(host.id),
+            expectedStateVersion: v,
+            force: true
+        });
+
         expect(result.ok).to.equal(true);
-        expect(result.toState).to.equal('QUESTION_OPEN');
-        expect(result.activeRoundId).to.be.a('string');
-        expect(result.legacyStatus).to.equal('question');
+        expect(result.toState).to.equal('ANSWER_REVEAL');
+        expect(result.legacyStatus).to.equal('result');
 
         await session.reload();
-        expect(session.status).to.equal('question');
-        expect(session.currentQuestionIndex).to.equal(0);
-        expect(session.activeRoundId).to.equal(result.activeRoundId);
+        expect(session.status).to.equal('result');
+        expect(session.state).to.equal('ANSWER_REVEAL');
     });
 
     it('returns FEATURE_DISABLED when flag is off and force is false', async () => {
-        // force defaults false; env NEW_SESSION_ENGINE unset => disabled
         const result = await SessionCommandService.execute({
             commandId: crypto.randomUUID(),
             commandType: 'START_SESSION',
