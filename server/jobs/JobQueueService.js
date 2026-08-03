@@ -14,6 +14,7 @@
 
 const crypto = require('crypto');
 const { JOB_STATUS } = require('./jobTypes');
+const logger = require('../utils/logger');
 
 const DEFAULT_QUEUE_KEY = 'quizmoto:jobs:queue';
 const STATUS_KEY_PREFIX = 'quizmoto:jobs:status:';
@@ -55,14 +56,14 @@ async function ensureRedis() {
         const { createClient } = require('redis');
         redisClient = createClient({ url });
         redisClient.on('error', (err) => {
-            console.error('[JobQueue] Redis error:', err.message);
+            logger.error('job_redis_error', { module: 'jobs', error: err.message });
         });
         await redisClient.connect();
         redisReady = true;
-        console.log('[JobQueue] Redis connected');
+        logger.info('job_redis_connected', { module: 'jobs' });
         return true;
     } catch (err) {
-        console.error('[JobQueue] Redis connect failed, using memory backend:', err.message);
+        logger.warn('job_redis_fallback_memory', { module: 'jobs', error: err.message });
         redisClient = null;
         redisReady = false;
         return false;
@@ -190,6 +191,12 @@ class JobQueueService {
             memoryQueue.push(job.id);
         }
 
+        logger.job('job_enqueued', {
+            jobId: job.id,
+            type: job.type,
+            idempotencyKey: job.idempotencyKey || undefined
+        });
+
         return job;
     }
 
@@ -211,7 +218,7 @@ class JobQueueService {
                 if (!result) return null;
                 return result.element || result.key || null;
             } catch (err) {
-                console.error('[JobQueue] dequeue redis error:', err.message);
+                logger.error('job_dequeue_redis_error', { module: 'jobs', error: err.message });
                 return null;
             }
         }
@@ -259,6 +266,11 @@ class JobQueueService {
             job.finishedAt = nowIso();
             job.updatedAt = nowIso();
             await writeStatus(job);
+            logger.job('job_completed', {
+                jobId: job.id,
+                type: job.type,
+                attempts: job.attempts
+            });
             return { ok: true, code: 'COMPLETED', job };
         } catch (err) {
             job.status = JOB_STATUS.FAILED;
@@ -266,6 +278,12 @@ class JobQueueService {
             job.finishedAt = nowIso();
             job.updatedAt = nowIso();
             await writeStatus(job);
+            logger.job('job_failed', {
+                jobId: job.id,
+                type: job.type,
+                attempts: job.attempts,
+                error: job.error
+            });
             return { ok: false, code: 'FAILED', job };
         }
     }
@@ -278,7 +296,7 @@ class JobQueueService {
         const stopFn = opts.stopFn || (() => false);
         const idleMs = opts.idleMs || 500;
 
-        console.log('[JobQueue] worker loop started');
+        logger.info('worker_loop_started', { module: 'jobs' });
         while (!stopFn()) {
             const jobId = await this.dequeue(1);
             if (!jobId) {
@@ -287,14 +305,16 @@ class JobQueueService {
             }
             try {
                 const outcome = await this.processJob(jobId);
-                console.log(
-                    `[JobQueue] job ${jobId} -> ${outcome.code} (${outcome.job && outcome.job.type})`
-                );
+                logger.job('job_processed', {
+                    jobId,
+                    code: outcome.code,
+                    type: outcome.job && outcome.job.type
+                });
             } catch (err) {
-                console.error(`[JobQueue] process error for ${jobId}:`, err.message);
+                logger.error('job_process_error', { module: 'jobs', jobId, error: err.message });
             }
         }
-        console.log('[JobQueue] worker loop stopped');
+        logger.info('worker_loop_stopped', { module: 'jobs' });
     }
 
     /** Test helper — clear memory state. */
