@@ -95,6 +95,12 @@ const startServer = async () => {
         const socketHandlers = require('./services/socketHandlers');
         socketHandlers(io);
 
+        // Phase 2: transient-state watchdog (no-op when NEW_SESSION_ENGINE is off)
+        const SessionWatchdogService = require('./services/SessionWatchdogService');
+        SessionWatchdogService.startPeriodic(
+            Number(process.env.SESSION_WATCHDOG_INTERVAL_MS) || 15000
+        );
+
         const PORT = process.env.PORT || 5001;
         server.listen(PORT, '0.0.0.0', () => {
             console.log(`Server running on port ${PORT}`);
