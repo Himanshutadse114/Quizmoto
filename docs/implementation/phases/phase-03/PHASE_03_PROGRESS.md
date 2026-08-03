@@ -9,9 +9,9 @@
 | P3-T03 | Multi-node / sticky notes | NOT STARTED |
 | P3-T04 | Queue + worker foundation | **DONE** |
 | P3-T05 | Async reports | **DONE** |
-| P3-T06 | Object storage abstraction | **IMPLEMENTED** — local default; S3 optional |
-| P3-T07 | Backup / restore runbook | **NEXT** |
-| P3-T08 | Structured logging | NOT STARTED |
+| P3-T06 | Object storage abstraction | **DONE** |
+| P3-T07 | Backup / restore runbook | **DONE** — runbook + scripts; drill pending operator Postgres |
+| P3-T08 | Structured logging | **NEXT** |
 | P3-T09 | Metrics hooks | NOT STARTED |
 | P3-T10 | REPORTS_ASYNC flag | **DONE** (default OFF) |
 | P3-T11 | Acceptance tests | PARTIAL |
@@ -24,3 +24,10 @@
 - Report job handlers store under `reports/{sessionId}/{jobId}.{ext}`
 - Download prefers `storageKey` via stream
 - Sync report path unchanged (flag OFF)
+
+## P3-T07 notes
+
+- Runbook: `docs/implementation/phases/phase-03/PHASE_03_BACKUP_RUNBOOK.md`
+- Scripts: `scripts/postgres_backup.sh`, `scripts/postgres_restore.sh`
+- Restore refuses common prod DB names unless `ALLOW_PROD_RESTORE=yes`
+- Operator drill evidence still needed when staging Postgres is available (or mark BLOCKED)
