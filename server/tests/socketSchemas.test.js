@@ -64,4 +64,64 @@ describe('socketSchemas', () => {
         expect(invalid.error).to.not.be.undefined;
         expect(invalid.error.details[0].message).to.include('"emoji" must be one of');
     });
+
+    // --- Phase 2 command envelope (optional, backward compatible) ---
+
+    it('accepts start_question without commandId (legacy clients)', () => {
+        const { error, value } = validateSocketPayload('start_question', {
+            pin: '123456',
+            token: 'abc'
+        });
+        expect(error).to.be.undefined;
+        expect(value.commandId).to.be.undefined;
+        expect(value.expectedStateVersion).to.be.undefined;
+    });
+
+    it('accepts start_question with valid commandId UUID and expectedStateVersion', () => {
+        const { error, value } = validateSocketPayload('start_question', {
+            pin: '123456',
+            token: 'abc',
+            commandId: '550e8400-e29b-41d4-a716-446655440000',
+            expectedStateVersion: 3
+        });
+        expect(error).to.be.undefined;
+        expect(value.commandId).to.equal('550e8400-e29b-41d4-a716-446655440000');
+        expect(value.expectedStateVersion).to.equal(3);
+    });
+
+    it('rejects start_question with non-UUID commandId', () => {
+        const { error } = validateSocketPayload('start_question', {
+            pin: '123456',
+            token: 'abc',
+            commandId: 'not-a-uuid'
+        });
+        expect(error).to.not.be.undefined;
+    });
+
+    it('rejects negative expectedStateVersion', () => {
+        const { error } = validateSocketPayload('end_question', {
+            pin: '123456',
+            token: 'abc',
+            expectedStateVersion: -1
+        });
+        expect(error).to.not.be.undefined;
+    });
+
+    it('accepts end_game and submit_answer optional envelope fields', () => {
+        const endGame = validateSocketPayload('end_game', {
+            pin: '1',
+            token: 't',
+            commandId: '550e8400-e29b-41d4-a716-446655440001',
+            expectedStateVersion: 0
+        });
+        expect(endGame.error).to.be.undefined;
+
+        const submit = validateSocketPayload('submit_answer', {
+            pin: '1',
+            nickname: 'P',
+            answerIndex: 0,
+            commandId: '550e8400-e29b-41d4-a716-446655440002'
+        });
+        expect(submit.error).to.be.undefined;
+    });
 });
