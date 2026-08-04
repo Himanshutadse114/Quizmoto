@@ -1,12 +1,8 @@
-/* Auto-generated emergency restore loader — full handlers decoded from chunks */
 const parts = [
-  require('./socketHandlers.chunk0'),
-  require('./socketHandlers.chunk1'),
-  require('./socketHandlers.chunk2'),
-  require('./socketHandlers.chunk3'),
-  require('./socketHandlers.chunk4'),
-  require('./socketHandlers.chunk5'),
-  require('./socketHandlers.chunk6')
+  require('./socketHandlers.p0'),
+  require('./socketHandlers.p1'),
+  require('./socketHandlers.p2'),
+  require('./socketHandlers.p3')
 ];
 const code = Buffer.from(parts.join(''), 'base64').toString('utf8');
 const Module = require('module');
