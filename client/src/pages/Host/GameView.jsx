@@ -332,7 +332,7 @@ const GameView = () => {
                 )}
 
                 {(gameState === 'question' || gameState === 'result') && players.length > 0 && (
-                    <div className="w-full max-w-6xl mt-8">
+                    <div className="w-full max-w-6xl mt-8 mb-10">
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                                 <h3 className="text-xs font-black uppercase tracking-widest text-white/40">Players in session</h3>
