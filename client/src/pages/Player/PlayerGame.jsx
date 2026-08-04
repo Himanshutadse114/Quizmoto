@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../context/SocketContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import AvatarDisplay from '../../components/AvatarDisplay';
 import ReactionBar from '../../components/ReactionBar';
 import ReactionCanvas from '../../components/ReactionCanvas';
@@ -23,6 +23,24 @@ const PlayerGame = () => {
     const [isHostDisconnected, setIsHostDisconnected] = useState(false);
     const resultRef = useRef(null);
     const answeredRef = useRef(false);
+    /** Skip leave_session on cleanup when we already left or were kicked. */
+    const skipLeaveRef = useRef(false);
+
+    const leaveSession = useCallback((opts = {}) => {
+        const clearStorage = opts.clearStorage !== false;
+        try {
+            const info = JSON.parse(localStorage.getItem('player_info') || '{}');
+            if (socket && info.pin) {
+                socket.emit('leave_session', {
+                    pin: info.pin,
+                    role: 'player',
+                    nickname: info.nickname,
+                    token: info.token
+                });
+            }
+            if (clearStorage) localStorage.removeItem('player_info');
+        } catch (_) {}
+    }, [socket]);
 
     useEffect(() => {
         const info = JSON.parse(localStorage.getItem('player_info'));
@@ -31,6 +49,8 @@ const PlayerGame = () => {
             return;
         }
         if (!socket) return;
+
+        skipLeaveRef.current = false;
 
         socket.emit('join_room', {
             pin: info.pin,
@@ -85,6 +105,7 @@ const PlayerGame = () => {
                         setGameState('result');
                     }
                 } else if (data.status === 'lobby') {
+                    skipLeaveRef.current = true;
                     navigate('/player/lobby');
                 }
             } catch (err) {
@@ -110,6 +131,7 @@ const PlayerGame = () => {
 
         socket.on('host_left', (data) => {
             setIsHostDisconnected(false);
+            skipLeaveRef.current = true;
             try { localStorage.removeItem('player_info'); } catch (_) {}
             alert((data && data.message) || 'Host aborted the session.');
             navigate('/');
@@ -123,7 +145,9 @@ const PlayerGame = () => {
         socket.on('error', (msg) => {
             console.error('Socket error in PlayerGame:', msg);
             if (msg === 'Game not found' || msg === 'Game is already finished' || msg === 'Unauthorized Host Entry') {
+                skipLeaveRef.current = true;
                 alert(msg);
+                try { localStorage.removeItem('player_info'); } catch (_) {}
                 navigate('/');
                 return;
             }
@@ -151,8 +175,18 @@ const PlayerGame = () => {
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
+        const onPageHide = () => {
+            if (!skipLeaveRef.current) {
+                leaveSession({ clearStorage: true });
+            }
+        };
+        window.addEventListener('pagehide', onPageHide);
+        window.addEventListener('beforeunload', onPageHide);
+
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('pagehide', onPageHide);
+            window.removeEventListener('beforeunload', onPageHide);
             socket.off('question_started');
             socket.off('question_result');
             socket.off('question_ended');
@@ -163,8 +197,12 @@ const PlayerGame = () => {
             socket.off('host_reconnected');
             socket.off('answer_confirmed');
             socket.off('error');
+            // Browser back / navigate away mid-game → host must see Offline
+            if (!skipLeaveRef.current) {
+                leaveSession({ clearStorage: true });
+            }
         };
-    }, [socket, navigate]);
+    }, [socket, navigate, leaveSession]);
 
     useEffect(() => {
         if (gameState === 'countdown' && question) {
@@ -204,6 +242,12 @@ const PlayerGame = () => {
         setGameState('waiting');
     };
 
+    const handleLeaveClick = () => {
+        skipLeaveRef.current = true;
+        leaveSession({ clearStorage: true });
+        navigate('/');
+    };
+
     if (isHostDisconnected) {
         return (
             <div className="min-h-screen flex items-center justify-center p-6 relative">
@@ -214,21 +258,7 @@ const PlayerGame = () => {
                         <div className="w-8 h-8 border-4 border-quizmoto-purple/20 border-t-quizmoto-purple rounded-full animate-spin mx-auto mb-6" />
                         <button
                             type="button"
-                            onClick={() => {
-                                try {
-                                    const info = JSON.parse(localStorage.getItem('player_info') || '{}');
-                                    if (socket && info.pin) {
-                                        socket.emit('leave_session', {
-                                            pin: info.pin,
-                                            role: 'player',
-                                            nickname: info.nickname,
-                                            token: info.token
-                                        });
-                                    }
-                                    localStorage.removeItem('player_info');
-                                } catch (_) {}
-                                navigate('/');
-                            }}
+                            onClick={handleLeaveClick}
                             className="text-sm underline opacity-60 font-black tracking-widest hover:opacity-100"
                         >
                             LEAVE GAME
@@ -306,7 +336,7 @@ const PlayerGame = () => {
     if (gameState === 'result' && result) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center p-6">
-                <div className={'text-6xl mb-4 ' + (result.correct ? '' : '')}>{result.correct ? '✓' : '✗'}</div>
+                <div className={'text-6xl mb-4'}>{result.correct ? '✓' : '✗'}</div>
                 <h2 className="text-3xl font-black mb-2">{result.correct ? 'Correct!' : 'Wrong'}</h2>
                 <p className="text-white/60 font-bold mb-2">Score: {result.score}</p>
                 {pointsWon > 0 && <p className="text-quizmoto-yellow font-black">+{pointsWon}</p>}
@@ -333,6 +363,7 @@ const PlayerGame = () => {
                 <button
                     type="button"
                     onClick={() => {
+                        skipLeaveRef.current = true;
                         try { localStorage.removeItem('player_info'); } catch (_) {}
                         if (localStorage.getItem('playerToken')) navigate('/player/dashboard');
                         else navigate('/');
@@ -346,8 +377,15 @@ const PlayerGame = () => {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4">
             <p className="font-bold text-white/50">Waiting for host…</p>
+            <button
+                type="button"
+                onClick={handleLeaveClick}
+                className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/20 text-white/70"
+            >
+                Leave session
+            </button>
         </div>
     );
 };
