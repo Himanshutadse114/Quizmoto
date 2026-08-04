@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
@@ -32,6 +32,7 @@ const GameView = () => {
     const [isProcessingNext, setIsProcessingNext] = useState(false);
     const [analyticsData, setAnalyticsData] = useState(null);
     const [isMuted, setIsMuted] = useState(false);
+    const offsetRef = useRef(0);
 
     useEffect(() => {
         if (!socket) return;
@@ -50,7 +51,7 @@ const GameView = () => {
                 if (sessionData.currentQuestion) {
                     setQuestion(sessionData.currentQuestion);
                     if (sessionData.status === 'question') {
-                        const now = Date.now() + clockOffset;
+                        const now = Date.now() + offsetRef.current;
                         const delay = sessionData.currentQuestion.startTime - now;
                         if (delay > 0) {
                             setGameState('countdown');
@@ -89,12 +90,12 @@ const GameView = () => {
         });
 
         socket.on('question_started', (data) => {
-            const offset = data.serverTime ? data.serverTime - Date.now() : 0;
+            const offset = (data.serverTime != null) ? (data.serverTime - Date.now()) : 0;
+            offsetRef.current = offset;
             setClockOffset(offset);
             const syncedNow = Date.now() + offset;
             setQuestion(data);
             setTimer(data.timer);
-            setGameState('countdown');
             setAnswersCount(0);
             setAnswerDistribution([0, 0, 0, 0]);
             setResults(null);
@@ -102,7 +103,6 @@ const GameView = () => {
             const delay = data.startTime - syncedNow;
             if (delay > 0) {
                 setGameState('countdown');
-                // Cap at 3s to match server (+3000ms) so host never shows 4 while player shows 3
                 setCountdown(Math.min(3, Math.max(1, Math.ceil(delay / 1000))));
             } else {
                 setGameState('question');
@@ -163,34 +163,37 @@ const GameView = () => {
     }, [timer, gameState]);
 
     useEffect(() => {
-        if (gameState === 'countdown' && question) {
-            const interval = setInterval(() => {
-                const now = Date.now() + clockOffset;
-                const remaining = Math.min(3, Math.max(0, Math.ceil((question.startTime - now) / 1000)));
-                if (remaining <= 0) {
-                    setGameState('question');
-                    setTimer(question.timer);
-                    clearInterval(interval);
-                } else setCountdown(Math.min(3, Math.max(1, remaining)));
-            }, 100);
-            return () => clearInterval(interval);
-        }
-    }, [gameState, question, clockOffset]);
+        if (gameState !== 'countdown' || !question) return;
+        const tick = () => {
+            const now = Date.now() + offsetRef.current;
+            const delay = question.startTime - now;
+            if (delay <= 0) {
+                setGameState('question');
+                setTimer(question.timer);
+            } else {
+                setCountdown(Math.min(3, Math.max(1, Math.ceil(delay / 1000))));
+            }
+        };
+        tick();
+        const interval = setInterval(tick, 50);
+        return () => clearInterval(interval);
+    }, [gameState, question]);
 
     useEffect(() => {
         if (gameState !== 'question' || !question) return;
-        const interval = setInterval(() => {
-            const now = Date.now() + clockOffset;
+        const tick = () => {
+            const now = Date.now() + offsetRef.current;
             const elapsed = Math.floor((now - question.startTime) / 1000);
             const remaining = Math.max(0, question.timer - elapsed);
             setTimer(remaining);
             if (remaining <= 0) {
-                clearInterval(interval);
                 if (socket && pin && token) socket.emit('end_question', { pin, token });
             }
-        }, 200);
+        };
+        tick();
+        const interval = setInterval(tick, 100);
         return () => clearInterval(interval);
-    }, [gameState, question, pin, socket, token, clockOffset]);
+    }, [gameState, question, pin, socket, token]);
 
     useEffect(() => {
         if (gameState === 'finished') {
@@ -243,11 +246,9 @@ const GameView = () => {
     if (gameState === 'countdown') return (
         <div className="min-h-screen flex flex-col items-center justify-center relative z-10">
             <ReactionCanvas />
-            <AnimatePresence mode="wait">
-                <motion.div key={countdown} initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 1.5, opacity: 0 }} className="text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]">
-                    {countdown}
-                </motion.div>
-            </AnimatePresence>
+            <div className="text-[9rem] leading-none font-black text-white tabular-nums drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]">
+                {countdown}
+            </div>
             <p className="text-white/70 text-xl font-medium tracking-widest uppercase mt-4">Get Ready!</p>
             <button type="button" onClick={abortSession} className="mt-8 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-red-400/40 text-red-300 bg-red-500/10 hover:bg-red-500/20">
                 Abort Session
