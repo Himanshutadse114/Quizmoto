@@ -1,0 +1,5 @@
+{
+  "name": "Policy-to-SCORM Engine",
+  "description": "Transform policy documents and PPTs into interactive, trackable SCORM-compliant learning modules with AI-generated summaries and assessments.",
+  "requestFramePermissions": []
+}
