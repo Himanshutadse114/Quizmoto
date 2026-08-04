@@ -10,6 +10,7 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { GameSession, Player, PlayerAnswer } = require('../models/GameSession');
 const { Quiz, Question } = require('../models/Quiz');
+const Metrics = require('../utils/metrics');
 
 const execFileAsync = promisify(execFile);
 
@@ -68,10 +69,8 @@ async function loadSessionForExport(sessionId, hostId) {
  */
 function writeStubArtifact(outputPath, format) {
     if (format === 'pdf') {
-        // Minimal PDF header so content-type checks can pass if needed
         fs.writeFileSync(outputPath, Buffer.from('%PDF-1.4\n% stub report\n'));
     } else {
-        // Minimal ZIP/XLSX signature (PK)
         fs.writeFileSync(outputPath, Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00, 0x00]));
     }
 }
@@ -87,6 +86,8 @@ async function generateReportFile({
     testRunId = null,
     keepFiles = false
 }) {
+    const __metricsStart = Date.now();
+
     if (!['pdf', 'excel'].includes(format)) {
         const err = new Error('Invalid format');
         err.code = 'INVALID_FORMAT';
@@ -118,6 +119,7 @@ async function generateReportFile({
                 /* ignore */
             }
         }
+        Metrics.recordReportLatency(format, Date.now() - __metricsStart);
         return {
             outputPath,
             jsonPath,
@@ -169,6 +171,7 @@ async function generateReportFile({
         }
     }
 
+    Metrics.recordReportLatency(format, Date.now() - __metricsStart);
     return {
         outputPath,
         jsonPath,
