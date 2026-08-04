@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../context/SocketContext';
 import { motion } from 'framer-motion';
@@ -10,6 +10,24 @@ const PlayerLobby = () => {
     const navigate = useNavigate();
     const [playerInfo, setPlayerInfo] = useState(null);
     const [isHostDisconnected, setIsHostDisconnected] = useState(false);
+    /** When true, cleanup must NOT leave_session (navigating into the live game). */
+    const stayingInSessionRef = useRef(false);
+
+    const leaveSession = useCallback((opts = {}) => {
+        const clearStorage = opts.clearStorage !== false;
+        try {
+            const info = JSON.parse(localStorage.getItem('player_info') || '{}');
+            if (socket && info.pin) {
+                socket.emit('leave_session', {
+                    pin: info.pin,
+                    role: 'player',
+                    nickname: info.nickname,
+                    token: info.token
+                });
+            }
+            if (clearStorage) localStorage.removeItem('player_info');
+        } catch (_) {}
+    }, [socket]);
 
     useEffect(() => {
         const info = JSON.parse(localStorage.getItem('player_info'));
@@ -21,6 +39,8 @@ const PlayerLobby = () => {
 
         if (!socket) return;
 
+        stayingInSessionRef.current = false;
+
         socket.emit('join_room', {
             pin: info.pin,
             nickname: info.nickname,
@@ -29,17 +49,20 @@ const PlayerLobby = () => {
         });
 
         socket.on('question_started', () => {
+            stayingInSessionRef.current = true;
             navigate('/player/game');
         });
 
         socket.on('session_info', (data) => {
             if (data.status === 'question' || data.status === 'result') {
+                stayingInSessionRef.current = true;
                 navigate('/player/game');
             }
         });
 
         socket.on('host_left', (data) => {
             setIsHostDisconnected(false);
+            stayingInSessionRef.current = true; // already kicked; skip double leave
             try { localStorage.removeItem('player_info'); } catch (_) {}
             alert((data && data.message) || 'Host left the session.');
             navigate('/');
@@ -55,20 +78,43 @@ const PlayerLobby = () => {
 
         socket.on('error', (msg) => {
             if (msg === 'Game not found' || msg === 'Game is already finished' || msg === 'Unauthorized Host Entry') {
+                stayingInSessionRef.current = true;
                 alert(msg);
+                try { localStorage.removeItem('player_info'); } catch (_) {}
                 navigate('/');
             }
         });
 
+        // Mobile browser back / tab close: notify host immediately
+        const onPageHide = () => {
+            if (!stayingInSessionRef.current) {
+                leaveSession({ clearStorage: true });
+            }
+        };
+        window.addEventListener('pagehide', onPageHide);
+        window.addEventListener('beforeunload', onPageHide);
+
         return () => {
+            window.removeEventListener('pagehide', onPageHide);
+            window.removeEventListener('beforeunload', onPageHide);
             socket.off('question_started');
             socket.off('session_info');
             socket.off('host_disconnected');
             socket.off('host_left');
             socket.off('host_reconnected');
             socket.off('error');
+            // SPA back/navigate away from lobby (not into game) → mark offline for host
+            if (!stayingInSessionRef.current) {
+                leaveSession({ clearStorage: true });
+            }
         };
-    }, [socket, navigate]);
+    }, [socket, navigate, leaveSession]);
+
+    const handleLeaveClick = () => {
+        stayingInSessionRef.current = true; // prevent double leave in cleanup
+        leaveSession({ clearStorage: true });
+        navigate('/');
+    };
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
@@ -78,25 +124,17 @@ const PlayerLobby = () => {
                         <h2 className="text-2xl font-black mb-4 uppercase tracking-tight">Host Disconnected</h2>
                         <p className="font-bold opacity-80 mb-6">Waiting for the host to reconnect... Don't leave!</p>
                         <div className="w-8 h-8 border-4 border-quizmoto-purple/20 border-t-quizmoto-purple rounded-full animate-spin mx-auto mb-6" />
-                        <button onClick={() => {
-                            try {
-                                const info = JSON.parse(localStorage.getItem('player_info') || '{}');
-                                if (socket && info.pin) {
-                                    socket.emit('leave_session', {
-                                        pin: info.pin,
-                                        role: 'player',
-                                        nickname: info.nickname,
-                                        token: info.token
-                                    });
-                                }
-                                localStorage.removeItem('player_info');
-                            } catch (_) {}
-                            navigate('/');
-                        }} className="text-sm underline opacity-60 font-black tracking-widest hover:opacity-100">LEAVE GAME</button>
+                        <button
+                            type="button"
+                            onClick={handleLeaveClick}
+                            className="text-sm underline opacity-60 font-black tracking-widest hover:opacity-100"
+                        >
+                            LEAVE GAME
+                        </button>
                     </div>
                 </div>
             )}
-            
+
             <motion.div
                 animate={{ scale: [1, 1.1, 1] }}
                 transition={{ repeat: Infinity, duration: 2 }}
@@ -111,7 +149,16 @@ const PlayerLobby = () => {
                 {playerInfo?.nickname}
             </div>
 
-            <p className="mt-20 font-bold opacity-60">Wait for the host to start...</p>
+            <p className="mt-16 font-bold opacity-60">Wait for the host to start...</p>
+
+            <button
+                type="button"
+                onClick={handleLeaveClick}
+                className="mt-8 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/20 text-white/70 hover:bg-white/10 transition-all"
+            >
+                Leave session
+            </button>
+
             <ReactionBar pin={playerInfo?.pin} />
         </div>
     );
