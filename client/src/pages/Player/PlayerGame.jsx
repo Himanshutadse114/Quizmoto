@@ -59,7 +59,8 @@ const PlayerGame = () => {
         const delay = data.startTime - syncedNow;
         if (delay > 0) {
             setGameState('countdown');
-            setCountdown(Math.ceil(delay / 1000));
+            // Server uses +3000ms; cap at 3 so host/player never diverge (e.g. 4 vs 3)
+            setCountdown(Math.min(3, Math.max(1, Math.ceil(delay / 1000))));
         } else {
             setGameState('question');
             const elapsed = Math.floor((syncedNow - data.startTime) / 1000);
@@ -222,7 +223,7 @@ const PlayerGame = () => {
                     setGameState('question');
                     setTimeLeft(question.timer || 20);
                 } else {
-                    setCountdown(Math.ceil(delay / 1000));
+                    setCountdown(Math.min(3, Math.max(1, Math.ceil(delay / 1000))));
                 }
             }, 100);
             return () => clearInterval(interval);
@@ -270,7 +271,6 @@ const PlayerGame = () => {
     })();
 
     const colors = ['bg-quizmoto-red', 'bg-quizmoto-blue', 'bg-quizmoto-yellow', 'bg-quizmoto-green'];
-    const labels = ['A', 'B', 'C', 'D'];
 
     return (
         <div className="h-screen flex flex-col p-4 bg-quizmoto-purple overflow-hidden fixed inset-0 text-white">
@@ -335,8 +335,9 @@ const PlayerGame = () => {
                                         ' text-white p-4 md:p-6 rounded-2xl font-bold text-sm md:text-lg shadow-lg disabled:opacity-50 transition-transform active:scale-95 flex items-center justify-center text-center'
                                     }
                                 >
-                                    <span className="opacity-70 mr-2">{labels[idx]}</span>
-                                    {typeof opt === 'string' ? opt : (opt && opt.text) || String(opt)}
+                                    <span className="w-full text-center">
+                                        {typeof opt === 'string' ? opt : (opt && opt.text) || String(opt)}
+                                    </span>
                                 </button>
                             ))}
                         </div>
