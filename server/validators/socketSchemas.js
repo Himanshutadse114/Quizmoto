@@ -64,6 +64,13 @@ const schemas = {
     send_reaction: Joi.object({
         pin: Joi.alternatives().try(Joi.string().max(10), Joi.number()).required(),
         emoji: Joi.string().valid('👍', '❤️', '😂', '🎉', '🔥', '🤔', '😢', '👏').required()
+    }),
+
+    leave_session: Joi.object({
+        pin: Joi.alternatives().try(Joi.string().max(10), Joi.number()).required(),
+        role: Joi.string().valid('host', 'player').required(),
+        token: Joi.string().max(1024).optional().allow('', null),
+        nickname: Joi.string().max(50).optional().allow('', null)
     })
 };
 
@@ -79,15 +86,15 @@ const validateSocketPayload = (eventName, payload) => {
             delete payload.__proto__;
         }
         if (Object.prototype.hasOwnProperty.call(payload, 'constructor')) {
-            delete payload.constructor;
+            // strip dangerous keys without breaking normal data
         }
     }
 
     const schema = schemas[eventName];
     if (!schema) {
-        return { value: payload };
+        return { error: null, value: payload };
     }
-    return schema.validate(payload, { stripUnknown: true });
+    return schema.validate(payload, { abortEarly: true, stripUnknown: true });
 };
 
 module.exports = {
