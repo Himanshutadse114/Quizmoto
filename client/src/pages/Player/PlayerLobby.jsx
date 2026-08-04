@@ -48,8 +48,12 @@ const PlayerLobby = () => {
             token: info.token
         });
 
-        socket.on('question_started', () => {
+        socket.on('question_started', (data) => {
             stayingInSessionRef.current = true;
+            // Persist payload so PlayerGame can apply Q1 if the event is missed during navigate
+            try {
+                sessionStorage.setItem('pending_question_started', JSON.stringify(data));
+            } catch (_) {}
             navigate('/player/game');
         });
 
@@ -62,7 +66,7 @@ const PlayerLobby = () => {
 
         socket.on('host_left', (data) => {
             setIsHostDisconnected(false);
-            stayingInSessionRef.current = true; // already kicked; skip double leave
+            stayingInSessionRef.current = true;
             try { localStorage.removeItem('player_info'); } catch (_) {}
             alert((data && data.message) || 'Host left the session.');
             navigate('/');
@@ -85,7 +89,6 @@ const PlayerLobby = () => {
             }
         });
 
-        // Mobile browser back / tab close: notify host immediately
         const onPageHide = () => {
             if (!stayingInSessionRef.current) {
                 leaveSession({ clearStorage: true });
@@ -103,7 +106,6 @@ const PlayerLobby = () => {
             socket.off('host_left');
             socket.off('host_reconnected');
             socket.off('error');
-            // SPA back/navigate away from lobby (not into game) → mark offline for host
             if (!stayingInSessionRef.current) {
                 leaveSession({ clearStorage: true });
             }
@@ -111,7 +113,7 @@ const PlayerLobby = () => {
     }, [socket, navigate, leaveSession]);
 
     const handleLeaveClick = () => {
-        stayingInSessionRef.current = true; // prevent double leave in cleanup
+        stayingInSessionRef.current = true;
         leaveSession({ clearStorage: true });
         navigate('/');
     };
