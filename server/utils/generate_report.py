@@ -26,7 +26,7 @@ try:
     FONT_BOLD = 'Roboto-Bold'
     FONT_MED = 'Roboto-Medium'
     FONT_LIGHT = 'Roboto-Light'
-except:
+except Exception:
     FONT_NORMAL = 'Helvetica'
     FONT_BOLD = 'Helvetica-Bold'
     FONT_MED = 'Helvetica-Bold'
@@ -49,8 +49,6 @@ class KahootReport:
         self.data = data
         self.styles = self._setup_styles()
         self.elements = []
-        
-        # Safely parse JSON strings from Sequelize if needed
         self._parse_nested_json()
 
     def _parse_nested_json(self):
@@ -58,28 +56,29 @@ class KahootReport:
         if isinstance(analytics_data, str):
             try:
                 self.data["analytics"] = json.loads(analytics_data)
-            except:
+            except Exception:
                 self.data["analytics"] = {}
-                
-        for p in self.data.get("players", []):
+
+        for p in self.data.get("players", []) or []:
             ans = p.get("answers", [])
             if isinstance(ans, str):
                 try:
                     p["answers"] = json.loads(ans)
-                except:
+                except Exception:
                     p["answers"] = []
 
-        for q in self.data.get("Quiz", {}).get("questions", []):
+        quiz = self.data.get("Quiz") or {}
+        for q in quiz.get("questions", []) or []:
             opts = q.get("options", [])
             if isinstance(opts, str):
                 try:
                     q["options"] = json.loads(opts)
-                except:
+                except Exception:
                     q["options"] = []
 
     def _setup_styles(self):
         styles = getSampleStyleSheet()
-        
+
         styles.add(ParagraphStyle(
             name='PremiumTitle', fontName=FONT_BOLD, fontSize=34, textColor=KAHOOT_PURPLE,
             alignment=0, spaceAfter=10, leading=40
@@ -104,8 +103,7 @@ class KahootReport:
             name='TOCItem', fontName=FONT_NORMAL, fontSize=11, leading=16,
             textColor=DARK_GREY, leftIndent=20
         ))
-        
-        # Audit Logs Styles
+
         styles.add(ParagraphStyle(name='ForensicLabel', fontName=FONT_BOLD, fontSize=7, textColor=colors.black, leading=8))
         styles.add(ParagraphStyle(name='ForensicLabelWhite', fontName=FONT_BOLD, fontSize=7, textColor=colors.white, leading=8))
         styles.add(ParagraphStyle(name='ForensicValue', fontName=FONT_NORMAL, fontSize=7, textColor=colors.black, leading=8))
@@ -115,31 +113,31 @@ class KahootReport:
         return styles
 
     def create_cover_page(self):
-        quiz_title = self.data.get("Quiz", {}).get("title", "Unknown Quiz")
-        
+        quiz_title = (self.data.get("Quiz") or {}).get("title", "Unknown Quiz")
+
         d1 = Drawing(500, 150)
         d1.add(Rect(-50, 50, 600, 100, fillColor=KAHOOT_PURPLE, strokeColor=None))
         d1.add(String(20, 90, "QUIZMOTO", fontName=FONT_BOLD, fontSize=24, fillColor=WHITE))
         d1.add(String(20, 70, "ANALYTICS PLATFORM", fontName=FONT_LIGHT, fontSize=10, fillColor=WHITE))
         self.elements.append(d1)
         self.elements.append(Spacer(1, 1*inch))
-        
+
         self.elements.append(Paragraph("Quizmoto Report", self.styles['PremiumTitle']))
         self.elements.append(Paragraph(f"Analytics for: {quiz_title}", self.styles['PremiumSubtitle']))
-        
+
         self.elements.append(Spacer(1, 2.5*inch))
-        
+
         host_id = self.data.get("hostId", "Unknown Host")
         date_str = self.data.get("createdAt", "Unknown Date")
         if isinstance(date_str, str) and "T" in date_str:
             date_str = date_str.split("T")[0]
         else:
             date_str = str(date_str)
-            
+
         c_data = [
             [Paragraph("REPORT DATE", self.styles['BodyTextWhite']), Paragraph(str(date_str), self.styles['BodyTextCustom'])],
             [Paragraph("SESSION HOST", self.styles['BodyTextWhite']), Paragraph(str(host_id), self.styles['BodyTextCustom'])],
-            [Paragraph("TOTAL PLAYERS", self.styles['BodyTextWhite']), Paragraph(str(len(self.data.get('players', []))), self.styles['BodyTextCustom'])]
+            [Paragraph("TOTAL PLAYERS", self.styles['BodyTextWhite']), Paragraph(str(len(self.data.get('players', []) or [])), self.styles['BodyTextCustom'])]
         ]
         t = Table(c_data, colWidths=[1.8*inch, 3*inch])
         t.setStyle(TableStyle([
@@ -163,7 +161,7 @@ class KahootReport:
             ("2", "High-Level Analytics", "test_summary", "3"),
             ("3", "Detailed Audit Logs", "audit_logs", "4"),
         ]
-        
+
         toc_data = [['Sr No.', 'Content', 'Page No.']]
         for sr, title, link_id, pg_no in toc_items:
             toc_data.append([
@@ -171,7 +169,7 @@ class KahootReport:
                 Paragraph(f'<b><link destination="{link_id}">{title}</link></b>', self.styles['TOCItem']),
                 Paragraph(pg_no, self.styles['BodyTextCustom'])
             ])
-            
+
         t = Table(toc_data, colWidths=[0.8*inch, 4.5*inch, 1.2*inch])
         t.setStyle(TableStyle([
             ('ALIGN', (0,0), (-1,-1), 'CENTER'),
@@ -188,16 +186,16 @@ class KahootReport:
         t.hAlign = 'CENTER'
         self.elements.append(t)
         self.elements.append(PageBreak())
-        
+
     def create_executive_summary(self):
-        players = self.data.get("players", [])
-        quiz_title = self.data.get("Quiz", {}).get("title", "Unknown Quiz")
+        players = self.data.get("players", []) or []
+        quiz_title = (self.data.get("Quiz") or {}).get("title", "Unknown Quiz")
         summary_text = (
             f"This session audit report analyzes the performance of {len(players)} players who participated "
             f"in the '{quiz_title}' interactive session. The following sections provide high-level class analytics "
             f"and detailed forensic logs of individual player behavior, scoring, and question-level responses."
         )
-        
+
         block = [
             Paragraph('<a name="exec_summary"/>I. Executive Summary', self.styles['SectionHeader']),
             Paragraph(summary_text, self.styles['BodyTextCustom']),
@@ -206,27 +204,35 @@ class KahootReport:
         self.elements.append(KeepTogether(block))
 
     def create_test_summary(self):
-        ca = self.data.get("analytics", {}).get("classAnalytics", {})
-        if ca:
-            block = [
-                Paragraph('<a name="test_summary"/>II. High-Level Analytics', self.styles['SectionHeader'])
-            ]
-            
-            # Generate Matplotlib chart (no numpy dependency)
+        analytics = self.data.get("analytics") or {}
+        if isinstance(analytics, str):
+            try:
+                analytics = json.loads(analytics)
+            except Exception:
+                analytics = {}
+        ca = analytics.get("classAnalytics", {}) if isinstance(analytics, dict) else {}
+        if not ca:
+            return
+
+        block = [
+            Paragraph('<a name="test_summary"/>II. High-Level Analytics', self.styles['SectionHeader'])
+        ]
+
+        try:
             labels = ['Accuracy', 'Participation']
-            values = [ca.get("averageAccuracy", 0) or 0, ca.get("averageParticipation", 0) or 0]
-            
+            values = [ca.get("averageAccuracy", 0) or 0, ca.get("averageParticipation", 0) or ca.get("participationRate", 0) or 0]
+
             fig, ax = plt.subplots(figsize=(7, 3))
             colors_list = ['#1368ce', '#26890c']
-            
+
             ax.set_facecolor('#FBFBFB')
             ax.grid(axis='x', linestyle='--', alpha=0.4, color='#CCCCCC')
-            
+
             bars = ax.barh(labels, values, color=colors_list, height=0.5, edgecolor='white', linewidth=2, alpha=0.9)
-            
+
             y_pos = list(range(len(labels)))
             ax.plot(values, y_pos, color='#2D2D2D', linestyle='--', marker='o', markersize=6, linewidth=1.5, alpha=0.6)
-            
+
             bars_labeled = ax.bar_label(bars, fmt='%.1f%%', padding=3, weight='bold', fontsize=11)
             for i, label in enumerate(bars_labeled):
                 label.set_color(colors_list[i])
@@ -237,17 +243,30 @@ class KahootReport:
             ax.spines['left'].set_color('#DDDDDD')
             ax.spines['bottom'].set_color('#DDDDDD')
             ax.set_xlim(0, max(100, max(values)+10 if values else 100))
-            
-            chart_path = "/tmp/kahoot_chart.png"
+
+            chart_dir = os.environ.get("REPORT_CHART_DIR", "/tmp/report_charts")
+            try:
+                os.makedirs(chart_dir, exist_ok=True)
+            except Exception:
+                chart_dir = "/tmp"
+            chart_path = os.path.join(chart_dir, f"kahoot_chart_{os.getpid()}.png")
             plt.tight_layout()
             plt.savefig(chart_path, dpi=200, transparent=True)
             plt.close()
-            
+
             img = Image(chart_path, width=5.5*inch, height=2.4*inch)
             img.hAlign = 'CENTER'
             block.append(img)
             block.append(Spacer(1, 0.4*inch))
-            self.elements.append(KeepTogether(block))
+        except Exception as chart_err:
+            print(f"[report] chart skipped: {chart_err}", file=sys.stderr)
+            block.append(Paragraph(
+                f"Accuracy: {ca.get('averageAccuracy', 0)}% · Participation: {ca.get('averageParticipation', ca.get('participationRate', 0))}%",
+                self.styles['BodyTextCustom']
+            ))
+            block.append(Spacer(1, 0.4*inch))
+
+        self.elements.append(KeepTogether(block))
 
     def create_audit_logs(self):
         header_block = [
@@ -256,29 +275,26 @@ class KahootReport:
             Spacer(1, 0.2*inch)
         ]
 
-        questions = self.data.get("Quiz", {}).get("questions", [])
-        players = self.data.get("players", [])
-        
+        questions = (self.data.get("Quiz") or {}).get("questions", []) or []
+        players = list(self.data.get("players", []) or [])
+
         if not players:
             header_block.append(Paragraph("<i>No participant data recorded for this session.</i>", self.styles['BodyTextCustom']))
             self.elements.append(KeepTogether(header_block))
             return
-            
+
         self.elements.append(KeepTogether(header_block))
-        
-        # Sort players by score descending
+
         players.sort(key=lambda x: x.get("score", 0) or 0, reverse=True)
-        
+
         for idx, user in enumerate(players):
-            # --- 1. Dynamic Header Color Logic ---
             header_color = KAHOOT_YELLOW
             percentile = (idx / len(players)) if len(players) > 0 else 0
             if percentile < 0.25:
                 header_color = KAHOOT_GREEN
             elif percentile > 0.75:
                 header_color = KAHOOT_RED
-                
-            # --- 2. Target Header Row ---
+
             h1 = [['Player Target', 'Score', 'Final Rank']]
             t_h1 = Table(h1, colWidths=[3.2*inch, 2.5*inch, 1.5*inch])
             t_h1.setStyle(TableStyle([
@@ -292,7 +308,6 @@ class KahootReport:
                 ('GRID', (0,0), (-1,-1), 0.5, colors.white),
             ]))
 
-            # --- 3. User Info Row ---
             u_info = [[
                 Paragraph(f"<b>Player: {user.get('nickname', 'Unknown')}</b>", self.styles['ForensicValue']),
                 f"{user.get('score', 0)} pts",
@@ -310,7 +325,6 @@ class KahootReport:
                 ('GRID', (0,0), (-1,-1), 0.5, colors.white),
             ]))
 
-            # --- 4. Event Rows ---
             e_h = [['Question', 'Selected Answer', 'Correct Answer', 'Time Taken', 'Result']]
             t_eh = Table(e_h, colWidths=[1.8*inch, 2.0*inch, 1.8*inch, 0.8*inch, 0.8*inch])
             t_eh.setStyle(TableStyle([
@@ -320,19 +334,19 @@ class KahootReport:
                 ('ALIGN', (0,0), (-1,-1), 'CENTER'),
                 ('GRID', (0,0), (-1,-1), 0.5, colors.white),
             ]))
-            
+
             self.elements.append(KeepTogether([t_h1, t_ui, t_eh]))
 
-            answers = user.get("answers", [])
+            answers = user.get("answers", []) or []
             for q_idx, q in enumerate(questions):
                 ans = next((a for a in answers if a.get("questionIndex") == q_idx), None)
-                opts = q.get("options", [])
+                opts = q.get("options", []) or []
                 correct_idx = q.get("correctIndex", 0)
                 correct_text = opts[correct_idx] if 0 <= correct_idx < len(opts) else "Unknown"
-                
+
                 ev_bg = colors.white
-                s_lbl, s_val, s_det = 'ForensicLabel', 'ForensicValue', 'ForensicDetail'
-                
+                s_lbl, s_val = 'ForensicLabel', 'ForensicValue'
+
                 if not ans:
                     result_txt = "Missed"
                     sel_ans = "N/A"
@@ -344,15 +358,14 @@ class KahootReport:
                     if ans.get("isCorrect"):
                         ev_bg = KAHOOT_GREEN
                         result_txt = "Correct"
-                        s_lbl, s_val, s_det = 'ForensicLabelWhite', 'ForensicValueWhite', 'ForensicDetailWhite'
+                        s_lbl, s_val = 'ForensicLabelWhite', 'ForensicValueWhite'
                     else:
                         ev_bg = KAHOOT_RED
                         result_txt = "Incorrect"
-                        s_lbl, s_val, s_det = 'ForensicLabelWhite', 'ForensicValueWhite', 'ForensicDetailWhite'
+                        s_lbl, s_val = 'ForensicLabelWhite', 'ForensicValueWhite'
 
                 q_txt = q.get("questionText", f"Q{q_idx+1}")
-                
-                # Encode handles weird unicode issues in reportlab occasionally
+
                 q_txt = str(q_txt).encode('latin-1', 'replace').decode('latin-1')
                 sel_ans = str(sel_ans).encode('latin-1', 'replace').decode('latin-1')
                 correct_text = str(correct_text).encode('latin-1', 'replace').decode('latin-1')
@@ -373,7 +386,7 @@ class KahootReport:
                     ('TOPPADDING', (0,0), (-1,-1), 8),
                 ]))
                 self.elements.append(t_ev)
-            
+
             self.elements.append(Spacer(1, 0.4*inch))
 
     @staticmethod
@@ -407,63 +420,60 @@ def generate_excel(data, output_path):
     workbook = xlsxwriter.Workbook(output_path)
     header_fmt = workbook.add_format({'bold': True, 'bg_color': '#46178f', 'font_color': 'white', 'border': 1})
     bold_fmt = workbook.add_format({'bold': True})
-    
+
     analytics_data = data.get("analytics", {})
     if isinstance(analytics_data, str):
         try:
             analytics_data = json.loads(analytics_data)
-        except:
+        except Exception:
             analytics_data = {}
-            
+
     players = list(data.get("players", []) or [])
-    questions = data.get("Quiz", {}).get("questions", []) or []
-    
-    # Sheet 1: Overview
+    questions = (data.get("Quiz") or {}).get("questions", []) or []
+
     ws_overview = workbook.add_worksheet("Overview")
-    quiz_title = data.get("Quiz", {}).get("title", "Unknown Quiz")
+    quiz_title = (data.get("Quiz") or {}).get("title", "Unknown Quiz")
     ws_overview.write(0, 0, "Quizmoto Official Report", bold_fmt)
     ws_overview.write(1, 0, f"Quiz: {quiz_title}")
-    
+
     ca = analytics_data.get("classAnalytics", {}) if isinstance(analytics_data, dict) else {}
     if ca:
         ws_overview.write(3, 0, "Class Analytics", bold_fmt)
         ws_overview.write(4, 0, "Average Accuracy")
         ws_overview.write(4, 1, f"{ca.get('averageAccuracy', 0)}%")
         ws_overview.write(5, 0, "Average Participation")
-        ws_overview.write(5, 1, f"{ca.get('averageParticipation', 0)}%")
-        
-    # Sheet 2: Leaderboard
+        ws_overview.write(5, 1, f"{ca.get('averageParticipation', ca.get('participationRate', 0))}%")
+
     ws_lb = workbook.add_worksheet("Leaderboard")
     headers = ["Rank", "Nickname", "Score"]
     for col, h in enumerate(headers):
         ws_lb.write(0, col, h, header_fmt)
-        
+
     players.sort(key=lambda x: x.get("score", 0) or 0, reverse=True)
     for row, p in enumerate(players, start=1):
         ws_lb.write(row, 0, row)
         ws_lb.write(row, 1, p.get("nickname", ""))
         ws_lb.write(row, 2, p.get("score", 0))
-        
-    # Sheet 3: Detailed Answers
+
     ws_det = workbook.add_worksheet("Detailed Answers")
     headers_det = ["Nickname", "Total Score"]
     for i in range(len(questions)):
         headers_det.append(f"Q{i+1}")
-        
+
     for col, h in enumerate(headers_det):
         ws_det.write(0, col, h, header_fmt)
-        
+
     for row, p in enumerate(players, start=1):
         ws_det.write(row, 0, p.get("nickname", ""))
         ws_det.write(row, 1, p.get("score", 0))
-        
+
         answers = p.get("answers", [])
         if isinstance(answers, str):
             try:
                 answers = json.loads(answers)
-            except:
+            except Exception:
                 answers = []
-                
+
         col_offset = 2
         for q_idx, q in enumerate(questions):
             ans = next((a for a in answers if a.get("questionIndex") == q_idx), None)
@@ -472,9 +482,9 @@ def generate_excel(data, output_path):
                 if isinstance(opts, str):
                     try:
                         opts = json.loads(opts)
-                    except:
+                    except Exception:
                         opts = []
-                        
+
                 a_idx = ans.get("answerIndex", -1)
                 a_text = opts[a_idx] if 0 <= a_idx < len(opts) else f"Option {a_idx+1}"
                 is_correct = "Yes" if ans.get("isCorrect") else "No"
@@ -482,7 +492,7 @@ def generate_excel(data, output_path):
                 ws_det.write(row, col_offset + q_idx, f"Ans: {a_text} | Correct: {is_correct} | Time: {time_taken}s")
             else:
                 ws_det.write(row, col_offset + q_idx, "No Answer")
-                
+
     workbook.close()
 
 if __name__ == "__main__":
