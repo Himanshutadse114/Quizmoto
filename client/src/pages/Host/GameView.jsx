@@ -54,7 +54,7 @@ const GameView = () => {
                         const delay = sessionData.currentQuestion.startTime - now;
                         if (delay > 0) {
                             setGameState('countdown');
-                            setCountdown(Math.ceil(delay / 1000));
+                            setCountdown(Math.min(3, Math.max(1, Math.ceil(delay / 1000))));
                         } else {
                             setGameState('question');
                             const diff = Math.floor((now - sessionData.currentQuestion.startTime) / 1000);
@@ -102,7 +102,8 @@ const GameView = () => {
             const delay = data.startTime - syncedNow;
             if (delay > 0) {
                 setGameState('countdown');
-                setCountdown(Math.ceil(delay / 1000));
+                // Cap at 3s to match server (+3000ms) so host never shows 4 while player shows 3
+                setCountdown(Math.min(3, Math.max(1, Math.ceil(delay / 1000))));
             } else {
                 setGameState('question');
                 const diff = Math.floor((syncedNow - data.startTime) / 1000);
@@ -165,12 +166,12 @@ const GameView = () => {
         if (gameState === 'countdown' && question) {
             const interval = setInterval(() => {
                 const now = Date.now() + clockOffset;
-                const remaining = Math.ceil((question.startTime - now) / 1000);
+                const remaining = Math.min(3, Math.max(0, Math.ceil((question.startTime - now) / 1000)));
                 if (remaining <= 0) {
                     setGameState('question');
                     setTimer(question.timer);
                     clearInterval(interval);
-                } else setCountdown(remaining);
+                } else setCountdown(Math.min(3, Math.max(1, remaining)));
             }, 100);
             return () => clearInterval(interval);
         }
@@ -312,7 +313,6 @@ const GameView = () => {
                         <div className="flex justify-center gap-4 h-[280px] w-full items-end bg-white/3 px-8 py-6 rounded-2xl border border-white/8">
                             {['red', 'blue', 'yellow', 'green'].map((color, idx) => {
                                 const count = answerDistribution[idx];
-                                const labels = ['A', 'B', 'C', 'D'];
                                 const height = playersCount > 0 ? (count / playersCount) * 100 : 0;
                                 return (
                                     <div key={idx} className="flex flex-col items-center gap-3 h-full flex-1">
@@ -321,7 +321,7 @@ const GameView = () => {
                                             <motion.div initial={{ height: 0 }} animate={{ height: Math.max(4, height) + '%' }} className={'w-full bg-quizmoto-' + color + ' rounded-t-lg'} />
                                         </div>
                                         <div className={'w-12 h-12 rounded-xl bg-quizmoto-' + color + ' flex items-center justify-center shadow-lg'}>
-                                            <span className="font-bold text-white text-base">{labels[idx]}</span>
+                                            <span className="font-bold text-white text-base">{idx + 1}</span>
                                         </div>
                                     </div>
                                 );
@@ -406,7 +406,29 @@ const GameView = () => {
 
                 {gameState === 'finished' && (
                     <div className="w-full max-w-4xl text-center">
-                        <h1 className="text-4xl font-black mb-8 italic uppercase">Game Over!</h1>
+                        <h1 className="text-4xl font-black mb-2 italic uppercase">Game Over!</h1>
+                        <p className="text-xs font-bold opacity-60 uppercase tracking-widest mb-8">Final Standing</p>
+
+                        {(leaderboard || []).length > 0 && (
+                            <div className="flex items-end justify-center gap-3 mb-10 px-2">
+                                {[1, 0, 2].map((podiumIdx) => {
+                                    const p = leaderboard[podiumIdx];
+                                    if (!p) return <div key={podiumIdx} className="w-28" />;
+                                    const heights = ['h-32', 'h-44', 'h-24'];
+                                    const medals = ['🥈', '🥇', '🥉'];
+                                    return (
+                                        <div key={podiumIdx} className="flex flex-col items-center w-28">
+                                            <div className="text-3xl mb-1">{medals[podiumIdx]}</div>
+                                            <AvatarDisplay avatar={p.avatar} imgClass="w-10 h-10 mb-1" textClass="text-2xl" />
+                                            <div className="text-sm font-black truncate w-full text-center mb-1">{p.nickname}</div>
+                                            <div className="text-quizmoto-yellow font-black mb-2">{p.score}</div>
+                                            <div className={'w-full rounded-t-2xl bg-white/20 border border-white/10 ' + heights[podiumIdx]} />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
                         <div className="space-y-3 max-w-md mx-auto">
                             {(leaderboard || []).slice(0, 10).map((p, i) => (
                                 <div key={p.nickname || i} className="flex items-center gap-3 bg-white/10 rounded-2xl px-5 py-3">
