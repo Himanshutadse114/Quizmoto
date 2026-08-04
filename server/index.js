@@ -23,6 +23,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 const logger = require('./utils/logger');
+const Metrics = require('./utils/metrics');
 
 const app = express();
 const server = http.createServer(app);
@@ -52,12 +53,14 @@ if (process.env.REDIS_URL) {
     });
 }
 
-// Structured HTTP access log (P3-T08)
+// Structured HTTP access log (P3-T08) + metrics (P3-T09)
 app.use((req, res, next) => {
     req.requestId = req.headers['x-request-id'] || crypto.randomUUID();
     const start = Date.now();
     res.on('finish', () => {
-        logger.http(req, res, Date.now() - start);
+        const duration = Date.now() - start;
+        logger.http(req, res, duration);
+        Metrics.recordHttp(res.statusCode, duration);
     });
     next();
 });
@@ -94,6 +97,7 @@ const startServer = async () => {
         app.use('/api/quizzes', require('./routes/quizzes'));
         app.use('/api/sessions', require('./routes/sessions'));
         app.use('/api/jobs', require('./routes/jobs'));
+        app.use('/api/metrics', require('./routes/metrics'));
 
         if (process.env.NODE_ENV === 'test') {
             app.use('/api/test-only', require('./routes/testOnly'));
