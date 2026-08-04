@@ -25,8 +25,8 @@ const Join = () => {
         { name: 'GREEN', color: 'bg-green-500', shadow: 'shadow-green-900/40' }
     ];
 
+    // Prefill from logged-in player profile (login → dashboard → join)
     useEffect(() => {
-        // Auto-fill player profile if logged in
         const storedProfile = localStorage.getItem('playerProfile');
         if (storedProfile) {
             try {
@@ -40,39 +40,52 @@ const Join = () => {
                 console.error('Error parsing profile');
             }
         }
+    }, []);
 
+    // Socket listeners — same path for login and guest join
+    useEffect(() => {
         if (!socket) return;
 
-        socket.on('joined_successfully', (data) => {
-            localStorage.setItem('player_info', JSON.stringify({ ...data, avatar: selectedAvatar, teamName }));
+        const onJoined = (data) => {
+            try { sessionStorage.removeItem('pending_question_started'); } catch (_) {}
+            const info = {
+                pin: data.pin || pin,
+                nickname: data.nickname || nickname,
+                token: data.token,
+                sessionId: data.sessionId,
+                avatar: selectedAvatar,
+                teamName: teamName || null
+            };
+            localStorage.setItem('player_info', JSON.stringify(info));
             navigate('/player/lobby');
-        });
+        };
 
+        socket.on('joined_successfully', onJoined);
         socket.on('room_info', (data) => {
             setGameMode(data.gameMode || 'classic');
         });
-
         socket.on('error', (msg) => {
             setError(msg);
         });
 
-        if (pin && pin.length === 6) {
-            socket.emit('join_room', { pin, role: 'player_check' }); // Special role to just get info
-        }
-
         return () => {
-            socket.off('joined_successfully');
+            socket.off('joined_successfully', onJoined);
             socket.off('room_info');
             socket.off('error');
         };
-    }, [socket, navigate, selectedAvatar, pin, teamName]);
+    }, [socket, navigate, pin, nickname, selectedAvatar, teamName]);
+
+    // Soft room probe when PIN is complete
+    useEffect(() => {
+        if (!socket || !pin || String(pin).length !== 6) return;
+        socket.emit('join_room', { pin, role: 'player_check' });
+    }, [socket, pin]);
 
     const handleJoin = (e) => {
         e.preventDefault();
         if (!socket) return;
         if (gameMode === 'team' && !teamName) return setError('Please select a team');
 
-        // Attempt to go fullscreen on user interaction (mobile requirement)
         const docElm = document.documentElement;
         try {
             const requestFs = docElm.requestFullscreen ||
@@ -89,19 +102,18 @@ const Join = () => {
             console.warn('Fullscreen API not supported', err);
         }
 
-        // Retrieve existing info
         const info = JSON.parse(localStorage.getItem('player_info') || '{}');
         const storedToken = (info.pin === pin && info.nickname === nickname) ? info.token : null;
         const playerProfileToken = localStorage.getItem('playerToken');
 
-        socket.emit('join_room', { 
-            pin, 
-            nickname, 
-            role: 'player', 
-            avatar: selectedAvatar, 
-            token: storedToken, 
-            playerProfileToken, 
-            teamName 
+        socket.emit('join_room', {
+            pin,
+            nickname,
+            role: 'player',
+            avatar: selectedAvatar,
+            token: storedToken,
+            playerProfileToken,
+            teamName
         });
     };
 
@@ -152,7 +164,6 @@ const Join = () => {
                     )}
                 </div>
 
-
                 <form onSubmit={handleJoin} className="space-y-4">
                     <div className="relative group">
                         <input
@@ -174,7 +185,7 @@ const Join = () => {
                             type="text"
                             placeholder="Nickname"
                             className={`w-full p-4 border-2 rounded-2xl text-center font-black text-xl outline-none transition-all placeholder:text-gray-200 ${
-                                isLoggedIn 
+                                isLoggedIn
                                 ? 'bg-quizmoto-purple/10 border-quizmoto-purple/30 text-quizmoto-purple cursor-not-allowed'
                                 : 'bg-gray-50 border-gray-100 focus:border-quizmoto-purple text-gray-800'
                             }`}
