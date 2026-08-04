@@ -136,13 +136,43 @@ async function generateReportFile({
     const pyCmd = resolvePythonCmd();
     const timeoutMs = Number(process.env.REPORT_GEN_TIMEOUT_MS) || 30000;
 
+    // Ensure matplotlib cache dir is writable for non-root (Render USER node)
+    const env = {
+        ...process.env,
+        MPLCONFIGDIR: process.env.MPLCONFIGDIR || path.join(dir, '.mplconfig'),
+        PYTHONUNBUFFERED: '1'
+    };
     try {
-        await execFileAsync(pyCmd, [scriptPath, jsonPath, outputPath, format], {
+        ensureDir(env.MPLCONFIGDIR);
+    } catch (_) {
+        /* ignore */
+    }
+
+    try {
+        const { stdout, stderr } = await execFileAsync(pyCmd, [scriptPath, jsonPath, outputPath, format], {
             timeout: timeoutMs,
             windowsHide: true,
-            killSignal: 'SIGTERM'
+            killSignal: 'SIGTERM',
+            env,
+            maxBuffer: 5 * 1024 * 1024
         });
+        if (stderr && String(stderr).trim()) {
+            console.error('[report-gen] python stderr:', String(stderr).slice(0, 2000));
+        }
+        if (stdout && String(stdout).trim()) {
+            console.log('[report-gen] python stdout:', String(stdout).slice(0, 500));
+        }
     } catch (err) {
+        const stderr = err && (err.stderr || err.message);
+        console.error('[report-gen] failed', {
+            pyCmd,
+            scriptPath,
+            format,
+            sessionId,
+            code: err && err.code,
+            signal: err && err.signal,
+            stderr: stderr ? String(stderr).slice(0, 3000) : null
+        });
         if (fs.existsSync(jsonPath) && !keepFiles) {
             try {
                 fs.unlinkSync(jsonPath);
