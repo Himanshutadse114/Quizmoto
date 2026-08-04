@@ -1,7 +1,7 @@
 /**
  * Shared report generation (PDF / Excel).
- * Primary path: pure Node.js (pdfkit + exceljs) — no Python required.
- * Optional: REPORT_USE_PYTHON=1 to try the Python script first.
+ * Primary: Phase 3 Python report (generate_report.py) — full branded layout.
+ * Fallback: pure Node (pdfkit + exceljs) if Python fails.
  */
 
 const fs = require('fs');
@@ -23,7 +23,13 @@ function ensureDir(dir) {
 
 function resolvePythonCmd() {
     if (process.env.TEST_PYTHON_FAIL) return 'invalid_python_cmd_xyz';
-    return process.platform === 'win32' ? 'python' : 'python3';
+    const candidates = [
+        process.env.REPORT_PYTHON_CMD,
+        '/usr/bin/python3',
+        'python3',
+        'python'
+    ].filter(Boolean);
+    return candidates[0];
 }
 
 function artifactsDir(testRunId) {
@@ -75,43 +81,81 @@ function contentTypeFor(format) {
         : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 }
 
+/**
+ * Phase 3 Python report (full branded Kahoot-style layout).
+ */
 async function tryPythonGenerate(jsonPath, outputPath, format, dir, sessionId) {
     const scriptPath = path.join(__dirname, '../utils/generate_report.py');
     if (!fs.existsSync(scriptPath)) {
-        throw new Error('Python script missing');
+        throw new Error('Python script missing: ' + scriptPath);
     }
-    const pyCmd = resolvePythonCmd();
-    const timeoutMs = Number(process.env.REPORT_GEN_TIMEOUT_MS) || 30000;
+
+    const candidates = [
+        process.env.REPORT_PYTHON_CMD,
+        '/usr/bin/python3',
+        'python3',
+        'python'
+    ].filter(Boolean);
+
+    const timeoutMs = Number(process.env.REPORT_GEN_TIMEOUT_MS) || 60000;
     const env = {
         ...process.env,
         MPLCONFIGDIR: process.env.MPLCONFIGDIR || path.join(dir, '.mplconfig'),
-        PYTHONUNBUFFERED: '1'
+        PYTHONUNBUFFERED: '1',
+        HOME: process.env.HOME || dir,
+        REPORT_CHART_DIR: process.env.REPORT_CHART_DIR || '/tmp/report_charts'
     };
     try {
         ensureDir(env.MPLCONFIGDIR);
+        ensureDir(env.REPORT_CHART_DIR);
     } catch (_) { /* ignore */ }
 
-    const { stdout, stderr } = await execFileAsync(pyCmd, [scriptPath, jsonPath, outputPath, format], {
-        timeout: timeoutMs,
-        windowsHide: true,
-        killSignal: 'SIGTERM',
-        env,
-        maxBuffer: 5 * 1024 * 1024
-    });
-    if (stderr && String(stderr).trim()) {
-        console.error('[report-gen] python stderr:', String(stderr).slice(0, 2000));
+    let lastErr = null;
+    for (const pyCmd of candidates) {
+        try {
+            const { stdout, stderr } = await execFileAsync(
+                pyCmd,
+                [scriptPath, jsonPath, outputPath, format],
+                {
+                    timeout: timeoutMs,
+                    windowsHide: true,
+                    killSignal: 'SIGTERM',
+                    env,
+                    maxBuffer: 8 * 1024 * 1024
+                }
+            );
+            if (stderr && String(stderr).trim()) {
+                console.error('[report-gen] python stderr:', String(stderr).slice(0, 3000));
+            }
+            if (stdout && String(stdout).trim()) {
+                console.log('[report-gen] python stdout:', String(stdout).slice(0, 500));
+            }
+            if (!fs.existsSync(outputPath)) {
+                throw new Error('Python did not create output file');
+            }
+            return;
+        } catch (err) {
+            lastErr = err;
+            const msg = (err && (err.stderr || err.message)) || '';
+            console.error('[report-gen] python attempt failed', {
+                pyCmd,
+                message: err && err.message,
+                code: err && err.code,
+                stderr: msg ? String(msg).slice(0, 2000) : null
+            });
+            try {
+                if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+            } catch (_) { /* ignore */ }
+            if (err && err.code === 'ENOENT') continue;
+            break;
+        }
     }
-    if (stdout && String(stdout).trim()) {
-        console.log('[report-gen] python stdout:', String(stdout).slice(0, 500));
-    }
-    if (!fs.existsSync(outputPath)) {
-        throw new Error('Python did not create output file');
-    }
+    throw lastErr || new Error('Python report generation failed');
 }
 
 /**
  * Generate a report file for a session.
- * @returns {Promise<{ outputPath, jsonPath, format, contentType, downloadName }>}
+ * Prefers Phase 3 Python report; falls back to Node if Python fails.
  */
 async function generateReportFile({
     sessionId,
@@ -159,25 +203,30 @@ async function generateReportFile({
         };
     }
 
-    const usePythonFirst = ['1', 'true', 'yes', 'on'].includes(
-        String(process.env.REPORT_USE_PYTHON || '').toLowerCase()
+    const forceNode = ['1', 'true', 'yes', 'on'].includes(
+        String(process.env.REPORT_FORCE_NODE || '').toLowerCase()
+    );
+    const skipPython = forceNode || ['1', 'true', 'yes', 'on'].includes(
+        String(process.env.REPORT_SKIP_PYTHON || '').toLowerCase()
     );
 
     let generated = false;
     let lastErr = null;
+    let engine = null;
 
-    if (usePythonFirst) {
+    if (!skipPython) {
         try {
             await tryPythonGenerate(jsonPath, outputPath, format, dir, sessionId);
             generated = true;
-            console.log('[report-gen] used python path', { sessionId, format });
+            engine = 'python';
+            console.log('[report-gen] used Phase-3 python report', { sessionId, format });
         } catch (err) {
             lastErr = err;
-            console.error('[report-gen] python path failed, falling back to node', {
+            console.error('[report-gen] Phase-3 python failed, falling back to node', {
                 sessionId,
                 format,
                 message: err && err.message,
-                stderr: err && err.stderr ? String(err.stderr).slice(0, 1500) : null
+                stderr: err && err.stderr ? String(err.stderr).slice(0, 2000) : null
             });
             try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch (_) { /* ignore */ }
         }
@@ -190,10 +239,11 @@ async function generateReportFile({
                 throw new Error('Node generator did not create output file');
             }
             generated = true;
-            console.log('[report-gen] used node path', { sessionId, format });
+            engine = 'node';
+            console.log('[report-gen] used node fallback report', { sessionId, format });
         } catch (err) {
             lastErr = err;
-            console.error('[report-gen] node path failed', {
+            console.error('[report-gen] node fallback failed', {
                 sessionId,
                 format,
                 message: err && err.message,
@@ -219,7 +269,8 @@ async function generateReportFile({
         jsonPath,
         format,
         contentType: contentTypeFor(format),
-        downloadName: `Report${ext}`
+        downloadName: `Report${ext}`,
+        engine
     };
 }
 
