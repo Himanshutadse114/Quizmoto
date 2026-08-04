@@ -26,12 +26,30 @@ class LocalObjectStorage {
         if (!key || typeof key !== 'string') {
             throw new Error('storage key is required');
         }
-        // Prevent path traversal
-        const normalized = path.normalize(key).replace(/^(\.\.[/\\])+/, '');
-        if (normalized.includes('..')) {
+        if (key.includes('\0')) {
             throw new Error('invalid storage key');
         }
-        return normalized.replace(/\\/g, '/');
+        // Reject absolute paths and any parent-segment before normalize
+        if (path.isAbsolute(key) || /(^|[\\/])\.\.([\\/]|$)/.test(key) || key.includes('..')) {
+            throw new Error('invalid storage key');
+        }
+        const normalized = path.normalize(key).replace(/\\/g, '/');
+        if (
+            !normalized ||
+            normalized === '.' ||
+            normalized.startsWith('../') ||
+            normalized.includes('/../') ||
+            normalized.includes('..')
+        ) {
+            throw new Error('invalid storage key');
+        }
+        // Final containment check against root
+        const resolved = path.resolve(this.rootDir, normalized);
+        const rootResolved = path.resolve(this.rootDir);
+        if (resolved !== rootResolved && !resolved.startsWith(rootResolved + path.sep)) {
+            throw new Error('invalid storage key');
+        }
+        return normalized;
     }
 
     resolveLocalPath(key) {
@@ -46,7 +64,6 @@ class LocalObjectStorage {
         const buf = Buffer.isBuffer(body) ? body : Buffer.from(body);
         await fsp.writeFile(filePath, buf);
 
-        // Optional sidecar for content-type
         if (contentType) {
             await fsp.writeFile(`${filePath}.meta.json`, JSON.stringify({ contentType }), 'utf8');
         }
