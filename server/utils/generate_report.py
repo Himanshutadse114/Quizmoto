@@ -5,7 +5,6 @@ import xlsxwriter
 import matplotlib
 matplotlib.use('Agg') # Headless mode for server
 import matplotlib.pyplot as plt
-import numpy as np
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -132,11 +131,13 @@ class KahootReport:
         
         host_id = self.data.get("hostId", "Unknown Host")
         date_str = self.data.get("createdAt", "Unknown Date")
-        if "T" in date_str:
+        if isinstance(date_str, str) and "T" in date_str:
             date_str = date_str.split("T")[0]
+        else:
+            date_str = str(date_str)
             
         c_data = [
-            [Paragraph("REPORT DATE", self.styles['BodyTextWhite']), Paragraph(date_str, self.styles['BodyTextCustom'])],
+            [Paragraph("REPORT DATE", self.styles['BodyTextWhite']), Paragraph(str(date_str), self.styles['BodyTextCustom'])],
             [Paragraph("SESSION HOST", self.styles['BodyTextWhite']), Paragraph(str(host_id), self.styles['BodyTextCustom'])],
             [Paragraph("TOTAL PLAYERS", self.styles['BodyTextWhite']), Paragraph(str(len(self.data.get('players', []))), self.styles['BodyTextCustom'])]
         ]
@@ -211,9 +212,9 @@ class KahootReport:
                 Paragraph('<a name="test_summary"/>II. High-Level Analytics', self.styles['SectionHeader'])
             ]
             
-            # Generate Matplotlib chart
+            # Generate Matplotlib chart (no numpy dependency)
             labels = ['Accuracy', 'Participation']
-            values = [ca.get("averageAccuracy", 0), ca.get("averageParticipation", 0)]
+            values = [ca.get("averageAccuracy", 0) or 0, ca.get("averageParticipation", 0) or 0]
             
             fig, ax = plt.subplots(figsize=(7, 3))
             colors_list = ['#1368ce', '#26890c']
@@ -223,7 +224,7 @@ class KahootReport:
             
             bars = ax.barh(labels, values, color=colors_list, height=0.5, edgecolor='white', linewidth=2, alpha=0.9)
             
-            y_pos = np.arange(len(labels))
+            y_pos = list(range(len(labels)))
             ax.plot(values, y_pos, color='#2D2D2D', linestyle='--', marker='o', markersize=6, linewidth=1.5, alpha=0.6)
             
             bars_labeled = ax.bar_label(bars, fmt='%.1f%%', padding=3, weight='bold', fontsize=11)
@@ -235,7 +236,7 @@ class KahootReport:
             ax.spines['right'].set_visible(False)
             ax.spines['left'].set_color('#DDDDDD')
             ax.spines['bottom'].set_color('#DDDDDD')
-            ax.set_xlim(0, max(100, max(values)+10))
+            ax.set_xlim(0, max(100, max(values)+10 if values else 100))
             
             chart_path = "/tmp/kahoot_chart.png"
             plt.tight_layout()
@@ -266,7 +267,7 @@ class KahootReport:
         self.elements.append(KeepTogether(header_block))
         
         # Sort players by score descending
-        players.sort(key=lambda x: x.get("score", 0), reverse=True)
+        players.sort(key=lambda x: x.get("score", 0) or 0, reverse=True)
         
         for idx, user in enumerate(players):
             # --- 1. Dynamic Header Color Logic ---
@@ -293,7 +294,7 @@ class KahootReport:
 
             # --- 3. User Info Row ---
             u_info = [[
-                Paragraph(f"<b>👤 {user.get('nickname', 'Unknown')}</b>", self.styles['ForensicValue']),
+                Paragraph(f"<b>Player: {user.get('nickname', 'Unknown')}</b>", self.styles['ForensicValue']),
                 f"{user.get('score', 0)} pts",
                 f"#{idx+1}"
             ]]
@@ -309,7 +310,7 @@ class KahootReport:
                 ('GRID', (0,0), (-1,-1), 0.5, colors.white),
             ]))
 
-            # --- 4. Event Rows (The "Forensic" part) ---
+            # --- 4. Event Rows ---
             e_h = [['Question', 'Selected Answer', 'Correct Answer', 'Time Taken', 'Result']]
             t_eh = Table(e_h, colWidths=[1.8*inch, 2.0*inch, 1.8*inch, 0.8*inch, 0.8*inch])
             t_eh.setStyle(TableStyle([
@@ -320,7 +321,6 @@ class KahootReport:
                 ('GRID', (0,0), (-1,-1), 0.5, colors.white),
             ]))
             
-            # Keep the header block together so it doesn't orphan
             self.elements.append(KeepTogether([t_h1, t_ui, t_eh]))
 
             answers = user.get("answers", [])
@@ -415,8 +415,8 @@ def generate_excel(data, output_path):
         except:
             analytics_data = {}
             
-    players = data.get("players", [])
-    questions = data.get("Quiz", {}).get("questions", [])
+    players = list(data.get("players", []) or [])
+    questions = data.get("Quiz", {}).get("questions", []) or []
     
     # Sheet 1: Overview
     ws_overview = workbook.add_worksheet("Overview")
@@ -424,7 +424,7 @@ def generate_excel(data, output_path):
     ws_overview.write(0, 0, "Quizmoto Official Report", bold_fmt)
     ws_overview.write(1, 0, f"Quiz: {quiz_title}")
     
-    ca = analytics_data.get("classAnalytics", {})
+    ca = analytics_data.get("classAnalytics", {}) if isinstance(analytics_data, dict) else {}
     if ca:
         ws_overview.write(3, 0, "Class Analytics", bold_fmt)
         ws_overview.write(4, 0, "Average Accuracy")
@@ -438,7 +438,7 @@ def generate_excel(data, output_path):
     for col, h in enumerate(headers):
         ws_lb.write(0, col, h, header_fmt)
         
-    players.sort(key=lambda x: x.get("score", 0), reverse=True)
+    players.sort(key=lambda x: x.get("score", 0) or 0, reverse=True)
     for row, p in enumerate(players, start=1):
         ws_lb.write(row, 0, row)
         ws_lb.write(row, 1, p.get("nickname", ""))
@@ -487,17 +487,30 @@ def generate_excel(data, output_path):
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:
-        print("Usage: python generate_report.py <input_json> <output_file> <format>")
+        print("Usage: python generate_report.py <input_json> <output_file> <format>", file=sys.stderr)
         sys.exit(1)
-        
+
     input_file = sys.argv[1]
     output_file = sys.argv[2]
     out_format = sys.argv[3].lower()
-    
-    with open(input_file, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-        
-    if out_format == "pdf":
-        generate_pdf(data, output_file)
-    elif out_format == "excel":
-        generate_excel(data, output_file)
+
+    try:
+        with open(input_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        if out_format == "pdf":
+            generate_pdf(data, output_file)
+        elif out_format == "excel":
+            generate_excel(data, output_file)
+        else:
+            print(f"Unknown format: {out_format}", file=sys.stderr)
+            sys.exit(2)
+
+        if not os.path.exists(output_file):
+            print(f"Output file was not created: {output_file}", file=sys.stderr)
+            sys.exit(3)
+    except Exception as e:
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        print(f"REPORT_ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
