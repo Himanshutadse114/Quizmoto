@@ -244,12 +244,12 @@ const GameView = () => {
     );
 
     if (gameState === 'countdown') return (
-        <div className="min-h-screen flex flex-col items-center justify-center relative z-10">
+        <div className="min-h-screen flex flex-col items-center justify-center relative z-10 px-4">
             <ReactionCanvas />
-            <div className="text-[9rem] leading-none font-black text-white tabular-nums drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]">
+            <div className="text-[6rem] sm:text-[9rem] leading-none font-black text-white tabular-nums drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]">
                 {countdown}
             </div>
-            <p className="text-white/70 text-xl font-medium tracking-widest uppercase mt-4">Get Ready!</p>
+            <p className="text-white/70 text-base sm:text-xl font-medium tracking-widest uppercase mt-4">Get Ready!</p>
             <button type="button" onClick={abortSession} className="mt-8 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-red-400/40 text-red-300 bg-red-500/10 hover:bg-red-500/20">
                 Abort Session
             </button>
@@ -257,19 +257,19 @@ const GameView = () => {
     );
 
     return (
-        <div className="min-h-screen p-6 flex flex-col relative z-10">
-            <header className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
+        <div className="min-h-screen p-3 sm:p-6 flex flex-col relative z-10">
+            <header className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-8 pb-3 sm:pb-4 border-b border-white/10">
                 <div className="flex items-center gap-3">
                     <h2 className="text-base font-bold tracking-tight">Quizmoto<span className="text-quizmoto-yellow">!</span></h2>
                     {question && (
                         <span className="text-xs font-medium text-white/40 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-                            Question {question.index + 1} of {question.totalQuestions}
+                            Q{question.index + 1}/{question.totalQuestions}
                         </span>
                     )}
                 </div>
-                <div className="flex items-center gap-3 flex-wrap justify-end">
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-start sm:justify-end">
                     {gameState === 'question' && (
-                        <div className={'flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold border transition-colors ' + (timer <= 5 ? 'bg-red-500/20 border-red-500/40 text-red-300' : 'bg-white/5 border-white/10')}>
+                        <div className={'flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-lg text-sm font-semibold border transition-colors ' + (timer <= 5 ? 'bg-red-500/20 border-red-500/40 text-red-300' : 'bg-white/5 border-white/10')}>
                             <Clock size={14} />
                             <span className="tabular-nums">{timer}s</span>
                         </div>
@@ -286,13 +286,13 @@ const GameView = () => {
                     </div>
                     {gameState !== 'finished' && (
                         <button type="button" onClick={abortSession} className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-red-400/40 text-red-300 bg-red-500/10 hover:bg-red-500/20 transition-all">
-                            Abort Session
+                            Abort
                         </button>
                     )}
                     {(gameState === 'result' || gameState === 'finished') && (
-                        <motion.button whileHover={!isProcessingNext ? { scale: 1.02 } : {}} whileTap={!isProcessingNext ? { scale: 0.98 } : {}} onClick={nextAction} disabled={isProcessingNext} className={'px-5 py-2 rounded-lg font-semibold text-sm shadow-sm transition-all ' + (isProcessingNext ? 'bg-white/40 text-quizmoto-purple/60 cursor-not-allowed' : 'bg-white text-quizmoto-purple hover:bg-white/95')}>
+                        <motion.button whileHover={!isProcessingNext ? { scale: 1.02 } : {}} whileTap={!isProcessingNext ? { scale: 0.98 } : {}} onClick={nextAction} disabled={isProcessingNext} className={'px-4 sm:px-5 py-2 rounded-lg font-semibold text-sm shadow-sm transition-all ' + (isProcessingNext ? 'bg-white/40 text-quizmoto-purple/60 cursor-not-allowed' : 'bg-white text-quizmoto-purple hover:bg-white/95')}>
                             {isProcessingNext
-                                ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-quizmoto-purple/30 border-t-quizmoto-purple rounded-full animate-spin" />Loading...</span>
+                                ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-quizmoto-purple/30 border-t-quizmoto-purple rounded-full animate-spin" />…</span>
                                 : gameState === 'finished' ? 'Dashboard' : <span className="flex items-center gap-1">Next <ChevronRight size={14} /></span>}
                         </motion.button>
                     )}
@@ -302,27 +302,27 @@ const GameView = () => {
             <main className="flex-1 flex flex-col items-center justify-center">
                 {gameState === 'question' && question && (
                     <div className="w-full max-w-6xl">
-                        <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-white/8 border border-white/12 rounded-2xl overflow-hidden mb-8 shadow-xl">
+                        <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-white/8 border border-white/12 rounded-2xl overflow-hidden mb-4 sm:mb-8 shadow-xl">
                             <div className="h-1.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-indigo-500" />
-                            <div className="p-10 text-center">
-                                <div className="inline-flex items-center justify-center bg-white/10 border border-white/15 px-4 py-1.5 rounded-full mb-5">
+                            <div className="p-4 sm:p-8 md:p-10 text-center">
+                                <div className="inline-flex items-center justify-center bg-white/10 border border-white/15 px-3 sm:px-4 py-1.5 rounded-full mb-3 sm:mb-5">
                                     <span className="text-xs font-bold text-white/50 uppercase tracking-[0.25em]">Question {question.index + 1}</span>
                                 </div>
-                                <h1 className="text-3xl md:text-4xl font-bold leading-snug tracking-tight">{question.questionText}</h1>
+                                <h1 className="text-xl sm:text-3xl md:text-4xl font-bold leading-snug tracking-tight">{question.questionText}</h1>
                             </div>
                         </motion.div>
-                        <div className="flex justify-center gap-4 h-[280px] w-full items-end bg-white/3 px-8 py-6 rounded-2xl border border-white/8">
+                        <div className="flex justify-center gap-2 sm:gap-4 h-[160px] sm:h-[220px] md:h-[280px] w-full items-end bg-white/3 px-3 sm:px-8 py-4 sm:py-6 rounded-2xl border border-white/8">
                             {['red', 'blue', 'yellow', 'green'].map((color, idx) => {
                                 const count = answerDistribution[idx];
                                 const height = playersCount > 0 ? (count / playersCount) * 100 : 0;
                                 return (
-                                    <div key={idx} className="flex flex-col items-center gap-3 h-full flex-1">
+                                    <div key={idx} className="flex flex-col items-center gap-2 sm:gap-3 h-full flex-1">
                                         <div className="flex-1 w-full flex items-end relative">
-                                            {count > 0 && <div className="absolute left-1/2 -translate-x-1/2 -top-7 font-bold text-lg text-white/80">{count}</div>}
+                                            {count > 0 && <div className="absolute left-1/2 -translate-x-1/2 -top-6 sm:-top-7 font-bold text-sm sm:text-lg text-white/80">{count}</div>}
                                             <motion.div initial={{ height: 0 }} animate={{ height: Math.max(4, height) + '%' }} className={'w-full bg-quizmoto-' + color + ' rounded-t-lg'} />
                                         </div>
-                                        <div className={'w-12 h-12 rounded-xl bg-quizmoto-' + color + ' flex items-center justify-center shadow-lg'}>
-                                            <span className="font-bold text-white text-base">{idx + 1}</span>
+                                        <div className={'w-9 h-9 sm:w-12 sm:h-12 rounded-xl bg-quizmoto-' + color + ' flex items-center justify-center shadow-lg'}>
+                                            <span className="font-bold text-white text-sm sm:text-base">{idx + 1}</span>
                                         </div>
                                     </div>
                                 );
@@ -332,9 +332,9 @@ const GameView = () => {
                 )}
 
                 {(gameState === 'question' || gameState === 'result') && players.length > 0 && (
-                    <div className="w-full max-w-6xl mt-8 mb-10">
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                    <div className="w-full max-w-6xl mt-4 sm:mt-8 mb-6 sm:mb-10">
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-5">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3 sm:mb-4">
                                 <h3 className="text-xs font-black uppercase tracking-widest text-white/40">Players in session</h3>
                                 <div className="flex flex-wrap gap-2">
                                     {[
@@ -352,7 +352,7 @@ const GameView = () => {
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
                                 {(presenceTab === 'active' ? players.filter(p => p.socketId) : presenceTab === 'offline' ? players.filter(p => !p.socketId) : players).map((p) => (
-                                    <div key={p.id || p.nickname} className={'flex items-center gap-2 px-3 py-2 rounded-xl border text-sm ' + (p.socketId ? 'bg-white/5 border-white/10' : 'bg-red-500/5 border-red-500/20 opacity-60 grayscale')}>
+                                    <div key={p.id || p.nickname} className={'flex items-center gap-2 px-2 sm:px-3 py-2 rounded-xl border text-sm ' + (p.socketId ? 'bg-white/5 border-white/10' : 'bg-red-500/5 border-red-500/20 opacity-60 grayscale')}>
                                         <AvatarDisplay avatar={p.avatar} imgClass="w-6 h-6" textClass="text-lg" />
                                         <div className="min-w-0 flex-1">
                                             <p className="font-bold text-xs truncate text-white/80">{p.nickname}</p>
@@ -367,18 +367,18 @@ const GameView = () => {
                 )}
 
                 {gameState === 'result' && results && question && (
-                    <div className="w-full max-w-7xl flex flex-col lg:flex-row gap-8 px-4">
+                    <div className="w-full max-w-7xl flex flex-col lg:flex-row gap-4 sm:gap-8 px-1 sm:px-4">
                         <motion.div initial={{ x: -40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="lg:w-2/5 flex flex-col">
-                            <div className="flex items-center gap-2 mb-4">
+                            <div className="flex items-center gap-2 mb-3 sm:mb-4">
                                 <div className="w-1.5 h-5 rounded-full bg-green-400" />
                                 <h2 className="text-base font-semibold text-white/90">Answer Revealed</h2>
                             </div>
-                            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex-1 flex flex-col justify-center shadow-lg">
-                                <p className="text-xs font-medium text-white/40 uppercase tracking-widest mb-4">Correct answer</p>
-                                <div className={'w-full p-5 rounded-xl bg-quizmoto-' + ['red', 'blue', 'yellow', 'green'][results.correctIndex] + ' text-white text-lg font-semibold shadow-lg text-center'}>
+                            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-6 flex-1 flex flex-col justify-center shadow-lg">
+                                <p className="text-xs font-medium text-white/40 uppercase tracking-widest mb-3 sm:mb-4">Correct answer</p>
+                                <div className={'w-full p-4 sm:p-5 rounded-xl bg-quizmoto-' + ['red', 'blue', 'yellow', 'green'][results.correctIndex] + ' text-white text-base sm:text-lg font-semibold shadow-lg text-center'}>
                                     {question.options[results.correctIndex]}
                                 </div>
-                                <div className="mt-5 flex items-center justify-between pt-4 border-t border-white/10">
+                                <div className="mt-4 sm:mt-5 flex items-center justify-between pt-4 border-t border-white/10">
                                     <div className="flex items-center gap-2">
                                         <Users size={15} className="text-white/40" />
                                         <span className="text-sm font-medium text-white/60">{answersCount} of {playersCount} responded</span>
@@ -387,13 +387,13 @@ const GameView = () => {
                             </div>
                         </motion.div>
                         <motion.div initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="lg:w-3/5 flex flex-col">
-                            <div className="flex items-center gap-2 mb-4">
+                            <div className="flex items-center gap-2 mb-3 sm:mb-4">
                                 <Trophy size={16} className="text-quizmoto-yellow" />
                                 <h2 className="text-base font-semibold text-white/90">Leaderboard</h2>
                             </div>
-                            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2">
+                            <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 space-y-2">
                                 {(leaderboard || []).slice(0, 8).map((p, i) => (
-                                    <div key={p.nickname || i} className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2.5">
+                                    <div key={p.nickname || i} className="flex items-center gap-3 bg-white/5 rounded-xl px-3 sm:px-4 py-2.5">
                                         <span className="font-black text-white/40 w-6 text-sm">{i + 1}</span>
                                         <AvatarDisplay avatar={p.avatar} imgClass="w-7 h-7" textClass="text-xl" />
                                         <span className="font-bold text-sm flex-1 truncate">{p.nickname}</span>
@@ -406,23 +406,23 @@ const GameView = () => {
                 )}
 
                 {gameState === 'finished' && (
-                    <div className="w-full max-w-4xl text-center">
-                        <h1 className="text-4xl font-black mb-2 italic uppercase">Game Over!</h1>
-                        <p className="text-xs font-bold opacity-60 uppercase tracking-widest mb-8">Final Standing</p>
+                    <div className="w-full max-w-4xl text-center px-1">
+                        <h1 className="text-2xl sm:text-4xl font-black mb-2 italic uppercase">Game Over!</h1>
+                        <p className="text-xs font-bold opacity-60 uppercase tracking-widest mb-6 sm:mb-8">Final Standing</p>
 
                         {(leaderboard || []).length > 0 && (
-                            <div className="flex items-end justify-center gap-3 mb-10 px-2">
+                            <div className="flex items-end justify-center gap-2 sm:gap-3 mb-8 sm:mb-10 px-2">
                                 {[1, 0, 2].map((podiumIdx) => {
                                     const p = leaderboard[podiumIdx];
-                                    if (!p) return <div key={podiumIdx} className="w-28" />;
-                                    const heights = ['h-32', 'h-44', 'h-24'];
+                                    if (!p) return <div key={podiumIdx} className="w-20 sm:w-28" />;
+                                    const heights = ['h-24 sm:h-32', 'h-32 sm:h-44', 'h-16 sm:h-24'];
                                     const medals = ['🥈', '🥇', '🥉'];
                                     return (
-                                        <div key={podiumIdx} className="flex flex-col items-center w-28">
-                                            <div className="text-3xl mb-1">{medals[podiumIdx]}</div>
-                                            <AvatarDisplay avatar={p.avatar} imgClass="w-10 h-10 mb-1" textClass="text-2xl" />
-                                            <div className="text-sm font-black truncate w-full text-center mb-1">{p.nickname}</div>
-                                            <div className="text-quizmoto-yellow font-black mb-2">{p.score}</div>
+                                        <div key={podiumIdx} className="flex flex-col items-center w-20 sm:w-28">
+                                            <div className="text-2xl sm:text-3xl mb-1">{medals[podiumIdx]}</div>
+                                            <AvatarDisplay avatar={p.avatar} imgClass="w-8 h-8 sm:w-10 sm:h-10 mb-1" textClass="text-xl sm:text-2xl" />
+                                            <div className="text-xs sm:text-sm font-black truncate w-full text-center mb-1">{p.nickname}</div>
+                                            <div className="text-quizmoto-yellow font-black text-sm sm:text-base mb-2">{p.score}</div>
                                             <div className={'w-full rounded-t-2xl bg-white/20 border border-white/10 ' + heights[podiumIdx]} />
                                         </div>
                                     );
@@ -430,13 +430,13 @@ const GameView = () => {
                             </div>
                         )}
 
-                        <div className="space-y-3 max-w-md mx-auto">
+                        <div className="space-y-2 sm:space-y-3 max-w-md mx-auto">
                             {(leaderboard || []).slice(0, 10).map((p, i) => (
-                                <div key={p.nickname || i} className="flex items-center gap-3 bg-white/10 rounded-2xl px-5 py-3">
-                                    <span className="font-black text-white/40 w-8">{i + 1}</span>
-                                    <AvatarDisplay avatar={p.avatar} imgClass="w-8 h-8" textClass="text-2xl" />
-                                    <span className="font-black flex-1 text-left truncate">{p.nickname}</span>
-                                    <span className="font-black text-quizmoto-yellow text-lg">{p.score}</span>
+                                <div key={p.nickname || i} className="flex items-center gap-3 bg-white/10 rounded-2xl px-4 sm:px-5 py-2.5 sm:py-3">
+                                    <span className="font-black text-white/40 w-6 sm:w-8">{i + 1}</span>
+                                    <AvatarDisplay avatar={p.avatar} imgClass="w-7 h-7 sm:w-8 sm:h-8" textClass="text-xl sm:text-2xl" />
+                                    <span className="font-black flex-1 text-left truncate text-sm sm:text-base">{p.nickname}</span>
+                                    <span className="font-black text-quizmoto-yellow text-base sm:text-lg">{p.score}</span>
                                 </div>
                             ))}
                         </div>
