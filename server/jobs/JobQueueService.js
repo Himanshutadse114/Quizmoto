@@ -15,6 +15,7 @@
 const crypto = require('crypto');
 const { JOB_STATUS } = require('./jobTypes');
 const logger = require('../utils/logger');
+const Metrics = require('../utils/metrics');
 
 const DEFAULT_QUEUE_KEY = 'quizmoto:jobs:queue';
 const STATUS_KEY_PREFIX = 'quizmoto:jobs:status:';
@@ -88,7 +89,7 @@ async function writeStatus(job) {
     memoryJobs.set(job.id, job);
     if (redisReady && redisClient) {
         await redisClient.set(`${STATUS_KEY_PREFIX}${job.id}`, serializeJob(job), {
-            EX: 60 * 60 * 24 * 7 // 7 days
+            EX: 60 * 60 * 24 * 7
         });
         if (job.idempotencyKey) {
             await redisClient.set(
@@ -126,7 +127,6 @@ async function findByIdempotencyKey(key) {
 }
 
 class JobQueueService {
-    /** Register a processor for a job type. */
     static registerHandler(jobType, fn) {
         if (typeof fn !== 'function') {
             throw new Error('Handler must be a function');
@@ -138,15 +138,6 @@ class JobQueueService {
         return handlers.get(jobType) || null;
     }
 
-    /**
-     * Enqueue a job.
-     * @param {object} opts
-     * @param {string} opts.type - JOB_TYPES value
-     * @param {object} [opts.payload]
-     * @param {string} [opts.idempotencyKey] - same key returns existing non-failed job
-     * @param {string} [opts.actorId]
-     * @returns {Promise<object>} job record
-     */
     static async enqueue({ type, payload = {}, idempotencyKey = null, actorId = null }) {
         if (!type || typeof type !== 'string') {
             const err = new Error('job type is required');
@@ -196,6 +187,8 @@ class JobQueueService {
             type: job.type,
             idempotencyKey: job.idempotencyKey || undefined
         });
+        Metrics.recordJobEnqueued(job.type);
+        Metrics.setQueueDepth(memoryQueue.length);
 
         return job;
     }
@@ -205,10 +198,6 @@ class JobQueueService {
         return readStatus(jobId);
     }
 
-    /**
-     * Dequeue next pending job id (blocking-ish poll for worker loop).
-     * @param {number} [timeoutSec=1] Redis BRPOP timeout; memory uses short sleep
-     */
     static async dequeue(timeoutSec = 1) {
         await ensureRedis();
 
@@ -230,9 +219,6 @@ class JobQueueService {
         return memoryQueue.shift();
     }
 
-    /**
-     * Process a single job by id using the registered handler.
-     */
     static async processJob(jobId) {
         const job = await readStatus(jobId);
         if (!job) {
@@ -271,6 +257,11 @@ class JobQueueService {
                 type: job.type,
                 attempts: job.attempts
             });
+            const durOk = job.startedAt
+                ? Date.now() - new Date(job.startedAt).getTime()
+                : undefined;
+            Metrics.recordJobCompleted(job.type, durOk);
+            Metrics.setQueueDepth(memoryQueue.length);
             return { ok: true, code: 'COMPLETED', job };
         } catch (err) {
             job.status = JOB_STATUS.FAILED;
@@ -284,14 +275,15 @@ class JobQueueService {
                 attempts: job.attempts,
                 error: job.error
             });
+            const durFail = job.startedAt
+                ? Date.now() - new Date(job.startedAt).getTime()
+                : undefined;
+            Metrics.recordJobFailed(job.type, durFail);
+            Metrics.setQueueDepth(memoryQueue.length);
             return { ok: false, code: 'FAILED', job };
         }
     }
 
-    /**
-     * Worker loop — process until stopFn returns true.
-     * @param {{ stopFn?: () => boolean, idleMs?: number }} [opts]
-     */
     static async runWorkerLoop(opts = {}) {
         const stopFn = opts.stopFn || (() => false);
         const idleMs = opts.idleMs || 500;
@@ -317,13 +309,11 @@ class JobQueueService {
         logger.info('worker_loop_stopped', { module: 'jobs' });
     }
 
-    /** Test helper — clear memory state. */
     static _resetForTests() {
         memoryJobs.clear();
         memoryIdemp.clear();
         memoryQueue.length = 0;
         handlers.clear();
-        // do not tear down redis mid-suite unless tests set REDIS_URL
     }
 
     static _memoryQueueLength() {
