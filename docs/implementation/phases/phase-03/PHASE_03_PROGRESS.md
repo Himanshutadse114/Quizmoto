@@ -11,31 +11,22 @@
 | P3-T05 | Async reports | **DONE** |
 | P3-T06 | Object storage abstraction | **DONE** |
 | P3-T07 | Backup / restore runbook | **DONE** — runbook + scripts; drill pending operator |
-| P3-T08 | Structured logging | **DONE** — `server/utils/logger.js`; HTTP + job + worker wired |
-| P3-T09 | Metrics hooks | **NEXT** |
+| P3-T08 | Structured logging | **DONE** |
+| P3-T09 | Metrics hooks | **DONE** — in-memory counters/timings; GET /api/metrics |
 | P3-T10 | REPORTS_ASYNC flag | **DONE** (default OFF) |
-| P3-T11 | Acceptance tests | PARTIAL |
+| P3-T11 | Acceptance tests | **NEXT** |
 | P3-T12 | Completion report | NOT STARTED |
-
-## P3-T06 notes
-
-- `server/storage/LocalObjectStorage.js` — default
-- `server/storage/S3ObjectStorage.js` — optional (`STORAGE_DRIVER=s3`, needs `@aws-sdk/client-s3`)
-- Report job handlers store under `reports/{sessionId}/{jobId}.{ext}`
-- Download prefers `storageKey` via stream
-- Sync report path unchanged (flag OFF)
-
-## P3-T07 notes
-
-- Runbook: `docs/implementation/phases/phase-03/PHASE_03_BACKUP_RUNBOOK.md`
-- Scripts: `scripts/postgres_backup.sh`, `scripts/postgres_restore.sh`
-- Restore refuses common prod DB names unless `ALLOW_PROD_RESTORE=yes`
-- Operator drill evidence still needed when staging Postgres is available (or mark BLOCKED)
 
 ## P3-T08 notes
 
-- `server/utils/logger.js` — JSON lines (default in production/test); `LOG_LEVEL`, `LOG_FORMAT`
-- HTTP access log via middleware in `server/index.js`
-- Job enqueue/process lifecycle logs in `JobQueueService`
-- Worker start/stop uses logger
+- `server/utils/logger.js` — JSON lines; HTTP + job + worker wired
 - Unit: `server/tests/logger.test.js`
+
+## P3-T09 notes
+
+- `server/utils/metrics.js` — counters, gauges, timing samples (p95)
+- Domain helpers: HTTP, job enqueue/complete/fail, report latency, queue depth
+- Export: `GET /api/metrics` (optional `METRICS_TOKEN` via `x-metrics-token`)
+- Wired from HTTP middleware and JobQueueService
+- Unit: `server/tests/metrics.test.js`
+- Process-local only; resets on restart (hooks for future APM, not full product)
