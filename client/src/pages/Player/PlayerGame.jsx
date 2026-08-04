@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../context/SocketContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, XCircle, Flame, Sparkles } from 'lucide-react';
+import { CheckCircle, XCircle, MinusCircle, Flame, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import ReactionBar from '../../components/ReactionBar';
 import { audio } from '../../utils/audioEngine';
@@ -363,10 +363,14 @@ const PlayerGame = () => {
                         className="flex-1 flex flex-col items-center justify-center">
                         {result.correct ? (
                             <CheckCircle className="w-20 h-20 text-quizmoto-green mb-4" />
+                        ) : (result.answered === false) ? (
+                            <MinusCircle className="w-20 h-20 text-white/50 mb-4" />
                         ) : (
                             <XCircle className="w-20 h-20 text-quizmoto-red mb-4" />
                         )}
-                        <h2 className="text-3xl font-black mb-2">{result.correct ? 'Correct!' : 'Wrong'}</h2>
+                        <h2 className="text-3xl font-black mb-2">
+                            {result.correct ? 'Correct!' : (result.answered === false) ? 'Not answered' : 'Wrong'}
+                        </h2>
                         <p className="text-white/60 font-bold mb-2">Score: {result.score}</p>
                         {pointsWon > 0 && (
                             <p className="text-quizmoto-yellow font-black text-xl flex items-center gap-1">
