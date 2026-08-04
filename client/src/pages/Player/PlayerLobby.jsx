@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../context/SocketContext';
 import { motion } from 'framer-motion';
+import ReactionBar from '../../components/ReactionBar';
+import AvatarDisplay from '../../components/AvatarDisplay';
 
 const PlayerLobby = () => {
     const socket = useSocket();
     const navigate = useNavigate();
-    const [pin, setPin] = useState('');
-    const [nickname, setNickname] = useState('');
+    const [playerInfo, setPlayerInfo] = useState(null);
     const [isHostDisconnected, setIsHostDisconnected] = useState(false);
 
     useEffect(() => {
@@ -16,12 +17,10 @@ const PlayerLobby = () => {
             navigate('/join');
             return;
         }
-        setPin(info.pin);
-        setNickname(info.nickname);
+        setPlayerInfo(info);
 
         if (!socket) return;
 
-        // Re-join to ensure we are in the room
         socket.emit('join_room', {
             pin: info.pin,
             nickname: info.nickname,
@@ -55,8 +54,7 @@ const PlayerLobby = () => {
         });
 
         socket.on('error', (msg) => {
-            console.error(msg);
-            if (msg === 'Game not found' || msg === 'Game is already finished') {
+            if (msg === 'Game not found' || msg === 'Game is already finished' || msg === 'Unauthorized Host Entry') {
                 alert(msg);
                 navigate('/');
             }
@@ -73,13 +71,13 @@ const PlayerLobby = () => {
     }, [socket, navigate]);
 
     return (
-        <div className="min-h-screen bg-quizmoto-dark text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
             {isHostDisconnected && (
-                <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
-                    <div className="bg-quizmoto-card border border-quizmoto-red/50 p-8 rounded-[2.5rem] text-center max-w-sm shadow-2xl animate-bounce">
-                        <div className="text-5xl mb-4">📡</div>
-                        <h2 className="text-2xl font-black italic uppercase mb-2 text-quizmoto-red">Host Offline</h2>
+                <div className="absolute inset-0 z-50 bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+                    <div className="bg-white text-quizmoto-purple p-8 rounded-3xl text-center max-w-sm shadow-2xl">
+                        <h2 className="text-2xl font-black mb-4 uppercase tracking-tight">Host Disconnected</h2>
                         <p className="font-bold opacity-80 mb-6">Waiting for the host to reconnect... Don't leave!</p>
+                        <div className="w-8 h-8 border-4 border-quizmoto-purple/20 border-t-quizmoto-purple rounded-full animate-spin mx-auto mb-6" />
                         <button onClick={() => {
                             try {
                                 const info = JSON.parse(localStorage.getItem('player_info') || '{}');
@@ -98,21 +96,23 @@ const PlayerLobby = () => {
                     </div>
                 </div>
             )}
-
+            
             <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="text-center"
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ repeat: Infinity, duration: 2 }}
+                className="mb-8"
             >
-                <h1 className="text-4xl font-black italic uppercase mb-2">You're in!</h1>
-                <p className="text-white/60 font-bold mb-8">See your nickname on the host screen</p>
-                <div className="bg-white/10 border border-white/20 rounded-3xl px-10 py-8 mb-6">
-                    <p className="text-xs font-black tracking-widest text-white/40 uppercase mb-2">Playing as</p>
-                    <p className="text-3xl font-black">{nickname}</p>
-                    <p className="text-sm font-bold text-white/50 mt-2">PIN {pin}</p>
-                </div>
-                <p className="text-white/40 font-bold animate-pulse">Waiting for host to start...</p>
+                <AvatarDisplay avatar={playerInfo?.avatar} imgClass="w-32 h-32" textClass="text-8xl" />
             </motion.div>
+            <h2 className="text-3xl font-black mb-2 uppercase tracking-tight">You're in!</h2>
+            <p className="text-xl font-bold opacity-80 mb-12">See your name on screen?</p>
+
+            <div className="bg-white/10 px-8 py-4 rounded-full font-black text-2xl">
+                {playerInfo?.nickname}
+            </div>
+
+            <p className="mt-20 font-bold opacity-60">Wait for the host to start...</p>
+            <ReactionBar pin={playerInfo?.pin} />
         </div>
     );
 };
