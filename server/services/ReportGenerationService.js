@@ -1,7 +1,7 @@
 /**
  * Shared report generation (PDF / Excel).
- * Used by sync HTTP path and by Phase 3 background workers.
- * Never touches Socket.IO or live session state.
+ * Primary path: pure Node.js (pdfkit + exceljs) — no Python required.
+ * Optional: REPORT_USE_PYTHON=1 to try the Python script first.
  */
 
 const fs = require('fs');
@@ -11,6 +11,7 @@ const { promisify } = require('util');
 const { GameSession, Player, PlayerAnswer } = require('../models/GameSession');
 const { Quiz, Question } = require('../models/Quiz');
 const Metrics = require('../utils/metrics');
+const { generateReportNode } = require('../utils/nodeReportGenerator');
 
 const execFileAsync = promisify(execFile);
 
@@ -41,9 +42,6 @@ function artifactsDir(testRunId) {
     return dir;
 }
 
-/**
- * Load a finished (or any) session owned by host for export.
- */
 async function loadSessionForExport(sessionId, hostId) {
     const session = await GameSession.findOne({
         where: { id: sessionId, hostId },
@@ -63,10 +61,6 @@ async function loadSessionForExport(sessionId, hostId) {
     return session;
 }
 
-/**
- * Fast path for unit tests — no Python subprocess.
- * Enabled with REPORT_GEN_STUB=1.
- */
 function writeStubArtifact(outputPath, format) {
     if (format === 'pdf') {
         fs.writeFileSync(outputPath, Buffer.from('%PDF-1.4\n% stub report\n'));
@@ -75,9 +69,49 @@ function writeStubArtifact(outputPath, format) {
     }
 }
 
+function contentTypeFor(format) {
+    return format === 'pdf'
+        ? 'application/pdf'
+        : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+}
+
+async function tryPythonGenerate(jsonPath, outputPath, format, dir, sessionId) {
+    const scriptPath = path.join(__dirname, '../utils/generate_report.py');
+    if (!fs.existsSync(scriptPath)) {
+        throw new Error('Python script missing');
+    }
+    const pyCmd = resolvePythonCmd();
+    const timeoutMs = Number(process.env.REPORT_GEN_TIMEOUT_MS) || 30000;
+    const env = {
+        ...process.env,
+        MPLCONFIGDIR: process.env.MPLCONFIGDIR || path.join(dir, '.mplconfig'),
+        PYTHONUNBUFFERED: '1'
+    };
+    try {
+        ensureDir(env.MPLCONFIGDIR);
+    } catch (_) { /* ignore */ }
+
+    const { stdout, stderr } = await execFileAsync(pyCmd, [scriptPath, jsonPath, outputPath, format], {
+        timeout: timeoutMs,
+        windowsHide: true,
+        killSignal: 'SIGTERM',
+        env,
+        maxBuffer: 5 * 1024 * 1024
+    });
+    if (stderr && String(stderr).trim()) {
+        console.error('[report-gen] python stderr:', String(stderr).slice(0, 2000));
+    }
+    if (stdout && String(stdout).trim()) {
+        console.log('[report-gen] python stdout:', String(stdout).slice(0, 500));
+    }
+    if (!fs.existsSync(outputPath)) {
+        throw new Error('Python did not create output file');
+    }
+}
+
 /**
  * Generate a report file for a session.
- * @returns {Promise<{ outputPath: string, jsonPath: string, format: string, contentType: string, downloadName: string }>}
+ * @returns {Promise<{ outputPath, jsonPath, format, contentType, downloadName }>}
  */
 async function generateReportFile({
     sessionId,
@@ -106,99 +140,77 @@ async function generateReportFile({
     const jsonPath = path.join(dir, `report_${session.id}_${timestamp}.json`);
     const ext = format === 'pdf' ? '.pdf' : '.xlsx';
     const outputPath = path.join(dir, `report_${session.id}_${timestamp}${ext}`);
+    const sessionJson = session.toJSON();
+    fs.writeFileSync(jsonPath, JSON.stringify(sessionJson));
 
-    fs.writeFileSync(jsonPath, JSON.stringify(session.toJSON()));
-
-    // Test stub: skip Python entirely (prevents hangs in CI / Windows)
+    // Unit-test stub
     if (process.env.REPORT_GEN_STUB === '1') {
         writeStubArtifact(outputPath, format);
-        if (!keepFiles && fs.existsSync(jsonPath)) {
-            try {
-                fs.unlinkSync(jsonPath);
-            } catch (_) {
-                /* ignore */
-            }
+        if (!keepFiles) {
+            try { fs.unlinkSync(jsonPath); } catch (_) { /* ignore */ }
         }
         Metrics.recordReportLatency(format, Date.now() - __metricsStart);
         return {
             outputPath,
             jsonPath,
             format,
-            contentType:
-                format === 'pdf'
-                    ? 'application/pdf'
-                    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            contentType: contentTypeFor(format),
             downloadName: `Report${ext}`
         };
     }
 
-    const scriptPath = path.join(__dirname, '../utils/generate_report.py');
-    const pyCmd = resolvePythonCmd();
-    const timeoutMs = Number(process.env.REPORT_GEN_TIMEOUT_MS) || 30000;
+    const usePythonFirst = ['1', 'true', 'yes', 'on'].includes(
+        String(process.env.REPORT_USE_PYTHON || '').toLowerCase()
+    );
 
-    // Ensure matplotlib cache dir is writable for non-root (Render USER node)
-    const env = {
-        ...process.env,
-        MPLCONFIGDIR: process.env.MPLCONFIGDIR || path.join(dir, '.mplconfig'),
-        PYTHONUNBUFFERED: '1'
-    };
-    try {
-        ensureDir(env.MPLCONFIGDIR);
-    } catch (_) {
-        /* ignore */
+    let generated = false;
+    let lastErr = null;
+
+    if (usePythonFirst) {
+        try {
+            await tryPythonGenerate(jsonPath, outputPath, format, dir, sessionId);
+            generated = true;
+            console.log('[report-gen] used python path', { sessionId, format });
+        } catch (err) {
+            lastErr = err;
+            console.error('[report-gen] python path failed, falling back to node', {
+                sessionId,
+                format,
+                message: err && err.message,
+                stderr: err && err.stderr ? String(err.stderr).slice(0, 1500) : null
+            });
+            try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch (_) { /* ignore */ }
+        }
     }
 
-    try {
-        const { stdout, stderr } = await execFileAsync(pyCmd, [scriptPath, jsonPath, outputPath, format], {
-            timeout: timeoutMs,
-            windowsHide: true,
-            killSignal: 'SIGTERM',
-            env,
-            maxBuffer: 5 * 1024 * 1024
-        });
-        if (stderr && String(stderr).trim()) {
-            console.error('[report-gen] python stderr:', String(stderr).slice(0, 2000));
-        }
-        if (stdout && String(stdout).trim()) {
-            console.log('[report-gen] python stdout:', String(stdout).slice(0, 500));
-        }
-    } catch (err) {
-        const stderr = err && (err.stderr || err.message);
-        console.error('[report-gen] failed', {
-            pyCmd,
-            scriptPath,
-            format,
-            sessionId,
-            code: err && err.code,
-            signal: err && err.signal,
-            stderr: stderr ? String(stderr).slice(0, 3000) : null
-        });
-        if (fs.existsSync(jsonPath) && !keepFiles) {
-            try {
-                fs.unlinkSync(jsonPath);
-            } catch (_) {
-                /* ignore */
+    if (!generated) {
+        try {
+            await generateReportNode(sessionJson, outputPath, format);
+            if (!fs.existsSync(outputPath)) {
+                throw new Error('Node generator did not create output file');
             }
+            generated = true;
+            console.log('[report-gen] used node path', { sessionId, format });
+        } catch (err) {
+            lastErr = err;
+            console.error('[report-gen] node path failed', {
+                sessionId,
+                format,
+                message: err && err.message,
+                stack: err && err.stack ? String(err.stack).slice(0, 1500) : null
+            });
         }
+    }
+
+    if (!keepFiles) {
+        try { if (fs.existsSync(jsonPath)) fs.unlinkSync(jsonPath); } catch (_) { /* ignore */ }
+    }
+
+    if (!generated) {
         const wrapped = new Error('Report generation failed');
         wrapped.code = 'REPORT_GEN_FAILED';
-        wrapped.cause = err;
+        wrapped.cause = lastErr;
         throw wrapped;
-    }
-
-    if (!fs.existsSync(outputPath)) {
-        if (fs.existsSync(jsonPath) && !keepFiles) fs.unlinkSync(jsonPath);
-        const err = new Error('Report generation failed');
-        err.code = 'REPORT_GEN_FAILED';
-        throw err;
-    }
-
-    if (!keepFiles && fs.existsSync(jsonPath)) {
-        try {
-            fs.unlinkSync(jsonPath);
-        } catch (_) {
-            /* ignore */
-        }
     }
 
     Metrics.recordReportLatency(format, Date.now() - __metricsStart);
@@ -206,10 +218,7 @@ async function generateReportFile({
         outputPath,
         jsonPath,
         format,
-        contentType:
-            format === 'pdf'
-                ? 'application/pdf'
-                : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        contentType: contentTypeFor(format),
         downloadName: `Report${ext}`
     };
 }
@@ -217,9 +226,7 @@ async function generateReportFile({
 function safeUnlink(filePath) {
     try {
         if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    } catch (_) {
-        /* ignore */
-    }
+    } catch (_) { /* ignore */ }
 }
 
 module.exports = {
