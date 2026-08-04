@@ -29,6 +29,7 @@ const PlayerGame = () => {
     const lastAnswerRef = useRef(-1);
     const resultRef = useRef(null);
     const skipLeaveRef = useRef(false);
+    const offsetRef = useRef(0);
 
     const leaveSession = useCallback((opts = {}) => {
         const clearStorage = opts.clearStorage !== false;
@@ -47,7 +48,8 @@ const PlayerGame = () => {
     }, [socket]);
 
     const applyQuestion = useCallback((data) => {
-        const offset = data.serverTime ? data.serverTime - Date.now() : 0;
+        const offset = (data.serverTime != null) ? (data.serverTime - Date.now()) : 0;
+        offsetRef.current = offset;
         setClockOffset(offset);
         const syncedNow = Date.now() + offset;
         setQuestion(data);
@@ -59,7 +61,6 @@ const PlayerGame = () => {
         const delay = data.startTime - syncedNow;
         if (delay > 0) {
             setGameState('countdown');
-            // Server uses +3000ms; cap at 3 so host/player never diverge (e.g. 4 vs 3)
             setCountdown(Math.min(3, Math.max(1, Math.ceil(delay / 1000))));
         } else {
             setGameState('question');
@@ -214,31 +215,33 @@ const PlayerGame = () => {
     }, [socket, navigate, leaveSession, applyQuestion]);
 
     useEffect(() => {
-        if (gameState === 'countdown' && question) {
-            const interval = setInterval(() => {
-                const now = Date.now() + clockOffset;
-                const delay = question.startTime - now;
-                if (delay <= 0) {
-                    clearInterval(interval);
-                    setGameState('question');
-                    setTimeLeft(question.timer || 20);
-                } else {
-                    setCountdown(Math.min(3, Math.max(1, Math.ceil(delay / 1000))));
-                }
-            }, 100);
-            return () => clearInterval(interval);
-        }
-    }, [gameState, question, clockOffset]);
+        if (gameState !== 'countdown' || !question) return;
+        const tick = () => {
+            const now = Date.now() + offsetRef.current;
+            const delay = question.startTime - now;
+            if (delay <= 0) {
+                setGameState('question');
+                setTimeLeft(question.timer || 20);
+            } else {
+                setCountdown(Math.min(3, Math.max(1, Math.ceil(delay / 1000))));
+            }
+        };
+        tick();
+        const interval = setInterval(tick, 50);
+        return () => clearInterval(interval);
+    }, [gameState, question]);
 
     useEffect(() => {
         if (gameState !== 'question' || !question) return;
-        const interval = setInterval(() => {
-            const now = Date.now() + clockOffset;
+        const tick = () => {
+            const now = Date.now() + offsetRef.current;
             const elapsed = Math.floor((now - question.startTime) / 1000);
             setTimeLeft(Math.max(0, (question.timer || 20) - elapsed));
-        }, 200);
+        };
+        tick();
+        const interval = setInterval(tick, 100);
         return () => clearInterval(interval);
-    }, [gameState, question, clockOffset]);
+    }, [gameState, question]);
 
     useEffect(() => {
         if (gameState === 'question' && timeLeft > 0 && timeLeft <= 5) {
@@ -297,9 +300,9 @@ const PlayerGame = () => {
                 )}
 
                 {gameState === 'countdown' && (
-                    <motion.div key="countdown" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
+                    <motion.div key="countdown" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         className="flex-1 flex flex-col items-center justify-center">
-                        <div className="text-9xl font-black">{countdown}</div>
+                        <div className="text-[9rem] leading-none font-black tabular-nums">{countdown}</div>
                         <p className="text-white/70 text-xl font-medium tracking-widest uppercase mt-4">Get Ready!</p>
                     </motion.div>
                 )}
@@ -332,7 +335,7 @@ const PlayerGame = () => {
                                     disabled={lastAnswer !== -1}
                                     className={
                                         colors[idx % 4] +
-                                        ' text-white p-4 md:p-6 rounded-2xl font-bold text-sm md:text-lg shadow-lg disabled:opacity-50 transition-transform active:scale-95 flex items-center justify-center text-center'
+                                        ' text-white p-4 md:p-6 rounded-2xl font-black text-xl md:text-3xl shadow-lg disabled:opacity-50 transition-transform active:scale-95 flex items-center justify-center text-center leading-snug'
                                     }
                                 >
                                     <span className="w-full text-center">
