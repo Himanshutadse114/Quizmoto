@@ -1,6 +1,9 @@
 /**
  * Server-side port of policy-to-scorm-engine/geminiService.ts
  * Gemini API key stays on the server (GEMINI_API_KEY).
+ *
+ * Note (2026-08): gemini-2.0-flash is shut down for new users → 404.
+ * Default + fallbacks use current GA Flash models.
  */
 const JSZip = require('jszip');
 const logger = require('../../utils/logger');
@@ -10,6 +13,16 @@ const DETAIL_CONFIG = {
     condensed: { slides: '5-7', minWords: '60-90' },
     summary: { slides: '3-4', minWords: '40-60' }
 };
+
+/** Ordered fallbacks when GEMINI_MODEL is unset or returns 404. */
+const DEFAULT_MODEL_CANDIDATES = [
+    'gemini-3.6-flash',
+    'gemini-3.5-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-flash-latest'
+];
 
 async function extractTextFromPptx(base64Data) {
     try {
@@ -40,17 +53,67 @@ function getApiKey() {
     return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
 }
 
+function modelCandidates() {
+    const preferred = (process.env.GEMINI_MODEL || '').trim();
+    const list = preferred
+        ? [preferred, ...DEFAULT_MODEL_CANDIDATES.filter((m) => m !== preferred)]
+        : [...DEFAULT_MODEL_CANDIDATES];
+    return list;
+}
+
+function friendlyGeminiError(status, bodyText, lastModel) {
+    if (status === 400 && /api key not valid|invalid api key/i.test(bodyText || '')) {
+        return {
+            message:
+                'Gemini API key is invalid. Create a key at https://aistudio.google.com/apikey and set GEMINI_API_KEY on the backend.',
+            code: 'GEMINI_KEY_INVALID'
+        };
+    }
+    if (status === 403) {
+        return {
+            message:
+                'Gemini API rejected the key (403). Enable the Generative Language API, check key restrictions (HTTP referrers / IP), and ensure the key is set on the *backend* Render service.',
+            code: 'GEMINI_FORBIDDEN'
+        };
+    }
+    if (status === 404) {
+        return {
+            message: `Gemini model not available (${lastModel || 'unknown'}). Set GEMINI_MODEL=gemini-3.6-flash (or gemini-3.5-flash) on the backend and redeploy.`,
+            code: 'GEMINI_MODEL_NOT_FOUND'
+        };
+    }
+    if (status === 429) {
+        return {
+            message: 'Gemini rate limit / quota exceeded. Wait a minute or enable billing in Google AI Studio.',
+            code: 'GEMINI_QUOTA'
+        };
+    }
+    if (/no longer available/i.test(bodyText || '')) {
+        return {
+            message:
+                'Gemini model was retired. Set GEMINI_MODEL=gemini-3.6-flash on the backend and redeploy.',
+            code: 'GEMINI_MODEL_RETIRED'
+        };
+    }
+    return {
+        message: `Gemini API error (${status})${lastModel ? ` model=${lastModel}` : ''}`,
+        code: 'GEMINI_API_ERROR'
+    };
+}
+
 /**
  * @param {object} opts
  * @param {string} opts.fileBase64 - raw file bytes as base64 (no data: prefix)
  * @param {string} opts.mimeType
  * @param {'detailed'|'condensed'|'summary'} [opts.detailLevel]
- * @returns {Promise<{title,summary,slides,quiz}>}
+ * @returns {Promise<{title,summary,slides,quiz>}>
  */
 async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' }) {
     const apiKey = getApiKey();
     if (!apiKey) {
-        const e = new Error('GEMINI_API_KEY is not configured on the server');
+        const e = new Error(
+            'GEMINI_API_KEY is not configured on the server. Add it on the *backend* Render service (not frontend).'
+        );
         e.code = 'GEMINI_KEY_MISSING';
         throw e;
     }
@@ -67,7 +130,6 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
         const text = await extractTextFromPptx(fileBase64);
         parts.push({ text: `SOURCE DOCUMENT (extracted from PowerPoint):\n\n${text}` });
     } else {
-        // PDF and other binary types as inline data
         parts.push({
             inlineData: {
                 data: fileBase64,
@@ -95,9 +157,6 @@ RULES — follow all of these strictly:
 3. OUTPUT must be valid JSON with keys: title, summary, slides, quiz.`
     });
 
-    const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-
     const body = {
         contents: [{ parts }],
         generationConfig: {
@@ -105,49 +164,82 @@ RULES — follow all of these strictly:
         }
     };
 
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-    });
+    const candidates = modelCandidates();
+    let lastStatus = 0;
+    let lastBody = '';
+    let lastModel = candidates[0];
 
-    if (!res.ok) {
-        const errText = await res.text().catch(() => '');
-        logger.error('scorm_gemini_failed', {
+    for (const model of candidates) {
+        lastModel = model;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+        let res;
+        try {
+            res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+        } catch (netErr) {
+            logger.error('scorm_gemini_network', { module: 'scorm', model, error: netErr.message });
+            const e = new Error(`Gemini network error: ${netErr.message}`);
+            e.code = 'GEMINI_NETWORK';
+            throw e;
+        }
+
+        if (res.ok) {
+            const data = await res.json();
+            const text =
+                data?.candidates?.[0]?.content?.parts?.map((p) => p.text || '').join('') || '{}';
+
+            let analysis;
+            try {
+                analysis = JSON.parse(text);
+            } catch (_) {
+                const e = new Error('Gemini returned invalid JSON');
+                e.code = 'GEMINI_BAD_JSON';
+                throw e;
+            }
+
+            if (!analysis.title || !Array.isArray(analysis.slides) || !Array.isArray(analysis.quiz)) {
+                const e = new Error('Gemini analysis missing required fields (title, slides, quiz)');
+                e.code = 'GEMINI_INCOMPLETE';
+                throw e;
+            }
+
+            logger.info('scorm_gemini_ok', { module: 'scorm', model, slides: analysis.slides.length });
+            return analysis;
+        }
+
+        lastStatus = res.status;
+        lastBody = await res.text().catch(() => '');
+        logger.warn('scorm_gemini_try_failed', {
             module: 'scorm',
+            model,
             status: res.status,
-            body: errText.slice(0, 500)
+            body: lastBody.slice(0, 300)
         });
-        const e = new Error(`Gemini API error (${res.status})`);
-        e.code = 'GEMINI_API_ERROR';
-        e.status = res.status;
-        throw e;
+
+        const retryable =
+            res.status === 404 ||
+            /not found|no longer available|not supported for generatecontent/i.test(lastBody);
+        if (!retryable) {
+            break;
+        }
     }
 
-    const data = await res.json();
-    const text =
-        data?.candidates?.[0]?.content?.parts?.map((p) => p.text || '').join('') || '{}';
-
-    let analysis;
-    try {
-        analysis = JSON.parse(text);
-    } catch (_) {
-        const e = new Error('Gemini returned invalid JSON');
-        e.code = 'GEMINI_BAD_JSON';
-        throw e;
-    }
-
-    if (!analysis.title || !Array.isArray(analysis.slides) || !Array.isArray(analysis.quiz)) {
-        const e = new Error('Gemini analysis missing required fields');
-        e.code = 'GEMINI_INCOMPLETE';
-        throw e;
-    }
-
-    return analysis;
+    const friendly = friendlyGeminiError(lastStatus, lastBody, lastModel);
+    const e = new Error(friendly.message);
+    e.code = friendly.code;
+    e.status = lastStatus;
+    throw e;
 }
 
 module.exports = {
     analyzePolicy,
     getApiKey,
-    extractTextFromPptx
+    extractTextFromPptx,
+    DEFAULT_MODEL_CANDIDATES
 };
