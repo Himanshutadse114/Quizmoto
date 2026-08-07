@@ -5,8 +5,8 @@ import { apiUrl } from '../../config';
 /**
  * SCORM 1.2 player shell.
  * Injects window.API (LMS API) for the SCO iframe.
- * Uses synchronous XHR for GetValue/SetValue/Commit so classic SCOs work.
- * Each registration is isolated — many learners can launch the same course concurrently.
+ * Content URL keeps the registration token in the *path* so relative
+ * scripts/CSS (scormdriver.js, etc.) stay authorized (no 401).
  */
 export default function ScormPlayerShell() {
   const { registrationId } = useParams();
@@ -142,11 +142,13 @@ export default function ScormPlayerShell() {
     };
   }, [token, packageId, entryHref, apiBase]);
 
+  // Token in the PATH (not query) so relative SCO assets stay under /t/<token>/...
   const contentSrc = useMemo(() => {
-    if (!packageId || !entryHref || !token) return null;
-    const path = entryHref.replace(/^\//, '');
-    return apiUrl(`/api/scorm/content/${packageId}/${path}?token=${encodeURIComponent(token)}`);
-  }, [packageId, entryHref, token]);
+    if (!entryHref || !token) return null;
+    const path = String(entryHref).replace(/^\/+/, '');
+    const tok = encodeURIComponent(token);
+    return apiUrl(`/api/scorm/content/t/${tok}/${path}`);
+  }, [entryHref, token]);
 
   if (error) {
     return (
