@@ -13,6 +13,7 @@ router.post('/accept', async (req, res) => {
             learnerName,
             learnerEmail
         });
+        const pkg = result.course.package;
         res.status(201).json({
             registrationId: result.registration.id,
             course: {
@@ -20,6 +21,8 @@ router.post('/accept', async (req, res) => {
                 title: result.course.title,
                 description: result.course.description
             },
+            packageId: pkg ? pkg.id : null,
+            entryHref: pkg ? pkg.entryHref : null,
             token: result.token
         });
     } catch (err) {
