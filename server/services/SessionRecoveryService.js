@@ -75,7 +75,8 @@ class SessionRecoveryService {
                 totalQuestions: quiz.questions.length,
                 correctIndex: currentQuestion.correctIndex, // Host sees correct answer
                 startTime: session.questionStartTime ? session.questionStartTime.getTime() : serverTime
-            } : null
+            } : null,
+            serverTime
         };
     }
 
