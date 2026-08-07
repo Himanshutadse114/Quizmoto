@@ -76,6 +76,29 @@ export default function ScormLibrary() {
     }
   };
 
+  const downloadPkg = async (id, title) => {
+    try {
+      const res = await axios.get(apiUrl(`/api/scorm/packages/${id}/download`), {
+        headers,
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/zip' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(title || 'scorm-package').replace(/[^a-zA-Z0-9._-]+/g, '_')}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setMsg(err.response?.data?.message || err.message || 'Download failed');
+    }
+  };
+
+  const editPkg = (id) => {
+    navigate(`/scorm/author?edit=${id}`);
+  };
+
   const removePkg = async (id) => {
     if (!window.confirm('Delete this package? Linked courses are archived and files are removed from storage.')) return;
     try {
@@ -94,7 +117,7 @@ export default function ScormLibrary() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-3xl font-black italic tracking-tighter mb-2">Package library</h1>
-          <p className="text-white/50 text-sm">Upload SCORM ZIP or create from policy (PDF/PPT).</p>
+          <p className="text-white/50 text-sm">Upload SCORM ZIP or create from policy (PDF/PPT). AI ZIPs can be downloaded, re-uploaded, and edited.</p>
         </div>
         <Link
           to="/scorm/author"
@@ -149,6 +172,22 @@ export default function ScormLibrary() {
                     className="px-3 py-2 rounded-xl bg-quizmoto-green text-white text-xs font-black"
                   >
                     Create course
+                  </button>
+                )}
+                {(p.status === 'ready' || p.storageKeyZip) && (
+                  <button
+                    onClick={() => downloadPkg(p.id, p.title)}
+                    className="px-3 py-2 rounded-xl bg-quizmoto-blue text-white text-xs font-black"
+                  >
+                    Download ZIP
+                  </button>
+                )}
+                {(p.source === 'ai_author' || p.analysisJson) && (
+                  <button
+                    onClick={() => editPkg(p.id)}
+                    className="px-3 py-2 rounded-xl bg-quizmoto-yellow text-black text-xs font-black"
+                  >
+                    Edit
                   </button>
                 )}
                 <button
