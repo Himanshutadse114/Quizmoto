@@ -45,6 +45,17 @@ export default function ScormLearnLanding() {
       .catch((e) => setError(e.response?.data?.message || 'Course not found or not published'));
   }, [inviteCode]);
 
+  // When player posts exit message or popup is closed, reset UI
+  useEffect(() => {
+    const onMsg = (ev) => {
+      if (ev.data && ev.data.type === 'quizmoto-scorm-exit') {
+        setStarted(false);
+      }
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
   const start = async (e) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -59,7 +70,7 @@ export default function ScormLearnLanding() {
         learnerName: name.trim(),
         learnerEmail: email.trim() || null
       });
-      openPlayerPopup(
+      const win = openPlayerPopup(
         res.data.registrationId,
         res.data.token,
         res.data.packageId,
@@ -67,6 +78,20 @@ export default function ScormLearnLanding() {
       );
       setStarted(true);
       setLoading(false);
+
+      if (win) {
+        const timer = setInterval(() => {
+          try {
+            if (win.closed) {
+              clearInterval(timer);
+              setStarted(false);
+            }
+          } catch (_) {
+            clearInterval(timer);
+            setStarted(false);
+          }
+        }, 800);
+      }
     } catch (err) {
       setError(err.response?.data?.message || err.message);
       setLoading(false);
@@ -92,7 +117,16 @@ export default function ScormLearnLanding() {
           <p className="text-white/60 text-sm mb-4">
             The course is running in a popup window. Keep that window open to finish and save your score.
           </p>
-          <p className="text-xs text-white/40">If you do not see it, allow popups for this site and start again.</p>
+          <p className="text-xs text-white/40 mb-4">
+            Click <strong>Exit</strong> in the player to close it. If you do not see the popup, allow popups for this site.
+          </p>
+          <button
+            type="button"
+            onClick={() => setStarted(false)}
+            className="px-4 py-2 rounded-xl bg-white/10 font-bold text-sm"
+          >
+            Back to start form
+          </button>
         </div>
       </div>
     );
