@@ -7,15 +7,21 @@ export const SocketProvider = ({ children }) => {
     const [socket, setSocket] = useState(null);
 
     useEffect(() => {
-        // In production (Vercel), point to the Koyeb backend URL.
-        // In local development, use the same origin (Docker nginx proxy).
         const backendUrl = import.meta.env.VITE_BACKEND_URL || window.location.origin;
         const newSocket = io(backendUrl, {
-            transports: ['websocket', 'polling']
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionAttempts: Infinity,
+            reconnectionDelay: 400,
+            reconnectionDelayMax: 5000,
+            timeout: 20000,
+            forceNew: false
         });
         setSocket(newSocket);
 
-        return () => newSocket.close();
+        return () => {
+            try { newSocket.close(); } catch (_) {}
+        };
     }, []);
 
     return (
