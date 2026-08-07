@@ -59,6 +59,9 @@ const connectDB = async () => {
         const { User } = require('../models/User');
         const { PlayerProfile } = require('../models/PlayerProfile');
 
+        // SCORM World models (additive — no coupling to GameSession)
+        require('../models/scorm');
+
         // Centralized Associations
         // Quiz <-> Question
         Quiz.hasMany(Question, { as: 'questions', foreignKey: 'quizId', onDelete: 'CASCADE' });
@@ -167,7 +170,7 @@ const connectDB = async () => {
             await addColumnIfMissing(`ALTER TABLE \`PlayerAnswers\` ADD COLUMN \`roundId\` VARCHAR(36) NULL`);
         }
 
-        // Standard sync (without alter) to ensure basic table existence including Phase 2 models
+        // Standard sync (without alter) to ensure basic table existence including Phase 2 + SCORM models
         try {
             await sequelize.sync();
             console.log('Database models synced ✅');
