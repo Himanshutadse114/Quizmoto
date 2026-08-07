@@ -85,14 +85,12 @@ const Dashboard = () => {
         }
     };
 
-    // Statistics Calculation
     const stats = {
         totalQuizzes: quizzes.length,
         totalQuestions: quizzes.reduce((acc, q) => acc + q.questions.length, 0),
-        activePlayers: 0 // In a real app this would come from a 'live-sessions' API
+        activePlayers: 0
     };
 
-    // Filtering & Sorting Logic
     const sortedQuizzes = [...quizzes]
         .filter(q => q.title.toLowerCase().includes(searchQuery.toLowerCase()))
         .sort((a, b) => {
@@ -117,6 +115,13 @@ const Dashboard = () => {
                         <Download size={14} /> IMPORT DEFAULTS
                     </button>
                     <button
+                        onClick={() => navigate('/scorm')}
+                        className="bg-quizmoto-yellow text-quizmoto-darkPurple px-4 py-2 rounded-xl font-black text-xs shadow-[0_3px_0_0_#c48a00] hover:shadow-none hover:translate-y-1 transition-all flex items-center gap-2"
+                        title="Courses, SCORM packages, invites & tracking"
+                    >
+                        SCORM WORLD
+                    </button>
+                    <button
                         onClick={() => navigate('/reports')}
                         className="bg-quizmoto-purple text-white px-4 py-2 rounded-xl font-black text-xs shadow-[0_3px_0_0_#6a2d9c] hover:shadow-none hover:translate-y-1 transition-all flex items-center gap-2"
                     >
@@ -132,7 +137,6 @@ const Dashboard = () => {
                 </div>
             </header>
 
-            {/* Active Sessions Banner */}
             {activeSessions.length > 0 && (
                 <div className="mb-8 flex flex-col gap-3">
                     {activeSessions.map(session => (
@@ -164,7 +168,6 @@ const Dashboard = () => {
                 </div>
             )}
 
-            {/* Statistics Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                 {[
                     { label: 'Total Quizzes', value: stats.totalQuizzes, color: 'blue' },
@@ -184,7 +187,6 @@ const Dashboard = () => {
                 ))}
             </div>
 
-            {/* Search & Utility Bar */}
             <div className="mb-6 flex flex-col md:flex-row gap-3 items-center justify-between">
                 <div className="relative w-full md:max-w-md">
                     <input
