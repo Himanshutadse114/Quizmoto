@@ -1,8 +1,28 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+
+function openPlayerPopup(registrationId, token, packageId, entryHref) {
+  const q = new URLSearchParams({
+    token: token || '',
+    packageId: packageId || '',
+    entryHref: entryHref || ''
+  });
+  const url = apiUrl(`/api/scorm/play/${registrationId}?${q.toString()}`);
+  const features =
+    'popup=yes,width=1280,height=800,left=80,top=40,menubar=no,toolbar=no,location=yes,status=yes,resizable=yes,scrollbars=yes';
+  const win = window.open(url, `quizmoto_scorm_${registrationId}`, features);
+  if (!win || win.closed) {
+    window.location.href = url;
+    return null;
+  }
+  try {
+    win.focus();
+  } catch (_) {}
+  return win;
+}
 
 export default function ScormCourseDetail() {
   const { id } = useParams();
@@ -70,12 +90,14 @@ export default function ScormCourseDetail() {
   const preview = async () => {
     try {
       const res = await axios.post(apiUrl(`/api/scorm/courses/${id}/preview`), {}, { headers });
-      const q = new URLSearchParams({
-        token: res.data.token,
-        packageId: res.data.packageId || '',
-        entryHref: res.data.entryHref || ''
-      });
-      navigate(`/scorm/player/${res.data.registrationId}?${q.toString()}`);
+      openPlayerPopup(
+        res.data.registrationId,
+        res.data.token,
+        res.data.packageId,
+        res.data.entryHref
+      );
+      setMsg('Preview opened in a popup window');
+      await loadRoster();
     } catch (err) {
       setMsg(err.response?.data?.message || err.message);
     }
@@ -104,8 +126,9 @@ export default function ScormCourseDetail() {
     );
   }
 
-  const completed = regs.filter((r) =>
-    ['completed', 'passed', 'failed'].includes(r.lastLessonStatus) || r.status === 'completed'
+  const completed = regs.filter(
+    (r) =>
+      ['completed', 'passed', 'failed'].includes(r.lastLessonStatus) || r.status === 'completed'
   ).length;
   const active = regs.filter((r) => r.status === 'active').length;
 
@@ -180,8 +203,7 @@ export default function ScormCourseDetail() {
             </button>
           </div>
           <p className="text-xs text-white/50 mt-2">
-            Each learner who opens this link gets their own registration. Many can launch at the same time;
-            progress and scores are tracked separately for the host.
+            Each learner who opens this link gets their own registration. Courses open in a popup player.
           </p>
         </div>
       )}
@@ -274,11 +296,6 @@ export default function ScormCourseDetail() {
           </tbody>
         </table>
       </div>
-
-      <p className="mt-4 text-xs text-white/40">
-        Each row is one independent SCORM registration. Concurrent launches are supported — scores and
-        lesson status update when the learner commits or finishes in the player.
-      </p>
     </div>
   );
 }

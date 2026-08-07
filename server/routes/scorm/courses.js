@@ -14,7 +14,15 @@ router.get('/', auth, async (req, res) => {
         include: [{ model: ScormPackage, as: 'package' }],
         order: [['createdAt', 'DESC']]
     });
-    res.json(courses.filter((c) => c.status !== 'archived'));
+    // Hide archived courses and courses whose package was deleted
+    res.json(
+        courses.filter(
+            (c) =>
+                c.status !== 'archived' &&
+                c.package &&
+                c.package.status !== 'deleted'
+        )
+    );
 });
 
 router.post('/', auth, async (req, res) => {
@@ -43,10 +51,19 @@ router.post('/', auth, async (req, res) => {
 router.get('/code/:inviteCode', async (req, res) => {
     const course = await ScormCourse.findOne({
         where: { inviteCode: req.params.inviteCode, status: 'published' },
-        attributes: ['id', 'title', 'description', 'inviteCode', 'status']
+        include: [{ model: ScormPackage, as: 'package' }],
+        attributes: ['id', 'title', 'description', 'inviteCode', 'status', 'packageId']
     });
-    if (!course) return res.status(404).json({ message: 'Course not found' });
-    res.json(course);
+    if (!course || !course.package || course.package.status === 'deleted') {
+        return res.status(404).json({ message: 'Course not found' });
+    }
+    res.json({
+        id: course.id,
+        title: course.title,
+        description: course.description,
+        inviteCode: course.inviteCode,
+        status: course.status
+    });
 });
 
 router.get('/:id', auth, async (req, res) => {
@@ -54,7 +71,7 @@ router.get('/:id', auth, async (req, res) => {
         where: { id: req.params.id, hostId: req.userId },
         include: [{ model: ScormPackage, as: 'package' }]
     });
-    if (!course) return res.status(404).json({ message: 'Not found' });
+    if (!course || course.status === 'archived') return res.status(404).json({ message: 'Not found' });
     res.json(course);
 });
 
@@ -119,7 +136,8 @@ router.post('/:id/preview', auth, async (req, res) => {
             registrationId: reg.id,
             token,
             packageId: course.package.id,
-            entryHref: course.package.entryHref
+            entryHref: course.package.entryHref,
+            playUrl: `/api/scorm/play/${reg.id}`
         });
     } catch (err) {
         res.status(500).json({ message: err.message });

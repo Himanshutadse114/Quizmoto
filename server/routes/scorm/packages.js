@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware');
-const { ScormPackage } = require('../../models/scorm');
+const { ScormPackage, ScormCourse } = require('../../models/scorm');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
 const { packageZipKey } = require('../../services/scorm/storageKeys');
 const { scormMaxUploadMb } = require('../../config/featureFlags');
@@ -153,13 +153,24 @@ router.delete('/:id', auth, async (req, res) => {
     if (!pkg) return res.status(404).json({ message: 'Not found' });
     pkg.status = 'deleted';
     await pkg.save();
+
+    // Remove from Recent courses — archive every course tied to this package
+    try {
+        await ScormCourse.update(
+            { status: 'archived' },
+            { where: { packageId: pkg.id, hostId: req.userId } }
+        );
+    } catch (e) {
+        logger.warn('scorm_package_delete_archive_courses', { module: 'scorm', error: e.message });
+    }
+
     try {
         await JobQueueService.enqueue({
             type: JOB_TYPES.SCORM_PACKAGE_DELETE,
             payload: { packageId: pkg.id }
         });
     } catch (_) { /* ignore */ }
-    res.json({ ok: true });
+    res.json({ ok: true, archivedCourses: true });
 });
 
 module.exports = router;

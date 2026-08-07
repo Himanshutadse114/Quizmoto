@@ -1,16 +1,42 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { apiUrl } from '../../config';
 
+function openPlayerPopup(registrationId, token, packageId, entryHref) {
+  try {
+    sessionStorage.setItem(
+      `scorm_reg_${registrationId}`,
+      JSON.stringify({ token, packageId, entryHref })
+    );
+  } catch (_) {}
+  const q = new URLSearchParams({
+    token: token || '',
+    packageId: packageId || '',
+    entryHref: entryHref || ''
+  });
+  const url = apiUrl(`/api/scorm/play/${registrationId}?${q.toString()}`);
+  const features =
+    'popup=yes,width=1280,height=800,left=80,top=40,menubar=no,toolbar=no,location=yes,status=yes,resizable=yes,scrollbars=yes';
+  const win = window.open(url, `quizmoto_scorm_${registrationId}`, features);
+  if (!win || win.closed) {
+    window.location.href = url;
+    return null;
+  }
+  try {
+    win.focus();
+  } catch (_) {}
+  return win;
+}
+
 export default function ScormLearnLanding() {
   const { inviteCode } = useParams();
-  const navigate = useNavigate();
   const [course, setCourse] = useState(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [started, setStarted] = useState(false);
 
   useEffect(() => {
     axios
@@ -33,22 +59,14 @@ export default function ScormLearnLanding() {
         learnerName: name.trim(),
         learnerEmail: email.trim() || null
       });
-      const q = new URLSearchParams({
-        token: res.data.token,
-        packageId: res.data.packageId || '',
-        entryHref: res.data.entryHref || ''
-      });
-      try {
-        sessionStorage.setItem(
-          `scorm_reg_${res.data.registrationId}`,
-          JSON.stringify({
-            token: res.data.token,
-            packageId: res.data.packageId,
-            entryHref: res.data.entryHref
-          })
-        );
-      } catch (_) {}
-      navigate(`/scorm/player/${res.data.registrationId}?${q.toString()}`);
+      openPlayerPopup(
+        res.data.registrationId,
+        res.data.token,
+        res.data.packageId,
+        res.data.entryHref
+      );
+      setStarted(true);
+      setLoading(false);
     } catch (err) {
       setError(err.response?.data?.message || err.message);
       setLoading(false);
@@ -61,6 +79,20 @@ export default function ScormLearnLanding() {
         <div className="max-w-md w-full rounded-3xl bg-white/5 border border-white/10 p-8 text-center">
           <h1 className="text-2xl font-black mb-2">Course unavailable</h1>
           <p className="text-white/60 text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (started) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 relative z-10">
+        <div className="max-w-md w-full rounded-3xl bg-white/5 border border-white/10 p-8 text-center">
+          <h1 className="text-2xl font-black mb-2">Course opened</h1>
+          <p className="text-white/60 text-sm mb-4">
+            The course is running in a popup window. Keep that window open to finish and save your score.
+          </p>
+          <p className="text-xs text-white/40">If you do not see it, allow popups for this site and start again.</p>
         </div>
       </div>
     );
@@ -114,7 +146,7 @@ export default function ScormLearnLanding() {
           </button>
         </form>
         <p className="mt-4 text-[11px] text-white/40 text-center">
-          Your progress is saved. You can resume later from the same link if the course allows it.
+          Opens in a popup player. Allow popups if your browser asks.
         </p>
       </div>
     </div>
