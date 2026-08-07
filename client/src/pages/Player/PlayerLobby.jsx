@@ -50,7 +50,6 @@ const PlayerLobby = () => {
 
         socket.on('question_started', (data) => {
             stayingInSessionRef.current = true;
-            // Persist payload so PlayerGame can apply Q1 if the event is missed during navigate
             try {
                 sessionStorage.setItem('pending_question_started', JSON.stringify(data));
             } catch (_) {}
@@ -89,17 +88,25 @@ const PlayerLobby = () => {
             }
         });
 
-        const onPageHide = () => {
-            if (!stayingInSessionRef.current) {
-                leaveSession({ clearStorage: true });
-            }
+        const rejoin = () => {
+            try {
+                const info = JSON.parse(localStorage.getItem('player_info') || 'null');
+                if (!info || !info.pin) return;
+                socket.emit('join_room', {
+                    pin: info.pin,
+                    nickname: info.nickname,
+                    role: 'player',
+                    token: info.token,
+                    avatar: info.avatar
+                });
+            } catch (_) {}
         };
-        window.addEventListener('pagehide', onPageHide);
-        window.addEventListener('beforeunload', onPageHide);
+        socket.on('connect', rejoin);
+        socket.on('reconnect', rejoin);
 
         return () => {
-            window.removeEventListener('pagehide', onPageHide);
-            window.removeEventListener('beforeunload', onPageHide);
+            socket.off('connect', rejoin);
+            socket.off('reconnect', rejoin);
             socket.off('question_started');
             socket.off('session_info');
             socket.off('host_disconnected');
