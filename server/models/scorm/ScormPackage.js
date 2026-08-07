@@ -68,6 +68,11 @@ const ScormPackage = sequelize.define('ScormPackage', {
     errorMessage: {
         type: DataTypes.TEXT,
         allowNull: true
+    },
+    /** Policy analysis JSON for AI packages — enables edit & regenerate */
+    analysisJson: {
+        type: DataTypes.TEXT,
+        allowNull: true
     }
 }, {
     tableName: 'scorm_packages',
