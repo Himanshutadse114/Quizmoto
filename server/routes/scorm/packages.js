@@ -11,6 +11,20 @@ const { unpackPackage } = require('../../services/scorm/ScormUnpackService');
 const { deletePackageFromStorage } = require('../../services/scorm/ScormPackageCleanup');
 const logger = require('../../utils/logger');
 
+async function tryExtractAiAnalysis(zipBuf) {
+    try {
+        const JSZip = require('jszip');
+        const zip = await JSZip.loadAsync(zipBuf);
+        const entry = zip.file('content.json');
+        if (!entry) return null;
+        const analysis = JSON.parse(await entry.async('string'));
+        if (!analysis || !analysis.title || !Array.isArray(analysis.slides)) return null;
+        return analysis;
+    } catch (_) {
+        return null;
+    }
+}
+
 router.post('/upload', auth, express.raw({ type: ['application/zip', 'application/octet-stream'], limit: '50mb' }), async (req, res) => {
     try {
         let zipBuf = null;
@@ -37,12 +51,14 @@ router.post('/upload', auth, express.raw({ type: ['application/zip', 'applicatio
             return res.status(413).json({ message: `Max upload ${scormMaxUploadMb()} MB` });
         }
 
+        const aiAnalysis = await tryExtractAiAnalysis(zipBuf);
         const pkg = await ScormPackage.create({
             hostId: req.userId,
-            title: String(title).slice(0, 200),
+            title: String(title || (aiAnalysis && aiAnalysis.title) || 'Uploaded package').slice(0, 200),
             status: 'processing',
-            source: 'upload',
-            byteSize: zipBuf.length
+            source: aiAnalysis ? 'ai_author' : 'upload',
+            byteSize: zipBuf.length,
+            analysisJson: aiAnalysis ? JSON.stringify(aiAnalysis) : null
         });
 
         const storage = getObjectStorage();
@@ -88,7 +104,8 @@ router.post('/upload', auth, express.raw({ type: ['application/zip', 'applicatio
             status: pkg.status,
             jobId,
             entryHref: pkg.entryHref,
-            errorMessage: pkg.errorMessage
+            errorMessage: pkg.errorMessage,
+            source: pkg.source
         });
     } catch (err) {
         logger.error('scorm_upload_failed', { module: 'scorm', error: err.message });
@@ -104,12 +121,14 @@ router.post('/upload-json', auth, async (req, res) => {
         const max = scormMaxUploadMb() * 1024 * 1024;
         if (zipBuf.length > max) return res.status(413).json({ message: `Max upload ${scormMaxUploadMb()} MB` });
 
+        const aiAnalysis = await tryExtractAiAnalysis(zipBuf);
         const pkg = await ScormPackage.create({
             hostId: req.userId,
-            title: (title || 'Uploaded package').slice(0, 200),
+            title: (title || (aiAnalysis && aiAnalysis.title) || 'Uploaded package').slice(0, 200),
             status: 'processing',
-            source: 'upload',
-            byteSize: zipBuf.length
+            source: aiAnalysis ? 'ai_author' : 'upload',
+            byteSize: zipBuf.length,
+            analysisJson: aiAnalysis ? JSON.stringify(aiAnalysis) : null
         });
         const storage = getObjectStorage();
         const zipKey = packageZipKey(pkg.id);
@@ -128,7 +147,8 @@ router.post('/upload-json', auth, async (req, res) => {
             status: pkg.status,
             entryHref: pkg.entryHref,
             standard: pkg.standard,
-            errorMessage: pkg.errorMessage
+            errorMessage: pkg.errorMessage,
+            source: pkg.source
         });
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -143,16 +163,82 @@ router.get('/', auth, async (req, res) => {
     res.json(list.filter((p) => p.status !== 'deleted'));
 });
 
+router.get('/:id/download', auth, async (req, res) => {
+    try {
+        const pkg = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId } });
+        if (!pkg || pkg.status === 'deleted') return res.status(404).json({ message: 'Not found' });
+        if (!pkg.storageKeyZip) return res.status(404).json({ message: 'ZIP not stored' });
+
+        const storage = getObjectStorage();
+        const buf = await storage.getObjectBuffer(pkg.storageKeyZip);
+        const safeName = String(pkg.title || 'scorm-package')
+            .replace(/[^a-zA-Z0-9._-]+/g, '_')
+            .slice(0, 80);
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="${safeName}.zip"`);
+        res.setHeader('Content-Length', buf.length);
+        res.send(buf);
+    } catch (err) {
+        logger.error('scorm_package_download_failed', { module: 'scorm', error: err.message });
+        res.status(500).json({ message: err.message });
+    }
+});
+
+router.get('/:id/analysis', auth, async (req, res) => {
+    try {
+        const pkg = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId } });
+        if (!pkg || pkg.status === 'deleted') return res.status(404).json({ message: 'Not found' });
+
+        let analysis = null;
+        if (pkg.analysisJson) {
+            try {
+                analysis = JSON.parse(pkg.analysisJson);
+            } catch (_) {}
+        }
+
+        if (!analysis && pkg.storageKeyZip) {
+            try {
+                const JSZip = require('jszip');
+                const storage = getObjectStorage();
+                const buf = await storage.getObjectBuffer(pkg.storageKeyZip);
+                const zip = await JSZip.loadAsync(buf);
+                const entry = zip.file('content.json');
+                if (entry) {
+                    analysis = JSON.parse(await entry.async('string'));
+                    pkg.analysisJson = JSON.stringify(analysis);
+                    if (pkg.source === 'upload') pkg.source = 'ai_author';
+                    await pkg.save();
+                }
+            } catch (e) {
+                logger.warn('scorm_analysis_from_zip_failed', { module: 'scorm', error: e.message });
+            }
+        }
+
+        if (!analysis) {
+            return res.status(404).json({
+                message: 'No editable analysis for this package (only AI-authored packages with content.json can be edited)'
+            });
+        }
+
+        res.json({
+            ok: true,
+            packageId: pkg.id,
+            title: pkg.title,
+            source: pkg.source,
+            templateId: pkg.templateId,
+            analysis
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 router.get('/:id', auth, async (req, res) => {
     const pkg = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId } });
     if (!pkg || pkg.status === 'deleted') return res.status(404).json({ message: 'Not found' });
     res.json(pkg);
 });
 
-/**
- * Soft-delete package in DB, archive courses, and remove all objects from R2/S3/local.
- * Runs storage cleanup inline so free-tier deploys without a worker still free the bucket.
- */
 router.delete('/:id', auth, async (req, res) => {
     const pkg = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId } });
     if (!pkg) return res.status(404).json({ message: 'Not found' });
@@ -160,7 +246,6 @@ router.delete('/:id', auth, async (req, res) => {
     pkg.status = 'deleted';
     await pkg.save();
 
-    // Hide linked courses from Recent courses
     try {
         await ScormCourse.update(
             { status: 'archived' },
@@ -170,7 +255,6 @@ router.delete('/:id', auth, async (req, res) => {
         logger.warn('scorm_package_delete_archive_courses', { module: 'scorm', error: e.message });
     }
 
-    // Immediate R2 / local cleanup (zip + all content files)
     let storageResult = { deleted: 0 };
     try {
         storageResult = await deletePackageFromStorage(pkg.id, pkg.storageKeyZip);
@@ -182,16 +266,13 @@ router.delete('/:id', auth, async (req, res) => {
         });
     }
 
-    // Also enqueue for worker idempotency / retry if needed
     try {
         await JobQueueService.enqueue({
             type: JOB_TYPES.SCORM_PACKAGE_DELETE,
             payload: { packageId: pkg.id },
             idempotencyKey: `scorm-delete:${pkg.id}`
         });
-    } catch (_) {
-        /* ignore */
-    }
+    } catch (_) {}
 
     res.json({
         ok: true,
