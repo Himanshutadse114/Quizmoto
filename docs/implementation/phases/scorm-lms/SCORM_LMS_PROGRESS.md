@@ -8,22 +8,24 @@
 | Phase | Wave | Focus | Status |
 | --- | --- | --- | --- |
 | Phase 1 | Wave 0 | Foundations: flags, models, validator, unpack, jobs | **COMPLETE** |
-| Phase 2 | Wave 1 | Library, courses, invites, SCORM 1.2 runtime, player UI, dashboard entry | **Backend COMPLETE — Client UI in progress** |
+| Phase 2 | Wave 1 | Library, courses, invites, SCORM 1.2 runtime, player UI, dashboard entry | **COMPLETE** |
 | Phase 3 | Wave 2 | Real-time roster sockets + AI PDF/PPT → SCORM author | Not started |
 | Phase 4 | Wave 3 | Hardening, retakes, security audit, ops runbook | Not started |
 
-## Wave 0 checklist
+## Multi-user + host tracking (v1)
 
-| ID | Task | Status |
-| --- | --- | --- |
-| W0-T01 | featureFlags | Done |
-| W0-T02 | Sequelize models scorm_* | Done |
-| W0-T03 | storageKeys R2 conventions | Done |
-| W0-T04 | ScormZipValidator | Done |
-| W0-T05 | ScormUnpackService + job handlers | Done |
-| W0-T06 | Unit tests | Pending |
-| W0-T07 | R2 smoke (operator) | Pending |
-| W0-T08 | Progress doc | Done |
+- Each learner gets an **independent** `ScormRegistration` + `ScormCmiState` when they accept the invite.
+- Concurrent launches of the same course are supported (no shared session lock).
+- Host **Course Detail** page shows a **live roster** (poll 8s): name, status, lesson_status, score, total time, last commit.
+- Runtime commits update `lastLessonStatus`, `lastScoreRaw`, `lastTotalTime`, `lastCommitAt` on the registration.
+
+## SCORM 1.2 compliance (v1)
+
+- LMSInitialize / LMSFinish / LMSGetValue / LMSSetValue / LMSCommit
+- LMSGetLastError / LMSGetErrorString / LMSGetDiagnostic
+- Core CMI: lesson_status, score.raw/min/max, session_time, total_time, lesson_location, exit, entry, suspend_data, student_id/name
+- Resume via suspend_data / incomplete status
+- Content served via auth’d proxy with iframe sandbox
 
 ## Wave 1 checklist
 
@@ -35,20 +37,19 @@
 | W1-T04 | ScormRuntimeService (CMI 1.2) | Done |
 | W1-T05 | runtime routes | Done |
 | W1-T06 | content proxy | Done |
-| W1-T07 | /api/scorm mounted in index.js | Done |
-| W1-T08 | Client: Home / Library / CourseDetail / Player / Learn | Next |
-| W1-T09 | Dashboard “Open SCORM World” button | Next |
-| W1-T10 | App.jsx routes | Next |
+| W1-T07 | /api/scorm mounted | Done |
+| W1-T08 | Client: Home / Library / CourseDetail / Player / Learn | Done |
+| W1-T09 | Dashboard “SCORM WORLD” button | Done |
+| W1-T10 | App.jsx routes | Done |
 | W1-T11 | Quiz regression (flag OFF) | Required before enable |
 
 ## How to enable (staging only)
 
 ```bash
 SCORM_LMS=true
-STORAGE_DRIVER=s3   # or local for dev
+STORAGE_DRIVER=s3
 S3_BUCKET=quizmoto-scorm
-# + R2 endpoint / keys already set on Render
 SCORM_PROCESS_INLINE=1   # optional on free Render without separate worker
 ```
 
-Keep `SCORM_LMS` off in production until Wave 1 client + regression pass.
+Keep `SCORM_LMS` off in production until you verify upload → publish → multi-learner → host roster.
