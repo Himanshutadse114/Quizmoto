@@ -18,6 +18,13 @@ import PlayerGame from './pages/Player/PlayerGame';
 import PlayerLogin from './pages/Player/PlayerLogin';
 import PlayerDashboard from './pages/Player/PlayerDashboard';
 
+// SCORM World (flag-gated on backend; routes always registered)
+import ScormHome from './pages/Scorm/Home';
+import ScormLibrary from './pages/Scorm/Library';
+import ScormCourseDetail from './pages/Scorm/CourseDetail';
+import ScormLearnLanding from './pages/Scorm/LearnLanding';
+import ScormPlayerShell from './pages/Scorm/PlayerShell';
+
 function App() {
   return (
     <AuthProvider>
@@ -49,6 +56,13 @@ function App() {
               <Route path="/reports" element={<Reports />} />
               <Route path="/host/lobby/:pin" element={<Lobby />} />
               <Route path="/host/game/:pin" element={<GameView />} />
+
+              {/* SCORM World */}
+              <Route path="/scorm" element={<ScormHome />} />
+              <Route path="/scorm/library" element={<ScormLibrary />} />
+              <Route path="/scorm/courses/:id" element={<ScormCourseDetail />} />
+              <Route path="/scorm/learn/:inviteCode" element={<ScormLearnLanding />} />
+              <Route path="/scorm/player/:registrationId" element={<ScormPlayerShell />} />
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" />} />
