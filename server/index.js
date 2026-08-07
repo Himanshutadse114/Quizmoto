@@ -57,66 +57,144 @@ if (process.env.REDIS_URL) {
     });
 }
 
-app.set('trust proxy', 1);
-
-app.use(helmet({
-    contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false
-}));
-
-app.use(cors({
-    origin: CORS_ORIGIN,
-    credentials: true
-}));
-
-app.use(express.json({ limit: '25mb' }));
-app.use(express.urlencoded({ extended: true, limit: '25mb' }));
-
+// Structured HTTP access log (P3-T08) + metrics (P3-T09)
 app.use((req, res, next) => {
+    req.requestId = req.headers['x-request-id'] || crypto.randomUUID();
     const start = Date.now();
     res.on('finish', () => {
-        Metrics.httpRequest(req.method, req.path, res.statusCode, Date.now() - start);
-        logger.info('http_request', {
-            module: 'http',
-            method: req.method,
-            path: req.path,
-            status: res.statusCode,
-            durationMs: Date.now() - start
-        });
+        const duration = Date.now() - start;
+        logger.http(req, res, duration);
+        Metrics.recordHttp(res.statusCode, duration);
     });
     next();
 });
 
-app.get('/health', (req, res) => res.json({ ok: true }));
-app.get('/api/metrics', (req, res) => res.json(Metrics.snapshot()));
+app.use(cors({
+    origin: (origin, callback) => {
+        callback(null, true);
+    },
+    credentials: true
+}));
 
-const authRoutes = require('./routes/auth');
-const quizRoutes = require('./routes/quizzes');
-const reportRoutes = require('./routes/reports');
-const jobRoutes = require('./routes/jobs');
-const scormRoutes = require('./routes/scorm');
-
-app.use('/api/auth', authRoutes);
-app.use('/api/quizzes', quizRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/jobs', jobRoutes);
-app.use('/api/scorm', scormRoutes);
-
-require('./services/socketHandlers')(io);
-
-// SCORM realtime (host roster) — same process, separate event names
-try {
-    const ScormRealtime = require('./services/scorm/ScormRealtime');
-    ScormRealtime.attach(io);
-} catch (e) {
-    logger.warn('scorm_realtime_attach_skipped', { module: 'scorm', error: e.message });
-}
-
-const PORT = process.env.PORT || 5000;
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const startServer = async () => {
+    app.get(['/api', '/api/', '/health'], (req, res) => {
+        res.json({
+            message: 'Kahoot Awareness Backend is running',
+            status: 'healthy',
+            timestamp: new Date().toISOString()
+        });
+    });
+
     try {
         await connectDB();
+
+        if (process.env.NODE_ENV === 'test') {
+            const { seedTestFixtures } = require('./tests/fixtures');
+            await seedTestFixtures();
+        }
+
+        app.use('/api/auth', require('./routes/auth'));
+        app.use('/api/player', require('./routes/playerAuth'));
+        app.use('/api/quizzes', require('./routes/quizzes'));
+        app.use('/api/sessions', require('./routes/sessions'));
+        app.use('/api/jobs', require('./routes/jobs'));
+        app.use('/api/metrics', require('./routes/metrics'));
+
+        // SCORM World LMS (flag-gated inside router — returns 404 when SCORM_LMS=false)
+        app.use('/api/scorm', require('./routes/scorm'));
+
+        if (process.env.NODE_ENV === 'test') {
+            app.use('/api/test-only', require('./routes/testOnly'));
+        }
+
+        const socketHandlers = require('./services/socketHandlers');
+        socketHandlers(io);
+
+        // SCORM World live roster (Wave 2)
+        try {
+            const ScormRealtime = require('./services/scorm/ScormRealtime');
+            ScormRealtime.setIO(io);
+        } catch (e) {
+            logger.warn('scorm_realtime_init_failed', { module: 'scorm', error: e.message });
+        }
+
+        // SCORM Wave 2: live roster rooms + commit/finish emit (non-invasive hooks)
+        try {
+            const ScormRealtime = require('./services/scorm/ScormRealtime');
+            const jwt = require('jsonwebtoken');
+            const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+            io.on('connection', (socket) => {
+                socket.on('join_scorm_course', (payload) => {
+                    try {
+                        const courseId = payload && payload.courseId;
+                        const token = payload && payload.token;
+                        if (!courseId || !token) return;
+                        const decoded = jwt.verify(token, JWT_SECRET);
+                        if (!decoded || !decoded.userId) return;
+                        socket.join(`scorm_course_${courseId}`);
+                        socket.data = { ...(socket.data || {}), scormCourseId: courseId, scormHostId: decoded.userId };
+                        socket.emit('scorm_course_joined', { courseId });
+                    } catch (_) {
+                        try { socket.emit('error', 'SCORM course join failed'); } catch (__) {}
+                    }
+                });
+                socket.on('leave_scorm_course', (payload) => {
+                    try {
+                        const courseId = (payload && payload.courseId) || (socket.data && socket.data.scormCourseId);
+                        if (courseId) socket.leave(`scorm_course_${courseId}`);
+                    } catch (_) {}
+                });
+            });
+
+            const Runtime = require('./services/scorm/ScormRuntimeService');
+            const { ScormRegistration } = require('./models/scorm');
+            const wrapEmit = (fn, eventName) => async (regId, token) => {
+                const result = await fn(regId, token);
+                if (result && result.ok) {
+                    try {
+                        const reg = await ScormRegistration.findByPk(regId);
+                        if (reg && reg.courseId) {
+                            ScormRealtime.emitRegistrationUpdate({
+                                courseId: reg.courseId,
+                                event: eventName,
+                                registration: {
+                                    id: reg.id,
+                                    courseId: reg.courseId,
+                                    learnerName: reg.learnerName,
+                                    learnerEmail: reg.learnerEmail,
+                                    status: reg.status,
+                                    lastLessonStatus: reg.lastLessonStatus,
+                                    lastScoreRaw: reg.lastScoreRaw,
+                                    lastTotalTime: reg.lastTotalTime,
+                                    lastCommitAt: reg.lastCommitAt,
+                                    isPreview: !!reg.isPreview,
+                                    updatedAt: reg.updatedAt || reg.lastCommitAt || new Date()
+                                }
+                            });
+                        }
+                    } catch (_) {}
+                }
+                return result;
+            };
+            if (typeof Runtime.commit === 'function') {
+                Runtime.commit = wrapEmit(Runtime.commit.bind(Runtime), 'commit');
+            }
+            if (typeof Runtime.finish === 'function') {
+                Runtime.finish = wrapEmit(Runtime.finish.bind(Runtime), 'finish');
+            }
+        } catch (e) {
+            logger.warn('scorm_wave2_hooks_failed', { module: 'scorm', error: e.message });
+        }
+
+        const SessionWatchdogService = require('./services/SessionWatchdogService');
+        SessionWatchdogService.startPeriodic(
+            Number(process.env.SESSION_WATCHDOG_INTERVAL_MS) || 15000
+        );
+
+        const PORT = process.env.PORT || 5001;
         server.listen(PORT, '0.0.0.0', () => {
             logger.info('server_listening', { module: 'http', port: PORT });
         });
