@@ -9,6 +9,7 @@ import { apiUrl } from '../../config';
 const Dashboard = () => {
     const [quizzes, setQuizzes] = useState([]);
     const [activeSessions, setActiveSessions] = useState([]);
+    const [actionMsg, setActionMsg] = useState(null);
     const { token, user, logout } = useAuth();
     const navigate = useNavigate();
 
@@ -35,6 +36,7 @@ const Dashboard = () => {
             setQuizzes(res.data);
         } catch (err) {
             console.error(err);
+            setActionMsg(err.response?.data?.message || 'Failed to load quizzes');
         }
     };
 
@@ -51,48 +53,65 @@ const Dashboard = () => {
 
     const handleStartGame = async (quizId) => {
         try {
-            const res = await axios.post(`${API_BASE_URL}/${quizId}/start`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axios.post(
+                `${API_BASE_URL}/${quizId}/start`,
+                {},
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
             navigate(`/host/lobby/${res.data.pin}`);
         } catch (err) {
             console.error(err);
+            setActionMsg(err.response?.data?.message || 'Could not start game');
         }
     };
 
     const handleDelete = async (quizId) => {
-        if (!window.confirm('Are you sure you want to delete this quiz?')) return;
+        if (!window.confirm('Delete this quiz and all its game history? This cannot be undone.')) {
+            return;
+        }
         try {
             await axios.delete(`${API_BASE_URL}/${quizId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setQuizzes(prev => prev.filter(q => q.id !== quizId));
+            setQuizzes((prev) => prev.filter((q) => q.id !== quizId));
+            setActionMsg('Quiz deleted');
+            fetchActiveSessions();
         } catch (err) {
             console.error(err);
+            setActionMsg(
+                err.response?.data?.message ||
+                    'Could not delete quiz. Try again after ending any active games.'
+            );
         }
     };
 
     const handleImportDefaults = async () => {
         try {
-            await axios.post(`${API_BASE_URL}/import-defaults`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await axios.post(
+                `${API_BASE_URL}/import-defaults`,
+                {},
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
             fetchQuizzes();
-            alert('Cybersecurity quizzes imported successfully!');
+            setActionMsg('Cybersecurity quizzes imported successfully');
         } catch (err) {
             console.error(err);
-            alert('Failed to import defaults');
+            setActionMsg('Failed to import defaults');
         }
     };
 
     const stats = {
         totalQuizzes: quizzes.length,
-        totalQuestions: quizzes.reduce((acc, q) => acc + q.questions.length, 0),
+        totalQuestions: quizzes.reduce((acc, q) => acc + (q.questions?.length || 0), 0),
         activePlayers: 0
     };
 
     const sortedQuizzes = [...quizzes]
-        .filter(q => q.title.toLowerCase().includes(searchQuery.toLowerCase()))
+        .filter((q) => q.title.toLowerCase().includes(searchQuery.toLowerCase()))
         .sort((a, b) => {
             if (sortBy === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
             if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
@@ -104,8 +123,12 @@ const Dashboard = () => {
         <div className="p-4 md:p-6 max-w-7xl mx-auto relative z-10">
             <header className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                 <div>
-                    <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter mb-1">Quizmoto Dashboard</h1>
-                    <p className="font-bold opacity-60 uppercase tracking-widest text-xs">Welcome back, {user?.username}</p>
+                    <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter mb-1">
+                        Quizmoto Dashboard
+                    </h1>
+                    <p className="font-bold opacity-60 uppercase tracking-widest text-xs">
+                        Welcome back, {user?.username}
+                    </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
                     <button
@@ -133,14 +156,28 @@ const Dashboard = () => {
                     >
                         <Plus size={18} /> CREATE
                     </button>
-                    <button onClick={logout} className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl font-black transition-colors border border-white/10 text-xs">LOGOUT</button>
+                    <button
+                        onClick={logout}
+                        className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl font-black transition-colors border border-white/10 text-xs"
+                    >
+                        LOGOUT
+                    </button>
                 </div>
             </header>
 
+            {actionMsg && (
+                <div className="mb-4 p-3 rounded-xl bg-white/10 border border-white/10 text-sm flex justify-between gap-3">
+                    <span>{actionMsg}</span>
+                    <button className="text-white/50 hover:text-white text-xs" onClick={() => setActionMsg(null)}>
+                        Dismiss
+                    </button>
+                </div>
+            )}
+
             {activeSessions.length > 0 && (
                 <div className="mb-8 flex flex-col gap-3">
-                    {activeSessions.map(session => (
-                        <motion.div 
+                    {activeSessions.map((session) => (
+                        <motion.div
                             key={session.id}
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -151,14 +188,22 @@ const Dashboard = () => {
                                     <Play size={24} className="text-quizmoto-yellow" />
                                 </div>
                                 <div>
-                                    <h3 className="text-white font-black text-lg">Active Game: {session.Quiz?.title || 'Unknown Quiz'}</h3>
+                                    <h3 className="text-white font-black text-lg">
+                                        Active Game: {session.Quiz?.title || 'Unknown Quiz'}
+                                    </h3>
                                     <p className="text-white/60 font-bold text-xs uppercase tracking-widest">
                                         PIN: {session.pin} • Status: {session.status}
                                     </p>
                                 </div>
                             </div>
                             <button
-                                onClick={() => navigate(session.status === 'lobby' ? `/host/lobby/${session.pin}` : `/host/game/${session.pin}`)}
+                                onClick={() =>
+                                    navigate(
+                                        session.status === 'lobby'
+                                            ? `/host/lobby/${session.pin}`
+                                            : `/host/game/${session.pin}`
+                                    )
+                                }
                                 className="w-full md:w-auto bg-quizmoto-yellow text-quizmoto-darkPurple font-black px-6 py-3 rounded-xl uppercase tracking-widest text-sm hover:shadow-[0_0_20px_rgba(242,169,0,0.4)] transition-all hover:-translate-y-1"
                             >
                                 Rejoin Game
@@ -182,7 +227,11 @@ const Dashboard = () => {
                         className="bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10 flex flex-col items-center justify-center text-center group hover:bg-white/10 transition-all cursor-default"
                     >
                         <span className="text-3xl font-black mb-1 text-white">{stat.value}</span>
-                        <span className={`text-[10px] font-black uppercase tracking-[0.2em] text-quizmoto-${stat.color} opacity-60`}>{stat.label}</span>
+                        <span
+                            className={`text-[10px] font-black uppercase tracking-[0.2em] text-quizmoto-${stat.color} opacity-60`}
+                        >
+                            {stat.label}
+                        </span>
                     </motion.div>
                 ))}
             </div>
@@ -198,7 +247,9 @@ const Dashboard = () => {
                     />
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    <span className="text-[10px] font-black uppercase tracking-widest opacity-40 whitespace-nowrap">Sort By:</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest opacity-40 whitespace-nowrap">
+                        Sort By:
+                    </span>
                     <select
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value)}
@@ -226,7 +277,9 @@ const Dashboard = () => {
 
                     {sortedQuizzes.map((quiz, idx) => {
                         const date = new Date(quiz.createdAt).toLocaleDateString('en-US', {
-                            month: 'short', day: 'numeric', year: 'numeric'
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
                         });
 
                         return (
@@ -237,11 +290,17 @@ const Dashboard = () => {
                                 transition={{ delay: idx * 0.05 }}
                                 className="bg-white rounded-[24px] overflow-hidden shadow-2xl group relative border-b-4 border-gray-200"
                             >
-                                <div className={`h-1.5 bg-quizmoto-${['blue', 'red', 'yellow', 'green', 'purple'][idx % 5]}`} />
+                                <div
+                                    className={`h-1.5 bg-quizmoto-${['blue', 'red', 'yellow', 'green', 'purple'][idx % 5]}`}
+                                />
                                 <div className="p-5">
                                     <div className="flex justify-between items-start mb-2">
-                                        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400">{date}</span>
-                                        <span className="bg-quizmoto-green/10 text-quizmoto-green text-[8px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Ready</span>
+                                        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400">
+                                            {date}
+                                        </span>
+                                        <span className="bg-quizmoto-green/10 text-quizmoto-green text-[8px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest">
+                                            Ready
+                                        </span>
                                     </div>
 
                                     <h3 className="text-lg font-black text-gray-800 mb-3 group-hover:text-quizmoto-purple transition-colors line-clamp-2 min-h-[3rem]">
@@ -252,7 +311,7 @@ const Dashboard = () => {
                                         <div className="bg-gray-100 flex items-center gap-2 px-3 py-1.5 rounded-xl">
                                             <span className="w-1.5 h-1.5 rounded-full bg-quizmoto-purple" />
                                             <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                                                {quiz.questions.length} Questions
+                                                {quiz.questions?.length || 0} Questions
                                             </span>
                                         </div>
                                     </div>
@@ -273,6 +332,7 @@ const Dashboard = () => {
                                         <button
                                             onClick={() => handleDelete(quiz.id)}
                                             className="w-10 bg-gray-50 text-red-300 rounded-xl flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all border border-gray-100"
+                                            title="Delete quiz"
                                         >
                                             <Trash2 size={16} />
                                         </button>
@@ -290,15 +350,12 @@ const Dashboard = () => {
                 >
                     <div className="bg-white/10 p-8 rounded-full mb-6 relative">
                         <Plus size={48} className="text-white/20" />
-                        <motion.div
-                            animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                            transition={{ repeat: Infinity, duration: 2 }}
-                            className="absolute inset-0 bg-quizmoto-blue/20 rounded-full blur-2xl"
-                        />
                     </div>
-                    <h2 className="text-3xl font-black text-white mb-4 italic tracking-tighter">No Quizzes Yet!</h2>
+                    <h2 className="text-3xl font-black text-white mb-4 italic tracking-tighter">
+                        No Quizzes Yet!
+                    </h2>
                     <p className="text-white/40 font-bold mb-8 max-w-sm mx-auto text-sm leading-relaxed">
-                        Create your first Quizmoto quiz to start engaging your audience with compact, professional challenges.
+                        Create your first Quizmoto quiz to start engaging your audience.
                     </p>
                     <button
                         onClick={() => navigate('/create-quiz')}
@@ -311,7 +368,9 @@ const Dashboard = () => {
 
             {quizzes.length > 0 && sortedQuizzes.length === 0 && searchQuery !== '' && (
                 <div className="text-center py-16 bg-white/5 rounded-[30px] border-2 border-dashed border-white/10">
-                    <p className="text-xl font-black italic opacity-40">No quizzes found matching "{searchQuery}"</p>
+                    <p className="text-xl font-black italic opacity-40">
+                        No quizzes found matching "{searchQuery}"
+                    </p>
                 </div>
             )}
         </div>

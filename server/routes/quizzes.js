@@ -3,7 +3,14 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const { Quiz, Question } = require('../models/Quiz');
-const { GameSession, Player, PlayerAnswer } = require('../models/GameSession');
+const {
+    GameSession,
+    Player,
+    PlayerAnswer,
+    Round,
+    SessionEvent,
+    IdempotencyRecord
+} = require('../models/GameSession');
 const auth = require('./middleware');
 const defaultQuizzes = require('../utils/seedData');
 const { featureFlags } = require('../config/featureFlags');
@@ -11,34 +18,38 @@ const ReportGenerationService = require('../services/ReportGenerationService');
 const JobQueueService = require('../jobs/JobQueueService');
 const { JOB_TYPES } = require('../jobs/jobTypes');
 const { registerReportHandlers } = require('../jobs/handlers/reportHandlers');
+const { sequelize } = require('../config/database');
 
-// Ensure handlers exist when API process enqueues (inline process in tests)
 registerReportHandlers();
 
 const Joi = require('joi');
 
 let GoogleGenerativeAI;
 try {
-    GoogleGenerativeAI = require("@google/generative-ai").GoogleGenerativeAI;
+    GoogleGenerativeAI = require('@google/generative-ai').GoogleGenerativeAI;
 } catch (err) {
     GoogleGenerativeAI = null;
 }
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const genAI = (GEMINI_API_KEY && GoogleGenerativeAI) ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+const genAI = GEMINI_API_KEY && GoogleGenerativeAI ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 const quizSchema = Joi.object({
     title: Joi.string().required().min(3).max(100),
-    questions: Joi.array().items(Joi.object({
-        questionText: Joi.string().required(),
-        options: Joi.array().items(Joi.string()).min(2).max(6).required(),
-        correctIndex: Joi.number().integer().min(0).max(5).required(),
-        timer: Joi.number().integer().min(5).max(300).required(),
-        explanation: Joi.string().allow('', null).optional(),
-        image: Joi.string().allow('', null).optional()
-    })).min(1).required()
+    questions: Joi.array()
+        .items(
+            Joi.object({
+                questionText: Joi.string().required(),
+                options: Joi.array().items(Joi.string()).min(2).max(6).required(),
+                correctIndex: Joi.number().integer().min(0).max(5).required(),
+                timer: Joi.number().integer().min(5).max(300).required(),
+                explanation: Joi.string().allow('', null).optional(),
+                image: Joi.string().allow('', null).optional()
+            })
+        )
+        .min(1)
+        .required()
 }).unknown(true);
 
-// Generate Quiz with AI
 router.post('/generate-ai', auth, async (req, res) => {
     try {
         if (!genAI) {
@@ -48,7 +59,7 @@ router.post('/generate-ai', auth, async (req, res) => {
         const { prompt } = req.body;
         if (!prompt) return res.status(400).json({ message: 'Prompt is required' });
 
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
         const systemPrompt = `You are a professional Quiz Generator. 
 Create a quiz based on the user's topic: "${prompt}".
@@ -97,10 +108,8 @@ router.get('/', auth, async (req, res) => {
 
 router.post('/', auth, async (req, res) => {
     try {
-        console.log('Quiz Creation Request:', JSON.stringify(req.body, null, 2));
         const { error } = quizSchema.validate(req.body);
         if (error) {
-            console.log('Validation Error:', error.details[0].message);
             return res.status(400).json({ message: error.details[0].message });
         }
 
@@ -111,7 +120,7 @@ router.post('/', auth, async (req, res) => {
         });
 
         if (questions && questions.length > 0) {
-            const questionsWithQuizId = questions.map(q => ({
+            const questionsWithQuizId = questions.map((q) => ({
                 ...q,
                 quizId: quiz.id
             }));
@@ -123,6 +132,74 @@ router.post('/', auth, async (req, res) => {
         });
 
         res.status(201).json(createdQuiz);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Static paths BEFORE /:id
+router.get('/active-sessions', auth, async (req, res) => {
+    try {
+        const { Op } = require('sequelize');
+        const activeSessions = await GameSession.findAll({
+            where: {
+                hostId: req.userId,
+                status: { [Op.ne]: 'finished' }
+            },
+            include: [{ model: Quiz, attributes: ['title'] }],
+            order: [['updatedAt', 'DESC']]
+        });
+        res.json(activeSessions);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+router.post('/import-defaults', auth, async (req, res) => {
+    try {
+        for (const qData of defaultQuizzes) {
+            const quiz = await Quiz.create({
+                title: qData.title,
+                hostId: req.userId
+            });
+            const questions = qData.questions.map((q) => ({
+                ...q,
+                quizId: quiz.id
+            }));
+            await Question.bulkCreate(questions);
+        }
+        res.json({ message: 'Default quizzes imported successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+router.get('/reports/all', auth, async (req, res) => {
+    try {
+        const reports = await GameSession.findAll({
+            where: {
+                hostId: req.userId,
+                status: 'finished'
+            },
+            include: [
+                {
+                    model: Player,
+                    as: 'players',
+                    include: [{ model: PlayerAnswer, as: 'answers' }]
+                },
+                {
+                    model: Quiz,
+                    attributes: ['title'],
+                    include: [{ model: Question, as: 'questions' }]
+                }
+            ],
+            attributes: ['id', 'pin', 'quizId', 'status', 'gameMode', 'analytics', 'createdAt', 'updatedAt'],
+            order: [['updatedAt', 'DESC']]
+        });
+        res.json(reports);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error' });
@@ -188,7 +265,7 @@ router.put('/:id', auth, async (req, res) => {
 
         await Question.destroy({ where: { quizId: quiz.id } });
         if (questions && questions.length > 0) {
-            const questionsWithQuizId = questions.map(q => ({
+            const questionsWithQuizId = questions.map((q) => ({
                 ...q,
                 timer: parseInt(q.timer) || 20,
                 quizId: quiz.id
@@ -203,95 +280,56 @@ router.put('/:id', auth, async (req, res) => {
     }
 });
 
-router.get('/active-sessions', auth, async (req, res) => {
-    try {
-        const { Op } = require('sequelize');
-        const activeSessions = await GameSession.findAll({
-            where: {
-                hostId: req.userId,
-                status: { [Op.ne]: 'finished' }
-            },
-            include: [{ model: Quiz, attributes: ['title'] }],
-            order: [['updatedAt', 'DESC']]
-        });
-        res.json(activeSessions);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-
-router.post('/import-defaults', auth, async (req, res) => {
-    try {
-        for (const qData of defaultQuizzes) {
-            const quiz = await Quiz.create({
-                title: qData.title,
-                hostId: req.userId
-            });
-            const questions = qData.questions.map(q => ({
-                ...q,
-                quizId: quiz.id
-            }));
-            await Question.bulkCreate(questions);
-        }
-        res.json({ message: 'Default quizzes imported successfully' });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-
-router.get('/reports/all', auth, async (req, res) => {
-    try {
-        const reports = await GameSession.findAll({
-            where: {
-                hostId: req.userId,
-                status: 'finished'
-            },
-            include: [
-                {
-                    model: Player,
-                    as: 'players',
-                    include: [{ model: PlayerAnswer, as: 'answers' }]
-                },
-                {
-                    model: Quiz,
-                    attributes: ['title'],
-                    include: [{ model: Question, as: 'questions' }]
-                }
-            ],
-            attributes: ['id', 'pin', 'quizId', 'status', 'gameMode', 'analytics', 'createdAt', 'updatedAt'],
-            order: [['updatedAt', 'DESC']]
-        });
-        res.json(reports);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-
+/**
+ * Delete quiz + questions + any game sessions (and related rows).
+ * FK constraints previously caused silent failures when sessions existed.
+ */
 router.delete('/:id', auth, async (req, res) => {
+    const t = await sequelize.transaction();
     try {
-        const quiz = await Quiz.findByPk(req.params.id);
-        if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
+        const quiz = await Quiz.findByPk(req.params.id, { transaction: t });
+        if (!quiz) {
+            await t.rollback();
+            return res.status(404).json({ message: 'Quiz not found' });
+        }
 
         if (quiz.hostId !== req.userId) {
+            await t.rollback();
             return res.status(403).json({ message: 'Unauthorized' });
         }
 
-        await quiz.destroy();
+        const sessions = await GameSession.findAll({
+            where: { quizId: quiz.id },
+            attributes: ['id'],
+            transaction: t
+        });
+        const sessionIds = sessions.map((s) => s.id);
+
+        if (sessionIds.length > 0) {
+            await PlayerAnswer.destroy({ where: { sessionId: sessionIds }, transaction: t });
+            await Player.destroy({ where: { sessionId: sessionIds }, transaction: t });
+            await Round.destroy({ where: { sessionId: sessionIds }, transaction: t });
+            await SessionEvent.destroy({ where: { sessionId: sessionIds }, transaction: t });
+            await IdempotencyRecord.destroy({ where: { sessionId: sessionIds }, transaction: t });
+            await GameSession.destroy({ where: { id: sessionIds }, transaction: t });
+        }
+
+        await Question.destroy({ where: { quizId: quiz.id }, transaction: t });
+        await quiz.destroy({ transaction: t });
+
+        await t.commit();
         res.json({ message: 'Quiz deleted successfully' });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Server error' });
+        try {
+            await t.rollback();
+        } catch (_) {}
+        console.error('Quiz delete failed:', err);
+        res.status(500).json({
+            message: err.message || 'Failed to delete quiz. It may still be linked to game data.'
+        });
     }
 });
 
-/**
- * Export report as PDF or Excel.
- * - REPORTS_ASYNC=false (default): sync download (legacy behaviour)
- * - REPORTS_ASYNC=true: enqueue job, return 202 + jobId (does not block on Python)
- */
 router.get('/reports/:id/export', auth, async (req, res) => {
     try {
         const format = req.query.format || 'pdf';
@@ -302,7 +340,6 @@ router.get('/reports/:id/export', auth, async (req, res) => {
         const sessionId = req.params.id;
         const testRunId = req.headers['x-test-run-id'] || null;
 
-        // Ownership check early (both paths)
         const owned = await GameSession.findOne({
             where: { id: sessionId, hostId: req.userId },
             attributes: ['id']
@@ -325,16 +362,14 @@ router.get('/reports/:id/export', auth, async (req, res) => {
                 actorId: String(req.userId)
             });
 
-            // Optional inline process for tests / single-process without a worker
             if (process.env.REPORTS_PROCESS_INLINE === '1') {
                 await JobQueueService.processJob(job.id);
                 const updated = await JobQueueService.getJob(job.id);
                 return res.status(202).json({
                     jobId: updated.id,
                     status: updated.status,
-                    downloadPath: updated.status === 'completed'
-                        ? `/api/jobs/${updated.id}/download`
-                        : null,
+                    downloadPath:
+                        updated.status === 'completed' ? `/api/jobs/${updated.id}/download` : null,
                     error: updated.error || null
                 });
             }
@@ -347,7 +382,6 @@ router.get('/reports/:id/export', auth, async (req, res) => {
             });
         }
 
-        // —— Legacy sync path (default) ——
         const generated = await ReportGenerationService.generateReportFile({
             sessionId,
             hostId: req.userId,
