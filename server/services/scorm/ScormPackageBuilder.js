@@ -1,7 +1,7 @@
 /**
- * Server-side port of policy-to-scorm-engine/scormGenerator.ts
- * Builds a SCORM 1.2 ZIP Buffer from PolicyAnalysis JSON.
- * Includes content.json so packages can be re-uploaded and edited.
+ * Builds a SCORM 1.2 ZIP from PolicyAnalysis JSON (Quizmoto AI Author).
+ * Layout: tight padding, SVG icons (no emoji), word-wrap, content top-aligned.
+ * content.json includes generatedBy: quizmoto for edit gating.
  */
 const JSZip = require('jszip');
 
@@ -32,37 +32,62 @@ function buildPlayerHtml(analysis, theme, logoHtml, escapedTitle) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Quizmoto AI Author">
+<meta name="quizmoto-editable" content="1">
 <title>${escapedTitle}</title>
 <script src="scorm_api_wrapper.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Playfair+Display:wght@700;900&family=Outfit:wght@400;600;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700;900&family=Outfit:wght@400;600;800&display=swap');
 :root{--primary:${theme.primary};--primary-dark:${theme.primaryDark};--accent:${theme.accent};--bg:${theme.bg};--surface:${theme.surface};--text:${theme.text};--secondary-bg:${theme.secondaryBg}}
-*{box-sizing:border-box}body,html{margin:0;padding:0;width:100%;height:100%;overflow:hidden;font-family:${theme.font};background:var(--bg);color:var(--text)}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;font-family:${theme.font};background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
 #app{width:100%;height:100%;display:flex;flex-direction:column;background:var(--surface)}
-header{height:64px;background:var(--primary);color:${theme.headerText};display:flex;align-items:center;padding:0 1.25rem;gap:1rem;flex-shrink:0}
-main{flex-grow:1;position:relative;overflow:hidden;background:var(--surface)}
-footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,0,.06);display:flex;align-items:center;padding:0 1.25rem;justify-content:space-between;flex-shrink:0}
-.slide{position:absolute;inset:0;display:none;padding:1.5rem;overflow-y:auto}.slide.active{display:flex;flex-direction:column}
-.content-grid{display:grid;grid-template-columns:1.3fr .7fr;gap:1.5rem;max-width:1200px;margin:0 auto;width:100%}
-@media(max-width:900px){.content-grid{grid-template-columns:1fr}}
-#progress-bar{height:8px;background:rgba(255,255,255,.25);border-radius:4px;flex-grow:1;overflow:hidden}
+header{min-height:52px;padding:.65rem 1.1rem;background:var(--primary);color:${theme.headerText};display:flex;align-items:center;gap:.65rem;flex-shrink:0}
+header h1{font-size:clamp(.78rem,2vw,.95rem);font-weight:900;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0;line-height:1.25}
+main{flex:1;min-height:0;position:relative;overflow:hidden;background:var(--surface)}
+footer{min-height:52px;padding:.55rem 1.1rem;background:var(--secondary-bg);border-top:1px solid rgba(0,0,0,.06);display:flex;align-items:center;justify-content:space-between;gap:.65rem;flex-shrink:0}
+.slide{position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.slide.active{display:block}
+.slide-inner{max-width:920px;width:100%;margin:0 auto;padding:clamp(.85rem,2vw,1.35rem);display:flex;flex-direction:column;justify-content:flex-start;gap:.85rem}
+.slide-inner.center{min-height:100%;justify-content:center;align-items:center;text-align:center}
+.icon-wrap{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:14px;background:var(--secondary-bg);color:var(--primary);margin:0 auto .5rem}
+.content-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,.65fr);gap:clamp(.85rem,2vw,1.25rem);align-items:start;width:100%}
+@media(max-width:800px){.content-grid{grid-template-columns:1fr}}
+.card{background:var(--secondary-bg);border-radius:.9rem;padding:clamp(.8rem,1.8vw,1.1rem);border-left:5px solid var(--primary)}
+.card p{margin:0;font-size:clamp(.9rem,1.5vw,1.02rem);line-height:1.55;font-weight:500;color:var(--text);word-wrap:break-word;overflow-wrap:anywhere}
+.kps{display:flex;flex-direction:column;gap:.5rem}
+.kp{display:flex;gap:.5rem;align-items:flex-start;padding:.65rem .75rem;background:#fff;border-radius:.7rem;border:1px solid rgba(0,0,0,.06)}
+.kp-dot{flex-shrink:0;width:8px;height:8px;border-radius:50%;background:var(--primary);margin-top:.4rem}
+.kp p{margin:0;font-weight:600;font-size:.85rem;line-height:1.4;color:var(--text);word-wrap:break-word;overflow-wrap:anywhere}
+.section-label{font-size:.62rem;font-weight:900;text-transform:uppercase;letter-spacing:.16em;color:var(--primary);margin:0}
+.slide-title{font-size:clamp(1.15rem,2.5vw,1.55rem);font-weight:900;line-height:1.2;margin:0;word-wrap:break-word;overflow-wrap:anywhere}
+.quiz-wrap{max-width:700px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:.9rem}
+.quiz-opts{display:grid;grid-template-columns:1fr 1fr;gap:.65rem}
+@media(max-width:600px){.quiz-opts{grid-template-columns:1fr}}
+.quiz-option{background:#fff;border:2px solid #e8eef5;border-radius:.8rem;padding:.75rem .9rem;text-align:left;cursor:pointer;width:100%;font-weight:600;font-size:.88rem;line-height:1.35;display:flex;justify-content:space-between;align-items:center;gap:.45rem;color:var(--text);word-wrap:break-word}
+.quiz-option.correct{background:#f0fdf4;border-color:#22c55e}
+.quiz-option.incorrect{background:#fef2f2;border-color:#ef4444}
+#progress-bar{height:6px;background:rgba(255,255,255,.25);border-radius:4px;flex:1;min-width:36px;max-width:120px;overflow:hidden}
 #progress-fill{height:100%;background:var(--accent);width:0%;transition:width .3s}
-.btn{padding:.7rem 1.25rem;border-radius:12px;font-weight:800;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;border:none;cursor:pointer}
-.btn-primary{background:var(--primary);color:#fff}.btn-secondary{background:#fff;border:1px solid #e2e8f0;color:#64748b}.btn:disabled{opacity:.35;cursor:not-allowed}
-.quiz-option{background:#fff;border:2px solid #f1f5f9;border-radius:1rem;padding:1rem;text-align:left;cursor:pointer;width:100%;font-weight:600;display:flex;justify-content:space-between;align-items:center}
-.quiz-option.correct{background:#f0fdf4;border-color:#22c55e}.quiz-option.incorrect{background:#fef2f2;border-color:#ef4444}
+.btn{padding:.6rem 1.05rem;border-radius:11px;font-weight:800;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;border:none;cursor:pointer;white-space:nowrap}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-secondary{background:#fff;border:1px solid #e2e8f0;color:#64748b}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.score-box{background:var(--primary);color:#fff;padding:1.25rem 1.5rem;border-radius:1.1rem;margin:.75rem 0}
+.summary-box{background:var(--secondary-bg);padding:1rem 1.15rem;border-radius:1rem;border:2px solid var(--accent);text-align:left;max-width:560px;width:100%}
+.summary-box p{margin:0;font-size:clamp(.9rem,1.6vw,1.05rem);font-weight:600;font-style:italic;color:var(--primary-dark);line-height:1.5;word-wrap:break-word}
 </style>
 </head>
 <body>
 <div id="app">
-  <header>${logoHtml}<h1 style="font-size:1rem;font-weight:900;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapedTitle}</h1>
+  <header>${logoHtml}<h1 title="${escapedTitle}">${escapedTitle}</h1>
     <div id="progress-bar"><div id="progress-fill"></div></div>
-    <span id="progress-text" style="font-size:.75rem;font-weight:900;margin-left:.4rem">0%</span>
+    <span id="progress-text" style="font-size:.7rem;font-weight:900;margin-left:.25rem;flex-shrink:0">0%</span>
   </header>
   <main id="content-area"></main>
   <footer>
     <button id="prev-btn" class="btn btn-secondary" type="button">Previous</button>
-    <div id="slide-number" style="font-size:.7rem;font-weight:900;color:#94a3b8;letter-spacing:.1em;text-transform:uppercase">...</div>
+    <div id="slide-number" style="font-size:.65rem;font-weight:900;color:#94a3b8;letter-spacing:.08em;text-transform:uppercase;text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis">...</div>
     <button id="next-btn" class="btn btn-primary" type="button">Next</button>
   </footer>
 </div>
@@ -75,9 +100,7 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
   var completed = false;
   var sessionStartMs = Date.now();
   var commitTimer = null;
-
   function el(id){ return document.getElementById(id); }
-
   function formatSessionTime(ms) {
     var totalSec = Math.max(0, Math.floor(ms / 1000));
     var h = Math.floor(totalSec / 3600);
@@ -88,14 +111,11 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
     function pad4(n){ return (n < 10 ? '000' : n < 100 ? '00' : n < 1000 ? '0' : '') + n; }
     return pad4(h) + ':' + pad2(m) + ':' + pad2(s) + '.' + pad2(frac);
   }
-
   function elapsedMs() { return Date.now() - sessionStartMs; }
-
   function writeSessionTime() {
     if (typeof doLMSSetValue !== 'function') return;
     try { doLMSSetValue('cmi.core.session_time', formatSessionTime(elapsedMs())); } catch (e) {}
   }
-
   function commitProgress(extra) {
     if (typeof doLMSSetValue !== 'function') return;
     try {
@@ -108,41 +128,35 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
       doLMSCommit();
     } catch (e) {}
   }
-
+  function esc(s){ return String(s || '').replace(/</g, '<').replace(/>/g, '>'); }
   function render(){
     var area = el('content-area');
     area.innerHTML = '';
     var intro = document.createElement('div');
     intro.className = 'slide active';
-    intro.style.justifyContent = 'center';
-    intro.style.alignItems = 'center';
-    intro.style.textAlign = 'center';
-    intro.innerHTML = '<div style="max-width:720px;padding:1.5rem"><div style="font-size:3rem;margin-bottom:.5rem">🚀</div><h2 style="font-size:2.25rem;font-weight:900;margin:0 0 1rem">Welcome</h2><div style="background:var(--secondary-bg);padding:1.5rem;border-radius:1.5rem;border:2px solid var(--accent)"><p style="font-size:1.1rem;font-weight:600;font-style:italic;color:var(--primary-dark);margin:0">"' + (data.summary || '').replace(/</g,'<') + '"</p></div><p style="margin-top:1.5rem;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.15em;font-size:.75rem">Click Next to start</p></div>';
+    intro.innerHTML = '<div class="slide-inner center"><div class="icon-wrap"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h2 class="slide-title" style="margin-bottom:.5rem">Welcome</h2><div class="summary-box"><p>' + esc(data.summary) + '</p></div><p style="margin-top:.85rem;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.12em;font-size:.68rem">Click Next to start</p></div>';
     area.appendChild(intro);
     (data.slides || []).forEach(function(s, i){
       var node = document.createElement('div');
       node.className = 'slide';
       var kps = (s.keyPoints || []).map(function(p){
-        return '<div style="display:flex;gap:.6rem;padding:.85rem;background:#fff;border-radius:.85rem;border:1px solid #f1f5f9"><div style="color:var(--primary);font-weight:900">•</div><p style="margin:0;font-weight:700;font-size:.9rem;line-height:1.35">' + String(p).replace(/</g,'<') + '</p></div>';
+        return '<div class="kp"><span class="kp-dot"></span><p>' + esc(p) + '</p></div>';
       }).join('');
-      node.innerHTML = '<div class="content-grid"><div><span style="font-size:.7rem;font-weight:900;text-transform:uppercase;color:var(--primary);letter-spacing:.2em">Section ' + (i+1) + '</span><h2 style="font-size:1.75rem;font-weight:900;line-height:1.15;margin:.5rem 0 1rem">' + String(s.title||'').replace(/</g,'<') + '</h2><div style="background:var(--secondary-bg);padding:1.25rem;border-radius:1.25rem;border-left:6px solid var(--primary)"><p style="margin:0;font-size:1rem;line-height:1.55;font-weight:500">' + String(s.content||'').replace(/</g,'<') + '</p></div></div><div><h3 style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.2em;color:var(--primary)">Key Insights</h3><div style="display:flex;flex-direction:column;gap:.75rem;margin-top:.75rem">' + kps + '</div></div></div>';
+      node.innerHTML = '<div class="slide-inner"><div class="content-grid"><div><p class="section-label">Section ' + (i+1) + '</p><h2 class="slide-title">' + esc(s.title) + '</h2><div class="card"><p>' + esc(s.content) + '</p></div></div><div><p class="section-label">Key insights</p><div class="kps" style="margin-top:.45rem">' + kps + '</div></div></div></div>';
       area.appendChild(node);
     });
     (data.quiz || []).forEach(function(q, i){
       var node = document.createElement('div');
       node.className = 'slide';
       var opts = (q.options || []).map(function(o, oi){
-        return '<button type="button" class="quiz-option" data-qi="' + i + '" data-oi="' + oi + '"><span>' + String(o).replace(/</g,'<') + '</span><div style="width:20px;height:20px;border:2px solid #cbd5e1;border-radius:50%"></div></button>';
+        return '<button type="button" class="quiz-option" data-qi="' + i + '" data-oi="' + oi + '"><span>' + esc(o) + '</span><span style="width:18px;height:18px;border:2px solid #cbd5e1;border-radius:50%;flex-shrink:0"></span></button>';
       }).join('');
-      node.innerHTML = '<div style="max-width:800px;margin:auto;width:100%;display:flex;flex-direction:column;gap:1.25rem"><div style="text-align:center"><span style="font-size:.7rem;font-weight:900;color:var(--primary);text-transform:uppercase;letter-spacing:.2em">Knowledge Check</span><h2 style="font-size:1.6rem;font-weight:900;margin:.75rem 0">' + String(q.question||'').replace(/</g,'<') + '</h2></div><div id="opts-' + i + '" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">' + opts + '</div><div id="fb-' + i + '" style="display:none;padding:1rem;border-radius:1rem;text-align:center;font-weight:800"></div></div>';
+      node.innerHTML = '<div class="slide-inner center"><div class="quiz-wrap"><div style="text-align:center"><p class="section-label">Knowledge check</p><h2 class="slide-title" style="margin-top:.3rem">' + esc(q.question) + '</h2></div><div id="opts-' + i + '" class="quiz-opts">' + opts + '</div><div id="fb-' + i + '" style="display:none;padding:.7rem;border-radius:.7rem;text-align:center;font-weight:800;font-size:.88rem"></div></div></div>';
       area.appendChild(node);
     });
     var final = document.createElement('div');
     final.className = 'slide';
-    final.style.justifyContent = 'center';
-    final.style.alignItems = 'center';
-    final.style.textAlign = 'center';
-    final.innerHTML = '<div style="max-width:520px;padding:1.5rem"><div style="font-size:3.5rem;margin-bottom:.5rem">🎯</div><h2 style="font-size:2.25rem;font-weight:900;margin:0">Completed!</h2><div style="background:var(--primary);color:#fff;padding:2rem;border-radius:1.75rem;margin:1.5rem 0"><p style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.2em;color:var(--accent);margin:0 0 .35rem">Final Score</p><p id="final-res" style="font-size:3.5rem;font-weight:900;margin:0">--%</p></div><button type="button" class="btn btn-primary" id="finish-btn" style="margin:auto;padding:1rem 2rem">Finish Course</button></div>';
+    final.innerHTML = '<div class="slide-inner center"><div class="icon-wrap"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" opacity=".3"/><path d="M7 12.5l3.2 3.2L17 8.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h2 class="slide-title">Completed</h2><div class="score-box"><p style="font-size:.62rem;font-weight:900;text-transform:uppercase;letter-spacing:.14em;color:var(--accent);margin:0 0 .2rem">Final score</p><p id="final-res" style="font-size:clamp(2.1rem,5.5vw,3rem);font-weight:900;margin:0;line-height:1">--%</p></div><button type="button" class="btn btn-primary" id="finish-btn" style="margin:0 auto;padding:.8rem 1.6rem">Finish course</button></div>';
     area.appendChild(final);
     area.querySelectorAll('.quiz-option').forEach(function(btn){
       btn.addEventListener('click', function(){
@@ -152,7 +166,6 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
     el('finish-btn').addEventListener('click', exitSco);
     updateNav();
   }
-
   function moveSlide(n){
     var slides = document.querySelectorAll('.slide');
     if (currentSlide + n >= 0 && currentSlide + n < slides.length) {
@@ -162,7 +175,6 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
       updateNav();
     }
   }
-
   function updateNav(){
     var slides = document.querySelectorAll('.slide');
     el('prev-btn').disabled = currentSlide === 0;
@@ -180,7 +192,6 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
     el('progress-text').textContent = p + '%';
     commitProgress({ 'cmi.core.lesson_location': String(currentSlide) });
   }
-
   function answer(qi, oi){
     if (quizResults[qi] !== undefined) return;
     quizResults[qi] = oi;
@@ -195,7 +206,7 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
     var fb = el('fb-' + qi);
     fb.style.display = 'block';
     if (oi === correct) {
-      fb.textContent = 'Excellent! You got it.';
+      fb.textContent = 'Correct — well done.';
       fb.style.background = '#f0fdf4';
       fb.style.color = '#166534';
     } else {
@@ -204,7 +215,6 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
       fb.style.color = '#991b1b';
     }
   }
-
   function calcScore(){
     var hits = 0;
     (data.quiz || []).forEach(function(q, i){ if (quizResults[i] === q.correctAnswer) hits++; });
@@ -212,7 +222,6 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
     var elr = el('final-res');
     if (elr) elr.textContent = score + '%';
   }
-
   function exitSco(){
     if (completed) return;
     calcScore();
@@ -229,13 +238,11 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
     }
     completed = true;
     try { if (window.opener) window.opener.postMessage({ type: 'quizmoto_scorm_exit' }, '*'); } catch (e) {}
-    alert('Training complete! Your score: ' + score + '%. You can close this window.');
+    alert('Training complete. Your score: ' + score + '%. You can close this window.');
     try { window.close(); } catch (e) {}
   }
-
   el('prev-btn').addEventListener('click', function(){ moveSlide(-1); });
   el('next-btn').addEventListener('click', function(){ moveSlide(1); });
-
   window.onload = function(){
     sessionStartMs = Date.now();
     render();
@@ -249,7 +256,6 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
       commitTimer = setInterval(function(){ if (!completed) commitProgress(); }, 15000);
     }
   };
-
   window.addEventListener('beforeunload', function(){
     if (completed) return;
     try {
@@ -299,7 +305,14 @@ async function buildScormPackageZip(analysis, opts = {}) {
     const playerHtml = buildPlayerHtml(analysis, theme, logoHtml, escapedTitle);
     zip.file('index.html', playerHtml);
     zip.file('scorm_api_wrapper.js', SCORM_WRAPPER);
-    zip.file('content.json', JSON.stringify(analysis, null, 2));
+
+    const analysisWithMeta = {
+        ...analysis,
+        generatedBy: 'quizmoto',
+        generator: 'Quizmoto AI Author',
+        version: 1
+    };
+    zip.file('content.json', JSON.stringify(analysisWithMeta, null, 2));
 
     const logoFileEntry = logoFileName ? `\n      <file href="${logoFileName}"/>` : '';
     const manifest = `<?xml version="1.0" encoding="UTF-8"?>
