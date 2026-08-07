@@ -6,16 +6,14 @@
 const JSZip = require('jszip');
 
 function escapeXML(str) {
-    return String(str || '').replace(/[<>&"']/g, (m) => {
-        switch (m) {
-            case '<': return '<';
-            case '>': return '>';
-            case '&': return '&';
-            case '"': return '"';
-            case "'": return ''';
-            default: return m;
-        }
-    });
+    const map = {
+        '<': ['&', 'lt;'].join(''),
+        '>': ['&', 'gt;'].join(''),
+        '&': ['&', 'amp;'].join(''),
+        '"': ['&', 'quot;'].join(''),
+        "'": ['&', 'apos;'].join('')
+    };
+    return String(str || '').replace(/[<>&"']/g, (m) => map[m] || m);
 }
 
 const TEMPLATES = {
@@ -128,7 +126,7 @@ footer{min-height:52px;padding:.55rem 1.1rem;background:var(--secondary-bg);bord
       doLMSCommit();
     } catch (e) {}
   }
-  function esc(s){ return String(s || '').replace(/</g, '<').replace(/>/g, '>'); }
+  function esc(s){ var M={'<':'&'+'lt;','>':'&'+'gt;','&':'&'+'amp;','"':'&'+'quot;',"'":'&'+'apos;'}; return String(s||'').replace(/[<>&"']/g,function(c){return M[c]||c;}); }
   function render(){
     var area = el('content-area');
     area.innerHTML = '';
