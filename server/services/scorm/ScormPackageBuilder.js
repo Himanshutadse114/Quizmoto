@@ -1,17 +1,18 @@
 /**
  * Server-side port of policy-to-scorm-engine/scormGenerator.ts
  * Builds a SCORM 1.2 ZIP Buffer from PolicyAnalysis JSON.
+ * Includes content.json so packages can be re-uploaded and edited.
  */
 const JSZip = require('jszip');
 
 function escapeXML(str) {
     return String(str || '').replace(/[<>&"']/g, (m) => {
         switch (m) {
-            case '<': return '&lt;';
-            case '>': return '&gt;';
-            case '&': return '&amp;';
-            case '"': return '&quot;';
-            case "'": return '&apos;';
+            case '<': return '<';
+            case '>': return '>';
+            case '&': return '&';
+            case '"': return '"';
+            case "'": return ''';
             default: return m;
         }
     });
@@ -77,7 +78,6 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
 
   function el(id){ return document.getElementById(id); }
 
-  /** SCORM 1.2 session_time: HHHH:MM:SS.ss */
   function formatSessionTime(ms) {
     var totalSec = Math.max(0, Math.floor(ms / 1000));
     var h = Math.floor(totalSec / 3600);
@@ -89,15 +89,11 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
     return pad4(h) + ':' + pad2(m) + ':' + pad2(s) + '.' + pad2(frac);
   }
 
-  function elapsedMs() {
-    return Date.now() - sessionStartMs;
-  }
+  function elapsedMs() { return Date.now() - sessionStartMs; }
 
   function writeSessionTime() {
     if (typeof doLMSSetValue !== 'function') return;
-    try {
-      doLMSSetValue('cmi.core.session_time', formatSessionTime(elapsedMs()));
-    } catch (e) {}
+    try { doLMSSetValue('cmi.core.session_time', formatSessionTime(elapsedMs())); } catch (e) {}
   }
 
   function commitProgress(extra) {
@@ -106,9 +102,7 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
       writeSessionTime();
       if (extra && typeof extra === 'object') {
         for (var k in extra) {
-          if (Object.prototype.hasOwnProperty.call(extra, k)) {
-            doLMSSetValue(k, String(extra[k]));
-          }
+          if (Object.prototype.hasOwnProperty.call(extra, k)) doLMSSetValue(k, String(extra[k]));
         }
       }
       doLMSCommit();
@@ -118,35 +112,31 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
   function render(){
     var area = el('content-area');
     area.innerHTML = '';
-
     var intro = document.createElement('div');
     intro.className = 'slide active';
     intro.style.justifyContent = 'center';
     intro.style.alignItems = 'center';
     intro.style.textAlign = 'center';
-    intro.innerHTML = '<div style="max-width:720px;padding:1.5rem"><div style="font-size:3rem;margin-bottom:.5rem">🚀</div><h2 style="font-size:2.25rem;font-weight:900;margin:0 0 1rem">Welcome</h2><div style="background:var(--secondary-bg);padding:1.5rem;border-radius:1.5rem;border:2px solid var(--accent)"><p style="font-size:1.1rem;font-weight:600;font-style:italic;color:var(--primary-dark);margin:0">"' + (data.summary || '').replace(/</g,'&lt;') + '"</p></div><p style="margin-top:1.5rem;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.15em;font-size:.75rem">Click Next to start</p></div>';
+    intro.innerHTML = '<div style="max-width:720px;padding:1.5rem"><div style="font-size:3rem;margin-bottom:.5rem">🚀</div><h2 style="font-size:2.25rem;font-weight:900;margin:0 0 1rem">Welcome</h2><div style="background:var(--secondary-bg);padding:1.5rem;border-radius:1.5rem;border:2px solid var(--accent)"><p style="font-size:1.1rem;font-weight:600;font-style:italic;color:var(--primary-dark);margin:0">"' + (data.summary || '').replace(/</g,'<') + '"</p></div><p style="margin-top:1.5rem;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.15em;font-size:.75rem">Click Next to start</p></div>';
     area.appendChild(intro);
-
     (data.slides || []).forEach(function(s, i){
       var node = document.createElement('div');
       node.className = 'slide';
       var kps = (s.keyPoints || []).map(function(p){
-        return '<div style="display:flex;gap:.6rem;padding:.85rem;background:#fff;border-radius:.85rem;border:1px solid #f1f5f9"><div style="color:var(--primary);font-weight:900">•</div><p style="margin:0;font-weight:700;font-size:.9rem;line-height:1.35">' + String(p).replace(/</g,'&lt;') + '</p></div>';
+        return '<div style="display:flex;gap:.6rem;padding:.85rem;background:#fff;border-radius:.85rem;border:1px solid #f1f5f9"><div style="color:var(--primary);font-weight:900">•</div><p style="margin:0;font-weight:700;font-size:.9rem;line-height:1.35">' + String(p).replace(/</g,'<') + '</p></div>';
       }).join('');
-      node.innerHTML = '<div class="content-grid"><div><span style="font-size:.7rem;font-weight:900;text-transform:uppercase;color:var(--primary);letter-spacing:.2em">Section ' + (i+1) + '</span><h2 style="font-size:1.75rem;font-weight:900;line-height:1.15;margin:.5rem 0 1rem">' + String(s.title||'').replace(/</g,'&lt;') + '</h2><div style="background:var(--secondary-bg);padding:1.25rem;border-radius:1.25rem;border-left:6px solid var(--primary)"><p style="margin:0;font-size:1rem;line-height:1.55;font-weight:500">' + String(s.content||'').replace(/</g,'&lt;') + '</p></div></div><div><h3 style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.2em;color:var(--primary)">Key Insights</h3><div style="display:flex;flex-direction:column;gap:.75rem;margin-top:.75rem">' + kps + '</div></div></div>';
+      node.innerHTML = '<div class="content-grid"><div><span style="font-size:.7rem;font-weight:900;text-transform:uppercase;color:var(--primary);letter-spacing:.2em">Section ' + (i+1) + '</span><h2 style="font-size:1.75rem;font-weight:900;line-height:1.15;margin:.5rem 0 1rem">' + String(s.title||'').replace(/</g,'<') + '</h2><div style="background:var(--secondary-bg);padding:1.25rem;border-radius:1.25rem;border-left:6px solid var(--primary)"><p style="margin:0;font-size:1rem;line-height:1.55;font-weight:500">' + String(s.content||'').replace(/</g,'<') + '</p></div></div><div><h3 style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.2em;color:var(--primary)">Key Insights</h3><div style="display:flex;flex-direction:column;gap:.75rem;margin-top:.75rem">' + kps + '</div></div></div>';
       area.appendChild(node);
     });
-
     (data.quiz || []).forEach(function(q, i){
       var node = document.createElement('div');
       node.className = 'slide';
       var opts = (q.options || []).map(function(o, oi){
-        return '<button type="button" class="quiz-option" data-qi="' + i + '" data-oi="' + oi + '"><span>' + String(o).replace(/</g,'&lt;') + '</span><div style="width:20px;height:20px;border:2px solid #cbd5e1;border-radius:50%"></div></button>';
+        return '<button type="button" class="quiz-option" data-qi="' + i + '" data-oi="' + oi + '"><span>' + String(o).replace(/</g,'<') + '</span><div style="width:20px;height:20px;border:2px solid #cbd5e1;border-radius:50%"></div></button>';
       }).join('');
-      node.innerHTML = '<div style="max-width:800px;margin:auto;width:100%;display:flex;flex-direction:column;gap:1.25rem"><div style="text-align:center"><span style="font-size:.7rem;font-weight:900;color:var(--primary);text-transform:uppercase;letter-spacing:.2em">Knowledge Check</span><h2 style="font-size:1.6rem;font-weight:900;margin:.75rem 0">' + String(q.question||'').replace(/</g,'&lt;') + '</h2></div><div id="opts-' + i + '" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">' + opts + '</div><div id="fb-' + i + '" style="display:none;padding:1rem;border-radius:1rem;text-align:center;font-weight:800"></div></div>';
+      node.innerHTML = '<div style="max-width:800px;margin:auto;width:100%;display:flex;flex-direction:column;gap:1.25rem"><div style="text-align:center"><span style="font-size:.7rem;font-weight:900;color:var(--primary);text-transform:uppercase;letter-spacing:.2em">Knowledge Check</span><h2 style="font-size:1.6rem;font-weight:900;margin:.75rem 0">' + String(q.question||'').replace(/</g,'<') + '</h2></div><div id="opts-' + i + '" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">' + opts + '</div><div id="fb-' + i + '" style="display:none;padding:1rem;border-radius:1rem;text-align:center;font-weight:800"></div></div>';
       area.appendChild(node);
     });
-
     var final = document.createElement('div');
     final.className = 'slide';
     final.style.justifyContent = 'center';
@@ -154,7 +144,6 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
     final.style.textAlign = 'center';
     final.innerHTML = '<div style="max-width:520px;padding:1.5rem"><div style="font-size:3.5rem;margin-bottom:.5rem">🎯</div><h2 style="font-size:2.25rem;font-weight:900;margin:0">Completed!</h2><div style="background:var(--primary);color:#fff;padding:2rem;border-radius:1.75rem;margin:1.5rem 0"><p style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.2em;color:var(--accent);margin:0 0 .35rem">Final Score</p><p id="final-res" style="font-size:3.5rem;font-weight:900;margin:0">--%</p></div><button type="button" class="btn btn-primary" id="finish-btn" style="margin:auto;padding:1rem 2rem">Finish Course</button></div>';
     area.appendChild(final);
-
     area.querySelectorAll('.quiz-option').forEach(function(btn){
       btn.addEventListener('click', function(){
         answer(Number(btn.getAttribute('data-qi')), Number(btn.getAttribute('data-oi')));
@@ -239,9 +228,7 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
       doLMSFinish();
     }
     completed = true;
-    try {
-      if (window.opener) window.opener.postMessage({ type: 'quizmoto_scorm_exit' }, '*');
-    } catch (e) {}
+    try { if (window.opener) window.opener.postMessage({ type: 'quizmoto_scorm_exit' }, '*'); } catch (e) {}
     alert('Training complete! Your score: ' + score + '%. You can close this window.');
     try { window.close(); } catch (e) {}
   }
@@ -259,9 +246,7 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
       doLMSSetValue('cmi.core.lesson_status', 'incomplete');
       writeSessionTime();
       doLMSCommit();
-      commitTimer = setInterval(function(){
-        if (!completed) commitProgress();
-      }, 15000);
+      commitTimer = setInterval(function(){ if (!completed) commitProgress(); }, 15000);
     }
   };
 
@@ -292,13 +277,6 @@ function doLMSSetValue(n,v){if(!API)return "false";return API.LMSSetValue(n,v);}
 function doLMSCommit(){if(!API)return "false";return API.LMSCommit("");}
 `;
 
-/**
- * @param {object} analysis - PolicyAnalysis
- * @param {object} [opts]
- * @param {string} [opts.logoDataUrl]
- * @param {number} [opts.templateId]
- * @returns {Promise<Buffer>} SCORM 1.2 ZIP
- */
 async function buildScormPackageZip(analysis, opts = {}) {
     const zip = new JSZip();
     const escapedTitle = escapeXML(analysis.title || 'Course');
@@ -321,7 +299,9 @@ async function buildScormPackageZip(analysis, opts = {}) {
     const playerHtml = buildPlayerHtml(analysis, theme, logoHtml, escapedTitle);
     zip.file('index.html', playerHtml);
     zip.file('scorm_api_wrapper.js', SCORM_WRAPPER);
+    zip.file('content.json', JSON.stringify(analysis, null, 2));
 
+    const logoFileEntry = logoFileName ? `\n      <file href="${logoFileName}"/>` : '';
     const manifest = `<?xml version="1.0" encoding="UTF-8"?>
 <manifest identifier="com.quizmoto.ai.${Date.now()}" version="1.0"
   xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
@@ -345,7 +325,7 @@ async function buildScormPackageZip(analysis, opts = {}) {
     <resource identifier="RES-1" type="webcontent" adlcp:scormtype="sco" href="index.html">
       <file href="index.html"/>
       <file href="scorm_api_wrapper.js"/>
-      ${logoFileName ? `<file href="${logoFileName}"/>` : ''}
+      <file href="content.json"/>${logoFileEntry}
     </resource>
   </resources>
 </manifest>`;
