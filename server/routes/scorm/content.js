@@ -31,10 +31,15 @@ async function authorizeContent(req, packageId) {
     return false;
 }
 
-router.get('/:packageId/*', async (req, res) => {
+// Express 5 / path-to-regexp v8: wildcard must be a named parameter (*path)
+router.get('/:packageId/*path', async (req, res) => {
     try {
         const packageId = req.params.packageId;
-        const rel = req.params[0] || '';
+        // path may be a string or (rarely) an array depending on matcher
+        let rel = req.params.path || '';
+        if (Array.isArray(rel)) rel = rel.join('/');
+        rel = String(rel).replace(/^\/+/, '');
+
         if (!(await authorizeContent(req, packageId))) {
             return res.status(401).json({ message: 'Unauthorized' });
         }
