@@ -14,6 +14,7 @@ router.use('/courses', require('./courses'));
 router.use('/registrations', require('./registrations'));
 router.use('/runtime', require('./runtime'));
 router.use('/content', require('./content'));
+router.use('/play', require('./play'));
 router.get('/features', (req, res) => {
     res.json({
         scormLms: featureFlags.scormLms,
