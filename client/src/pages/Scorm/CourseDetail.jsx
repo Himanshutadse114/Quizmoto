@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import { useSocket } from '../../context/SocketContext';
 
 function openPlayerPopup(registrationId, token, packageId, entryHref) {
   const q = new URLSearchParams({
@@ -32,6 +33,8 @@ export default function ScormCourseDetail() {
   const [regs, setRegs] = useState([]);
   const [msg, setMsg] = useState(null);
   const [inviteUrl, setInviteUrl] = useState('');
+  const socket = useSocket();
+  const [live, setLive] = useState(false);
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -56,9 +59,40 @@ export default function ScormCourseDetail() {
     loadRoster().catch(() => {});
     const t = setInterval(() => {
       loadRoster().catch(() => {});
-    }, 8000);
+    }, 20000);
     return () => clearInterval(t);
   }, [token, id]);
+
+  useEffect(() => {
+    if (!socket || !token || !id) return;
+    const onUpdate = (payload) => {
+      if (!payload || String(payload.courseId) !== String(id)) return;
+      const reg = payload.registration;
+      if (!reg || !reg.id) {
+        loadRoster().catch(() => {});
+        return;
+      }
+      setRegs((prev) => {
+        const idx = prev.findIndex((r) => r.id === reg.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { ...next[idx], ...reg };
+          return next;
+        }
+        return [reg, ...prev];
+      });
+      setLive(true);
+    };
+    const onJoined = () => setLive(true);
+    socket.emit('join_scorm_course', { courseId: id, token });
+    socket.on('scorm_registration_update', onUpdate);
+    socket.on('scorm_course_joined', onJoined);
+    return () => {
+      socket.emit('leave_scorm_course', { courseId: id });
+      socket.off('scorm_registration_update', onUpdate);
+      socket.off('scorm_course_joined', onJoined);
+    };
+  }, [socket, token, id]);
 
   const publish = async () => {
     try {
@@ -226,7 +260,7 @@ export default function ScormCourseDetail() {
       <h2 className="text-lg font-black mb-3 uppercase tracking-tight flex items-center gap-2">
         Live roster
         <span className="text-[10px] font-bold text-white/40 normal-case tracking-normal">
-          auto-refresh 8s
+          {live ? '● live' : 'connecting…'} · backup 20s
         </span>
       </h2>
 
