@@ -10,21 +10,28 @@ function envBool(name, defaultValue = false) {
 }
 
 const featureFlags = {
-    /**
-     * When false (default), all session transitions use the legacy status path.
-     * When true, SessionCommandService / V2 state machine may be used.
-     */
     get newSessionEngine() {
         return envBool('NEW_SESSION_ENGINE', false);
     },
-
-    /**
-     * Phase 3: when false (default), report export runs in-process (legacy).
-     * When true, report jobs are enqueued to a background worker.
-     */
     get reportsAsync() {
         return envBool('REPORTS_ASYNC', false);
+    },
+    /** SCORM World LMS add-on (default OFF). */
+    get scormLms() {
+        return envBool('SCORM_LMS', false);
+    },
+    /** AI PDF/PPT → SCORM author path (default OFF). */
+    get scormAiAuthor() {
+        return envBool('SCORM_AI_AUTHOR', false);
+    },
+    get scormPublicInvites() {
+        return envBool('SCORM_PUBLIC_INVITES', true);
     }
 };
 
-module.exports = { featureFlags, envBool };
+function scormMaxUploadMb() {
+    const n = Number(process.env.SCORM_MAX_UPLOAD_MB);
+    return Number.isFinite(n) && n > 0 ? n : 40;
+}
+
+module.exports = { featureFlags, envBool, scormMaxUploadMb };
