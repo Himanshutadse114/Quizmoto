@@ -109,6 +109,14 @@ const startServer = async () => {
         const socketHandlers = require('./services/socketHandlers');
         socketHandlers(io);
 
+        // SCORM World live roster (Wave 2)
+        try {
+            const ScormRealtime = require('./services/scorm/ScormRealtime');
+            ScormRealtime.setIO(io);
+        } catch (e) {
+            logger.warn('scorm_realtime_init_failed', { module: 'scorm', error: e.message });
+        }
+
         const SessionWatchdogService = require('./services/SessionWatchdogService');
         SessionWatchdogService.startPeriodic(
             Number(process.env.SESSION_WATCHDOG_INTERVAL_MS) || 15000
