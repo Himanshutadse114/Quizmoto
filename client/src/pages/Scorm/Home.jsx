@@ -10,6 +10,7 @@ export default function ScormHome() {
   const [packages, setPackages] = useState([]);
   const [courses, setCourses] = useState([]);
   const [error, setError] = useState(null);
+  const [aiEnabled, setAiEnabled] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -19,11 +20,13 @@ export default function ScormHome() {
     const headers = { Authorization: `Bearer ${token}` };
     Promise.all([
       axios.get(apiUrl('/api/scorm/packages'), { headers }),
-      axios.get(apiUrl('/api/scorm/courses'), { headers })
+      axios.get(apiUrl('/api/scorm/courses'), { headers }),
+      axios.get(apiUrl('/api/scorm/features')).catch(() => ({ data: {} }))
     ])
-      .then(([p, c]) => {
+      .then(([p, c, f]) => {
         setPackages(p.data || []);
         setCourses(c.data || []);
+        setAiEnabled(!!f.data?.scormAiAuthor);
       })
       .catch((err) => {
         setError(err.response?.data?.message || err.message);
@@ -50,6 +53,12 @@ export default function ScormHome() {
             Package library
           </Link>
           <Link
+            to="/scorm/author"
+            className="px-4 py-2 rounded-xl bg-quizmoto-yellow text-black font-black text-sm shadow-[0_3px_0_0_#b8860b] hover:shadow-none hover:translate-y-0.5 transition-all"
+          >
+            Create from policy
+          </Link>
+          <Link
             to="/scorm/library?upload=1"
             className="px-4 py-2 rounded-xl bg-quizmoto-blue font-black text-sm shadow-[0_3px_0_0_#0e4b94] hover:shadow-none hover:translate-y-0.5 transition-all"
           >
@@ -64,6 +73,13 @@ export default function ScormHome() {
           {String(error).toLowerCase().includes('not enabled') && (
             <p className="mt-2 opacity-80">Set SCORM_LMS=true on the backend to enable this feature.</p>
           )}
+        </div>
+      )}
+
+      {!aiEnabled && !error && (
+        <div className="mb-6 p-3 rounded-xl bg-white/5 border border-white/10 text-xs text-white/50">
+          AI author needs <code className="text-white/70">SCORM_AI_AUTHOR=true</code> and{' '}
+          <code className="text-white/70">GEMINI_API_KEY</code> on the backend. Upload SCORM still works without AI.
         </div>
       )}
 
@@ -87,7 +103,7 @@ export default function ScormHome() {
       <h2 className="text-lg font-black mb-3 uppercase tracking-tight">Recent courses</h2>
       <div className="space-y-3 mb-10">
         {courses.length === 0 && (
-          <p className="text-white/40 text-sm">No courses yet — upload a package and create one.</p>
+          <p className="text-white/40 text-sm">No courses yet — upload a package or create from policy.</p>
         )}
         {courses.slice(0, 10).map((c) => (
           <Link

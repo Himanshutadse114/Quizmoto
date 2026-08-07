@@ -24,6 +24,7 @@ import ScormLibrary from './pages/Scorm/Library';
 import ScormCourseDetail from './pages/Scorm/CourseDetail';
 import ScormLearnLanding from './pages/Scorm/LearnLanding';
 import ScormPlayerShell from './pages/Scorm/PlayerShell';
+import ScormAuthor from './pages/Scorm/Author';
 
 function App() {
   return (
@@ -60,6 +61,7 @@ function App() {
               {/* SCORM World */}
               <Route path="/scorm" element={<ScormHome />} />
               <Route path="/scorm/library" element={<ScormLibrary />} />
+              <Route path="/scorm/author" element={<ScormAuthor />} />
               <Route path="/scorm/courses/:id" element={<ScormCourseDetail />} />
               <Route path="/scorm/learn/:inviteCode" element={<ScormLearnLanding />} />
               <Route path="/scorm/player/:registrationId" element={<ScormPlayerShell />} />

@@ -16,6 +16,8 @@ router.use('/runtime', require('./runtime'));
 router.use('/content', require('./content'));
 router.use('/play', require('./play'));
 router.use('/xapi', require('./xapi'));
+router.use('/author', require('./author'));
+
 router.get('/features', (req, res) => {
     res.json({
         scormLms: featureFlags.scormLms,
@@ -27,7 +29,8 @@ router.get('/features', (req, res) => {
             xapi: true,
             sequencing2004: false,
             fullLrs: false
-        }
+        },
+        policyToScorm: true
     });
 });
 

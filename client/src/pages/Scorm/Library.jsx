@@ -77,7 +77,7 @@ export default function ScormLibrary() {
   };
 
   const removePkg = async (id) => {
-    if (!window.confirm('Delete this package?')) return;
+    if (!window.confirm('Delete this package? Linked courses are archived and files are removed from storage.')) return;
     try {
       await axios.delete(apiUrl(`/api/scorm/packages/${id}`), { headers });
       await load();
@@ -91,8 +91,18 @@ export default function ScormLibrary() {
       <button onClick={() => navigate('/scorm')} className="text-sm text-white/60 hover:text-white mb-4">
         ← SCORM World
       </button>
-      <h1 className="text-3xl font-black italic tracking-tighter mb-2">Package library</h1>
-      <p className="text-white/50 text-sm mb-6">Upload SCORM 1.2 ZIP packages. Multiple learners can take the same course at once.</p>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+        <div>
+          <h1 className="text-3xl font-black italic tracking-tighter mb-2">Package library</h1>
+          <p className="text-white/50 text-sm">Upload SCORM ZIP or create from policy (PDF/PPT).</p>
+        </div>
+        <Link
+          to="/scorm/author"
+          className="px-4 py-2.5 rounded-xl bg-quizmoto-yellow text-black font-black text-sm text-center"
+        >
+          Create from policy
+        </Link>
+      </div>
 
       <div className="rounded-2xl bg-white/5 border border-white/10 p-5 mb-8">
         <h2 className="font-black text-sm uppercase tracking-widest mb-3">Upload SCORM ZIP</h2>
@@ -126,6 +136,7 @@ export default function ScormLibrary() {
                 <div className="font-black">{p.title}</div>
                 <div className="text-xs text-white/50 mt-1">
                   {p.status} · {p.standard || 'scorm_1_2'}
+                  {p.source === 'ai_author' ? ' · AI author' : ''}
                   {p.entryHref ? ` · ${p.entryHref}` : ''}
                   {p.fileCount != null ? ` · ${p.fileCount} files` : ''}
                 </div>
