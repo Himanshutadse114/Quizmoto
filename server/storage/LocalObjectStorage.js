@@ -15,9 +15,7 @@ function ensureDirSync(dir) {
 
 class LocalObjectStorage {
     constructor(options = {}) {
-        this.rootDir =
-            options.rootDir ||
-            path.join(__dirname, '../data/artifacts');
+        this.rootDir = options.rootDir || path.join(__dirname, '../data/artifacts');
         ensureDirSync(this.rootDir);
         this.driver = 'local';
     }
@@ -29,7 +27,6 @@ class LocalObjectStorage {
         if (key.includes('\0')) {
             throw new Error('invalid storage key');
         }
-        // Reject absolute paths and any parent-segment before normalize
         if (path.isAbsolute(key) || /(^|[\\/])\.\.([\\/]|$)/.test(key) || key.includes('..')) {
             throw new Error('invalid storage key');
         }
@@ -43,7 +40,6 @@ class LocalObjectStorage {
         ) {
             throw new Error('invalid storage key');
         }
-        // Final containment check against root
         const resolved = path.resolve(this.rootDir, normalized);
         const rootResolved = path.resolve(this.rootDir);
         if (resolved !== rootResolved && !resolved.startsWith(rootResolved + path.sep)) {
@@ -127,6 +123,61 @@ class LocalObjectStorage {
         } catch (_) {
             /* ignore */
         }
+    }
+
+    async listKeys(prefix) {
+        const safePrefix = this._safeKey(prefix || '').replace(/\/+$/, '');
+        const startDir = path.join(this.rootDir, safePrefix);
+        const keys = [];
+
+        async function walk(dir, relBase) {
+            let entries;
+            try {
+                entries = await fsp.readdir(dir, { withFileTypes: true });
+            } catch (err) {
+                if (err.code === 'ENOENT') return;
+                throw err;
+            }
+            for (const ent of entries) {
+                if (ent.name.endsWith('.meta.json')) continue;
+                const rel = relBase ? `${relBase}/${ent.name}` : ent.name;
+                const full = path.join(dir, ent.name);
+                if (ent.isDirectory()) {
+                    await walk(full, rel);
+                } else {
+                    keys.push(safePrefix ? `${safePrefix}/${rel}` : rel);
+                }
+            }
+        }
+
+        // If prefix is a file path, just check that one key
+        try {
+            const st = await fsp.stat(startDir);
+            if (st.isFile()) {
+                return [safePrefix];
+            }
+        } catch (_) {
+            /* may be a prefix dir */
+        }
+
+        await walk(startDir, '');
+        return keys.map((k) => k.replace(/\\/g, '/'));
+    }
+
+    async deletePrefix(prefix) {
+        const keys = await this.listKeys(prefix);
+        for (const key of keys) {
+            await this.deleteObject(key);
+        }
+        // Best-effort remove empty dirs under prefix
+        const safePrefix = this._safeKey(prefix || '').replace(/\/+$/, '');
+        const startDir = path.join(this.rootDir, safePrefix);
+        try {
+            await fsp.rm(startDir, { recursive: true, force: true });
+        } catch (_) {
+            /* ignore */
+        }
+        return { deleted: keys.length, keys: keys.length };
     }
 }
 

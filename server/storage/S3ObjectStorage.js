@@ -1,6 +1,6 @@
 /**
- * S3-compatible object storage (optional).
- * Requires: npm install @aws-sdk/client-s3
+ * S3-compatible object storage (Cloudflare R2 / AWS S3).
+ * Requires: @aws-sdk/client-s3
  * Env: S3_BUCKET, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_REGION, optional S3_ENDPOINT
  */
 
@@ -15,7 +15,9 @@ class S3ObjectStorage {
         let PutObjectCommand;
         let GetObjectCommand;
         let DeleteObjectCommand;
+        let DeleteObjectsCommand;
         let HeadObjectCommand;
+        let ListObjectsV2Command;
 
         try {
             const sdk = require('@aws-sdk/client-s3');
@@ -23,7 +25,9 @@ class S3ObjectStorage {
             PutObjectCommand = sdk.PutObjectCommand;
             GetObjectCommand = sdk.GetObjectCommand;
             DeleteObjectCommand = sdk.DeleteObjectCommand;
+            DeleteObjectsCommand = sdk.DeleteObjectsCommand;
             HeadObjectCommand = sdk.HeadObjectCommand;
+            ListObjectsV2Command = sdk.ListObjectsV2Command;
         } catch (err) {
             const e = new Error(
                 'STORAGE_DRIVER=s3 requires @aws-sdk/client-s3. Run: npm install @aws-sdk/client-s3'
@@ -44,7 +48,9 @@ class S3ObjectStorage {
         this.PutObjectCommand = PutObjectCommand;
         this.GetObjectCommand = GetObjectCommand;
         this.DeleteObjectCommand = DeleteObjectCommand;
+        this.DeleteObjectsCommand = DeleteObjectsCommand;
         this.HeadObjectCommand = HeadObjectCommand;
+        this.ListObjectsV2Command = ListObjectsV2Command;
         this.driver = 's3';
     }
 
@@ -129,6 +135,51 @@ class S3ObjectStorage {
                 Key: this._safeKey(key)
             })
         );
+    }
+
+    /** List object keys under a prefix (paginated). */
+    async listKeys(prefix, { maxKeys = 10000 } = {}) {
+        const safePrefix = this._safeKey(prefix || '');
+        const keys = [];
+        let ContinuationToken;
+        do {
+            const out = await this.client.send(
+                new this.ListObjectsV2Command({
+                    Bucket: this.bucket,
+                    Prefix: safePrefix,
+                    ContinuationToken,
+                    MaxKeys: Math.min(1000, maxKeys - keys.length)
+                })
+            );
+            for (const obj of out.Contents || []) {
+                if (obj.Key) keys.push(obj.Key);
+            }
+            ContinuationToken = out.IsTruncated ? out.NextContinuationToken : undefined;
+        } while (ContinuationToken && keys.length < maxKeys);
+        return keys;
+    }
+
+    /** Delete every object under a prefix (R2/S3 has no true folder delete). */
+    async deletePrefix(prefix) {
+        const keys = await this.listKeys(prefix);
+        if (keys.length === 0) return { deleted: 0 };
+
+        let deleted = 0;
+        // DeleteObjects accepts up to 1000 keys per request
+        for (let i = 0; i < keys.length; i += 1000) {
+            const chunk = keys.slice(i, i + 1000);
+            const out = await this.client.send(
+                new this.DeleteObjectsCommand({
+                    Bucket: this.bucket,
+                    Delete: {
+                        Objects: chunk.map((Key) => ({ Key })),
+                        Quiet: true
+                    }
+                })
+            );
+            deleted += chunk.length - (out.Errors ? out.Errors.length : 0);
+        }
+        return { deleted, keys: keys.length };
     }
 }
 

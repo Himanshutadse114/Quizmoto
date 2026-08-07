@@ -2,8 +2,7 @@ const { JOB_TYPES } = require('../jobTypes');
 const JobQueueService = require('../JobQueueService');
 const { unpackPackage } = require('../../services/scorm/ScormUnpackService');
 const { ScormPackage } = require('../../models/scorm');
-const { getObjectStorage } = require('../../storage/ObjectStorage');
-const { packageZipKey, packageMetaKey } = require('../../services/scorm/storageKeys');
+const { deletePackageFromStorage } = require('../../services/scorm/ScormPackageCleanup');
 const logger = require('../../utils/logger');
 
 async function handleValidateUnpack(payload) {
@@ -23,18 +22,21 @@ async function handlePackageDelete(payload) {
     const packageId = payload && payload.packageId;
     if (!packageId) throw new Error('packageId required');
     const pkg = await ScormPackage.findByPk(packageId);
-    if (!pkg) return { ok: true, deleted: false };
-    const storage = getObjectStorage();
-    try {
-        await storage.deleteObject(pkg.storageKeyZip || packageZipKey(packageId));
-    } catch (_) { /* ignore */ }
-    try {
-        await storage.deleteObject(packageMetaKey(packageId));
-    } catch (_) { /* ignore */ }
-    pkg.status = 'deleted';
-    await pkg.save();
-    logger.info('scorm_package_deleted', { module: 'scorm', packageId });
-    return { ok: true, deleted: true };
+    const storageKeyZip = pkg ? pkg.storageKeyZip : null;
+
+    const result = await deletePackageFromStorage(packageId, storageKeyZip);
+
+    if (pkg) {
+        pkg.status = 'deleted';
+        await pkg.save();
+    }
+
+    logger.info('scorm_package_deleted', {
+        module: 'scorm',
+        packageId,
+        storageDeleted: result.deleted
+    });
+    return { ok: true, deleted: true, storageDeleted: result.deleted };
 }
 
 function registerScormHandlers() {

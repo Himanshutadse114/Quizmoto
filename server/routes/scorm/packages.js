@@ -8,6 +8,7 @@ const { scormMaxUploadMb } = require('../../config/featureFlags');
 const JobQueueService = require('../../jobs/JobQueueService');
 const { JOB_TYPES } = require('../../jobs/jobTypes');
 const { unpackPackage } = require('../../services/scorm/ScormUnpackService');
+const { deletePackageFromStorage } = require('../../services/scorm/ScormPackageCleanup');
 const logger = require('../../utils/logger');
 
 router.post('/upload', auth, express.raw({ type: ['application/zip', 'application/octet-stream'], limit: '50mb' }), async (req, res) => {
@@ -148,13 +149,18 @@ router.get('/:id', auth, async (req, res) => {
     res.json(pkg);
 });
 
+/**
+ * Soft-delete package in DB, archive courses, and remove all objects from R2/S3/local.
+ * Runs storage cleanup inline so free-tier deploys without a worker still free the bucket.
+ */
 router.delete('/:id', auth, async (req, res) => {
     const pkg = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId } });
     if (!pkg) return res.status(404).json({ message: 'Not found' });
+
     pkg.status = 'deleted';
     await pkg.save();
 
-    // Remove from Recent courses — archive every course tied to this package
+    // Hide linked courses from Recent courses
     try {
         await ScormCourse.update(
             { status: 'archived' },
@@ -164,13 +170,34 @@ router.delete('/:id', auth, async (req, res) => {
         logger.warn('scorm_package_delete_archive_courses', { module: 'scorm', error: e.message });
     }
 
+    // Immediate R2 / local cleanup (zip + all content files)
+    let storageResult = { deleted: 0 };
+    try {
+        storageResult = await deletePackageFromStorage(pkg.id, pkg.storageKeyZip);
+    } catch (e) {
+        logger.error('scorm_package_storage_cleanup_failed', {
+            module: 'scorm',
+            packageId: pkg.id,
+            error: e.message
+        });
+    }
+
+    // Also enqueue for worker idempotency / retry if needed
     try {
         await JobQueueService.enqueue({
             type: JOB_TYPES.SCORM_PACKAGE_DELETE,
-            payload: { packageId: pkg.id }
+            payload: { packageId: pkg.id },
+            idempotencyKey: `scorm-delete:${pkg.id}`
         });
-    } catch (_) { /* ignore */ }
-    res.json({ ok: true, archivedCourses: true });
+    } catch (_) {
+        /* ignore */
+    }
+
+    res.json({
+        ok: true,
+        archivedCourses: true,
+        storageDeleted: storageResult.deleted || 0
+    });
 });
 
 module.exports = router;
