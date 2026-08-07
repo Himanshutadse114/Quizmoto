@@ -1,99 +1,48 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { apiUrl } from '../../config';
 
-function openPlayerPopup(registrationId, token, packageId, entryHref) {
-  try {
-    sessionStorage.setItem(
-      `scorm_reg_${registrationId}`,
-      JSON.stringify({ token, packageId, entryHref })
-    );
-  } catch (_) {}
-  const q = new URLSearchParams({
-    token: token || '',
-    packageId: packageId || '',
-    entryHref: entryHref || ''
-  });
-  const url = apiUrl(`/api/scorm/play/${registrationId}?${q.toString()}`);
-  const features =
-    'popup=yes,width=1280,height=800,left=80,top=40,menubar=no,toolbar=no,location=yes,status=yes,resizable=yes,scrollbars=yes';
-  const win = window.open(url, `quizmoto_scorm_${registrationId}`, features);
-  if (!win || win.closed) {
-    window.location.href = url;
-    return null;
-  }
-  try {
-    win.focus();
-  } catch (_) {}
-  return win;
-}
-
 export default function ScormLearnLanding() {
   const { inviteCode } = useParams();
+  const navigate = useNavigate();
   const [course, setCourse] = useState(null);
+  const [error, setError] = useState(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [started, setStarted] = useState(false);
 
   useEffect(() => {
+    if (!inviteCode) return;
     axios
       .get(apiUrl(`/api/scorm/courses/code/${inviteCode}`))
       .then((r) => setCourse(r.data))
-      .catch((e) => setError(e.response?.data?.message || 'Course not found or not published'));
+      .catch((e) => setError(e.response?.data?.message || e.message));
   }, [inviteCode]);
-
-  // When player posts exit message or popup is closed, reset UI
-  useEffect(() => {
-    const onMsg = (ev) => {
-      if (ev.data && ev.data.type === 'quizmoto-scorm-exit') {
-        setStarted(false);
-      }
-    };
-    window.addEventListener('message', onMsg);
-    return () => window.removeEventListener('message', onMsg);
-  }, []);
 
   const start = async (e) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError('Please enter your name');
+      setError('Name is required');
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.post(apiUrl('/api/scorm/registrations/accept'), {
+      const res = await axios.post(apiUrl('/api/scorm/registrations/join'), {
         inviteCode,
         learnerName: name.trim(),
         learnerEmail: email.trim() || null
       });
-      const win = openPlayerPopup(
-        res.data.registrationId,
-        res.data.token,
-        res.data.packageId,
-        res.data.entryHref
-      );
-      setStarted(true);
-      setLoading(false);
-
-      if (win) {
-        const timer = setInterval(() => {
-          try {
-            if (win.closed) {
-              clearInterval(timer);
-              setStarted(false);
-            }
-          } catch (_) {
-            clearInterval(timer);
-            setStarted(false);
-          }
-        }, 800);
-      }
+      const { registrationId, playToken, entryHref } = res.data;
+      const q = new URLSearchParams({
+        token: playToken || '',
+        entry: entryHref || ''
+      });
+      navigate(`/scorm/play/${registrationId}?${q.toString()}`);
     } catch (err) {
       setError(err.response?.data?.message || err.message);
+    } finally {
       setLoading(false);
     }
   };
@@ -102,31 +51,7 @@ export default function ScormLearnLanding() {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 relative z-10">
         <div className="max-w-md w-full rounded-3xl bg-white/5 border border-white/10 p-8 text-center">
-          <h1 className="text-2xl font-black mb-2">Course unavailable</h1>
-          <p className="text-white/60 text-sm">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (started) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6 relative z-10">
-        <div className="max-w-md w-full rounded-3xl bg-white/5 border border-white/10 p-8 text-center">
-          <h1 className="text-2xl font-black mb-2">Course opened</h1>
-          <p className="text-white/60 text-sm mb-4">
-            The course is running in a popup window. Keep that window open to finish and save your score.
-          </p>
-          <p className="text-xs text-white/40 mb-4">
-            Click <strong>Exit</strong> in the player to close it. If you do not see the popup, allow popups for this site.
-          </p>
-          <button
-            type="button"
-            onClick={() => setStarted(false)}
-            className="px-4 py-2 rounded-xl bg-white/10 font-bold text-sm"
-          >
-            Back to start form
-          </button>
+          <p className="text-red-300 text-sm">{error}</p>
         </div>
       </div>
     );
@@ -138,11 +63,14 @@ export default function ScormLearnLanding() {
         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-quizmoto-yellow mb-2">
           SCORM World
         </div>
-        <h1 className="text-2xl font-black italic tracking-tighter mb-1">
+        <h1
+          className="text-xl sm:text-2xl font-black italic tracking-tighter mb-1 break-words leading-tight"
+          title={course?.title || ''}
+        >
           {course?.title || 'Loading…'}
         </h1>
         {course?.description && (
-          <p className="text-white/50 text-sm mb-6">{course.description}</p>
+          <p className="text-white/50 text-sm mb-6 break-words leading-relaxed">{course.description}</p>
         )}
 
         <form onSubmit={start} className="space-y-4">
@@ -179,9 +107,6 @@ export default function ScormLearnLanding() {
             {loading ? 'Starting…' : 'Start course'}
           </button>
         </form>
-        <p className="mt-4 text-[11px] text-white/40 text-center">
-          Opens in a popup player. Allow popups if your browser asks.
-        </p>
       </div>
     </div>
   );
