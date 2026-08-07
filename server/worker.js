@@ -4,11 +4,6 @@
  * Usage:
  *   node worker.js
  *   npm run worker
- *
- * Requires nothing for memory-backend processing of enqueued jobs in-process tests.
- * Set REDIS_URL for multi-process queue sharing with the API.
- *
- * Does NOT start HTTP or Socket.IO — live play stays on index.js.
  */
 
 if (process.env.NODE_ENV === 'test') {
@@ -22,6 +17,13 @@ const JobQueueService = require('./jobs/JobQueueService');
 const { registerReportHandlers } = require('./jobs/handlers/reportHandlers');
 
 registerReportHandlers();
+
+try {
+    const { registerScormHandlers } = require('./jobs/handlers/scormHandlers');
+    registerScormHandlers();
+} catch (e) {
+    logger.warn('scorm_handlers_not_registered', { module: 'worker', error: e.message });
+}
 
 let stopping = false;
 
