@@ -3,7 +3,7 @@
  * Accepts statements authenticated by a SCORM registration JWT and mirrors
  * score / completion onto the host roster when present.
  */
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const {
     ScormRegistration,
     ScormXapiStatement,
@@ -69,7 +69,6 @@ async function mirrorToRoster(reg, stmt) {
     }
 
     const verb = extractVerbId(stmt) || '';
-    // Common xAPI verb IDs
     if (/passed/i.test(verb) || result.success === true) {
         reg.lastLessonStatus = 'passed';
         changed = true;
@@ -105,7 +104,6 @@ async function mirrorToRoster(reg, stmt) {
         await reg.save();
     }
 
-    // Keep CMI state in sync when possible
     try {
         let state = await ScormCmiState.findOne({ where: { registrationId: reg.id } });
         if (state) {
@@ -133,7 +131,7 @@ async function storeStatements(token, body) {
     const ids = [];
     for (const stmt of statements) {
         if (!stmt || typeof stmt !== 'object') continue;
-        const statementId = stmt.id || uuidv4();
+        const statementId = stmt.id || crypto.randomUUID();
         stmt.id = statementId;
         if (!stmt.timestamp) stmt.timestamp = new Date().toISOString();
 
