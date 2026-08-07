@@ -142,32 +142,32 @@ const connectDB = async () => {
             await addColumnIfMissing(`ALTER TABLE "PlayerAnswers" ADD COLUMN "roundId" VARCHAR(36) NULL`);
         } else if (isMysql) {
             // MySQL syntax: backticks, supports AFTER clause
-            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`gameMode\` VARCHAR(255) DEFAULT 'classic' AFTER \`status\``);
-            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`analytics\` JSON NULL AFTER \`questionStartTime\``);
-            await addColumnIfMissing(`ALTER TABLE \`Players\` ADD COLUMN \`teamName\` VARCHAR(255) NULL AFTER \`nickname\``);
-            await addColumnIfMissing(`ALTER TABLE \`Players\` ADD COLUMN \`playerProfileId\` INTEGER NULL AFTER \`teamName\``);
-            await addColumnIfMissing(`ALTER TABLE \`Questions\` ADD COLUMN \`explanation\` TEXT NULL`);
-            await addColumnIfMissing(`ALTER TABLE \`Questions\` MODIFY \`image\` LONGTEXT NULL`);
-            await addColumnIfMissing(`ALTER TABLE \`Users\` ADD COLUMN \`googleId\` VARCHAR(255) NULL`);
-            await addColumnIfMissing(`ALTER TABLE \`Users\` ADD COLUMN \`email\` VARCHAR(255) NULL`);
-            await addColumnIfMissing(`ALTER TABLE \`Users\` ADD COLUMN \`avatar\` VARCHAR(255) NULL`);
-            await addColumnIfMissing(`ALTER TABLE \`Users\` MODIFY \`password\` VARCHAR(255) NULL`);
-            await addColumnIfMissing(`ALTER TABLE \`PlayerProfiles\` ADD COLUMN \`googleId\` VARCHAR(255) NULL`);
-            await addColumnIfMissing(`ALTER TABLE \`PlayerProfiles\` MODIFY \`password\` VARCHAR(255) NULL`);
+            await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `gameMode` VARCHAR(255) DEFAULT \'classic\' AFTER `status`');
+            await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `analytics` JSON NULL AFTER `questionStartTime`');
+            await addColumnIfMissing('ALTER TABLE `Players` ADD COLUMN `teamName` VARCHAR(255) NULL AFTER `nickname`');
+            await addColumnIfMissing('ALTER TABLE `Players` ADD COLUMN `playerProfileId` INTEGER NULL AFTER `teamName`');
+            await addColumnIfMissing('ALTER TABLE `Questions` ADD COLUMN `explanation` TEXT NULL');
+            await addColumnIfMissing('ALTER TABLE `Questions` MODIFY `image` LONGTEXT NULL');
+            await addColumnIfMissing('ALTER TABLE `Users` ADD COLUMN `googleId` VARCHAR(255) NULL');
+            await addColumnIfMissing('ALTER TABLE `Users` ADD COLUMN `email` VARCHAR(255) NULL');
+            await addColumnIfMissing('ALTER TABLE `Users` ADD COLUMN `avatar` VARCHAR(255) NULL');
+            await addColumnIfMissing('ALTER TABLE `Users` MODIFY `password` VARCHAR(255) NULL');
+            await addColumnIfMissing('ALTER TABLE `PlayerProfiles` ADD COLUMN `googleId` VARCHAR(255) NULL');
+            await addColumnIfMissing('ALTER TABLE `PlayerProfiles` MODIFY `password` VARCHAR(255) NULL');
 
             // Phase 2 additive columns on GameSessions
-            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`state\` VARCHAR(32) DEFAULT 'LOBBY'`);
-            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`stateVersion\` BIGINT NOT NULL DEFAULT 0`);
-            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`activeRoundId\` VARCHAR(36) NULL`);
-            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`stateEnteredAt\` DATETIME NULL`);
-            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`questionOpensAt\` DATETIME NULL`);
-            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`questionClosesAt\` DATETIME NULL`);
-            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`hostLeaseOwner\` VARCHAR(128) NULL`);
-            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`hostLeaseExpiresAt\` DATETIME NULL`);
-            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`lastEventSequence\` BIGINT NOT NULL DEFAULT 0`);
-            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`recoverySchemaVersion\` INTEGER NOT NULL DEFAULT 1`);
-            await addColumnIfMissing(`ALTER TABLE \`GameSessions\` ADD COLUMN \`lastErrorCode\` VARCHAR(64) NULL`);
-            await addColumnIfMissing(`ALTER TABLE \`PlayerAnswers\` ADD COLUMN \`roundId\` VARCHAR(36) NULL`);
+            await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `state` VARCHAR(32) DEFAULT \'LOBBY\'');
+            await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `stateVersion` BIGINT NOT NULL DEFAULT 0');
+            await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `activeRoundId` VARCHAR(36) NULL');
+            await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `stateEnteredAt` DATETIME NULL');
+            await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `questionOpensAt` DATETIME NULL');
+            await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `questionClosesAt` DATETIME NULL');
+            await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `hostLeaseOwner` VARCHAR(128) NULL');
+            await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `hostLeaseExpiresAt` DATETIME NULL');
+            await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `lastEventSequence` BIGINT NOT NULL DEFAULT 0');
+            await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `recoverySchemaVersion` INTEGER NOT NULL DEFAULT 1');
+            await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `lastErrorCode` VARCHAR(64) NULL');
+            await addColumnIfMissing('ALTER TABLE `PlayerAnswers` ADD COLUMN `roundId` VARCHAR(36) NULL');
         }
 
         // Standard sync (without alter) to ensure basic table existence including Phase 2 + SCORM models
@@ -176,6 +176,17 @@ const connectDB = async () => {
             console.log('Database models synced ✅');
         } catch (syncErr) {
             console.error('Sequelize sync error:', syncErr.message);
+        }
+
+        // SCORM additive columns (existing tables from earlier deploys lack newer fields)
+        if (isPostgres) {
+            await addColumnIfMissing(`ALTER TABLE "scorm_packages" ADD COLUMN "analysisJson" TEXT NULL`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_packages" ADD COLUMN "templateId" INTEGER NULL`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_packages" ADD COLUMN "source" VARCHAR(255) DEFAULT 'upload'`);
+        } else if (isMysql) {
+            await addColumnIfMissing('ALTER TABLE `scorm_packages` ADD COLUMN `analysisJson` TEXT NULL');
+            await addColumnIfMissing('ALTER TABLE `scorm_packages` ADD COLUMN `templateId` INTEGER NULL');
+            await addColumnIfMissing("ALTER TABLE `scorm_packages` ADD COLUMN `source` VARCHAR(255) DEFAULT 'upload'");
         }
 
         isConnected = true;
