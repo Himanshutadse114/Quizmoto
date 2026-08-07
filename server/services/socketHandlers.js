@@ -212,7 +212,7 @@ module.exports = (io) => {
           const updatedSession = await GameSession.findByPk(session.id, { include: [{ model: Player, as: 'players' }] });
           io.to(pin).emit('player_joined', updatedSession.players);
           socket.emit('joined_successfully', { pin, nickname: cleanNickname, sessionId: session.id, token: playerToken });
-          socket.data = { pin, nickname: cleanNickname, role: 'player', playerId: player.id };
+          socket.data = { pin, nickname: cleanNickname, role: 'player' };
           if (session.status === 'question' || session.status === 'result') {
             const quiz = await Quiz.findByPk(session.quizId, {
               include: [{ model: Question, as: 'questions' }],
@@ -271,44 +271,41 @@ module.exports = (io) => {
         session.currentQuestionIndex = nextIndex;
         session.status = 'question';
         const startMs = Date.now() + COUNTDOWN_MS;
-        session.questionStartedAt = new Date(startMs);
-        await session.save();
+        session.questionStartTime = new Date(startMs);
+        await session.save({ fields: ['currentQuestionIndex', 'status', 'questionStartTime'] });
 
-        const q = quiz.questions[nextIndex];
-        const options = parseOptions(q.options);
-        const timerSeconds = q.timerSeconds || q.timeLimit || 20;
+        await Player.update(
+          { lastAnswerCorrect: false, lastAnswerTime: 0, lastAnswerIndex: -1 },
+          { where: { sessionId: session.id } }
+        );
 
-        const qPayload = {
-          question: {
-            id: q.id,
-            text: q.text,
-            options,
-            timerSeconds,
-            index: nextIndex,
-            total: quiz.questions.length
-          },
-          startTime: startMs,
-          serverTime: Date.now()
+        const question = quiz.questions[session.currentQuestionIndex];
+        const serverNow = Date.now();
+        const questionData = {
+          questionText: question.questionText, options: question.options, timer: question.timer,
+          explanation: question.explanation, image: question.image,
+          index: session.currentQuestionIndex, totalQuestions: quiz.questions.length,
+          startTime: startMs, serverTime: serverNow,
+          countdown: 3, countdownMs: COUNTDOWN_MS
         };
-
-        io.to(pin).emit('question_started', qPayload);
+        io.to(pin).emit('question_started', questionData);
         scheduleCountdownTicks(io, pin, startMs);
-        scheduleQuestionEnd(pin, startMs, timerSeconds);
-        logDiag('start_question', pin, 'question', { index: nextIndex, questionId: q.id });
+        scheduleQuestionEnd(pin, startMs, question.timer);
       } catch (err) {
         console.error('Error in start_question:', err);
-        socket.emit('error', 'Failed to start question');
+        try { socket.emit('error', 'Failed to start question'); } catch (_) {}
       }
     });
 
     socket.on('end_question', async (payload) => {
-      const { error, value } = validateSocketPayload('end_question', payload || {});
+      const { error, value } = validateSocketPayload('end_question', payload);
       if (error) return socket.emit('error', 'Validation Error: ' + error.details[0].message);
-      const pin = String(value.pin).trim();
+      const { pin: rawPin, token } = value;
+      const pin = String(rawPin).trim();
       try {
         const session = await GameSession.findOne({ where: { pin } });
         if (!session) return;
-        const hostId = SessionTokenService.verifyHostToken(value.token);
+        const hostId = SessionTokenService.verifyHostToken(token);
         if (!hostId || session.hostId !== hostId) return socket.emit('error', 'Unauthorized');
         await handleEndQuestion(pin, { source: 'host' });
       } catch (err) {
@@ -317,36 +314,35 @@ module.exports = (io) => {
     });
 
     socket.on('submit_answer', async (payload) => {
-      const { error, value } = validateSocketPayload('submit_answer', payload || {});
+      const { error, value } = validateSocketPayload('submit_answer', payload);
       if (error) return socket.emit('error', 'Validation Error: ' + error.details[0].message);
-      const pin = String(value.pin).trim();
+      const { pin: rawPin, nickname, answerIndex } = value;
+      const pin = String(rawPin).trim();
       try {
-        const result = await AnswerSubmissionService.submitAnswer({
-          pin,
-          nickname: value.nickname,
-          answerIndex: value.answerIndex,
-          timeRemaining: value.timeRemaining
-        });
-        if (result && result.ok === false) {
-          return socket.emit('error', result.message || 'Answer rejected');
+        const result = await AnswerSubmissionService.submitAnswer(pin, nickname, answerIndex);
+        if (result.error) {
+          if (result.error === 'Player not found') return;
+          return socket.emit('error', result.error);
         }
-        if (result) socket.emit('answer_ack', result);
+        socket.emit('answer_confirmed', { streak: result.streak, score: result.score, points: result.points });
+        io.to(pin).emit('answer_received', { nickname });
+        io.to('host_' + pin).emit('answer_received_host', { answerIndex, nickname });
       } catch (err) {
-        console.error('submit_answer error:', err);
-        socket.emit('error', 'Failed to submit answer');
+        console.error('Error in submit_answer:', err);
       }
     });
 
     socket.on('change_mode', async (payload) => {
-      const { error, value } = validateSocketPayload('change_mode', payload || {});
-      if (error) return socket.emit('error', 'Validation Error: ' + error.details[0].message);
-      const pin = String(value.pin).trim();
+      const { error, value } = validateSocketPayload('change_mode', payload);
+      if (error) return;
+      const { pin: rawPin, token, mode } = value;
+      const pin = String(rawPin).trim();
       try {
         const session = await GameSession.findOne({ where: { pin } });
         if (!session) return;
-        const hostId = SessionTokenService.verifyHostToken(value.token);
+        const hostId = SessionTokenService.verifyHostToken(token);
         if (!hostId || session.hostId !== hostId) return socket.emit('error', 'Unauthorized');
-        session.gameMode = value.mode;
+        session.gameMode = mode;
         await session.save({ fields: ['gameMode'] });
         io.to(pin).emit('room_info', session);
       } catch (err) {
@@ -355,13 +351,14 @@ module.exports = (io) => {
     });
 
     socket.on('end_game', async (payload) => {
-      const { error, value } = validateSocketPayload('end_game', payload || {});
-      if (error) return socket.emit('error', 'Validation Error: ' + error.details[0].message);
-      const pin = String(value.pin).trim();
+      const { error, value } = validateSocketPayload('end_game', payload);
+      if (error) return;
+      const { pin: rawPin, token } = value;
+      const pin = String(rawPin).trim();
       try {
         const session = await GameSession.findOne({ where: { pin } });
         if (!session) return;
-        const hostId = SessionTokenService.verifyHostToken(value.token);
+        const hostId = SessionTokenService.verifyHostToken(token);
         if (!hostId || session.hostId !== hostId) return socket.emit('error', 'Unauthorized');
         clearQuestionEndTimer(pin);
         clearCountdownTicks(pin);
@@ -386,20 +383,16 @@ module.exports = (io) => {
         if (!session) return;
         if (role === 'player') {
           const nickname = value.nickname || (socket.data && socket.data.nickname);
-          let leftPlayer = null;
           if (nickname) {
-            leftPlayer = await Player.findOne({ where: { sessionId: session.id, nickname } });
-          }
-          if (leftPlayer) {
-            await leftPlayer.destroy();
+            const leftPlayer = await Player.findOne({ where: { sessionId: session.id, nickname } });
+            if (leftPlayer) await leftPlayer.destroy();
           }
           const refreshed = await GameSession.findOne({ where: { pin }, include: [{ model: Player, as: 'players' }] });
-          const payloadOut = {
+          io.to(pin).emit('player_left', {
             nickname,
             reason: 'left',
             players: refreshed ? refreshed.players : []
-          };
-          io.to(pin).emit('player_left', payloadOut);
+          });
           socket.leave(pin);
           socket.data = {};
         } else if (role === 'host') {
@@ -439,7 +432,7 @@ module.exports = (io) => {
           if (!player) return;
 
           const graceMs = Number(process.env.PLAYER_DISCONNECT_GRACE_MS) || 45000;
-          const handle = setTimeout(async () => {
+          setTimeout(async () => {
             try {
               const still = await Player.findByPk(player.id);
               if (!still) return;
@@ -459,8 +452,6 @@ module.exports = (io) => {
               console.error('player disconnect grace error:', e);
             }
           }, graceMs);
-          // store handle on socket for potential clear on quick reconnect is best-effort
-          socket._playerGraceHandle = handle;
         } catch (err) {
           console.error('Error in disconnect cleanup:', err);
         }
