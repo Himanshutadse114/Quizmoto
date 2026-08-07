@@ -95,8 +95,17 @@ export default function ScormLibrary() {
     }
   };
 
-  const editPkg = (id) => {
-    navigate(`/scorm/author?edit=${id}`);
+  const isQuizmotoAi = (p) =>
+    p?.source === 'ai_author' || (p?.analysisJson && String(p.analysisJson).includes('quizmoto'));
+
+  const editPkg = (p) => {
+    if (!isQuizmotoAi(p)) {
+      setMsg(
+        'This package was not created by Quizmoto AI Author, so it cannot be edited here. Download the ZIP and edit it in the original authoring tool, or create a new course from policy.'
+      );
+      return;
+    }
+    navigate(`/scorm/author?edit=${p.id}`);
   };
 
   const removePkg = async (id) => {
@@ -117,7 +126,9 @@ export default function ScormLibrary() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-3xl font-black italic tracking-tighter mb-2">Package library</h1>
-          <p className="text-white/50 text-sm">Upload SCORM ZIP or create from policy (PDF/PPT). AI ZIPs can be downloaded, re-uploaded, and edited.</p>
+          <p className="text-white/50 text-sm">
+            Upload SCORM ZIP or create from policy (PDF/PPT). Only Quizmoto AI packages can be edited.
+          </p>
         </div>
         <Link
           to="/scorm/author"
@@ -155,17 +166,19 @@ export default function ScormLibrary() {
         {packages.map((p) => (
           <div key={p.id} className="rounded-2xl bg-white/5 border border-white/10 p-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div className="font-black">{p.title}</div>
+              <div className="min-w-0 flex-1">
+                <div className="font-black break-words leading-snug" title={p.title}>
+                  {p.title}
+                </div>
                 <div className="text-xs text-white/50 mt-1">
                   {p.status} · {p.standard || 'scorm_1_2'}
-                  {p.source === 'ai_author' ? ' · AI author' : ''}
+                  {p.source === 'ai_author' ? ' · Quizmoto AI' : ' · External'}
                   {p.entryHref ? ` · ${p.entryHref}` : ''}
                   {p.fileCount != null ? ` · ${p.fileCount} files` : ''}
                 </div>
                 {p.errorMessage && <div className="text-xs text-red-300 mt-1">{p.errorMessage}</div>}
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 shrink-0">
                 {p.status === 'ready' && (
                   <button
                     onClick={() => createCourse(p.id, p.title)}
@@ -182,14 +195,21 @@ export default function ScormLibrary() {
                     Download ZIP
                   </button>
                 )}
-                {(p.source === 'ai_author' || p.analysisJson) && (
-                  <button
-                    onClick={() => editPkg(p.id)}
-                    className="px-3 py-2 rounded-xl bg-quizmoto-yellow text-black text-xs font-black"
-                  >
-                    Edit
-                  </button>
-                )}
+                <button
+                  onClick={() => editPkg(p)}
+                  className={`px-3 py-2 rounded-xl text-xs font-black ${
+                    isQuizmotoAi(p)
+                      ? 'bg-quizmoto-yellow text-black'
+                      : 'bg-white/10 text-white/50 hover:text-white/80'
+                  }`}
+                  title={
+                    isQuizmotoAi(p)
+                      ? 'Edit Quizmoto AI course'
+                      : 'Only Quizmoto AI packages can be edited'
+                  }
+                >
+                  Edit
+                </button>
                 <button
                   onClick={() => removePkg(p.id)}
                   className="px-3 py-2 rounded-xl bg-white/10 text-white/60 text-xs font-bold hover:text-red-300"
