@@ -1,5 +1,11 @@
 /**
- * SCORM 1.2 LMS Runtime — server-backed CMI store.
+ * SCORM 1.2 + SCORM 2004 (partial) LMS Runtime — server-backed CMI store.
+ *
+ * Storyline / Articulate SCORM 2004 packages write:
+ *   cmi.score.raw|min|max|scaled, cmi.completion_status, cmi.success_status,
+ *   cmi.session_time (ISO-8601 PT…), cmi.location, cmi.exit, cmi.suspend_data
+ * SCORM 1.2 packages write cmi.core.* equivalents.
+ * Both are mapped into the same state columns used by the host roster.
  */
 const {
     ScormRegistration,
@@ -27,15 +33,48 @@ const LESSON_STATUS = new Set([
     'passed', 'completed', 'failed', 'incomplete', 'browsed', 'not attempted'
 ]);
 
+const COMPLETION_STATUS = new Set([
+    'completed', 'incomplete', 'not attempted', 'unknown'
+]);
+
+const SUCCESS_STATUS = new Set([
+    'passed', 'failed', 'unknown'
+]);
+
+/** SCORM 1.2 times: HHHH:MM:SS.ss or HH:MM:SS */
 function parseTimeToSeconds(t) {
     if (!t || typeof t !== 'string') return 0;
-    const m = t.trim().match(/^(\d+):(\d{2}):(\d{2})(?:\.(\d+))?$/);
+    const trimmed = t.trim();
+    // ISO-8601 duration (SCORM 2004): PT1H2M3.5S
+    if (/^P/i.test(trimmed)) {
+        return parseIso8601Duration(trimmed);
+    }
+    const m = trimmed.match(/^(\d+):(\d{2}):(\d{2})(?:\.(\d+))?$/);
     if (!m) return 0;
     const h = parseInt(m[1], 10);
     const min = parseInt(m[2], 10);
     const s = parseInt(m[3], 10);
     const frac = m[4] ? parseInt(m[4].padEnd(2, '0').slice(0, 2), 10) / 100 : 0;
     return h * 3600 + min * 60 + s + frac;
+}
+
+/** Parse SCORM 2004 ISO-8601 duration (subset): PnYnMnDTnHnMnS */
+function parseIso8601Duration(iso) {
+    if (!iso || typeof iso !== 'string') return 0;
+    const s = iso.trim().toUpperCase();
+    if (s === 'PT' || s === 'P') return 0;
+    // Allow PTxHyMzS without date part (most common from Storyline)
+    const re = /^P(?:(\d+(?:\.\d+)?)Y)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)D)?(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)?$/;
+    const m = s.match(re);
+    if (!m) return 0;
+    const years = parseFloat(m[1] || '0');
+    const months = parseFloat(m[2] || '0');
+    const days = parseFloat(m[3] || '0');
+    const hours = parseFloat(m[4] || '0');
+    const mins = parseFloat(m[5] || '0');
+    const secs = parseFloat(m[6] || '0');
+    // Approximate year/month for total_time accumulation only
+    return years * 365 * 86400 + months * 30 * 86400 + days * 86400 + hours * 3600 + mins * 60 + secs;
 }
 
 function formatTime(seconds) {
@@ -53,9 +92,23 @@ function formatTime(seconds) {
     return `${hh}:${mm}:${ss}.${ff}`;
 }
 
+/** Derive roster lesson_status from 1.2 status or 2004 success+completion */
+function deriveLessonStatus(state, map) {
+    if (state.lessonStatus && state.lessonStatus !== 'not attempted') {
+        return state.lessonStatus;
+    }
+    const success = map['cmi.success_status'] || '';
+    const completion = map['cmi.completion_status'] || '';
+    if (success === 'passed') return 'passed';
+    if (success === 'failed') return 'failed';
+    if (completion === 'completed') return 'completed';
+    if (completion === 'incomplete') return 'incomplete';
+    return state.lessonStatus || 'not attempted';
+}
+
 async function loadRegAuthorized(regId, token) {
     const decoded = verifyRegistrationToken(token);
-    if (decoded.scormRegId !== regId) {
+    if (String(decoded.scormRegId) !== String(regId)) {
         const err = new Error('Token does not match registration');
         err.code = 'FORBIDDEN';
         throw err;
@@ -118,7 +171,11 @@ async function initialize(regId, token) {
     state.attemptId = attempt.id;
     const resume =
         (state.suspendData && state.suspendData.length > 0) ||
-        (state.lessonStatus && state.lessonStatus !== 'not attempted' && state.lessonStatus !== 'completed' && state.lessonStatus !== 'passed' && state.lessonStatus !== 'failed');
+        (state.lessonStatus &&
+            state.lessonStatus !== 'not attempted' &&
+            state.lessonStatus !== 'completed' &&
+            state.lessonStatus !== 'passed' &&
+            state.lessonStatus !== 'failed');
     state.entry = resume ? 'resume' : 'ab-initio';
     state.sessionTime = '00:00:00.00';
     state.initialized = true;
@@ -142,8 +199,11 @@ async function getValue(regId, token, element) {
     const map = rawMap(state);
     const el = String(element || '');
 
+    // SCORM 1.2 + SCORM 2004 dual surface
     const builtIn = {
-        'cmi.core._children': 'student_id,student_name,lesson_location,credit,lesson_status,entry,score,total_time,lesson_mode,exit,session_time',
+        // 1.2
+        'cmi.core._children':
+            'student_id,student_name,lesson_location,credit,lesson_status,entry,score,total_time,lesson_mode,exit,session_time',
         'cmi.core.student_id': String(reg.id),
         'cmi.core.student_name': reg.learnerName || 'Learner',
         'cmi.core.lesson_location': state.lessonLocation || '',
@@ -157,8 +217,39 @@ async function getValue(regId, token, element) {
         'cmi.core.lesson_mode': 'normal',
         'cmi.core.exit': state.exit || '',
         'cmi.core.session_time': state.sessionTime || '00:00:00.00',
+        'cmi.core.score._children': 'raw,min,max',
         'cmi.suspend_data': state.suspendData || '',
-        'cmi.core.score._children': 'raw,min,max'
+
+        // 2004
+        'cmi.learner_id': String(reg.id),
+        'cmi.learner_name': reg.learnerName || 'Learner',
+        'cmi.location': state.lessonLocation || '',
+        'cmi.completion_status': map['cmi.completion_status'] || (
+            ['completed', 'passed', 'failed'].includes(state.lessonStatus) ? 'completed'
+                : state.lessonStatus === 'incomplete' ? 'incomplete'
+                    : state.lessonStatus === 'not attempted' ? 'not attempted'
+                        : 'unknown'
+        ),
+        'cmi.success_status': map['cmi.success_status'] || (
+            state.lessonStatus === 'passed' ? 'passed'
+                : state.lessonStatus === 'failed' ? 'failed'
+                    : 'unknown'
+        ),
+        'cmi.score.raw': state.scoreRaw != null ? String(state.scoreRaw) : '',
+        'cmi.score.min': state.scoreMin != null ? String(state.scoreMin) : '',
+        'cmi.score.max': state.scoreMax != null ? String(state.scoreMax) : '',
+        'cmi.score.scaled': map['cmi.score.scaled'] != null
+            ? String(map['cmi.score.scaled'])
+            : (state.scoreRaw != null && state.scoreMax
+                ? String(state.scoreRaw / state.scoreMax)
+                : ''),
+        'cmi.total_time': state.totalTime || '00:00:00.00',
+        'cmi.session_time': state.sessionTime || '00:00:00.00',
+        'cmi.entry': state.entry === 'resume' ? 'resume' : 'ab-initio',
+        'cmi.mode': 'normal',
+        'cmi.credit': 'credit',
+        'cmi.exit': state.exit || '',
+        'cmi.progress_measure': map['cmi.progress_measure'] || ''
     };
 
     if (Object.prototype.hasOwnProperty.call(builtIn, el)) {
@@ -188,42 +279,98 @@ async function setValue(regId, token, element, value) {
         'cmi.core.total_time',
         'cmi.core.lesson_mode',
         'cmi.core._children',
-        'cmi.core.score._children'
+        'cmi.core.score._children',
+        'cmi.learner_id',
+        'cmi.learner_name',
+        'cmi.total_time',
+        'cmi.entry',
+        'cmi.mode',
+        'cmi.credit'
     ]);
     if (readOnly.has(el)) {
         return { ok: false, value: 'false', errorCode: 403 };
     }
 
+    // --- SCORM 1.2 ---
     if (el === 'cmi.core.lesson_status') {
         if (!LESSON_STATUS.has(val)) {
             return { ok: false, value: 'false', errorCode: 405 };
         }
         state.lessonStatus = val;
-    } else if (el === 'cmi.core.score.raw') {
+    } else if (el === 'cmi.core.score.raw' || el === 'cmi.score.raw') {
         const n = Number(val);
         if (Number.isNaN(n)) return { ok: false, value: 'false', errorCode: 405 };
         state.scoreRaw = n;
-    } else if (el === 'cmi.core.score.min') {
+    } else if (el === 'cmi.core.score.min' || el === 'cmi.score.min') {
         const n = Number(val);
         if (Number.isNaN(n)) return { ok: false, value: 'false', errorCode: 405 };
         state.scoreMin = n;
-    } else if (el === 'cmi.core.score.max') {
+    } else if (el === 'cmi.core.score.max' || el === 'cmi.score.max') {
         const n = Number(val);
         if (Number.isNaN(n)) return { ok: false, value: 'false', errorCode: 405 };
         state.scoreMax = n;
-    } else if (el === 'cmi.core.lesson_location') {
+    } else if (el === 'cmi.score.scaled') {
+        const n = Number(val);
+        if (Number.isNaN(n)) return { ok: false, value: 'false', errorCode: 405 };
+        const map = rawMap(state);
+        map[el] = val;
+        saveRawMap(state, map);
+        // If raw missing, approximate from scaled * max
+        if (state.scoreRaw == null && state.scoreMax != null) {
+            state.scoreRaw = Math.round(n * state.scoreMax);
+        }
+    } else if (el === 'cmi.core.lesson_location' || el === 'cmi.location') {
         state.lessonLocation = val.slice(0, 1000);
-    } else if (el === 'cmi.core.session_time') {
-        if (parseTimeToSeconds(val) === 0 && val && !/^\d+:\d{2}:\d{2}/.test(val)) {
+    } else if (el === 'cmi.core.session_time' || el === 'cmi.session_time') {
+        // Accept 1.2 HH:MM:SS or 2004 ISO-8601 PT…
+        const secs = parseTimeToSeconds(val);
+        if (val && secs === 0 && !/^P/i.test(val) && !/^\d+:\d{2}:\d{2}/.test(val)) {
             return { ok: false, value: 'false', errorCode: 405 };
         }
-        state.sessionTime = val;
-    } else if (el === 'cmi.core.exit') {
+        // Store normalized HH:MM:SS for roster; keep original in raw map if ISO
+        state.sessionTime = formatTime(secs);
+        if (/^P/i.test(val)) {
+            const map = rawMap(state);
+            map['cmi.session_time'] = val;
+            saveRawMap(state, map);
+        }
+    } else if (el === 'cmi.core.exit' || el === 'cmi.exit') {
         state.exit = val;
     } else if (el === 'cmi.suspend_data') {
         if (val.length > 65536) return { ok: false, value: 'false', errorCode: 405 };
         state.suspendData = val;
+    } else if (el === 'cmi.completion_status') {
+        if (!COMPLETION_STATUS.has(val)) {
+            return { ok: false, value: 'false', errorCode: 405 };
+        }
+        const map = rawMap(state);
+        map[el] = val;
+        saveRawMap(state, map);
+        // Promote to lessonStatus when meaningful
+        if (val === 'completed' && state.lessonStatus !== 'passed' && state.lessonStatus !== 'failed') {
+            state.lessonStatus = 'completed';
+        } else if (val === 'incomplete' && (state.lessonStatus === 'not attempted' || !state.lessonStatus)) {
+            state.lessonStatus = 'incomplete';
+        }
+    } else if (el === 'cmi.success_status') {
+        if (!SUCCESS_STATUS.has(val)) {
+            return { ok: false, value: 'false', errorCode: 405 };
+        }
+        const map = rawMap(state);
+        map[el] = val;
+        saveRawMap(state, map);
+        if (val === 'passed') state.lessonStatus = 'passed';
+        else if (val === 'failed') state.lessonStatus = 'failed';
+    } else if (el === 'cmi.progress_measure') {
+        const n = Number(val);
+        if (Number.isNaN(n) || n < 0 || n > 1) {
+            return { ok: false, value: 'false', errorCode: 405 };
+        }
+        const map = rawMap(state);
+        map[el] = val;
+        saveRawMap(state, map);
     } else {
+        // interactions.*, objectives.*, adl.nav.*, etc. — store in raw map
         const map = rawMap(state);
         map[el] = val;
         saveRawMap(state, map);
@@ -239,6 +386,10 @@ async function commit(regId, token) {
     if (!state.initialized) {
         return { ok: false, value: 'false', errorCode: 301 };
     }
+
+    const map = rawMap(state);
+    // Ensure lessonStatus reflects 2004 success/completion if only those were set
+    state.lessonStatus = deriveLessonStatus(state, map);
 
     const sessionSec = parseTimeToSeconds(state.sessionTime);
     const totalSec = parseTimeToSeconds(state.totalTime);
@@ -315,6 +466,7 @@ module.exports = {
     finish,
     errorString,
     parseTimeToSeconds,
+    parseIso8601Duration,
     formatTime,
     ERRORS
 };
