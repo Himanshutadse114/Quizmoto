@@ -205,6 +205,26 @@ export default function ScormAuthor() {
     }
   };
 
+  const downloadResultZip = async () => {
+    if (!resultPkg?.packageId) return;
+    try {
+      const res = await axios.get(apiUrl(`/api/scorm/packages/${resultPkg.packageId}/download`), {
+        headers,
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/zip' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(resultPkg.title || 'scorm-package').replace(/[^a-zA-Z0-9._-]+/g, '_')}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Download failed');
+    }
+  };
+
   const createCourse = async (andPublish = false) => {
     if (!resultPkg?.packageId) return;
     setCourseBusy(true);
@@ -410,7 +430,7 @@ export default function ScormAuthor() {
                 value={analysis.summary || ''}
                 onChange={(e) => setAnalysis({ ...analysis, summary: e.target.value })}
                 rows={3}
-                className="w-full mt-1 bg-white/10 border border-white/10 rounded-xl py-2.5 px-3 text-sm text-white/90"
+                className="w-full bg-white/10 border border-white/10 rounded-xl py-2.5 px-3 text-sm text-white/90 mt-1"
               />
             </div>
           </div>
@@ -479,7 +499,7 @@ export default function ScormAuthor() {
                             className="flex-1 bg-white/10 border border-white/10 rounded-lg py-1.5 px-2 text-sm text-white"
                           />
                           <button type="button" onClick={() => removeKeyPoint(i, ki)} className="text-xs text-red-300/80 px-2">
-                            ✕
+                            x
                           </button>
                         </div>
                       ))}
@@ -577,7 +597,18 @@ export default function ScormAuthor() {
 
       {step === 'done' && resultPkg && (
         <div className="rounded-3xl bg-white/5 border border-white/10 p-8 text-center space-y-4">
-          <div className="text-4xl">✅</div>
+          <div className="mx-auto mb-1 flex h-14 w-14 items-center justify-center rounded-2xl bg-quizmoto-green/20 text-quizmoto-green">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" opacity="0.35" />
+              <path
+                d="M7 12.5l3.2 3.2L17 8.5"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
           <h2 className="text-xl font-black">Package ready</h2>
           <p className="text-white/60 text-sm">
             <strong className="text-white">{resultPkg.title}</strong> · status{' '}
@@ -605,7 +636,18 @@ export default function ScormAuthor() {
                 </button>
               </>
             )}
-            <button type="button" onClick={() => navigate('/scorm/library')} className="px-4 py-2.5 rounded-xl bg-white/10 font-bold text-sm min-h-[44px]">
+            <button
+              type="button"
+              onClick={downloadResultZip}
+              className="px-4 py-2.5 rounded-xl bg-quizmoto-blue text-white font-black text-sm min-h-[44px]"
+            >
+              Download ZIP
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/scorm/library')}
+              className="px-4 py-2.5 rounded-xl bg-white/10 font-bold text-sm min-h-[44px]"
+            >
               Open library
             </button>
             <button
