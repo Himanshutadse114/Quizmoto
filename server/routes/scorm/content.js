@@ -50,8 +50,9 @@ async function sendContent(res, packageId, rel) {
     const buf = await storage.getObjectBuffer(key);
     res.setHeader('Content-Type', guessContentType(rel));
     res.setHeader('Cache-Control', 'private, max-age=300');
-    // Allow iframe embedding from the frontend origin
     res.setHeader('X-Content-Type-Options', 'nosniff');
+    // Content is only framed by same-origin play page
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
     res.send(buf);
 }
 
@@ -87,7 +88,6 @@ router.get('/t/:accessToken/*path', async (req, res) => {
 router.get('/:packageId/*path', async (req, res) => {
     try {
         const packageId = req.params.packageId;
-        // Skip if this looks like the /t/ route was mis-matched
         if (packageId === 't') {
             return res.status(404).json({ message: 'Not found' });
         }

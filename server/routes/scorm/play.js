@@ -1,7 +1,10 @@
 /**
  * Same-origin SCORM player shell.
- * Served from the backend host so the SCO iframe can find window.API / API_1484_11
+ * Served from the backend host so the SCO can find window.API / API_1484_11
  * via the standard parent-frame walk (cross-origin React parent cannot expose API).
+ *
+ * No sandbox attribute — Articulate/Storyline scormdriver uses window.open / dialogs
+ * that throw DOMException under sandbox (ShowDebugWindow path).
  */
 const express = require('express');
 const router = express.Router();
@@ -41,7 +44,8 @@ router.get('/:regId', async (req, res) => {
             return res.status(401).send('Invalid or expired token');
         }
 
-        if (decoded.scormRegId !== req.params.regId) {
+        // UUID string compare (JWT + path params)
+        if (String(decoded.scormRegId) !== String(req.params.regId)) {
             return res.status(403).send('Token does not match registration');
         }
 
@@ -81,24 +85,12 @@ router.get('/:regId', async (req, res) => {
   #frame{border:0;width:100%;height:calc(100% - 42px);display:block;background:#000}
   #status{opacity:.7}
 </style>
-</head>
-<body>
-<div id="bar">
-  <span id="status">SCORM Player · Loading…</span>
-  <div>
-    <button type="button" id="btnSave">Save</button>
-    <button type="button" id="btnExit">Exit</button>
-  </div>
-</div>
-<iframe id="frame" title="SCORM Content" src="${escapeHtml(contentSrc)}"
-  sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-  allow="autoplay"></iframe>
 <script>
+/* LMS API MUST be defined before the SCO iframe loads */
 (function () {
   var TOKEN = '${escapeJs(token)}';
   var RUNTIME = '${escapeJs(runtimeBase)}';
   var lastError = { code: 0 };
-  var statusEl = document.getElementById('status');
 
   function syncCall(method, path, body) {
     try {
@@ -111,8 +103,10 @@ router.get('/:regId', async (req, res) => {
       } else {
         xhr.send(null);
       }
-      var data = JSON.parse(xhr.responseText || '{}');
+      var data = {};
+      try { data = JSON.parse(xhr.responseText || '{}'); } catch (e2) {}
       if (data.errorCode != null) lastError.code = data.errorCode;
+      else if (xhr.status >= 400) lastError.code = 101;
       return data;
     } catch (e) {
       lastError.code = 101;
@@ -133,18 +127,24 @@ router.get('/:regId', async (req, res) => {
     405: 'Incorrect data type'
   };
 
-  // SCORM 1.2 LMS API (must be on this window so iframe parent walk finds it)
-  window.API = {
-    LMSInitialize: function () {
+  function setStatus(t) {
+    try {
+      var el = document.getElementById('status');
+      if (el) el.textContent = t;
+    } catch (e) {}
+  }
+
+  var api12 = {
+    LMSInitialize: function (p) {
       var d = syncCall('POST', RUNTIME + '/initialize', {});
       lastError.code = d.errorCode != null ? d.errorCode : (d.ok === false ? 101 : 0);
-      if (d.ok !== false) statusEl.textContent = 'SCORM Player · ' + (d.entry === 'resume' ? 'Resumed' : 'Started');
+      if (d.ok !== false) setStatus('SCORM Player · ' + (d.entry === 'resume' ? 'Resumed' : 'Started'));
       return d.ok === false ? 'false' : 'true';
     },
-    LMSFinish: function () {
+    LMSFinish: function (p) {
       var d = syncCall('POST', RUNTIME + '/finish', {});
       lastError.code = d.errorCode != null ? d.errorCode : 0;
-      statusEl.textContent = 'SCORM Player · ' + (d.summary && d.summary.lessonStatus ? d.summary.lessonStatus : 'Finished');
+      setStatus('SCORM Player · ' + (d.summary && d.summary.lessonStatus ? d.summary.lessonStatus : 'Finished'));
       return d.ok === false ? 'false' : 'true';
     },
     LMSGetValue: function (el) {
@@ -155,30 +155,56 @@ router.get('/:regId', async (req, res) => {
       var d = syncCall('POST', RUNTIME + '/set', { element: el, value: v });
       return d.ok === false ? 'false' : 'true';
     },
-    LMSCommit: function () {
+    LMSCommit: function (p) {
       var d = syncCall('POST', RUNTIME + '/commit', {});
-      if (d.summary && d.summary.lessonStatus) {
-        statusEl.textContent = 'SCORM Player · ' + d.summary.lessonStatus;
-      }
+      if (d.summary && d.summary.lessonStatus) setStatus('SCORM Player · ' + d.summary.lessonStatus);
       return d.ok === false ? 'false' : 'true';
     },
     LMSGetLastError: function () { return String(lastError.code || 0); },
     LMSGetErrorString: function (code) { return ERRORS[Number(code)] || 'Unknown error'; },
-    LMSGetDiagnostic: function (code) { return window.API.LMSGetErrorString(code); }
+    LMSGetDiagnostic: function (code) { return api12.LMSGetErrorString(code); }
   };
 
-  // SCORM 2004-style alias (partial — maps to 1.2 runtime)
-  window.API_1484_11 = {
-    Initialize: function (p) { return window.API.LMSInitialize(p); },
-    Terminate: function (p) { return window.API.LMSFinish(p); },
-    GetValue: function (el) { return window.API.LMSGetValue(el); },
-    SetValue: function (el, v) { return window.API.LMSSetValue(el, v); },
-    Commit: function (p) { return window.API.LMSCommit(p); },
-    GetLastError: function () { return window.API.LMSGetLastError(); },
-    GetErrorString: function (c) { return window.API.LMSGetErrorString(c); },
-    GetDiagnostic: function (c) { return window.API.LMSGetDiagnostic(c); }
+  var api2004 = {
+    Initialize: function (p) { return api12.LMSInitialize(p); },
+    Terminate: function (p) { return api12.LMSFinish(p); },
+    GetValue: function (el) { return api12.LMSGetValue(el); },
+    SetValue: function (el, v) { return api12.LMSSetValue(el, v); },
+    Commit: function (p) { return api12.LMSCommit(p); },
+    GetLastError: function () { return api12.LMSGetLastError(); },
+    GetErrorString: function (c) { return api12.LMSGetErrorString(c); },
+    GetDiagnostic: function (c) { return api12.LMSGetDiagnostic(c); }
   };
 
+  window.API = api12;
+  window.API_1484_11 = api2004;
+
+  // Some packages only look on top
+  try {
+    if (window.top && window.top !== window) {
+      window.top.API = api12;
+      window.top.API_1484_11 = api2004;
+    }
+  } catch (e) {}
+
+  window.__quizmotoScormReady = true;
+})();
+</script>
+</head>
+<body>
+<div id="bar">
+  <span id="status">SCORM Player · Ready</span>
+  <div>
+    <button type="button" id="btnSave">Save</button>
+    <button type="button" id="btnExit">Exit</button>
+  </div>
+</div>
+<iframe id="frame" name="scorm_content" title="SCORM Content"
+  src="${escapeHtml(contentSrc)}"
+  allow="autoplay; fullscreen"
+  allowfullscreen></iframe>
+<script>
+(function () {
   document.getElementById('btnSave').onclick = function () {
     try { window.API.LMSCommit(''); } catch (e) {}
   };
@@ -187,8 +213,6 @@ router.get('/:regId', async (req, res) => {
     if (window.history.length > 1) window.history.back();
     else window.close();
   };
-
-  statusEl.textContent = 'SCORM Player · Ready';
 })();
 </script>
 </body>
@@ -196,6 +220,8 @@ router.get('/:regId', async (req, res) => {
 
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');
+        // Allow this player page to frame content from same origin only
+        res.setHeader('Content-Security-Policy', "frame-ancestors 'self'; default-src 'self' 'unsafe-inline' data: blob:;");
         res.send(html);
     } catch (err) {
         res.status(500).send('Player error: ' + (err.message || 'unknown'));
