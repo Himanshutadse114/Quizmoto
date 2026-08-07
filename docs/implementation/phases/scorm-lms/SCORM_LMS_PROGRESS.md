@@ -45,3 +45,7 @@ Upload path works without `SCORM_AI_AUTHOR`.
 2. Set `SCORM_AI_AUTHOR=true` + `GEMINI_API_KEY`
 3. Test Create from policy → library → course → invite
 4. Socket live roster polish (Wave 2 remaining)
+
+## Plan pointer
+
+See `LEFTOVER_WAVES_AND_PLATFORM_PLAN.md` for Wave 2/3 leftovers, policy edit→import, mobile, favicon.
