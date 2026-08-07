@@ -56,7 +56,7 @@ router.post('/analyze', auth, async (req, res) => {
 router.post('/generate', auth, async (req, res) => {
     try {
         let analysis = req.body?.analysis;
-        const { fileBase64, mimeType, detailLevel, templateId, logoDataUrl, title } = req.body || {};
+        const { fileBase64, mimeType, detailLevel, templateId, logoDataUrl, title, replacePackageId } = req.body || {};
 
         if (!analysis) {
             if (!fileBase64) {
@@ -77,14 +77,37 @@ router.post('/generate', auth, async (req, res) => {
             logoDataUrl: logoDataUrl || null
         });
 
-        const pkg = await ScormPackage.create({
-            hostId: req.userId,
-            title: String(analysis.title || 'AI Course').slice(0, 200),
-            status: 'processing',
-            source: 'ai_author',
-            standard: 'scorm_1_2',
-            byteSize: zipBuf.length
-        });
+        const replaceId = req.body?.replacePackageId || req.body?.packageId || null;
+        let pkg = null;
+        if (replaceId) {
+            pkg = await ScormPackage.findOne({ where: { id: replaceId, hostId: req.userId } });
+            if (!pkg || pkg.status === 'deleted') {
+                return res.status(404).json({ message: 'Package to replace not found' });
+            }
+        }
+
+        if (!pkg) {
+            pkg = await ScormPackage.create({
+                hostId: req.userId,
+                title: String(analysis.title || 'AI Course').slice(0, 200),
+                status: 'processing',
+                source: 'ai_author',
+                standard: 'scorm_1_2',
+                byteSize: zipBuf.length,
+                templateId: Number(templateId) || 1,
+                analysisJson: JSON.stringify(analysis)
+            });
+        } else {
+            pkg.title = String(analysis.title || pkg.title || 'AI Course').slice(0, 200);
+            pkg.status = 'processing';
+            pkg.source = 'ai_author';
+            pkg.standard = 'scorm_1_2';
+            pkg.byteSize = zipBuf.length;
+            pkg.templateId = Number(templateId) || pkg.templateId || 1;
+            pkg.analysisJson = JSON.stringify(analysis);
+            pkg.errorMessage = null;
+            await pkg.save();
+        }
 
         const storage = getObjectStorage();
         const zipKey = packageZipKey(pkg.id);
