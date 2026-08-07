@@ -72,8 +72,48 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
   var score = 0;
   var quizResults = [];
   var completed = false;
+  var sessionStartMs = Date.now();
+  var commitTimer = null;
 
   function el(id){ return document.getElementById(id); }
+
+  /** SCORM 1.2 session_time: HHHH:MM:SS.ss */
+  function formatSessionTime(ms) {
+    var totalSec = Math.max(0, Math.floor(ms / 1000));
+    var h = Math.floor(totalSec / 3600);
+    var m = Math.floor((totalSec % 3600) / 60);
+    var s = totalSec % 60;
+    var frac = Math.floor((ms % 1000) / 10);
+    function pad2(n){ return (n < 10 ? '0' : '') + n; }
+    function pad4(n){ return (n < 10 ? '000' : n < 100 ? '00' : n < 1000 ? '0' : '') + n; }
+    return pad4(h) + ':' + pad2(m) + ':' + pad2(s) + '.' + pad2(frac);
+  }
+
+  function elapsedMs() {
+    return Date.now() - sessionStartMs;
+  }
+
+  function writeSessionTime() {
+    if (typeof doLMSSetValue !== 'function') return;
+    try {
+      doLMSSetValue('cmi.core.session_time', formatSessionTime(elapsedMs()));
+    } catch (e) {}
+  }
+
+  function commitProgress(extra) {
+    if (typeof doLMSSetValue !== 'function') return;
+    try {
+      writeSessionTime();
+      if (extra && typeof extra === 'object') {
+        for (var k in extra) {
+          if (Object.prototype.hasOwnProperty.call(extra, k)) {
+            doLMSSetValue(k, String(extra[k]));
+          }
+        }
+      }
+      doLMSCommit();
+    } catch (e) {}
+  }
 
   function render(){
     var area = el('content-area');
@@ -149,6 +189,7 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
     var p = Math.round((currentSlide / Math.max(1, slides.length - 1)) * 100);
     el('progress-fill').style.width = p + '%';
     el('progress-text').textContent = p + '%';
+    commitProgress({ 'cmi.core.lesson_location': String(currentSlide) });
   }
 
   function answer(qi, oi){
@@ -186,31 +227,54 @@ footer{height:64px;background:var(--secondary-bg);border-top:1px solid rgba(0,0,
   function exitSco(){
     if (completed) return;
     calcScore();
+    if (commitTimer) { try { clearInterval(commitTimer); } catch(e) {} commitTimer = null; }
     if (typeof doLMSSetValue === 'function') {
+      writeSessionTime();
       doLMSSetValue('cmi.core.score.raw', String(score));
       doLMSSetValue('cmi.core.score.min', '0');
       doLMSSetValue('cmi.core.score.max', '100');
       doLMSSetValue('cmi.core.lesson_status', score >= 70 ? 'passed' : 'completed');
+      doLMSSetValue('cmi.core.exit', 'normal');
       doLMSCommit();
       doLMSFinish();
     }
     completed = true;
+    try {
+      if (window.opener) window.opener.postMessage({ type: 'quizmoto_scorm_exit' }, '*');
+    } catch (e) {}
     alert('Training complete! Your score: ' + score + '%. You can close this window.');
+    try { window.close(); } catch (e) {}
   }
 
   el('prev-btn').addEventListener('click', function(){ moveSlide(-1); });
   el('next-btn').addEventListener('click', function(){ moveSlide(1); });
 
   window.onload = function(){
+    sessionStartMs = Date.now();
     render();
     if (typeof doLMSInitialize === 'function') {
       doLMSInitialize();
       doLMSSetValue('cmi.core.score.min', '0');
       doLMSSetValue('cmi.core.score.max', '100');
       doLMSSetValue('cmi.core.lesson_status', 'incomplete');
+      writeSessionTime();
       doLMSCommit();
+      commitTimer = setInterval(function(){
+        if (!completed) commitProgress();
+      }, 15000);
     }
   };
+
+  window.addEventListener('beforeunload', function(){
+    if (completed) return;
+    try {
+      writeSessionTime();
+      if (typeof doLMSSetValue === 'function') {
+        doLMSSetValue('cmi.core.exit', 'suspend');
+        doLMSCommit();
+      }
+    } catch (e) {}
+  });
 })();
 </script>
 </body>
@@ -250,52 +314,49 @@ async function buildScormPackageZip(analysis, opts = {}) {
             const ext = mimeType.split('/')[1].split('+')[0];
             logoFileName = `logo.${ext}`;
             zip.file(logoFileName, base64Data, { base64: true });
-            logoHtml = `<img src="${logoFileName}" alt="Logo" style="height:40px;max-width:100px;object-fit:contain;border-radius:6px" />`;
+            logoHtml = `<img src="${logoFileName}" alt="Logo" style="height:36px;width:auto;object-fit:contain"/>`;
         }
     }
 
-    const logoFileEntry = logoFileName ? `\n      <file href="${logoFileName}"/>` : '';
+    const playerHtml = buildPlayerHtml(analysis, theme, logoHtml, escapedTitle);
+    zip.file('index.html', playerHtml);
+    zip.file('scorm_api_wrapper.js', SCORM_WRAPPER);
 
     const manifest = `<?xml version="1.0" encoding="UTF-8"?>
-<manifest identifier="MANIFEST-${Date.now()}" version="1.1"
-          xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
-          xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://www.imsproject.org/xsd/imscp_rootv1p1p2 imscp_rootv1p1p2.xsd
-                              http://www.adlnet.org/xsd/adlcp_rootv1p2 adlcp_rootv1p2.xsd">
+<manifest identifier="com.quizmoto.ai.${Date.now()}" version="1.0"
+  xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
+  xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.imsproject.org/xsd/imscp_rootv1p1p2 imscp_rootv1p1p2.xsd
+                      http://www.adlnet.org/xsd/adlcp_rootv1p2 adlcp_rootv1p2.xsd">
   <metadata>
     <schema>ADL SCORM</schema>
     <schemaversion>1.2</schemaversion>
   </metadata>
-  <organizations default="B0">
-    <organization identifier="B0">
+  <organizations default="ORG-1">
+    <organization identifier="ORG-1">
       <title>${escapedTitle}</title>
       <item identifier="ITEM-1" identifierref="RES-1">
         <title>${escapedTitle}</title>
-        <adlcp:masteryscore>70</adlcp:masteryscore>
       </item>
     </organization>
   </organizations>
   <resources>
     <resource identifier="RES-1" type="webcontent" adlcp:scormtype="sco" href="index.html">
       <file href="index.html"/>
-      <file href="scorm_api_wrapper.js"/>${logoFileEntry}
+      <file href="scorm_api_wrapper.js"/>
+      ${logoFileName ? `<file href="${logoFileName}"/>` : ''}
     </resource>
   </resources>
 </manifest>`;
-
-    const playerHtml = buildPlayerHtml(analysis, theme, logoHtml, escapedTitle);
-
     zip.file('imsmanifest.xml', manifest);
-    zip.file('index.html', playerHtml);
-    zip.file('scorm_api_wrapper.js', SCORM_WRAPPER);
-    zip.file('content.json', JSON.stringify(analysis, null, 2));
 
     const buf = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
-    return Buffer.from(buf);
+    return buf;
 }
 
 module.exports = {
     buildScormPackageZip,
-    TEMPLATES
+    TEMPLATES,
+    escapeXML
 };
