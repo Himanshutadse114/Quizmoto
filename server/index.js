@@ -99,6 +99,9 @@ const startServer = async () => {
         app.use('/api/jobs', require('./routes/jobs'));
         app.use('/api/metrics', require('./routes/metrics'));
 
+        // SCORM World LMS (flag-gated inside router — returns 404 when SCORM_LMS=false)
+        app.use('/api/scorm', require('./routes/scorm'));
+
         if (process.env.NODE_ENV === 'test') {
             app.use('/api/test-only', require('./routes/testOnly'));
         }
