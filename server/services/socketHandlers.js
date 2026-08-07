@@ -39,6 +39,40 @@ function clearQuestionEndTimer(pin) {
   if (h) { clearTimeout(h); questionEndTimers.delete(pin); }
 }
 
+/** Server-authoritative 3-2-1 ticks so host + all players show the same number. */
+const COUNTDOWN_MS = 3000;
+const countdownTickTimers = new Map();
+function clearCountdownTicks(pin) {
+  const arr = countdownTickTimers.get(pin);
+  if (arr) {
+    for (const h of arr) clearTimeout(h);
+    countdownTickTimers.delete(pin);
+  }
+}
+function scheduleCountdownTicks(io, pin, startMs) {
+  clearCountdownTicks(pin);
+  const handles = [];
+  for (const value of [2, 1, 0]) {
+    const fireAt = startMs - value * 1000;
+    const delay = fireAt - Date.now();
+    if (delay <= 0) {
+      if (value === 0) {
+        try {
+          io.to(pin).emit('countdown_tick', { value: 0, startTime: startMs, serverTime: Date.now() });
+        } catch (_) {}
+      }
+      continue;
+    }
+    const h = setTimeout(() => {
+      try {
+        io.to(pin).emit('countdown_tick', { value, startTime: startMs, serverTime: Date.now() });
+      } catch (_) {}
+    }, delay);
+    handles.push(h);
+  }
+  countdownTickTimers.set(pin, handles);
+}
+
 const hostDisconnectTimers = new Map();
 const HOST_DISCONNECT_GRACE_MS = Number(process.env.HOST_DISCONNECT_GRACE_MS) || 30000;
 function clearHostDisconnectTimer(pin) {
@@ -54,6 +88,7 @@ module.exports = (io) => {
       if (!session) return;
       if (session.status !== 'question') return;
       clearQuestionEndTimer(pin);
+      clearCountdownTicks(pin);
 
       const quiz = await Quiz.findByPk(session.quizId, {
         include: [{ model: Question, as: 'questions' }],
@@ -153,7 +188,7 @@ module.exports = (io) => {
           if (token) {
             const decoded = SessionTokenService.verifyPlayerToken(token);
             if (decoded && decoded.sessionId === session.id && decoded.nickname === cleanNickname) {
-              player = await Player.findOne({ where: { sessionId: session.id, nickname: cleanNickname } });
+              player = await Player.findOne({ where: { sessionId: session.id, nickname: cleanNickname });
             }
           }
           try {
@@ -242,7 +277,8 @@ module.exports = (io) => {
 
         session.currentQuestionIndex = nextIndex;
         session.status = 'question';
-        session.questionStartTime = new Date(Date.now() + 3000);
+        const startMs = Date.now() + COUNTDOWN_MS;
+        session.questionStartTime = new Date(startMs);
         await session.save({ fields: ['currentQuestionIndex', 'status', 'questionStartTime'] });
 
         await Player.update(
@@ -251,14 +287,16 @@ module.exports = (io) => {
         );
 
         const question = quiz.questions[session.currentQuestionIndex];
-        const startMs = session.questionStartTime ? new Date(session.questionStartTime).getTime() : Date.now() + 3000;
+        const serverNow = Date.now();
         const questionData = {
           questionText: question.questionText, options: question.options, timer: question.timer,
           explanation: question.explanation, image: question.image,
           index: session.currentQuestionIndex, totalQuestions: quiz.questions.length,
-          startTime: startMs, serverTime: Date.now()
+          startTime: startMs, serverTime: serverNow,
+          countdown: 3, countdownMs: COUNTDOWN_MS
         };
         io.to(pin).emit('question_started', questionData);
+        scheduleCountdownTicks(io, pin, startMs);
         scheduleQuestionEnd(pin, startMs, question.timer);
       } catch (err) {
         console.error('Error in start_question:', err);
@@ -328,6 +366,7 @@ module.exports = (io) => {
         const hostId = SessionTokenService.verifyHostToken(token);
         if (!hostId || session.hostId !== hostId) return socket.emit('error', 'Unauthorized');
         clearQuestionEndTimer(pin);
+        clearCountdownTicks(pin);
         session.status = 'finished';
         await session.save({ fields: ['status'] });
         const players = await Player.findAll({ where: { sessionId: session.id }, order: [['score', 'DESC']] });
@@ -356,7 +395,7 @@ module.exports = (io) => {
           if (!session) return;
           let leftPlayer = await Player.findOne({ where: { socketId: socket.id } });
           if (!leftPlayer && nickname) {
-            leftPlayer = await Player.findOne({ where: { sessionId: session.id, nickname } });
+            leftPlayer = await Player.findOne({ where: { sessionId: session.id, nickname });
           }
           if (leftPlayer) { leftPlayer.socketId = null; await leftPlayer.save(); }
           session = await GameSession.findByPk(session.id, { include: [{ model: Player, as: 'players' }] });
@@ -375,6 +414,7 @@ module.exports = (io) => {
           if (!hostId || session.hostId !== hostId) return socket.emit('error', 'Unauthorized');
           clearHostDisconnectTimer(pin);
           clearQuestionEndTimer(pin);
+          clearCountdownTicks(pin);
           if (session.status !== 'finished') {
             session.status = 'finished';
             await session.save({ fields: ['status'] });
