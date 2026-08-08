@@ -24,7 +24,7 @@ import ScormLibrary from './pages/Scorm/Library';
 import ScormCourseDetail from './pages/Scorm/CourseDetail';
 import ScormLearnLanding from './pages/Scorm/LearnLanding';
 import ScormPlayerShell from './pages/Scorm/PlayerShell';
-import ScormAuthor from './pages/Scorm/Author';
+import ScormAuthor from './pages/Scorm/AuthorVisual';
 import ScormReports from './pages/Scorm/Reports';
 import ScormVisualStudio from './pages/Scorm/VisualStudio';
 
