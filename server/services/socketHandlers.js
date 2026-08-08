@@ -955,36 +955,42 @@ module.exports = (io) => {
           if (!authorization.ok) return socket.emit('error', 'Unauthorized');
 
           clearHostDisconnectTimer(pin);
-          clearQuestionEndTimer(pin);
-          clearCountdownTicks(pin);
           stopHostLeaseHeartbeat();
 
-          await sequelize.transaction(async (t) => {
-            const locked = await GameSession.findByPk(session.id, {
-              transaction: t,
-              lock: t.LOCK.UPDATE
+          let cancelled = false;
+          if (session.status !== 'finished') {
+            clearQuestionEndTimer(pin);
+            clearCountdownTicks(pin);
+            cancelled = await sequelize.transaction(async (t) => {
+              const locked = await GameSession.findByPk(session.id, {
+                transaction: t,
+                lock: t.LOCK.UPDATE
+              });
+              if (!locked || locked.status === 'finished') return false;
+              locked.status = 'finished';
+              locked.state = 'CANCELLED';
+              locked.stateVersion = Number(locked.stateVersion || 0) + 1;
+              locked.stateEnteredAt = new Date();
+              locked.lastErrorCode = 'HOST_ABORTED';
+              await locked.save({
+                transaction: t,
+                fields: ['status', 'state', 'stateVersion', 'stateEnteredAt', 'lastErrorCode']
+              });
+              return true;
             });
-            if (!locked || locked.status === 'finished') return;
-            locked.status = 'finished';
-            locked.state = 'CANCELLED';
-            locked.stateVersion = Number(locked.stateVersion || 0) + 1;
-            locked.stateEnteredAt = new Date();
-            locked.lastErrorCode = 'HOST_ABORTED';
-            await locked.save({
-              transaction: t,
-              fields: ['status', 'state', 'stateVersion', 'stateEnteredAt', 'lastErrorCode']
-            });
-          });
+          }
 
           await HostLeaseService.release({
             sessionId: session.id,
             ownerId: socket.id,
             force: true
           });
-          io.to(pin).emit('host_left', {
-            reason: 'aborted',
-            message: 'Host aborted the session'
-          });
+          if (cancelled) {
+            io.to(pin).emit('host_left', {
+              reason: 'aborted',
+              message: 'Host aborted the session'
+            });
+          }
           socket.leave(pin);
           socket.leave(`host_${pin}`);
           socket.data = {};
@@ -1055,6 +1061,21 @@ module.exports = (io) => {
           });
         } catch (_) {}
 
+        // A normal FINISHED session is terminal. Closing the host tab after the
+        // podium must never be reinterpreted as a host timeout/cancellation.
+        try {
+          const persisted = await GameSession.findByPk(Number(sessionId), {
+            attributes: ['id', 'status']
+          });
+          if (!persisted || persisted.status === 'finished') {
+            clearHostDisconnectTimer(pin);
+            return;
+          }
+        } catch (err) {
+          console.error('host disconnect state check error:', err);
+          return;
+        }
+
         // If another authorized host socket is still in the room, do not tell
         // players the host vanished. In the normal lease path there is one host,
         // but this also protects rolling deployments / duplicate join events.
@@ -1069,12 +1090,14 @@ module.exports = (io) => {
             const currentHosts = io.sockets.adapter.rooms.get(`host_${pin}`);
             if (currentHosts && currentHosts.size > 0) return;
 
-            const session = await sequelize.transaction(async (t) => {
+            const transition = await sequelize.transaction(async (t) => {
               const locked = await GameSession.findByPk(Number(sessionId), {
                 transaction: t,
                 lock: t.LOCK.UPDATE
               });
-              if (!locked || locked.status === 'finished') return locked;
+              if (!locked || locked.status === 'finished') {
+                return { cancelled: false, session: locked };
+              }
               locked.status = 'finished';
               locked.state = 'CANCELLED';
               locked.stateVersion = Number(locked.stateVersion || 0) + 1;
@@ -1084,12 +1107,12 @@ module.exports = (io) => {
                 transaction: t,
                 fields: ['status', 'state', 'stateVersion', 'stateEnteredAt', 'lastErrorCode']
               });
-              return locked;
+              return { cancelled: true, session: locked };
             });
 
-            clearQuestionEndTimer(pin);
-            clearCountdownTicks(pin);
-            if (session && session.status === 'finished') {
+            if (transition.cancelled) {
+              clearQuestionEndTimer(pin);
+              clearCountdownTicks(pin);
               io.to(pin).emit('host_left', {
                 reason: 'timeout',
                 message: 'Host did not reconnect — session ended for players'
