@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, MinusCircle, Flame, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import ReactionBar from '../../components/ReactionBar';
+import FinalPodium from '../../components/FinalPodium';
 import { audio } from '../../utils/audioEngine';
 
 const PlayerGame = () => {
@@ -542,11 +543,7 @@ const PlayerGame = () => {
                 {gameState === 'finished' && (
                     <motion.div key="finished" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                         className="flex-1 flex flex-col min-h-0 overflow-y-auto">
-                        <div className="flex justify-between items-center pt-2 pb-4">
-                            <div>
-                                <h1 className="text-2xl font-black italic leading-none">GAME OVER!</h1>
-                                <p className="text-xs font-bold opacity-70 uppercase tracking-widest">Final Standing</p>
-                            </div>
+                        <div className="flex justify-end items-center pt-1 pb-3 shrink-0">
                             <button
                                 type="button"
                                 onClick={() => {
@@ -555,42 +552,19 @@ const PlayerGame = () => {
                                     if (localStorage.getItem('playerToken')) navigate('/player/dashboard');
                                     else navigate('/');
                                 }}
-                                className="px-4 py-2 rounded-xl bg-white text-quizmoto-purple text-xs font-black"
+                                className="px-4 py-2 rounded-xl bg-white text-quizmoto-purple text-xs font-black shadow-lg"
                             >
                                 Done
                             </button>
                         </div>
 
-                        {leaderboard.length > 0 && (
-                            <div className="flex items-end justify-center gap-2 mb-6 px-2">
-                                {[1, 0, 2].map((podiumIdx) => {
-                                    const p = leaderboard[podiumIdx];
-                                    if (!p) return <div key={podiumIdx} className="w-24" />;
-                                    const heights = ['h-28', 'h-36', 'h-20'];
-                                    const medals = ['🥈', '🥇', '🥉'];
-                                    return (
-                                        <div key={podiumIdx} className="flex flex-col items-center w-24">
-                                            <div className="text-2xl mb-1">{medals[podiumIdx]}</div>
-                                            <div className="text-xs font-black truncate w-full text-center mb-1">{p.nickname}</div>
-                                            <div className="text-quizmoto-yellow font-black text-sm mb-1">{p.score}</div>
-                                            <div className={'w-full rounded-t-xl bg-white/20 ' + heights[podiumIdx]} />
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+                        <FinalPodium
+                            leaderboard={leaderboard}
+                            compact
+                            highlightNickname={playerInfo?.nickname}
+                        />
 
-                        <div className="space-y-2 pb-6">
-                            {leaderboard.slice(0, 10).map((p, i) => (
-                                <div key={p.nickname || i} className="flex items-center gap-3 bg-white/10 rounded-2xl px-4 py-3">
-                                    <span className="font-black text-white/40 w-6">{i + 1}</span>
-                                    <span className="font-black flex-1 truncate">{p.nickname}</span>
-                                    <span className="font-black text-quizmoto-yellow">{p.score}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="mt-auto pt-2 pb-4 flex justify-center">
+                        <div className="mt-auto pt-5 pb-4 flex justify-center">
                             <ReactionBar pin={playerInfo?.pin} />
                         </div>
                     </motion.div>
