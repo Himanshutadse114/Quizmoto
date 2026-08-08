@@ -27,17 +27,11 @@ function authoredPartCount(packageRow) {
 function progressFromLocation(location, packageRow) {
     if (location == null || location === '') return null;
     const raw = String(location).trim();
-
-    // Quizmoto-authored modules store the zero-based current part in lesson_location.
     if (/^\d+$/.test(raw)) {
         const current = Number(raw);
         const total = authoredPartCount(packageRow);
-        if (total && total > 1) {
-            return clampPercent((current / (total - 1)) * 100);
-        }
+        if (total && total > 1) return clampPercent((current / (total - 1)) * 100);
     }
-
-    // Accept a future-friendly location encoding such as "slide:3|progress:42".
     const match = raw.match(/(?:^|\|)progress:(\d+(?:\.\d+)?)/i);
     if (match) return clampPercent(match[1]);
     return null;
@@ -47,9 +41,7 @@ function deriveProgress({ registration, cmiState, packageRow }) {
     const lessonStatus = cmiState?.lessonStatus || registration?.lastLessonStatus || null;
     const map = parseJson(cmiState?.rawMapJson, {});
 
-    if (isFinished(lessonStatus) || registration?.status === 'completed') {
-        return 100;
-    }
+    if (isFinished(lessonStatus) || registration?.status === 'completed') return 100;
 
     const progressMeasure = Number(map['cmi.progress_measure']);
     if (Number.isFinite(progressMeasure) && progressMeasure >= 0 && progressMeasure <= 1) {
@@ -60,16 +52,15 @@ function deriveProgress({ registration, cmiState, packageRow }) {
     const fromLocation = progressFromLocation(location, packageRow);
     if (fromLocation != null) return fromLocation;
 
-    if (lessonStatus && String(lessonStatus).toLowerCase() !== 'not attempted') return 1;
-    if (registration?.status === 'active') return 1;
-    return 0;
+    if (!lessonStatus || String(lessonStatus).toLowerCase() === 'not attempted') return 0;
+    return null;
 }
 
 function locationLabel({ registration, cmiState, packageRow }) {
     const location = cmiState?.lessonLocation || null;
     if (!location) {
         if (isFinished(cmiState?.lessonStatus || registration?.lastLessonStatus)) return 'Completed';
-        return 'Not started';
+        return registration?.status === 'active' ? 'Started — location unavailable' : 'Not started';
     }
 
     const raw = String(location).trim();
@@ -106,6 +97,7 @@ function serializeRegistration(registration, course = null) {
     return {
         ...plain,
         progressPercent,
+        progressAvailable: progressPercent != null,
         lastLocation,
         stateVersion: cmiState?.stateVersion ?? null,
         lastLocationRaw: cmiState?.lessonLocation || null,
