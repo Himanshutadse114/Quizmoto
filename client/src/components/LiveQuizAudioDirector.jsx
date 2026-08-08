@@ -83,7 +83,8 @@ const LiveQuizAudioDirector = () => {
 
         const onQuestionResult = (data = {}) => {
             if (!isPlayerGame(pathname)) return;
-            audio.play(data.correct ? 'correct' : 'wrong');
+            if (data.answered === false) audio.play('timeout');
+            else audio.play(data.correct ? 'correct' : 'wrong');
             audio.setScene('results');
         };
 
