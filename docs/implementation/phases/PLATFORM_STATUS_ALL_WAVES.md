@@ -44,32 +44,25 @@
 - Disconnect grace (player ~45s); host disconnect grace + `host_left`  
 - Reports / metrics / logger / job queue (Phase 3) behind flags  
 
-### 2.2 SCORM LMS (Waves 0–2)
+### 2.2 SCORM LMS (Waves 0–2 + reports)
 
 | Item | Done |
 |------|------|
 | Package upload + library | Yes |
 | Course create / publish / invite | Yes |
 | Multi-user concurrent registrations | Yes |
-| Host live roster (socket `join_scorm_course`) | Yes |
-| CMI 1.2 runtime + 2004 data-model mapping (single-SCO) | Yes |
-| Same-origin player `/api/scorm/play/:regId` | Yes |
-| R2 / S3 storage; package delete clears R2 prefix | Yes |
-| AI Author: policy analyze → full editable draft → generate ZIP | Yes |
-| Download generated ZIP; re-upload / edit Quizmoto-authored packages | Yes |
-| xAPI statement endpoint (not full LRS) | Partial |
+| Host live roster + score/time tracking | Yes |
+| AI policy → SCORM author + edit | Yes |
+| **SCORM PDF + Excel reports (same structure as live quiz)** | Yes |
 
-**Not full SCORM 2004 sequencing / commercial LRS / LTI** — documented out of scope.
+### 2.3 Recent hotfixes
 
-### 2.3 Recent live-quiz polish (this cycle)
-
-| Change | Files |
-|--------|-------|
-| Q1 host/player 3-2-1 sync | Lobby handoff, GameView, PlayerGame, server ticks |
-| Podium after last question | `game_finished` emit + client listeners |
-| Frontend build: correct QR import | Lobby uses `qrcode.react` |
+| Fix | Detail |
+|-----|--------|
+| Lobby uses `qrcode.react` | Package name correct |
 | Wait screen shows remaining seconds | `PlayerGame` submitted state |
 | Accidental leave → Resume | Soft leave; Join resume card |
+| SCORM course reports | `GET /api/scorm/courses/reports/all` + `/:id/report?format=pdf|excel` |
 
 ---
 
@@ -78,7 +71,7 @@
 | ID | Task | Priority | Status |
 |----|------|----------|--------|
 | W3-T01 | Retake policy (allow / deny / max attempts) | P1 | Open |
-| W3-T02 | Completions CSV export (host course detail) | P1 | Open |
+| W3-T02 | Completions CSV / PDF / Excel reports (SCORM World) | P1 | **Done** |
 | W3-T03 | Interactions best-effort UI | P2 | Open |
 | W3-T04 | Security pass (rate limits, ZIP size, path traversal) | P0 | Partial |
 | W3-T05 | Ops runbook (flags, R2, Gemini, rollback) | P1 | Open |
@@ -102,14 +95,19 @@
 2. **Accidental leave** (back button, closed tab) — seat is kept (disconnect grace). Open **`/join`** → yellow **Resume game** card (PIN + nickname) → returns to lobby or mid-question with timer.  
 3. **Intentional leave** — use Leave on host-disconnect overlay (or leave flow that calls `leave_session`) to drop the seat.
 
+### SCORM reports
+
+1. Open **SCORM World → Reports** (`/scorm/reports`) or a course detail page.  
+2. Download **PDF** or **Excel** — includes overview, learner roster, scores, lesson status, total time, completion rate.
+
 ---
 
 ## 5. Deploy checklist
 
-1. Frontend redeploy after `PlayerGame` + `Join` commits.  
-2. Hard refresh host + player.  
-3. Smoke: start game → answer early → confirm timer on wait screen → close tab → `/join` → Resume → back in game.  
-4. Finish quiz → podium on host and player.
+1. Frontend + backend redeploy after SCORM report commits.  
+2. Hard refresh host.  
+3. Smoke: publish course → learners launch → host Downloads PDF/Excel from `/scorm/reports`.  
+4. Live quiz smoke: start game → answer early → timer on wait screen → finish → podium.
 
 ---
 
@@ -120,7 +118,7 @@
 | Live quiz product | ~95% (mobile QA remaining) |
 | Session engine V2 (flagged) | 100% code; production cutover 0% |
 | SCORM Waves 0–2 | 100% planned scope |
-| SCORM Wave 3 | ~30% |
+| SCORM Wave 3 | ~45% |
 | Overall Quizmoto platform (live + SCORM add-on) | ~85–90% of planned roadmap |
 
 ---
