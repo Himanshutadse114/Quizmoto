@@ -184,7 +184,8 @@ async function listCourseReports(hostId) {
 }
 
 async function tryPythonGenerate(jsonPath, outputPath, format, dir, courseId) {
-    const scriptPath = path.join(__dirname, '../utils/generate_scorm_report.py');
+    // Compact ReportLab performance panel avoids Matplotlib chart spacing/zero-bar issues.
+    const scriptPath = path.join(__dirname, '../utils/generate_scorm_report_clean.py');
     if (!fs.existsSync(scriptPath)) {
         throw new Error('SCORM Python report script missing: ' + scriptPath);
     }
