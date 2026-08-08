@@ -10,26 +10,41 @@ describe('Backend Integration Tests', function() {
     this.timeout(15000);
     let serverProcess;
 
-    before((done) => {
-        serverProcess = spawn('node', ['index.js'], { 
+    before(async () => {
+        serverProcess = spawn('node', ['index.js'], {
             cwd: path.join(__dirname, '..'),
             env: { ...process.env, PORT, NODE_ENV: 'test', QUIET: 'true' }
         });
-        
-        let started = false;
-        serverProcess.stdout.on('data', (data) => {
-            if (data.toString().includes(`Server running on port ${PORT}`)) {
-                if (!started) {
-                    started = true;
-                    setTimeout(done, 1000);
-                }
-            }
+
+        let lastStderr = '';
+        serverProcess.stderr.on('data', (data) => {
+            lastStderr += data.toString();
         });
+
+        const deadline = Date.now() + 12000;
+        while (Date.now() < deadline) {
+            if (serverProcess.exitCode != null) {
+                throw new Error(`Backend exited before becoming healthy: ${lastStderr}`);
+            }
+            try {
+                const res = await request(app).get('/health').timeout({ response: 750, deadline: 1000 });
+                if (res.status === 200) return;
+            } catch (_) {}
+            await new Promise((resolve) => setTimeout(resolve, 150));
+        }
+        throw new Error(`Backend did not become healthy on port ${PORT}: ${lastStderr}`);
     });
 
     after((done) => {
-        if (serverProcess) {
-            serverProcess.on('exit', () => done());
+        if (serverProcess && serverProcess.exitCode == null) {
+            const timer = setTimeout(() => {
+                try { serverProcess.kill('SIGKILL'); } catch (_) {}
+                done();
+            }, 3000);
+            serverProcess.once('exit', () => {
+                clearTimeout(timer);
+                done();
+            });
             serverProcess.kill();
         } else {
             done();
@@ -50,12 +65,14 @@ describe('Backend Integration Tests', function() {
     });
 
     it('test login should return 404 outside test mode', () => {
-        // Spawn a short-lived script that requires the router with NODE_ENV=production 
-        // to prove it returns 404.
+        // Spawn a short-lived script that requires the router with NODE_ENV=production
+        // to prove it returns 404. Supply a production-shaped JWT secret so the
+        // authentication fail-closed guard is not what this test is exercising.
         const script = `
             const express = require('express');
             const request = require('supertest');
             process.env.NODE_ENV = 'production';
+            process.env.JWT_SECRET = 'integration-test-production-secret';
             const auth = require('./routes/auth');
             const app = express();
             app.use('/api/auth', auth);
@@ -68,4 +85,3 @@ describe('Backend Integration Tests', function() {
         expect(result.status).to.equal(0);
     });
 });
-
