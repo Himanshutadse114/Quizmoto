@@ -55,15 +55,24 @@ describe('Live Quiz session security hardening', function () {
         );
 
         quiz = await Quiz.create({ title: 'Security Quiz', hostId: host.id });
-        await Question.create({
-            quizId: quiz.id,
-            questionText: 'Choose A',
-            options: ['A', 'B', 'C', 'D'],
-            correctIndex: 0,
-            // Keep the startup recovery timer safely outside the test-suite
-            // runtime so it cannot mutate shared SQLite state after teardown.
-            timer: 300
-        });
+        await Question.bulkCreate([
+            {
+                quizId: quiz.id,
+                questionText: 'Choose A',
+                options: ['A', 'B', 'C', 'D'],
+                correctIndex: 0,
+                // Keep the startup recovery timer safely outside the test-suite
+                // runtime so it cannot mutate shared SQLite state after teardown.
+                timer: 300
+            },
+            {
+                quizId: quiz.id,
+                questionText: 'Second question',
+                options: ['One', 'Two', 'Three', 'Four'],
+                correctIndex: 1,
+                timer: 300
+            }
+        ]);
 
         session = await GameSession.create({
             pin: 'SEC123',
@@ -248,6 +257,33 @@ describe('Live Quiz session security hardening', function () {
         expect(latePlayer.lastAnswerIndex).to.equal(-1);
         expect(latePlayer.score).to.equal(0);
         expect(await PlayerAnswer.count({ where: { playerId: latePlayer.id } })).to.equal(0);
+    });
+
+    it('advances from question index 0 to question index 1', async () => {
+        await session.update({
+            status: 'result',
+            state: 'ANSWER_REVEAL',
+            currentQuestionIndex: 0,
+            questionStartTime: new Date(Date.now() - 1000),
+            questionClosesAt: new Date(Date.now() + 299000)
+        });
+
+        const started = await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('second question did not start')), 3000);
+            hostSocket.once('question_started', (payload) => {
+                clearTimeout(timer);
+                resolve(payload);
+            });
+            hostSocket.emit('start_question', {
+                pin: session.pin,
+                token: hostToken
+            });
+        });
+
+        expect(started.index).to.equal(1);
+        expect(started.questionText).to.equal('Second question');
+        await session.reload();
+        expect(session.currentQuestionIndex).to.equal(1);
     });
 
     it('does not reinterpret a normally finished session as a host abort', async () => {
