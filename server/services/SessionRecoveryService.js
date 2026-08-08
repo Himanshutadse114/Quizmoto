@@ -29,6 +29,24 @@ function resolveCanonicalState(session) {
     return session.state;
 }
 
+function publicFinalStandings(session) {
+    const raw = typeof session.toJSON === 'function' ? session.toJSON() : { ...session };
+    const players = Array.isArray(raw.players) ? raw.players : [];
+    return [...players]
+        .sort((a, b) => {
+            const scoreDelta = Number(b.score || 0) - Number(a.score || 0);
+            if (scoreDelta !== 0) return scoreDelta;
+            return Number(a.id || 0) - Number(b.id || 0);
+        })
+        .map((player) => ({
+            id: player.id,
+            nickname: player.nickname,
+            score: Number(player.score || 0),
+            avatar: player.avatar || null,
+            teamName: player.teamName || null
+        }));
+}
+
 /**
  * Pure service for generating session recovery payloads.
  * Strictly read-only state reconstruction, decoupled from Socket.IO emission.
@@ -107,6 +125,11 @@ class SessionRecoveryService {
                 correctIndex: currentQuestion ? currentQuestion.correctIndex : -1,
                 leaderboard: []
             };
+        }
+
+        if (session.status === 'finished' && resolveCanonicalState(session) === 'FINISHED') {
+            stateData.players = publicFinalStandings(session);
+            stateData.podium = stateData.players.slice(0, 3);
         }
 
         return stateData;
@@ -215,7 +238,12 @@ class SessionRecoveryService {
                 timeLeft: playerPayload.timeLeft,
                 question: playerPayload.question,
                 currentQuestion: playerPayload.currentQuestion,
-                result: playerPayload.result || null
+                result: playerPayload.result || null,
+                // A normally FINISHED session may expose only public podium data.
+                // CANCELLED sessions intentionally omit standings and are
+                // distinguished by state/lastErrorCode in the envelope.
+                players: state === 'FINISHED' ? (playerPayload.players || []) : [],
+                podium: state === 'FINISHED' ? (playerPayload.podium || []) : []
             }
         };
     }
