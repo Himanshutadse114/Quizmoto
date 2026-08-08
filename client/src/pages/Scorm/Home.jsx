@@ -46,36 +46,10 @@ export default function ScormHome() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link
-            to="/scorm/library"
-            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 font-bold text-sm border border-white/10"
-          >
-            Package library
-          </Link>
-          <Link
-            to="/scorm/reports"
-            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 font-bold text-sm border border-white/10"
-          >
-            Reports
-          </Link>
-          <Link
-            to="/scorm/voice-preview"
-            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 font-bold text-sm border border-white/10"
-          >
-            Voice Lab
-          </Link>
-          <Link
-            to="/scorm/author"
-            className="px-4 py-2 rounded-xl bg-quizmoto-yellow text-black font-black text-sm shadow-[0_3px_0_0_#b8860b] hover:shadow-none hover:translate-y-0.5 transition-all"
-          >
-            Create from policy
-          </Link>
-          <Link
-            to="/scorm/library?upload=1"
-            className="px-4 py-2 rounded-xl bg-quizmoto-blue font-black text-sm shadow-[0_3px_0_0_#0e4b94] hover:shadow-none hover:translate-y-0.5 transition-all"
-          >
-            Upload SCORM
-          </Link>
+          <Link to="/scorm/library" className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 font-bold text-sm border border-white/10">Package library</Link>
+          <Link to="/scorm/reports" className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 font-bold text-sm border border-white/10">Reports</Link>
+          <Link to="/scorm/author" className="px-4 py-2 rounded-xl bg-quizmoto-yellow text-black font-black text-sm shadow-[0_3px_0_0_#b8860b] hover:shadow-none hover:translate-y-0.5 transition-all">Create from policy</Link>
+          <Link to="/scorm/library?upload=1" className="px-4 py-2 rounded-xl bg-quizmoto-blue font-black text-sm shadow-[0_3px_0_0_#0e4b94] hover:shadow-none hover:translate-y-0.5 transition-all">Upload SCORM</Link>
         </div>
       </div>
 
@@ -101,9 +75,7 @@ export default function ScormHome() {
           <div className="text-[10px] font-black uppercase tracking-widest text-white/50 mt-1">Packages</div>
         </div>
         <div className="rounded-2xl bg-white/5 p-5 border border-white/10">
-          <div className="text-3xl font-black">
-            {courses.filter((c) => c.status === 'published').length}
-          </div>
+          <div className="text-3xl font-black">{courses.filter((c) => c.status === 'published').length}</div>
           <div className="text-[10px] font-black uppercase tracking-widest text-white/50 mt-1">Published</div>
         </div>
         <div className="rounded-2xl bg-white/5 p-5 border border-white/10 col-span-2 md:col-span-1">
@@ -114,31 +86,15 @@ export default function ScormHome() {
 
       <h2 className="text-lg font-black mb-3 uppercase tracking-tight">Recent courses</h2>
       <div className="space-y-3 mb-10">
-        {courses.length === 0 && (
-          <p className="text-white/40 text-sm">No courses yet — upload a package or create from policy.</p>
-        )}
+        {courses.length === 0 && <p className="text-white/40 text-sm">No courses yet — upload a package or create from policy.</p>}
         {courses.slice(0, 10).map((c) => (
-          <Link
-            key={c.id}
-            to={`/scorm/courses/${c.id}`}
-            className="block rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 p-4 transition-all"
-          >
+          <Link key={c.id} to={`/scorm/courses/${c.id}`} className="block rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 p-4 transition-all">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="font-black text-white">{c.title}</div>
-                <div className="text-xs text-white/50 mt-1">
-                  Invite: <span className="font-mono text-quizmoto-yellow">{c.inviteCode}</span>
-                </div>
+                <div className="text-xs text-white/50 mt-1">Invite: <span className="font-mono text-quizmoto-yellow">{c.inviteCode}</span></div>
               </div>
-              <span
-                className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${
-                  c.status === 'published'
-                    ? 'bg-quizmoto-green/20 text-quizmoto-green'
-                    : 'bg-white/10 text-white/50'
-                }`}
-              >
-                {c.status}
-              </span>
+              <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${c.status === 'published' ? 'bg-quizmoto-green/20 text-quizmoto-green' : 'bg-white/10 text-white/50'}`}>{c.status}</span>
             </div>
           </Link>
         ))}
