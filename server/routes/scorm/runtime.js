@@ -1,15 +1,44 @@
 const express = require('express');
 const router = express.Router();
 const Runtime = require('../../services/scorm/ScormRuntimeService');
+const { ScormRegistration } = require('../../models/scorm');
+const Realtime = require('../../services/scorm/ScormRealtime');
 
 function bearer(req) {
     const h = req.header('Authorization') || '';
     return h.replace(/^Bearer\s+/i, '').trim();
 }
 
+async function emitRegistration(regId, event) {
+    try {
+        const reg = await ScormRegistration.findByPk(regId);
+        if (!reg) return;
+        Realtime.emitRegistrationUpdate({
+            courseId: reg.courseId,
+            event,
+            registration: {
+                id: reg.id,
+                courseId: reg.courseId,
+                learnerName: reg.learnerName,
+                learnerEmail: reg.learnerEmail,
+                status: reg.status,
+                isPreview: reg.isPreview,
+                lastLessonStatus: reg.lastLessonStatus,
+                lastScoreRaw: reg.lastScoreRaw,
+                lastTotalTime: reg.lastTotalTime,
+                lastCommitAt: reg.lastCommitAt,
+                updatedAt: reg.updatedAt
+            }
+        });
+    } catch (_) {
+        // Realtime is an optimization only; runtime persistence must never fail because of it.
+    }
+}
+
 router.post('/:regId/initialize', async (req, res) => {
     try {
         const result = await Runtime.initialize(req.params.regId, bearer(req));
+        await emitRegistration(req.params.regId, 'initialize');
         res.json(result);
     } catch (err) {
         const code = err.code === 'FORBIDDEN' ? 403 : err.code === 'NOT_FOUND' ? 404 : 500;
@@ -49,6 +78,7 @@ router.post('/:regId/set', async (req, res) => {
 router.post('/:regId/commit', async (req, res) => {
     try {
         const result = await Runtime.commit(req.params.regId, bearer(req));
+        await emitRegistration(req.params.regId, 'commit');
         res.json(result);
     } catch (err) {
         const code = err.code === 'FORBIDDEN' ? 403 : err.code === 'NOT_FOUND' ? 404 : 500;
@@ -59,6 +89,7 @@ router.post('/:regId/commit', async (req, res) => {
 router.post('/:regId/finish', async (req, res) => {
     try {
         const result = await Runtime.finish(req.params.regId, bearer(req));
+        await emitRegistration(req.params.regId, 'finish');
         res.json(result);
     } catch (err) {
         const code = err.code === 'FORBIDDEN' ? 403 : err.code === 'NOT_FOUND' ? 404 : 500;
