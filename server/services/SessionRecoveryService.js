@@ -1,49 +1,109 @@
 const { SessionStateMachine } = require('./SessionStateMachine');
 
+function parseOptions(raw) {
+    try {
+        if (Array.isArray(raw)) return raw;
+        if (typeof raw === 'string') {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        }
+        return [];
+    } catch (_) {
+        return [];
+    }
+}
+
+function resolveCanonicalState(session) {
+    const legacyState = SessionStateMachine.fromLegacyStatus(session.status);
+    if (!session.state || !SessionStateMachine.isValidState(session.state)) {
+        return legacyState;
+    }
+
+    // During the legacy/V2 migration a non-null default `LOBBY` could coexist
+    // with status=question/result. Prefer the value that agrees with the
+    // persisted legacy status instead of returning a contradictory recovery.
+    const stateLegacyStatus = SessionStateMachine.toLegacyStatus(session.state);
+    if (stateLegacyStatus !== session.status) {
+        return legacyState;
+    }
+    return session.state;
+}
+
 /**
  * Pure service for generating session recovery payloads.
  * Strictly read-only state reconstruction, decoupled from Socket.IO emission.
  */
 class SessionRecoveryService {
+    static buildQuestionPayload(session, quiz, serverTime = Date.now(), includeCorrect = false) {
+        const questions = quiz && Array.isArray(quiz.questions) ? quiz.questions : [];
+        const currentQuestion = questions[session.currentQuestionIndex];
+        if (!currentQuestion) return null;
+
+        const startTime = session.questionStartTime
+            ? new Date(session.questionStartTime).getTime()
+            : serverTime;
+        const payload = {
+            questionText: currentQuestion.questionText,
+            options: currentQuestion.options,
+            timer: currentQuestion.timer,
+            explanation: currentQuestion.explanation,
+            image: currentQuestion.image,
+            index: session.currentQuestionIndex,
+            totalQuestions: questions.length,
+            startTime
+        };
+        if (includeCorrect) payload.correctIndex = currentQuestion.correctIndex;
+        return payload;
+    }
+
     /**
-     * Builds the recovery payload for a player.
-     * Extracts only the information the player is permitted to see.
-     * @param {Object} session - The GameSession model instance
-     * @param {Object} player - The Player model instance
-     * @param {Object} quiz - The Quiz model instance with questions
-     * @param {number} serverTime - The current server time (Date.now())
-     * @returns {Object} State data payload
+     * Builds the recovery payload for a player. Player-safe: the correct answer
+     * is not exposed until the result state.
      */
     static buildPlayerRecoveryState(session, player, quiz, serverTime = Date.now()) {
-        const currentQuestion = quiz.questions[session.currentQuestionIndex];
+        const question = this.buildQuestionPayload(session, quiz, serverTime, false);
+        const timerSeconds = question ? Math.max(1, Number(question.timer) || 20) : 0;
+        const startTime = question ? question.startTime : serverTime;
+        const persistedClose = session.questionClosesAt
+            ? new Date(session.questionClosesAt).getTime()
+            : NaN;
+        const closesAt = Number.isFinite(persistedClose)
+            ? persistedClose
+            : startTime + (timerSeconds * 1000);
+        const timeLeft = session.status === 'question' && question
+            ? Math.max(0, Math.ceil((closesAt - serverTime) / 1000))
+            : 0;
 
-        let stateData = {
+        const stateData = {
             status: session.status,
-            question: currentQuestion ? {
-                questionText: currentQuestion.questionText,
-                options: currentQuestion.options,
-                timer: currentQuestion.timer,
-                explanation: currentQuestion.explanation,
-                image: currentQuestion.image,
-                index: session.currentQuestionIndex,
-                totalQuestions: quiz.questions.length,
-                startTime: session.questionStartTime ? session.questionStartTime.getTime() : serverTime
-            } : null,
+            state: resolveCanonicalState(session),
+            stateVersion: Number(session.stateVersion || 0),
+            currentQuestionIndex: session.currentQuestionIndex,
+            totalQuestions: quiz && Array.isArray(quiz.questions) ? quiz.questions.length : 0,
+            // `question` is the historical socket contract. `currentQuestion` is
+            // the client-friendly alias used by PlayerGame. Keep both until all
+            // deployed clients have converged.
+            question,
+            currentQuestion: question,
             serverTime,
-            score: player.score,
+            questionClosesAt: question ? closesAt : null,
+            score: Number(player.score || 0),
+            streak: Number(player.streak || 0),
             lastAnswerIndex: player.lastAnswerIndex,
             answered: player.lastAnswerIndex !== -1,
-            timeLeft: session.status === 'question' && session.questionStartTime && currentQuestion
-                ? Math.max(0, currentQuestion.timer - Math.floor((serverTime - session.questionStartTime.getTime()) / 1000))
-                : 0,
+            timeLeft,
             gameMode: session.gameMode
         };
 
         if (session.status === 'result') {
+            const questions = quiz && Array.isArray(quiz.questions) ? quiz.questions : [];
+            const currentQuestion = questions[session.currentQuestionIndex];
             stateData.result = {
-                correct: player.lastAnswerCorrect,
-                score: player.score,
+                correct: !!player.lastAnswerCorrect,
+                score: Number(player.score || 0),
                 answered: player.lastAnswerIndex !== -1,
+                nickname: player.nickname,
+                lastAnswerIndex: player.lastAnswerIndex,
                 correctIndex: currentQuestion ? currentQuestion.correctIndex : -1,
                 leaderboard: []
             };
@@ -52,45 +112,31 @@ class SessionRecoveryService {
         return stateData;
     }
 
-    /**
-     * Builds the recovery payload for a host.
-     * Includes all information (e.g., correct answer indices).
-     * @param {Object} session - The GameSession model instance
-     * @param {Object} quiz - The Quiz model instance with questions
-     * @param {number} serverTime - The current server time (Date.now())
-     * @returns {Object} Room info payload
-     */
+    /** Builds the recovery payload for a host. */
     static buildHostRecoveryState(session, quiz, serverTime = Date.now()) {
-        const currentQuestion = quiz.questions[session.currentQuestionIndex];
+        const currentQuestion = this.buildQuestionPayload(session, quiz, serverTime, true);
+        const raw = typeof session.toJSON === 'function' ? session.toJSON() : { ...session };
+        const players = Array.isArray(raw.players) ? raw.players : [];
+        const answeredPlayers = players.filter((p) => Number(p.lastAnswerIndex) >= 0);
+        const options = currentQuestion ? parseOptions(currentQuestion.options) : [];
+        const answerDistribution = options.map(
+            (_, index) => answeredPlayers.filter((p) => Number(p.lastAnswerIndex) === index).length
+        );
 
         return {
-            ...session.toJSON(),
-            currentQuestion: currentQuestion ? {
-                questionText: currentQuestion.questionText,
-                options: currentQuestion.options,
-                timer: currentQuestion.timer,
-                explanation: currentQuestion.explanation,
-                image: currentQuestion.image,
-                index: session.currentQuestionIndex,
-                totalQuestions: quiz.questions.length,
-                correctIndex: currentQuestion.correctIndex, // Host sees correct answer
-                startTime: session.questionStartTime ? session.questionStartTime.getTime() : serverTime
-            } : null,
-            serverTime
+            ...raw,
+            state: resolveCanonicalState(session),
+            currentQuestion,
+            serverTime,
+            answersCount: answeredPlayers.length,
+            answerDistribution,
+            playersCount: players.length
         };
     }
 
     /**
      * Canonical Phase 2 recovery envelope (REST).
      * Role-specific; never leaks pre-reveal answers to players.
-     *
-     * @param {Object} params
-     * @param {'host'|'player'} params.role
-     * @param {Object} params.session - GameSession instance
-     * @param {Object} params.quiz - Quiz with questions ordered
-     * @param {Object} [params.player] - Required when role is player
-     * @param {number} [params.serverTime]
-     * @returns {Object}
      */
     static buildCanonicalRecovery({ role, session, quiz, player = null, serverTime = Date.now() }) {
         if (role !== 'host' && role !== 'player') {
@@ -105,10 +151,7 @@ class SessionRecoveryService {
             throw err;
         }
 
-        const state =
-            session.state ||
-            SessionStateMachine.fromLegacyStatus(session.status);
-
+        const state = resolveCanonicalState(session);
         const stateVersion = Number(session.stateVersion || 0);
         const recoverySchemaVersion = Number(session.recoverySchemaVersion || 1);
 
@@ -140,8 +183,10 @@ class SessionRecoveryService {
                 payload: {
                     hostId: session.hostId,
                     currentQuestion: hostPayload.currentQuestion,
-                    // Host-only: full question list metadata without forcing client to re-fetch quiz
                     totalQuestions: quiz.questions ? quiz.questions.length : 0,
+                    answersCount: hostPayload.answersCount,
+                    answerDistribution: hostPayload.answerDistribution,
+                    playersCount: hostPayload.playersCount,
                     hostLeaseOwner: session.hostLeaseOwner || null,
                     hostLeaseExpiresAt: session.hostLeaseExpiresAt
                         ? new Date(session.hostLeaseExpiresAt).getTime()
@@ -150,12 +195,12 @@ class SessionRecoveryService {
             };
         }
 
-        // Player path — reuse existing safe builder
         const playerPayload = this.buildPlayerRecoveryState(session, player, quiz, serverTime);
-
-        // Defense in depth: never attach correctIndex on question object for players
         if (playerPayload.question && Object.prototype.hasOwnProperty.call(playerPayload.question, 'correctIndex')) {
             delete playerPayload.question.correctIndex;
+        }
+        if (playerPayload.currentQuestion && Object.prototype.hasOwnProperty.call(playerPayload.currentQuestion, 'correctIndex')) {
+            delete playerPayload.currentQuestion.correctIndex;
         }
 
         return {
@@ -164,11 +209,12 @@ class SessionRecoveryService {
                 playerId: player.id,
                 nickname: player.nickname,
                 score: playerPayload.score,
-                streak: player.streak != null ? player.streak : undefined,
+                streak: playerPayload.streak,
                 lastAnswerIndex: playerPayload.lastAnswerIndex,
                 answered: playerPayload.answered,
                 timeLeft: playerPayload.timeLeft,
                 question: playerPayload.question,
+                currentQuestion: playerPayload.currentQuestion,
                 result: playerPayload.result || null
             }
         };
