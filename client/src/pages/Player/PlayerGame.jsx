@@ -30,6 +30,8 @@ const PlayerGame = () => {
     const resultRef = useRef(null);
     const skipLeaveRef = useRef(false);
     const offsetRef = useRef(0);
+    const questionIndexRef = useRef(-1);
+    const questionStartRef = useRef(0);
 
     const leaveSession = useCallback((opts = {}) => {
         const clearStorage = opts.clearStorage !== false;
@@ -52,19 +54,24 @@ const PlayerGame = () => {
         offsetRef.current = offset;
         setClockOffset(offset);
         const syncedNow = Date.now() + offset;
-        setQuestion(data);
+        const startTime = data.startTime || (syncedNow + 3000);
+        questionIndexRef.current = data.index != null ? data.index : questionIndexRef.current;
+        questionStartRef.current = startTime;
+        setQuestion({ ...data, startTime });
         setLastAnswer(-1);
         lastAnswerRef.current = -1;
         setResult(null);
         resultRef.current = null;
         setPointsWon(0);
-        const delay = data.startTime - syncedNow;
-        if (delay > 0) {
+        setStreak(0);
+        const delay = startTime - syncedNow;
+        if (delay > 80) {
             setGameState('countdown');
             setCountdown(Math.min(3, Math.max(1, Math.ceil(delay / 1000))));
+            setTimeLeft(data.timer || 20);
         } else {
             setGameState('question');
-            const elapsed = Math.floor((syncedNow - data.startTime) / 1000);
+            const elapsed = Math.floor((syncedNow - startTime) / 1000);
             setTimeLeft(Math.max(0, (data.timer || 20) - elapsed));
         }
     }, []);
@@ -101,32 +108,56 @@ const PlayerGame = () => {
         });
 
         socket.on('countdown_tick', (data) => {
-            if (data && data.serverTime != null) {
+            if (!data) return;
+            if (data.index != null && questionIndexRef.current >= 0 && data.index !== questionIndexRef.current) {
+                return;
+            }
+            if (data.serverTime != null) {
                 offsetRef.current = data.serverTime - Date.now();
                 setClockOffset(offsetRef.current);
             }
-            const v = data && data.value != null ? Number(data.value) : 0;
+            const v = data.value != null ? Number(data.value) : 0;
+            const now = Date.now() + offsetRef.current;
             if (v <= 0) {
+                if (data.startTime != null) questionStartRef.current = data.startTime;
                 setGameState('question');
-                if (data && data.startTime != null) {
+                if (data.startTime != null) {
                     setQuestion((prev) => (prev ? { ...prev, startTime: data.startTime } : prev));
                 }
             } else {
+                if (questionStartRef.current && now >= questionStartRef.current) return;
                 setGameState('countdown');
                 setCountdown(v);
             }
         });
 
         socket.on('question_ended', (data) => {
-            if (resultRef.current) setGameState('result');
-            else setGameState('submitted');
+            if (!resultRef.current) {
+                const fallback = {
+                    correct: false,
+                    answered: lastAnswerRef.current !== -1,
+                    score: null,
+                    nickname: null
+                };
+                setResult(fallback);
+                resultRef.current = fallback;
+            }
+            setGameState('result');
+            setTimeLeft(0);
         });
 
         socket.on('question_result', (data) => {
+            try {
+                const info2 = JSON.parse(localStorage.getItem('player_info') || '{}');
+                if (data && data.nickname && info2.nickname && data.nickname !== info2.nickname) {
+                    return;
+                }
+            } catch (_) {}
             setResult(data);
             resultRef.current = data;
             setGameState('result');
-            if (data.correct) {
+            setTimeLeft(0);
+            if (data && data.correct) {
                 try {
                     confetti({ particleCount: 80, spread: 70, origin: { y: 0.7 } });
                 } catch (_) {}
@@ -220,8 +251,6 @@ const PlayerGame = () => {
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
-        // Accidental close/tab switch: keep player_info so they can Resume on /join.
-        // Only intentional Leave destroys the seat via leave_session.
         const onPageHide = () => {};
         window.addEventListener('pagehide', onPageHide);
 
@@ -242,7 +271,6 @@ const PlayerGame = () => {
             socket.off('error');
             if (timerRef.current) clearInterval(timerRef.current);
             try { audio.stopAll(); } catch (_) {}
-            // Do not auto leave_session on unmount — allows resume after accidental leave
         };
     }, [socket, navigate, leaveSession, applyQuestion]);
 
@@ -250,7 +278,8 @@ const PlayerGame = () => {
         if (gameState !== 'countdown' || !question) return;
         const tick = () => {
             const now = Date.now() + offsetRef.current;
-            const delay = question.startTime - now;
+            const start = questionStartRef.current || question.startTime;
+            const delay = start - now;
             if (delay <= 0) {
                 setGameState('question');
                 setTimeLeft(question.timer || 20);
@@ -259,12 +288,11 @@ const PlayerGame = () => {
             }
         };
         tick();
-        const interval = setInterval(tick, 50);
+        const interval = setInterval(tick, 100);
         return () => clearInterval(interval);
     }, [gameState, question]);
 
     useEffect(() => {
-        // Keep ticking while answering OR waiting after lock-in so player sees remaining time
         if ((gameState !== 'question' && gameState !== 'submitted') || !question) return;
         const tick = () => {
             const now = Date.now() + offsetRef.current;
@@ -413,9 +441,9 @@ const PlayerGame = () => {
                             <XCircle className="w-20 h-20 text-quizmoto-red mb-4" />
                         )}
                         <h2 className="text-3xl font-black mb-2">
-                            {result.correct ? 'Correct!' : (result.answered === false) ? 'Not answered' : 'Wrong'}
+                            {result.correct ? 'Correct!' : (result.answered === false) ? 'Time up' : 'Wrong'}
                         </h2>
-                        <p className="text-white/60 font-bold mb-2">Score: {result.score}</p>
+                        {result.score != null && <p className="text-white/60 font-bold mb-2">Score: {result.score}</p>}
                         {pointsWon > 0 && (
                             <p className="text-quizmoto-yellow font-black text-xl flex items-center gap-1">
                                 <Sparkles className="w-5 h-5" /> +{pointsWon}
