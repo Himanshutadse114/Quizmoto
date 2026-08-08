@@ -76,12 +76,9 @@ const GameView = () => {
         }
 
         socket.on('room_info', (sessionData) => {
-            if (sessionData.players) {
-                setPlayers(sessionData.players);
-                setPlayersCount(sessionData.players.length);
-            } else {
-                setPlayersCount(0);
-            }
+            const recoveredPlayers = Array.isArray(sessionData.players) ? sessionData.players : [];
+            setPlayers(recoveredPlayers);
+            setPlayersCount(recoveredPlayers.length);
 
             if (sessionData.status === 'question' || sessionData.status === 'result') {
                 if (sessionData.currentQuestion) {
@@ -90,7 +87,17 @@ const GameView = () => {
                         setClockOffset(offsetRef.current);
                     }
                     setQuestion(sessionData.currentQuestion);
+                    questionIndexRef.current = sessionData.currentQuestion.index ?? sessionData.currentQuestionIndex ?? -1;
+                    questionStartRef.current = sessionData.currentQuestion.startTime || 0;
+
                     if (sessionData.status === 'question') {
+                        // The server replays answer_received_host for already
+                        // answered players after this recovery payload, so reset
+                        // before those replay events arrive to avoid double counts.
+                        setAnswersCount(0);
+                        setAnswerDistribution([0, 0, 0, 0]);
+                        setResults(null);
+                        endedOnceRef.current = false;
                         const now = Date.now() + offsetRef.current;
                         const delay = (sessionData.currentQuestion.startTime || 0) - now;
                         if (delay > 50) {
@@ -102,12 +109,44 @@ const GameView = () => {
                             setTimer(Math.max(0, (sessionData.currentQuestion.timer || 20) - diff));
                         }
                     } else {
+                        const recoveredDistribution = Array.isArray(sessionData.answerDistribution)
+                            ? [...sessionData.answerDistribution].slice(0, 4)
+                            : [0, 0, 0, 0];
+                        while (recoveredDistribution.length < 4) recoveredDistribution.push(0);
+                        const recoveredLeaderboard = [...recoveredPlayers]
+                            .sort((a, b) => Number(b.score || 0) - Number(a.score || 0))
+                            .slice(0, 5);
+                        const recoveredTeams = Object.values(
+                            recoveredPlayers.reduce((acc, player) => {
+                                if (!player.teamName) return acc;
+                                const key = player.teamName;
+                                if (!acc[key]) acc[key] = { teamName: key, score: 0 };
+                                acc[key].score += Number(player.score || 0);
+                                return acc;
+                            }, {})
+                        ).sort((a, b) => b.score - a.score);
+
+                        setAnswersCount(Number(sessionData.answersCount || 0));
+                        setAnswerDistribution(recoveredDistribution);
+                        setLeaderboard(recoveredLeaderboard);
+                        setTeamStandings(recoveredTeams);
+                        setResults({
+                            correctIndex: sessionData.currentQuestion.correctIndex,
+                            distribution: recoveredDistribution,
+                            leaderboard: recoveredLeaderboard,
+                            teamStandings: recoveredTeams,
+                            answersCount: Number(sessionData.answersCount || 0),
+                            index: sessionData.currentQuestion.index,
+                            status: 'result'
+                        });
+                        setTimer(0);
+                        endedOnceRef.current = true;
                         setGameState('result');
                     }
                 }
             } else if (sessionData.status === 'finished') {
-                const sortedPlayers = sessionData.players
-                    ? [...sessionData.players].sort((a, b) => b.score - a.score)
+                const sortedPlayers = recoveredPlayers
+                    ? [...recoveredPlayers].sort((a, b) => b.score - a.score)
                     : [];
                 setLeaderboard(sortedPlayers);
                 setGameState('finished');
@@ -183,7 +222,7 @@ const GameView = () => {
             setAnswersCount(prev => prev + 1);
             setAnswerDistribution(prev => {
                 const next = [...prev];
-                next[answerIndex]++;
+                if (answerIndex >= 0 && answerIndex < next.length) next[answerIndex] += 1;
                 return next;
             });
         });
@@ -195,6 +234,12 @@ const GameView = () => {
             setResults(data);
             setLeaderboard(data.leaderboard || []);
             if (data.teamStandings) setTeamStandings(data.teamStandings);
+            if (typeof data.answersCount === 'number') setAnswersCount(data.answersCount);
+            if (Array.isArray(data.distribution)) {
+                const next = [...data.distribution].slice(0, 4);
+                while (next.length < 4) next.push(0);
+                setAnswerDistribution(next);
+            }
             setTimer(0);
         });
 
