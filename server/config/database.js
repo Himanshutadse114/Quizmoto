@@ -178,6 +178,23 @@ const connectDB = async () => {
             console.error('Sequelize sync error:', syncErr.message);
         }
 
+        // Keep the built-in Live Quiz library professional even for defaults that
+        // were imported before emoji-free seed titles were introduced. Exact-title
+        // matching avoids modifying user-created quiz names.
+        const defaultQuizTitleCleanup = [
+            ['🛡️ Phishing Awareness Challenge', 'Phishing Awareness Challenge'],
+            ['🔑 Password & Account Security', 'Password & Account Security'],
+            ['🌐 Remote Work & Public Wi-Fi', 'Remote Work & Public Wi-Fi'],
+            ['🏢 Office & Social Engineering', 'Office & Social Engineering']
+        ];
+        for (const [oldTitle, newTitle] of defaultQuizTitleCleanup) {
+            try {
+                await Quiz.update({ title: newTitle }, { where: { title: oldTitle } });
+            } catch (cleanupErr) {
+                console.warn('Default quiz title cleanup note:', cleanupErr.message);
+            }
+        }
+
         // SCORM additive columns (existing tables from earlier deploys lack newer fields)
         if (isPostgres) {
             await addColumnIfMissing(`ALTER TABLE "scorm_packages" ADD COLUMN "analysisJson" TEXT NULL`);
