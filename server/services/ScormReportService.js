@@ -55,7 +55,7 @@ async function loadCourseForExport(courseId, hostId) {
             {
                 model: ScormPackage,
                 as: 'package',
-                attributes: ['id', 'title', 'version', 'status', 'entryHref']
+                attributes: ['id', 'title', 'status', 'entryHref', 'standard', 'source']
             },
             {
                 model: ScormRegistration,
