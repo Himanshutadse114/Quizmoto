@@ -1,0 +1,282 @@
+.scorm-editorial {
+  --scorm-ink: #111111;
+  --scorm-paper: #F4F0E6;
+  min-height: 100vh;
+  background: var(--scorm-paper) !important;
+  color: var(--scorm-ink) !important;
+  font-family: Inter, Satoshi, Arial, Helvetica, sans-serif;
+}
+
+.scorm-editorial,
+.scorm-editorial * {
+  box-sizing: border-box;
+}
+
+.scorm-editorial * {
+  text-shadow: none !important;
+}
+
+.scorm-editorial [class*="shadow"] {
+  box-shadow: none !important;
+}
+
+.scorm-editorial [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.scorm-editorial [class*="bg-gradient"],
+.scorm-editorial [class*="from-"],
+.scorm-editorial [class*="via-"],
+.scorm-editorial [class*="to-"] {
+  background-image: none !important;
+}
+
+/* Default platform surfaces: printed paper with hard ink rules. */
+.scorm-editorial [class*="bg-[#"],
+.scorm-editorial [class*="bg-white"],
+.scorm-editorial [class*="bg-black"] {
+  background-color: var(--scorm-paper) !important;
+}
+
+/* Anything that used a semantic/accent fill becomes a single ink block. */
+.scorm-editorial [class*="bg-quizmoto-"],
+.scorm-editorial [class*="bg-blue-"],
+.scorm-editorial [class*="bg-red-"],
+.scorm-editorial [class*="bg-green-"],
+.scorm-editorial [class*="bg-emerald-"],
+.scorm-editorial [class*="bg-amber-"],
+.scorm-editorial [class*="bg-yellow-"],
+.scorm-editorial [class*="bg-orange-"],
+.scorm-editorial [class*="bg-pink-"],
+.scorm-editorial [class*="bg-violet-"],
+.scorm-editorial [class*="bg-purple-"],
+.scorm-editorial [class*="bg-indigo-"] {
+  background-color: var(--scorm-ink) !important;
+  color: var(--scorm-paper) !important;
+}
+
+/* One ink colour for all typography, statuses and icons. */
+.scorm-editorial [class*="text-white"],
+.scorm-editorial [class*="text-black"],
+.scorm-editorial [class*="text-gray-"],
+.scorm-editorial [class*="text-slate-"],
+.scorm-editorial [class*="text-zinc-"],
+.scorm-editorial [class*="text-blue-"],
+.scorm-editorial [class*="text-red-"],
+.scorm-editorial [class*="text-green-"],
+.scorm-editorial [class*="text-emerald-"],
+.scorm-editorial [class*="text-amber-"],
+.scorm-editorial [class*="text-yellow-"],
+.scorm-editorial [class*="text-orange-"],
+.scorm-editorial [class*="text-pink-"],
+.scorm-editorial [class*="text-violet-"],
+.scorm-editorial [class*="text-purple-"],
+.scorm-editorial [class*="text-indigo-"],
+.scorm-editorial [class*="text-quizmoto-"] {
+  color: var(--scorm-ink) !important;
+}
+
+.scorm-editorial [class*="border-[#"],
+.scorm-editorial [class*="border-white"],
+.scorm-editorial [class*="border-black"],
+.scorm-editorial [class*="border-blue-"],
+.scorm-editorial [class*="border-red-"],
+.scorm-editorial [class*="border-green-"],
+.scorm-editorial [class*="border-emerald-"],
+.scorm-editorial [class*="border-amber-"],
+.scorm-editorial [class*="border-yellow-"],
+.scorm-editorial [class*="border-pink-"],
+.scorm-editorial [class*="border-violet-"],
+.scorm-editorial [class*="border-indigo-"] {
+  border-color: var(--scorm-ink) !important;
+}
+
+.scorm-editorial [class*="divide-"] > * + * {
+  border-color: var(--scorm-ink) !important;
+}
+
+/* Editorial geometry: less SaaS softness, more print/poster structure. */
+.scorm-editorial [class*="rounded-3xl"],
+.scorm-editorial [class*="rounded-[24px]"],
+.scorm-editorial [class*="rounded-[32px]"],
+.scorm-editorial [class*="rounded-[40px]"],
+.scorm-editorial [class*="rounded-[48px]"] {
+  border-radius: 8px !important;
+}
+
+.scorm-editorial [class*="rounded-2xl"] {
+  border-radius: 6px !important;
+}
+
+.scorm-editorial [class*="rounded-xl"] {
+  border-radius: 4px !important;
+}
+
+.scorm-editorial h1,
+.scorm-editorial h2,
+.scorm-editorial h3 {
+  color: var(--scorm-ink) !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.035em;
+}
+
+.scorm-editorial main h1,
+.scorm-editorial main h2 {
+  text-transform: uppercase;
+}
+
+.scorm-editorial p,
+.scorm-editorial label,
+.scorm-editorial span,
+.scorm-editorial div {
+  border-color: var(--scorm-ink);
+}
+
+.scorm-editorial input,
+.scorm-editorial textarea,
+.scorm-editorial select {
+  background: var(--scorm-paper) !important;
+  color: var(--scorm-ink) !important;
+  border: 2px solid var(--scorm-ink) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+.scorm-editorial input::placeholder,
+.scorm-editorial textarea::placeholder {
+  color: var(--scorm-ink) !important;
+}
+
+.scorm-editorial input:focus,
+.scorm-editorial textarea:focus,
+.scorm-editorial select:focus {
+  outline: 3px solid var(--scorm-ink) !important;
+  outline-offset: 2px;
+}
+
+/* Generic coloured CTAs become black poster blocks. */
+.scorm-editorial a[class*="bg-quizmoto-"],
+.scorm-editorial button[class*="bg-quizmoto-"],
+.scorm-editorial a[class*="bg-blue-"],
+.scorm-editorial button[class*="bg-blue-"],
+.scorm-editorial a[class*="bg-green-"],
+.scorm-editorial button[class*="bg-green-"] {
+  background: var(--scorm-ink) !important;
+  color: var(--scorm-paper) !important;
+  border: 2px solid var(--scorm-ink) !important;
+}
+
+.scorm-editorial a[class*="bg-quizmoto-"] *,
+.scorm-editorial button[class*="bg-quizmoto-"] *,
+.scorm-editorial a[class*="bg-blue-"] *,
+.scorm-editorial button[class*="bg-blue-"] *,
+.scorm-editorial a[class*="bg-green-"] *,
+.scorm-editorial button[class*="bg-green-"] * {
+  color: var(--scorm-paper) !important;
+}
+
+.scorm-editorial main a:hover,
+.scorm-editorial main button:hover:not(:disabled) {
+  background: var(--scorm-ink) !important;
+  color: var(--scorm-paper) !important;
+}
+
+.scorm-editorial main a:hover *,
+.scorm-editorial main button:hover:not(:disabled) * {
+  color: var(--scorm-paper) !important;
+}
+
+/* Shared shell primitives. */
+.scorm-editorial .scorm-sidebar,
+.scorm-editorial .scorm-mobile-drawer {
+  background: var(--scorm-ink) !important;
+  color: var(--scorm-paper) !important;
+}
+
+.scorm-editorial .scorm-sidebar *,
+.scorm-editorial .scorm-mobile-drawer * {
+  color: var(--scorm-paper) !important;
+  border-color: var(--scorm-paper) !important;
+}
+
+.scorm-editorial .scorm-nav-item {
+  background: var(--scorm-ink) !important;
+  color: var(--scorm-paper) !important;
+  border: 1px solid transparent !important;
+  border-radius: 0 !important;
+}
+
+.scorm-editorial .scorm-nav-item:hover,
+.scorm-editorial .scorm-nav-active {
+  background: var(--scorm-paper) !important;
+  color: var(--scorm-ink) !important;
+  border-color: var(--scorm-paper) !important;
+}
+
+.scorm-editorial .scorm-nav-item:hover *,
+.scorm-editorial .scorm-nav-active * {
+  color: var(--scorm-ink) !important;
+  background: transparent !important;
+  border-color: var(--scorm-ink) !important;
+}
+
+.scorm-editorial .scorm-brand-mark {
+  background: var(--scorm-paper) !important;
+  color: var(--scorm-ink) !important;
+  border: 2px solid var(--scorm-paper) !important;
+  border-radius: 0 !important;
+}
+
+.scorm-editorial .scorm-topbar {
+  background: var(--scorm-paper) !important;
+  color: var(--scorm-ink) !important;
+  border-color: var(--scorm-ink) !important;
+}
+
+.scorm-editorial .scorm-button-primary {
+  background: var(--scorm-ink) !important;
+  color: var(--scorm-paper) !important;
+  border: 2px solid var(--scorm-ink) !important;
+  border-radius: 0 !important;
+}
+
+.scorm-editorial .scorm-button-primary * {
+  color: var(--scorm-paper) !important;
+}
+
+.scorm-editorial .scorm-button-secondary {
+  background: var(--scorm-paper) !important;
+  color: var(--scorm-ink) !important;
+  border: 2px solid var(--scorm-ink) !important;
+  border-radius: 0 !important;
+}
+
+.scorm-editorial .scorm-button-secondary * {
+  color: var(--scorm-ink) !important;
+}
+
+.scorm-editorial .scorm-rule {
+  border-color: var(--scorm-ink) !important;
+}
+
+/* Keep circular avatars/progress dots circular where semantics need it. */
+.scorm-editorial [class*="rounded-full"] {
+  border-color: var(--scorm-ink) !important;
+}
+
+@media (max-width: 767px) {
+  .scorm-editorial main {
+    font-size: 14px;
+  }
+
+  .scorm-editorial main h1 {
+    font-size: clamp(1.6rem, 8vw, 2.3rem) !important;
+    line-height: 0.98 !important;
+  }
+
+  .scorm-editorial main h2 {
+    font-size: clamp(1.35rem, 6vw, 1.9rem) !important;
+    line-height: 1 !important;
+  }
+}
