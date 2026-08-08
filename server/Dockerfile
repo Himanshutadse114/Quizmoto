@@ -34,6 +34,9 @@ RUN mkdir -p data/artifacts data/tmp \
 USER node
 
 ENV PORT=5001
+# Exact production frontend allowlist fallback for Render. A Render dashboard
+# CORS_ORIGIN environment variable still overrides this value when configured.
+ENV CORS_ORIGIN=https://kahoot-awareness-frontend.onrender.com
 ENV MPLCONFIGDIR=/tmp/matplotlib
 ENV PYTHONUNBUFFERED=1
 ENV REPORT_PYTHON_CMD=/usr/bin/python3
