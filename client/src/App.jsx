@@ -4,7 +4,6 @@ import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
 import WebsitePreviewLauncher from './components/WebsitePreviewLauncher';
-import './pages/WebsitePreviewHero.css';
 
 // Pages
 import Home from './pages/Home';
@@ -20,7 +19,7 @@ import PlayerLobby from './pages/Player/PlayerLobby';
 import PlayerGame from './pages/Player/PlayerGame';
 import PlayerLogin from './pages/Player/PlayerLogin';
 import PlayerDashboard from './pages/Player/PlayerDashboard';
-import WebsitePreview from './pages/WebsitePreview';
+import WebsitePreview from './pages/WebsitePreviewDual';
 
 // SCORM World
 import ScormPlatformShell from './pages/Scorm/ScormPlatformShell';
