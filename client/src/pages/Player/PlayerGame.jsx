@@ -136,13 +136,21 @@ const PlayerGame = () => {
         socket.on('session_info', (data) => {
             try {
                 if (data.status === 'question' && data.currentQuestion) {
-                    applyQuestion({
+                    const qPayload = {
                         ...data.currentQuestion,
                         startTime: data.currentQuestion.startTime || Date.now(),
                         timer: data.currentQuestion.timer || 20,
                         index: data.currentQuestionIndex ?? data.currentQuestion.index,
                         totalQuestions: data.totalQuestions
-                    });
+                    };
+                    applyQuestion(qPayload);
+                    if (data.answered || (data.lastAnswerIndex != null && data.lastAnswerIndex !== -1)) {
+                        const idx = data.lastAnswerIndex != null ? data.lastAnswerIndex : -1;
+                        lastAnswerRef.current = idx;
+                        setLastAnswer(idx);
+                        setGameState('submitted');
+                        if (typeof data.timeLeft === 'number') setTimeLeft(Math.max(0, data.timeLeft));
+                    }
                 } else if (data.status === 'result' && data.result) {
                     setResult(data.result);
                     resultRef.current = data.result;
@@ -150,6 +158,10 @@ const PlayerGame = () => {
                 } else if (data.status === 'lobby') {
                     skipLeaveRef.current = true;
                     navigate('/player/lobby');
+                } else if (data.status === 'finished') {
+                    const finalPlayers = data.players || data.podium || [];
+                    setLeaderboard(finalPlayers);
+                    setGameState('finished');
                 }
             } catch (err) {
                 console.error('session_info error', err);
@@ -200,23 +212,22 @@ const PlayerGame = () => {
                         pin: info2.pin,
                         nickname: info2.nickname,
                         role: 'player',
-                        token: info2.token
+                        token: info2.token,
+                        avatar: info2.avatar
                     });
                 }
             }
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
-        const onPageHide = () => {
-            if (!skipLeaveRef.current) leaveSession({ clearStorage: true });
-        };
+        // Accidental close/tab switch: keep player_info so they can Resume on /join.
+        // Only intentional Leave destroys the seat via leave_session.
+        const onPageHide = () => {};
         window.addEventListener('pagehide', onPageHide);
-        window.addEventListener('beforeunload', onPageHide);
 
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener('pagehide', onPageHide);
-            window.removeEventListener('beforeunload', onPageHide);
             socket.off('question_started');
             socket.off('countdown_tick');
             socket.off('question_ended');
@@ -231,7 +242,7 @@ const PlayerGame = () => {
             socket.off('error');
             if (timerRef.current) clearInterval(timerRef.current);
             try { audio.stopAll(); } catch (_) {}
-            if (!skipLeaveRef.current) leaveSession({ clearStorage: true });
+            // Do not auto leave_session on unmount — allows resume after accidental leave
         };
     }, [socket, navigate, leaveSession, applyQuestion]);
 
@@ -253,7 +264,8 @@ const PlayerGame = () => {
     }, [gameState, question]);
 
     useEffect(() => {
-        if (gameState !== 'question' || !question) return;
+        // Keep ticking while answering OR waiting after lock-in so player sees remaining time
+        if ((gameState !== 'question' && gameState !== 'submitted') || !question) return;
         const tick = () => {
             const now = Date.now() + offsetRef.current;
             const elapsed = Math.floor((now - question.startTime) / 1000);
@@ -370,9 +382,20 @@ const PlayerGame = () => {
 
                 {gameState === 'submitted' && (
                     <motion.div key="submitted" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                        className="flex-1 flex flex-col items-center justify-center">
+                        className="flex-1 flex flex-col items-center justify-center px-4">
+                        <div className={'text-6xl sm:text-7xl font-black tabular-nums mb-3 ' + (timeLeft <= 5 ? 'text-quizmoto-yellow' : 'text-white')}>
+                            {timeLeft}s
+                        </div>
                         <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mb-4" />
-                        <p className="font-bold text-white/70">Answer locked in…</p>
+                        <p className="font-black text-white text-lg">Answer locked in</p>
+                        <p className="font-bold text-white/50 text-sm mt-1 text-center">
+                            Waiting for others — time left on this question
+                        </p>
+                        {question && (
+                            <p className="text-white/30 text-xs font-bold uppercase tracking-widest mt-3">
+                                Q{(question.index || 0) + 1}/{question.totalQuestions || '?'}
+                            </p>
+                        )}
                         <div className="mt-8">
                             <ReactionBar pin={playerInfo?.pin} />
                         </div>
