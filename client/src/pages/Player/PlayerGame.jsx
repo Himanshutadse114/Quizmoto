@@ -85,6 +85,72 @@ const PlayerGame = () => {
         setPlayerInfo(info);
         if (!socket) return;
 
+        const recoverFromApi = async () => {
+            if (!info.sessionId || !info.token) return false;
+            const backendUrl = import.meta.env.VITE_BACKEND_URL || window.location.origin;
+            try {
+                const response = await fetch(
+                    `${backendUrl}/api/sessions/${encodeURIComponent(info.sessionId)}/recovery?role=player`,
+                    { headers: { Authorization: `Bearer ${info.token}` } }
+                );
+                if (!response.ok) return false;
+                const recovery = await response.json();
+                const payload = recovery.payload || {};
+
+                if (recovery.state === 'CANCELLED') {
+                    skipLeaveRef.current = true;
+                    try { localStorage.removeItem('player_info'); } catch (_) {}
+                    const reason = recovery.lastErrorCode === 'HOST_TIMEOUT'
+                        ? 'Host did not reconnect. The session has ended.'
+                        : 'The host ended this session.';
+                    alert(reason);
+                    navigate('/');
+                    return true;
+                }
+
+                if (recovery.status === 'finished' && recovery.state === 'FINISHED') {
+                    const finalPlayers = payload.players || payload.podium || [];
+                    setLeaderboard(finalPlayers);
+                    setGameState('finished');
+                    setIsHostDisconnected(false);
+                    return true;
+                }
+
+                if (recovery.status === 'question' && payload.currentQuestion) {
+                    const qPayload = {
+                        ...payload.currentQuestion,
+                        serverTime: recovery.serverTime,
+                        startTime: payload.currentQuestion.startTime || recovery.questionOpensAt || Date.now(),
+                        timer: payload.currentQuestion.timer || 20,
+                        index: recovery.currentQuestionIndex ?? payload.currentQuestion.index,
+                        totalQuestions: payload.currentQuestion.totalQuestions
+                    };
+                    applyQuestion(qPayload);
+                    if (payload.answered || (payload.lastAnswerIndex != null && payload.lastAnswerIndex !== -1)) {
+                        const idx = payload.lastAnswerIndex != null ? payload.lastAnswerIndex : -1;
+                        lastAnswerRef.current = idx;
+                        setLastAnswer(idx);
+                        setGameState('submitted');
+                        if (typeof payload.timeLeft === 'number') setTimeLeft(Math.max(0, payload.timeLeft));
+                    }
+                    return true;
+                }
+
+                if (recovery.status === 'result' && payload.result) {
+                    setResult(payload.result);
+                    resultRef.current = payload.result;
+                    setGameState('result');
+                    setTimeLeft(0);
+                    return true;
+                }
+
+                return false;
+            } catch (err) {
+                console.error('session recovery failed', err);
+                return false;
+            }
+        };
+
         socket.emit('join_room', {
             pin: info.pin,
             nickname: info.nickname,
@@ -131,7 +197,7 @@ const PlayerGame = () => {
             }
         });
 
-        socket.on('question_ended', (data) => {
+        socket.on('question_ended', () => {
             if (!resultRef.current) {
                 const fallback = {
                     correct: false,
@@ -169,6 +235,7 @@ const PlayerGame = () => {
                 if (data.status === 'question' && data.currentQuestion) {
                     const qPayload = {
                         ...data.currentQuestion,
+                        serverTime: data.serverTime,
                         startTime: data.currentQuestion.startTime || Date.now(),
                         timer: data.currentQuestion.timer || 20,
                         index: data.currentQuestionIndex ?? data.currentQuestion.index,
@@ -227,7 +294,17 @@ const PlayerGame = () => {
         });
 
         socket.on('error', (msg) => {
-            if (msg === 'Game not found' || msg === 'Game is already finished' || msg === 'Unauthorized Host Entry') {
+            if (msg === 'Game is already finished') {
+                recoverFromApi().then((recovered) => {
+                    if (!recovered) {
+                        skipLeaveRef.current = true;
+                        try { localStorage.removeItem('player_info'); } catch (_) {}
+                        navigate('/');
+                    }
+                });
+                return;
+            }
+            if (msg === 'Game not found' || msg === 'Unauthorized Host Entry') {
                 skipLeaveRef.current = true;
                 alert(msg);
                 try { localStorage.removeItem('player_info'); } catch (_) {}
@@ -317,6 +394,7 @@ const PlayerGame = () => {
         socket.emit('submit_answer', {
             pin: playerInfo.pin,
             nickname: playerInfo.nickname,
+            token: playerInfo.token,
             answerIndex: idx
         });
         setGameState('submitted');
