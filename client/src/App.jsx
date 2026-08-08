@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
+import WebsitePreviewLauncher from './components/WebsitePreviewLauncher';
 
 // Pages
 import Home from './pages/Home';
@@ -39,6 +40,7 @@ function App() {
       <SocketProvider>
         <Router basename={import.meta.env.VITE_APP_BASENAME || '/'}>
           <LiveQuizAudioDirector />
+          <WebsitePreviewLauncher />
           <div className="min-h-screen bg-quizmoto-darkPurple text-white relative">
             <div className="bg-shape shape-1 w-64 h-64 border-[32px] border-white rounded-full" />
             <div className="bg-shape shape-2 w-48 h-48 border-[24px] border-quizmoto-yellow rotate-45" />
