@@ -32,11 +32,7 @@ function resolveAuth(req) {
 
     const playerClaims = SessionTokenService.verifyPlayerToken(token);
     if (playerClaims && playerClaims.sessionId != null) {
-        return {
-            roleHint: 'player',
-            playerClaims,
-            token
-        };
+        return { roleHint: 'player', playerClaims, token };
     }
 
     return { error: 'INVALID_TOKEN', status: 401, message: 'Token is not valid' };
@@ -69,7 +65,6 @@ router.get('/:id/recovery', recoveryLimiter, async (req, res) => {
             });
         }
 
-        // Token role must match requested role
         if (requestedRole === 'host' && auth.roleHint !== 'host') {
             return res.status(403).json({
                 code: 'FORBIDDEN',
@@ -83,18 +78,21 @@ router.get('/:id/recovery', recoveryLimiter, async (req, res) => {
             });
         }
 
-        const session = await GameSession.findByPk(sessionId);
+        // Load presence alongside the session. Player recovery never serializes
+        // other players, while host recovery can reconstruct answer counts and
+        // distribution after a refresh/reconnect.
+        const session = await GameSession.findByPk(sessionId, {
+            include: [{ model: Player, as: 'players' }]
+        });
         if (!session) {
             return res.status(404).json({ code: 'SESSION_NOT_FOUND', message: 'Session not found' });
         }
 
-        if (requestedRole === 'host') {
-            if (session.hostId !== auth.hostId) {
-                return res.status(403).json({
-                    code: 'FORBIDDEN',
-                    message: 'Not the host of this session'
-                });
-            }
+        if (requestedRole === 'host' && Number(session.hostId) !== Number(auth.hostId)) {
+            return res.status(403).json({
+                code: 'FORBIDDEN',
+                message: 'Not the host of this session'
+            });
         }
 
         let player = null;
@@ -113,7 +111,6 @@ router.get('/:id/recovery', recoveryLimiter, async (req, res) => {
                 }
             });
 
-            // Fallback: nickname match if id missing in older tokens
             if (!player && auth.playerClaims.nickname) {
                 player = await Player.findOne({
                     where: {
