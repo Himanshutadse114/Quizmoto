@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+import { Copy, Eye, Users, CheckCircle2, Clock3, CircleDashed } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import { useSocket } from '../../context/SocketContext';
@@ -19,17 +20,15 @@ function openPlayerPopup(registrationId, token, packageId, entryHref) {
     window.location.href = url;
     return null;
   }
-  try {
-    win.focus();
-  } catch (_) {}
+  try { win.focus(); } catch (_) {}
   return win;
 }
 
 function barTone(value) {
-  if (value >= 100) return 'bg-emerald-400';
-  if (value >= 60) return 'bg-blue-400';
-  if (value > 0) return 'bg-amber-400';
-  return 'bg-white/15';
+  if (value >= 100) return 'bg-[#7b9285]';
+  if (value >= 60) return 'bg-[#829daf]';
+  if (value > 0) return 'bg-[#b39368]';
+  return 'bg-[#dfe5e1]';
 }
 
 function progressLabel(row) {
@@ -43,6 +42,18 @@ function progressLabel(row) {
   if (row.progressPercent > 0) return 'In progress';
   return 'Not started';
 }
+
+const Metric = ({ label, value, icon: Icon, tint, tone }) => (
+  <div className={`rounded-2xl border border-[#e1e6e2] p-4 ${tint}`}>
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <div className="text-2xl font-semibold tracking-[-0.04em] text-[#26312d]">{value}</div>
+        <div className="mt-1 text-[10px] font-semibold text-[#7e8983]">{label}</div>
+      </div>
+      {Icon && <div className="w-8 h-8 rounded-lg bg-white/75 border border-white grid place-items-center" style={{ color: tone }}><Icon size={15} /></div>}
+    </div>
+  </div>
+);
 
 export default function ScormCourseDetail() {
   const { id } = useParams();
@@ -80,7 +91,7 @@ export default function ScormCourseDetail() {
     loadRoster().catch(() => {});
     const t = setInterval(() => loadRoster().catch(() => {}), 12000);
     return () => clearInterval(t);
-  }, [token, id]);
+  }, [token, id, navigate, loadCourse, loadRoster]);
 
   useEffect(() => {
     if (!socket || !token || !id) return;
@@ -104,31 +115,24 @@ export default function ScormCourseDetail() {
     try {
       const res = await axios.patch(apiUrl(`/api/scorm/courses/${id}`), { status: 'published' }, { headers });
       setCourse(res.data);
-      setMsg('Course published — share the invite link');
-    } catch (err) {
-      setMsg(err.response?.data?.message || err.message);
-    }
+      setMsg('Course published. The learner invite link is ready to share.');
+    } catch (err) { setMsg(err.response?.data?.message || err.message); }
   };
 
   const unpublish = async () => {
     try {
       const res = await axios.patch(apiUrl(`/api/scorm/courses/${id}`), { status: 'draft' }, { headers });
       setCourse(res.data);
-    } catch (err) {
-      setMsg(err.response?.data?.message || err.message);
-    }
+    } catch (err) { setMsg(err.response?.data?.message || err.message); }
   };
 
   const preview = async () => {
     try {
       const res = await axios.post(apiUrl(`/api/scorm/courses/${id}/preview`), {}, { headers });
-      // The registration exists before the popup opens, so surface it immediately.
       await loadRoster().catch(() => {});
       openPlayerPopup(res.data.registrationId, res.data.token, res.data.packageId, res.data.entryHref);
-      setMsg('Preview opened. This Host Preview session is tracked below but excluded from learner totals.');
-    } catch (err) {
-      setMsg(err.response?.data?.message || err.message);
-    }
+      setMsg('Preview opened. Host preview progress appears below but is excluded from learner totals.');
+    } catch (err) { setMsg(err.response?.data?.message || err.message); }
   };
 
   const revoke = async (regId) => {
@@ -136,9 +140,7 @@ export default function ScormCourseDetail() {
     try {
       await axios.post(apiUrl(`/api/scorm/registrations/${regId}/revoke`), {}, { headers });
       await loadRoster();
-    } catch (err) {
-      setMsg(err.response?.data?.message || err.message);
-    }
+    } catch (err) { setMsg(err.response?.data?.message || err.message); }
   };
 
   const copyInvite = () => {
@@ -146,7 +148,7 @@ export default function ScormCourseDetail() {
     setMsg('Invite link copied');
   };
 
-  if (!course) return <div className="p-8 text-white/60">{msg || 'Loading course…'}</div>;
+  if (!course) return <div className="p-8 text-[#7d8882]">{msg || 'Loading course…'}</div>;
 
   const learnerRegs = regs.filter((r) => !r.isPreview);
   const previewRegs = regs.filter((r) => r.isPreview);
@@ -156,100 +158,105 @@ export default function ScormCourseDetail() {
   const unavailable = Number(trackingSummary?.unavailable || 0);
 
   return (
-    <div className="p-4 md:p-8 max-w-[1500px] mx-auto">
+    <div className="p-4 md:p-7 lg:p-8 max-w-[1500px] mx-auto">
       <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-5 mb-6">
-        <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.18em] font-black text-white/45">Course Workspace</div>
-          <h2 className="text-3xl md:text-4xl font-black tracking-tight mt-2">{course.title}</h2>
-          <p className="text-white/60 text-sm mt-2 max-w-3xl">{course.description || 'Manage publishing, learner access and progress for this course.'}</p>
+        <div className="min-w-0 max-w-3xl">
+          <div className="text-[11px] font-semibold text-[#829087]">Course workspace</div>
+          <h2 className="text-3xl md:text-[36px] font-semibold tracking-[-0.04em] mt-1.5">{course.title}</h2>
+          <p className="text-sm mt-2 leading-relaxed">{course.description || 'Manage publishing, learner access and progress for this course.'}</p>
           <div className="mt-3 flex flex-wrap gap-2 items-center">
-            <span className={`text-[9px] font-black uppercase tracking-[0.14em] px-2.5 py-1 rounded-full ${course.status === 'published' ? 'bg-emerald-600 text-white' : 'bg-[#314572] text-white/80'}`}>{course.status}</span>
-            <span className="text-xs text-white/55 font-mono">Invite {course.inviteCode}</span>
-            <span className="text-xs text-white/55">{course.package?.standard || 'SCORM'}</span>
+            <span className={`text-[9px] font-semibold px-2.5 py-1 rounded-full border ${course.status === 'published' ? 'bg-[#edf3ef] text-[#607568] border-[#dce8e0]' : 'bg-[#f5f0e8] text-[#987a52] border-[#e9decc]'}`}>{course.status}</span>
+            <span className="text-[11px] text-[#8a948f] font-mono">Invite {course.inviteCode}</span>
+            <span className="text-[11px] text-[#8a948f]">{course.package?.standard || 'SCORM'}</span>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {course.status !== 'published' ? (
-            <button onClick={publish} className="px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-xs font-black">Publish</button>
+            <button onClick={publish} className="scorm-button-primary px-4 py-2.5 text-xs font-semibold">Publish</button>
           ) : (
-            <button onClick={unpublish} className="px-4 py-2.5 rounded-xl bg-[#314572] border border-[#4c5f96] text-white text-xs font-bold">Unpublish</button>
+            <button onClick={unpublish} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold">Unpublish</button>
           )}
-          <button onClick={preview} className="px-4 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-black">Preview as learner</button>
+          <button onClick={preview} className="px-4 py-2.5 rounded-xl bg-[#eef3f7] border border-[#d7e2e9] text-[#657f90] text-xs font-semibold inline-flex items-center gap-2">
+            <Eye size={14} /> Preview as learner
+          </button>
         </div>
       </div>
 
-      {msg && <div className="mb-5 p-3.5 rounded-xl bg-[#293b68] text-sm border border-[#4c5f96]">{msg}</div>}
+      {msg && <div className="mb-5 p-3.5 rounded-xl bg-[#eef3f7] text-[#607889] text-sm border border-[#d9e3e9]">{msg}</div>}
 
       {course.status === 'published' && (
-        <div className="rounded-2xl bg-[#51461f] border border-[#75672e] p-4 mb-6">
-          <div className="text-[9px] font-black uppercase tracking-[0.16em] text-quizmoto-yellow mb-2">Learner invite link</div>
+        <div className="rounded-2xl bg-[#edf3ef] border border-[#dbe6df] p-4 md:p-5 mb-6">
+          <div className="text-[11px] font-semibold text-[#607568] mb-2">Learner invite link</div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <input readOnly value={inviteUrl} className="flex-1 bg-[#1c2a4d] rounded-xl px-3 py-2.5 text-sm font-mono text-white border border-[#4c5f96]" />
-            <button onClick={copyInvite} className="px-4 py-2.5 rounded-xl bg-quizmoto-yellow text-[#171126] font-black text-xs">Copy link</button>
+            <input readOnly value={inviteUrl} className="flex-1 px-3 py-2.5 text-xs font-mono" />
+            <button onClick={copyInvite} className="scorm-button-secondary px-4 py-2.5 font-semibold text-xs inline-flex items-center justify-center gap-2">
+              <Copy size={13} /> Copy link
+            </button>
           </div>
         </div>
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
-        {[
-          ['Learners', learnerRegs.length, 'text-white'],
-          ['Preview sessions', previewRegs.length, 'text-violet-200'],
-          ['In progress', active, 'text-blue-300'],
-          ['Completed', completed, 'text-emerald-300'],
-          ['Average progress', `${avgProgress.toFixed(0)}%`, 'text-quizmoto-yellow'],
-          ['Unavailable', unavailable, 'text-white/70']
-        ].map(([label, value, cls]) => (
-          <div key={label} className="rounded-2xl bg-[#263762] border border-[#3f4f86] p-4 md:p-5">
-            <div className={`text-2xl md:text-3xl font-black ${cls}`}>{value}</div>
-            <div className="text-[9px] font-black uppercase tracking-[0.14em] text-white/50 mt-1">{label}</div>
-          </div>
-        ))}
+        <Metric label="Learners" value={learnerRegs.length} icon={Users} tint="bg-[#edf3ef]" tone="#607568" />
+        <Metric label="Preview sessions" value={previewRegs.length} icon={Eye} tint="bg-[#f2eff6]" tone="#81759a" />
+        <Metric label="In progress" value={active} icon={Clock3} tint="bg-[#eef3f7]" tone="#6f899b" />
+        <Metric label="Completed" value={completed} icon={CheckCircle2} tint="bg-[#edf3ef]" tone="#607568" />
+        <Metric label="Average progress" value={`${avgProgress.toFixed(0)}%`} tint="bg-[#f5f0e8]" tone="#987a52" />
+        <Metric label="Unavailable" value={unavailable} icon={CircleDashed} tint="bg-[#f7eeee]" tone="#a86963" />
       </div>
 
-      <div className="rounded-2xl border border-[#3f4f86] bg-[#22325a] overflow-hidden">
-        <div className="px-4 md:px-5 py-4 border-b border-[#3f4f86] flex items-center justify-between gap-3 bg-[#293b68]">
+      <div className="scorm-soft-card overflow-hidden">
+        <div className="px-5 md:px-6 py-4 border-b border-[#e1e6e2] flex items-center justify-between gap-3 bg-[#fbfcfa]">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.14em] text-white/45 font-black">Learning operations</div>
-            <h3 className="font-black mt-1">Progress roster</h3>
+            <div className="text-[11px] font-semibold text-[#829087]">Learning operations</div>
+            <h3 className="font-semibold text-[17px] mt-0.5">Progress roster</h3>
           </div>
-          <span className="text-[10px] font-bold text-white/55">{live ? 'Live updates active' : '12s refresh'}</span>
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-[#7d8882]">
+            <span className={`w-1.5 h-1.5 rounded-full ${live ? 'bg-[#7b9285]' : 'bg-[#b8c0bc]'}`} />
+            {live ? 'Live updates' : 'Refreshes every 12s'}
+          </span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1150px] text-sm">
             <thead>
-              <tr className="text-left text-[9px] font-black uppercase tracking-[0.14em] text-white/50 border-b border-[#3f4f86] bg-[#24355e]">
-                <th className="p-3.5">Learner / Preview</th>
-                <th className="p-3.5 min-w-[220px]">Completion</th>
-                <th className="p-3.5">Last location</th>
-                <th className="p-3.5">Lesson status</th>
-                <th className="p-3.5">Score</th>
-                <th className="p-3.5">Time</th>
-                <th className="p-3.5">Last activity</th>
-                <th className="p-3.5"></th>
+              <tr className="text-left text-[10px] font-semibold text-[#7f8a84] border-b border-[#e1e6e2] bg-[#f7f9f6]">
+                <th className="p-4">Learner / preview</th>
+                <th className="p-4 min-w-[220px]">Completion</th>
+                <th className="p-4">Last location</th>
+                <th className="p-4">Lesson status</th>
+                <th className="p-4">Score</th>
+                <th className="p-4">Time</th>
+                <th className="p-4">Last activity</th>
+                <th className="p-4"></th>
               </tr>
             </thead>
             <tbody>
-              {regs.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-white/50">No learner or preview sessions yet.</td></tr>}
+              {regs.length === 0 && <tr><td colSpan={8} className="p-10 text-center text-[#929c97]">No learner or preview sessions yet.</td></tr>}
               {regs.map((r) => (
-                <tr key={r.id} className={`border-b border-[#33456f] ${r.isPreview ? 'bg-[#302d61]' : 'bg-[#22325a]'} hover:bg-[#2a3e69]`}>
-                  <td className="p-3.5">
+                <tr key={r.id} className={`border-b border-[#edf0ee] ${r.isPreview ? 'bg-[#fbf9fd]' : 'bg-white'} hover:bg-[#fafbf9]`}>
+                  <td className="p-4">
                     <div className="flex items-center gap-2">
-                      <div className="font-black">{r.learnerName || (r.isPreview ? 'Host Preview' : 'Learner')}</div>
-                      {r.isPreview && <span className="rounded-full bg-violet-500 px-2 py-0.5 text-[8px] uppercase tracking-[0.12em] font-black text-white">Preview</span>}
+                      <div className="font-semibold text-[#34413b]">{r.learnerName || (r.isPreview ? 'Host Preview' : 'Learner')}</div>
+                      {r.isPreview && <span className="rounded-full bg-[#f2eff6] border border-[#e3ddec] px-2 py-0.5 text-[8px] tracking-[0.08em] font-semibold text-[#81759a]">PREVIEW</span>}
                     </div>
-                    <div className="text-xs text-white/50 mt-0.5">{r.learnerEmail || (r.isPreview ? 'Host QA session' : 'No email')}</div>
+                    <div className="text-[11px] text-[#929c97] mt-0.5">{r.learnerEmail || (r.isPreview ? 'Host QA session' : 'No email')}</div>
                   </td>
-                  <td className="p-3.5">
-                    <div className="flex justify-between gap-3 mb-2"><span className="font-black text-xs">{r.progressAvailable ? `${Number(r.progressPercent).toFixed(0)}%` : '—'}</span><span className="text-[9px] uppercase tracking-[0.1em] font-black text-white/50">{progressLabel(r)}</span></div>
-                    <div className="h-2 rounded-full bg-[#182544] overflow-hidden">{r.progressAvailable && <div className={`h-full rounded-full ${barTone(r.progressPercent || 0)}`} style={{ width: `${Math.max(0, Math.min(100, r.progressPercent || 0))}%` }} />}</div>
+                  <td className="p-4">
+                    <div className="flex justify-between gap-3 mb-2">
+                      <span className="font-semibold text-[11px] text-[#405048]">{r.progressAvailable ? `${Number(r.progressPercent).toFixed(0)}%` : '—'}</span>
+                      <span className="text-[9px] font-medium text-[#8a948f]">{progressLabel(r)}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-[#edf0ee] overflow-hidden">
+                      {r.progressAvailable && <div className={`h-full rounded-full ${barTone(r.progressPercent || 0)}`} style={{ width: `${Math.max(0, Math.min(100, r.progressPercent || 0))}%` }} />}
+                    </div>
                   </td>
-                  <td className="p-3.5 text-xs font-bold text-white/75 max-w-[250px]">{r.lastLocation || 'Not started'}</td>
-                  <td className="p-3.5 text-xs font-mono text-white/70">{r.lastLessonStatus || '—'}</td>
-                  <td className="p-3.5 font-black">{r.lastScoreRaw != null ? r.lastScoreRaw : '—'}</td>
-                  <td className="p-3.5 font-mono text-xs text-white/70">{r.lastTotalTime || '—'}</td>
-                  <td className="p-3.5 text-xs text-white/60">{r.lastCommitAt ? new Date(r.lastCommitAt).toLocaleString() : r.updatedAt ? new Date(r.updatedAt).toLocaleString() : '—'}</td>
-                  <td className="p-3.5">{r.status !== 'revoked' && <button onClick={() => revoke(r.id)} className="text-[10px] font-black text-red-300 hover:text-red-200">Revoke</button>}</td>
+                  <td className="p-4 text-[11px] font-medium text-[#66716b] max-w-[250px]">{r.lastLocation || 'Not started'}</td>
+                  <td className="p-4 text-[11px] font-mono text-[#707a75]">{r.lastLessonStatus || '—'}</td>
+                  <td className="p-4 font-semibold text-[#536159]">{r.lastScoreRaw != null ? r.lastScoreRaw : '—'}</td>
+                  <td className="p-4 font-mono text-[11px] text-[#707a75]">{r.lastTotalTime || '—'}</td>
+                  <td className="p-4 text-[11px] text-[#7f8a84]">{r.lastCommitAt ? new Date(r.lastCommitAt).toLocaleString() : r.updatedAt ? new Date(r.updatedAt).toLocaleString() : '—'}</td>
+                  <td className="p-4">{r.status !== 'revoked' && <button onClick={() => revoke(r.id)} className="text-[10px] font-semibold text-[#a86963] hover:text-[#8f5954]">Revoke</button>}</td>
                 </tr>
               ))}
             </tbody>
