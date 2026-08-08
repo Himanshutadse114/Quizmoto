@@ -1,6 +1,6 @@
 const defaultQuizzes = [
     {
-        title: "🛡️ Phishing Awareness Challenge",
+        title: "Phishing Awareness Challenge",
         questions: [
             {
                 questionText: "Which of the following is a common sign of a phishing email?",
@@ -35,7 +35,7 @@ const defaultQuizzes = [
         ]
     },
     {
-        title: "🔑 Password & Account Security",
+        title: "Password & Account Security",
         questions: [
             {
                 questionText: "What does MFA stand for in security?",
@@ -64,7 +64,7 @@ const defaultQuizzes = [
         ]
     },
     {
-        title: "🌐 Remote Work & Public Wi-Fi",
+        title: "Remote Work & Public Wi-Fi",
         questions: [
             {
                 questionText: "When using free public Wi-Fi (e.g., at a cafe), which tool provides the best security?",
@@ -81,7 +81,7 @@ const defaultQuizzes = [
         ]
     },
     {
-        title: "🏢 Office & Social Engineering",
+        title: "Office & Social Engineering",
         questions: [
             {
                 questionText: "What is 'Tailgating' in physical security?",
