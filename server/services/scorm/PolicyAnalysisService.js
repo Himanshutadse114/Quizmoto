@@ -107,8 +107,8 @@ RULES — follow all of these strictly:
 1. SLIDES (generate ${level.slides} learning screens):
    - "title": clear professional screen title, title case, concise.
    - "content": concise on-screen explanation, approximately ${level.screenWords} words. Do not write long essay paragraphs.
-   - "keyPoints": 3–5 short learning points, preferably under 14 words each.
-   - "layout": choose exactly one of: "process", "cards", "timeline", "comparison", "hub", "spotlight".
+   - "keyPoints": 3–6 short learning points, preferably under 14 words each.
+   - "layout": choose exactly one of: "process", "cards", "timeline", "comparison", "hub", "spotlight", "matrix", "cycle".
    - Pick the layout based on the meaning of the content:
        process = steps/workflow/attack flow/how something works
        timeline = stages/phases/journey/sequence over time
@@ -116,23 +116,35 @@ RULES — follow all of these strictly:
        hub = categories/components/pillars/related concepts around one idea
        spotlight = one critical warning, risk, action, or takeaway
        cards = independent concepts/tips/items
+       matrix = likelihood vs impact, severity, prioritisation, risk categories
+       cycle = repeating lifecycle, continuous improvement, recurring process
    - Vary layouts throughout the course. Do not use the same layout on consecutive screens unless necessary.
    - "visualTitle": 2–6 word central label suitable for a diagram or visual.
-   - "imageQuery": retain a short 2–3 word visual keyword for future asset generation, but the current renderer will use deterministic vectors.
+   - "interaction": an object with:
+       "type": choose one of "step_explore", "hotspot_explore", "compare_reveal", "focus_reveal" based on the layout,
+       "prompt": one short learner instruction, preferably under 14 words.
+   - "imageQuery": retain a short 2–3 word visual keyword for compatibility, but the renderer uses deterministic vectors.
 
 2. VISUAL WRITING:
-   - Prefer short phrases that can fit inside cards, diagrams, timelines, and process nodes.
+   - Prefer short phrases that can fit inside cards, diagrams, timelines, matrices and process nodes.
    - Never repeat the same sentence in both content and keyPoints.
    - Make each screen teach one clear idea.
    - Where the policy describes a sequence, explicitly structure keyPoints in the correct order.
-   - Where the policy describes contrasting behavior, put recommended behavior first and risky behavior second.
+   - Where the policy describes contrasting behaviour, put recommended behaviour first and risky behaviour second.
+   - Where the policy describes risk, structure keyPoints from lower concern to higher concern when appropriate.
 
-3. QUIZ (generate 5–8 questions):
+3. ENGAGEMENT:
+   - At least one third of the learning screens should naturally invite exploration rather than passive reading.
+   - Do not invent facts, statistics, policy requirements, penalties, dates, or controls that are not supported by the source.
+   - Interactions are for exploration only unless the source clearly supports a right/wrong decision.
+
+4. QUIZ (generate 5–8 questions):
    - Test specific knowledge from the source.
    - 4 answer options per question.
    - "correctAnswer" is the 0-based index of the correct option.
+   - "explanation": one concise explanation of why the correct answer is right.
 
-4. OUTPUT must be valid JSON with keys: title, summary, slides, quiz.`
+5. OUTPUT must be valid JSON with keys: title, summary, slides, quiz.`
     });
 
     const body = {
