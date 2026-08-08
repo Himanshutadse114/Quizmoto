@@ -1,9 +1,23 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { BookOpen, Search, Users, CheckCircle2, Clock3, ChevronRight } from 'lucide-react';
+import { BookOpen, Search, Users, CheckCircle2, Clock3, ChevronRight, Plus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+
+const Metric = ({ label, value, icon: Icon, tint, tone }) => (
+  <div className={`rounded-2xl border border-[#e1e6e2] p-4 md:p-5 ${tint}`}>
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <div className="text-2xl md:text-[28px] font-semibold tracking-[-0.04em] text-[#26312d]">{value}</div>
+        <div className="mt-1 text-[10px] font-semibold text-[#7d8882]">{label}</div>
+      </div>
+      <div className="w-9 h-9 rounded-xl bg-white/75 border border-white grid place-items-center" style={{ color: tone }}>
+        <Icon size={16} />
+      </div>
+    </div>
+  </div>
+);
 
 export default function ScormCourses() {
   const { token } = useAuth();
@@ -43,76 +57,87 @@ export default function ScormCourses() {
   }, [courses, query, status]);
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
-      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-5 mb-8">
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.18em] text-white/35 font-black">Course Management</div>
-          <h2 className="text-3xl md:text-4xl font-black tracking-tight mt-2">Courses</h2>
-          <p className="text-white/45 text-sm mt-2 max-w-2xl">Publish, monitor and manage every learning experience from one workspace.</p>
+    <div className="p-4 md:p-7 lg:p-8 max-w-7xl mx-auto">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7">
+        <div className="max-w-2xl">
+          <div className="text-[11px] font-semibold text-[#829087]">Course management</div>
+          <h2 className="text-3xl md:text-[36px] font-semibold tracking-[-0.04em] mt-1.5">Courses</h2>
+          <p className="text-sm mt-2 leading-relaxed">Publish, monitor and manage every learning experience from one place.</p>
         </div>
-        <Link to="/scorm/author" className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-quizmoto-yellow text-[#171126] font-black text-sm">Create new course</Link>
+        <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold">
+          <Plus size={15} /> Create course
+        </Link>
       </div>
 
-      {error && <div className="mb-5 p-4 rounded-2xl border border-red-400/30 bg-red-500/10 text-red-200 text-sm">{error}</div>}
+      {error && <div className="mb-5 p-4 rounded-xl border border-[#ead4d1] bg-[#f7eeee] text-[#9e625d] text-sm">{error}</div>}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        {[
-          ['Total courses', courses.length, BookOpen, 'text-white'],
-          ['Published', courses.filter((c) => c.status === 'published').length, CheckCircle2, 'text-emerald-300'],
-          ['Draft', courses.filter((c) => c.status === 'draft').length, Clock3, 'text-amber-300'],
-          ['Learners', tracking.courses?.reduce((sum, c) => sum + Number(c.learners || 0), 0) || 0, Users, 'text-blue-300']
-        ].map(([label, value, Icon, cls]) => (
-          <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 md:p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className={`text-2xl md:text-3xl font-black ${cls}`}>{value}</div>
-                <div className="mt-1 text-[10px] uppercase tracking-[0.14em] font-black text-white/35">{label}</div>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-white/5 grid place-items-center text-white/45"><Icon size={18} /></div>
-            </div>
-          </div>
-        ))}
+        <Metric label="Total courses" value={courses.length} icon={BookOpen} tint="bg-[#edf3ef]" tone="#607568" />
+        <Metric label="Published" value={courses.filter((c) => c.status === 'published').length} icon={CheckCircle2} tint="bg-[#eef3f7]" tone="#6f899b" />
+        <Metric label="Draft" value={courses.filter((c) => c.status === 'draft').length} icon={Clock3} tint="bg-[#f5f0e8]" tone="#987a52" />
+        <Metric label="Learners" value={tracking.courses?.reduce((sum, c) => sum + Number(c.learners || 0), 0) || 0} icon={Users} tint="bg-[#f2eff6]" tone="#81759a" />
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
-        <div className="p-4 border-b border-white/10 flex flex-col md:flex-row gap-3 md:items-center justify-between">
+      <div className="scorm-soft-card overflow-hidden">
+        <div className="p-4 md:p-5 border-b border-[#e1e6e2] flex flex-col md:flex-row gap-3 md:items-center justify-between bg-[#fbfcfa]">
           <div className="relative flex-1 max-w-xl">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search courses or invite code" className="w-full rounded-xl border border-white/10 bg-black/20 pl-9 pr-3 py-2.5 text-sm outline-none focus:border-white/25" />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa39f]" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search courses or invite code"
+              className="w-full pl-9 pr-3 py-2.5 text-sm"
+            />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5 rounded-xl bg-[#f0f3f0] p-1 border border-[#e4e8e5]">
             {['all', 'published', 'draft'].map((item) => (
-              <button key={item} onClick={() => setStatus(item)} className={`px-3 py-2 rounded-xl text-xs font-black capitalize ${status === item ? 'bg-white text-[#111827]' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>{item}</button>
+              <button
+                key={item}
+                onClick={() => setStatus(item)}
+                className={`px-3 py-2 rounded-lg text-[11px] font-semibold capitalize ${status === item ? 'bg-white text-[#405048] shadow-sm' : 'text-[#7f8a84] hover:text-[#536159]'}`}
+              >
+                {item}
+              </button>
             ))}
           </div>
         </div>
 
-        <div className="divide-y divide-white/5">
-          {filtered.length === 0 && <div className="p-10 text-center text-white/35 text-sm">No courses match this view.</div>}
+        <div className="divide-y divide-[#e8ece9]">
+          {filtered.length === 0 && (
+            <div className="p-10 text-center">
+              <BookOpen size={23} className="mx-auto text-[#9ba59f] mb-3" />
+              <div className="text-sm font-semibold text-[#536159]">No courses match this view</div>
+              <div className="text-xs text-[#929c97] mt-1">Try a different search or filter.</div>
+            </div>
+          )}
           {filtered.map((course) => {
             const stats = trackingById.get(String(course.id)) || {};
             return (
-              <Link key={course.id} to={`/scorm/courses/${course.id}`} className="grid grid-cols-1 lg:grid-cols-[1.5fr_.7fr_.7fr_.7fr_auto] gap-4 items-center p-4 md:p-5 hover:bg-white/[0.035] transition-colors">
+              <Link
+                key={course.id}
+                to={`/scorm/courses/${course.id}`}
+                className="grid grid-cols-1 lg:grid-cols-[1.5fr_.65fr_.65fr_.75fr_auto] gap-4 items-center px-5 md:px-6 py-4.5 md:py-5 bg-white hover:bg-[#fafbf9] transition-colors"
+              >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
-                    <h3 className="font-black truncate">{course.title}</h3>
-                    <span className={`shrink-0 px-2 py-1 rounded-full text-[9px] uppercase tracking-[0.12em] font-black ${course.status === 'published' ? 'bg-emerald-400/10 text-emerald-300' : 'bg-amber-400/10 text-amber-200'}`}>{course.status}</span>
+                    <h3 className="font-semibold text-[13px] truncate text-[#34413b]">{course.title}</h3>
+                    <span className={`shrink-0 px-2 py-1 rounded-full text-[9px] font-semibold ${course.status === 'published' ? 'bg-[#edf3ef] text-[#607568] border border-[#dce8e0]' : 'bg-[#f5f0e8] text-[#987a52] border border-[#e9decc]'}`}>{course.status}</span>
                   </div>
-                  <div className="text-xs text-white/35 mt-1 font-mono">{course.inviteCode || 'No invite code'} · {course.package?.standard || 'SCORM'}</div>
+                  <div className="text-[10px] text-[#9aa39f] mt-1 font-mono">{course.inviteCode || 'No invite code'} · {course.package?.standard || 'SCORM'}</div>
                 </div>
                 <div>
-                  <div className="text-lg font-black">{stats.learners || 0}</div>
-                  <div className="text-[9px] uppercase tracking-[0.12em] font-black text-white/30">Learners</div>
+                  <div className="text-sm font-semibold text-[#405048]">{stats.learners || 0}</div>
+                  <div className="text-[9px] text-[#99a29e] mt-0.5">Learners</div>
                 </div>
                 <div>
-                  <div className="text-lg font-black text-emerald-300">{stats.completed || 0}</div>
-                  <div className="text-[9px] uppercase tracking-[0.12em] font-black text-white/30">Completed</div>
+                  <div className="text-sm font-semibold text-[#607568]">{stats.completed || 0}</div>
+                  <div className="text-[9px] text-[#99a29e] mt-0.5">Completed</div>
                 </div>
                 <div>
-                  <div className="text-lg font-black text-blue-300">{Number(stats.averageProgress || 0).toFixed(0)}%</div>
-                  <div className="text-[9px] uppercase tracking-[0.12em] font-black text-white/30">Avg progress</div>
+                  <div className="text-sm font-semibold text-[#6f899b]">{Number(stats.averageProgress || 0).toFixed(0)}%</div>
+                  <div className="text-[9px] text-[#99a29e] mt-0.5">Avg progress</div>
                 </div>
-                <ChevronRight size={18} className="text-white/25" />
+                <ChevronRight size={17} className="text-[#a6afaa]" />
               </Link>
             );
           })}
