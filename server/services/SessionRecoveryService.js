@@ -82,13 +82,14 @@ class SessionRecoveryService {
         const question = this.buildQuestionPayload(session, quiz, serverTime, false);
         const timerSeconds = question ? Math.max(1, Number(question.timer) || 20) : 0;
         const startTime = question ? question.startTime : serverTime;
+        const hasPersistedStart = !!session.questionStartTime;
         const persistedClose = session.questionClosesAt
             ? new Date(session.questionClosesAt).getTime()
             : NaN;
         const closesAt = Number.isFinite(persistedClose)
             ? persistedClose
             : startTime + (timerSeconds * 1000);
-        const timeLeft = session.status === 'question' && question
+        const timeLeft = session.status === 'question' && question && hasPersistedStart
             ? Math.max(0, Math.ceil((closesAt - serverTime) / 1000))
             : 0;
 
