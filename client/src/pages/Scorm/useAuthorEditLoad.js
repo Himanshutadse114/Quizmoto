@@ -34,13 +34,20 @@ export function useAuthorEditLoad({
         const res = await axios.get(apiUrl(`/api/scorm/packages/${editPackageId}/analysis`), { headers });
         if (cancelled) return;
         const a = res.data.analysis || {};
-        a.slides = (a.slides || []).map((s) => ({
+        a.slides = (a.slides || []).map((s, index) => ({
+          ...s,
           title: s.title || '',
           content: s.content || '',
           keyPoints: Array.isArray(s.keyPoints) ? s.keyPoints : [],
-          imageQuery: s.imageQuery || ''
+          imageQuery: s.imageQuery || '',
+          layout: s.layout || s.slideType || 'cards',
+          visualTitle: s.visualTitle || s.title || `Section ${index + 1}`,
+          interaction: s.interaction && typeof s.interaction === 'object'
+            ? s.interaction
+            : { type: 'hotspot_explore', prompt: 'Explore the learning points before continuing.' }
         }));
         a.quiz = (a.quiz || []).map((q) => ({
+          ...q,
           question: q.question || '',
           options:
             Array.isArray(q.options) && q.options.length >= 2
@@ -49,7 +56,8 @@ export function useAuthorEditLoad({
           correctAnswer:
             typeof q.correctAnswer === 'number'
               ? q.correctAnswer
-              : Number(q.correctAnswer) || 0
+              : Number(q.correctAnswer) || 0,
+          explanation: q.explanation || ''
         }));
         setAnalysis(a);
         setTemplateId(res.data.templateId || 1);
