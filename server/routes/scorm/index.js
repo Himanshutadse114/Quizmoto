@@ -11,6 +11,7 @@ router.use((req, res, next) => {
 
 router.use('/packages', require('./packages'));
 router.use('/courses', require('./courses'));
+router.use('/tracking', require('./tracking'));
 router.use('/registrations', require('./registrations'));
 router.use('/runtime', require('./runtime'));
 router.use('/content', require('./content'));
