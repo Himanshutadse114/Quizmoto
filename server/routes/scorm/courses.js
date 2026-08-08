@@ -7,6 +7,7 @@ const {
     ScormRegistration
 } = require('../../models/scorm');
 const { createInviteCode, signRegistrationToken } = require('../../services/scorm/ScormInviteService');
+const ScormReportService = require('../../services/ScormReportService');
 
 router.get('/', auth, async (req, res) => {
     const courses = await ScormCourse.findAll({
@@ -23,6 +24,19 @@ router.get('/', auth, async (req, res) => {
                 c.package.status !== 'deleted'
         )
     );
+});
+
+/**
+ * List SCORM course reports (summary) — same role as /api/quizzes/reports/all
+ */
+router.get('/reports/all', auth, async (req, res) => {
+    try {
+        const reports = await ScormReportService.listCourseReports(req.userId);
+        res.json(reports);
+    } catch (err) {
+        console.error('[scorm-reports] list failed', err);
+        res.status(500).json({ message: 'Server error' });
+    }
 });
 
 router.post('/', auth, async (req, res) => {
@@ -64,6 +78,40 @@ router.get('/code/:inviteCode', async (req, res) => {
         inviteCode: course.inviteCode,
         status: course.status
     });
+});
+
+/**
+ * Download course report PDF or Excel — mirrors /api/quizzes/reports/:id/export
+ */
+router.get('/:id/report', auth, async (req, res) => {
+    try {
+        const format = String(req.query.format || 'pdf').toLowerCase();
+        if (!['pdf', 'excel'].includes(format)) {
+            return res.status(400).json({ message: 'Invalid format' });
+        }
+
+        const generated = await ScormReportService.generateReportFile({
+            courseId: req.params.id,
+            hostId: req.userId,
+            format
+        });
+
+        res.download(generated.outputPath, generated.downloadName, (err) => {
+            ScormReportService.safeUnlink(generated.outputPath);
+            if (err && !res.headersSent) {
+                res.status(500).json({ message: 'Report download failed' });
+            }
+        });
+    } catch (err) {
+        console.error('[scorm-reports] export failed', err);
+        if (err.code === 'COURSE_NOT_FOUND') {
+            return res.status(404).json({ message: 'Course not found' });
+        }
+        if (err.code === 'INVALID_FORMAT') {
+            return res.status(400).json({ message: 'Invalid format' });
+        }
+        res.status(500).json({ message: 'Report generation failed' });
+    }
 });
 
 router.get('/:id', auth, async (req, res) => {
