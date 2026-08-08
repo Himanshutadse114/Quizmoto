@@ -8,14 +8,11 @@ import {
   BarChart3,
   BookOpen,
   Check,
-  ChevronRight,
   CirclePlay,
   Clock3,
   FileText,
-  Gamepad2,
   Library,
   MonitorUp,
-  Palette,
   Play,
   QrCode,
   Radio,
@@ -25,65 +22,18 @@ import {
   Trophy,
   Upload,
   Users,
-  WandSparkles,
-  Zap
+  WandSparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './WebsitePreview.css';
 
-const SCORM_FEATURES = [
-  ['Policy PDF → course', 'Upload a policy PDF and let AI turn dense source material into a structured learning experience.', FileText, 'mint'],
-  ['AI Visual Author', 'AI builds the course flow, learning screens, interactions and quiz content from the document.', Sparkles, 'lilac'],
-  ['SCORM-ready output', 'The generated learning package is prepared for browser delivery and SCORM tracking.', BookOpen, 'sky'],
-  ['Instant learner tracking', 'Track completion percentage, last location, status, score and time as soon as learners start.', Activity, 'rose'],
-  ['Built-in LMS delivery', 'Publish a course, share an invite link and let learners start without a separate LMS account.', Users, 'yellow'],
-  ['Resume-aware learning', 'Learners can continue from saved state instead of restarting the course from the beginning.', CirclePlay, 'mint'],
-  ['Visual Studio', 'Refine layouts, interactions and visual hierarchy before rebuilding the package.', Palette, 'lilac'],
-  ['PDF & Excel reports', 'Generate learner and course audit reports from the same tracked data.', BarChart3, 'sky']
-];
-
-const LIVE_FEATURES = [
-  ['Real-time multiplayer', 'Keep host and players synchronized through every question state.', Radio, 'mint'],
-  ['PIN-based joining', 'Players join fast through a simple browser flow.', QrCode, 'sky'],
-  ['Quiz builder', 'Create, edit, search and reuse live quizzes from one host workspace.', WandSparkles, 'lilac'],
-  ['Game-show countdowns', 'Countdown cues, answer-lock feedback and timer urgency make every question feel live.', Clock3, 'yellow'],
-  ['Instant feedback', 'Players get clear correct, wrong and timeout feedback after answering.', Zap, 'rose'],
-  ['Final podium', 'Finish sessions with a polished ranked podium rather than a plain result table.', Trophy, 'mint'],
-  ['Session recovery', 'Reconnect flows restore live state when a host or player loses connection.', ShieldCheck, 'sky'],
-  ['Live Quiz reports', 'Review participation and performance after the session ends.', BarChart3, 'lilac']
-];
-
-const PLATFORM_FEATURES = [
-  ['Browser based', 'Authors, hosts and learners work directly in the browser.', MonitorUp, 'cobalt'],
-  ['Responsive journeys', 'The website, SCORM workspace, learner flows and Live Quiz adapt across phones, tablets and desktop.', Gamepad2, 'rose'],
-  ['Package validation', 'SCORM imports are validated before becoming deliverable learning packages.', Upload, 'mint'],
-  ['Visual learning', 'Generated courses use layouts, diagrams and interactions instead of wall-of-text slides.', ScanText, 'lilac'],
-  ['Authenticated sessions', 'Host and Live Quiz answer flows use authenticated session identity.', ShieldCheck, 'yellow'],
-  ['Real-time updates', 'Socket-powered state keeps live sessions and learner operations current.', Radio, 'sky']
-];
-
-const POLICY_STEPS = [
-  ['01', 'UPLOAD', 'Drop in the policy PDF. No manual slide building.', FileText, 'mint'],
-  ['02', 'AI STRUCTURES', 'AI extracts the policy, organizes learning objectives and builds a course blueprint.', Sparkles, 'lilac'],
-  ['03', 'COURSE GENERATED', 'Visual screens, interactions and knowledge checks are generated automatically.', WandSparkles, 'sky'],
-  ['04', 'PUBLISH', 'The SCORM course is packaged, added to the LMS workspace and ready to invite learners.', BookOpen, 'yellow'],
-  ['05', 'TRACK', 'Completion, location, status, score and time start flowing into tracking immediately.', Activity, 'rose']
-];
-
-const MARQUEE = [
-  'POLICY PDF → SCORM',
-  'AI COURSE GENERATION',
-  'ABOUT 10 MINUTES',
-  'INSTANT TRACKING',
-  'BUILT-IN LMS',
-  'LEARNER PROGRESS',
-  'SCORM REPORTS',
-  'LIVE QUIZ'
-];
-
 const reveal = {
-  hidden: { opacity: 0, y: 42 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.68, ease: [0.16, 1, 0.3, 1] } }
+  hidden: { opacity: 0, y: 34 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.72, ease: [0.16, 1, 0.3, 1] }
+  }
 };
 
 function Reveal({ children, className = '', delay = 0 }) {
@@ -101,88 +51,98 @@ function Reveal({ children, className = '', delay = 0 }) {
   );
 }
 
-function FeatureIcon({ icon: Icon, tint = 'mint' }) {
+function StatusPill({ icon: Icon, children, className = '' }) {
   return (
-    <div className={`preview-feature-icon preview-solid-${tint}`}>
-      <Icon size={21} strokeWidth={2.2} />
+    <div className={`slice-status-pill ${className}`}>
+      {Icon && <Icon size={15} strokeWidth={2.2} />}
+      <span>{children}</span>
     </div>
   );
 }
 
-function PolicyPipelineMockup() {
+function PolicyPhone() {
+  const steps = [
+    ['Policy understood', '100%'],
+    ['Learning flow', 'Ready'],
+    ['Visual course', 'Ready'],
+    ['SCORM package', 'Ready']
+  ];
+
   return (
-    <div className="preview-policy-machine" data-scroll data-scroll-speed="0.055">
-      <div className="preview-machine-topbar">
-        <div className="preview-machine-brand"><span>Q</span> POLICY → SCORM</div>
-        <div className="preview-machine-time"><Clock3 size={14} /> ~10 MIN</div>
-      </div>
-      <div className="preview-machine-source">
-        <div className="preview-pdf-card">
-          <FileText size={30} />
-          <div><strong>Information Security Policy.pdf</strong><span>42 pages · uploaded</span></div>
-          <Check size={18} />
-        </div>
-        <div className="preview-ai-pulse">
-          <Sparkles size={22} />
-          <span>AI is building the learning experience</span>
-          <i /><i /><i />
-        </div>
-      </div>
-      <div className="preview-machine-flow">
-        {[
-          ['Policy parsed', '00:42'],
-          ['Learning blueprint', '02:10'],
-          ['Visual course', '06:48'],
-          ['SCORM packaged', '09:12']
-        ].map(([label, time], index) => (
-          <div key={label} className="preview-machine-step">
-            <span>{String(index + 1).padStart(2, '0')}</span>
-            <strong>{label}</strong>
-            <b>{time}</b>
+    <div className="slice-phone-wrap" data-scroll data-scroll-speed="0.055">
+      <div className="slice-phone">
+        <div className="slice-phone-speaker" />
+        <div className="slice-phone-screen">
+          <div className="slice-app-topline">
+            <span className="slice-app-logo">Q</span>
+            <span>AI COURSE BUILDER</span>
+            <i />
           </div>
-        ))}
-      </div>
-      <div className="preview-machine-ready">
-        <div>
-          <span>COURSE READY</span>
-          <strong>Security Policy Essentials</strong>
+
+          <div className="slice-pdf-chip">
+            <div><FileText size={21} /></div>
+            <span><strong>Information Security Policy.pdf</strong><small>42 pages · uploaded</small></span>
+            <Check size={18} />
+          </div>
+
+          <div className="slice-ai-orbit">
+            <span><Sparkles size={30} /></span>
+            <div>Building your course</div>
+            <small>AI is turning policy into learning</small>
+          </div>
+
+          <div className="slice-build-steps">
+            {steps.map(([name, value], index) => (
+              <div key={name}>
+                <i>{index + 1}</i>
+                <span>{name}</span>
+                <b>{value}</b>
+              </div>
+            ))}
+          </div>
+
+          <div className="slice-course-ready">
+            <small>COURSE READY</small>
+            <strong>Security Policy Essentials</strong>
+            <div><span>SCORM 1.2</span><span>8 screens</span><span>5 checks</span></div>
+          </div>
         </div>
-        <div className="preview-machine-ready-meta">
-          <span>SCORM 1.2</span>
-          <span>8 learning screens</span>
-          <span>5 questions</span>
-        </div>
-        <div className="preview-machine-track"><Activity size={16} /> TRACKING READY</div>
       </div>
+
+      <StatusPill icon={Clock3} className="slice-float-pill slice-float-time">~10 min to tracking-ready</StatusPill>
+      <StatusPill icon={Activity} className="slice-float-pill slice-float-track">Tracking active</StatusPill>
+      <StatusPill icon={Check} className="slice-float-pill slice-float-scorm">SCORM ready</StatusPill>
     </div>
   );
 }
 
-function CourseGenerationMockup() {
+function CourseMockup() {
   return (
-    <div className="preview-course-window" data-scroll data-scroll-speed="-0.04">
-      <div className="preview-course-browser">
-        <span /><span /><span />
-        <b>AI VISUAL AUTHOR</b>
+    <div className="slice-course-window" data-scroll data-scroll-speed="-0.04">
+      <div className="slice-window-top">
+        <div><span /> <span /> <span /></div>
+        <strong>Security Policy Essentials</strong>
+        <small>04 / 08</small>
       </div>
-      <div className="preview-course-content">
+      <div className="slice-course-body">
         <aside>
-          <div className="active">01 · Policy overview</div>
-          <div>02 · Access control</div>
-          <div>03 · Data handling</div>
-          <div>04 · Reporting incidents</div>
-          <div>05 · Knowledge check</div>
+          <div className="active"><i>01</i><span>Policy overview</span></div>
+          <div><i>02</i><span>Access control</span></div>
+          <div><i>03</i><span>Data handling</span></div>
+          <div><i>04</i><span>Report incidents</span></div>
+          <div><i>05</i><span>Knowledge check</span></div>
         </aside>
         <main>
-          <div className="preview-course-kicker">SECTION 03 / 08</div>
-          <h3>HANDLE SENSITIVE DATA<br />WITH INTENT.</h3>
-          <p>The policy has been transformed into concise learner-facing guidance with visual hierarchy and interaction.</p>
-          <div className="preview-course-cards">
-            <div className="preview-solid-mint"><strong>01</strong><span>Classify before sharing</span></div>
-            <div className="preview-solid-lilac"><strong>02</strong><span>Use approved channels</span></div>
-            <div className="preview-solid-sky"><strong>03</strong><span>Report exposure quickly</span></div>
+          <div className="slice-course-kicker">DATA HANDLING</div>
+          <h3>Handle sensitive information with intent.</h3>
+          <p>The policy is transformed into focused learning moments instead of being placed inside a document viewer.</p>
+          <div className="slice-learning-cards">
+            <article><span>01</span><strong>Classify</strong><small>Know what type of information you are handling.</small></article>
+            <article><span>02</span><strong>Protect</strong><small>Use approved storage, sharing and access controls.</small></article>
+            <article><span>03</span><strong>Report</strong><small>Escalate loss, exposure or suspicious access quickly.</small></article>
           </div>
-          <div className="preview-course-navline"><span>◀ BACK</span><b>3 / 8</b><span>NEXT ▶</span></div>
+          <div className="slice-course-progress"><i style={{ width: '58%' }} /></div>
+          <div className="slice-course-nav"><span>58% complete</span><button type="button">Continue <ArrowRight size={14} /></button></div>
         </main>
       </div>
     </div>
@@ -190,30 +150,32 @@ function CourseGenerationMockup() {
 }
 
 function TrackingMockup() {
+  const people = [
+    ['Aarav Mehta', 'Access control', 88, 'In progress'],
+    ['Meera Shah', 'Knowledge check', 100, 'Completed'],
+    ['Rohan Patel', 'Data handling', 64, 'In progress'],
+    ['Nisha Rao', 'Policy overview', 24, 'In progress']
+  ];
+
   return (
-    <div className="preview-tracking-window" data-scroll data-scroll-speed="0.035">
-      <div className="preview-tracking-head">
-        <div><span>SCORM WORLD</span><strong>LEARNER TRACKING</strong></div>
-        <b><i /> LIVE</b>
+    <div className="slice-tracking-window" data-scroll data-scroll-speed="0.035">
+      <div className="slice-track-head">
+        <div><small>LEARNER TRACKING</small><strong>Security Policy Essentials</strong></div>
+        <StatusPill icon={Radio}>Live</StatusPill>
       </div>
-      <div className="preview-tracking-stats">
-        <div className="preview-solid-mint"><strong>186</strong><span>Learners</span></div>
-        <div className="preview-solid-lilac"><strong>72%</strong><span>Avg progress</span></div>
-        <div className="preview-solid-sky"><strong>124</strong><span>Completed</span></div>
-        <div className="preview-solid-yellow"><strong>38</strong><span>Active</span></div>
+      <div className="slice-track-stats">
+        <div><strong>186</strong><span>Learners</span></div>
+        <div><strong>72%</strong><span>Average progress</span></div>
+        <div><strong>124</strong><span>Completed</span></div>
       </div>
-      <div className="preview-tracking-table">
-        <div className="preview-tracking-row heading"><span>Learner</span><span>Progress</span><span>Last location</span><span>Status</span></div>
-        {[
-          ['Aarav Mehta', 88, 'Data handling', 'In progress'],
-          ['Meera Shah', 64, 'Access control', 'In progress'],
-          ['Rohan Patel', 100, 'Completed', 'Completed']
-        ].map(([name, progress, location, status]) => (
-          <div className="preview-tracking-row" key={name}>
-            <span><strong>{name}</strong><small>learner</small></span>
-            <span><b>{progress}%</b><i><em style={{ width: `${progress}%` }} /></i></span>
-            <span>{location}</span>
-            <span className={progress === 100 ? 'done' : ''}>{status}</span>
+      <div className="slice-track-list">
+        {people.map(([name, location, progress, status]) => (
+          <div className="slice-track-row" key={name}>
+            <div className="slice-avatar">{name.split(' ').map((part) => part[0]).join('')}</div>
+            <div className="slice-track-person"><strong>{name}</strong><small>{location}</small></div>
+            <div className="slice-track-bar"><i style={{ width: `${progress}%` }} /></div>
+            <b>{progress}%</b>
+            <span className={status === 'Completed' ? 'complete' : ''}>{status}</span>
           </div>
         ))}
       </div>
@@ -223,28 +185,41 @@ function TrackingMockup() {
 
 function QuizMockup() {
   return (
-    <div className="preview-quiz-window" data-scroll data-scroll-speed="-0.035">
-      <div className="preview-quiz-bar"><span>LIVE QUIZ · 482 916</span><b>38 PLAYING</b></div>
-      <div className="preview-quiz-stage">
-        <div className="preview-quiz-topline"><span>QUESTION 04 / 10</span><span className="preview-timer-pill">18</span></div>
-        <h3>Which action best protects an account after a suspicious sign-in alert?</h3>
-        <div className="preview-answer-grid">
-          <div className="preview-answer-card preview-solid-rose">A <span>Ignore it if the password still works</span></div>
-          <div className="preview-answer-card preview-solid-mint">B <span>Change the password and review active sessions</span></div>
-          <div className="preview-answer-card preview-solid-sky">C <span>Forward the alert to colleagues</span></div>
-          <div className="preview-answer-card preview-solid-lilac">D <span>Disable browser updates</span></div>
-        </div>
-        <div className="preview-player-row"><span><Users size={15} /> 38 playing</span><span><Radio size={15} /> Live</span></div>
+    <div className="slice-quiz-card" data-scroll data-scroll-speed="-0.035">
+      <div className="slice-quiz-meta"><span>LIVE QUIZ · QUESTION 4/10</span><b>18</b></div>
+      <h3>What should you do after a suspicious sign-in alert?</h3>
+      <div className="slice-quiz-answers">
+        <div>Ignore it</div><div className="selected">Change the password & review sessions</div><div>Forward the alert</div><div>Disable updates</div>
       </div>
+      <div className="slice-quiz-footer"><span><Users size={15} /> 38 playing</span><span><Radio size={15} /> Live</span></div>
     </div>
   );
 }
+
+const SCORM_FEATURES = [
+  [Upload, 'Policy PDF upload', 'Start with the source document your teams already use.'],
+  [Sparkles, 'AI course generation', 'AI structures the source into learning objectives, visual screens and knowledge checks.'],
+  [BookOpen, 'SCORM-ready output', 'Generate a standards-based package ready for delivery and tracking.'],
+  [MonitorUp, 'Built-in LMS', 'Publish courses, invite learners and manage delivery from SCORM World.'],
+  [Activity, 'Instant tracking', 'Completion, location, status, score and time begin flowing as learners progress.'],
+  [CirclePlay, 'Resume-aware learning', 'Learners can continue where they stopped instead of restarting.'],
+  [Library, 'Package library', 'Upload, validate, organize and reuse learning packages.'],
+  [BarChart3, 'Audit-ready reports', 'Turn learner activity into PDF and Excel reporting.']
+];
+
+const LIVE_FEATURES = [
+  [Radio, 'Real-time multiplayer'],
+  [QrCode, 'PIN-based joining'],
+  [ShieldCheck, 'Authenticated answers'],
+  [Clock3, 'Countdown & urgency'],
+  [Trophy, 'Final podium'],
+  [BarChart3, 'Session reporting']
+];
 
 function WebsitePreview() {
   const { token } = useAuth();
   const navigate = useNavigate();
   const locomotiveRef = useRef(null);
-  const [activeProduct, setActiveProduct] = useState('scorm');
   const [scrollReady, setScrollReady] = useState(false);
 
   useEffect(() => {
@@ -268,16 +243,11 @@ function WebsitePreview() {
         if (cancelled) return;
         const LocomotiveScroll = mod.default;
         locomotiveRef.current = new LocomotiveScroll({
-          lenisOptions: {
-            duration: 1.05,
-            smoothWheel: true,
-            wheelMultiplier: 0.92
-          }
+          lenisOptions: { duration: 1, smoothWheel: true, wheelMultiplier: 0.9 }
         });
         setScrollReady(true);
       } catch (error) {
-        console.warn('Locomotive Scroll preview enhancement unavailable; native scrolling remains active.', error);
-        setScrollReady(false);
+        console.warn('Locomotive Scroll unavailable; native scrolling remains active.', error);
       }
     };
 
@@ -292,220 +262,188 @@ function WebsitePreview() {
   const scrollTo = (selector) => {
     const target = document.querySelector(selector);
     if (!target) return;
-    if (locomotiveRef.current?.scrollTo) {
-      locomotiveRef.current.scrollTo(target, { offset: -72, duration: 1.05 });
-    } else {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    if (locomotiveRef.current?.scrollTo) locomotiveRef.current.scrollTo(target, { offset: -70, duration: 1 });
+    else target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const activeFeatures = activeProduct === 'scorm' ? SCORM_FEATURES : LIVE_FEATURES;
-
   return (
-    <div className="website-preview" data-scroll-container>
-      <div className="preview-progress-line" />
-      <header className="preview-nav">
-        <button type="button" onClick={() => navigate('/dashboard')} className="preview-brand" aria-label="Back to platform dashboard">
-          <span className="preview-brand-mark">Q</span>
-          <span>QUIZMOTO</span>
+    <div className="website-preview slice-site" data-scroll-container>
+      <header className="slice-nav">
+        <button type="button" className="slice-brand" onClick={() => navigate('/dashboard')} aria-label="Back to Quizmoto dashboard">
+          <span>Q</span><strong>quizmoto</strong>
         </button>
-        <nav className="preview-nav-links" aria-label="Website preview navigation">
-          <button type="button" onClick={() => scrollTo('#policy-to-scorm')}>Policy → SCORM</button>
-          <button type="button" onClick={() => scrollTo('#tracking')}>Tracking</button>
-          <button type="button" onClick={() => scrollTo('#features')}>Features</button>
+        <nav aria-label="Website preview navigation">
+          <button type="button" onClick={() => scrollTo('#policy-to-course')}>Policy to course</button>
+          <button type="button" onClick={() => scrollTo('#tracking')}>LMS & tracking</button>
           <button type="button" onClick={() => scrollTo('#live-quiz')}>Live Quiz</button>
         </nav>
-        <div className="preview-nav-actions">
-          <span className={`preview-scroll-status ${scrollReady ? 'ready' : ''}`}><i /> {scrollReady ? 'Smooth scroll' : 'Preview'}</span>
-          <button type="button" onClick={() => navigate('/dashboard')} className="preview-nav-back"><ArrowLeft size={15} /> Platform</button>
+        <div className="slice-nav-actions">
+          <span className={scrollReady ? 'ready' : ''}><i />{scrollReady ? 'Smooth scroll' : 'Preview'}</span>
+          <button type="button" onClick={() => navigate('/dashboard')}><ArrowLeft size={15} /> Platform</button>
         </div>
       </header>
 
       <main>
-        <section className="preview-hero" data-scroll-section>
-          <div className="preview-shape preview-shape-mint" data-scroll data-scroll-speed="0.13" />
-          <div className="preview-shape preview-shape-lilac" data-scroll data-scroll-speed="-0.1" />
-          <div className="preview-hero-copy">
-            <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="preview-internal-badge">
-              INTERNAL WEBSITE PREVIEW
-            </motion.div>
-            <h1 aria-label="Policy PDF to tracking ready SCORM">
-              {['POLICY PDF', 'TO TRACKING-', 'READY SCORM.', '~10 MIN.'].map((word, index) => (
-                <motion.span
-                  key={word}
-                  className={index === 3 ? 'accent-line' : ''}
-                  initial={{ y: '112%' }}
-                  animate={{ y: 0 }}
-                  transition={{ duration: 0.76, delay: 0.06 + index * 0.085, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  {word}
-                </motion.span>
-              ))}
-            </h1>
-            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.44 }}>
-              Upload a policy PDF. Quizmoto AI turns it into a visual, interactive SCORM course, publishes it inside the built-in LMS workspace and makes learner tracking available immediately — typically in about ten minutes.
+        <section className="slice-hero" data-scroll-section>
+          <div className="slice-watercolor slice-watercolor-hero" aria-hidden="true" />
+          <div className="slice-hero-copy">
+            <motion.div className="slice-eyebrow" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>POLICY → COURSE → TRACKING</motion.div>
+            <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .08, duration: .75, ease: [0.16, 1, 0.3, 1] }}>
+              Turn a policy PDF into a <em>trackable course.</em>
+            </motion.h1>
+            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .2, duration: .65 }}>
+              Upload the policy you already have. Quizmoto AI turns it into a visual SCORM course, publishes it through SCORM World and makes learner tracking ready in around ten minutes.
             </motion.p>
-            <motion.div className="preview-hero-proof" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.62 }}>
-              <span><Check size={14} /> No manual slide building</span>
-              <span><Check size={14} /> SCORM-ready</span>
-              <span><Check size={14} /> Tracking-ready</span>
+            <motion.div className="slice-hero-actions" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .3, duration: .6 }}>
+              <button type="button" className="slice-primary-btn" onClick={() => navigate('/scorm/author')}>Create from PDF <ArrowRight size={17} /></button>
+              <button type="button" className="slice-secondary-btn" onClick={() => scrollTo('#policy-to-course')}>See how it works</button>
             </motion.div>
-            <motion.div className="preview-hero-actions" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.7 }}>
-              <button type="button" onClick={() => scrollTo('#policy-to-scorm')} className="preview-btn preview-btn-dark">See the 10-minute flow <ArrowRight size={17} /></button>
-              <button type="button" onClick={() => navigate('/scorm')} className="preview-btn preview-btn-mint"><BookOpen size={16} /> Open SCORM World</button>
+            <motion.div className="slice-hero-proof" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: .48 }}>
+              <span><Check size={14} /> SCORM-ready</span><span><Check size={14} /> Built-in LMS</span><span><Check size={14} /> Instant tracking</span>
             </motion.div>
           </div>
-          <motion.div className="preview-hero-stage" initial={{ opacity: 0, scale: 0.95, y: 34 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.88, delay: 0.26, ease: [0.16, 1, 0.3, 1] }}>
-            <PolicyPipelineMockup />
-            <div className="preview-hero-sticker" data-scroll data-scroll-speed="0.12">PDF IN.<br />COURSE OUT.<br />TRACK IT.</div>
+          <motion.div className="slice-hero-product" initial={{ opacity: 0, y: 38, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: .2, duration: .9, ease: [0.16, 1, 0.3, 1] }}>
+            <PolicyPhone />
           </motion.div>
         </section>
 
-        <section className="preview-marquee" aria-label="Platform highlights" data-scroll-section>
-          <div className="preview-marquee-track">
-            {[...MARQUEE, ...MARQUEE].map((item, index) => <span key={`${item}-${index}`}>{item}<i>✦</i></span>)}
-          </div>
+        <section className="slice-simple-strip" data-scroll-section>
+          <div><strong>1 PDF</strong><span>your source policy</span></div>
+          <div><strong>~10 min</strong><span>typical generation flow</span></div>
+          <div><strong>1 course</strong><span>SCORM-ready output</span></div>
+          <div><strong>Live</strong><span>learner tracking</span></div>
         </section>
 
-        <section className="preview-policy-story" id="policy-to-scorm" data-scroll-section>
-          <Reveal className="preview-section-kicker preview-solid-yellow">THE PRIMARY WORKFLOW</Reveal>
-          <Reveal className="preview-policy-heading">
-            <h2>ONE PDF.<br />ONE AI WORKFLOW.<br /><span>A TRACKABLE COURSE.</span></h2>
-            <p>Instead of turning every policy update into a manual instructional-design project, upload the source document once. Quizmoto handles the conversion from source material to learner-ready SCORM and gives the admin team a tracking layer from day one.</p>
+        <section className="slice-process" id="policy-to-course" data-scroll-section>
+          <div className="slice-watercolor slice-watercolor-blue" aria-hidden="true" />
+          <Reveal className="slice-section-heading light">
+            <span>FROM POLICY TO LEARNING</span>
+            <h2>Five steps.<br />One continuous flow.</h2>
+            <p>No manual slide building, package handoffs or separate tracking setup.</p>
           </Reveal>
-          <div className="preview-policy-steps">
-            {POLICY_STEPS.map(([number, title, copy, Icon, tint], index) => (
-              <Reveal key={number} delay={index * 0.04}>
-                <article className={`preview-policy-step preview-solid-${tint}`} data-scroll data-scroll-speed={String(index % 2 ? -0.018 : 0.018)}>
-                  <div className="preview-policy-step-number">{number}</div>
-                  <Icon size={27} strokeWidth={2.1} />
+          <div className="slice-process-cards">
+            {[
+              ['01', Upload, 'Upload', 'Drop in the policy PDF you already use.'],
+              ['02', ScanText, 'Understand', 'AI extracts the rules, themes and learning objectives.'],
+              ['03', WandSparkles, 'Generate', 'Visual screens, interactions and knowledge checks are created.'],
+              ['04', BookOpen, 'Publish', 'The course is packaged and becomes learner-ready inside SCORM World.'],
+              ['05', Activity, 'Track', 'Completion, location, status, score and time start flowing immediately.']
+            ].map(([number, Icon, title, copy], index) => (
+              <Reveal key={number} delay={index * .04}>
+                <article className="slice-process-card" data-scroll data-scroll-speed={String(index % 2 ? -0.018 : 0.018)}>
+                  <div className="slice-process-number">{number}</div>
+                  <div className="slice-process-icon"><Icon size={23} /></div>
                   <h3>{title}</h3>
                   <p>{copy}</p>
                 </article>
               </Reveal>
             ))}
           </div>
-          <Reveal className="preview-ten-minute-band">
-            <div><span>FROM UPLOAD TO READY</span><strong>~10 MIN</strong></div>
-            <p>Policy ingestion, AI structure, visual course generation, SCORM packaging and LMS readiness happen in one connected workflow.</p>
-            <Link to="/scorm/author">Start from a policy <ArrowRight size={16} /></Link>
+        </section>
+
+        <section className="slice-course-section" data-scroll-section>
+          <Reveal className="slice-section-heading">
+            <span>AI COURSE GENERATION</span>
+            <h2>Not a PDF in a player.<br /><em>A real learning experience.</em></h2>
+            <p>Quizmoto turns source material into structured, visual learning that people can actually move through.</p>
           </Reveal>
+          <Reveal className="slice-course-demo"><CourseMockup /></Reveal>
+          <div className="slice-floating-copy slice-floating-copy-left" data-scroll data-scroll-speed="0.06"><Sparkles size={16} /> AI structured</div>
+          <div className="slice-floating-copy slice-floating-copy-right" data-scroll data-scroll-speed="-0.05"><Check size={16} /> Knowledge checks included</div>
         </section>
 
-        <section className="preview-ai-author" data-scroll-section>
-          <div className="preview-ai-copy">
-            <Reveal><div className="preview-section-kicker preview-kicker-light">AI COURSE GENERATION</div></Reveal>
-            <Reveal><h2>NOT A PDF<br />IN A PLAYER.<br /><span>A REAL COURSE.</span></h2></Reveal>
-            <Reveal><p>AI converts the source into a course structure, visual screens, learning points, interactions and knowledge checks. Admins can review the blueprint and refine the experience before publishing.</p></Reveal>
-            <Reveal className="preview-inline-points light">
-              {['Visual learning screens', 'Interactions & knowledge checks', 'Editable course blueprint', 'SCORM 1.2 delivery'].map((item) => <span key={item}><Check size={15} /> {item}</span>)}
+        <section className="slice-tracking-section" id="tracking" data-scroll-section>
+          <div className="slice-watercolor slice-watercolor-green" aria-hidden="true" />
+          <div className="slice-tracking-copy">
+            <Reveal className="slice-section-heading light">
+              <span>BUILT-IN LMS + TRACKING</span>
+              <h2>Course ready.<br />Tracking ready.<br />At the same time.</h2>
+              <p>Publish once and see the learning state that matters: completion, where someone stopped, score, time, status and resume state.</p>
             </Reveal>
-            <Reveal><Link className="preview-text-link light" to="/scorm/author">Open AI Visual Author <ArrowRight size={16} /></Link></Reveal>
-          </div>
-          <div className="preview-ai-demo"><CourseGenerationMockup /></div>
-        </section>
-
-        <section className="preview-tracking-section" id="tracking" data-scroll-section>
-          <div className="preview-tracking-copy">
-            <Reveal><div className="preview-section-kicker preview-solid-rose">BUILT-IN LMS + TRACKING</div></Reveal>
-            <Reveal><h2>COURSE READY.<br />TRACKING READY.<br /><span>AT THE SAME TIME.</span></h2></Reveal>
-            <Reveal><p>Publish the generated course, share the learner invite and immediately see completion, last known location, lesson status, score, time and activity. Resume support keeps learner state persistent.</p></Reveal>
-            <Reveal className="preview-tracking-pills">
-              {['Completion %', 'Last location', 'Score', 'Time', 'Resume state', 'Live activity'].map((item) => <span key={item}>{item}</span>)}
+            <Reveal className="slice-tracking-points">
+              {['Completion percentage', 'Last learning location', 'Score & total time', 'Resume-aware progress', 'Live learner activity'].map((item) => <span key={item}><Check size={15} />{item}</span>)}
             </Reveal>
           </div>
-          <div className="preview-tracking-demo"><TrackingMockup /></div>
+          <Reveal className="slice-tracking-demo"><TrackingMockup /></Reveal>
         </section>
 
-        <section className="preview-feature-universe" id="features" data-scroll-section>
-          <Reveal className="preview-feature-head">
-            <div className="preview-section-kicker preview-solid-mint">THE PLATFORM</div>
-            <h2>SCORM FIRST.<br /><span>LIVE ENGAGEMENT TOO.</span></h2>
-            <p>The core value starts with policy-to-course automation and learner tracking. Live Quiz adds synchronous participation when the learning moment needs energy.</p>
+        <section className="slice-feature-story" data-scroll-section>
+          <Reveal className="slice-section-heading centered">
+            <span>SCORM WORLD</span>
+            <h2>Everything around the course,<br /><em>already connected.</em></h2>
           </Reveal>
-          <div className="preview-product-switch" role="tablist" aria-label="Product features">
-            <button type="button" className={activeProduct === 'scorm' ? 'active' : ''} onClick={() => setActiveProduct('scorm')}>SCORM + LMS</button>
-            <button type="button" className={activeProduct === 'live' ? 'active' : ''} onClick={() => setActiveProduct('live')}>Live Quiz</button>
-          </div>
-          <motion.div key={activeProduct} initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.42 }} className="preview-feature-panel">
-            <div className={`preview-feature-panel-intro ${activeProduct === 'scorm' ? 'scorm' : 'live'}`}>
-              <span>{activeProduct === 'scorm' ? 'PRIMARY PRODUCT' : 'SECOND PRODUCT'}</span>
-              <h3>{activeProduct === 'scorm' ? 'Policy to learning. In one workflow.' : 'Make live learning participate.'}</h3>
-            </div>
-            <div className="preview-feature-grid">
-              {activeFeatures.map(([title, copy, Icon, tint], index) => (
-                <motion.article key={title} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.035 }}>
-                  <FeatureIcon icon={Icon} tint={tint} />
-                  <h4>{title}</h4>
-                  <p>{copy}</p>
-                </motion.article>
-              ))}
-            </div>
-          </motion.div>
-        </section>
-
-        <section className="preview-live-section" id="live-quiz" data-scroll-section>
-          <div className="preview-live-copy">
-            <Reveal><div className="preview-section-kicker preview-solid-sky">LIVE QUIZ · SECONDARY PRODUCT</div></Reveal>
-            <Reveal><h2>WHEN LEARNING<br />NEEDS A ROOM<br />TO WAKE UP.</h2></Reveal>
-            <Reveal><p>Run synchronous quizzes with PIN joining, game-show countdowns, answer feedback, rankings, session recovery and a professional final podium. Live Quiz complements the LMS rather than competing with it.</p></Reveal>
-            <Reveal className="preview-inline-points">
-              {['Real-time multiplayer', 'Authenticated answers', 'Countdown & sound design', 'Podium & reports'].map((item) => <span key={item}><Check size={15} /> {item}</span>)}
-            </Reveal>
-            <Reveal><Link className="preview-text-link" to="/dashboard">Open Live Quiz <ArrowRight size={16} /></Link></Reveal>
-          </div>
-          <div className="preview-live-demo"><QuizMockup /></div>
-        </section>
-
-        <section className="preview-platform-grid" data-scroll-section>
-          <Reveal className="preview-platform-grid-title">
-            <div className="preview-section-kicker preview-solid-lilac">BUILT AS A PLATFORM</div>
-            <h2>THE INFRASTRUCTURE<br />BEHIND THE EXPERIENCE.</h2>
-          </Reveal>
-          <div className="preview-platform-cards">
-            {PLATFORM_FEATURES.map(([title, copy, Icon, tint], index) => (
-              <Reveal key={title} delay={index * 0.035}>
-                <article className={`preview-platform-card preview-solid-${tint}`}>
-                  <Icon size={27} />
-                  <h3>{title}</h3>
-                  <p>{copy}</p>
-                  <span>{String(index + 1).padStart(2, '0')}</span>
+          <div className="slice-feature-list">
+            {SCORM_FEATURES.map(([Icon, title, copy], index) => (
+              <Reveal key={title} delay={index * .025}>
+                <article className={`slice-feature-item slice-feature-${(index % 4) + 1}`}>
+                  <div><Icon size={23} /></div><h3>{title}</h3><p>{copy}</p>
                 </article>
               </Reveal>
             ))}
           </div>
         </section>
 
-        <section className="preview-reporting" data-scroll-section>
-          <Reveal className="preview-reporting-copy">
-            <div className="preview-section-kicker preview-solid-yellow">REPORTING</div>
-            <h2>FROM POLICY<br />TO PROOF.</h2>
-            <p>The same workflow that creates the course also creates the data trail. Review progress operationally, then generate course-level PDF and Excel reports when you need evidence.</p>
-          </Reveal>
-          <Reveal className="preview-reporting-board">
-            <div className="preview-reporting-top"><span>LEARNER TRACKING</span><strong>LIVE</strong></div>
-            <div className="preview-reporting-score">72<span>%</span></div>
-            <div className="preview-reporting-sub">average completion</div>
-            <div className="preview-reporting-chart">{[42, 58, 51, 67, 62, 78, 72, 86, 82, 94].map((value, index) => <i key={index} style={{ height: `${value}%` }} />)}</div>
-            <div className="preview-reporting-footer"><span>186 learners</span><span>124 completed</span><span>38 active</span></div>
+        <section className="slice-report-section" data-scroll-section>
+          <div className="slice-report-art" data-scroll data-scroll-speed="0.04">
+            <div className="slice-report-card">
+              <div className="slice-report-title"><BarChart3 size={20} /><span>Course report</span><b>PDF</b></div>
+              <strong>72<span>%</span></strong>
+              <small>average completion</small>
+              <div className="slice-report-bars">{[56, 72, 64, 84, 78, 92, 88].map((h, i) => <i key={i} style={{ height: `${h}%` }} />)}</div>
+              <div className="slice-report-meta"><span>186 learners</span><span>124 complete</span></div>
+            </div>
+            <StatusPill icon={FileText} className="slice-report-pill">PDF + Excel exports</StatusPill>
+          </div>
+          <Reveal className="slice-report-copy">
+            <span>REPORTING</span>
+            <h2>See what happened.<br />Share what matters.</h2>
+            <p>Operational learner state becomes clear reporting for managers, compliance teams and learning owners.</p>
+            <Link to="/scorm/reports" className="slice-text-link">Open SCORM reports <ArrowRight size={16} /></Link>
           </Reveal>
         </section>
 
-        <section className="preview-final" data-scroll-section>
-          <div className="preview-final-shape" data-scroll data-scroll-speed="0.1" />
-          <Reveal><div className="preview-section-kicker preview-kicker-light">QUIZMOTO</div></Reveal>
-          <Reveal><h2>UPLOAD POLICY.<br />GENERATE COURSE.<br />TRACK LEARNING.</h2></Reveal>
-          <Reveal><p>Turn a source policy into a SCORM course and a tracking-ready LMS experience in one connected workflow. Live Quiz is there when the same audience needs real-time participation.</p></Reveal>
-          <Reveal className="preview-final-actions">
-            <button type="button" onClick={() => navigate('/scorm/author')} className="preview-btn preview-btn-cream">Generate from a PDF <ArrowRight size={17} /></button>
-            <button type="button" onClick={() => navigate('/scorm')} className="preview-btn preview-btn-outline-cream">Open SCORM World <ChevronRight size={17} /></button>
+        <section className="slice-live-section" id="live-quiz" data-scroll-section>
+          <div className="slice-live-copy">
+            <Reveal className="slice-section-heading">
+              <span>LIVE QUIZ · SECONDARY PRODUCT</span>
+              <h2>When learning needs<br /><em>a room to wake up.</em></h2>
+              <p>Run real-time quizzes with PIN joining, synchronized questions, sound, answer feedback, rankings and a final podium.</p>
+            </Reveal>
+            <Reveal className="slice-live-features">
+              {LIVE_FEATURES.map(([Icon, title]) => <span key={title}><Icon size={16} />{title}</span>)}
+            </Reveal>
+            <Reveal><Link to="/dashboard" className="slice-text-link">Open Live Quiz <ArrowRight size={16} /></Link></Reveal>
+          </div>
+          <Reveal className="slice-live-demo"><QuizMockup /></Reveal>
+        </section>
+
+        <section className="slice-safe-section" data-scroll-section>
+          <div className="slice-watercolor slice-watercolor-safe" aria-hidden="true" />
+          <Reveal className="slice-safe-card">
+            <div className="slice-safe-icon"><ShieldCheck size={34} /></div>
+            <span>BUILT FOR LEARNING OPERATIONS</span>
+            <h2>Simple for learners.<br />Useful for teams.</h2>
+            <p>Browser-based delivery, validated packages, learner identity, persistent progress and reporting keep the operational side connected without making the learner experience feel heavy.</p>
+            <div>{['Browser based', 'SCORM delivery', 'Persistent progress', 'Reporting'].map((item) => <span key={item}><Check size={14} />{item}</span>)}</div>
+          </Reveal>
+        </section>
+
+        <section className="slice-final" data-scroll-section>
+          <Reveal>
+            <span>QUIZMOTO</span>
+            <h2>Your policy is already written.<br /><em>Turn it into learning.</em></h2>
+            <p>Upload the PDF. Let AI build the course. Publish it. Track it. One workflow from source document to learner evidence.</p>
+            <div className="slice-final-actions">
+              <button type="button" className="slice-primary-btn" onClick={() => navigate('/scorm/author')}>Create from PDF <ArrowRight size={17} /></button>
+              <button type="button" className="slice-secondary-btn" onClick={() => navigate('/scorm')}>Open SCORM World</button>
+            </div>
           </Reveal>
         </section>
       </main>
 
-      <footer className="preview-footer">
-        <div><span className="preview-brand-mark">Q</span><strong>QUIZMOTO</strong></div>
-        <span>INTERNAL WEBSITE PREVIEW</span>
+      <footer className="slice-footer">
+        <div className="slice-brand"><span>Q</span><strong>quizmoto</strong></div>
+        <span>Internal website preview</span>
         <button type="button" onClick={() => scrollTo('body')}>Back to top ↑</button>
       </footer>
     </div>
