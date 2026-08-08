@@ -32,6 +32,13 @@ function barTone(value) {
   return 'bg-white/15';
 }
 
+function progressLabel(row) {
+  if (!row.progressAvailable) return row.status === 'active' ? 'In progress' : 'Unavailable';
+  if (row.progressPercent >= 100) return 'Completed';
+  if (row.progressPercent > 0) return 'In progress';
+  return 'Not started';
+}
+
 export default function ScormCourseDetail() {
   const { id } = useParams();
   const { token } = useAuth();
@@ -134,9 +141,10 @@ export default function ScormCourseDetail() {
 
   if (!course) return <div className="p-8 text-white/60">{msg || 'Loading course…'}</div>;
 
-  const completed = trackingSummary?.completed || regs.filter((r) => r.progressPercent >= 100).length;
-  const active = trackingSummary?.active || regs.filter((r) => r.progressPercent > 0 && r.progressPercent < 100).length;
+  const completed = trackingSummary?.completed ?? regs.filter((r) => r.progressAvailable && r.progressPercent >= 100).length;
+  const active = trackingSummary?.active ?? regs.filter((r) => (r.progressAvailable && r.progressPercent > 0 && r.progressPercent < 100) || (!r.progressAvailable && r.status === 'active')).length;
   const avgProgress = Number(trackingSummary?.averageProgress || 0);
+  const unavailable = Number(trackingSummary?.unavailable || 0);
 
   return (
     <div className="p-4 md:p-8 max-w-[1500px] mx-auto">
@@ -173,12 +181,13 @@ export default function ScormCourseDetail() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         {[
           ['Learners', regs.length, 'text-white'],
           ['In progress', active, 'text-blue-300'],
           ['Completed', completed, 'text-emerald-300'],
-          ['Average progress', `${avgProgress.toFixed(0)}%`, 'text-quizmoto-yellow']
+          ['Average progress', `${avgProgress.toFixed(0)}%`, 'text-quizmoto-yellow'],
+          ['Unavailable', unavailable, 'text-white/55']
         ].map(([label, value, cls]) => (
           <div key={label} className="rounded-2xl bg-white/[0.035] border border-white/10 p-4 md:p-5">
             <div className={`text-2xl md:text-3xl font-black ${cls}`}>{value}</div>
@@ -216,8 +225,8 @@ export default function ScormCourseDetail() {
                 <tr key={r.id} className="border-b border-white/5 hover:bg-white/[0.025]">
                   <td className="p-3.5"><div className="font-black">{r.learnerName || 'Learner'}</div><div className="text-xs text-white/35 mt-0.5">{r.learnerEmail || 'No email'}</div></td>
                   <td className="p-3.5">
-                    <div className="flex justify-between gap-3 mb-2"><span className="font-black text-xs">{Number(r.progressPercent || 0).toFixed(0)}%</span><span className="text-[9px] uppercase tracking-[0.1em] font-black text-white/30">{r.progressPercent >= 100 ? 'Completed' : r.progressPercent > 0 ? 'In progress' : 'Not started'}</span></div>
-                    <div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className={`h-full rounded-full ${barTone(r.progressPercent || 0)}`} style={{ width: `${Math.max(0, Math.min(100, r.progressPercent || 0))}%` }} /></div>
+                    <div className="flex justify-between gap-3 mb-2"><span className="font-black text-xs">{r.progressAvailable ? `${Number(r.progressPercent).toFixed(0)}%` : '—'}</span><span className="text-[9px] uppercase tracking-[0.1em] font-black text-white/30">{progressLabel(r)}</span></div>
+                    <div className="h-2 rounded-full bg-white/10 overflow-hidden">{r.progressAvailable && <div className={`h-full rounded-full ${barTone(r.progressPercent || 0)}`} style={{ width: `${Math.max(0, Math.min(100, r.progressPercent || 0))}%` }} />}</div>
                   </td>
                   <td className="p-3.5 text-xs font-bold text-white/60 max-w-[250px]">{r.lastLocation || 'Not started'}</td>
                   <td className="p-3.5 text-xs font-mono text-white/55">{r.lastLessonStatus || '—'}</td>
