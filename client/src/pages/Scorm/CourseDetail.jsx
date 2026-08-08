@@ -25,12 +25,20 @@ function openPlayerPopup(registrationId, token, packageId, entryHref) {
   return win;
 }
 
+function barTone(value) {
+  if (value >= 100) return 'bg-emerald-400';
+  if (value >= 60) return 'bg-blue-400';
+  if (value > 0) return 'bg-amber-400';
+  return 'bg-white/15';
+}
+
 export default function ScormCourseDetail() {
   const { id } = useParams();
   const { token } = useAuth();
   const navigate = useNavigate();
   const [course, setCourse] = useState(null);
   const [regs, setRegs] = useState([]);
+  const [trackingSummary, setTrackingSummary] = useState(null);
   const [msg, setMsg] = useState(null);
   const [inviteUrl, setInviteUrl] = useState('');
   const socket = useSocket();
@@ -48,8 +56,9 @@ export default function ScormCourseDetail() {
   }, [id, token]);
 
   const loadRoster = useCallback(() => {
-    return axios.get(apiUrl(`/api/scorm/courses/${id}/registrations`), { headers }).then((r) => {
-      setRegs(r.data || []);
+    return axios.get(apiUrl(`/api/scorm/tracking/course/${id}`), { headers }).then((r) => {
+      setRegs(r.data?.registrations || []);
+      setTrackingSummary(r.data?.course || null);
     });
   }, [id, token]);
 
@@ -57,9 +66,7 @@ export default function ScormCourseDetail() {
     if (!token) return navigate('/login');
     loadCourse().catch((e) => setMsg(e.response?.data?.message || e.message));
     loadRoster().catch(() => {});
-    const t = setInterval(() => {
-      loadRoster().catch(() => {});
-    }, 20000);
+    const t = setInterval(() => loadRoster().catch(() => {}), 20000);
     return () => clearInterval(t);
   }, [token, id]);
 
@@ -67,21 +74,8 @@ export default function ScormCourseDetail() {
     if (!socket || !token || !id) return;
     const onUpdate = (payload) => {
       if (!payload || String(payload.courseId) !== String(id)) return;
-      const reg = payload.registration;
-      if (!reg || !reg.id) {
-        loadRoster().catch(() => {});
-        return;
-      }
-      setRegs((prev) => {
-        const idx = prev.findIndex((r) => r.id === reg.id);
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = { ...next[idx], ...reg };
-          return next;
-        }
-        return [reg, ...prev];
-      });
       setLive(true);
+      loadRoster().catch(() => {});
     };
     const onJoined = () => setLive(true);
     socket.emit('join_scorm_course', { courseId: id, token });
@@ -92,15 +86,11 @@ export default function ScormCourseDetail() {
       socket.off('scorm_registration_update', onUpdate);
       socket.off('scorm_course_joined', onJoined);
     };
-  }, [socket, token, id]);
+  }, [socket, token, id, loadRoster]);
 
   const publish = async () => {
     try {
-      const res = await axios.patch(
-        apiUrl(`/api/scorm/courses/${id}`),
-        { status: 'published' },
-        { headers }
-      );
+      const res = await axios.patch(apiUrl(`/api/scorm/courses/${id}`), { status: 'published' }, { headers });
       setCourse(res.data);
       setMsg('Course published — share the invite link');
     } catch (err) {
@@ -110,11 +100,7 @@ export default function ScormCourseDetail() {
 
   const unpublish = async () => {
     try {
-      const res = await axios.patch(
-        apiUrl(`/api/scorm/courses/${id}`),
-        { status: 'draft' },
-        { headers }
-      );
+      const res = await axios.patch(apiUrl(`/api/scorm/courses/${id}`), { status: 'draft' }, { headers });
       setCourse(res.data);
     } catch (err) {
       setMsg(err.response?.data?.message || err.message);
@@ -124,14 +110,8 @@ export default function ScormCourseDetail() {
   const preview = async () => {
     try {
       const res = await axios.post(apiUrl(`/api/scorm/courses/${id}/preview`), {}, { headers });
-      openPlayerPopup(
-        res.data.registrationId,
-        res.data.token,
-        res.data.packageId,
-        res.data.entryHref
-      );
+      openPlayerPopup(res.data.registrationId, res.data.token, res.data.packageId, res.data.entryHref);
       setMsg('Preview opened in a popup window');
-      await loadRoster();
     } catch (err) {
       setMsg(err.response?.data?.message || err.message);
     }
@@ -152,183 +132,104 @@ export default function ScormCourseDetail() {
     setMsg('Invite link copied');
   };
 
-  if (!course) {
-    return (
-      <div className="min-h-screen p-8 text-white/60 relative z-10">
-        {msg || 'Loading course…'}
-      </div>
-    );
-  }
+  if (!course) return <div className="p-8 text-white/60">{msg || 'Loading course…'}</div>;
 
-  const completed = regs.filter(
-    (r) =>
-      ['completed', 'passed', 'failed'].includes(r.lastLessonStatus) || r.status === 'completed'
-  ).length;
-  const active = regs.filter((r) => r.status === 'active').length;
+  const completed = trackingSummary?.completed || regs.filter((r) => r.progressPercent >= 100).length;
+  const active = trackingSummary?.active || regs.filter((r) => r.progressPercent > 0 && r.progressPercent < 100).length;
+  const avgProgress = Number(trackingSummary?.averageProgress || 0);
 
   return (
-    <div className="min-h-screen p-4 md:p-8 max-w-5xl mx-auto relative z-10">
-      <button onClick={() => navigate('/scorm')} className="text-sm text-white/60 hover:text-white mb-4">
-        ← SCORM World
-      </button>
-
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-3xl font-black italic tracking-tighter">{course.title}</h1>
-          <p className="text-white/50 text-sm mt-1">{course.description || 'No description'}</p>
-          <div className="mt-2 flex flex-wrap gap-2 items-center">
-            <span
-              className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${
-                course.status === 'published'
-                  ? 'bg-quizmoto-green/20 text-quizmoto-green'
-                  : 'bg-white/10 text-white/50'
-              }`}
-            >
-              {course.status}
-            </span>
-            <span className="text-xs text-white/40 font-mono">code: {course.inviteCode}</span>
+    <div className="p-4 md:p-8 max-w-[1500px] mx-auto">
+      <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-5 mb-6">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-[0.18em] font-black text-white/30">Course Workspace</div>
+          <h2 className="text-3xl md:text-4xl font-black tracking-tight mt-2">{course.title}</h2>
+          <p className="text-white/45 text-sm mt-2 max-w-3xl">{course.description || 'Manage publishing, learner access and progress for this course.'}</p>
+          <div className="mt-3 flex flex-wrap gap-2 items-center">
+            <span className={`text-[9px] font-black uppercase tracking-[0.14em] px-2.5 py-1 rounded-full ${course.status === 'published' ? 'bg-emerald-400/10 text-emerald-300' : 'bg-white/10 text-white/50'}`}>{course.status}</span>
+            <span className="text-xs text-white/35 font-mono">Invite {course.inviteCode}</span>
+            <span className="text-xs text-white/35">{course.package?.standard || 'SCORM'}</span>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {course.status !== 'published' ? (
-            <button
-              onClick={publish}
-              className="px-4 py-2 rounded-xl bg-quizmoto-green text-white text-xs font-black shadow-[0_3px_0_0_#1a5e08]"
-            >
-              Publish
-            </button>
+            <button onClick={publish} className="px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-xs font-black">Publish</button>
           ) : (
-            <button
-              onClick={unpublish}
-              className="px-4 py-2 rounded-xl bg-white/10 text-white text-xs font-bold"
-            >
-              Unpublish
-            </button>
+            <button onClick={unpublish} className="px-4 py-2.5 rounded-xl bg-white/8 border border-white/10 text-white text-xs font-bold">Unpublish</button>
           )}
-          <button
-            onClick={preview}
-            className="px-4 py-2 rounded-xl bg-quizmoto-blue text-white text-xs font-black"
-          >
-            Preview as learner
-          </button>
+          <button onClick={preview} className="px-4 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-black">Preview as learner</button>
         </div>
       </div>
 
-      {msg && (
-        <div className="mb-4 p-3 rounded-xl bg-white/10 text-sm border border-white/10">{msg}</div>
-      )}
+      {msg && <div className="mb-5 p-3.5 rounded-xl bg-white/8 text-sm border border-white/10">{msg}</div>}
 
       {course.status === 'published' && (
-        <div className="rounded-2xl bg-quizmoto-yellow/10 border border-quizmoto-yellow/30 p-4 mb-8">
-          <div className="text-[10px] font-black uppercase tracking-widest text-quizmoto-yellow mb-2">
-            Invite link (share with many learners)
-          </div>
+        <div className="rounded-2xl bg-quizmoto-yellow/8 border border-quizmoto-yellow/20 p-4 mb-6">
+          <div className="text-[9px] font-black uppercase tracking-[0.16em] text-quizmoto-yellow mb-2">Learner invite link</div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <input
-              readOnly
-              value={inviteUrl}
-              className="flex-1 bg-black/30 rounded-xl px-3 py-2 text-sm font-mono text-white/90 border border-white/10"
-            />
-            <button
-              onClick={copyInvite}
-              className="px-4 py-2 rounded-xl bg-quizmoto-yellow text-quizmoto-darkPurple font-black text-xs"
-            >
-              Copy link
-            </button>
+            <input readOnly value={inviteUrl} className="flex-1 bg-black/25 rounded-xl px-3 py-2.5 text-sm font-mono text-white/85 border border-white/10" />
+            <button onClick={copyInvite} className="px-4 py-2.5 rounded-xl bg-quizmoto-yellow text-[#171126] font-black text-xs">Copy link</button>
           </div>
-          <p className="text-xs text-white/50 mt-2">
-            Each learner who opens this link gets their own registration. Courses open in a popup player.
-          </p>
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
-          <div className="text-2xl font-black">{regs.length}</div>
-          <div className="text-[9px] font-black uppercase tracking-widest text-white/40">Learners</div>
-        </div>
-        <div className="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
-          <div className="text-2xl font-black text-quizmoto-blue">{active}</div>
-          <div className="text-[9px] font-black uppercase tracking-widest text-white/40">Active</div>
-        </div>
-        <div className="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
-          <div className="text-2xl font-black text-quizmoto-green">{completed}</div>
-          <div className="text-[9px] font-black uppercase tracking-widest text-white/40">Finished</div>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        {[
+          ['Learners', regs.length, 'text-white'],
+          ['In progress', active, 'text-blue-300'],
+          ['Completed', completed, 'text-emerald-300'],
+          ['Average progress', `${avgProgress.toFixed(0)}%`, 'text-quizmoto-yellow']
+        ].map(([label, value, cls]) => (
+          <div key={label} className="rounded-2xl bg-white/[0.035] border border-white/10 p-4 md:p-5">
+            <div className={`text-2xl md:text-3xl font-black ${cls}`}>{value}</div>
+            <div className="text-[9px] font-black uppercase tracking-[0.14em] text-white/35 mt-1">{label}</div>
+          </div>
+        ))}
       </div>
 
-      <h2 className="text-lg font-black mb-3 uppercase tracking-tight flex items-center gap-2">
-        Live roster
-        <span className="text-[10px] font-bold text-white/40 normal-case tracking-normal">
-          {live ? '● live' : 'connecting…'} · backup 20s
-        </span>
-      </h2>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
+        <div className="px-4 md:px-5 py-4 border-b border-white/10 flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-white/30 font-black">Learner operations</div>
+            <h3 className="font-black mt-1">Progress roster</h3>
+          </div>
+          <span className="text-[10px] font-bold text-white/35">{live ? '● live updates' : '20s refresh'}</span>
+        </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-white/10">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-white/5 text-left text-[10px] font-black uppercase tracking-widest text-white/50">
-              <th className="p-3">Learner</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Lesson</th>
-              <th className="p-3">Score</th>
-              <th className="p-3">Time</th>
-              <th className="p-3">Last update</th>
-              <th className="p-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {regs.length === 0 && (
-              <tr>
-                <td colSpan={7} className="p-6 text-center text-white/40">
-                  No learners yet — share the invite link
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1150px] text-sm">
+            <thead>
+              <tr className="text-left text-[9px] font-black uppercase tracking-[0.14em] text-white/35 border-b border-white/10">
+                <th className="p-3.5">Learner</th>
+                <th className="p-3.5 min-w-[220px]">Completion</th>
+                <th className="p-3.5">Last location</th>
+                <th className="p-3.5">Lesson status</th>
+                <th className="p-3.5">Score</th>
+                <th className="p-3.5">Time</th>
+                <th className="p-3.5">Last activity</th>
+                <th className="p-3.5"></th>
               </tr>
-            )}
-            {regs.map((r) => (
-              <tr key={r.id} className="border-t border-white/5 hover:bg-white/5">
-                <td className="p-3">
-                  <div className="font-bold">{r.learnerName || 'Learner'}</div>
-                  {r.learnerEmail && (
-                    <div className="text-xs text-white/40">{r.learnerEmail}</div>
-                  )}
-                  {r.isPreview && (
-                    <span className="text-[9px] text-quizmoto-yellow font-black uppercase">Preview</span>
-                  )}
-                </td>
-                <td className="p-3">
-                  <span className="text-xs font-bold capitalize">{r.status}</span>
-                </td>
-                <td className="p-3">
-                  <span className="text-xs font-mono">{r.lastLessonStatus || '—'}</span>
-                </td>
-                <td className="p-3 font-black">
-                  {r.lastScoreRaw != null ? r.lastScoreRaw : '—'}
-                </td>
-                <td className="p-3 font-mono text-xs text-white/70">
-                  {r.lastTotalTime || '—'}
-                </td>
-                <td className="p-3 text-xs text-white/40">
-                  {r.lastCommitAt
-                    ? new Date(r.lastCommitAt).toLocaleString()
-                    : r.updatedAt
-                      ? new Date(r.updatedAt).toLocaleString()
-                      : '—'}
-                </td>
-                <td className="p-3">
-                  {r.status !== 'revoked' && (
-                    <button
-                      onClick={() => revoke(r.id)}
-                      className="text-[10px] font-bold text-red-300/80 hover:text-red-300"
-                    >
-                      Revoke
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {regs.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-white/35">No learners yet — share the invite link.</td></tr>}
+              {regs.map((r) => (
+                <tr key={r.id} className="border-b border-white/5 hover:bg-white/[0.025]">
+                  <td className="p-3.5"><div className="font-black">{r.learnerName || 'Learner'}</div><div className="text-xs text-white/35 mt-0.5">{r.learnerEmail || 'No email'}</div></td>
+                  <td className="p-3.5">
+                    <div className="flex justify-between gap-3 mb-2"><span className="font-black text-xs">{Number(r.progressPercent || 0).toFixed(0)}%</span><span className="text-[9px] uppercase tracking-[0.1em] font-black text-white/30">{r.progressPercent >= 100 ? 'Completed' : r.progressPercent > 0 ? 'In progress' : 'Not started'}</span></div>
+                    <div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className={`h-full rounded-full ${barTone(r.progressPercent || 0)}`} style={{ width: `${Math.max(0, Math.min(100, r.progressPercent || 0))}%` }} /></div>
+                  </td>
+                  <td className="p-3.5 text-xs font-bold text-white/60 max-w-[250px]">{r.lastLocation || 'Not started'}</td>
+                  <td className="p-3.5 text-xs font-mono text-white/55">{r.lastLessonStatus || '—'}</td>
+                  <td className="p-3.5 font-black">{r.lastScoreRaw != null ? r.lastScoreRaw : '—'}</td>
+                  <td className="p-3.5 font-mono text-xs text-white/55">{r.lastTotalTime || '—'}</td>
+                  <td className="p-3.5 text-xs text-white/35">{r.lastCommitAt ? new Date(r.lastCommitAt).toLocaleString() : r.updatedAt ? new Date(r.updatedAt).toLocaleString() : '—'}</td>
+                  <td className="p-3.5">{r.status !== 'revoked' && <button onClick={() => revoke(r.id)} className="text-[10px] font-black text-red-300/70 hover:text-red-300">Revoke</button>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
