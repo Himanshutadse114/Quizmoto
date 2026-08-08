@@ -13,6 +13,7 @@ function progressTone(value) {
 }
 
 function statusLabel(row) {
+  if (!row.progressAvailable) return row.status === 'active' ? 'In progress' : 'Unavailable';
   if (row.progressPercent >= 100) return 'Completed';
   if (row.progressPercent > 0) return 'In progress';
   return 'Not started';
@@ -43,9 +44,10 @@ export default function ScormTracking() {
     const q = query.trim().toLowerCase();
     return (data.learners || []).filter((row) => {
       if (courseId !== 'all' && String(row.courseId) !== String(courseId)) return false;
-      if (progressFilter === 'completed' && row.progressPercent < 100) return false;
-      if (progressFilter === 'progress' && !(row.progressPercent > 0 && row.progressPercent < 100)) return false;
-      if (progressFilter === 'not-started' && row.progressPercent > 0) return false;
+      if (progressFilter === 'completed' && !(row.progressAvailable && row.progressPercent >= 100)) return false;
+      if (progressFilter === 'progress' && !((row.progressAvailable && row.progressPercent > 0 && row.progressPercent < 100) || (!row.progressAvailable && row.status === 'active'))) return false;
+      if (progressFilter === 'not-started' && !(row.progressAvailable && row.progressPercent <= 0 && row.status !== 'active')) return false;
+      if (progressFilter === 'unavailable' && row.progressAvailable) return false;
       if (!q) return true;
       return `${row.learnerName || ''} ${row.learnerEmail || ''} ${row.courseTitle || ''} ${row.lastLocation || ''}`.toLowerCase().includes(q);
     });
@@ -63,12 +65,13 @@ export default function ScormTracking() {
 
       {error && <div className="mb-5 p-4 rounded-2xl border border-red-400/30 bg-red-500/10 text-red-200 text-sm">{error}</div>}
 
-      <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 xl:grid-cols-6 gap-3 mb-6">
         {[
           ['Learners', overview.learners || 0, Users, 'text-white'],
           ['Completed', overview.completed || 0, CheckCircle2, 'text-emerald-300'],
           ['In progress', overview.inProgress || 0, Clock3, 'text-blue-300'],
           ['Not started', overview.notStarted || 0, CircleDashed, 'text-white/70'],
+          ['Unavailable', overview.unavailable || 0, CircleDashed, 'text-white/50'],
           ['Avg progress', `${Number(overview.averageProgress || 0).toFixed(0)}%`, Activity, 'text-quizmoto-yellow']
         ].map(([label, value, Icon, cls]) => (
           <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 md:p-5">
@@ -98,6 +101,7 @@ export default function ScormTracking() {
             <option value="completed">Completed</option>
             <option value="progress">In progress</option>
             <option value="not-started">Not started</option>
+            <option value="unavailable">Progress unavailable</option>
           </select>
         </div>
 
@@ -129,11 +133,11 @@ export default function ScormTracking() {
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex items-center justify-between gap-3 mb-2">
-                      <span className="text-xs font-black">{Number(row.progressPercent || 0).toFixed(0)}%</span>
+                      <span className="text-xs font-black">{row.progressAvailable ? `${Number(row.progressPercent).toFixed(0)}%` : '—'}</span>
                       <span className="text-[9px] uppercase tracking-[0.1em] font-black text-white/35">{statusLabel(row)}</span>
                     </div>
                     <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-                      <div className={`h-full rounded-full ${progressTone(row.progressPercent)}`} style={{ width: `${Math.max(0, Math.min(100, row.progressPercent || 0))}%` }} />
+                      {row.progressAvailable && <div className={`h-full rounded-full ${progressTone(row.progressPercent)}`} style={{ width: `${Math.max(0, Math.min(100, row.progressPercent || 0))}%` }} />}
                     </div>
                   </td>
                   <td className="px-4 py-4">
