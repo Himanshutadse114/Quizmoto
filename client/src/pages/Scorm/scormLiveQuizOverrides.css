@@ -1,0 +1,117 @@
+/* Final SCORM World palette guard.
+   Keeps legacy page-local colors inside the Live Quiz purple / white / black system. */
+.scorm-editorial {
+  --sw-purple: #46178F;
+  --sw-purple-dark: #25076B;
+  --sw-purple-light: #864CBF;
+  --sw-purple-soft: #F2ECFA;
+  --sw-canvas: #F8F5FB;
+  --sw-white: #FFFFFF;
+  --sw-black: #111111;
+  --sw-text: #1A1A1A;
+  --sw-muted: #6B6474;
+  --sw-border: #DED3EC;
+  --sw-track: #E8E0F1;
+}
+
+/* Previous soft-theme card backgrounds. */
+.scorm-editorial [class*="bg-[#edf3ef]"],
+.scorm-editorial [class*="bg-[#eef3f7]"],
+.scorm-editorial [class*="bg-[#f2eff6]"],
+.scorm-editorial [class*="bg-[#f5f0e8]"],
+.scorm-editorial [class*="bg-[#f7eeee]"],
+.scorm-editorial [class*="bg-[#fbfcfa]"],
+.scorm-editorial [class*="bg-[#fafbf9]"],
+.scorm-editorial [class*="bg-[#f7f9f6]"],
+.scorm-editorial [class*="bg-[#fbf9fd]"],
+.scorm-editorial [class*="bg-[#f0f3f0]"] {
+  background-color: var(--sw-purple-soft) !important;
+}
+
+/* White remains the dominant surface. */
+.scorm-editorial [class~="bg-white"] {
+  background-color: var(--sw-white) !important;
+}
+
+/* Progress: one brand color, no rainbow status system. */
+.scorm-editorial [class*="bg-[#7b9285]"],
+.scorm-editorial [class*="bg-[#829daf]"],
+.scorm-editorial [class*="bg-[#b39368]"],
+.scorm-editorial [class*="bg-[#82998c]"],
+.scorm-editorial [class~="bg-emerald-400"],
+.scorm-editorial [class~="bg-blue-400"],
+.scorm-editorial [class~="bg-amber-400"] {
+  background-color: var(--sw-purple) !important;
+}
+
+.scorm-editorial [class*="bg-[#dfe5e1]"],
+.scorm-editorial [class*="bg-[#edf0ee]"],
+.scorm-editorial [class*="bg-[#e8e0f1]"] {
+  background-color: var(--sw-track) !important;
+}
+
+/* Legacy soft-theme border colors. */
+.scorm-editorial [class*="border-[#dce8e0]"],
+.scorm-editorial [class*="border-[#e9decc]"],
+.scorm-editorial [class*="border-[#e4e8e5]"],
+.scorm-editorial [class*="border-[#e3ddec]"],
+.scorm-editorial [class*="border-[#edf0ee]"],
+.scorm-editorial [class*="border-[#e1e6e2]"],
+.scorm-editorial [class*="border-[#e8ece9]"] {
+  border-color: var(--sw-border) !important;
+}
+
+/* Main text always black/charcoal. */
+.scorm-editorial [class*="text-[#26312d]"],
+.scorm-editorial [class*="text-[#34413b]"],
+.scorm-editorial [class*="text-[#405048]"] {
+  color: var(--sw-text) !important;
+}
+
+/* Supporting copy stays neutral. */
+.scorm-editorial [class*="text-[#536159]"],
+.scorm-editorial [class*="text-[#66716b]"],
+.scorm-editorial [class*="text-[#707a75]"],
+.scorm-editorial [class*="text-[#78837d]"],
+.scorm-editorial [class*="text-[#7d8882]"],
+.scorm-editorial [class*="text-[#7f8a84]"],
+.scorm-editorial [class*="text-[#829087]"],
+.scorm-editorial [class*="text-[#8a948f]"],
+.scorm-editorial [class*="text-[#8c9691]"],
+.scorm-editorial [class*="text-[#929c97]"],
+.scorm-editorial [class*="text-[#99a29e]"],
+.scorm-editorial [class*="text-[#9aa39f]"],
+.scorm-editorial [class*="text-[#9ba59f]"],
+.scorm-editorial [class*="text-[#a1aaa5]"],
+.scorm-editorial [class*="text-[#a6afaa]"] {
+  color: var(--sw-muted) !important;
+}
+
+/* Any previous semantic/accent text becomes brand purple. */
+.scorm-editorial [class*="text-[#607568]"],
+.scorm-editorial [class*="text-[#6f899b]"],
+.scorm-editorial [class*="text-[#81759a]"],
+.scorm-editorial [class*="text-[#987a52]"],
+.scorm-editorial [class*="text-[#9e625d]"],
+.scorm-editorial [class*="text-[#a86963]"],
+.scorm-editorial [class*="text-[#506d7f]"] {
+  color: var(--sw-purple) !important;
+}
+
+/* Components that used inline theme tones (metric icons) are brand-purple now. */
+.scorm-editorial [style*="color:"] {
+  color: var(--sw-purple) !important;
+}
+
+/* Keep width-based progress inline styles intact; only color is normalized above. */
+.scorm-editorial table thead {
+  background: var(--sw-purple-soft) !important;
+}
+
+.scorm-editorial table tbody tr:hover {
+  background: #F8F5FB !important;
+}
+
+.scorm-editorial table a {
+  color: var(--sw-purple) !important;
+}
