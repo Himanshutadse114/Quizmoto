@@ -27,6 +27,8 @@ describe('Live Quiz session security hardening', function () {
     let hostToken;
     let playerSocket;
     let attackerSocket;
+    let hostSocket;
+    let secondHostSocket;
 
     const connectClient = () => new Promise((resolve, reject) => {
         const client = new Client(`http://127.0.0.1:${port}`, {
@@ -95,13 +97,47 @@ describe('Live Quiz session security hardening', function () {
 
         playerSocket = await connectClient();
         attackerSocket = await connectClient();
+        hostSocket = await connectClient();
+        secondHostSocket = await connectClient();
     });
 
     after(async () => {
         try { playerSocket && playerSocket.disconnect(); } catch (_) {}
         try { attackerSocket && attackerSocket.disconnect(); } catch (_) {}
+        try { hostSocket && hostSocket.disconnect(); } catch (_) {}
+        try { secondHostSocket && secondHostSocket.disconnect(); } catch (_) {}
         await new Promise((resolve) => io.close(resolve));
         await new Promise((resolve) => httpServer.close(() => resolve()));
+    });
+
+    it('allows only one live host controller for the session', async () => {
+        await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('host join timed out')), 3000);
+            hostSocket.once('room_info', () => {
+                clearTimeout(timer);
+                resolve();
+            });
+            hostSocket.emit('join_room', {
+                pin: session.pin,
+                role: 'host',
+                token: hostToken
+            });
+        });
+
+        const denied = await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('second host was not denied')), 3000);
+            secondHostSocket.once('host_control_denied', (payload) => {
+                clearTimeout(timer);
+                resolve(payload);
+            });
+            secondHostSocket.emit('join_room', {
+                pin: session.pin,
+                role: 'host',
+                token: hostToken
+            });
+        });
+
+        expect(denied.code).to.equal('LEASE_HELD');
     });
 
     it('rejects an unjoined socket trying to answer as another nickname', async () => {
