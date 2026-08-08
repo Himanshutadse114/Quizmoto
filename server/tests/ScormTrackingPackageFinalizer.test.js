@@ -1,5 +1,9 @@
 const { expect } = require('chai');
-const { patchTrackingRuntime } = require('../services/scorm/ScormTrackingPackageFinalizer');
+const {
+    patchTrackingRuntime,
+    patchMobileCourse,
+    MOBILE_COURSE_CSS
+} = require('../services/scorm/ScormTrackingPackageFinalizer');
 
 describe('ScormTrackingPackageFinalizer', () => {
     it('initializes the LMS before rendering the first tracked screen', () => {
@@ -23,5 +27,23 @@ describe('ScormTrackingPackageFinalizer', () => {
         expect(patched).to.include('lastSessionWriteMs=sessionStartMs');
         expect(patched).to.include('formatSessionTime(now-lastSessionWriteMs)');
         expect(patched).to.include('lastSessionWriteMs=now');
+    });
+
+    it('injects compact responsive rules into generated learner courses', () => {
+        const html = '<html><head><title>Course</title></head><body></body></html>';
+        const patched = patchMobileCourse(html);
+        expect(patched).to.include('id="quizmoto-mobile-course-css"');
+        expect(patched).to.include('@media (max-width: 680px)');
+        expect(patched).to.include('.hero{grid-template-columns:1fr');
+        expect(patched).to.include('.quiz-options{grid-template-columns:1fr');
+        expect(patched).to.include('footer{height:56px');
+        expect(MOBILE_COURSE_CSS).to.include('@media (max-width: 390px)');
+    });
+
+    it('does not inject the mobile stylesheet twice', () => {
+        const html = '<html><head><title>Course</title></head><body></body></html>';
+        const once = patchMobileCourse(html);
+        const twice = patchMobileCourse(once);
+        expect(twice).to.equal(once);
     });
 });
