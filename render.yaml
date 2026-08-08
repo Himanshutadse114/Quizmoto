@@ -38,7 +38,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGIN
-        value: "https://kahoot-awareness-frontend.onrender.com"
+        value: "https://quizmoto-frontend.onrender.com,https://kahoot-awareness-frontend.onrender.com"
 
   - type: web
     name: kahoot-awareness-frontend
