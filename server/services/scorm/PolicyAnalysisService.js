@@ -1,20 +1,16 @@
 /**
  * Server-side port of policy-to-scorm-engine/geminiService.ts
  * Gemini API key stays on the server (GEMINI_API_KEY).
- *
- * Note (2026-08): gemini-2.0-flash is shut down for new users → 404.
- * Default + fallbacks use current GA Flash models.
  */
 const JSZip = require('jszip');
 const logger = require('../../utils/logger');
 
 const DETAIL_CONFIG = {
-    detailed: { slides: '8-12', minWords: '100-150' },
-    condensed: { slides: '5-7', minWords: '60-90' },
-    summary: { slides: '3-4', minWords: '40-60' }
+    detailed: { slides: '8-12', screenWords: '45-75' },
+    condensed: { slides: '5-7', screenWords: '30-55' },
+    summary: { slides: '3-4', screenWords: '20-40' }
 };
 
-/** Ordered fallbacks when GEMINI_MODEL is unset or returns 404. */
 const DEFAULT_MODEL_CANDIDATES = [
     'gemini-3.6-flash',
     'gemini-3.5-flash',
@@ -55,72 +51,40 @@ function getApiKey() {
 
 function modelCandidates() {
     const preferred = (process.env.GEMINI_MODEL || '').trim();
-    const list = preferred
+    return preferred
         ? [preferred, ...DEFAULT_MODEL_CANDIDATES.filter((m) => m !== preferred)]
         : [...DEFAULT_MODEL_CANDIDATES];
-    return list;
 }
 
 function friendlyGeminiError(status, bodyText, lastModel) {
     if (status === 400 && /api key not valid|invalid api key/i.test(bodyText || '')) {
-        return {
-            message:
-                'Gemini API key is invalid. Create a key at https://aistudio.google.com/apikey and set GEMINI_API_KEY on the backend.',
-            code: 'GEMINI_KEY_INVALID'
-        };
+        return { message: 'Gemini API key is invalid. Create a key in Google AI Studio and set GEMINI_API_KEY on the backend.', code: 'GEMINI_KEY_INVALID' };
     }
     if (status === 403) {
-        return {
-            message:
-                'Gemini API rejected the key (403). Enable the Generative Language API, check key restrictions (HTTP referrers / IP), and ensure the key is set on the *backend* Render service.',
-            code: 'GEMINI_FORBIDDEN'
-        };
+        return { message: 'Gemini API rejected the key (403). Check API access and backend key restrictions.', code: 'GEMINI_FORBIDDEN' };
     }
     if (status === 404) {
-        return {
-            message: `Gemini model not available (${lastModel || 'unknown'}). Set GEMINI_MODEL=gemini-3.6-flash (or gemini-3.5-flash) on the backend and redeploy.`,
-            code: 'GEMINI_MODEL_NOT_FOUND'
-        };
+        return { message: `Gemini model not available (${lastModel || 'unknown'}). Configure a supported Flash model and redeploy.`, code: 'GEMINI_MODEL_NOT_FOUND' };
     }
     if (status === 429) {
-        return {
-            message: 'Gemini rate limit / quota exceeded. Wait a minute or enable billing in Google AI Studio.',
-            code: 'GEMINI_QUOTA'
-        };
+        return { message: 'Gemini rate limit / quota exceeded. Wait and retry or review quota.', code: 'GEMINI_QUOTA' };
     }
     if (/no longer available/i.test(bodyText || '')) {
-        return {
-            message:
-                'Gemini model was retired. Set GEMINI_MODEL=gemini-3.6-flash on the backend and redeploy.',
-            code: 'GEMINI_MODEL_RETIRED'
-        };
+        return { message: 'Gemini model was retired. Configure a current Flash model and redeploy.', code: 'GEMINI_MODEL_RETIRED' };
     }
-    return {
-        message: `Gemini API error (${status})${lastModel ? ` model=${lastModel}` : ''}`,
-        code: 'GEMINI_API_ERROR'
-    };
+    return { message: `Gemini API error (${status})${lastModel ? ` model=${lastModel}` : ''}`, code: 'GEMINI_API_ERROR' };
 }
 
-/**
- * @param {object} opts
- * @param {string} opts.fileBase64 - raw file bytes as base64 (no data: prefix)
- * @param {string} opts.mimeType
- * @param {'detailed'|'condensed'|'summary'} [opts.detailLevel]
- * @returns {Promise<{title,summary,slides,quiz>}>
- */
 async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' }) {
     const apiKey = getApiKey();
     if (!apiKey) {
-        const e = new Error(
-            'GEMINI_API_KEY is not configured on the server. Add it on the *backend* Render service (not frontend).'
-        );
+        const e = new Error('GEMINI_API_KEY is not configured on the server.');
         e.code = 'GEMINI_KEY_MISSING';
         throw e;
     }
 
     const level = DETAIL_CONFIG[detailLevel] || DETAIL_CONFIG.detailed;
     const parts = [];
-
     const isPptx =
         (mimeType || '').includes('presentationml.presentation') ||
         (mimeType || '').includes('powerpoint') ||
@@ -130,38 +94,50 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
         const text = await extractTextFromPptx(fileBase64);
         parts.push({ text: `SOURCE DOCUMENT (extracted from PowerPoint):\n\n${text}` });
     } else {
-        parts.push({
-            inlineData: {
-                data: fileBase64,
-                mimeType: mimeType || 'application/pdf'
-            }
-        });
+        parts.push({ inlineData: { data: fileBase64, mimeType: mimeType || 'application/pdf' } });
     }
 
     parts.push({
-        text: `You are an expert instructional designer. Analyze this policy document and transform it into a ${detailLevel}, engaging, corporate e-learning module.
+        text: `You are an expert instructional designer and visual learning architect. Transform this source into a ${detailLevel}, engaging corporate e-learning module.
+
+The learner should feel they are moving through a professionally designed interactive course, NOT reading a document split into slides.
 
 RULES — follow all of these strictly:
 
-1. SLIDES (generate ${level.slides} slides):
-   - "title": A clear, professional slide title (title case, no ALL CAPS).
-   - "content": A rich, well-written explanatory paragraph (minimum ${level.minWords} words).
-   - "keyPoints": Array of 3–5 short, punchy bullet points.
-   - "imageQuery": A short 2-3 word search query for a professional photo.
+1. SLIDES (generate ${level.slides} learning screens):
+   - "title": clear professional screen title, title case, concise.
+   - "content": concise on-screen explanation, approximately ${level.screenWords} words. Do not write long essay paragraphs.
+   - "keyPoints": 3–5 short learning points, preferably under 14 words each.
+   - "layout": choose exactly one of: "process", "cards", "timeline", "comparison", "hub", "spotlight".
+   - Pick the layout based on the meaning of the content:
+       process = steps/workflow/attack flow/how something works
+       timeline = stages/phases/journey/sequence over time
+       comparison = safe vs unsafe, do vs don't, correct vs risky behavior
+       hub = categories/components/pillars/related concepts around one idea
+       spotlight = one critical warning, risk, action, or takeaway
+       cards = independent concepts/tips/items
+   - Vary layouts throughout the course. Do not use the same layout on consecutive screens unless necessary.
+   - "visualTitle": 2–6 word central label suitable for a diagram or visual.
+   - "imageQuery": retain a short 2–3 word visual keyword for future asset generation, but the current renderer will use deterministic vectors.
 
-2. QUIZ (generate 5–8 questions):
-   - Each question must test specific knowledge from the document.
+2. VISUAL WRITING:
+   - Prefer short phrases that can fit inside cards, diagrams, timelines, and process nodes.
+   - Never repeat the same sentence in both content and keyPoints.
+   - Make each screen teach one clear idea.
+   - Where the policy describes a sequence, explicitly structure keyPoints in the correct order.
+   - Where the policy describes contrasting behavior, put recommended behavior first and risky behavior second.
+
+3. QUIZ (generate 5–8 questions):
+   - Test specific knowledge from the source.
    - 4 answer options per question.
    - "correctAnswer" is the 0-based index of the correct option.
 
-3. OUTPUT must be valid JSON with keys: title, summary, slides, quiz.`
+4. OUTPUT must be valid JSON with keys: title, summary, slides, quiz.`
     });
 
     const body = {
         contents: [{ parts }],
-        generationConfig: {
-            responseMimeType: 'application/json'
-        }
+        generationConfig: { responseMimeType: 'application/json' }
     };
 
     const candidates = modelCandidates();
@@ -172,14 +148,11 @@ RULES — follow all of these strictly:
     for (const model of candidates) {
         lastModel = model;
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-
         let res;
         try {
             res = await fetch(url, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
         } catch (netErr) {
@@ -191,9 +164,7 @@ RULES — follow all of these strictly:
 
         if (res.ok) {
             const data = await res.json();
-            const text =
-                data?.candidates?.[0]?.content?.parts?.map((p) => p.text || '').join('') || '{}';
-
+            const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text || '').join('') || '{}';
             let analysis;
             try {
                 analysis = JSON.parse(text);
@@ -215,19 +186,9 @@ RULES — follow all of these strictly:
 
         lastStatus = res.status;
         lastBody = await res.text().catch(() => '');
-        logger.warn('scorm_gemini_try_failed', {
-            module: 'scorm',
-            model,
-            status: res.status,
-            body: lastBody.slice(0, 300)
-        });
-
-        const retryable =
-            res.status === 404 ||
-            /not found|no longer available|not supported for generatecontent/i.test(lastBody);
-        if (!retryable) {
-            break;
-        }
+        logger.warn('scorm_gemini_try_failed', { module: 'scorm', model, status: res.status, body: lastBody.slice(0, 300) });
+        const retryable = res.status === 404 || /not found|no longer available|not supported for generatecontent/i.test(lastBody);
+        if (!retryable) break;
     }
 
     const friendly = friendlyGeminiError(lastStatus, lastBody, lastModel);
