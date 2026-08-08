@@ -103,14 +103,21 @@ router.get('/:id/report', auth, async (req, res) => {
             }
         });
     } catch (err) {
-        console.error('[scorm-reports] export failed', err);
+        console.error('[scorm-reports] export failed', {
+            message: err && err.message,
+            code: err && err.code,
+            stack: err && err.stack ? String(err.stack).slice(0, 1500) : null
+        });
         if (err.code === 'COURSE_NOT_FOUND') {
             return res.status(404).json({ message: 'Course not found' });
         }
         if (err.code === 'INVALID_FORMAT') {
             return res.status(400).json({ message: 'Invalid format' });
         }
-        res.status(500).json({ message: 'Report generation failed' });
+        res.status(500).json({
+            message: 'Report generation failed',
+            detail: process.env.NODE_ENV === 'production' ? undefined : (err && err.message)
+        });
     }
 });
 
