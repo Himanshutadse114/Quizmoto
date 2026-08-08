@@ -28,8 +28,8 @@ function patchTrackingRuntime(html) {
     // accumulator. Write only the time since the previous commit to avoid
     // double-counting cumulative elapsed time on every 15-second commit.
     out = out.replace(
-        "var data=${dataJson},currentSlide=0,score=0,quizResults=[],completed=false,sessionStartMs=Date.now(),commitTimer=null;",
-        "var data=${dataJson},currentSlide=0,score=0,quizResults=[],completed=false,sessionStartMs=Date.now(),lastSessionWriteMs=sessionStartMs,commitTimer=null;"
+        'sessionStartMs=Date.now(),commitTimer=null;',
+        'sessionStartMs=Date.now(),lastSessionWriteMs=sessionStartMs,commitTimer=null;'
     );
     out = out.replace(
         "function writeSessionTime(){if(typeof doLMSSetValue!=='function')return;try{doLMSSetValue('cmi.core.session_time',formatSessionTime(Date.now()-sessionStartMs))}catch(e){}}",
