@@ -5,14 +5,14 @@ import { BookOpen, Search, Users, CheckCircle2, Clock3, ChevronRight, Plus } fro
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 
-const Metric = ({ label, value, icon: Icon, tint, tone }) => (
-  <div className={`rounded-2xl border border-[#e1e6e2] p-4 md:p-5 ${tint}`}>
+const Metric = ({ label, value, icon: Icon, bg = '#FFFFFF' }) => (
+  <div className="rounded-2xl border border-black p-4 md:p-5" style={{ background: bg }}>
     <div className="flex items-start justify-between gap-3">
       <div>
-        <div className="text-2xl md:text-[28px] font-semibold tracking-[-0.04em] text-[#26312d]">{value}</div>
-        <div className="mt-1 text-[10px] font-semibold text-[#7d8882]">{label}</div>
+        <div className="scorm-display text-2xl md:text-[30px] leading-none">{value}</div>
+        <div className="scorm-micro mt-2 text-[9px] uppercase font-bold text-[#5A5A4F]">{label}</div>
       </div>
-      <div className="w-9 h-9 rounded-xl bg-white/75 border border-white grid place-items-center" style={{ color: tone }}>
+      <div className="w-9 h-9 rounded-xl bg-[#F8F9EB] border border-black grid place-items-center text-black">
         <Icon size={16} />
       </div>
     </div>
@@ -57,31 +57,31 @@ export default function ScormCourses() {
   }, [courses, query, status]);
 
   return (
-    <div className="p-4 md:p-7 lg:p-8 max-w-7xl mx-auto">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7">
-        <div className="max-w-2xl">
-          <div className="text-[11px] font-semibold text-[#829087]">Course management</div>
-          <h2 className="text-3xl md:text-[36px] font-semibold tracking-[-0.04em] mt-1.5">Courses</h2>
-          <p className="text-sm mt-2 leading-relaxed">Publish, monitor and manage every learning experience from one place.</p>
+    <div className="p-4 md:p-7 lg:p-9 max-w-7xl mx-auto">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7 pb-7 border-b border-black">
+        <div className="max-w-3xl">
+          <div className="scorm-micro text-[10px] uppercase font-bold text-[#5A5A4F]">Course management</div>
+          <h2 className="scorm-display uppercase text-[42px] md:text-[56px] mt-2">Courses.</h2>
+          <p className="text-sm mt-3 leading-relaxed max-w-2xl">Publish, monitor and manage every learning experience from one place.</p>
         </div>
-        <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold">
+        <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold">
           <Plus size={15} /> Create course
         </Link>
       </div>
 
-      {error && <div className="mb-5 p-4 rounded-xl border border-[#ead4d1] bg-[#f7eeee] text-[#9e625d] text-sm">{error}</div>}
+      {error && <div className="mb-5 p-4 rounded-xl border border-black bg-[#FFC0E6] text-black text-sm">{error}</div>}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <Metric label="Total courses" value={courses.length} icon={BookOpen} tint="bg-[#edf3ef]" tone="#607568" />
-        <Metric label="Published" value={courses.filter((c) => c.status === 'published').length} icon={CheckCircle2} tint="bg-[#eef3f7]" tone="#6f899b" />
-        <Metric label="Draft" value={courses.filter((c) => c.status === 'draft').length} icon={Clock3} tint="bg-[#f5f0e8]" tone="#987a52" />
-        <Metric label="Learners" value={tracking.courses?.reduce((sum, c) => sum + Number(c.learners || 0), 0) || 0} icon={Users} tint="bg-[#f2eff6]" tone="#81759a" />
+        <Metric label="Total courses" value={courses.length} icon={BookOpen} />
+        <Metric label="Published" value={courses.filter((c) => c.status === 'published').length} icon={CheckCircle2} bg="#AAFDC0" />
+        <Metric label="Draft" value={courses.filter((c) => c.status === 'draft').length} icon={Clock3} bg="#D3BEFF" />
+        <Metric label="Learners" value={tracking.courses?.reduce((sum, c) => sum + Number(c.learners || 0), 0) || 0} icon={Users} bg="#B0F4FF" />
       </div>
 
-      <div className="scorm-soft-card overflow-hidden">
-        <div className="p-4 md:p-5 border-b border-[#e1e6e2] flex flex-col md:flex-row gap-3 md:items-center justify-between bg-[#fbfcfa]">
+      <div className="border border-black rounded-[22px] overflow-hidden bg-white">
+        <div className="p-4 md:p-5 border-b border-black flex flex-col md:flex-row gap-3 md:items-center justify-between bg-[#F8F9EB]">
           <div className="relative flex-1 max-w-xl">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa39f]" />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5A5A4F]" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -89,12 +89,12 @@ export default function ScormCourses() {
               className="w-full pl-9 pr-3 py-2.5 text-sm"
             />
           </div>
-          <div className="flex gap-1.5 rounded-xl bg-[#f0f3f0] p-1 border border-[#e4e8e5]">
+          <div className="flex gap-1 rounded-xl bg-[#EDEEE1] p-1 border border-black">
             {['all', 'published', 'draft'].map((item) => (
               <button
                 key={item}
                 onClick={() => setStatus(item)}
-                className={`px-3 py-2 rounded-lg text-[11px] font-semibold capitalize ${status === item ? 'bg-white text-[#405048] shadow-sm' : 'text-[#7f8a84] hover:text-[#536159]'}`}
+                className={`px-3 py-2 rounded-lg text-[11px] font-bold capitalize border ${status === item ? 'bg-black text-[#F8F9EB] border-black' : 'bg-[#F8F9EB] text-black border-transparent hover:bg-[#AAFDC0]'}`}
               >
                 {item}
               </button>
@@ -102,12 +102,12 @@ export default function ScormCourses() {
           </div>
         </div>
 
-        <div className="divide-y divide-[#e8ece9]">
+        <div className="divide-y divide-[#EDEEE1]">
           {filtered.length === 0 && (
             <div className="p-10 text-center">
-              <BookOpen size={23} className="mx-auto text-[#9ba59f] mb-3" />
-              <div className="text-sm font-semibold text-[#536159]">No courses match this view</div>
-              <div className="text-xs text-[#929c97] mt-1">Try a different search or filter.</div>
+              <BookOpen size={23} className="mx-auto text-[#5A5A4F] mb-3" />
+              <div className="text-sm font-bold text-black">No courses match this view</div>
+              <div className="text-xs text-[#5A5A4F] mt-1">Try a different search or filter.</div>
             </div>
           )}
           {filtered.map((course) => {
@@ -116,28 +116,28 @@ export default function ScormCourses() {
               <Link
                 key={course.id}
                 to={`/scorm/courses/${course.id}`}
-                className="grid grid-cols-1 lg:grid-cols-[1.5fr_.65fr_.65fr_.75fr_auto] gap-4 items-center px-5 md:px-6 py-4.5 md:py-5 bg-white hover:bg-[#fafbf9] transition-colors"
+                className="grid grid-cols-1 lg:grid-cols-[1.5fr_.65fr_.65fr_.75fr_auto] gap-4 items-center px-5 md:px-6 py-5 bg-white hover:bg-[#AAFDC0] transition-colors"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
-                    <h3 className="font-semibold text-[13px] truncate text-[#34413b]">{course.title}</h3>
-                    <span className={`shrink-0 px-2 py-1 rounded-full text-[9px] font-semibold ${course.status === 'published' ? 'bg-[#edf3ef] text-[#607568] border border-[#dce8e0]' : 'bg-[#f5f0e8] text-[#987a52] border border-[#e9decc]'}`}>{course.status}</span>
+                    <h3 className="font-black text-[14px] truncate text-black">{course.title}</h3>
+                    <span className={`scorm-micro shrink-0 px-2 py-1 rounded-full text-[8px] uppercase font-bold border border-black ${course.status === 'published' ? 'bg-[#AAFDC0] text-black' : 'bg-[#D3BEFF] text-black'}`}>{course.status}</span>
                   </div>
-                  <div className="text-[10px] text-[#9aa39f] mt-1 font-mono">{course.inviteCode || 'No invite code'} · {course.package?.standard || 'SCORM'}</div>
+                  <div className="scorm-micro text-[9px] text-[#5A5A4F] mt-1">{course.inviteCode || 'No invite code'} · {course.package?.standard || 'SCORM'}</div>
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-[#405048]">{stats.learners || 0}</div>
-                  <div className="text-[9px] text-[#99a29e] mt-0.5">Learners</div>
+                  <div className="text-sm font-bold text-black">{stats.learners || 0}</div>
+                  <div className="scorm-micro text-[8px] uppercase text-[#5A5A4F] mt-1">Learners</div>
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-[#607568]">{stats.completed || 0}</div>
-                  <div className="text-[9px] text-[#99a29e] mt-0.5">Completed</div>
+                  <div className="text-sm font-bold text-[#003D21]">{stats.completed || 0}</div>
+                  <div className="scorm-micro text-[8px] uppercase text-[#5A5A4F] mt-1">Completed</div>
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-[#6f899b]">{Number(stats.averageProgress || 0).toFixed(0)}%</div>
-                  <div className="text-[9px] text-[#99a29e] mt-0.5">Avg progress</div>
+                  <div className="text-sm font-bold text-[#003D21]">{Number(stats.averageProgress || 0).toFixed(0)}%</div>
+                  <div className="scorm-micro text-[8px] uppercase text-[#5A5A4F] mt-1">Avg progress</div>
                 </div>
-                <ChevronRight size={17} className="text-[#a6afaa]" />
+                <ChevronRight size={17} className="text-black" />
               </Link>
             );
           })}
