@@ -80,6 +80,7 @@ describe('Live Quiz session security hardening', function () {
         player = await Player.create({
             sessionId: session.id,
             nickname: 'VictimPlayer',
+            teamName: 'Security Team',
             socketId: null,
             score: 0,
             streak: 0,
@@ -224,6 +225,7 @@ describe('Live Quiz session security hardening', function () {
         const latePlayer = await Player.create({
             sessionId: session.id,
             nickname: 'LatePlayer',
+            teamName: 'Security Team',
             socketId: 'internal-test',
             score: 0,
             streak: 0,
