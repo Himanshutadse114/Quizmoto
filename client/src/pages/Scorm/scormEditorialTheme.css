@@ -26,20 +26,18 @@
 
 .scorm-editorial,
 .scorm-editorial * { box-sizing: border-box; }
-
 .scorm-editorial * { text-shadow: none !important; }
 
 .scorm-editorial [class*="backdrop-blur"] {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
-
 .scorm-editorial [class*="bg-gradient"],
 .scorm-editorial [class*="from-"],
 .scorm-editorial [class*="via-"],
 .scorm-editorial [class*="to-"] { background-image: none !important; }
 
-/* Legacy dark surfaces become quiet white cards, not a blanket colour wash. */
+/* Legacy dark surfaces become quiet white cards. */
 .scorm-editorial [class*="bg-[#344a7b]"],
 .scorm-editorial [class*="bg-[#304573]"],
 .scorm-editorial [class*="bg-[#2f4472]"],
@@ -47,10 +45,7 @@
 .scorm-editorial [class*="bg-[#3a5080]"],
 .scorm-editorial [class*="bg-[#425887]"],
 .scorm-editorial [class*="bg-[#24335f]"],
-.scorm-editorial [class*="bg-white/"] {
-  background-color: var(--scorm-surface) !important;
-}
-
+.scorm-editorial [class*="bg-white/"] { background-color: var(--scorm-surface) !important; }
 .scorm-editorial [class*="bg-black/"] { background-color: var(--scorm-surface-soft) !important; }
 
 /* Soft semantic fills. */
@@ -66,8 +61,12 @@
 .scorm-editorial [class*="bg-orange-"] { background-color: var(--scorm-surface-sand) !important; color: #987a52 !important; }
 .scorm-editorial [class*="bg-red-"] { background-color: var(--scorm-surface-rose) !important; color: #9e625d !important; }
 
-/* Main legacy Quizmoto accents become sage unless a dedicated shell class overrides them. */
-.scorm-editorial [class*="bg-quizmoto-"] { background-color: var(--scorm-sage) !important; color: #fff !important; }
+/* Quizmoto accents are mapped deliberately, not through a blanket selector. */
+.scorm-editorial [class~="bg-quizmoto-green"] { background-color: #6f887a !important; color: #fff !important; }
+.scorm-editorial [class~="bg-quizmoto-blue"] { background-color: #829daf !important; color: #fff !important; }
+.scorm-editorial [class~="bg-quizmoto-yellow"] { background-color: #dbc8a8 !important; color: #5c4b35 !important; }
+.scorm-editorial [class~="bg-quizmoto-purple"] { background-color: #9589ad !important; color: #fff !important; }
+.scorm-editorial [class*="bg-quizmoto-purple/"] { background-color: var(--scorm-surface-lilac) !important; color: #766b8d !important; }
 
 /* Typography hierarchy. */
 .scorm-editorial [class~="text-white"],
@@ -104,9 +103,7 @@
 .scorm-editorial [class*="border-red-"] { border-color: #ead4d1 !important; }
 .scorm-editorial [class*="divide-"] > * + * { border-color: var(--scorm-line) !important; }
 
-/* Keep depth subtle and consistent. */
 .scorm-editorial [class*="shadow-"] { box-shadow: var(--scorm-shadow) !important; }
-
 .scorm-editorial [class*="rounded-3xl"],
 .scorm-editorial [class*="rounded-[24px]"],
 .scorm-editorial [class*="rounded-[32px]"],
@@ -120,9 +117,9 @@
 .scorm-editorial h3 {
   color: var(--scorm-ink) !important;
   font-weight: 760 !important;
+  font-style: normal !important;
   letter-spacing: -0.03em;
 }
-
 .scorm-editorial p { color: var(--scorm-muted); }
 
 .scorm-editorial input,
@@ -146,7 +143,6 @@
 
 .scorm-editorial button,
 .scorm-editorial a { transition: background-color .16s ease, border-color .16s ease, color .16s ease, transform .16s ease; }
-
 .scorm-editorial main a:hover,
 .scorm-editorial main button:hover:not(:disabled) { transform: translateY(-1px); }
 
@@ -159,7 +155,6 @@
 }
 .scorm-editorial .scorm-sidebar *,
 .scorm-editorial .scorm-mobile-drawer * { border-color: var(--scorm-line-strong); }
-
 .scorm-editorial .scorm-nav-item {
   background: transparent !important;
   color: #5f6b65 !important;
@@ -180,7 +175,6 @@
   background: #e4ece7 !important;
   color: var(--scorm-sage-deep) !important;
 }
-
 .scorm-editorial .scorm-brand-mark {
   background: var(--scorm-sage) !important;
   color: #fff !important;
@@ -188,14 +182,12 @@
   border-radius: 12px !important;
   box-shadow: 0 6px 16px rgba(96,117,104,.16) !important;
 }
-
 .scorm-editorial .scorm-topbar {
   background: rgba(255,255,255,.94) !important;
   color: var(--scorm-ink) !important;
   border-color: var(--scorm-line) !important;
   box-shadow: 0 1px 0 rgba(38,49,45,.02) !important;
 }
-
 .scorm-editorial .scorm-button-primary {
   background: var(--scorm-sage-deep) !important;
   color: #fff !important;
@@ -206,7 +198,6 @@
 .scorm-editorial .scorm-button-primary *,
 .scorm-editorial .scorm-button-primary:hover * { color: #fff !important; }
 .scorm-editorial .scorm-button-primary:hover { background: #566b5f !important; }
-
 .scorm-editorial .scorm-button-secondary {
   background: var(--scorm-surface) !important;
   color: var(--scorm-ink) !important;
@@ -226,7 +217,6 @@
 .scorm-editorial .scorm-tint-lilac { background: var(--scorm-surface-lilac) !important; }
 .scorm-editorial .scorm-tint-sand { background: var(--scorm-surface-sand) !important; }
 .scorm-editorial .scorm-tint-rose { background: var(--scorm-surface-rose) !important; }
-
 .scorm-editorial .scorm-inverted {
   background: var(--scorm-sage-deep) !important;
   color: #fff !important;
