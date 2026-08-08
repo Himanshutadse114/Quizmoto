@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
 import WebsitePreviewLauncher from './components/WebsitePreviewLauncher';
+import './pages/WebsitePreviewLaptopPolish.css';
 
 // Pages
 import Home from './pages/Home';
