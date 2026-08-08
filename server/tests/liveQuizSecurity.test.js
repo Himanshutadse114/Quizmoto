@@ -60,7 +60,9 @@ describe('Live Quiz session security hardening', function () {
             questionText: 'Choose A',
             options: ['A', 'B', 'C', 'D'],
             correctIndex: 0,
-            timer: 30
+            // Keep the startup recovery timer safely outside the test-suite
+            // runtime so it cannot mutate shared SQLite state after teardown.
+            timer: 300
         });
 
         session = await GameSession.create({
@@ -72,7 +74,7 @@ describe('Live Quiz session security hardening', function () {
             currentQuestionIndex: 0,
             questionStartTime: new Date(Date.now() - 1000),
             questionOpensAt: new Date(Date.now() - 1000),
-            questionClosesAt: new Date(Date.now() + 29000)
+            questionClosesAt: new Date(Date.now() + 299000)
         });
 
         player = await Player.create({
@@ -102,6 +104,19 @@ describe('Live Quiz session security hardening', function () {
     });
 
     after(async () => {
+        // Explicitly close the host session before disconnecting so the host
+        // disconnect grace timer is not left alive after this test suite.
+        try {
+            if (hostSocket && hostSocket.connected) {
+                hostSocket.emit('leave_session', {
+                    pin: session.pin,
+                    role: 'host',
+                    token: hostToken
+                });
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        } catch (_) {}
+
         try { playerSocket && playerSocket.disconnect(); } catch (_) {}
         try { attackerSocket && attackerSocket.disconnect(); } catch (_) {}
         try { hostSocket && hostSocket.disconnect(); } catch (_) {}
@@ -218,7 +233,7 @@ describe('Live Quiz session security hardening', function () {
         await session.update({
             status: 'question',
             state: 'QUESTION_OPEN',
-            questionStartTime: new Date(Date.now() - 31000),
+            questionStartTime: new Date(Date.now() - 301000),
             questionClosesAt: new Date(Date.now() - 1000)
         });
 
