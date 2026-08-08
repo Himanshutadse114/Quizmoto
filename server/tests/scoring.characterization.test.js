@@ -9,26 +9,43 @@ describe('Scoring & Duplicate Characterization Tests', function() {
     const PORT = 5009;
     const URL = `http://localhost:${PORT}`;
 
-    before((done) => {
-        serverProcess = spawn('node', ['index.js'], { 
+    before(async () => {
+        serverProcess = spawn('node', ['index.js'], {
             cwd: __dirname + '/..',
             env: { ...process.env, PORT, NODE_ENV: 'test', QUIET: 'true' }
         });
-        
-        let started = false;
-        serverProcess.stdout.on('data', (data) => {
-            if (data.toString().includes(`Server running on port ${PORT}`)) {
-                if (!started) {
-                    started = true;
-                    setTimeout(done, 1000);
-                }
-            }
+
+        let lastStderr = '';
+        serverProcess.stderr.on('data', (data) => {
+            lastStderr += data.toString();
         });
+
+        const deadline = Date.now() + 15000;
+        while (Date.now() < deadline) {
+            if (serverProcess.exitCode != null) {
+                throw new Error(`Scoring test backend exited early: ${lastStderr}`);
+            }
+            try {
+                const res = await request(URL).get('/health').timeout({ response: 750, deadline: 1000 });
+                if (res.status === 200) return;
+            } catch (_) {}
+            await new Promise((resolve) => setTimeout(resolve, 150));
+        }
+        throw new Error(`Scoring test backend did not become healthy: ${lastStderr}`);
     });
 
     after((done) => {
-        if (serverProcess) {
-            serverProcess.on('exit', () => done());
+        try { if (p1Socket) p1Socket.disconnect(); } catch (_) {}
+        try { if (hostSocket) hostSocket.disconnect(); } catch (_) {}
+        if (serverProcess && serverProcess.exitCode == null) {
+            const timer = setTimeout(() => {
+                try { serverProcess.kill('SIGKILL'); } catch (_) {}
+                done();
+            }, 3000);
+            serverProcess.once('exit', () => {
+                clearTimeout(timer);
+                done();
+            });
             serverProcess.kill();
         } else {
             done();
@@ -49,16 +66,30 @@ describe('Scoring & Duplicate Characterization Tests', function() {
         pin = startRes.body.pin;
 
         hostSocket = io(URL, { auth: { token: hostToken }, query: { pin, role: 'host' } });
-        hostSocket.emit('join_room', { pin, role: 'host', token: hostToken });
-
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('host socket join timed out')), 3000);
+            hostSocket.once('room_info', () => {
+                clearTimeout(timer);
+                resolve();
+            });
+            hostSocket.on('connect', () => {
+                hostSocket.emit('join_room', { pin, role: 'host', token: hostToken });
+            });
+        });
 
         const joinRes = await request(URL).post('/api/player/join').send({ pin, nickname: 'ScoreTest' });
         const p1Token = joinRes.body.token;
         p1Socket = io(URL, { auth: { token: p1Token }, query: { pin, role: 'player' } });
-        p1Socket.emit('join_room', { pin, role: 'player', nickname: 'ScoreTest', token: p1Token });
-
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('player socket join timed out')), 3000);
+            p1Socket.once('joined_successfully', () => {
+                clearTimeout(timer);
+                resolve();
+            });
+            p1Socket.on('connect', () => {
+                p1Socket.emit('join_room', { pin, role: 'player', nickname: 'ScoreTest', token: p1Token });
+            });
+        });
     });
 
     it('characterize correct answer points (no streak)', (done) => {
@@ -66,21 +97,19 @@ describe('Scoring & Duplicate Characterization Tests', function() {
             expect(data.streak).to.equal(1);
             // Question timer is 5s in fixtures.
             // Base = 1000 + (~5 * 10) = 1050.
-            expect(data.points).to.be.closeTo(1050, 30); // Allow 3 seconds of network variance
+            expect(data.points).to.be.closeTo(1050, 30);
             done();
         });
 
         hostSocket.emit('start_question', { pin, token: hostToken });
-        
-        // Wait 3s for countdown, then submit answer immediately
+
+        // Wait 3s for countdown, then submit answer immediately.
         setTimeout(() => {
-            // Option 1 is typically correct in fixtures
             p1Socket.emit('submit_answer', { pin, nickname: 'ScoreTest', answerIndex: 1 });
         }, 3100);
     });
 
     it('characterize duplicate answer rejection', (done) => {
-        // Assume question is still active
         p1Socket.once('error', (err) => {
             expect(err).to.equal('Answer already submitted');
             done();
@@ -88,5 +117,4 @@ describe('Scoring & Duplicate Characterization Tests', function() {
 
         p1Socket.emit('submit_answer', { pin, nickname: 'ScoreTest', answerIndex: 1 });
     });
-
 });
