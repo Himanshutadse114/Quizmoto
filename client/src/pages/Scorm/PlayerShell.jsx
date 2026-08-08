@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../../config';
+import './scormEditorialTheme.css';
 
 /**
  * Opens the same-origin backend player in a popup window so the host/learner
@@ -51,7 +52,6 @@ export default function ScormPlayerShell() {
     const win = window.open(url, `quizmoto_scorm_${registrationId}`, features);
 
     if (!win || win.closed || typeof win.closed === 'undefined') {
-      // Popup blocked — same-tab fallback
       window.location.replace(url);
       return;
     }
@@ -62,37 +62,37 @@ export default function ScormPlayerShell() {
     setOpened(true);
   }, [registrationId, search]);
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6 relative z-10">
-        <div className="max-w-md text-center rounded-2xl bg-white/5 border border-white/10 p-8">
-          <h1 className="text-xl font-black mb-2">Cannot launch course</h1>
-          <p className="text-white/60 text-sm mb-4">{error}</p>
-          <button onClick={() => navigate(-1)} className="px-4 py-2 rounded-xl bg-white/10 font-bold text-sm">
-            Go back
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 relative z-10">
-      <div className="max-w-md text-center rounded-2xl bg-white/5 border border-white/10 p-8">
-        <h1 className="text-xl font-black mb-2">
-          {opened ? 'Course opened in a new window' : 'Opening course…'}
-        </h1>
-        <p className="text-white/60 text-sm mb-4">
-          {opened
-            ? 'Use the popup player to take the course. You can close this tab or go back to the dashboard.'
-            : 'If nothing opens, allow popups for this site and try again.'}
-        </p>
-        <button
-          onClick={() => navigate(-1)}
-          className="px-4 py-2 rounded-xl bg-quizmoto-blue font-black text-sm"
-        >
-          Back
-        </button>
+    <div className="scorm-editorial min-h-screen flex items-center justify-center p-4 md:p-8 relative z-20">
+      <div className="w-full max-w-3xl border-2 border-[#111111] grid grid-cols-1 md:grid-cols-[.42fr_.58fr]">
+        <div className="bg-[#111111] text-[#F4F0E6] p-6 md:p-8 border-b-2 md:border-b-0 md:border-r-2 border-[#111111] flex flex-col justify-between min-h-[220px]">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.22em]">SCORM World</div>
+            <div className="text-5xl md:text-6xl font-black uppercase tracking-[-0.06em] leading-[0.85] mt-5">Learn.<br />Track.<br />Finish.</div>
+          </div>
+          <div className="text-[10px] font-black uppercase tracking-[0.16em] mt-8">Registration / {registrationId}</div>
+        </div>
+
+        <div className="p-6 md:p-10 flex flex-col justify-center">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-3">Course launcher</div>
+          <h1 className="text-3xl md:text-4xl font-black uppercase leading-[0.95] mb-5">
+            {error ? 'Cannot launch course.' : opened ? 'Course opened.' : 'Opening course.'}
+          </h1>
+          <div className="border-t-2 border-[#111111] pt-5">
+            <p className="text-sm font-semibold leading-relaxed mb-6">
+              {error || (opened
+                ? 'Use the course window to continue learning. You can keep this page open or return to the previous screen.'
+                : 'Your learning experience is being prepared. If no window appears, allow popups for this site and try again.')}
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="scorm-button-primary px-5 py-3 font-black text-xs uppercase tracking-[0.12em]"
+            >
+              ← Go back
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
