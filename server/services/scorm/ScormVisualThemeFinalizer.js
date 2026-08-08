@@ -1,47 +1,47 @@
 const JSZip = require('jszip');
 const { buildScormPackageZip: buildFinalPackage } = require('./ScormExperienceFinalizer');
 
-const LIVE_QUIZ_THEME = {
-    primary: '#46178F',
-    primaryDark: '#25076B',
-    accent: '#864CBF',
-    bg: '#F8F5FB',
+const CODA_INSPIRED_THEME = {
+    primary: '#003D21',
+    primaryDark: '#000000',
+    accent: '#AAFDC0',
+    bg: '#F8F9EB',
     surface: '#FFFFFF',
-    text: '#111111',
-    muted: '#6B6474',
-    soft: '#F2ECFA'
+    text: '#000000',
+    muted: '#5A5A4F',
+    soft: '#EDEEE1'
 };
 
-// Template IDs still control layout/content structure, but all generated courses
-// share one Quizmoto visual identity with Live Quiz.
+// Layout/content template IDs remain intact, while all generated courses share
+// one coherent Coda-inspired visual identity.
 const VISUAL_THEMES = {
-    1: { ...LIVE_QUIZ_THEME },
-    3: { ...LIVE_QUIZ_THEME },
-    4: { ...LIVE_QUIZ_THEME },
-    5: { ...LIVE_QUIZ_THEME }
+    1: { ...CODA_INSPIRED_THEME },
+    3: { ...CODA_INSPIRED_THEME },
+    4: { ...CODA_INSPIRED_THEME },
+    5: { ...CODA_INSPIRED_THEME }
 };
 
 const EDITORIAL_COURSE_CSS = `
 <style id="quizmoto-scorm-editorial-theme">
-:root{--primary:#46178F!important;--primary-dark:#25076B!important;--accent:#864CBF!important;--bg:#F8F5FB!important;--surface:#FFFFFF!important;--text:#111111!important;--muted:#6B6474!important;--soft:#F2ECFA!important;--line:#DED3EC!important;--shadow:0 8px 24px rgba(37,7,107,.10)!important}
-*{text-shadow:none!important}
-html,body,#app{background:#F8F5FB!important;color:#111111!important}
+:root{--primary:#003D21!important;--primary-dark:#000000!important;--accent:#AAFDC0!important;--bg:#F8F9EB!important;--surface:#FFFFFF!important;--text:#000000!important;--muted:#5A5A4F!important;--soft:#EDEEE1!important;--line:#C0C2A9!important;--lilac:#D3BEFF!important;--sky:#B0F4FF!important;--rose:#FFC0E6!important}
+*{text-shadow:none!important;box-shadow:none!important}
+html,body,#app{background:#F8F9EB!important;color:#000!important;font-family:Arial,Helvetica,sans-serif!important}
 #app{background-image:none!important}
-header,footer{background:#FFFFFF!important;color:#111111!important;border-color:#DED3EC!important;box-shadow:none!important}
-.brand-mark{background:#46178F!important;color:#FFFFFF!important;border-radius:12px!important;box-shadow:none!important}
-.progress-shell{background:#E8E0F1!important;border-radius:999px!important}.progress-fill{background:#46178F!important;background-image:none!important}.progress-text,.part{color:#6B6474!important}
-.nav-btn{border-radius:10px!important}.nav-btn.primary{background:#46178F!important;color:#FFFFFF!important;box-shadow:none!important}.nav-btn.primary:hover{background:#25076B!important;box-shadow:none!important;transform:translateY(-1px)!important}.nav-btn.secondary{background:#FFFFFF!important;color:#46178F!important;border:1px solid #DED3EC!important}
-.slide{background:#F8F5FB!important}.glass,.qmx-copy,.qmx-visual,.concept-card,.step,.milestone p,.compare-col,.hub-item,.quiz-card,.quiz-option,.final-card{background:#FFFFFF!important;border:1px solid #DED3EC!important;border-radius:18px!important;box-shadow:0 4px 14px rgba(17,17,17,.06)!important}
-.qmx-copy,.qmx-visual{border-radius:20px!important}.qmx-visual{background:#F2ECFA!important;background-image:none!important}.qmx-badge{background:#FFFFFF!important;border:1px solid #DED3EC!important;color:#46178F!important;box-shadow:none!important}
-.eyebrow,.qmx-kicker,.step-no,.hub-item b{color:#46178F!important}.title,.qmx-copy h2{color:#111111!important;font-weight:800!important;letter-spacing:-.035em!important}.lead,.qmx-copy p,.concept-card p,.step p,.milestone p,.compare-item,.hub-item,.qmx-detail,.qmx-prompt,.qmx-count{color:#6B6474!important}
-.chip,.concept-number,.takeaway,.qmx-detail{background:#F2ECFA!important;color:#46178F!important;border-color:#DED3EC!important}.chip{border:1px solid #DED3EC!important}.concept-card:before{background:#46178F!important}
-.hero-art,.spot-visual{background:#F2ECFA!important;background-image:none!important;color:#46178F!important;border:1px solid #DED3EC!important}.hero-art svg,.spot-visual svg{color:#46178F!important;filter:none!important}.hero-art:before,.hero-art:after,.spot-visual:before{border-color:#864CBF!important;opacity:.28!important}
-.step:not(:last-child):after{background:#46178F!important;color:#FFFFFF!important}.timeline:before{background:#864CBF!important}.dot{background:#FFFFFF!important;border-color:#46178F!important;box-shadow:0 0 0 4px #F2ECFA!important}
-.compare-col.good,.compare-col.warn{border-top:4px solid #46178F!important}.compare-col.good .compare-title,.compare-col.warn .compare-title{color:#46178F!important}.good .badge-dot,.warn .badge-dot{background:#46178F!important;color:#FFFFFF!important}
-.qmx-point{background:#FFFFFF!important;color:#6B6474!important;border:1px solid #DED3EC!important;box-shadow:none!important}.qmx-point:hover,.qmx-point.active{background:#F2ECFA!important;color:#46178F!important;border-color:#864CBF!important;transform:translateY(-1px)!important}
-.quiz-option{box-shadow:none!important}.quiz-option:hover{border-color:#46178F!important}.quiz-option.correct{background:#F2ECFA!important;border:2px solid #46178F!important;color:#25076B!important}.quiz-option.incorrect{background:#FFFFFF!important;border:2px dashed #111111!important;color:#111111!important;text-decoration:none!important;opacity:.78!important}.feedback{border-radius:12px!important;background:#F2ECFA!important;color:#25076B!important;border:1px solid #864CBF!important}
-.score-ring{background:conic-gradient(#46178F 0deg,#864CBF 270deg,#E8E0F1 270deg)!important}.score-ring:before{background:#FFFFFF!important}.score-ring span{color:#25076B!important}
-@media(max-width:680px){header{height:54px!important;padding:0 12px!important}footer{height:56px!important;padding:0 12px!important}.slide{padding:12px!important}.title{font-size:clamp(23px,7.5vw,32px)!important}.lead{font-size:13px!important}.qmx-copy{padding:16px!important}.qmx-visual{min-height:220px!important}.nav-btn{padding:9px 12px!important;font-size:12px!important}}
+header,footer{background:#F8F9EB!important;color:#000!important;border-color:#000!important;box-shadow:none!important}
+.brand-mark{background:#003D21!important;color:#F8F9EB!important;border:1px solid #000!important;border-radius:13px!important;box-shadow:none!important}
+.progress-shell{background:#EDEEE1!important;border:1px solid #C0C2A9!important;border-radius:999px!important}.progress-fill{background:#003D21!important;background-image:none!important}.progress-text,.part{color:#5A5A4F!important}
+.nav-btn{border-radius:13px!important;font-family:Arial,Helvetica,sans-serif!important;font-weight:700!important}.nav-btn.primary{background:#000!important;color:#F8F9EB!important;border:1px solid #000!important}.nav-btn.primary:hover{background:#003D21!important;border-color:#003D21!important;transform:translateY(-1px)!important}.nav-btn.secondary{background:#F8F9EB!important;color:#000!important;border:1px solid #000!important}.nav-btn.secondary:hover{background:#AAFDC0!important}
+.slide{background:#F8F9EB!important}.glass,.qmx-copy,.qmx-visual,.concept-card,.step,.milestone p,.compare-col,.hub-item,.quiz-card,.quiz-option,.final-card{background:#FFF!important;border:1px solid #C0C2A9!important;border-radius:22px!important;box-shadow:none!important}
+.qmx-copy,.qmx-visual{border-radius:22px!important}.qmx-visual{background:#EDEEE1!important;background-image:none!important}.qmx-badge{background:#F8F9EB!important;border:1px solid #000!important;color:#000!important;box-shadow:none!important;border-radius:999px!important}
+.eyebrow,.qmx-kicker,.step-no,.hub-item b{color:#003D21!important;font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important;letter-spacing:.05em!important}.title,.qmx-copy h2,.final-card h1,.quiz-card h2{font-family:"Monument Grotesk","Arial Black","Helvetica Neue",Arial,sans-serif!important;color:#000!important;font-weight:800!important;letter-spacing:-.055em!important;line-height:.94!important}.lead,.qmx-copy p,.concept-card p,.step p,.milestone p,.compare-item,.hub-item,.qmx-detail,.qmx-prompt,.qmx-count{color:#5A5A4F!important;line-height:1.5!important}
+.chip,.concept-number,.takeaway,.qmx-detail{background:#AAFDC0!important;color:#000!important;border-color:#000!important}.chip{border:1px solid #000!important}.concept-card:before{background:#003D21!important}
+.hero-art,.spot-visual{background:#003D21!important;background-image:none!important;color:#F8F9EB!important;border:1px solid #000!important}.hero-art svg,.spot-visual svg{color:#F8F9EB!important;filter:none!important}.hero-art:before,.hero-art:after,.spot-visual:before{border-color:#AAFDC0!important;opacity:.42!important}
+.step:not(:last-child):after{background:#000!important;color:#F8F9EB!important}.timeline:before{background:#003D21!important}.dot{background:#F8F9EB!important;border-color:#003D21!important;box-shadow:0 0 0 4px #AAFDC0!important}
+.compare-col.good{background:#AAFDC0!important;border-top:1px solid #000!important}.compare-col.warn{background:#FFC0E6!important;border-top:1px solid #000!important}.compare-col.good .compare-title,.compare-col.warn .compare-title{color:#000!important}.good .badge-dot{background:#003D21!important}.warn .badge-dot{background:#3F0929!important}
+.qmx-point{background:#F8F9EB!important;color:#5A5A4F!important;border:1px solid #C0C2A9!important;box-shadow:none!important}.qmx-point:hover,.qmx-point.active{background:#AAFDC0!important;color:#000!important;border-color:#000!important;transform:translateY(-1px)!important}
+.quiz-option{box-shadow:none!important}.quiz-option:hover{border-color:#000!important;background:#F8F9EB!important}.quiz-option.correct{background:#AAFDC0!important;border:2px solid #000!important;color:#000!important}.quiz-option.incorrect{background:#FFC0E6!important;border:2px solid #3F0929!important;color:#3F0929!important;text-decoration:none!important}.feedback{border-radius:13px!important;background:#D3BEFF!important;color:#000!important;border:1px solid #000!important}
+.score-ring{background:conic-gradient(#003D21 0deg,#AAFDC0 270deg,#EDEEE1 270deg)!important}.score-ring:before{background:#F8F9EB!important}.score-ring span{color:#000!important;font-family:"Arial Black",Arial,sans-serif!important}
+@media(max-width:680px){header{height:54px!important;padding:0 12px!important}footer{height:56px!important;padding:0 12px!important}.slide{padding:12px!important}.title{font-size:clamp(25px,8vw,34px)!important;line-height:.94!important}.lead{font-size:13px!important}.qmx-copy{padding:16px!important}.qmx-visual{min-height:220px!important}.nav-btn{padding:9px 12px!important;font-size:12px!important}}
 </style>`;
 
 async function applyEditorialCourseTheme(buffer) {
