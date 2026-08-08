@@ -28,12 +28,36 @@ const Metrics = require('./utils/metrics');
 const app = express();
 const server = http.createServer(app);
 
-const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
+const configuredCorsOrigins = String(process.env.CORS_ORIGIN || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+const isProduction = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+const allowDevelopmentWildcard = !isProduction && (
+    configuredCorsOrigins.length === 0 || configuredCorsOrigins.includes('*')
+);
+
+if (isProduction && (
+    configuredCorsOrigins.length === 0 || configuredCorsOrigins.includes('*')
+)) {
+    console.error('[productionGuards] Production requires an explicit CORS_ORIGIN allowlist');
+    process.exit(1);
+}
+
+const corsOrigin = (origin, callback) => {
+    // Native/mobile clients, health checks and server-to-server requests may not
+    // include an Origin header. Browser origins must match the configured list.
+    if (!origin || allowDevelopmentWildcard || configuredCorsOrigins.includes(origin)) {
+        return callback(null, true);
+    }
+    return callback(new Error('Origin is not allowed by CORS'));
+};
 
 const io = new Server(server, {
     cors: {
-        origin: CORS_ORIGIN,
-        methods: ["GET", "POST"]
+        origin: corsOrigin,
+        methods: ['GET', 'POST'],
+        credentials: true
     },
     // Mobile / flaky networks: avoid aggressive disconnects mid-quiz
     pingInterval: 10000,
@@ -41,20 +65,29 @@ const io = new Server(server, {
     connectTimeout: 20000
 });
 
-// Redis Adapter for Horizontal Scaling (Optional)
-if (process.env.REDIS_URL) {
-    const { createClient } = require('redis');
-    const { createAdapter } = require('@socket.io/redis-adapter');
+// Redis adapter is intentionally opt-in. Live Quiz timers/lease ownership are
+// currently hardened for a single backend process; do not imply multi-instance
+// safety merely because REDIS_URL exists.
+if (process.env.REDIS_URL && process.env.SOCKET_REDIS_ADAPTER_ENABLED === '1') {
+    try {
+        const { createClient } = require('redis');
+        const { createAdapter } = require('@socket.io/redis-adapter');
 
-    const pubClient = createClient({ url: process.env.REDIS_URL });
-    const subClient = pubClient.duplicate();
+        const pubClient = createClient({ url: process.env.REDIS_URL });
+        const subClient = pubClient.duplicate();
 
-    Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
-        io.adapter(createAdapter(pubClient, subClient));
-        logger.info('socket_redis_adapter_connected', { module: 'socket' });
-    }).catch(err => {
-        logger.error('socket_redis_adapter_failed', { module: 'socket', error: err.message });
-    });
+        Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+            io.adapter(createAdapter(pubClient, subClient));
+            logger.info('socket_redis_adapter_connected', { module: 'socket' });
+        }).catch(err => {
+            logger.error('socket_redis_adapter_failed', { module: 'socket', error: err.message });
+        });
+    } catch (err) {
+        logger.error('socket_redis_adapter_unavailable', {
+            module: 'socket',
+            error: err.message
+        });
+    }
 }
 
 // Structured HTTP access log (P3-T08) + metrics (P3-T09)
@@ -70,9 +103,7 @@ app.use((req, res, next) => {
 });
 
 app.use(cors({
-    origin: (origin, callback) => {
-        callback(null, true);
-    },
+    origin: corsOrigin,
     credentials: true
 }));
 
