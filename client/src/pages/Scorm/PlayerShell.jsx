@@ -65,7 +65,7 @@ export default function ScormPlayerShell() {
   return (
     <div className="scorm-editorial min-h-screen flex items-center justify-center p-4 md:p-8 relative z-20">
       <div className="w-full max-w-3xl border-2 border-[#111111] grid grid-cols-1 md:grid-cols-[.42fr_.58fr]">
-        <div className="bg-[#111111] text-[#F4F0E6] p-6 md:p-8 border-b-2 md:border-b-0 md:border-r-2 border-[#111111] flex flex-col justify-between min-h-[220px]">
+        <div className="bg-quizmoto-blue text-[#F4F0E6] p-6 md:p-8 border-b-2 md:border-b-0 md:border-r-2 border-[#111111] flex flex-col justify-between min-h-[220px]">
           <div>
             <div className="text-[10px] font-black uppercase tracking-[0.22em]">SCORM World</div>
             <div className="text-5xl md:text-6xl font-black uppercase tracking-[-0.06em] leading-[0.85] mt-5">Learn.<br />Track.<br />Finish.</div>
