@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { apiUrl } from '../../config';
@@ -8,6 +8,7 @@ export default function VoicePreview() {
   const { token } = useAuth();
   const navigate = useNavigate();
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
+  const urlsRef = useRef({});
   const [voices, setVoices] = useState([]);
   const [text, setText] = useState('');
   const [speed, setSpeed] = useState(1);
@@ -43,7 +44,7 @@ export default function VoicePreview() {
 
   useEffect(() => {
     return () => {
-      Object.values(audioUrls).forEach((url) => {
+      Object.values(urlsRef.current).forEach((url) => {
         try {
           window.URL.revokeObjectURL(url);
         } catch (_) {
@@ -51,7 +52,7 @@ export default function VoicePreview() {
         }
       });
     };
-  }, [audioUrls]);
+  }, []);
 
   const preview = async (voice) => {
     setBusyVoice(voice.id);
@@ -62,9 +63,10 @@ export default function VoicePreview() {
         { voiceId: voice.id, text, speed },
         { headers, responseType: 'blob', timeout: 180000 }
       );
-      const old = audioUrls[voice.id];
+      const old = urlsRef.current[voice.id];
       if (old) window.URL.revokeObjectURL(old);
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'audio/wav' }));
+      urlsRef.current = { ...urlsRef.current, [voice.id]: url };
       setAudioUrls((prev) => ({ ...prev, [voice.id]: url }));
     } catch (err) {
       let message = err.message || 'Voice preview failed';
