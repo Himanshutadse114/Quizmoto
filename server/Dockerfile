@@ -35,7 +35,7 @@ USER node
 
 ENV PORT=5001
 # Exact production frontend allowlist fallback for Render. A valid Render dashboard
-# CORS_ORIGIN overrides this value; blank/null values are normalized again in CMD.
+# CORS_ORIGIN overrides this value; unsafe blank/wildcard values are normalized in CMD.
 ENV CORS_ORIGIN=https://kahoot-awareness-frontend.onrender.com
 ENV MPLCONFIGDIR=/tmp/matplotlib
 ENV PYTHONUNBUFFERED=1
@@ -43,7 +43,8 @@ ENV REPORT_PYTHON_CMD=/usr/bin/python3
 
 EXPOSE 5001
 
-# Render can inject an environment variable with an empty value, which overrides
-# Docker ENV. Normalize only empty/unset CORS_ORIGIN before Node starts. Explicit
-# values (including an unsafe '*') are preserved so application guards can reject them.
-CMD ["sh", "-c", "export CORS_ORIGIN=\"${CORS_ORIGIN:-https://kahoot-awareness-frontend.onrender.com}\"; exec node index.js"]
+# Render dashboard values override Docker ENV at runtime. Some existing deployments
+# still carry CORS_ORIGIN="*" (or an empty value). Convert only those unsafe values
+# to the single known frontend origin before Node starts. Any explicit non-wildcard
+# custom allowlist remains untouched.
+CMD ["sh", "-c", "if [ -z \"$CORS_ORIGIN\" ] || [ \"$CORS_ORIGIN\" = \"*\" ]; then export CORS_ORIGIN=https://kahoot-awareness-frontend.onrender.com; fi; exec node index.js"]
