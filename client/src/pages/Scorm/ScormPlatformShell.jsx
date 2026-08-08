@@ -15,6 +15,7 @@ import {
   CircleCheck
 } from 'lucide-react';
 import './scormEditorialTheme.css';
+import './scormLiveQuizOverrides.css';
 
 const NAV = [
   { to: '/scorm', end: true, label: 'Overview', icon: LayoutDashboard },
