@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ExternalLink, BookOpen } from 'lucide-react';
 import { apiUrl } from '../../config';
 import './scormEditorialTheme.css';
 
@@ -64,33 +65,44 @@ export default function ScormPlayerShell() {
 
   return (
     <div className="scorm-editorial min-h-screen flex items-center justify-center p-4 md:p-8 relative z-20">
-      <div className="w-full max-w-3xl border-2 border-[#111111] grid grid-cols-1 md:grid-cols-[.42fr_.58fr]">
-        <div className="bg-quizmoto-blue text-[#F4F0E6] p-6 md:p-8 border-b-2 md:border-b-0 md:border-r-2 border-[#111111] flex flex-col justify-between min-h-[220px]">
+      <div className="w-full max-w-3xl scorm-soft-card overflow-hidden grid grid-cols-1 md:grid-cols-[.42fr_.58fr]">
+        <div className="scorm-tint-blue p-6 md:p-8 border-b md:border-b-0 md:border-r border-[#e1e6e2] flex flex-col justify-between min-h-[230px]">
           <div>
-            <div className="text-[10px] font-black uppercase tracking-[0.22em]">SCORM World</div>
-            <div className="text-5xl md:text-6xl font-black uppercase tracking-[-0.06em] leading-[0.85] mt-5">Learn.<br />Track.<br />Finish.</div>
+            <div className="w-11 h-11 rounded-xl bg-white border border-[#dbe4e9] grid place-items-center text-[#738e9f]">
+              <BookOpen size={20} />
+            </div>
+            <div className="mt-6 text-[11px] font-semibold text-[#8296a2]">SCORM World</div>
+            <div className="mt-1 text-2xl md:text-[30px] font-semibold tracking-[-0.04em] leading-tight text-[#35454e]">
+              Your course is opening in a separate window.
+            </div>
           </div>
-          <div className="text-[10px] font-black uppercase tracking-[0.16em] mt-8">Registration / {registrationId}</div>
+          <div className="mt-8 text-[10px] text-[#8d9ca5]">Registration {registrationId}</div>
         </div>
 
-        <div className="p-6 md:p-10 flex flex-col justify-center">
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-3">Course launcher</div>
-          <h1 className="text-3xl md:text-4xl font-black uppercase leading-[0.95] mb-5">
-            {error ? 'Cannot launch course.' : opened ? 'Course opened.' : 'Opening course.'}
+        <div className="bg-white p-6 md:p-10 flex flex-col justify-center">
+          <div className="text-[11px] font-semibold text-[#829087] mb-1">Course launcher</div>
+          <h1 className="text-2xl md:text-[32px] font-semibold tracking-[-0.04em] leading-tight mb-3">
+            {error ? 'We could not open the course' : opened ? 'Course opened' : 'Opening your course'}
           </h1>
-          <div className="border-t-2 border-[#111111] pt-5">
-            <p className="text-sm font-semibold leading-relaxed mb-6">
-              {error || (opened
-                ? 'Use the course window to continue learning. You can keep this page open or return to the previous screen.'
-                : 'Your learning experience is being prepared. If no window appears, allow popups for this site and try again.')}
-            </p>
+          <p className="text-sm leading-relaxed mb-6">
+            {error || (opened
+              ? 'Continue in the course window. Your progress will be saved as you move through the learning.'
+              : 'Your learning experience is being prepared. If no window appears, allow popups for this site and try again.')}
+          </p>
+
+          <div className="flex flex-wrap gap-2.5">
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="scorm-button-primary px-5 py-3 font-black text-xs uppercase tracking-[0.12em]"
+              className="scorm-button-secondary px-4 py-2.5 font-semibold text-xs inline-flex items-center gap-2"
             >
-              ← Go back
+              <ArrowLeft size={14} /> Go back
             </button>
+            {opened && !error && (
+              <div className="px-4 py-2.5 rounded-xl bg-[#edf3ef] border border-[#dbe6df] text-[#607568] text-xs font-semibold inline-flex items-center gap-2">
+                <ExternalLink size={14} /> Open in new window
+              </div>
+            )}
           </div>
         </div>
       </div>
