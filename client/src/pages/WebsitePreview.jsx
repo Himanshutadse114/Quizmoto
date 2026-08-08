@@ -26,6 +26,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './WebsitePreview.css';
+import './WebsitePreviewHero.css';
+import './WebsitePreviewHeroLive.css';
 
 const reveal = {
   hidden: { opacity: 0, y: 34 },
@@ -35,6 +37,14 @@ const reveal = {
     transition: { duration: 0.72, ease: [0.16, 1, 0.3, 1] }
   }
 };
+
+const HERO_LIVE_MESSAGES = [
+  'RUN LIVE QUIZZES IN REAL TIME.',
+  'LET LEARNERS JOIN WITH A PIN.',
+  'SHOW INSTANT ANSWER FEEDBACK.',
+  'BUILD ENERGY WITH COUNTDOWNS & SOUND.',
+  'FINISH WITH A LIVE PODIUM.'
+];
 
 function Reveal({ children, className = '', delay = 0 }) {
   return (
@@ -60,13 +70,63 @@ function StatusPill({ icon: Icon, children, className = '' }) {
   );
 }
 
-function PolicyPhone() {
+function HeroLiveShift() {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      setIndex((current) => (current + 1) % HERO_LIVE_MESSAGES.length);
+    }, 2800);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <motion.div
+      className="slice-hero-live-shift"
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: .32, duration: .58 }}
+    >
+      <div className="slice-hero-live-label"><Radio size={13} /> ALSO BUILT FOR LIVE LEARNING</div>
+      <div className="slice-hero-live-window" aria-live="polite">
+        <motion.span
+          key={HERO_LIVE_MESSAGES[index]}
+          initial={{ opacity: 0, y: 22, rotateX: 22 }}
+          animate={{ opacity: 1, y: 0, rotateX: 0 }}
+          transition={{ duration: .48, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {HERO_LIVE_MESSAGES[index]}
+        </motion.span>
+      </div>
+    </motion.div>
+  );
+}
+
+function HeroPhone() {
+  const [mode, setMode] = useState('course');
   const steps = [
-    ['Policy understood', '100%'],
+    ['Document understood', '100%'],
     ['Learning flow', 'Ready'],
     ['Visual course', 'Ready'],
     ['SCORM package', 'Ready']
   ];
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      setMode((current) => (current === 'course' ? 'quiz' : 'course'));
+    }, 6200);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   return (
     <div className="slice-phone-wrap" data-scroll data-scroll-speed="0.055">
@@ -75,43 +135,126 @@ function PolicyPhone() {
         <div className="slice-phone-screen">
           <div className="slice-app-topline">
             <span className="slice-app-logo">Q</span>
-            <span>AI COURSE BUILDER</span>
+            <span>QUIZMOTO LEARNING PLATFORM</span>
             <i />
           </div>
 
-          <div className="slice-pdf-chip">
-            <div><FileText size={21} /></div>
-            <span><strong>Information Security Policy.pdf</strong><small>42 pages · uploaded</small></span>
-            <Check size={18} />
+          <div className="slice-phone-product-tabs" role="tablist" aria-label="Quizmoto product preview">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'course'}
+              className={mode === 'course' ? 'active' : ''}
+              onClick={() => setMode('course')}
+            >
+              <Sparkles size={13} /> AI Course
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'quiz'}
+              className={mode === 'quiz' ? 'active' : ''}
+              onClick={() => setMode('quiz')}
+            >
+              <Radio size={13} /> Live Quiz
+            </button>
           </div>
 
-          <div className="slice-ai-orbit">
-            <span><Sparkles size={30} /></span>
-            <div>Building your course</div>
-            <small>AI is turning policy into learning</small>
-          </div>
-
-          <div className="slice-build-steps">
-            {steps.map(([name, value], index) => (
-              <div key={name}>
-                <i>{index + 1}</i>
-                <span>{name}</span>
-                <b>{value}</b>
+          {mode === 'course' ? (
+            <motion.div
+              key="course-mode"
+              className="slice-phone-mode slice-phone-mode-course"
+              initial={{ opacity: 0, x: -18 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: .46, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="slice-pdf-chip">
+                <div><FileText size={21} /></div>
+                <span><strong>Employee Handbook.pdf</strong><small>42 pages · uploaded</small></span>
+                <Check size={18} />
               </div>
-            ))}
-          </div>
 
-          <div className="slice-course-ready">
-            <small>COURSE READY</small>
-            <strong>Security Policy Essentials</strong>
-            <div><span>SCORM 1.2</span><span>8 screens</span><span>5 checks</span></div>
-          </div>
+              <div className="slice-ai-orbit">
+                <span><Sparkles size={30} /></span>
+                <div>Building your course</div>
+                <small>AI is turning your document into learning</small>
+              </div>
+
+              <div className="slice-build-steps">
+                {steps.map(([name, value], index) => (
+                  <div key={name}>
+                    <i>{index + 1}</i>
+                    <span>{name}</span>
+                    <b>{value}</b>
+                  </div>
+                ))}
+              </div>
+
+              <div className="slice-course-ready">
+                <small>COURSE READY</small>
+                <strong>Employee Handbook Essentials</strong>
+                <div><span>SCORM 1.2</span><span>8 screens</span><span>5 checks</span></div>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="quiz-mode"
+              className="slice-phone-mode slice-phone-live"
+              initial={{ opacity: 0, x: 18 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: .46, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="slice-phone-live-head">
+                <div>
+                  <small>LIVE SESSION</small>
+                  <strong>Cybersecurity Challenge</strong>
+                </div>
+                <span className="slice-phone-live-pin">PIN 482 916</span>
+              </div>
+
+              <div className="slice-phone-live-question-meta">
+                <span>QUESTION 04 / 10</span>
+                <span className="slice-phone-live-timer">18</span>
+              </div>
+
+              <h3>What should you do after a suspicious sign-in alert?</h3>
+
+              <div className="slice-phone-live-answers">
+                <div><span>A</span> Ignore it if the password still works</div>
+                <div className="selected"><span>B</span> Change the password & review active sessions</div>
+                <div><span>C</span> Forward the alert to colleagues</div>
+                <div><span>D</span> Disable browser updates</div>
+              </div>
+
+              <div className="slice-phone-live-stats">
+                <span><Users size={13} /> 38 playing</span>
+                <span><Radio size={13} /> Live</span>
+              </div>
+
+              <div className="slice-phone-live-leaderboard">
+                <small>LIVE LEADERBOARD</small>
+                <div><i>1</i><span>Meera</span><b>3,420</b></div>
+                <div><i>2</i><span>Aarav</span><b>3,280</b></div>
+                <div><i>3</i><span>Rohan</span><b>3,010</b></div>
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
 
-      <StatusPill icon={Clock3} className="slice-float-pill slice-float-time">~10 min to tracking-ready</StatusPill>
-      <StatusPill icon={Activity} className="slice-float-pill slice-float-track">Tracking active</StatusPill>
-      <StatusPill icon={Check} className="slice-float-pill slice-float-scorm">SCORM ready</StatusPill>
+      {mode === 'course' ? (
+        <>
+          <StatusPill icon={Clock3} className="slice-float-pill slice-float-time">~10 min to tracking-ready</StatusPill>
+          <StatusPill icon={Activity} className="slice-float-pill slice-float-track">Tracking active</StatusPill>
+          <StatusPill icon={Check} className="slice-float-pill slice-float-scorm">SCORM ready</StatusPill>
+        </>
+      ) : (
+        <>
+          <StatusPill icon={Users} className="slice-float-pill slice-float-players">38 players joined</StatusPill>
+          <StatusPill icon={QrCode} className="slice-float-pill slice-float-pin">PIN 482 916</StatusPill>
+          <StatusPill icon={Radio} className="slice-float-pill slice-float-live">Live session</StatusPill>
+        </>
+      )}
     </div>
   );
 }
@@ -135,7 +278,7 @@ function CourseMockup() {
         <main>
           <div className="slice-course-kicker">DATA HANDLING</div>
           <h3>Handle sensitive information with intent.</h3>
-          <p>The policy is transformed into focused learning moments instead of being placed inside a document viewer.</p>
+          <p>The source document is transformed into focused learning moments instead of being placed inside a document viewer.</p>
           <div className="slice-learning-cards">
             <article><span>01</span><strong>Classify</strong><small>Know what type of information you are handling.</small></article>
             <article><span>02</span><strong>Protect</strong><small>Use approved storage, sharing and access controls.</small></article>
@@ -197,7 +340,7 @@ function QuizMockup() {
 }
 
 const SCORM_FEATURES = [
-  [Upload, 'Policy PDF upload', 'Start with the source document your teams already use.'],
+  [Upload, 'Document upload', 'Start with the source document your teams already use.'],
   [Sparkles, 'AI course generation', 'AI structures the source into learning objectives, visual screens and knowledge checks.'],
   [BookOpen, 'SCORM-ready output', 'Generate a standards-based package ready for delivery and tracking.'],
   [MonitorUp, 'Built-in LMS', 'Publish courses, invite learners and manage delivery from SCORM World.'],
@@ -273,7 +416,7 @@ function WebsitePreview() {
           <span>Q</span><strong>quizmoto</strong>
         </button>
         <nav aria-label="Website preview navigation">
-          <button type="button" onClick={() => scrollTo('#policy-to-course')}>Policy to course</button>
+          <button type="button" onClick={() => scrollTo('#document-to-course')}>Document to course</button>
           <button type="button" onClick={() => scrollTo('#tracking')}>LMS & tracking</button>
           <button type="button" onClick={() => scrollTo('#live-quiz')}>Live Quiz</button>
         </nav>
@@ -287,43 +430,49 @@ function WebsitePreview() {
         <section className="slice-hero" data-scroll-section>
           <div className="slice-watercolor slice-watercolor-hero" aria-hidden="true" />
           <div className="slice-hero-copy">
-            <motion.div className="slice-eyebrow" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>POLICY → COURSE → TRACKING</motion.div>
+            <motion.div className="slice-eyebrow" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>DOCUMENT → AI COURSE → TRACKING · + LIVE QUIZ</motion.div>
             <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .08, duration: .75, ease: [0.16, 1, 0.3, 1] }}>
-              Turn a policy PDF into a <em>trackable course.</em>
+              Turn any document into a <em>trackable course.</em>
             </motion.h1>
             <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .2, duration: .65 }}>
-              Upload the policy you already have. Quizmoto AI turns it into a visual SCORM course, publishes it through SCORM World and makes learner tracking ready in around ten minutes.
+              Upload the document you already have. Quizmoto AI turns it into a visual SCORM course, publishes it through SCORM World and makes learner tracking ready in around ten minutes. When you need live participation, launch a real-time Live Quiz from the same platform.
             </motion.p>
-            <motion.div className="slice-hero-actions" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .3, duration: .6 }}>
-              <button type="button" className="slice-primary-btn" onClick={() => navigate('/scorm/author')}>Create from PDF <ArrowRight size={17} /></button>
-              <button type="button" className="slice-secondary-btn" onClick={() => scrollTo('#policy-to-course')}>See how it works</button>
+
+            <HeroLiveShift />
+
+            <motion.div className="slice-hero-actions" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .42, duration: .6 }}>
+              <button type="button" className="slice-primary-btn" onClick={() => navigate('/scorm/author')}>Create from document <ArrowRight size={17} /></button>
+              <button type="button" className="slice-secondary-btn" onClick={() => scrollTo('#live-quiz')}><Play size={15} /> Explore Live Quiz</button>
             </motion.div>
-            <motion.div className="slice-hero-proof" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: .48 }}>
-              <span><Check size={14} /> SCORM-ready</span><span><Check size={14} /> Built-in LMS</span><span><Check size={14} /> Instant tracking</span>
+            <motion.div className="slice-hero-proof" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: .58 }}>
+              <span><Check size={14} /> SCORM-ready</span>
+              <span><Check size={14} /> Built-in LMS</span>
+              <span><Check size={14} /> Instant tracking</span>
+              <span><Radio size={14} /> Live Quiz</span>
             </motion.div>
           </div>
-          <motion.div className="slice-hero-product" initial={{ opacity: 0, y: 38, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: .2, duration: .9, ease: [0.16, 1, 0.3, 1] }}>
-            <PolicyPhone />
+          <motion.div className="slice-hero-product" initial={{ opacity: 0, y: 38, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: .25, duration: .9, ease: [0.16, 1, 0.3, 1] }}>
+            <HeroPhone />
           </motion.div>
         </section>
 
         <section className="slice-simple-strip" data-scroll-section>
-          <div><strong>1 PDF</strong><span>your source policy</span></div>
+          <div><strong>1 document</strong><span>your source content</span></div>
           <div><strong>~10 min</strong><span>typical generation flow</span></div>
           <div><strong>1 course</strong><span>SCORM-ready output</span></div>
-          <div><strong>Live</strong><span>learner tracking</span></div>
+          <div><strong>Live</strong><span>tracking + quiz sessions</span></div>
         </section>
 
-        <section className="slice-process" id="policy-to-course" data-scroll-section>
+        <section className="slice-process" id="document-to-course" data-scroll-section>
           <div className="slice-watercolor slice-watercolor-blue" aria-hidden="true" />
           <Reveal className="slice-section-heading light">
-            <span>FROM POLICY TO LEARNING</span>
+            <span>FROM DOCUMENT TO LEARNING</span>
             <h2>Five steps.<br />One continuous flow.</h2>
             <p>No manual slide building, package handoffs or separate tracking setup.</p>
           </Reveal>
           <div className="slice-process-cards">
             {[
-              ['01', Upload, 'Upload', 'Drop in the policy PDF you already use.'],
+              ['01', Upload, 'Upload', 'Drop in the source document you already use.'],
               ['02', ScanText, 'Understand', 'AI extracts the rules, themes and learning objectives.'],
               ['03', WandSparkles, 'Generate', 'Visual screens, interactions and knowledge checks are created.'],
               ['04', BookOpen, 'Publish', 'The course is packaged and becomes learner-ready inside SCORM World.'],
@@ -344,7 +493,7 @@ function WebsitePreview() {
         <section className="slice-course-section" data-scroll-section>
           <Reveal className="slice-section-heading">
             <span>AI COURSE GENERATION</span>
-            <h2>Not a PDF in a player.<br /><em>A real learning experience.</em></h2>
+            <h2>Not a document in a player.<br /><em>A real learning experience.</em></h2>
             <p>Quizmoto turns source material into structured, visual learning that people can actually move through.</p>
           </Reveal>
           <Reveal className="slice-course-demo"><CourseMockup /></Reveal>
@@ -405,7 +554,7 @@ function WebsitePreview() {
         <section className="slice-live-section" id="live-quiz" data-scroll-section>
           <div className="slice-live-copy">
             <Reveal className="slice-section-heading">
-              <span>LIVE QUIZ · SECONDARY PRODUCT</span>
+              <span>LIVE QUIZ</span>
               <h2>When learning needs<br /><em>a room to wake up.</em></h2>
               <p>Run real-time quizzes with PIN joining, synchronized questions, sound, answer feedback, rankings and a final podium.</p>
             </Reveal>
@@ -431,11 +580,11 @@ function WebsitePreview() {
         <section className="slice-final" data-scroll-section>
           <Reveal>
             <span>QUIZMOTO</span>
-            <h2>Your policy is already written.<br /><em>Turn it into learning.</em></h2>
-            <p>Upload the PDF. Let AI build the course. Publish it. Track it. One workflow from source document to learner evidence.</p>
+            <h2>Your document already has the knowledge.<br /><em>Turn it into learning.</em></h2>
+            <p>Upload the source. Let AI build the course. Publish it. Track it. Then use Live Quiz when you want the whole room participating together.</p>
             <div className="slice-final-actions">
-              <button type="button" className="slice-primary-btn" onClick={() => navigate('/scorm/author')}>Create from PDF <ArrowRight size={17} /></button>
-              <button type="button" className="slice-secondary-btn" onClick={() => navigate('/scorm')}>Open SCORM World</button>
+              <button type="button" className="slice-primary-btn" onClick={() => navigate('/scorm/author')}>Create from document <ArrowRight size={17} /></button>
+              <button type="button" className="slice-secondary-btn" onClick={() => navigate('/dashboard')}>Open Live Quiz</button>
             </div>
           </Reveal>
         </section>
