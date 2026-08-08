@@ -1,30 +1,22 @@
 const JSZip = require('jszip');
 const { buildScormPackageZip: buildFinalPackage } = require('./ScormExperienceFinalizer');
 
-// A small set of intentionally quiet palettes. They share the same visual
-// grammar but give authors a real choice without turning courses into theme demos.
+// Curated, low-saturation palettes. Template IDs keep their existing author labels
+// while moving away from bright generated-looking colour treatments.
 const VISUAL_THEMES = {
+    // Orange Corporate -> soft terracotta
     1: {
-        primary: '#6f887a',
-        primaryDark: '#53695d',
-        accent: '#c9d8cf',
-        bg: '#f7f8f5',
+        primary: '#b9826e',
+        primaryDark: '#956858',
+        accent: '#e5cec4',
+        bg: '#faf7f5',
         surface: '#ffffff',
-        text: '#26312d',
-        muted: '#6e7873',
-        soft: '#edf3ef'
+        text: '#352d2a',
+        muted: '#7a6f6a',
+        soft: '#f6ece8'
     },
+    // Amber Classic -> warm sand
     3: {
-        primary: '#7896aa',
-        primaryDark: '#5e7b8f',
-        accent: '#ccd9e2',
-        bg: '#f6f8f9',
-        surface: '#ffffff',
-        text: '#293239',
-        muted: '#6f7b83',
-        soft: '#edf3f7'
-    },
-    4: {
         primary: '#ae9069',
         primaryDark: '#8c704e',
         accent: '#e4d6c3',
@@ -34,15 +26,27 @@ const VISUAL_THEMES = {
         muted: '#7e756b',
         soft: '#f5f0e8'
     },
-    5: {
-        primary: '#8f83a5',
-        primaryDark: '#706681',
-        accent: '#d8d0e1',
-        bg: '#f9f7fa',
+    // Green Growth -> soft sage
+    4: {
+        primary: '#6f887a',
+        primaryDark: '#53695d',
+        accent: '#c9d8cf',
+        bg: '#f7f8f5',
         surface: '#ffffff',
-        text: '#322f36',
-        muted: '#77717c',
-        soft: '#f2eff6'
+        text: '#26312d',
+        muted: '#6e7873',
+        soft: '#edf3ef'
+    },
+    // Pink Modern -> dusty rose / mauve
+    5: {
+        primary: '#a27b8b',
+        primaryDark: '#815f6d',
+        accent: '#dfcbd3',
+        bg: '#faf7f8',
+        surface: '#ffffff',
+        text: '#352f32',
+        muted: '#7b7175',
+        soft: '#f5ecef'
     }
 };
 
