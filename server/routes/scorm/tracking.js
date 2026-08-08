@@ -16,15 +16,24 @@ function learnerRows(course) {
         .map((reg) => serializeRegistration(reg, course));
 }
 
+function summarizeRows(rows) {
+    const completed = rows.filter((row) => row.progressAvailable && row.progressPercent >= 100).length;
+    const inProgress = rows.filter((row) => (
+        (row.progressAvailable && row.progressPercent > 0 && row.progressPercent < 100) ||
+        (!row.progressAvailable && row.status === 'active')
+    )).length;
+    const notStarted = rows.filter((row) => row.progressAvailable && row.progressPercent <= 0 && row.status !== 'active').length;
+    const unavailable = rows.filter((row) => !row.progressAvailable).length;
+    const measurable = rows.filter((row) => row.progressAvailable);
+    const averageProgress = measurable.length
+        ? Math.round((measurable.reduce((sum, row) => sum + Number(row.progressPercent || 0), 0) / measurable.length) * 10) / 10
+        : 0;
+    return { completed, inProgress, notStarted, unavailable, averageProgress };
+}
+
 function courseSummary(course) {
     const rows = learnerRows(course);
-    const completed = rows.filter((row) => row.progressPercent >= 100).length;
-    const active = rows.filter((row) => row.progressPercent > 0 && row.progressPercent < 100).length;
-    const notStarted = rows.filter((row) => row.progressPercent <= 0).length;
-    const averageProgress = rows.length
-        ? Math.round((rows.reduce((sum, row) => sum + Number(row.progressPercent || 0), 0) / rows.length) * 10) / 10
-        : 0;
-
+    const stats = summarizeRows(rows);
     return {
         id: course.id,
         title: course.title,
@@ -32,10 +41,8 @@ function courseSummary(course) {
         inviteCode: course.inviteCode,
         packageId: course.packageId,
         learners: rows.length,
-        completed,
-        active,
-        notStarted,
-        averageProgress,
+        active: stats.inProgress,
+        ...stats,
         updatedAt: course.updatedAt
     };
 }
@@ -67,21 +74,13 @@ router.get('/summary', auth, async (req, res) => {
         const visible = courses.filter((course) => course.status !== 'archived' && course.package && course.package.status !== 'deleted');
         const courseSummaries = visible.map(courseSummary);
         const rows = visible.flatMap(learnerRows);
-        const completed = rows.filter((row) => row.progressPercent >= 100).length;
-        const inProgress = rows.filter((row) => row.progressPercent > 0 && row.progressPercent < 100).length;
-        const notStarted = rows.filter((row) => row.progressPercent <= 0).length;
-        const averageProgress = rows.length
-            ? Math.round((rows.reduce((sum, row) => sum + Number(row.progressPercent || 0), 0) / rows.length) * 10) / 10
-            : 0;
+        const stats = summarizeRows(rows);
 
         res.json({
             overview: {
                 courses: visible.length,
                 learners: rows.length,
-                completed,
-                inProgress,
-                notStarted,
-                averageProgress
+                ...stats
             },
             courses: courseSummaries,
             learners: rows.sort((a, b) => {
