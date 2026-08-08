@@ -1,9 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { BookOpen, Package, Users, Activity, ArrowUpRight, Sparkles, Palette, BarChart3, CheckCircle2 } from 'lucide-react';
+import {
+  BookOpen,
+  Package,
+  Users,
+  Activity,
+  ArrowUpRight,
+  Sparkles,
+  Palette,
+  BarChart3,
+  CheckCircle2,
+  Clock3
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+
+const StatCard = ({ label, value, icon: Icon, tint, note }) => (
+  <div className={`rounded-2xl border border-[#e1e6e2] p-4 md:p-5 ${tint}`}>
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <div className="text-[26px] md:text-[30px] leading-none font-semibold tracking-[-0.04em] text-[#26312d]">{value}</div>
+        <div className="mt-2 text-[11px] font-semibold text-[#536159]">{label}</div>
+        {note && <div className="mt-1 text-[10px] text-[#8a948f]">{note}</div>}
+      </div>
+      <div className="w-9 h-9 rounded-xl bg-white/70 border border-white grid place-items-center text-[#6e8176]">
+        <Icon size={17} strokeWidth={2} />
+      </div>
+    </div>
+  </div>
+);
 
 export default function ScormHome() {
   const { token } = useAuth();
@@ -34,124 +60,164 @@ export default function ScormHome() {
 
   const overview = tracking.overview || {};
   const recentLearners = (tracking.learners || []).slice(0, 5);
+  const averageProgress = Number(overview.averageProgress || 0);
 
   return (
-    <div className="p-4 md:p-8 max-w-[1500px] mx-auto">
-      <div className="grid grid-cols-1 xl:grid-cols-[1.35fr_.65fr] gap-5 mb-6">
-        <section className="rounded-3xl border border-[#52679b] bg-[#344a7b] p-6 md:p-8 overflow-hidden relative shadow-[0_14px_34px_rgba(20,30,80,.16)]">
-          <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full border-[32px] border-[#465e96]" />
-          <div className="relative max-w-3xl">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-quizmoto-yellow font-black">Learning operations</div>
-            <h2 className="text-3xl md:text-5xl font-black tracking-[-0.04em] mt-3 leading-[1.02]">Build, deliver and track SCORM learning from one platform.</h2>
-            <p className="mt-4 text-white/70 text-sm md:text-base leading-relaxed max-w-2xl">Create visual courses with AI, manage packages, publish learning journeys and monitor exactly where every learner stops.</p>
-            <div className="flex flex-wrap gap-3 mt-6">
-              <Link to="/scorm/author" className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-quizmoto-yellow text-[#171126] font-black text-sm"><Sparkles size={16} /> Create course</Link>
-              <Link to="/scorm/tracking" className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#425887] border border-[#5f73a2] text-white font-bold text-sm"><Activity size={16} /> View learner progress</Link>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-3xl border border-[#52679b] bg-[#304573] p-6 flex flex-col justify-between shadow-[0_14px_34px_rgba(20,30,80,.14)]">
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.18em] text-white/50 font-black">Platform health</div>
-            <div className="mt-4 flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-[#225f58] grid place-items-center text-emerald-200"><CheckCircle2 size={20} /></div>
-              <div>
-                <div className="font-black">Tracking active</div>
-                <div className="text-xs text-white/60 mt-0.5">Score, completion, time and location</div>
-              </div>
-            </div>
-          </div>
-          <div className="mt-6 pt-5 border-t border-[#52679b]">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <div className="text-4xl font-black text-quizmoto-yellow">{Number(overview.averageProgress || 0).toFixed(0)}%</div>
-                <div className="text-[10px] uppercase tracking-[0.15em] text-white/50 font-black mt-1">Average learner progress</div>
-              </div>
-              <Activity size={28} className="text-white/30" />
-            </div>
-          </div>
-        </section>
+    <div className="p-4 md:p-7 lg:p-8 max-w-[1440px] mx-auto">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7">
+        <div className="max-w-2xl">
+          <div className="text-[11px] font-semibold text-[#829087]">Learning overview</div>
+          <h2 className="text-3xl md:text-[38px] font-semibold tracking-[-0.045em] mt-1.5 text-[#26312d]">Your learning workspace</h2>
+          <p className="mt-2 text-sm md:text-[15px] leading-relaxed text-[#707a75]">
+            Create courses, manage delivery and see learner progress without leaving one workspace.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2.5">
+          <Link to="/scorm/tracking" className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">
+            <Activity size={15} /> Learner progress
+          </Link>
+          <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">
+            <Sparkles size={15} /> Create course
+          </Link>
+        </div>
       </div>
 
-      {error && <div className="mb-5 p-4 rounded-2xl border border-red-400/50 bg-[#6b2f47] text-red-100 text-sm">{error}</div>}
-      {!aiEnabled && !error && <div className="mb-5 p-4 rounded-2xl border border-amber-300/40 bg-[#66572d] text-amber-50 text-xs">AI Author is disabled on the backend. Package upload, delivery and tracking remain available.</div>}
+      {error && (
+        <div className="mb-5 p-4 rounded-xl border border-[#ead4d1] bg-[#f7eeee] text-[#9e625d] text-sm">{error}</div>
+      )}
+      {!aiEnabled && !error && (
+        <div className="mb-5 p-4 rounded-xl border border-[#e8dcc9] bg-[#f5f0e8] text-[#8e744f] text-xs">
+          AI Author is currently unavailable. Package upload, delivery and learner tracking are still available.
+        </div>
+      )}
 
       <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 mb-6">
-        {[
-          ['Courses', courses.length, BookOpen, 'text-white'],
-          ['Packages', packages.length, Package, 'text-white'],
-          ['Learners', overview.learners || 0, Users, 'text-blue-200'],
-          ['In progress', overview.inProgress || 0, Activity, 'text-amber-200'],
-          ['Completed', overview.completed || 0, CheckCircle2, 'text-emerald-200']
-        ].map(([label, value, Icon, cls]) => (
-          <div key={label} className="rounded-2xl border border-[#506596] bg-[#304573] p-4 md:p-5 shadow-[0_10px_24px_rgba(20,30,80,.12)]">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className={`text-2xl md:text-3xl font-black ${cls}`}>{value}</div>
-                <div className="mt-1 text-[9px] uppercase tracking-[0.14em] text-white/50 font-black">{label}</div>
-              </div>
-              <Icon size={19} className="text-white/40" />
-            </div>
-          </div>
-        ))}
+        <StatCard label="Courses" value={courses.length} icon={BookOpen} tint="bg-[#edf3ef]" note="Learning experiences" />
+        <StatCard label="Packages" value={packages.length} icon={Package} tint="bg-[#eef3f7]" note="Ready to deliver" />
+        <StatCard label="Learners" value={overview.learners || 0} icon={Users} tint="bg-[#f2eff6]" note="Tracked learners" />
+        <StatCard label="In progress" value={overview.inProgress || 0} icon={Clock3} tint="bg-[#f5f0e8]" note="Currently learning" />
+        <StatCard label="Completed" value={overview.completed || 0} icon={CheckCircle2} tint="bg-[#edf3ef]" note="Finished courses" />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_.85fr] gap-5">
-        <section className="rounded-3xl border border-[#506596] bg-[#2f4472] overflow-hidden shadow-[0_12px_28px_rgba(20,30,80,.12)]">
-          <div className="p-5 border-b border-[#506596] bg-[#344b7b] flex items-center justify-between gap-3">
+      <div className="grid grid-cols-1 xl:grid-cols-[1.18fr_.82fr] gap-5">
+        <section className="scorm-soft-card overflow-hidden">
+          <div className="px-5 md:px-6 py-5 border-b border-[#e1e6e2] flex items-center justify-between gap-4">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.15em] text-white/50 font-black">Course portfolio</div>
-              <h3 className="font-black text-lg mt-1">Recent courses</h3>
+              <div className="text-[11px] font-semibold text-[#829087]">Course portfolio</div>
+              <h3 className="text-[18px] font-semibold mt-0.5 text-[#26312d]">Recent courses</h3>
             </div>
-            <Link to="/scorm/courses" className="text-xs font-black text-blue-200 hover:text-white flex items-center gap-1">View all <ArrowUpRight size={13} /></Link>
+            <Link to="/scorm/courses" className="text-xs font-semibold text-[#607568] hover:text-[#46584e] flex items-center gap-1.5">
+              View all <ArrowUpRight size={13} />
+            </Link>
           </div>
-          <div className="divide-y divide-[#465d8e]">
-            {courses.length === 0 && <div className="p-8 text-center text-white/50 text-sm">No courses yet.</div>}
+
+          <div className="divide-y divide-[#e8ece9]">
+            {courses.length === 0 && (
+              <div className="p-10 text-center">
+                <BookOpen size={24} className="mx-auto text-[#9ba59f] mb-3" />
+                <div className="text-sm font-semibold text-[#536159]">No courses yet</div>
+                <div className="text-xs text-[#8a948f] mt-1">Create your first course when you're ready.</div>
+              </div>
+            )}
             {courses.slice(0, 6).map((course) => {
               const stats = (tracking.courses || []).find((row) => String(row.id) === String(course.id)) || {};
+              const progress = Number(stats.averageProgress || 0);
               return (
-                <Link key={course.id} to={`/scorm/courses/${course.id}`} className="grid grid-cols-[1fr_auto] md:grid-cols-[1fr_100px_100px_auto] gap-4 items-center p-4 md:p-5 bg-[#2f4472] hover:bg-[#3a5080] transition-colors">
+                <Link
+                  key={course.id}
+                  to={`/scorm/courses/${course.id}`}
+                  className="grid grid-cols-[1fr_auto] md:grid-cols-[1fr_92px_130px_auto] gap-4 items-center px-5 md:px-6 py-4 hover:bg-[#fafbf9] transition-colors"
+                >
                   <div className="min-w-0">
-                    <div className="font-black truncate">{course.title}</div>
-                    <div className="text-[10px] text-white/45 mt-1 font-mono">{course.inviteCode || 'No invite code'}</div>
+                    <div className="font-semibold text-[13px] text-[#34413b] truncate">{course.title}</div>
+                    <div className="text-[10px] text-[#929c97] mt-1 font-mono">{course.inviteCode || 'No invite code'}</div>
                   </div>
-                  <div className="hidden md:block"><div className="font-black">{stats.learners || 0}</div><div className="text-[9px] uppercase text-white/45 font-black">Learners</div></div>
-                  <div className="hidden md:block"><div className="font-black text-blue-200">{Number(stats.averageProgress || 0).toFixed(0)}%</div><div className="text-[9px] uppercase text-white/45 font-black">Progress</div></div>
-                  <ArrowUpRight size={15} className="text-white/40" />
+                  <div className="hidden md:block">
+                    <div className="font-semibold text-sm text-[#405048]">{stats.learners || 0}</div>
+                    <div className="text-[9px] text-[#99a29e] mt-0.5">Learners</div>
+                  </div>
+                  <div className="hidden md:block">
+                    <div className="flex items-center justify-between gap-2 text-[10px] text-[#7f8b85] mb-1.5">
+                      <span>Progress</span><span className="font-semibold">{progress.toFixed(0)}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-[#edf0ee] overflow-hidden">
+                      <div className="h-full rounded-full bg-[#82998c]" style={{ width: `${Math.max(0, Math.min(100, progress))}%` }} />
+                    </div>
+                  </div>
+                  <ArrowUpRight size={14} className="text-[#a1aaa5]" />
                 </Link>
               );
             })}
           </div>
         </section>
 
-        <section className="rounded-3xl border border-[#506596] bg-[#2f4472] overflow-hidden shadow-[0_12px_28px_rgba(20,30,80,.12)]">
-          <div className="p-5 border-b border-[#506596] bg-[#344b7b] flex items-center justify-between gap-3">
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.15em] text-white/50 font-black">Latest activity</div>
-              <h3 className="font-black text-lg mt-1">Learner progress</h3>
-            </div>
-            <Link to="/scorm/tracking" className="text-xs font-black text-blue-200 hover:text-white">Open tracking</Link>
-          </div>
-          <div className="divide-y divide-[#465d8e]">
-            {recentLearners.length === 0 && <div className="p-8 text-center text-white/50 text-sm">No learner activity yet.</div>}
-            {recentLearners.map((row) => (
-              <div key={row.id} className="p-4 md:p-5 bg-[#2f4472]">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0"><div className="font-black text-sm truncate">{row.learnerName || 'Learner'}</div><div className="text-xs text-white/55 mt-0.5 truncate">{row.courseTitle || 'Course'} · {row.lastLocation || 'Not started'}</div></div>
-                  <div className="font-black text-sm text-blue-200">{Number(row.progressPercent || 0).toFixed(0)}%</div>
-                </div>
-                <div className="mt-3 h-1.5 rounded-full bg-[#24335f] overflow-hidden"><div className="h-full rounded-full bg-blue-300" style={{ width: `${Math.max(0, Math.min(100, row.progressPercent || 0))}%` }} /></div>
+        <div className="space-y-5">
+          <section className="scorm-soft-card p-5 md:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[11px] font-semibold text-[#829087]">Learner pulse</div>
+                <h3 className="text-[18px] font-semibold mt-0.5">Overall progress</h3>
               </div>
-            ))}
-          </div>
-        </section>
+              <div className="w-10 h-10 rounded-xl bg-[#edf3ef] grid place-items-center text-[#6d8577]"><Activity size={18} /></div>
+            </div>
+            <div className="mt-6 flex items-end justify-between gap-4">
+              <div className="text-[42px] leading-none font-semibold tracking-[-0.055em] text-[#4d6257]">{averageProgress.toFixed(0)}%</div>
+              <div className="text-[11px] text-[#8a948f] pb-1">Average completion</div>
+            </div>
+            <div className="mt-4 h-2 rounded-full bg-[#edf0ee] overflow-hidden">
+              <div className="h-full rounded-full bg-[#7b9285]" style={{ width: `${Math.max(0, Math.min(100, averageProgress))}%` }} />
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-[#f5f0e8] px-4 py-3">
+                <div className="text-lg font-semibold text-[#7e684a]">{overview.inProgress || 0}</div>
+                <div className="text-[10px] text-[#98866d]">In progress</div>
+              </div>
+              <div className="rounded-xl bg-[#edf3ef] px-4 py-3">
+                <div className="text-lg font-semibold text-[#607568]">{overview.completed || 0}</div>
+                <div className="text-[10px] text-[#7d8e84]">Completed</div>
+              </div>
+            </div>
+          </section>
+
+          <section className="scorm-soft-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-[#e1e6e2] flex items-center justify-between gap-3">
+              <div className="text-sm font-semibold text-[#34413b]">Recent learner activity</div>
+              <Link to="/scorm/tracking" className="text-[11px] font-semibold text-[#6c8276]">Open tracking</Link>
+            </div>
+            <div className="divide-y divide-[#e8ece9]">
+              {recentLearners.length === 0 && <div className="p-6 text-center text-[#929c97] text-xs">No learner activity yet.</div>}
+              {recentLearners.map((row) => (
+                <div key={row.id} className="px-5 py-3.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-[12px] text-[#405048] truncate">{row.learnerName || 'Learner'}</div>
+                      <div className="text-[10px] text-[#929c97] mt-0.5 truncate">{row.courseTitle || 'Course'} · {row.lastLocation || 'Not started'}</div>
+                    </div>
+                    <div className="text-[12px] font-semibold text-[#6f899b]">{Number(row.progressPercent || 0).toFixed(0)}%</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-        <Link to="/scorm/author" className="rounded-2xl border border-[#506596] bg-[#304573] p-5 hover:bg-[#3a5080] transition-colors"><Sparkles size={20} className="text-quizmoto-yellow" /><div className="font-black mt-4">AI Author</div><div className="text-xs text-white/60 mt-1">Turn policies and documents into visual SCORM learning.</div></Link>
-        <Link to="/scorm/visual-studio" className="rounded-2xl border border-[#506596] bg-[#304573] p-5 hover:bg-[#3a5080] transition-colors"><Palette size={20} className="text-pink-200" /><div className="font-black mt-4">Visual Studio</div><div className="text-xs text-white/60 mt-1">Refine layouts, visual hierarchy and course presentation.</div></Link>
-        <Link to="/scorm/reports" className="rounded-2xl border border-[#506596] bg-[#304573] p-5 hover:bg-[#3a5080] transition-colors"><BarChart3 size={20} className="text-blue-200" /><div className="font-black mt-4">Reports</div><div className="text-xs text-white/60 mt-1">Export learning performance and completion data.</div></Link>
+        <Link to="/scorm/author" className="scorm-soft-card p-5 hover:border-[#cfd8d2]">
+          <div className="w-9 h-9 rounded-xl bg-[#edf3ef] grid place-items-center text-[#6b8275]"><Sparkles size={17} /></div>
+          <div className="font-semibold text-sm mt-4 text-[#34413b]">AI Author</div>
+          <div className="text-xs text-[#7d8882] mt-1 leading-relaxed">Turn documents into structured learning while keeping full editorial control.</div>
+        </Link>
+        <Link to="/scorm/visual-studio" className="scorm-soft-card p-5 hover:border-[#d8d1e2]">
+          <div className="w-9 h-9 rounded-xl bg-[#f2eff6] grid place-items-center text-[#81759a]"><Palette size={17} /></div>
+          <div className="font-semibold text-sm mt-4 text-[#34413b]">Visual studio</div>
+          <div className="text-xs text-[#7d8882] mt-1 leading-relaxed">Refine layout, hierarchy and presentation before publishing.</div>
+        </Link>
+        <Link to="/scorm/reports" className="scorm-soft-card p-5 hover:border-[#d4e0e7]">
+          <div className="w-9 h-9 rounded-xl bg-[#eef3f7] grid place-items-center text-[#6f899b]"><BarChart3 size={17} /></div>
+          <div className="font-semibold text-sm mt-4 text-[#34413b]">Reports</div>
+          <div className="text-xs text-[#7d8882] mt-1 leading-relaxed">Review completion and performance without digging through raw data.</div>
+        </Link>
       </div>
     </div>
   );
