@@ -4,37 +4,52 @@ const request = require('supertest');
 const { spawn } = require('child_process');
 
 describe('Socket.IO Integration Tests', function() {
-    this.timeout(20000); // 20s for server start and connections
+    this.timeout(20000);
     let serverProcess;
     const PORT = 5010;
     const URL = `http://localhost:${PORT}`;
 
-    before((done) => {
-        // Spawn server in isolated process with its own in-memory DB
-        serverProcess = spawn('node', ['index.js'], { 
+    before(async () => {
+        // Spawn server in isolated process with its own test DB, and test actual
+        // HTTP readiness instead of depending on a particular logger string.
+        serverProcess = spawn('node', ['index.js'], {
             cwd: __dirname + '/..',
             env: { ...process.env, PORT, NODE_ENV: 'test', QUIET: 'true' }
         });
-        
-        let started = false;
-        serverProcess.stdout.on('data', (data) => {
-            if (data.toString().includes(`Server running on port ${PORT}`)) {
-                if (!started) {
-                    started = true;
-                    // Seed fixtures via endpoint or just wait for it to be ready
-                    setTimeout(done, 1000); // give it a sec to settle
-                }
-            }
-        });
-        
+
+        let lastStderr = '';
         serverProcess.stderr.on('data', (data) => {
+            lastStderr += data.toString();
             console.error('SERVER ERR:', data.toString());
         });
+
+        const deadline = Date.now() + 15000;
+        while (Date.now() < deadline) {
+            if (serverProcess.exitCode != null) {
+                throw new Error(`Socket test backend exited early: ${lastStderr}`);
+            }
+            try {
+                const res = await request(URL).get('/health').timeout({ response: 750, deadline: 1000 });
+                if (res.status === 200) return;
+            } catch (_) {}
+            await new Promise((resolve) => setTimeout(resolve, 150));
+        }
+        throw new Error(`Socket test backend did not become healthy: ${lastStderr}`);
     });
 
     after((done) => {
-        if (serverProcess) {
-            serverProcess.on('exit', () => done());
+        for (const client of [hostSocket, p1Socket, p2Socket, badSocket]) {
+            try { if (client) client.disconnect(); } catch (_) {}
+        }
+        if (serverProcess && serverProcess.exitCode == null) {
+            const timer = setTimeout(() => {
+                try { serverProcess.kill('SIGKILL'); } catch (_) {}
+                done();
+            }, 3000);
+            serverProcess.once('exit', () => {
+                clearTimeout(timer);
+                done();
+            });
             serverProcess.kill();
         } else {
             done();
@@ -44,6 +59,7 @@ describe('Socket.IO Integration Tests', function() {
     let hostToken, hostSocket, pin;
     let p1Token, p1Socket;
     let p2Token, p2Socket;
+    let badSocket;
 
     it('should authenticate host and create a session', async () => {
         const loginRes = await request(URL).post('/api/auth/test-login');
@@ -59,70 +75,83 @@ describe('Socket.IO Integration Tests', function() {
 
     it('host joins its room', (done) => {
         hostSocket = io(URL, { auth: { token: hostToken }, query: { pin, role: 'host' } });
-        hostSocket.on('room_info', (info) => {
-            expect(info.status).to.equal('lobby');
-            done();
+        hostSocket.once('room_info', (info) => {
+            try {
+                expect(info.status).to.equal('lobby');
+                done();
+            } catch (err) {
+                done(err);
+            }
         });
         hostSocket.emit('join_room', { pin, role: 'host', token: hostToken });
     });
 
     it('two players join and lobby list updates', (done) => {
         let playersJoined = 0;
-        hostSocket.on('player_joined', (player) => {
+        const onPlayerJoined = () => {
             playersJoined++;
-            if (playersJoined === 2) done();
-        });
+            if (playersJoined === 2) {
+                hostSocket.off('player_joined', onPlayerJoined);
+                done();
+            }
+        };
+        hostSocket.on('player_joined', onPlayerJoined);
 
         request(URL).post('/api/player/join').send({ pin, nickname: 'P1' }).then(res => {
             p1Token = res.body.token;
             p1Socket = io(URL, { auth: { token: p1Token }, query: { pin, role: 'player' } });
             p1Socket.on('joined_successfully', data => { p1Token = data.token; });
             p1Socket.emit('join_room', { pin, role: 'player', nickname: 'P1', token: p1Token });
-            p1Socket.on('room_info', info => { expect(info.status).to.equal('lobby') });
-        });
+        }).catch(done);
 
         request(URL).post('/api/player/join').send({ pin, nickname: 'P2' }).then(res => {
             p2Token = res.body.token;
             p2Socket = io(URL, { auth: { token: p2Token }, query: { pin, role: 'player' } });
             p2Socket.on('joined_successfully', data => { p2Token = data.token; });
             p2Socket.emit('join_room', { pin, role: 'player', nickname: 'P2', token: p2Token });
-        });
+        }).catch(done);
     });
 
     it('start command transitions the session once and question_started reaches clients', (done) => {
-        let p1Started = false, p2Started = false;
-        
-        p1Socket.once('question_started', () => { p1Started = true; check(); });
-        p2Socket.once('question_started', () => { p2Started = true; check(); });
-        hostSocket.once('question_started', (q) => { 
-            expect(q).to.have.property('questionText');
-            check();
-        });
-
         let checks = 0;
-        function check() {
+        const check = () => {
             checks++;
             if (checks === 3) {
-                // Ensure duplicate start is idempotently ignored
+                // A second legacy start while a question is active is rejected
+                // without advancing the question a second time.
                 hostSocket.emit('start_question', { pin, token: hostToken });
-                setTimeout(done, 500); // If it crashes or emits again, it will fail or log
+                setTimeout(done, 500);
             }
-        }
+        };
+
+        p1Socket.once('question_started', check);
+        p2Socket.once('question_started', check);
+        hostSocket.once('question_started', (q) => {
+            try {
+                expect(q).to.have.property('questionText');
+                check();
+            } catch (err) {
+                done(err);
+            }
+        });
 
         hostSocket.emit('start_question', { pin, token: hostToken });
     });
 
     it('answer acknowledgement reaches the correct player and duplicates are rejected', (done) => {
         p1Socket.once('answer_confirmed', (data) => {
-            expect(data).to.have.property('points');
-            // Attempt duplicate answer
-            p1Socket.emit('submit_answer', { pin, nickname: 'P1', answerIndex: 2 });
-            setTimeout(done, 500); // Should be ignored by server
+            try {
+                expect(data).to.have.property('points');
+                p1Socket.emit('submit_answer', { pin, nickname: 'P1', token: p1Token, answerIndex: 2 });
+                setTimeout(done, 500);
+            } catch (err) {
+                done(err);
+            }
         });
 
-        // Wait for the 3s countdown to finish before answering
+        // Wait for the 3s countdown to finish before answering.
         setTimeout(() => {
-            p1Socket.emit('submit_answer', { pin, nickname: 'P1', answerIndex: 1 });
+            p1Socket.emit('submit_answer', { pin, nickname: 'P1', token: p1Token, answerIndex: 1 });
         }, 3100);
     });
 
@@ -130,24 +159,32 @@ describe('Socket.IO Integration Tests', function() {
         p1Socket.disconnect();
         setTimeout(() => {
             p1Socket = io(URL, { auth: { token: p1Token }, query: { pin, role: 'player' } });
-            
+
             p1Socket.once('session_info', (info) => {
-                expect(info.status).to.equal('question');
-                expect(info.answered).to.be.true;
-                done();
+                try {
+                    expect(info.status).to.equal('question');
+                    expect(info.answered).to.be.true;
+                    done();
+                } catch (err) {
+                    done(err);
+                }
             });
             p1Socket.once('error', (err) => console.log('P1 Reconnect Error:', err));
             p1Socket.on('connect', () => {
                 p1Socket.emit('join_room', { pin, role: 'player', nickname: 'P1', token: p1Token });
             });
-        }, 500); // give the server time to process disconnect
+        }, 500);
     });
 
     it('stale or invalid session token falls back to new join', (done) => {
-        const badSocket = io(URL, { auth: { token: 'invalid.token.here' }, query: { pin, role: 'player' } });
+        badSocket = io(URL, { auth: { token: 'invalid.token.here' }, query: { pin, role: 'player' } });
         badSocket.once('joined_successfully', (data) => {
-            expect(data.token).to.not.equal('invalid.token.here');
-            done();
+            try {
+                expect(data.token).to.not.equal('invalid.token.here');
+                done();
+            } catch (err) {
+                done(err);
+            }
         });
         badSocket.on('connect', () => {
             badSocket.emit('join_room', { pin, role: 'player', nickname: 'BadActor', token: 'invalid.token.here' });
@@ -158,9 +195,16 @@ describe('Socket.IO Integration Tests', function() {
         hostSocket.disconnect();
         hostSocket = io(URL, { auth: { token: hostToken }, query: { pin, role: 'host' } });
         hostSocket.once('room_info', (info) => {
-            expect(info.status).to.equal('question');
-            done();
+            try {
+                expect(info.status).to.equal('question');
+                expect(info).to.have.property('answersCount');
+                done();
+            } catch (err) {
+                done(err);
+            }
         });
-        hostSocket.emit('join_room', { pin, role: 'host', token: hostToken });
+        hostSocket.on('connect', () => {
+            hostSocket.emit('join_room', { pin, role: 'host', token: hostToken });
+        });
     });
 });
