@@ -1,0 +1,112 @@
+const express = require('express');
+const router = express.Router();
+const auth = require('../middleware');
+const {
+    ScormCourse,
+    ScormPackage,
+    ScormRegistration,
+    ScormCmiState
+} = require('../../models/scorm');
+const { serializeRegistration } = require('../../services/scorm/ScormProgressService');
+
+function learnerRows(course) {
+    const regs = Array.isArray(course.registrations) ? course.registrations : [];
+    return regs
+        .filter((reg) => !reg.isPreview)
+        .map((reg) => serializeRegistration(reg, course));
+}
+
+function courseSummary(course) {
+    const rows = learnerRows(course);
+    const completed = rows.filter((row) => row.progressPercent >= 100).length;
+    const active = rows.filter((row) => row.progressPercent > 0 && row.progressPercent < 100).length;
+    const notStarted = rows.filter((row) => row.progressPercent <= 0).length;
+    const averageProgress = rows.length
+        ? Math.round((rows.reduce((sum, row) => sum + Number(row.progressPercent || 0), 0) / rows.length) * 10) / 10
+        : 0;
+
+    return {
+        id: course.id,
+        title: course.title,
+        status: course.status,
+        inviteCode: course.inviteCode,
+        packageId: course.packageId,
+        learners: rows.length,
+        completed,
+        active,
+        notStarted,
+        averageProgress,
+        updatedAt: course.updatedAt
+    };
+}
+
+async function loadHostCourses(hostId, courseId = null) {
+    const where = { hostId };
+    if (courseId) where.id = courseId;
+    return ScormCourse.findAll({
+        where,
+        include: [
+            {
+                model: ScormPackage,
+                as: 'package',
+                attributes: ['id', 'title', 'status', 'analysisJson', 'standard', 'source']
+            },
+            {
+                model: ScormRegistration,
+                as: 'registrations',
+                include: [{ model: ScormCmiState, as: 'cmiState' }]
+            }
+        ],
+        order: [['updatedAt', 'DESC']]
+    });
+}
+
+router.get('/summary', auth, async (req, res) => {
+    try {
+        const courses = await loadHostCourses(req.userId);
+        const visible = courses.filter((course) => course.status !== 'archived' && course.package && course.package.status !== 'deleted');
+        const courseSummaries = visible.map(courseSummary);
+        const rows = visible.flatMap(learnerRows);
+        const completed = rows.filter((row) => row.progressPercent >= 100).length;
+        const inProgress = rows.filter((row) => row.progressPercent > 0 && row.progressPercent < 100).length;
+        const notStarted = rows.filter((row) => row.progressPercent <= 0).length;
+        const averageProgress = rows.length
+            ? Math.round((rows.reduce((sum, row) => sum + Number(row.progressPercent || 0), 0) / rows.length) * 10) / 10
+            : 0;
+
+        res.json({
+            overview: {
+                courses: visible.length,
+                learners: rows.length,
+                completed,
+                inProgress,
+                notStarted,
+                averageProgress
+            },
+            courses: courseSummaries,
+            learners: rows.sort((a, b) => {
+                const at = new Date(a.lastCommitAt || a.updatedAt || 0).getTime();
+                const bt = new Date(b.lastCommitAt || b.updatedAt || 0).getTime();
+                return bt - at;
+            })
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message || 'Failed to load SCORM tracking' });
+    }
+});
+
+router.get('/course/:courseId', auth, async (req, res) => {
+    try {
+        const courses = await loadHostCourses(req.userId, req.params.courseId);
+        const course = courses[0];
+        if (!course || course.status === 'archived') return res.status(404).json({ message: 'Course not found' });
+        res.json({
+            course: courseSummary(course),
+            registrations: learnerRows(course)
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message || 'Failed to load course tracking' });
+    }
+});
+
+module.exports = router;
