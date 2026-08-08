@@ -18,6 +18,7 @@ import PlayerLobby from './pages/Player/PlayerLobby';
 import PlayerGame from './pages/Player/PlayerGame';
 import PlayerLogin from './pages/Player/PlayerLogin';
 import PlayerDashboard from './pages/Player/PlayerDashboard';
+import WebsitePreview from './pages/WebsitePreview';
 
 // SCORM World
 import ScormPlatformShell from './pages/Scorm/ScormPlatformShell';
@@ -55,6 +56,7 @@ function App() {
               <Route path="/player/game" element={<PlayerGame />} />
 
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/website-preview" element={<WebsitePreview />} />
               <Route path="/create-quiz" element={<CreateQuiz />} />
               <Route path="/edit-quiz/:id" element={<EditQuiz />} />
               <Route path="/reports" element={<Reports />} />
