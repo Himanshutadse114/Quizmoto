@@ -47,7 +47,7 @@
 }
 
 .slice-site .slice-hero h1::before {
-  content: "TURN ANY POLICY INTO\A A COURSE THAT’S";
+  content: "TURN ANY DOCUMENT INTO\A A COURSE THAT’S";
   display: block;
   white-space: pre-line;
   color: var(--slice-ink);
