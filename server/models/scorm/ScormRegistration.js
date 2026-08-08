@@ -45,14 +45,6 @@ const ScormRegistration = sequelize.define('ScormRegistration', {
         type: DataTypes.FLOAT,
         allowNull: true
     },
-    lastProgressPercent: {
-        type: DataTypes.FLOAT,
-        allowNull: true
-    },
-    lastLessonLocation: {
-        type: DataTypes.TEXT,
-        allowNull: true
-    },
     lastTotalTime: {
         type: DataTypes.STRING,
         allowNull: true
