@@ -1,75 +1,46 @@
 const JSZip = require('jszip');
 const { buildScormPackageZip: buildFinalPackage } = require('./ScormExperienceFinalizer');
 
-// Curated, low-saturation palettes. Template IDs keep their existing author labels
-// while moving away from bright generated-looking colour treatments.
+const LIVE_QUIZ_THEME = {
+    primary: '#46178F',
+    primaryDark: '#25076B',
+    accent: '#864CBF',
+    bg: '#F8F5FB',
+    surface: '#FFFFFF',
+    text: '#111111',
+    muted: '#6B6474',
+    soft: '#F2ECFA'
+};
+
+// Template IDs still control layout/content structure, but all generated courses
+// share one Quizmoto visual identity with Live Quiz.
 const VISUAL_THEMES = {
-    // Orange Corporate -> soft terracotta
-    1: {
-        primary: '#b9826e',
-        primaryDark: '#956858',
-        accent: '#e5cec4',
-        bg: '#faf7f5',
-        surface: '#ffffff',
-        text: '#352d2a',
-        muted: '#7a6f6a',
-        soft: '#f6ece8'
-    },
-    // Amber Classic -> warm sand
-    3: {
-        primary: '#ae9069',
-        primaryDark: '#8c704e',
-        accent: '#e4d6c3',
-        bg: '#faf8f4',
-        surface: '#ffffff',
-        text: '#37312a',
-        muted: '#7e756b',
-        soft: '#f5f0e8'
-    },
-    // Green Growth -> soft sage
-    4: {
-        primary: '#6f887a',
-        primaryDark: '#53695d',
-        accent: '#c9d8cf',
-        bg: '#f7f8f5',
-        surface: '#ffffff',
-        text: '#26312d',
-        muted: '#6e7873',
-        soft: '#edf3ef'
-    },
-    // Pink Modern -> dusty rose / mauve
-    5: {
-        primary: '#a27b8b',
-        primaryDark: '#815f6d',
-        accent: '#dfcbd3',
-        bg: '#faf7f8',
-        surface: '#ffffff',
-        text: '#352f32',
-        muted: '#7b7175',
-        soft: '#f5ecef'
-    }
+    1: { ...LIVE_QUIZ_THEME },
+    3: { ...LIVE_QUIZ_THEME },
+    4: { ...LIVE_QUIZ_THEME },
+    5: { ...LIVE_QUIZ_THEME }
 };
 
 const EDITORIAL_COURSE_CSS = `
 <style id="quizmoto-scorm-editorial-theme">
-:root{--line:#e2e7e3!important;--shadow:0 1px 2px rgba(38,49,45,.04),0 14px 34px rgba(38,49,45,.06)!important}
+:root{--primary:#46178F!important;--primary-dark:#25076B!important;--accent:#864CBF!important;--bg:#F8F5FB!important;--surface:#FFFFFF!important;--text:#111111!important;--muted:#6B6474!important;--soft:#F2ECFA!important;--line:#DED3EC!important;--shadow:0 8px 24px rgba(37,7,107,.10)!important}
 *{text-shadow:none!important}
-html,body,#app{background:var(--bg)!important;color:var(--text)!important}
+html,body,#app{background:#F8F5FB!important;color:#111111!important}
 #app{background-image:none!important}
-header,footer{background:rgba(255,255,255,.96)!important;color:var(--text)!important;border-color:var(--line)!important;box-shadow:none!important}
-.brand-mark{background:var(--primary)!important;color:#fff!important;border-radius:12px!important;box-shadow:none!important}
-.progress-shell{background:#edf0ee!important;border-radius:999px!important}.progress-fill{background:var(--primary)!important;background-image:none!important}.progress-text,.part{color:var(--muted)!important}
-.nav-btn{border-radius:10px!important}.nav-btn.primary{background:var(--primary-dark)!important;color:#fff!important;box-shadow:none!important}.nav-btn.primary:hover{background:var(--primary)!important;box-shadow:none!important;transform:translateY(-1px)!important}.nav-btn.secondary{background:#fff!important;color:var(--text)!important;border:1px solid var(--line)!important}
-.slide{background:var(--bg)!important}.glass,.qmx-copy,.qmx-visual,.concept-card,.step,.milestone p,.compare-col,.hub-item,.quiz-card,.quiz-option,.final-card{background:var(--surface)!important;border:1px solid var(--line)!important;border-radius:18px!important;box-shadow:var(--shadow)!important}
-.qmx-copy,.qmx-visual{border-radius:20px!important}.qmx-visual{background:var(--soft)!important;background-image:none!important}.qmx-badge{background:rgba(255,255,255,.92)!important;border:1px solid var(--line)!important;color:var(--primary-dark)!important;box-shadow:none!important}
-.eyebrow,.qmx-kicker,.step-no,.hub-item b{color:var(--primary-dark)!important}.title,.qmx-copy h2{color:var(--text)!important;font-weight:800!important;letter-spacing:-.035em!important}.lead,.qmx-copy p,.concept-card p,.step p,.milestone p,.compare-item,.hub-item,.qmx-detail,.qmx-prompt,.qmx-count{color:var(--muted)!important}
-.chip,.concept-number,.takeaway,.qmx-detail{background:var(--soft)!important;color:var(--primary-dark)!important;border-color:var(--accent)!important}.chip{border:1px solid var(--accent)!important}.concept-card:before{background:var(--primary)!important}
-.hero-art,.spot-visual{background:var(--soft)!important;background-image:none!important;color:var(--primary-dark)!important;border:1px solid var(--accent)!important}.hero-art svg,.spot-visual svg{color:var(--primary-dark)!important;filter:none!important}.hero-art:before,.hero-art:after,.spot-visual:before{border-color:var(--accent)!important;opacity:.55!important}
-.step:not(:last-child):after{background:var(--primary)!important;color:#fff!important}.timeline:before{background:var(--accent)!important}.dot{background:#fff!important;border-color:var(--primary)!important;box-shadow:0 0 0 4px var(--soft)!important}
-.compare-col.good{border-top:4px solid #8fae9c!important}.compare-col.warn{border-top:4px solid #c98f88!important}.compare-col.good .compare-title{color:#6e8c7a!important}.compare-col.warn .compare-title{color:#a86f69!important}.good .badge-dot{background:#8fae9c!important}.warn .badge-dot{background:#c98f88!important}
-.qmx-point{background:#fff!important;color:var(--muted)!important;border:1px solid var(--line)!important;box-shadow:none!important}.qmx-point:hover,.qmx-point.active{background:var(--soft)!important;color:var(--primary-dark)!important;border-color:var(--accent)!important;transform:translateY(-1px)!important}
-.quiz-option{box-shadow:none!important}.quiz-option:hover{border-color:var(--primary)!important}.quiz-option.correct{background:#edf4ef!important;border:2px solid #8fae9c!important;color:#50695a!important}.quiz-option.incorrect{background:#f8eeee!important;border:2px solid #c98f88!important;color:#8f615c!important;text-decoration:none!important}.feedback{border-radius:12px!important;background:var(--soft)!important;color:var(--primary-dark)!important;border:1px solid var(--accent)!important}
-.score-ring{background:conic-gradient(var(--primary) 0deg,var(--accent) 270deg,#edf0ee 270deg)!important}.score-ring:before{background:#fff!important}.score-ring span{color:var(--primary-dark)!important}
+header,footer{background:#FFFFFF!important;color:#111111!important;border-color:#DED3EC!important;box-shadow:none!important}
+.brand-mark{background:#46178F!important;color:#FFFFFF!important;border-radius:12px!important;box-shadow:none!important}
+.progress-shell{background:#E8E0F1!important;border-radius:999px!important}.progress-fill{background:#46178F!important;background-image:none!important}.progress-text,.part{color:#6B6474!important}
+.nav-btn{border-radius:10px!important}.nav-btn.primary{background:#46178F!important;color:#FFFFFF!important;box-shadow:none!important}.nav-btn.primary:hover{background:#25076B!important;box-shadow:none!important;transform:translateY(-1px)!important}.nav-btn.secondary{background:#FFFFFF!important;color:#46178F!important;border:1px solid #DED3EC!important}
+.slide{background:#F8F5FB!important}.glass,.qmx-copy,.qmx-visual,.concept-card,.step,.milestone p,.compare-col,.hub-item,.quiz-card,.quiz-option,.final-card{background:#FFFFFF!important;border:1px solid #DED3EC!important;border-radius:18px!important;box-shadow:0 4px 14px rgba(17,17,17,.06)!important}
+.qmx-copy,.qmx-visual{border-radius:20px!important}.qmx-visual{background:#F2ECFA!important;background-image:none!important}.qmx-badge{background:#FFFFFF!important;border:1px solid #DED3EC!important;color:#46178F!important;box-shadow:none!important}
+.eyebrow,.qmx-kicker,.step-no,.hub-item b{color:#46178F!important}.title,.qmx-copy h2{color:#111111!important;font-weight:800!important;letter-spacing:-.035em!important}.lead,.qmx-copy p,.concept-card p,.step p,.milestone p,.compare-item,.hub-item,.qmx-detail,.qmx-prompt,.qmx-count{color:#6B6474!important}
+.chip,.concept-number,.takeaway,.qmx-detail{background:#F2ECFA!important;color:#46178F!important;border-color:#DED3EC!important}.chip{border:1px solid #DED3EC!important}.concept-card:before{background:#46178F!important}
+.hero-art,.spot-visual{background:#F2ECFA!important;background-image:none!important;color:#46178F!important;border:1px solid #DED3EC!important}.hero-art svg,.spot-visual svg{color:#46178F!important;filter:none!important}.hero-art:before,.hero-art:after,.spot-visual:before{border-color:#864CBF!important;opacity:.28!important}
+.step:not(:last-child):after{background:#46178F!important;color:#FFFFFF!important}.timeline:before{background:#864CBF!important}.dot{background:#FFFFFF!important;border-color:#46178F!important;box-shadow:0 0 0 4px #F2ECFA!important}
+.compare-col.good,.compare-col.warn{border-top:4px solid #46178F!important}.compare-col.good .compare-title,.compare-col.warn .compare-title{color:#46178F!important}.good .badge-dot,.warn .badge-dot{background:#46178F!important;color:#FFFFFF!important}
+.qmx-point{background:#FFFFFF!important;color:#6B6474!important;border:1px solid #DED3EC!important;box-shadow:none!important}.qmx-point:hover,.qmx-point.active{background:#F2ECFA!important;color:#46178F!important;border-color:#864CBF!important;transform:translateY(-1px)!important}
+.quiz-option{box-shadow:none!important}.quiz-option:hover{border-color:#46178F!important}.quiz-option.correct{background:#F2ECFA!important;border:2px solid #46178F!important;color:#25076B!important}.quiz-option.incorrect{background:#FFFFFF!important;border:2px dashed #111111!important;color:#111111!important;text-decoration:none!important;opacity:.78!important}.feedback{border-radius:12px!important;background:#F2ECFA!important;color:#25076B!important;border:1px solid #864CBF!important}
+.score-ring{background:conic-gradient(#46178F 0deg,#864CBF 270deg,#E8E0F1 270deg)!important}.score-ring:before{background:#FFFFFF!important}.score-ring span{color:#25076B!important}
 @media(max-width:680px){header{height:54px!important;padding:0 12px!important}footer{height:56px!important;padding:0 12px!important}.slide{padding:12px!important}.title{font-size:clamp(23px,7.5vw,32px)!important}.lead{font-size:13px!important}.qmx-copy{padding:16px!important}.qmx-visual{min-height:220px!important}.nav-btn{padding:9px 12px!important;font-size:12px!important}}
 </style>`;
 
