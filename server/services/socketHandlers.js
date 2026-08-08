@@ -577,16 +577,34 @@ module.exports = (io) => {
           const liveSession = await GameSession.findByPk(session.id, {
             include: [{ model: Player, as: 'players' }]
           });
-          if (liveSession && Array.isArray(liveSession.players)) {
-            liveSession.setDataValue('players', liveSession.players.map(hostPlayerView));
-          }
 
           if (liveSession.status === 'question' || liveSession.status === 'result') {
             const quiz = await Quiz.findByPk(liveSession.quizId, {
               include: [{ model: Question, as: 'questions' }],
               order: [[{ model: Question, as: 'questions' }, 'id', 'ASC']]
             });
-            socket.emit('room_info', SessionRecoveryService.buildHostRecoveryState(liveSession, quiz));
+            // Build answer counts/distribution from the raw persisted player rows
+            // before converting the presence list into a host-safe DTO.
+            const recovery = SessionRecoveryService.buildHostRecoveryState(liveSession, quiz);
+            const rawPlayers = Array.isArray(liveSession.players) ? liveSession.players : [];
+            recovery.players = rawPlayers.map(hostPlayerView);
+            socket.emit('room_info', recovery);
+
+            // Existing GameView already knows how to rebuild its live counter and
+            // distribution from answer_received_host. Replaying these events makes
+            // reconnect/refresh restore exactly the number of answers received.
+            if (liveSession.status === 'question') {
+              for (const player of rawPlayers) {
+                if (Number(player.lastAnswerIndex) >= 0) {
+                  socket.emit('answer_received_host', {
+                    answerIndex: Number(player.lastAnswerIndex),
+                    nickname: player.nickname,
+                    playerId: player.id,
+                    recovery: true
+                  });
+                }
+              }
+            }
           } else {
             const roomInfo = liveSession.toJSON();
             roomInfo.players = await getHostPlayers(liveSession.id);
@@ -861,6 +879,15 @@ module.exports = (io) => {
           return locked;
         });
         if (!session) return;
+
+        stopHostLeaseHeartbeat();
+        try {
+          await HostLeaseService.release({
+            sessionId: session.id,
+            ownerId: socket.id,
+            force: true
+          });
+        } catch (_) {}
 
         const players = await Player.findAll({
           where: { sessionId: session.id },
