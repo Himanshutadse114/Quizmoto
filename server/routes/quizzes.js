@@ -39,8 +39,10 @@ const quizSchema = Joi.object({
         .items(
             Joi.object({
                 questionText: Joi.string().required(),
-                options: Joi.array().items(Joi.string()).min(2).max(6).required(),
-                correctIndex: Joi.number().integer().min(0).max(5).required(),
+                // Live Quiz renders a four-colour answer grid. Keep the API in
+                // lockstep with Create/Edit Quiz and the socket answer contract.
+                options: Joi.array().items(Joi.string()).min(2).max(4).required(),
+                correctIndex: Joi.number().integer().min(0).max(3).required(),
                 timer: Joi.number().integer().min(5).max(300).required(),
                 explanation: Joi.string().allow('', null).optional(),
                 image: Joi.string().allow('', null).optional()
