@@ -6,7 +6,7 @@ module.exports = defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : 1, // keeping 1 for local predictable testing
+  workers: 1,
   reporter: 'html',
   globalSetup: require.resolve('./tests/e2e/global-setup'),
   use: {
@@ -15,7 +15,7 @@ module.exports = defineConfig({
   },
   webServer: [
     {
-      command: 'cd server && set NODE_ENV=test&& npm run test:start',
+      command: 'cd server && npx cross-env NODE_ENV=test npm run test:start',
       port: 5002,
       timeout: 120 * 1000,
       reuseExistingServer: !process.env.CI,
