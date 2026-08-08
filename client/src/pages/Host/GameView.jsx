@@ -7,6 +7,7 @@ import { Clock, Users, Volume2, VolumeX, Trophy, Crown, ArrowUp, Zap, ChevronRig
 import confetti from 'canvas-confetti';
 import ReactionCanvas from '../../components/ReactionCanvas';
 import AvatarDisplay from '../../components/AvatarDisplay';
+import FinalPodium from '../../components/FinalPodium';
 import { audio } from '../../utils/audioEngine';
 
 const GameView = () => {
@@ -531,40 +532,8 @@ const GameView = () => {
                 )}
 
                 {gameState === 'finished' && (
-                    <div className="w-full max-w-4xl text-center px-1">
-                        <h1 className="text-2xl sm:text-4xl font-black mb-2 italic uppercase">Game Over!</h1>
-                        <p className="text-xs font-bold opacity-60 uppercase tracking-widest mb-6 sm:mb-8">Final Standing</p>
-
-                        {(leaderboard || []).length > 0 && (
-                            <div className="flex items-end justify-center gap-2 sm:gap-3 mb-8 sm:mb-10 px-2">
-                                {[1, 0, 2].map((podiumIdx) => {
-                                    const p = leaderboard[podiumIdx];
-                                    if (!p) return <div key={podiumIdx} className="w-20 sm:w-28" />;
-                                    const heights = ['h-24 sm:h-32', 'h-32 sm:h-44', 'h-16 sm:h-24'];
-                                    const medals = ['🥈', '🥇', '🥉'];
-                                    return (
-                                        <div key={podiumIdx} className="flex flex-col items-center w-20 sm:w-28">
-                                            <div className="text-2xl sm:text-3xl mb-1">{medals[podiumIdx]}</div>
-                                            <AvatarDisplay avatar={p.avatar} imgClass="w-8 h-8 sm:w-10 sm:h-10 mb-1" textClass="text-xl sm:text-2xl" />
-                                            <div className="text-xs sm:text-sm font-black truncate w-full text-center mb-1">{p.nickname}</div>
-                                            <div className="text-quizmoto-yellow font-black text-sm sm:text-base mb-2">{p.score}</div>
-                                            <div className={'w-full rounded-t-2xl bg-white/20 border border-white/10 ' + heights[podiumIdx]} />
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-
-                        <div className="space-y-2 sm:space-y-3 max-w-md mx-auto">
-                            {(leaderboard || []).slice(0, 10).map((p, i) => (
-                                <div key={p.nickname || i} className="flex items-center gap-3 bg-white/10 rounded-2xl px-4 sm:px-5 py-2.5 sm:py-3">
-                                    <span className="font-black text-white/40 w-6 sm:w-8">{i + 1}</span>
-                                    <AvatarDisplay avatar={p.avatar} imgClass="w-7 h-7 sm:w-8 sm:h-8" textClass="text-xl sm:text-2xl" />
-                                    <span className="font-black flex-1 text-left truncate text-sm sm:text-base">{p.nickname}</span>
-                                    <span className="font-black text-quizmoto-yellow text-base sm:text-lg">{p.score}</span>
-                                </div>
-                            ))}
-                        </div>
+                    <div className="w-full px-1 sm:px-4 py-2 sm:py-4">
+                        <FinalPodium leaderboard={leaderboard} />
                     </div>
                 )}
             </main>
