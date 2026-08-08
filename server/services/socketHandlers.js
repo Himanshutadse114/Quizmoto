@@ -113,8 +113,6 @@ function clearHostDisconnectTimer(pin) {
   }
 }
 
-// Small in-memory abuse guard. Identity-sensitive events are still authorized
-// independently; this only limits accidental/spam bursts on a single socket.
 const rateBuckets = new Map();
 function allowSocketAction(socket, action, limit, windowMs) {
   const key = `${socket.id}:${action}`;
@@ -161,7 +159,6 @@ module.exports = (io) => {
       ? { ...extra, players: hostPlayers }
       : hostPlayers);
 
-    // Players never need socket ids or per-question answer metadata.
     try {
       io.to(pin).except(`host_${pin}`).emit(eventName, eventName === 'player_left'
         ? { ...extra, players: publicPlayers }
@@ -177,8 +174,6 @@ module.exports = (io) => {
     });
 
     if (!lease.ok && lease.code === 'LEASE_HELD' && lease.hostLeaseOwner) {
-      // If the former socket is gone (normal reconnect / process-local stale
-      // lease), reclaim immediately rather than blocking the host for the TTL.
       const formerSocket = io.sockets.sockets.get(String(lease.hostLeaseOwner));
       if (!formerSocket || !formerSocket.connected) {
         await HostLeaseService.release({
@@ -258,8 +253,6 @@ module.exports = (io) => {
       });
       const allPlayers = await Player.findAll({ where: { sessionId: session.id } });
 
-      // Personal results go only to that player's current socket. A disconnected
-      // player receives the same result through session recovery on reconnect.
       for (const player of allPlayers) {
         const payload = {
           correct: !!player.lastAnswerCorrect,
@@ -375,7 +368,6 @@ module.exports = (io) => {
           : NaN;
         const closeMs = Number.isFinite(persistedClose) ? persistedClose : startMs + timerMs;
 
-        // Repair legacy/V2 drift for sessions created before this hardening.
         const needsRepair = session.state !== 'QUESTION_OPEN'
           || !session.questionOpensAt
           || !session.questionClosesAt;
@@ -583,16 +575,11 @@ module.exports = (io) => {
               include: [{ model: Question, as: 'questions' }],
               order: [[{ model: Question, as: 'questions' }, 'id', 'ASC']]
             });
-            // Build answer counts/distribution from the raw persisted player rows
-            // before converting the presence list into a host-safe DTO.
             const recovery = SessionRecoveryService.buildHostRecoveryState(liveSession, quiz);
             const rawPlayers = Array.isArray(liveSession.players) ? liveSession.players : [];
             recovery.players = rawPlayers.map(hostPlayerView);
             socket.emit('room_info', recovery);
 
-            // Existing GameView already knows how to rebuild its live counter and
-            // distribution from answer_received_host. Replaying these events makes
-            // reconnect/refresh restore exactly the number of answers received.
             if (liveSession.status === 'question') {
               for (const player of rawPlayers) {
                 if (Number(player.lastAnswerIndex) >= 0) {
@@ -672,7 +659,7 @@ module.exports = (io) => {
           if (session.status === 'question') return { error: 'Question already in progress' };
           if (session.status === 'finished') return { error: 'Game is already finished' };
 
-          const nextIndex = Number(session.currentQuestionIndex || -1) + 1;
+          const nextIndex = Number(session.currentQuestionIndex ?? -1) + 1;
           if (nextIndex >= quiz.questions.length) return { error: 'No more questions' };
 
           const question = quiz.questions[nextIndex];
@@ -934,8 +921,6 @@ module.exports = (io) => {
           });
           if (!player) return;
 
-          // Preserve the Player and PlayerAnswer rows for reports. Leaving only
-          // clears presence; a valid player token can reconnect later.
           if (!player.socketId || player.socketId === socket.id) {
             player.socketId = null;
             await player.save({ fields: ['socketId'] });
@@ -1013,8 +998,6 @@ module.exports = (io) => {
         emoji: value.emoji,
         from: bound.nickname || 'host'
       };
-      // `new_reaction` is the current client contract. Keep `reaction` briefly
-      // for older clients during rolling deployments.
       io.to(pin).emit('new_reaction', reaction);
       io.to(pin).emit('reaction', reaction);
     });
@@ -1061,8 +1044,6 @@ module.exports = (io) => {
           });
         } catch (_) {}
 
-        // A normal FINISHED session is terminal. Closing the host tab after the
-        // podium must never be reinterpreted as a host timeout/cancellation.
         try {
           const persisted = await GameSession.findByPk(Number(sessionId), {
             attributes: ['id', 'status']
@@ -1076,9 +1057,6 @@ module.exports = (io) => {
           return;
         }
 
-        // If another authorized host socket is still in the room, do not tell
-        // players the host vanished. In the normal lease path there is one host,
-        // but this also protects rolling deployments / duplicate join events.
         const remainingHosts = io.sockets.adapter.rooms.get(`host_${pin}`);
         if (remainingHosts && remainingHosts.size > 0) return;
 
