@@ -105,8 +105,6 @@ describe('Live Quiz session security hardening', function () {
     });
 
     after(async () => {
-        // Explicitly close the host session before disconnecting so the host
-        // disconnect grace timer is not left alive after this test suite.
         try {
             if (hostSocket && hostSocket.connected) {
                 hostSocket.emit('leave_session', {
@@ -250,5 +248,31 @@ describe('Live Quiz session security hardening', function () {
         expect(latePlayer.lastAnswerIndex).to.equal(-1);
         expect(latePlayer.score).to.equal(0);
         expect(await PlayerAnswer.count({ where: { playerId: latePlayer.id } })).to.equal(0);
+    });
+
+    it('does not reinterpret a normally finished session as a host abort', async () => {
+        await session.update({
+            status: 'finished',
+            state: 'FINISHED',
+            lastErrorCode: null
+        });
+
+        let hostLeftEmitted = false;
+        const onHostLeft = () => { hostLeftEmitted = true; };
+        hostSocket.on('host_left', onHostLeft);
+
+        hostSocket.emit('leave_session', {
+            pin: session.pin,
+            role: 'host',
+            token: hostToken
+        });
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        hostSocket.off('host_left', onHostLeft);
+
+        await session.reload();
+        expect(hostLeftEmitted).to.equal(false);
+        expect(session.status).to.equal('finished');
+        expect(session.state).to.equal('FINISHED');
+        expect(session.lastErrorCode).to.equal(null);
     });
 });
