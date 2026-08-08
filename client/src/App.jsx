@@ -18,8 +18,11 @@ import PlayerGame from './pages/Player/PlayerGame';
 import PlayerLogin from './pages/Player/PlayerLogin';
 import PlayerDashboard from './pages/Player/PlayerDashboard';
 
-// SCORM World (flag-gated on backend; routes always registered)
+// SCORM World
+import ScormPlatformShell from './pages/Scorm/ScormPlatformShell';
 import ScormHome from './pages/Scorm/Home';
+import ScormCourses from './pages/Scorm/Courses';
+import ScormTracking from './pages/Scorm/Tracking';
 import ScormLibrary from './pages/Scorm/Library';
 import ScormCourseDetail from './pages/Scorm/CourseDetail';
 import ScormLearnLanding from './pages/Scorm/LearnLanding';
@@ -34,25 +37,21 @@ function App() {
       <SocketProvider>
         <Router basename={import.meta.env.VITE_APP_BASENAME || '/'}>
           <div className="min-h-screen bg-quizmoto-darkPurple text-white relative">
-            {/* Background Shapes */}
             <div className="bg-shape shape-1 w-64 h-64 border-[32px] border-white rounded-full" />
             <div className="bg-shape shape-2 w-48 h-48 border-[24px] border-quizmoto-yellow rotate-45" />
             <div className="bg-shape shape-3 w-32 h-32 bg-quizmoto-blue rounded-xl" />
             <div className="bg-shape shape-4 w-56 h-56 border-[28px] border-quizmoto-red rounded-lg -rotate-12" />
 
             <Routes>
-              {/* Public Routes */}
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
 
-              {/* Player Routes */}
               <Route path="/player/login" element={<PlayerLogin />} />
               <Route path="/player/dashboard" element={<PlayerDashboard />} />
               <Route path="/join" element={<Join />} />
               <Route path="/player/lobby" element={<PlayerLobby />} />
               <Route path="/player/game" element={<PlayerGame />} />
 
-              {/* Protected Host Routes */}
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/create-quiz" element={<CreateQuiz />} />
               <Route path="/edit-quiz/:id" element={<EditQuiz />} />
@@ -60,17 +59,22 @@ function App() {
               <Route path="/host/lobby/:pin" element={<Lobby />} />
               <Route path="/host/game/:pin" element={<GameView />} />
 
-              {/* SCORM World */}
-              <Route path="/scorm" element={<ScormHome />} />
-              <Route path="/scorm/library" element={<ScormLibrary />} />
-              <Route path="/scorm/author" element={<ScormAuthor />} />
-              <Route path="/scorm/visual-studio" element={<ScormVisualStudio />} />
-              <Route path="/scorm/reports" element={<ScormReports />} />
-              <Route path="/scorm/courses/:id" element={<ScormCourseDetail />} />
+              {/* SCORM administration uses a dedicated product shell. */}
+              <Route path="/scorm" element={<ScormPlatformShell />}>
+                <Route index element={<ScormHome />} />
+                <Route path="courses" element={<ScormCourses />} />
+                <Route path="courses/:id" element={<ScormCourseDetail />} />
+                <Route path="tracking" element={<ScormTracking />} />
+                <Route path="library" element={<ScormLibrary />} />
+                <Route path="author" element={<ScormAuthor />} />
+                <Route path="visual-studio" element={<ScormVisualStudio />} />
+                <Route path="reports" element={<ScormReports />} />
+              </Route>
+
+              {/* Learner-facing SCORM routes stay outside the admin platform shell. */}
               <Route path="/scorm/learn/:inviteCode" element={<ScormLearnLanding />} />
               <Route path="/scorm/player/:registrationId" element={<ScormPlayerShell />} />
 
-              {/* Fallback */}
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </div>
