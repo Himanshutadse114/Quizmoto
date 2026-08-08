@@ -4,7 +4,7 @@ import json
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether
-from reportlab.graphics.shapes import Drawing, RoundRect
+from reportlab.graphics.shapes import Drawing, Rect
 
 import generate_scorm_report as base
 
@@ -26,10 +26,10 @@ def progress_bar(value, accent, width=3.65 * inch, height=0.19 * inch):
     track_height = 9
     y = (height - track_height) / 2
     radius = track_height / 2
-    drawing.add(RoundRect(0, y, width, track_height, radius, fillColor=TRACK, strokeColor=None))
+    drawing.add(Rect(0, y, width, track_height, rx=radius, ry=radius, fillColor=TRACK, strokeColor=None))
     if pct > 0:
         progress_width = max(track_height, width * pct / 100.0)
-        drawing.add(RoundRect(0, y, progress_width, track_height, radius, fillColor=accent, strokeColor=None))
+        drawing.add(Rect(0, y, progress_width, track_height, rx=radius, ry=radius, fillColor=accent, strokeColor=None))
     return drawing
 
 
