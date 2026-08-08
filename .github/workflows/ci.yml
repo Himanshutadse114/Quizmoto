@@ -12,21 +12,30 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Use Node.js 22.x
       uses: actions/setup-node@v4
       with:
         node-version: '22.x'
         cache: 'npm'
-        
-    - name: Install dependencies
+
+    - name: Install root dependencies
       run: npm install
-      
+
+    - name: Install server dependencies
+      run: npm install --prefix server
+
+    - name: Install client dependencies
+      run: npm install --prefix client
+
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
-      
+
     - name: Build client
-      run: npm run build
-      
+      run: npm --prefix client run build
+
+    - name: Run server unit tests
+      run: npm --prefix server test
+
     - name: Run E2E tests
       run: npm run test:e2e
