@@ -53,7 +53,7 @@ describe('Scoring & Duplicate Characterization Tests', function() {
     });
 
     let hostToken, hostSocket, pin, quizId;
-    let p1Socket;
+    let p1Token, p1Socket;
 
     it('setup session and player', async () => {
         const loginRes = await request(URL).post('/api/auth/test-login');
@@ -65,56 +65,80 @@ describe('Scoring & Duplicate Characterization Tests', function() {
         const startRes = await request(URL).post(`/api/quizzes/${quizId}/start`).set('Authorization', `Bearer ${hostToken}`);
         pin = startRes.body.pin;
 
-        hostSocket = io(URL, { auth: { token: hostToken }, query: { pin, role: 'host' } });
+        hostSocket = io(URL, { autoConnect: false });
         await new Promise((resolve, reject) => {
             const timer = setTimeout(() => reject(new Error('host socket join timed out')), 3000);
             hostSocket.once('room_info', () => {
                 clearTimeout(timer);
                 resolve();
             });
+            hostSocket.once('connect_error', reject);
             hostSocket.on('connect', () => {
                 hostSocket.emit('join_room', { pin, role: 'host', token: hostToken });
             });
+            hostSocket.connect();
         });
 
-        const joinRes = await request(URL).post('/api/player/join').send({ pin, nickname: 'ScoreTest' });
-        const p1Token = joinRes.body.token;
-        p1Socket = io(URL, { auth: { token: p1Token }, query: { pin, role: 'player' } });
-        await new Promise((resolve, reject) => {
+        // Production player admission is a Socket.IO join. The server creates
+        // the session Player row and returns the signed reconnect token.
+        p1Socket = io(URL, { autoConnect: false });
+        p1Token = await new Promise((resolve, reject) => {
             const timer = setTimeout(() => reject(new Error('player socket join timed out')), 3000);
-            p1Socket.once('joined_successfully', () => {
+            p1Socket.once('joined_successfully', (data) => {
                 clearTimeout(timer);
-                resolve();
+                resolve(data.token);
             });
+            p1Socket.once('connect_error', reject);
+            p1Socket.once('error', reject);
             p1Socket.on('connect', () => {
-                p1Socket.emit('join_room', { pin, role: 'player', nickname: 'ScoreTest', token: p1Token });
+                p1Socket.emit('join_room', { pin, role: 'player', nickname: 'ScoreTest' });
             });
+            p1Socket.connect();
         });
+        expect(p1Token).to.be.a('string');
     });
 
     it('characterize correct answer points (no streak)', (done) => {
         p1Socket.once('answer_confirmed', (data) => {
-            expect(data.streak).to.equal(1);
-            // Question timer is 5s in fixtures.
-            // Base = 1000 + (~5 * 10) = 1050.
-            expect(data.points).to.be.closeTo(1050, 30);
-            done();
+            try {
+                expect(data.streak).to.equal(1);
+                // Question timer is 5s in fixtures.
+                // Base = 1000 + (~5 * 10) = 1050.
+                expect(data.points).to.be.closeTo(1050, 30);
+                done();
+            } catch (err) {
+                done(err);
+            }
         });
 
         hostSocket.emit('start_question', { pin, token: hostToken });
 
         // Wait 3s for countdown, then submit answer immediately.
         setTimeout(() => {
-            p1Socket.emit('submit_answer', { pin, nickname: 'ScoreTest', answerIndex: 1 });
+            p1Socket.emit('submit_answer', {
+                pin,
+                nickname: 'ScoreTest',
+                token: p1Token,
+                answerIndex: 1
+            });
         }, 3100);
     });
 
     it('characterize duplicate answer rejection', (done) => {
         p1Socket.once('error', (err) => {
-            expect(err).to.equal('Answer already submitted');
-            done();
+            try {
+                expect(err).to.equal('Answer already submitted');
+                done();
+            } catch (assertionErr) {
+                done(assertionErr);
+            }
         });
 
-        p1Socket.emit('submit_answer', { pin, nickname: 'ScoreTest', answerIndex: 1 });
+        p1Socket.emit('submit_answer', {
+            pin,
+            nickname: 'ScoreTest',
+            token: p1Token,
+            answerIndex: 1
+        });
     });
 });
