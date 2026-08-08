@@ -59,6 +59,12 @@ export default function ScormHome() {
             Reports
           </Link>
           <Link
+            to="/scorm/voice-preview"
+            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 font-bold text-sm border border-white/10"
+          >
+            Voice Lab
+          </Link>
+          <Link
             to="/scorm/author"
             className="px-4 py-2 rounded-xl bg-quizmoto-yellow text-black font-black text-sm shadow-[0_3px_0_0_#b8860b] hover:shadow-none hover:translate-y-0.5 transition-all"
           >
