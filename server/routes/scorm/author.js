@@ -3,13 +3,11 @@
  * Behind SCORM_LMS + SCORM_AI_AUTHOR flags.
  */
 const express = require('express');
-const fs = require('fs');
 const router = express.Router();
 const auth = require('../middleware');
 const { featureFlags, scormMaxUploadMb } = require('../../config/featureFlags');
 const { analyzePolicy } = require('../../services/scorm/PolicyAnalysisService');
-const { buildScormPackageZip } = require('../../services/scorm/ScormPackageBuilder');
-const { DEFAULT_SAMPLE, listVoices, generatePreview } = require('../../services/scorm/LocalTtsPreviewService');
+const { buildScormPackageZip } = require('../../services/scorm/ScormVisualPackageBuilder');
 const { ScormPackage } = require('../../models/scorm');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
 const { packageZipKey } = require('../../services/scorm/storageKeys');
@@ -23,50 +21,6 @@ router.use((req, res, next) => {
         });
     }
     next();
-});
-
-/** Local/offline voice lab availability. */
-router.get('/voice-preview/voices', auth, async (req, res) => {
-    try {
-        const voices = await listVoices();
-        res.json({ ok: true, sampleText: DEFAULT_SAMPLE, voices });
-    } catch (err) {
-        logger.error('scorm_voice_list_failed', { module: 'scorm', error: err.message });
-        res.status(500).json({ message: err.message, code: err.code || 'TTS_LIST_FAILED' });
-    }
-});
-
-/** Generate one temporary local/offline narration preview. */
-router.post('/voice-preview', auth, async (req, res) => {
-    let result = null;
-    try {
-        const voiceId = String(req.body?.voiceId || '');
-        const text = String(req.body?.text || DEFAULT_SAMPLE);
-        const speed = Number(req.body?.speed) || 1.0;
-        result = await generatePreview({ voiceId, text, speed });
-        res.setHeader('Content-Type', result.contentType);
-        res.setHeader('Cache-Control', 'private, max-age=3600');
-        res.setHeader('X-Quizmoto-TTS-Engine', voiceId);
-        res.setHeader('X-Quizmoto-TTS-Cached', result.cached ? '1' : '0');
-        const stream = fs.createReadStream(result.outputPath);
-        stream.on('error', (streamErr) => {
-            logger.error('scorm_voice_stream_failed', { module: 'scorm', error: streamErr.message });
-            if (!res.headersSent) res.status(500).json({ message: 'Voice preview stream failed' });
-            else res.destroy(streamErr);
-        });
-        stream.pipe(res);
-    } catch (err) {
-        logger.error('scorm_voice_preview_failed', {
-            module: 'scorm',
-            voiceId: req.body?.voiceId || null,
-            error: err.message,
-            code: err.code
-        });
-        res.status(err.code === 'TTS_VOICE_INVALID' ? 400 : 503).json({
-            message: err.message,
-            code: err.code || 'TTS_PREVIEW_FAILED'
-        });
-    }
 });
 
 /** Analyze only — returns PolicyAnalysis JSON for preview/edit. */
@@ -102,7 +56,7 @@ router.post('/analyze', auth, async (req, res) => {
 router.post('/generate', auth, async (req, res) => {
     try {
         let analysis = req.body?.analysis;
-        const { fileBase64, mimeType, detailLevel, templateId, logoDataUrl, title, replacePackageId } = req.body || {};
+        const { fileBase64, mimeType, detailLevel, templateId, logoDataUrl, title } = req.body || {};
 
         if (!analysis) {
             if (!fileBase64) {
