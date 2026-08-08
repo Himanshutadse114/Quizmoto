@@ -30,7 +30,7 @@ function pythonCandidates() {
 }
 
 async function runVisualGenerator(inputPath, outputDir) {
-    const script = path.join(__dirname, '../../utils/generate_scorm_visuals_v2.py');
+    const script = path.join(__dirname, '../../utils/generate_scorm_visuals_v3.py');
     if (!fs.existsSync(script)) {
         const err = new Error('SCORM visual generator script is missing');
         err.code = 'SCORM_VISUAL_SCRIPT_MISSING';
