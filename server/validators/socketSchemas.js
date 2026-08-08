@@ -31,7 +31,9 @@ const schemas = {
         // socketHandlers derives the player from the authenticated/joined socket.
         nickname: Joi.string().max(50).optional().allow('', null),
         token: Joi.string().max(2048).optional().allow('', null),
-        answerIndex: Joi.number().integer().min(0).max(5).required(),
+        // Live Quiz authoring is intentionally capped at four choices. Questions
+        // may use 2-4 non-empty choices, therefore valid indices are 0-3.
+        answerIndex: Joi.number().integer().min(0).max(3).required(),
         timeRemaining: Joi.number().min(0).optional(),
         ...commandEnvelope
     }),
