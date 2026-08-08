@@ -25,6 +25,24 @@ const Join = () => {
         { name: 'GREEN', color: 'bg-green-500', shadow: 'shadow-green-900/40' }
     ];
 
+    const [resumeInfo, setResumeInfo] = useState(null);
+    const [resuming, setResuming] = useState(false);
+
+    // Detect accidental leave: saved player_info means seat can be resumed
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem('player_info');
+            if (!raw) return;
+            const info = JSON.parse(raw);
+            if (info && info.pin && info.nickname && info.token) {
+                setResumeInfo(info);
+                if (!pin) setPin(String(info.pin));
+                if (!nickname) setNickname(info.nickname);
+                if (info.avatar) setSelectedAvatar(info.avatar);
+            }
+        } catch (_) {}
+    }, []);
+
     // Prefill from logged-in player profile (login → dashboard → join)
     useEffect(() => {
         const storedProfile = localStorage.getItem('playerProfile');
@@ -42,7 +60,7 @@ const Join = () => {
         }
     }, []);
 
-    // Socket listeners — same path for login and guest join
+    // Socket listeners — same path for login, guest join, and resume
     useEffect(() => {
         if (!socket) return;
 
@@ -57,19 +75,40 @@ const Join = () => {
                 teamName: teamName || null
             };
             localStorage.setItem('player_info', JSON.stringify(info));
+            setResumeInfo(info);
+            setResuming(false);
+            // Default to lobby; session_info will redirect into active game if needed
             navigate('/player/lobby');
         };
 
+        const onSessionInfo = (data) => {
+            try {
+                if (data.status === 'question' || data.status === 'result') {
+                    navigate('/player/game');
+                } else if (data.status === 'finished') {
+                    navigate('/player/game');
+                }
+            } catch (_) {}
+        };
+
         socket.on('joined_successfully', onJoined);
+        socket.on('session_info', onSessionInfo);
         socket.on('room_info', (data) => {
             setGameMode(data.gameMode || 'classic');
         });
         socket.on('error', (msg) => {
-            setError(msg);
+            setResuming(false);
+            setError(typeof msg === 'string' ? msg : (msg && msg.message) || 'Join failed');
+            // Stale resume seat (game finished / removed)
+            if (msg === 'Game not found' || msg === 'Game is already finished') {
+                try { localStorage.removeItem('player_info'); } catch (_) {}
+                setResumeInfo(null);
+            }
         });
 
         return () => {
             socket.off('joined_successfully', onJoined);
+            socket.off('session_info', onSessionInfo);
             socket.off('room_info');
             socket.off('error');
         };
@@ -80,6 +119,24 @@ const Join = () => {
         if (!socket || !pin || String(pin).length !== 6) return;
         socket.emit('join_room', { pin, role: 'player_check' });
     }, [socket, pin]);
+
+    const handleResume = () => {
+        if (!socket || !resumeInfo) return;
+        setError('');
+        setResuming(true);
+        socket.emit('join_room', {
+            pin: resumeInfo.pin,
+            nickname: resumeInfo.nickname,
+            role: 'player',
+            token: resumeInfo.token,
+            avatar: resumeInfo.avatar
+        });
+    };
+
+    const dismissResume = () => {
+        try { localStorage.removeItem('player_info'); } catch (_) {}
+        setResumeInfo(null);
+    };
 
     const handleJoin = (e) => {
         e.preventDefault();
@@ -163,6 +220,35 @@ const Join = () => {
                         </div>
                     )}
                 </div>
+
+                {resumeInfo && (
+                    <div className="mb-6 p-4 rounded-2xl border-2 border-quizmoto-yellow/40 bg-quizmoto-yellow/10 text-center">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-quizmoto-purple/70 mb-1">
+                            Session in progress
+                        </p>
+                        <p className="font-black text-quizmoto-purple text-lg leading-tight">
+                            PIN {resumeInfo.pin}
+                        </p>
+                        <p className="text-sm font-bold text-quizmoto-purple/80 mb-3">
+                            Continue as {resumeInfo.nickname}
+                        </p>
+                        <button
+                            type="button"
+                            onClick={handleResume}
+                            disabled={resuming}
+                            className="w-full bg-quizmoto-purple text-white font-black py-3.5 rounded-2xl text-base hover:bg-opacity-90 transition-all shadow-[0_4px_0_0_#33125e] active:translate-y-0.5 active:shadow-none uppercase tracking-tight disabled:opacity-60"
+                        >
+                            {resuming ? 'Rejoining…' : 'Resume game'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={dismissResume}
+                            className="mt-2 text-[10px] font-black uppercase tracking-widest text-quizmoto-purple/50 hover:text-quizmoto-purple"
+                        >
+                            Dismiss — join a different game
+                        </button>
+                    </div>
+                )}
 
                 <form onSubmit={handleJoin} className="space-y-4">
                     <div className="relative group">
