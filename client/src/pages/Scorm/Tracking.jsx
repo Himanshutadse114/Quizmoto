@@ -6,10 +6,10 @@ import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 
 function progressTone(value) {
-  if (value >= 100) return 'bg-emerald-400';
-  if (value >= 60) return 'bg-blue-400';
-  if (value > 0) return 'bg-amber-400';
-  return 'bg-white/15';
+  if (value >= 100) return 'bg-[#7b9285]';
+  if (value >= 60) return 'bg-[#829daf]';
+  if (value > 0) return 'bg-[#b39368]';
+  return 'bg-[#dfe5e1]';
 }
 
 function statusLabel(row) {
@@ -23,6 +23,20 @@ function statusLabel(row) {
   if (row.progressPercent > 0) return 'In progress';
   return 'Not started';
 }
+
+const SummaryCard = ({ label, value, icon: Icon, tint, tone = '#607568' }) => (
+  <div className={`rounded-2xl border border-[#e1e6e2] p-4 ${tint}`}>
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <div className="text-2xl font-semibold tracking-[-0.04em] text-[#26312d]">{value}</div>
+        <div className="mt-1 text-[10px] font-semibold text-[#78837d]">{label}</div>
+      </div>
+      <div className="w-8 h-8 rounded-lg bg-white/75 grid place-items-center border border-white" style={{ color: tone }}>
+        <Icon size={15} />
+      </div>
+    </div>
+  </div>
+);
 
 export default function ScormTracking() {
   const { token } = useAuth();
@@ -68,48 +82,41 @@ export default function ScormTracking() {
   const overview = data.overview || {};
 
   return (
-    <div className="p-4 md:p-8 max-w-[1500px] mx-auto">
-      <div className="mb-8">
-        <div className="text-[10px] uppercase tracking-[0.18em] text-white/45 font-black">Learning Operations</div>
-        <h2 className="text-3xl md:text-4xl font-black tracking-tight mt-2">Learner Tracking</h2>
-        <p className="text-white/60 text-sm mt-2 max-w-3xl">See completion percentage, last known course location, score and activity time. Host preview sessions are shown for QA but are excluded from learner statistics.</p>
+    <div className="p-4 md:p-7 lg:p-8 max-w-[1500px] mx-auto">
+      <div className="mb-7 max-w-3xl">
+        <div className="text-[11px] font-semibold text-[#829087]">Learning operations</div>
+        <h2 className="text-3xl md:text-[36px] font-semibold tracking-[-0.04em] mt-1.5">Learner tracking</h2>
+        <p className="text-sm mt-2 leading-relaxed">See completion, last known course location, score and activity. Preview sessions stay visible for QA but are kept out of learner statistics.</p>
       </div>
 
-      {error && <div className="mb-5 p-4 rounded-2xl border border-red-400/30 bg-[#55263c] text-red-100 text-sm">{error}</div>}
+      {error && <div className="mb-5 p-4 rounded-xl border border-[#ead4d1] bg-[#f7eeee] text-[#9e625d] text-sm">{error}</div>}
 
-      <div className="grid grid-cols-2 xl:grid-cols-7 gap-3 mb-6">
-        {[
-          ['Learners', overview.learners || 0, Users, 'text-white'],
-          ['Previews', overview.previewSessions || 0, Eye, 'text-violet-200'],
-          ['Completed', overview.completed || 0, CheckCircle2, 'text-emerald-300'],
-          ['In progress', overview.inProgress || 0, Clock3, 'text-blue-300'],
-          ['Not started', overview.notStarted || 0, CircleDashed, 'text-white/80'],
-          ['Unavailable', overview.unavailable || 0, CircleDashed, 'text-white/65'],
-          ['Avg progress', `${Number(overview.averageProgress || 0).toFixed(0)}%`, Activity, 'text-quizmoto-yellow']
-        ].map(([label, value, Icon, cls]) => (
-          <div key={label} className="rounded-2xl border border-[#3f4f86] bg-[#263762] p-4 md:p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className={`text-2xl md:text-3xl font-black ${cls}`}>{value}</div>
-                <div className="mt-1 text-[9px] uppercase tracking-[0.14em] font-black text-white/55">{label}</div>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-[#314572] grid place-items-center text-white/65"><Icon size={18} /></div>
-            </div>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
+        <SummaryCard label="Learners" value={overview.learners || 0} icon={Users} tint="bg-[#edf3ef]" />
+        <SummaryCard label="Previews" value={overview.previewSessions || 0} icon={Eye} tint="bg-[#f2eff6]" tone="#81759a" />
+        <SummaryCard label="Completed" value={overview.completed || 0} icon={CheckCircle2} tint="bg-[#edf3ef]" />
+        <SummaryCard label="In progress" value={overview.inProgress || 0} icon={Clock3} tint="bg-[#eef3f7]" tone="#6f899b" />
+        <SummaryCard label="Not started" value={overview.notStarted || 0} icon={CircleDashed} tint="bg-white" tone="#8c9691" />
+        <SummaryCard label="Unavailable" value={overview.unavailable || 0} icon={CircleDashed} tint="bg-[#f7eeee]" tone="#a86963" />
+        <SummaryCard label="Average progress" value={`${Number(overview.averageProgress || 0).toFixed(0)}%`} icon={Activity} tint="bg-[#f5f0e8]" tone="#987a52" />
       </div>
 
-      <div className="rounded-2xl border border-[#3f4f86] bg-[#22325a] overflow-hidden">
-        <div className="p-4 border-b border-[#3f4f86] grid grid-cols-1 xl:grid-cols-[1fr_auto_auto] gap-3 bg-[#293b68]">
+      <div className="scorm-soft-card overflow-hidden">
+        <div className="p-4 md:p-5 border-b border-[#e1e6e2] grid grid-cols-1 xl:grid-cols-[1fr_auto_auto] gap-3 bg-[#fbfcfa]">
           <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search learner, preview, course or last location" className="w-full rounded-xl border border-[#4c5f96] bg-[#1c2a4d] pl-9 pr-3 py-2.5 text-sm outline-none focus:border-blue-300" />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa39f]" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search learner, preview, course or last location"
+              className="w-full pl-9 pr-3 py-2.5 text-sm"
+            />
           </div>
-          <select value={courseId} onChange={(e) => setCourseId(e.target.value)} className="rounded-xl border border-[#4c5f96] bg-[#1c2a4d] px-3 py-2.5 text-xs font-bold text-white outline-none">
+          <select value={courseId} onChange={(e) => setCourseId(e.target.value)} className="px-3 py-2.5 text-xs font-medium min-w-[170px]">
             <option value="all">All courses</option>
             {(data.courses || []).map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
           </select>
-          <select value={progressFilter} onChange={(e) => setProgressFilter(e.target.value)} className="rounded-xl border border-[#4c5f96] bg-[#1c2a4d] px-3 py-2.5 text-xs font-bold text-white outline-none">
+          <select value={progressFilter} onChange={(e) => setProgressFilter(e.target.value)} className="px-3 py-2.5 text-xs font-medium min-w-[180px]">
             <option value="all">All sessions</option>
             <option value="preview">Host previews</option>
             <option value="completed">Completed learners</option>
@@ -122,52 +129,52 @@ export default function ScormTracking() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1100px] text-sm">
             <thead>
-              <tr className="text-left text-[9px] uppercase tracking-[0.14em] font-black text-white/50 border-b border-[#3f4f86] bg-[#24355e]">
-                <th className="px-4 py-3">Learner / Preview</th>
-                <th className="px-4 py-3">Course</th>
-                <th className="px-4 py-3 min-w-[220px]">Completion</th>
-                <th className="px-4 py-3">Last location</th>
-                <th className="px-4 py-3">Score</th>
-                <th className="px-4 py-3">Time</th>
-                <th className="px-4 py-3">Last activity</th>
-                <th className="px-4 py-3"></th>
+              <tr className="text-left text-[10px] font-semibold text-[#7f8a84] border-b border-[#e1e6e2] bg-[#f7f9f6]">
+                <th className="px-5 py-3.5">Learner / preview</th>
+                <th className="px-5 py-3.5">Course</th>
+                <th className="px-5 py-3.5 min-w-[220px]">Completion</th>
+                <th className="px-5 py-3.5">Last location</th>
+                <th className="px-5 py-3.5">Score</th>
+                <th className="px-5 py-3.5">Time</th>
+                <th className="px-5 py-3.5">Last activity</th>
+                <th className="px-5 py-3.5"></th>
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 && <tr><td colSpan={8} className="p-10 text-center text-white/50">No sessions match this view.</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={8} className="p-10 text-center text-[#929c97]">No sessions match this view.</td></tr>}
               {rows.map((row) => (
-                <tr key={row.id} className={`border-b border-[#33456f] ${row.isPreview ? 'bg-[#302d61]' : 'bg-[#22325a]'} hover:bg-[#2a3e69]`}>
-                  <td className="px-4 py-4">
+                <tr key={row.id} className={`border-b border-[#edf0ee] ${row.isPreview ? 'bg-[#fbf9fd]' : 'bg-white'} hover:bg-[#fafbf9]`}>
+                  <td className="px-5 py-4">
                     <div className="flex items-center gap-2">
-                      <div className="font-black">{row.learnerName || (row.isPreview ? 'Host Preview' : 'Learner')}</div>
-                      {row.isPreview && <span className="rounded-full bg-violet-500 px-2 py-0.5 text-[8px] uppercase tracking-[0.12em] font-black text-white">Preview</span>}
+                      <div className="font-semibold text-[#34413b]">{row.learnerName || (row.isPreview ? 'Host Preview' : 'Learner')}</div>
+                      {row.isPreview && <span className="rounded-full bg-[#f2eff6] border border-[#e3ddec] px-2 py-0.5 text-[8px] tracking-[0.08em] font-semibold text-[#81759a]">PREVIEW</span>}
                     </div>
-                    <div className="text-xs text-white/50 mt-0.5">{row.learnerEmail || (row.isPreview ? 'Host QA session' : 'No email')}</div>
+                    <div className="text-[11px] text-[#929c97] mt-0.5">{row.learnerEmail || (row.isPreview ? 'Host QA session' : 'No email')}</div>
                   </td>
-                  <td className="px-4 py-4">
-                    <div className="font-bold max-w-[220px] truncate">{row.courseTitle || 'Course'}</div>
-                    <div className="text-[10px] text-white/45 font-mono mt-0.5">{row.inviteCode || ''}</div>
+                  <td className="px-5 py-4">
+                    <div className="font-medium max-w-[220px] truncate text-[#405048]">{row.courseTitle || 'Course'}</div>
+                    <div className="text-[10px] text-[#9aa39f] font-mono mt-0.5">{row.inviteCode || ''}</div>
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-5 py-4">
                     <div className="flex items-center justify-between gap-3 mb-2">
-                      <span className="text-xs font-black">{row.progressAvailable ? `${Number(row.progressPercent).toFixed(0)}%` : '—'}</span>
-                      <span className="text-[9px] uppercase tracking-[0.1em] font-black text-white/55">{statusLabel(row)}</span>
+                      <span className="text-[11px] font-semibold text-[#405048]">{row.progressAvailable ? `${Number(row.progressPercent).toFixed(0)}%` : '—'}</span>
+                      <span className="text-[9px] font-medium text-[#8a948f]">{statusLabel(row)}</span>
                     </div>
-                    <div className="h-2 rounded-full bg-[#182544] overflow-hidden">
+                    <div className="h-1.5 rounded-full bg-[#edf0ee] overflow-hidden">
                       {row.progressAvailable && <div className={`h-full rounded-full ${progressTone(row.progressPercent)}`} style={{ width: `${Math.max(0, Math.min(100, row.progressPercent || 0))}%` }} />}
                     </div>
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-5 py-4">
                     <div className="flex items-start gap-2 max-w-[260px]">
-                      <MapPin size={14} className="text-white/40 mt-0.5 shrink-0" />
-                      <span className="text-xs font-bold text-white/75">{row.lastLocation || 'Not started'}</span>
+                      <MapPin size={13} className="text-[#9aa39f] mt-0.5 shrink-0" />
+                      <span className="text-[11px] font-medium text-[#66716b]">{row.lastLocation || 'Not started'}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-4 font-black">{row.lastScoreRaw != null ? row.lastScoreRaw : '—'}</td>
-                  <td className="px-4 py-4 font-mono text-xs text-white/70">{row.lastTotalTime || '—'}</td>
-                  <td className="px-4 py-4 text-xs text-white/60">{row.lastCommitAt ? new Date(row.lastCommitAt).toLocaleString() : row.updatedAt ? new Date(row.updatedAt).toLocaleString() : '—'}</td>
-                  <td className="px-4 py-4">
-                    <Link to={`/scorm/courses/${row.courseId}`} className="inline-flex items-center gap-1 text-[10px] font-black text-blue-200 hover:text-white">Open <ExternalLink size={11} /></Link>
+                  <td className="px-5 py-4 font-semibold text-[#536159]">{row.lastScoreRaw != null ? row.lastScoreRaw : '—'}</td>
+                  <td className="px-5 py-4 font-mono text-[11px] text-[#707a75]">{row.lastTotalTime || '—'}</td>
+                  <td className="px-5 py-4 text-[11px] text-[#7f8a84]">{row.lastCommitAt ? new Date(row.lastCommitAt).toLocaleString() : row.updatedAt ? new Date(row.updatedAt).toLocaleString() : '—'}</td>
+                  <td className="px-5 py-4">
+                    <Link to={`/scorm/courses/${row.courseId}`} className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#6f899b] hover:text-[#506d7f]">Open <ExternalLink size={11} /></Link>
                   </td>
                 </tr>
               ))}
