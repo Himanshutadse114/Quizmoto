@@ -1,0 +1,371 @@
+/*
+ * Laptop/desktop composition polish for the internal website preview.
+ * Mobile keeps the existing successful layout; only floating hero callouts
+ * are removed at mobile widths so the phone remains clean and readable.
+ */
+
+@media (min-width: 769px) and (max-width: 1440px) {
+  .dual-site .dual-nav {
+    height: 64px;
+    padding-inline: clamp(22px, 2.5vw, 36px);
+  }
+
+  .dual-site .dual-brand > span {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+  }
+
+  .dual-site .dual-brand strong { font-size: 18px; }
+
+  .dual-site .dual-hero {
+    min-height: auto;
+    padding: clamp(48px, 5.2vw, 70px) 28px clamp(76px, 7vw, 96px);
+  }
+
+  .dual-site .dual-hero-eyebrow {
+    padding: 8px 12px;
+    font-size: 9px;
+  }
+
+  .dual-site .dual-hero h1 {
+    width: min(1040px, 94vw);
+    margin-top: 24px;
+    font-size: clamp(56px, 5.7vw, 82px);
+    line-height: .9;
+    letter-spacing: -.068em;
+  }
+
+  .dual-site .dual-shift {
+    width: min(760px, 90vw);
+    height: 48px;
+    margin-top: 20px;
+  }
+
+  .dual-site .dual-shift > div {
+    min-height: 36px;
+    padding-inline: 15px;
+    font-size: clamp(13px, 1.25vw, 17px);
+  }
+
+  .dual-site .dual-hero-copy {
+    max-width: 760px;
+    margin-top: 13px;
+    font-size: clamp(15px, 1.15vw, 17px);
+    line-height: 1.5;
+  }
+
+  .dual-site .dual-hero-actions {
+    margin-top: 24px;
+    gap: 10px;
+  }
+
+  .dual-site .dual-btn {
+    min-height: 47px;
+    padding-inline: 17px;
+    border-radius: 13px;
+    font-size: 12px;
+  }
+
+  .dual-site .dual-hero-proof {
+    margin-top: 18px;
+    gap: 8px 15px;
+  }
+
+  .dual-site .dual-hero-proof span { font-size: 10px; }
+
+  .dual-site .dual-hero-device {
+    width: min(660px, 90vw);
+    margin-top: 34px;
+  }
+
+  .dual-site .dual-device-wrap {
+    width: clamp(350px, 30vw, 410px);
+    padding-block: 12px;
+  }
+
+  .dual-site .dual-phone {
+    padding: 9px;
+    border-radius: 44px;
+    box-shadow: 0 26px 56px rgba(45,40,76,.2), 0 9px 20px rgba(23,25,34,.13);
+  }
+
+  .dual-site .dual-phone::after { border-radius: 42px; }
+
+  .dual-site .dual-phone-notch {
+    top: 16px;
+    width: 78px;
+    height: 22px;
+  }
+
+  .dual-site .dual-phone-screen {
+    min-height: 545px;
+    padding: 24px 16px 15px;
+    border-radius: 36px;
+  }
+
+  .dual-site .dual-phone-topbar {
+    grid-template-columns: 29px 1fr 7px;
+    gap: 7px;
+    margin-top: 5px;
+  }
+
+  .dual-site .dual-app-mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    font-size: 12px;
+  }
+
+  .dual-site .dual-phone-tabs {
+    margin-top: 17px;
+    padding: 4px;
+    border-radius: 13px;
+  }
+
+  .dual-site .dual-phone-tabs button {
+    min-height: 32px;
+    border-radius: 9px;
+    font-size: 6.5px;
+  }
+
+  .dual-site .dual-phone-state {
+    min-height: 418px;
+    padding-top: 18px;
+  }
+
+  .dual-site .dual-phone-state > h3 {
+    margin: 9px 0 13px;
+    font-size: 19px;
+  }
+
+  .dual-site .dual-doc-main {
+    grid-template-columns: 38px 1fr 18px;
+    gap: 8px;
+    margin-top: 18px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .dual-site .dual-doc-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+  }
+
+  .dual-site .dual-doc-types { margin-top: 11px; gap: 5px; }
+  .dual-site .dual-doc-types span { padding: 5px 7px; font-size: 6px; }
+  .dual-site .dual-phone-note { margin-top: 13px; padding: 9px 10px; font-size: 7px; }
+
+  .dual-site .dual-ai-symbol {
+    width: 58px;
+    height: 58px;
+    margin-top: 18px;
+    border-radius: 19px;
+  }
+
+  .dual-site .dual-ai-rows { gap: 6px; margin-top: 14px; }
+  .dual-site .dual-ai-rows > div { padding: 7px 8px; }
+  .dual-site .dual-ready-check { width: 52px; height: 52px; margin: 20px auto 12px; border-radius: 17px; }
+  .dual-site .dual-ready-grid { gap: 6px; margin-top: 15px; }
+  .dual-site .dual-ready-grid > div { padding: 10px; border-radius: 11px; }
+  .dual-site .dual-ready-status { margin-top: 12px; padding: 7px 10px; }
+
+  .dual-site .dual-track-stats > div { padding: 9px; border-radius: 11px; }
+  .dual-site .dual-track-stats strong { font-size: 15px; }
+  .dual-site .dual-track-rows { gap: 6px; margin-top: 10px; }
+  .dual-site .dual-track-rows > div { grid-template-columns: 1fr 70px 30px; gap: 6px; padding: 8px 9px; border-radius: 10px; }
+
+  .dual-site .dual-pin-card {
+    margin-top: 19px;
+    padding: 17px;
+    border-radius: 17px;
+  }
+
+  .dual-site .dual-pin-card strong { font-size: 29px; }
+  .dual-site .dual-player-count { margin-top: 13px; }
+  .dual-site .dual-player-cloud { margin-top: 12px; gap: 5px; }
+  .dual-site .dual-player-cloud span { padding: 6px 8px; font-size: 7px; }
+
+  .dual-site .dual-quiz-countdown > strong {
+    margin-top: 72px;
+    font-size: 104px;
+  }
+
+  .dual-site .dual-quiz-countdown > h3 { margin-top: 22px; }
+
+  .dual-site .dual-countdown-ring {
+    width: 142px;
+    height: 142px;
+    top: 86px;
+    border-width: 6px;
+  }
+
+  .dual-site .dual-answer-list { gap: 6px; }
+  .dual-site .dual-answer-list > div { min-height: 39px; padding: 8px 9px; border-radius: 10px; font-size: 7px; }
+  .dual-site .dual-answer-list > div > span { width: 22px; height: 22px; border-radius: 7px; }
+  .dual-site .dual-live-footer { margin-top: 9px; padding: 8px 9px; border-radius: 10px; }
+  .dual-site .dual-leader-list { gap: 6px; margin-top: 16px; }
+  .dual-site .dual-leader-list > div { padding: 9px; border-radius: 11px; }
+
+  .dual-site .dual-float {
+    min-width: 140px;
+    padding: 9px 10px;
+    border-radius: 14px;
+  }
+
+  .dual-site .dual-float-course { left: -18%; }
+  .dual-site .dual-float-live { right: -18%; }
+  .dual-site .dual-float-proof { left: -14%; }
+
+  .dual-site .dual-proof-strip {
+    width: min(1080px, calc(100% - 48px));
+    margin-bottom: 78px;
+    border-radius: 22px;
+  }
+
+  .dual-site .dual-proof-strip > div { padding: 18px 20px; }
+  .dual-site .dual-proof-strip strong { font-size: 16px; }
+
+  .dual-site .dual-two-engines,
+  .dual-site .dual-data-section,
+  .dual-site .dual-features {
+    padding-top: 86px;
+    padding-bottom: 88px;
+  }
+
+  .dual-site .dual-two-engines,
+  .dual-site .dual-workflow,
+  .dual-site .dual-product-story,
+  .dual-site .dual-data-section,
+  .dual-site .dual-features {
+    padding-left: max(28px, calc((100vw - 1160px) / 2 + 28px));
+    padding-right: max(28px, calc((100vw - 1160px) / 2 + 28px));
+  }
+
+  .dual-site .dual-section-head { max-width: 780px; }
+
+  .dual-site .dual-section-head h2 {
+    font-size: clamp(44px, 4.6vw, 62px);
+    line-height: .96;
+  }
+
+  .dual-site .dual-section-head p {
+    max-width: 650px;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .dual-site .dual-engine-grid {
+    gap: 15px;
+    margin-top: 42px;
+  }
+
+  .dual-site .dual-engine-card {
+    padding: 24px;
+    border-radius: 25px;
+  }
+
+  .dual-site .dual-engine-card > h3 {
+    margin-top: 24px;
+    font-size: clamp(26px, 2.35vw, 34px);
+    line-height: 1.03;
+  }
+
+  .dual-site .dual-workflow {
+    padding-top: 84px;
+    padding-bottom: 84px;
+  }
+
+  .dual-site .dual-workflow-lanes { margin-top: 40px; }
+  .dual-site .dual-workflow-lane { padding: 22px; border-radius: 22px; }
+
+  .dual-site .dual-product-story,
+  .dual-site .dual-product-story.quiz {
+    min-height: 650px;
+    gap: 42px;
+    padding-top: 82px;
+    padding-bottom: 82px;
+  }
+
+  .dual-site .dual-data-grid,
+  .dual-site .dual-feature-columns { margin-top: 42px; }
+
+  .dual-site .dual-data-card {
+    min-height: 430px;
+    padding: 24px;
+    border-radius: 25px;
+  }
+
+  .dual-site .dual-big-number {
+    margin-top: 35px;
+    font-size: clamp(76px, 7vw, 104px);
+  }
+
+  .dual-site .dual-data-bars {
+    height: 118px;
+    margin-top: 30px;
+  }
+
+  .dual-site .dual-feature-columns > div {
+    padding: 18px;
+    border-radius: 23px;
+  }
+
+  .dual-site .dual-feature-columns article {
+    padding: 15px 3px;
+  }
+
+  .dual-site .dual-final {
+    min-height: 620px;
+    padding: 82px 28px;
+  }
+
+  .dual-site .dual-final h2 {
+    font-size: clamp(54px, 6.4vw, 88px);
+    line-height: .88;
+  }
+
+  .dual-site .dual-final p {
+    max-width: 700px;
+    font-size: 15px;
+  }
+}
+
+/* Laptop-specific refinement for common 1366x768 and 1280x800 screens. */
+@media (min-width: 1025px) and (max-width: 1380px) and (max-height: 900px) {
+  .dual-site .dual-hero {
+    padding-top: 42px;
+    padding-bottom: 66px;
+  }
+
+  .dual-site .dual-hero h1 {
+    width: min(980px, 92vw);
+    margin-top: 20px;
+    font-size: clamp(58px, 5.25vw, 72px);
+  }
+
+  .dual-site .dual-shift { margin-top: 15px; height: 43px; }
+  .dual-site .dual-hero-copy { max-width: 710px; margin-top: 10px; font-size: 15px; }
+  .dual-site .dual-hero-actions { margin-top: 19px; }
+  .dual-site .dual-hero-proof { margin-top: 14px; }
+  .dual-site .dual-hero-device { margin-top: 27px; }
+  .dual-site .dual-device-wrap { width: clamp(340px, 27vw, 370px); }
+  .dual-site .dual-phone-screen { min-height: 500px; }
+  .dual-site .dual-phone-state { min-height: 374px; }
+  .dual-site .dual-phone-state > h3 { font-size: 18px; }
+  .dual-site .dual-ai-symbol { width: 52px; height: 52px; margin-top: 14px; }
+  .dual-site .dual-quiz-countdown > strong { margin-top: 58px; font-size: 90px; }
+  .dual-site .dual-countdown-ring { width: 126px; height: 126px; top: 72px; }
+}
+
+/* Tablet/mobile keeps the existing good composition, but floating callouts are removed. */
+@media (max-width: 768px) {
+  .dual-site .dual-float {
+    display: none !important;
+  }
+
+  .dual-site .dual-device-halo {
+    inset-inline: -12%;
+  }
+}
