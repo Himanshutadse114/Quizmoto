@@ -1,12 +1,47 @@
 const express = require('express');
 const router = express.Router();
 const Runtime = require('../../services/scorm/ScormRuntimeService');
-const { ScormRegistration } = require('../../models/scorm');
+const {
+    ScormRegistration,
+    ScormCmiState,
+    ScormCourse,
+    ScormPackage
+} = require('../../models/scorm');
 const Realtime = require('../../services/scorm/ScormRealtime');
 
 function bearer(req) {
     const h = req.header('Authorization') || '';
     return h.replace(/^Bearer\s+/i, '').trim();
+}
+
+async function bootstrapAiAuthorProgress(regId) {
+    try {
+        const reg = await ScormRegistration.findByPk(regId, {
+            include: [{
+                model: ScormCourse,
+                as: 'course',
+                include: [{ model: ScormPackage, as: 'package' }]
+            }]
+        });
+        if (!reg?.course?.package || reg.course.package.source !== 'ai_author') return false;
+
+        const state = await ScormCmiState.findOne({ where: { registrationId: reg.id } });
+        if (!state) return false;
+
+        let changed = false;
+        if (state.lessonLocation == null || String(state.lessonLocation).trim() === '') {
+            state.lessonLocation = '0';
+            changed = true;
+        }
+        if (!state.lessonStatus || state.lessonStatus === 'not attempted') {
+            state.lessonStatus = 'incomplete';
+            changed = true;
+        }
+        if (changed) await state.save();
+        return changed;
+    } catch (_) {
+        return false;
+    }
 }
 
 async function emitRegistration(regId, event) {
@@ -37,7 +72,13 @@ async function emitRegistration(regId, event) {
 
 router.post('/:regId/initialize', async (req, res) => {
     try {
-        const result = await Runtime.initialize(req.params.regId, bearer(req));
+        const token = bearer(req);
+        const result = await Runtime.initialize(req.params.regId, token);
+        const bootstrapped = await bootstrapAiAuthorProgress(req.params.regId);
+        // Persist an initial Host Preview / learner state immediately. This also
+        // makes older AI-authored packages visible even if their first client-side
+        // lesson_location write occurred before LMSInitialize.
+        if (bootstrapped) await Runtime.commit(req.params.regId, token);
         await emitRegistration(req.params.regId, 'initialize');
         res.json(result);
     } catch (err) {
