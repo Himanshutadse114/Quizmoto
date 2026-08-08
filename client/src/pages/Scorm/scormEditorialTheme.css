@@ -1,24 +1,33 @@
 .scorm-editorial {
-  --scorm-ink: #111111;
-  --scorm-paper: #F4F0E6;
+  --scorm-canvas: #f6f7f4;
+  --scorm-surface: #ffffff;
+  --scorm-surface-soft: #eef2ef;
+  --scorm-surface-blue: #eef3f7;
+  --scorm-surface-lilac: #f2eff6;
+  --scorm-surface-sand: #f5f0e8;
+  --scorm-surface-rose: #f7eeee;
+  --scorm-ink: #26312d;
+  --scorm-muted: #707a75;
+  --scorm-faint: #98a19d;
+  --scorm-line: #e1e6e2;
+  --scorm-line-strong: #d2d9d4;
+  --scorm-sage: #7b9285;
+  --scorm-sage-deep: #607568;
+  --scorm-blue: #829daf;
+  --scorm-lilac: #9589ad;
+  --scorm-sand: #b39368;
+  --scorm-rose: #b87873;
+  --scorm-shadow: 0 1px 2px rgba(38,49,45,.04), 0 10px 28px rgba(38,49,45,.055);
   min-height: 100vh;
-  background: var(--scorm-paper) !important;
+  background: var(--scorm-canvas) !important;
   color: var(--scorm-ink) !important;
-  font-family: Inter, Satoshi, Arial, Helvetica, sans-serif;
+  font-family: Inter, Satoshi, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .scorm-editorial,
-.scorm-editorial * {
-  box-sizing: border-box;
-}
+.scorm-editorial * { box-sizing: border-box; }
 
-.scorm-editorial * {
-  text-shadow: none !important;
-}
-
-.scorm-editorial [class*="shadow"] {
-  box-shadow: none !important;
-}
+.scorm-editorial * { text-shadow: none !important; }
 
 .scorm-editorial [class*="backdrop-blur"] {
   -webkit-backdrop-filter: none !important;
@@ -28,255 +37,209 @@
 .scorm-editorial [class*="bg-gradient"],
 .scorm-editorial [class*="from-"],
 .scorm-editorial [class*="via-"],
-.scorm-editorial [class*="to-"] {
-  background-image: none !important;
+.scorm-editorial [class*="to-"] { background-image: none !important; }
+
+/* Legacy dark surfaces become quiet white cards, not a blanket colour wash. */
+.scorm-editorial [class*="bg-[#344a7b]"],
+.scorm-editorial [class*="bg-[#304573]"],
+.scorm-editorial [class*="bg-[#2f4472]"],
+.scorm-editorial [class*="bg-[#344b7b]"],
+.scorm-editorial [class*="bg-[#3a5080]"],
+.scorm-editorial [class*="bg-[#425887]"],
+.scorm-editorial [class*="bg-[#24335f]"],
+.scorm-editorial [class*="bg-white/"] {
+  background-color: var(--scorm-surface) !important;
 }
 
-/* Default platform surfaces: printed paper with hard ink rules. */
-.scorm-editorial [class*="bg-[#"],
-.scorm-editorial [class*="bg-white"],
-.scorm-editorial [class*="bg-black"] {
-  background-color: var(--scorm-paper) !important;
-}
+.scorm-editorial [class*="bg-black/"] { background-color: var(--scorm-surface-soft) !important; }
 
-/* Anything that used a semantic/accent fill becomes a single ink block. */
-.scorm-editorial [class*="bg-quizmoto-"],
-.scorm-editorial [class*="bg-blue-"],
-.scorm-editorial [class*="bg-red-"],
-.scorm-editorial [class*="bg-green-"],
+/* Soft semantic fills. */
 .scorm-editorial [class*="bg-emerald-"],
+.scorm-editorial [class*="bg-green-"] { background-color: #eaf2ed !important; color: var(--scorm-sage-deep) !important; }
+.scorm-editorial [class*="bg-blue-"] { background-color: var(--scorm-surface-blue) !important; color: #647f91 !important; }
+.scorm-editorial [class*="bg-purple-"],
+.scorm-editorial [class*="bg-violet-"],
+.scorm-editorial [class*="bg-indigo-"],
+.scorm-editorial [class*="bg-pink-"] { background-color: var(--scorm-surface-lilac) !important; color: #766b8d !important; }
 .scorm-editorial [class*="bg-amber-"],
 .scorm-editorial [class*="bg-yellow-"],
-.scorm-editorial [class*="bg-orange-"],
-.scorm-editorial [class*="bg-pink-"],
-.scorm-editorial [class*="bg-violet-"],
-.scorm-editorial [class*="bg-purple-"],
-.scorm-editorial [class*="bg-indigo-"] {
-  background-color: var(--scorm-ink) !important;
-  color: var(--scorm-paper) !important;
-}
+.scorm-editorial [class*="bg-orange-"] { background-color: var(--scorm-surface-sand) !important; color: #987a52 !important; }
+.scorm-editorial [class*="bg-red-"] { background-color: var(--scorm-surface-rose) !important; color: #9e625d !important; }
 
-/* One ink colour for all typography, statuses and icons. */
-.scorm-editorial [class*="text-white"],
-.scorm-editorial [class*="text-black"],
+/* Main legacy Quizmoto accents become sage unless a dedicated shell class overrides them. */
+.scorm-editorial [class*="bg-quizmoto-"] { background-color: var(--scorm-sage) !important; color: #fff !important; }
+
+/* Typography hierarchy. */
+.scorm-editorial [class~="text-white"],
+.scorm-editorial [class~="text-black"] { color: var(--scorm-ink) !important; }
+.scorm-editorial [class*="text-white/"],
 .scorm-editorial [class*="text-gray-"],
 .scorm-editorial [class*="text-slate-"],
-.scorm-editorial [class*="text-zinc-"],
-.scorm-editorial [class*="text-blue-"],
-.scorm-editorial [class*="text-red-"],
-.scorm-editorial [class*="text-green-"],
+.scorm-editorial [class*="text-zinc-"] { color: var(--scorm-muted) !important; }
 .scorm-editorial [class*="text-emerald-"],
+.scorm-editorial [class*="text-green-"] { color: var(--scorm-sage-deep) !important; }
+.scorm-editorial [class*="text-blue-"] { color: #6f899b !important; }
+.scorm-editorial [class*="text-purple-"],
+.scorm-editorial [class*="text-violet-"],
+.scorm-editorial [class*="text-indigo-"],
+.scorm-editorial [class*="text-pink-"] { color: #80759a !important; }
 .scorm-editorial [class*="text-amber-"],
 .scorm-editorial [class*="text-yellow-"],
-.scorm-editorial [class*="text-orange-"],
-.scorm-editorial [class*="text-pink-"],
-.scorm-editorial [class*="text-violet-"],
-.scorm-editorial [class*="text-purple-"],
-.scorm-editorial [class*="text-indigo-"],
-.scorm-editorial [class*="text-quizmoto-"] {
-  color: var(--scorm-ink) !important;
-}
+.scorm-editorial [class*="text-orange-"] { color: #9a7e57 !important; }
+.scorm-editorial [class*="text-red-"] { color: #a86963 !important; }
+.scorm-editorial [class*="text-quizmoto-"] { color: var(--scorm-sage-deep) !important; }
 
-.scorm-editorial [class*="border-[#"],
+/* Fine, quiet borders. */
 .scorm-editorial [class*="border-white"],
-.scorm-editorial [class*="border-black"],
-.scorm-editorial [class*="border-blue-"],
-.scorm-editorial [class*="border-red-"],
-.scorm-editorial [class*="border-green-"],
+.scorm-editorial [class*="border-[#506596]"],
+.scorm-editorial [class*="border-[#52679b]"],
+.scorm-editorial [class*="border-[#465d8e]"],
+.scorm-editorial [class*="border-[#5f73a2]"] { border-color: var(--scorm-line) !important; }
 .scorm-editorial [class*="border-emerald-"],
+.scorm-editorial [class*="border-green-"] { border-color: #cbdacf !important; }
+.scorm-editorial [class*="border-blue-"] { border-color: #d3e0e8 !important; }
 .scorm-editorial [class*="border-amber-"],
 .scorm-editorial [class*="border-yellow-"],
-.scorm-editorial [class*="border-pink-"],
-.scorm-editorial [class*="border-violet-"],
-.scorm-editorial [class*="border-indigo-"] {
-  border-color: var(--scorm-ink) !important;
-}
+.scorm-editorial [class*="border-orange-"] { border-color: #e8dcc9 !important; }
+.scorm-editorial [class*="border-red-"] { border-color: #ead4d1 !important; }
+.scorm-editorial [class*="divide-"] > * + * { border-color: var(--scorm-line) !important; }
 
-.scorm-editorial [class*="divide-"] > * + * {
-  border-color: var(--scorm-ink) !important;
-}
+/* Keep depth subtle and consistent. */
+.scorm-editorial [class*="shadow-"] { box-shadow: var(--scorm-shadow) !important; }
 
-/* Editorial geometry: less SaaS softness, more print/poster structure. */
 .scorm-editorial [class*="rounded-3xl"],
 .scorm-editorial [class*="rounded-[24px]"],
 .scorm-editorial [class*="rounded-[32px]"],
 .scorm-editorial [class*="rounded-[40px]"],
-.scorm-editorial [class*="rounded-[48px]"] {
-  border-radius: 8px !important;
-}
-
-.scorm-editorial [class*="rounded-2xl"] {
-  border-radius: 6px !important;
-}
-
-.scorm-editorial [class*="rounded-xl"] {
-  border-radius: 4px !important;
-}
+.scorm-editorial [class*="rounded-[48px]"] { border-radius: 18px !important; }
+.scorm-editorial [class*="rounded-2xl"] { border-radius: 14px !important; }
+.scorm-editorial [class*="rounded-xl"] { border-radius: 11px !important; }
 
 .scorm-editorial h1,
 .scorm-editorial h2,
 .scorm-editorial h3 {
   color: var(--scorm-ink) !important;
-  font-weight: 900 !important;
-  letter-spacing: -0.035em;
+  font-weight: 760 !important;
+  letter-spacing: -0.03em;
 }
 
-.scorm-editorial main h1,
-.scorm-editorial main h2 {
-  text-transform: uppercase;
-}
-
-.scorm-editorial p,
-.scorm-editorial label,
-.scorm-editorial span,
-.scorm-editorial div {
-  border-color: var(--scorm-ink);
-}
+.scorm-editorial p { color: var(--scorm-muted); }
 
 .scorm-editorial input,
 .scorm-editorial textarea,
 .scorm-editorial select {
-  background: var(--scorm-paper) !important;
+  background: var(--scorm-surface) !important;
   color: var(--scorm-ink) !important;
-  border: 2px solid var(--scorm-ink) !important;
-  border-radius: 4px !important;
-  box-shadow: none !important;
+  border: 1px solid var(--scorm-line-strong) !important;
+  border-radius: 11px !important;
+  box-shadow: inset 0 1px 1px rgba(38,49,45,.025) !important;
 }
-
 .scorm-editorial input::placeholder,
-.scorm-editorial textarea::placeholder {
-  color: var(--scorm-ink) !important;
-}
-
+.scorm-editorial textarea::placeholder { color: var(--scorm-faint) !important; }
 .scorm-editorial input:focus,
 .scorm-editorial textarea:focus,
 .scorm-editorial select:focus {
-  outline: 3px solid var(--scorm-ink) !important;
-  outline-offset: 2px;
+  outline: none !important;
+  border-color: var(--scorm-sage) !important;
+  box-shadow: 0 0 0 3px rgba(123,146,133,.13) !important;
 }
 
-/* Generic coloured CTAs become black poster blocks. */
-.scorm-editorial a[class*="bg-quizmoto-"],
-.scorm-editorial button[class*="bg-quizmoto-"],
-.scorm-editorial a[class*="bg-blue-"],
-.scorm-editorial button[class*="bg-blue-"],
-.scorm-editorial a[class*="bg-green-"],
-.scorm-editorial button[class*="bg-green-"] {
-  background: var(--scorm-ink) !important;
-  color: var(--scorm-paper) !important;
-  border: 2px solid var(--scorm-ink) !important;
-}
-
-.scorm-editorial a[class*="bg-quizmoto-"] *,
-.scorm-editorial button[class*="bg-quizmoto-"] *,
-.scorm-editorial a[class*="bg-blue-"] *,
-.scorm-editorial button[class*="bg-blue-"] *,
-.scorm-editorial a[class*="bg-green-"] *,
-.scorm-editorial button[class*="bg-green-"] * {
-  color: var(--scorm-paper) !important;
-}
+.scorm-editorial button,
+.scorm-editorial a { transition: background-color .16s ease, border-color .16s ease, color .16s ease, transform .16s ease; }
 
 .scorm-editorial main a:hover,
-.scorm-editorial main button:hover:not(:disabled) {
-  background: var(--scorm-ink) !important;
-  color: var(--scorm-paper) !important;
-}
+.scorm-editorial main button:hover:not(:disabled) { transform: translateY(-1px); }
 
-.scorm-editorial main a:hover *,
-.scorm-editorial main button:hover:not(:disabled) * {
-  color: var(--scorm-paper) !important;
-}
-
-/* Shared shell primitives. */
+/* Shared shell. */
 .scorm-editorial .scorm-sidebar,
 .scorm-editorial .scorm-mobile-drawer {
-  background: var(--scorm-ink) !important;
-  color: var(--scorm-paper) !important;
+  background: #eef2ef !important;
+  color: var(--scorm-ink) !important;
+  border-color: var(--scorm-line-strong) !important;
 }
-
 .scorm-editorial .scorm-sidebar *,
-.scorm-editorial .scorm-mobile-drawer * {
-  color: var(--scorm-paper) !important;
-  border-color: var(--scorm-paper) !important;
-}
+.scorm-editorial .scorm-mobile-drawer * { border-color: var(--scorm-line-strong); }
 
 .scorm-editorial .scorm-nav-item {
-  background: var(--scorm-ink) !important;
-  color: var(--scorm-paper) !important;
-  border: 1px solid transparent !important;
-  border-radius: 0 !important;
-}
-
-.scorm-editorial .scorm-nav-item:hover,
-.scorm-editorial .scorm-nav-active {
-  background: var(--scorm-paper) !important;
-  color: var(--scorm-ink) !important;
-  border-color: var(--scorm-paper) !important;
-}
-
-.scorm-editorial .scorm-nav-item:hover *,
-.scorm-editorial .scorm-nav-active * {
-  color: var(--scorm-ink) !important;
   background: transparent !important;
-  border-color: var(--scorm-ink) !important;
+  color: #5f6b65 !important;
+  border: 1px solid transparent !important;
+  border-radius: 11px !important;
+}
+.scorm-editorial .scorm-nav-item:hover {
+  background: rgba(255,255,255,.62) !important;
+  color: var(--scorm-ink) !important;
+}
+.scorm-editorial .scorm-nav-active {
+  background: var(--scorm-surface) !important;
+  color: var(--scorm-ink) !important;
+  border-color: var(--scorm-line) !important;
+  box-shadow: 0 1px 2px rgba(38,49,45,.04), 0 6px 18px rgba(38,49,45,.045) !important;
+}
+.scorm-editorial .scorm-nav-active .scorm-nav-icon {
+  background: #e4ece7 !important;
+  color: var(--scorm-sage-deep) !important;
 }
 
 .scorm-editorial .scorm-brand-mark {
-  background: var(--scorm-paper) !important;
-  color: var(--scorm-ink) !important;
-  border: 2px solid var(--scorm-paper) !important;
-  border-radius: 0 !important;
+  background: var(--scorm-sage) !important;
+  color: #fff !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 6px 16px rgba(96,117,104,.16) !important;
 }
 
 .scorm-editorial .scorm-topbar {
-  background: var(--scorm-paper) !important;
+  background: rgba(255,255,255,.94) !important;
   color: var(--scorm-ink) !important;
-  border-color: var(--scorm-ink) !important;
+  border-color: var(--scorm-line) !important;
+  box-shadow: 0 1px 0 rgba(38,49,45,.02) !important;
 }
 
 .scorm-editorial .scorm-button-primary {
-  background: var(--scorm-ink) !important;
-  color: var(--scorm-paper) !important;
-  border: 2px solid var(--scorm-ink) !important;
-  border-radius: 0 !important;
+  background: var(--scorm-sage-deep) !important;
+  color: #fff !important;
+  border: 1px solid var(--scorm-sage-deep) !important;
+  border-radius: 11px !important;
+  box-shadow: 0 5px 14px rgba(96,117,104,.13) !important;
 }
-
-.scorm-editorial .scorm-button-primary * {
-  color: var(--scorm-paper) !important;
-}
+.scorm-editorial .scorm-button-primary *,
+.scorm-editorial .scorm-button-primary:hover * { color: #fff !important; }
+.scorm-editorial .scorm-button-primary:hover { background: #566b5f !important; }
 
 .scorm-editorial .scorm-button-secondary {
-  background: var(--scorm-paper) !important;
+  background: var(--scorm-surface) !important;
   color: var(--scorm-ink) !important;
-  border: 2px solid var(--scorm-ink) !important;
-  border-radius: 0 !important;
+  border: 1px solid var(--scorm-line-strong) !important;
+  border-radius: 11px !important;
 }
+.scorm-editorial .scorm-button-secondary:hover { background: var(--scorm-surface-soft) !important; }
 
-.scorm-editorial .scorm-button-secondary * {
-  color: var(--scorm-ink) !important;
+.scorm-editorial .scorm-soft-card {
+  background: var(--scorm-surface) !important;
+  border: 1px solid var(--scorm-line) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--scorm-shadow) !important;
 }
+.scorm-editorial .scorm-tint-sage { background: #edf3ef !important; }
+.scorm-editorial .scorm-tint-blue { background: var(--scorm-surface-blue) !important; }
+.scorm-editorial .scorm-tint-lilac { background: var(--scorm-surface-lilac) !important; }
+.scorm-editorial .scorm-tint-sand { background: var(--scorm-surface-sand) !important; }
+.scorm-editorial .scorm-tint-rose { background: var(--scorm-surface-rose) !important; }
 
-.scorm-editorial .scorm-rule {
-  border-color: var(--scorm-ink) !important;
+.scorm-editorial .scorm-inverted {
+  background: var(--scorm-sage-deep) !important;
+  color: #fff !important;
 }
-
-/* Keep circular avatars/progress dots circular where semantics need it. */
-.scorm-editorial [class*="rounded-full"] {
-  border-color: var(--scorm-ink) !important;
-}
+.scorm-editorial .scorm-inverted h1,
+.scorm-editorial .scorm-inverted h2,
+.scorm-editorial .scorm-inverted h3,
+.scorm-editorial .scorm-inverted p,
+.scorm-editorial .scorm-inverted span,
+.scorm-editorial .scorm-inverted div { color: #fff !important; }
 
 @media (max-width: 767px) {
-  .scorm-editorial main {
-    font-size: 14px;
-  }
-
-  .scorm-editorial main h1 {
-    font-size: clamp(1.6rem, 8vw, 2.3rem) !important;
-    line-height: 0.98 !important;
-  }
-
-  .scorm-editorial main h2 {
-    font-size: clamp(1.35rem, 6vw, 1.9rem) !important;
-    line-height: 1 !important;
-  }
+  .scorm-editorial main { font-size: 14px; }
+  .scorm-editorial main h1 { font-size: clamp(1.55rem, 7vw, 2.15rem) !important; line-height: 1.05 !important; }
+  .scorm-editorial main h2 { font-size: clamp(1.3rem, 5.5vw, 1.8rem) !important; line-height: 1.08 !important; }
 }
