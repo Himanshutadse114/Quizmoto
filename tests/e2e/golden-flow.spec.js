@@ -79,15 +79,15 @@ test.describe('Golden Flow', () => {
         await expect(playerBPage.getByText('4', { exact: true })).toBeVisible({ timeout: 8000 });
 
         await playerAPage.getByText('4', { exact: true }).click();
-        await expect(playerAPage.getByText('Answer Submitted!')).toBeVisible();
+        await expect(playerAPage.getByText('Answer locked in')).toBeVisible({ timeout: 3000 });
 
         await playerBPage.getByText('3', { exact: true }).click();
-        await expect(playerBPage.getByText('Answer Submitted!')).toBeVisible();
+        await expect(playerBPage.getByText('Answer locked in')).toBeVisible({ timeout: 3000 });
 
         await expect(hostPage.getByRole('button', { name: /NEXT/i })).toBeVisible({ timeout: 25000 });
 
         await expect(playerAPage.getByText('Correct!')).toBeVisible();
-        await expect(playerBPage.getByText('Incorrect')).toBeVisible();
+        await expect(playerBPage.getByText('Wrong')).toBeVisible();
 
         await expect(hostPage.getByText('Live Standings')).toBeVisible();
 
@@ -112,7 +112,7 @@ test.describe('Golden Flow', () => {
 
         await hostPage.getByRole('button', { name: /NEXT/i }).click();
         await expect(hostPage.getByText('Final Results')).toBeVisible({ timeout: 15000 });
-        await expect(playerAPage.getByText('GAME OVER!')).toBeVisible();
+        await expect(playerAPage.getByText('Final Leaderboard')).toBeVisible({ timeout: 10000 });
 
         await hostPage.getByRole('button', { name: /Dashboard/i }).click();
         await hostPage.waitForURL(/\/dashboard/);
