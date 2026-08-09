@@ -14,24 +14,38 @@ describe('ScormTrackingPackageFinalizer', () => {
         expect(patched).to.not.include('sessionStartMs=Date.now();render();if');
     });
 
-    it('restores a saved lesson location before render and activates that slide', () => {
+    it('restores saved lesson location and quiz answers before render', () => {
         const html = "doLMSInitialize();doLMSSetValue('cmi.core.score.min','0');doLMSSetValue('cmi.core.score.max','100');doLMSSetValue('cmi.core.lesson_status','incomplete');el('finish-btn').addEventListener('click',exitSco);updateNav()}";
         const patched = patchTrackingRuntime(html);
         expect(patched).to.include("doLMSGetValue('cmi.core.lesson_location')");
+        expect(patched).to.include("doLMSGetValue('cmi.suspend_data')");
         expect(patched).to.include('currentSlide=Math.max(0,Number(savedLocation))');
+        expect(patched).to.include('Array.isArray(resumeData.quizmotoQuizResults)');
+        expect(patched).to.include('quizResults=resumeData.quizmotoQuizResults.slice()');
         expect(patched).to.include("doLMSGetValue('cmi.core.lesson_status')");
         expect(patched).to.include("if(!/^(completed|passed|failed)$/i.test(String(savedStatus||'')))");
         expect(patched).to.include("resumeSlides[currentSlide].classList.add('active')");
     });
 
-    it('persists location and progress context after the new slide can paint', () => {
+    it('rehydrates answered-question UI so resumed questions cannot be submitted twice', () => {
+        const html = "el('finish-btn').addEventListener('click',exitSco);updateNav()}";
+        const patched = patchTrackingRuntime(html);
+        expect(patched).to.include('(data.quiz||[]).forEach(function(q,qi)');
+        expect(patched).to.include('var chosen=quizResults[qi]');
+        expect(patched).to.include('b.disabled=true');
+        expect(patched).to.include("b.classList.add('correct')");
+        expect(patched).to.include("b.classList.add('incorrect')");
+        expect(patched).to.include("fb.style.display='block'");
+    });
+
+    it('persists location, progress and quiz-result context after the new slide can paint', () => {
         const html = "sessionStartMs=Date.now(),commitTimer=null;function commitProgress(extra){if(typeof doLMSSetValue!=='function')return;try{writeSessionTime();if(extra){for(var k in extra){if(Object.prototype.hasOwnProperty.call(extra,k))doLMSSetValue(k,String(extra[k]))}}doLMSCommit()}catch(e){}}commitProgress({'cmi.core.lesson_location':String(currentSlide)})";
         const patched = patchTrackingRuntime(html);
         expect(patched).to.include('progressCommitTimer=null');
         expect(patched).to.include('function scheduleProgressCommit(extra)');
         expect(patched).to.include('setTimeout(function(){progressCommitTimer=null;if(!completed)commitProgress(extra)},45)');
         expect(patched).to.include("scheduleProgressCommit({'cmi.core.lesson_location':String(currentSlide)");
-        expect(patched).to.include("'cmi.suspend_data':JSON.stringify({quizmotoSlide:currentSlide,quizmotoProgress:p})");
+        expect(patched).to.include("quizmotoQuizResults:quizResults");
     });
 
     it('writes session time as a delta instead of repeatedly adding total elapsed time', () => {
@@ -42,13 +56,13 @@ describe('ScormTrackingPackageFinalizer', () => {
         expect(patched).to.include('lastSessionWriteMs=now');
     });
 
-    it('exposes a synchronous suspend flush that saves the current screen before exit', () => {
+    it('exposes a synchronous suspend flush with current slide and quiz results', () => {
         const html = "window.addEventListener('beforeunload',function(){if(completed)return;try{writeSessionTime();if(typeof doLMSSetValue==='function'){doLMSSetValue('cmi.core.exit','suspend');doLMSCommit()}}catch(e){}})";
         const patched = patchTrackingRuntime(html);
         expect(patched).to.include('function flushSuspendState(markExit)');
         expect(patched).to.include('window.__quizmotoFlushScormState=flushSuspendState');
         expect(patched).to.include("doLMSSetValue('cmi.core.lesson_location',String(currentSlide))");
-        expect(patched).to.include("doLMSSetValue('cmi.suspend_data',JSON.stringify({quizmotoSlide:currentSlide,quizmotoProgress:p}))");
+        expect(patched).to.include("quizmotoQuizResults:quizResults");
         expect(patched).to.include("doLMSSetValue('cmi.core.lesson_status','incomplete')");
         expect(patched).to.include("doLMSSetValue('cmi.core.exit','suspend')");
         expect(patched).to.include("window.addEventListener('beforeunload',function(){flushSuspendState(true)})");
@@ -58,6 +72,15 @@ describe('ScormTrackingPackageFinalizer', () => {
         const html = "sessionStartMs=Date.now(),commitTimer=null;window.addEventListener('beforeunload',function(){if(completed)return;try{writeSessionTime();if(typeof doLMSSetValue==='function'){doLMSSetValue('cmi.core.exit','suspend');doLMSCommit()}}catch(e){}})";
         const patched = patchTrackingRuntime(html);
         expect(patched).to.include("if(typeof progressCommitTimer!=='undefined'&&progressCommitTimer){clearTimeout(progressCommitTimer);progressCommitTimer=null}");
+    });
+
+    it('is idempotent when the served authored HTML is patched repeatedly', () => {
+        const html = "sessionStartMs=Date.now(),commitTimer=null;function commitProgress(extra){if(typeof doLMSSetValue!=='function')return;try{writeSessionTime();if(extra){for(var k in extra){if(Object.prototype.hasOwnProperty.call(extra,k))doLMSSetValue(k,String(extra[k]))}}doLMSCommit()}catch(e){}}commitProgress({'cmi.core.lesson_location':String(currentSlide)});doLMSInitialize();doLMSSetValue('cmi.core.score.min','0');doLMSSetValue('cmi.core.score.max','100');doLMSSetValue('cmi.core.lesson_status','incomplete');el('finish-btn').addEventListener('click',exitSco);updateNav()}window.addEventListener('beforeunload',function(){if(completed)return;try{writeSessionTime();if(typeof doLMSSetValue==='function'){doLMSSetValue('cmi.core.exit','suspend');doLMSCommit()}}catch(e){}})";
+        const once = patchTrackingRuntime(html);
+        const twice = patchTrackingRuntime(once);
+        expect(twice).to.equal(once);
+        expect((twice.match(/function scheduleProgressCommit\(extra\)/g) || []).length).to.equal(1);
+        expect((twice.match(/function flushSuspendState\(markExit\)/g) || []).length).to.equal(1);
     });
 
     it('injects compact responsive rules into generated learner courses', () => {
