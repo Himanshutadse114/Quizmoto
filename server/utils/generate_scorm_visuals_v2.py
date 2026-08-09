@@ -12,15 +12,19 @@ def animated_base_svg(inner, title='Learning visual'):
     svg = _original_base_svg(inner, title)
     style = '''
 <style>
-.qm-node{opacity:0;transform:translateY(14px);animation:qmNodeIn .55s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:var(--delay,0ms)}
-.qm-path{stroke-dasharray:1000;stroke-dashoffset:1000;animation:qmDraw 1.1s ease forwards}
-.qm-center{transform-origin:center;animation:qmCenterIn .65s cubic-bezier(.2,.8,.2,1) both}
-.qm-pulse{transform-origin:center;animation:qmPulse 2.8s ease-in-out infinite}
-@keyframes qmNodeIn{to{opacity:1;transform:translateY(0)}}
+.qm-node{opacity:0;transform:translateY(10px) scale(.985);transform-origin:center;animation:qmNodeIn .62s cubic-bezier(.16,1,.3,1) forwards;animation-delay:var(--delay,0ms)}
+.qm-path{stroke-dasharray:1200;stroke-dashoffset:1200;animation:qmDraw .9s cubic-bezier(.4,0,.2,1) forwards;animation-delay:var(--delay,80ms)}
+.qm-center{opacity:0;transform-origin:center;animation:qmCenterIn .72s cubic-bezier(.16,1,.3,1) forwards}
+.qm-pulse{transform-origin:center;animation:qmPulse 4.2s ease-in-out infinite}
+.qm-float{transform-origin:center;animation:qmFloat 4.8s ease-in-out infinite}
+.qm-glow{transform-origin:center;animation:qmGlow 3.8s ease-in-out infinite}
+@keyframes qmNodeIn{0%{opacity:0;transform:translateY(10px) scale(.985)}100%{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes qmDraw{to{stroke-dashoffset:0}}
-@keyframes qmCenterIn{from{opacity:.25;transform:scale(.82)}to{opacity:1;transform:scale(1)}}
-@keyframes qmPulse{0%,100%{opacity:.65;transform:scale(.94)}50%{opacity:1;transform:scale(1.04)}}
-@media(prefers-reduced-motion:reduce){.qm-node,.qm-path,.qm-center,.qm-pulse{animation:none!important;opacity:1!important;transform:none!important;stroke-dashoffset:0!important}}
+@keyframes qmCenterIn{0%{opacity:0;transform:scale(.88)}65%{opacity:1;transform:scale(1.025)}100%{opacity:1;transform:scale(1)}}
+@keyframes qmPulse{0%,100%{opacity:.72;transform:scale(.985)}50%{opacity:1;transform:scale(1.025)}}
+@keyframes qmFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes qmGlow{0%,100%{opacity:.34;transform:scale(.97)}50%{opacity:.62;transform:scale(1.035)}}
+@media(prefers-reduced-motion:reduce){.qm-node,.qm-path,.qm-center,.qm-pulse,.qm-float,.qm-glow{animation:none!important;opacity:1!important;transform:none!important;stroke-dashoffset:0!important}}
 </style>'''
     return svg.replace('</defs>', '</defs>' + style, 1)
 
