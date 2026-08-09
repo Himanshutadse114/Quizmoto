@@ -5,17 +5,28 @@ const { expect } = require('chai');
 describe('SCORM player exit persistence', () => {
     const source = fs.readFileSync(path.join(__dirname, '../routes/scorm/play.js'), 'utf8');
 
-    it('buffers Quizmoto-authored SetValue calls instead of making synchronous network writes', () => {
+    it('buffers Quizmoto-authored SetValue calls and schedules background autosave', () => {
         expect(source).to.include("bufferedWrites: pkg.source === 'ai_author'");
-        expect(source).to.include('pendingValues=Object.create(null)');
-        expect(source).to.include('pendingValues[String(el||"")]=v==null?"":String(v)');
-        expect(source).to.include('BUFFERED?flushBuffered(RUNTIME+"/commit")');
+        expect(source).to.include('pendingValues=Object.create(null),localValues=Object.create(null)');
+        expect(source).to.include('pendingValues[key]=value;localValues[key]=value');
+        expect(source).to.include('scheduleAutosave()');
+        expect(source).to.include('fetch(RUNTIME+"/commit"');
+    });
+
+    it('makes authored LMSCommit non-blocking while keeping explicit final flush synchronous', () => {
+        expect(source).to.include('LMSCommit:function(p){if(BUFFERED){scheduleAutosave(0);lastError.code=0;return "true";}');
+        expect(source).to.include('LMSFinish:function(p){var d=BUFFERED?flushBuffered(RUNTIME+"/finish")');
         expect(source).to.include('syncCall("POST",path,{values:values})');
     });
 
-    it('keeps pending local values visible to LMSGetValue before a commit', () => {
-        expect(source).to.include('Object.prototype.hasOwnProperty.call(pendingValues,el)');
-        expect(source).to.include('return String(pendingValues[el])');
+    it('keeps locally written values visible to LMSGetValue before autosave completes', () => {
+        expect(source).to.include('Object.prototype.hasOwnProperty.call(localValues,el)');
+        expect(source).to.include('return String(localValues[el])');
+    });
+
+    it('notifies the admin opener after successful background or final persistence', () => {
+        expect(source).to.include('notifyOpener("quizmoto-scorm-progress",d.summary||null)');
+        expect(source).to.include('registrationId:');
     });
 
     it('flushes iframe state before finishing the LMS runtime', () => {
