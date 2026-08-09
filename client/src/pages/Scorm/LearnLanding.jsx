@@ -31,17 +31,39 @@ export default function ScormLearnLanding() {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.post(apiUrl('/api/scorm/registrations/join'), {
+      const res = await axios.post(apiUrl('/api/scorm/registrations/accept'), {
         inviteCode,
         learnerName: name.trim(),
         learnerEmail: email.trim() || null
       });
-      const { registrationId, playToken, entryHref } = res.data;
+      const {
+        registrationId,
+        token,
+        playToken,
+        entryHref,
+        packageId
+      } = res.data;
+      const registrationToken = token || playToken || '';
+
+      if (!registrationId || !registrationToken || !entryHref) {
+        throw new Error('Course launch information is incomplete. Please reopen the invite link.');
+      }
+
+      const launch = {
+        token: registrationToken,
+        entryHref,
+        packageId: packageId || ''
+      };
+      try {
+        sessionStorage.setItem(`scorm_reg_${registrationId}`, JSON.stringify(launch));
+      } catch (_) {}
+
       const q = new URLSearchParams({
-        token: playToken || '',
-        entry: entryHref || ''
+        token: registrationToken,
+        entryHref,
+        packageId: packageId || ''
       });
-      navigate(`/scorm/play/${registrationId}?${q.toString()}`);
+      navigate(`/scorm/player/${registrationId}?${q.toString()}`);
     } catch (err) {
       setError(err.response?.data?.message || err.message);
     } finally {
