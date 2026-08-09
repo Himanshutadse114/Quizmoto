@@ -1,4 +1,4 @@
-const { serializeRegistration } = require('./ScormProgressService');
+const { serializeRegistration, locationLabel } = require('./ScormProgressService');
 const RuntimeStore = require('./ScormRuntimeSnapshotStore');
 
 function asPlain(value) {
@@ -84,6 +84,14 @@ function serializePreviewStats(registration, course) {
     const lessonStatus = cmiState.lessonStatus || row.lastLessonStatus || null;
     const progressPercent = row.progressPercent;
 
+    // Admin QA preview deliberately remains on the legacy runtime store. Do not
+    // let the new learner v2 serializer hide its exact QA lesson location when
+    // the registration itself is already marked completed.
+    const lastLocationRaw = cmiState.lessonLocation || row.lastLocationRaw || null;
+    const lastLocation = lastLocationRaw
+        ? locationLabel({ registration: row, cmiState, packageRow: course?.package || null })
+        : row.lastLocation;
+
     return {
         registrationId: row.id,
         isPreview: true,
@@ -97,8 +105,8 @@ function serializePreviewStats(registration, course) {
         lessonStatus,
         totalTime,
         sessionTime: cmiState.sessionTime || null,
-        lastLocation: row.lastLocation,
-        lastLocationRaw: row.lastLocationRaw,
+        lastLocation,
+        lastLocationRaw,
         interactionCount: interactionCount(cmiState.interactionsJson, cmiState.rawMapJson),
         initialized: !!cmiState.initialized,
         stateVersion: cmiState.stateVersion ?? null,
