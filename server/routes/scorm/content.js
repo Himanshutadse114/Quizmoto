@@ -69,12 +69,28 @@ function authoredRuntimeBridge() {
     return Math.max(1,max+1);
   }
 
+  function mergedSuspendState(s){
+    var resume={};
+    try{
+      if(typeof doLMSGetValue==='function'){
+        var raw=doLMSGetValue('cmi.suspend_data');
+        if(raw){
+          var parsed=JSON.parse(raw);
+          if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed))resume=parsed;
+        }
+      }
+    }catch(e){}
+    resume.quizmotoSlide=s.index;
+    resume.quizmotoProgress=s.progress;
+    return resume;
+  }
+
   function persistProgress(){
     if(typeof doLMSSetValue!=='function')return;
     var s=state();if(!s)return;
     try{
       doLMSSetValue('cmi.core.lesson_location',String(s.index));
-      doLMSSetValue('cmi.suspend_data',JSON.stringify({quizmotoSlide:s.index,quizmotoProgress:s.progress}));
+      doLMSSetValue('cmi.suspend_data',JSON.stringify(mergedSuspendState(s)));
       doLMSSetValue('cmi.core.lesson_status','incomplete');
       if(typeof doLMSCommit==='function')doLMSCommit();
     }catch(e){}
