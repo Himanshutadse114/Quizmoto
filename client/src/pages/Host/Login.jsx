@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
 import { GoogleLogin } from '@react-oauth/google';
@@ -12,7 +12,7 @@ const Login = () => {
     const handleGoogleSuccess = async (credentialResponse) => {
         try {
             await loginWithGoogle(credentialResponse.credential);
-            navigate('/dashboard');
+            navigate('/scorm');
         } catch (err) {
             setError('Authentication failed. Please try again.');
         }
@@ -31,7 +31,7 @@ const Login = () => {
             >
                 <div className="text-center mb-8">
                     <h2 className="text-3xl font-black italic mb-1 text-white uppercase tracking-tight">Host Login</h2>
-                    <p className="font-black opacity-40 uppercase tracking-[0.2em] text-[11px] text-white">Access your Dashboard</p>
+                    <p className="font-black opacity-40 uppercase tracking-[0.2em] text-[11px] text-white">Access SCORM World</p>
                 </div>
 
                 {error && (
