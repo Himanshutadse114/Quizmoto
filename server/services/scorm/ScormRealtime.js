@@ -23,6 +23,7 @@ function emitRegistrationUpdate(payload) {
     io.to(courseRoom(payload.courseId)).emit('scorm_registration_update', {
       courseId: payload.courseId,
       event: payload.event || 'commit',
+      isPreview: payload.registration?.isPreview === true,
       registration: payload.registration || null,
       serverTime: Date.now()
     });
