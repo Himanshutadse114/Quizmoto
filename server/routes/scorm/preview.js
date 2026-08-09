@@ -5,7 +5,8 @@ const {
     ScormCourse,
     ScormPackage,
     ScormRegistration,
-    ScormCmiState
+    ScormCmiState,
+    ScormRuntimeSnapshot
 } = require('../../models/scorm');
 const { serializePreviewStats } = require('../../services/scorm/ScormPreviewStatsService');
 
@@ -26,7 +27,10 @@ router.get('/course/:courseId', auth, async (req, res) => {
 
         const registration = await ScormRegistration.findOne({
             where: { courseId: course.id, isPreview: true },
-            include: [{ model: ScormCmiState, as: 'cmiState', required: false }],
+            include: [
+                { model: ScormRuntimeSnapshot, as: 'runtimeSnapshot', required: false },
+                { model: ScormCmiState, as: 'cmiState', required: false }
+            ],
             order: [['updatedAt', 'DESC']]
         });
 
