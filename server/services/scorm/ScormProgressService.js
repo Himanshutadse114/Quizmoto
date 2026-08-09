@@ -1,3 +1,5 @@
+const packageAnalysisCache = new WeakMap();
+
 function parseJson(value, fallback = {}) {
     if (!value) return fallback;
     try {
@@ -5,6 +7,16 @@ function parseJson(value, fallback = {}) {
     } catch (_) {
         return fallback;
     }
+}
+
+function packageAnalysis(packageRow) {
+    if (!packageRow || typeof packageRow !== 'object') return null;
+    const raw = packageRow.analysisJson ?? packageRow.dataValues?.analysisJson ?? null;
+    const cached = packageAnalysisCache.get(packageRow);
+    if (cached && cached.raw === raw) return cached.parsed;
+    const parsed = parseJson(raw, null);
+    packageAnalysisCache.set(packageRow, { raw, parsed });
+    return parsed;
 }
 
 function clampPercent(value) {
@@ -18,7 +30,7 @@ function isFinished(status) {
 }
 
 function authoredPartCount(packageRow) {
-    const analysis = parseJson(packageRow?.analysisJson, null);
+    const analysis = packageAnalysis(packageRow);
     if (!analysis || !Array.isArray(analysis.slides)) return null;
     const quizCount = Array.isArray(analysis.quiz) ? analysis.quiz.length : 0;
     return 1 + analysis.slides.length + quizCount + 1;
@@ -66,7 +78,7 @@ function locationLabel({ registration, cmiState, packageRow }) {
     const raw = String(location).trim();
     if (/^\d+$/.test(raw)) {
         const index = Number(raw);
-        const analysis = parseJson(packageRow?.analysisJson, null);
+        const analysis = packageAnalysis(packageRow);
         if (analysis && Array.isArray(analysis.slides)) {
             if (index === 0) return 'Introduction';
             const slideIndex = index - 1;
@@ -85,11 +97,24 @@ function locationLabel({ registration, cmiState, packageRow }) {
     return raw.slice(0, 160);
 }
 
+function field(row, key) {
+    if (!row) return undefined;
+    if (row[key] !== undefined) return row[key];
+    return row.dataValues?.[key];
+}
+
 function serializeRegistration(registration, course = null) {
     const plain = typeof registration?.toJSON === 'function' ? registration.toJSON() : { ...(registration || {}) };
     const cmiState = plain.cmiState || registration?.cmiState || null;
-    const coursePlain = course && typeof course.toJSON === 'function' ? course.toJSON() : course;
-    const packageRow = coursePlain?.package || registration?.course?.package || null;
+
+    // Do not call course.toJSON() here. A loaded course contains its full
+    // registrations association, so doing that once per learner repeatedly
+    // serializes the whole roster and grows roughly quadratically with roster size.
+    const packageRow = field(course, 'package') || registration?.course?.package || null;
+    const courseTitle = field(course, 'title') || registration?.course?.title || null;
+    const courseStatus = field(course, 'status') || registration?.course?.status || null;
+    const inviteCode = field(course, 'inviteCode') || registration?.course?.inviteCode || null;
+
     const progressPercent = deriveProgress({ registration: plain, cmiState, packageRow });
     const lastLocation = locationLabel({ registration: plain, cmiState, packageRow });
 
@@ -101,9 +126,9 @@ function serializeRegistration(registration, course = null) {
         lastLocation,
         stateVersion: cmiState?.stateVersion ?? null,
         lastLocationRaw: cmiState?.lessonLocation || null,
-        courseTitle: coursePlain?.title || registration?.course?.title || null,
-        courseStatus: coursePlain?.status || registration?.course?.status || null,
-        inviteCode: coursePlain?.inviteCode || registration?.course?.inviteCode || null
+        courseTitle,
+        courseStatus,
+        inviteCode
     };
 }
 
@@ -112,5 +137,6 @@ module.exports = {
     locationLabel,
     serializeRegistration,
     progressFromLocation,
-    authoredPartCount
+    authoredPartCount,
+    packageAnalysis
 };
