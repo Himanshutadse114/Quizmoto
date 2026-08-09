@@ -13,17 +13,23 @@ function interactionTrackingScript() {
         var oi=Number(btn.getAttribute('data-oi'));
         var q=(data.quiz||[])[qi]||{};
         var correct=Number(q.correctAnswer);
-        try{
-          if(typeof doLMSSetValue==='function'){
-            var base='cmi.interactions.'+qi;
-            doLMSSetValue(base+'.id','quiz_'+(qi+1));
-            doLMSSetValue(base+'.type','choice');
-            doLMSSetValue(base+'.student_response',String(oi));
-            doLMSSetValue(base+'.result',oi===correct?'correct':'wrong');
-            try{doLMSSetValue(base+'.correct_responses.0.pattern',String(correct))}catch(e){}
-            if(typeof doLMSCommit==='function')doLMSCommit();
-          }
-        }catch(e){}
+
+        // Let the browser paint the selected/correct-answer feedback first. The
+        // interaction values remain SCORM-tracked, but persistence is handled by
+        // the next course progress commit, the periodic save, or exit flush.
+        setTimeout(function(){
+          try{
+            if(typeof doLMSSetValue==='function'){
+              var base='cmi.interactions.'+qi;
+              doLMSSetValue(base+'.id','quiz_'+(qi+1));
+              doLMSSetValue(base+'.type','choice');
+              doLMSSetValue(base+'.student_response',String(oi));
+              doLMSSetValue(base+'.result',oi===correct?'correct':'wrong');
+              try{doLMSSetValue(base+'.correct_responses.0.pattern',String(correct))}catch(e){}
+            }
+          }catch(e){}
+        },0);
+
         if(q.explanation){
           setTimeout(function(){
             var fb=document.getElementById('fb-'+qi);
@@ -58,8 +64,9 @@ async function buildScormPackageZip(analysis, opts = {}) {
             const content = JSON.parse(await contentFile.async('string'));
             zip.file('content.json', JSON.stringify({
                 ...content,
-                version: 4,
-                interactionTracking: 'scorm_1_2_cmi_interactions'
+                version: 5,
+                interactionTracking: 'scorm_1_2_cmi_interactions',
+                interactionPersistence: 'deferred_to_progress_commit'
             }, null, 2));
         } catch (_) {
             // Keep package usable if metadata cannot be upgraded.
@@ -69,5 +76,6 @@ async function buildScormPackageZip(analysis, opts = {}) {
 }
 
 module.exports = {
-    buildScormPackageZip
+    buildScormPackageZip,
+    interactionTrackingScript
 };
