@@ -10,9 +10,7 @@
 const {
     ScormRegistration,
     ScormAttempt,
-    ScormCmiState,
-    ScormCourse,
-    ScormPackage
+    ScormCmiState
 } = require('../../models/scorm');
 const { verifyRegistrationToken } = require('./ScormInviteService');
 
@@ -41,14 +39,28 @@ const SUCCESS_STATUS = new Set([
     'passed', 'failed', 'unknown'
 ]);
 
+const READ_ONLY = new Set([
+    'cmi.core.student_id',
+    'cmi.core.student_name',
+    'cmi.core.credit',
+    'cmi.core.entry',
+    'cmi.core.total_time',
+    'cmi.core.lesson_mode',
+    'cmi.core._children',
+    'cmi.core.score._children',
+    'cmi.learner_id',
+    'cmi.learner_name',
+    'cmi.total_time',
+    'cmi.entry',
+    'cmi.mode',
+    'cmi.credit'
+]);
+
 /** SCORM 1.2 times: HHHH:MM:SS.ss or HH:MM:SS */
 function parseTimeToSeconds(t) {
     if (!t || typeof t !== 'string') return 0;
     const trimmed = t.trim();
-    // ISO-8601 duration (SCORM 2004): PT1H2M3.5S
-    if (/^P/i.test(trimmed)) {
-        return parseIso8601Duration(trimmed);
-    }
+    if (/^P/i.test(trimmed)) return parseIso8601Duration(trimmed);
     const m = trimmed.match(/^(\d+):(\d{2}):(\d{2})(?:\.(\d+))?$/);
     if (!m) return 0;
     const h = parseInt(m[1], 10);
@@ -63,7 +75,6 @@ function parseIso8601Duration(iso) {
     if (!iso || typeof iso !== 'string') return 0;
     const s = iso.trim().toUpperCase();
     if (s === 'PT' || s === 'P') return 0;
-    // Allow PTxHyMzS without date part (most common from Storyline)
     const re = /^P(?:(\d+(?:\.\d+)?)Y)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)D)?(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)?$/;
     const m = s.match(re);
     if (!m) return 0;
@@ -73,7 +84,6 @@ function parseIso8601Duration(iso) {
     const hours = parseFloat(m[4] || '0');
     const mins = parseFloat(m[5] || '0');
     const secs = parseFloat(m[6] || '0');
-    // Approximate year/month for total_time accumulation only
     return years * 365 * 86400 + months * 30 * 86400 + days * 86400 + hours * 3600 + mins * 60 + secs;
 }
 
@@ -92,11 +102,8 @@ function formatTime(seconds) {
     return `${hh}:${mm}:${ss}.${ff}`;
 }
 
-/** Derive roster lesson_status from 1.2 status or 2004 success+completion */
 function deriveLessonStatus(state, map) {
-    if (state.lessonStatus && state.lessonStatus !== 'not attempted') {
-        return state.lessonStatus;
-    }
+    if (state.lessonStatus && state.lessonStatus !== 'not attempted') return state.lessonStatus;
     const success = map['cmi.success_status'] || '';
     const completion = map['cmi.completion_status'] || '';
     if (success === 'passed') return 'passed';
@@ -113,9 +120,9 @@ async function loadRegAuthorized(regId, token) {
         err.code = 'FORBIDDEN';
         throw err;
     }
-    const reg = await ScormRegistration.findByPk(regId, {
-        include: [{ model: ScormCourse, as: 'course', include: [{ model: ScormPackage, as: 'package' }] }]
-    });
+    // Runtime calls only need the registration itself. Avoid joining course/package
+    // tables on every SetValue/GetValue/Commit request.
+    const reg = await ScormRegistration.findByPk(regId);
     if (!reg || reg.status === 'revoked') {
         const err = new Error('Registration not found or revoked');
         err.code = 'NOT_FOUND';
@@ -149,6 +156,22 @@ function rawMap(state) {
 
 function saveRawMap(state, map) {
     state.rawMapJson = JSON.stringify(map);
+}
+
+function registrationSnapshot(reg) {
+    return {
+        id: reg.id,
+        courseId: reg.courseId,
+        learnerName: reg.learnerName,
+        learnerEmail: reg.learnerEmail,
+        status: reg.status,
+        isPreview: reg.isPreview,
+        lastLessonStatus: reg.lastLessonStatus,
+        lastScoreRaw: reg.lastScoreRaw,
+        lastTotalTime: reg.lastTotalTime,
+        lastCommitAt: reg.lastCommitAt,
+        updatedAt: reg.updatedAt
+    };
 }
 
 async function initialize(regId, token) {
@@ -192,18 +215,12 @@ async function initialize(regId, token) {
 async function getValue(regId, token, element) {
     const reg = await loadRegAuthorized(regId, token);
     const state = await getOrCreateState(reg);
-    if (!state.initialized) {
-        return { ok: false, value: '', errorCode: 301 };
-    }
+    if (!state.initialized) return { ok: false, value: '', errorCode: 301 };
 
     const map = rawMap(state);
     const el = String(element || '');
-
-    // SCORM 1.2 + SCORM 2004 dual surface
     const builtIn = {
-        // 1.2
-        'cmi.core._children':
-            'student_id,student_name,lesson_location,credit,lesson_status,entry,score,total_time,lesson_mode,exit,session_time',
+        'cmi.core._children': 'student_id,student_name,lesson_location,credit,lesson_status,entry,score,total_time,lesson_mode,exit,session_time',
         'cmi.core.student_id': String(reg.id),
         'cmi.core.student_name': reg.learnerName || 'Learner',
         'cmi.core.lesson_location': state.lessonLocation || '',
@@ -219,30 +236,24 @@ async function getValue(regId, token, element) {
         'cmi.core.session_time': state.sessionTime || '00:00:00.00',
         'cmi.core.score._children': 'raw,min,max',
         'cmi.suspend_data': state.suspendData || '',
-
-        // 2004
         'cmi.learner_id': String(reg.id),
         'cmi.learner_name': reg.learnerName || 'Learner',
         'cmi.location': state.lessonLocation || '',
         'cmi.completion_status': map['cmi.completion_status'] || (
             ['completed', 'passed', 'failed'].includes(state.lessonStatus) ? 'completed'
                 : state.lessonStatus === 'incomplete' ? 'incomplete'
-                    : state.lessonStatus === 'not attempted' ? 'not attempted'
-                        : 'unknown'
+                    : state.lessonStatus === 'not attempted' ? 'not attempted' : 'unknown'
         ),
         'cmi.success_status': map['cmi.success_status'] || (
             state.lessonStatus === 'passed' ? 'passed'
-                : state.lessonStatus === 'failed' ? 'failed'
-                    : 'unknown'
+                : state.lessonStatus === 'failed' ? 'failed' : 'unknown'
         ),
         'cmi.score.raw': state.scoreRaw != null ? String(state.scoreRaw) : '',
         'cmi.score.min': state.scoreMin != null ? String(state.scoreMin) : '',
         'cmi.score.max': state.scoreMax != null ? String(state.scoreMax) : '',
         'cmi.score.scaled': map['cmi.score.scaled'] != null
             ? String(map['cmi.score.scaled'])
-            : (state.scoreRaw != null && state.scoreMax
-                ? String(state.scoreRaw / state.scoreMax)
-                : ''),
+            : (state.scoreRaw != null && state.scoreMax ? String(state.scoreRaw / state.scoreMax) : ''),
         'cmi.total_time': state.totalTime || '00:00:00.00',
         'cmi.session_time': state.sessionTime || '00:00:00.00',
         'cmi.entry': state.entry === 'resume' ? 'resume' : 'ab-initio',
@@ -252,50 +263,20 @@ async function getValue(regId, token, element) {
         'cmi.progress_measure': map['cmi.progress_measure'] || ''
     };
 
-    if (Object.prototype.hasOwnProperty.call(builtIn, el)) {
-        return { ok: true, value: builtIn[el], errorCode: 0 };
-    }
-    if (Object.prototype.hasOwnProperty.call(map, el)) {
-        return { ok: true, value: String(map[el]), errorCode: 0 };
-    }
+    if (Object.prototype.hasOwnProperty.call(builtIn, el)) return { ok: true, value: builtIn[el], errorCode: 0 };
+    if (Object.prototype.hasOwnProperty.call(map, el)) return { ok: true, value: String(map[el]), errorCode: 0 };
     return { ok: true, value: '', errorCode: 0 };
 }
 
-async function setValue(regId, token, element, value) {
-    const reg = await loadRegAuthorized(regId, token);
-    const state = await getOrCreateState(reg);
-    if (!state.initialized) {
-        return { ok: false, value: 'false', errorCode: 301 };
-    }
-
+/** Apply a CMI value to already-loaded state without hitting the database. */
+function applyValueToState(state, map, element, value) {
     const el = String(element || '');
     const val = value == null ? '' : String(value);
 
-    const readOnly = new Set([
-        'cmi.core.student_id',
-        'cmi.core.student_name',
-        'cmi.core.credit',
-        'cmi.core.entry',
-        'cmi.core.total_time',
-        'cmi.core.lesson_mode',
-        'cmi.core._children',
-        'cmi.core.score._children',
-        'cmi.learner_id',
-        'cmi.learner_name',
-        'cmi.total_time',
-        'cmi.entry',
-        'cmi.mode',
-        'cmi.credit'
-    ]);
-    if (readOnly.has(el)) {
-        return { ok: false, value: 'false', errorCode: 403 };
-    }
+    if (READ_ONLY.has(el)) return { ok: false, value: 'false', errorCode: 403 };
 
-    // --- SCORM 1.2 ---
     if (el === 'cmi.core.lesson_status') {
-        if (!LESSON_STATUS.has(val)) {
-            return { ok: false, value: 'false', errorCode: 405 };
-        }
+        if (!LESSON_STATUS.has(val)) return { ok: false, value: 'false', errorCode: 405 };
         state.lessonStatus = val;
     } else if (el === 'cmi.core.score.raw' || el === 'cmi.score.raw') {
         const n = Number(val);
@@ -312,92 +293,96 @@ async function setValue(regId, token, element, value) {
     } else if (el === 'cmi.score.scaled') {
         const n = Number(val);
         if (Number.isNaN(n)) return { ok: false, value: 'false', errorCode: 405 };
-        const map = rawMap(state);
         map[el] = val;
-        saveRawMap(state, map);
-        // If raw missing, approximate from scaled * max
-        if (state.scoreRaw == null && state.scoreMax != null) {
-            state.scoreRaw = Math.round(n * state.scoreMax);
-        }
+        if (state.scoreRaw == null && state.scoreMax != null) state.scoreRaw = Math.round(n * state.scoreMax);
     } else if (el === 'cmi.core.lesson_location' || el === 'cmi.location') {
         state.lessonLocation = val.slice(0, 1000);
     } else if (el === 'cmi.core.session_time' || el === 'cmi.session_time') {
-        // Accept 1.2 HH:MM:SS or 2004 ISO-8601 PT…
         const secs = parseTimeToSeconds(val);
         if (val && secs === 0 && !/^P/i.test(val) && !/^\d+:\d{2}:\d{2}/.test(val)) {
             return { ok: false, value: 'false', errorCode: 405 };
         }
-        // Store normalized HH:MM:SS for roster; keep original in raw map if ISO
         state.sessionTime = formatTime(secs);
-        if (/^P/i.test(val)) {
-            const map = rawMap(state);
-            map['cmi.session_time'] = val;
-            saveRawMap(state, map);
-        }
+        if (/^P/i.test(val)) map['cmi.session_time'] = val;
     } else if (el === 'cmi.core.exit' || el === 'cmi.exit') {
         state.exit = val;
     } else if (el === 'cmi.suspend_data') {
         if (val.length > 65536) return { ok: false, value: 'false', errorCode: 405 };
         state.suspendData = val;
     } else if (el === 'cmi.completion_status') {
-        if (!COMPLETION_STATUS.has(val)) {
-            return { ok: false, value: 'false', errorCode: 405 };
-        }
-        const map = rawMap(state);
+        if (!COMPLETION_STATUS.has(val)) return { ok: false, value: 'false', errorCode: 405 };
         map[el] = val;
-        saveRawMap(state, map);
-        // Promote to lessonStatus when meaningful
         if (val === 'completed' && state.lessonStatus !== 'passed' && state.lessonStatus !== 'failed') {
             state.lessonStatus = 'completed';
         } else if (val === 'incomplete' && (state.lessonStatus === 'not attempted' || !state.lessonStatus)) {
             state.lessonStatus = 'incomplete';
         }
     } else if (el === 'cmi.success_status') {
-        if (!SUCCESS_STATUS.has(val)) {
-            return { ok: false, value: 'false', errorCode: 405 };
-        }
-        const map = rawMap(state);
+        if (!SUCCESS_STATUS.has(val)) return { ok: false, value: 'false', errorCode: 405 };
         map[el] = val;
-        saveRawMap(state, map);
         if (val === 'passed') state.lessonStatus = 'passed';
         else if (val === 'failed') state.lessonStatus = 'failed';
     } else if (el === 'cmi.progress_measure') {
         const n = Number(val);
-        if (Number.isNaN(n) || n < 0 || n > 1) {
-            return { ok: false, value: 'false', errorCode: 405 };
-        }
-        const map = rawMap(state);
+        if (Number.isNaN(n) || n < 0 || n > 1) return { ok: false, value: 'false', errorCode: 405 };
         map[el] = val;
-        saveRawMap(state, map);
     } else {
-        // interactions.*, objectives.*, adl.nav.*, etc. — store in raw map
-        const map = rawMap(state);
+        // interactions.*, objectives.*, adl.nav.*, etc.
         map[el] = val;
-        saveRawMap(state, map);
     }
 
-    await state.save();
     return { ok: true, value: 'true', errorCode: 0 };
 }
 
-async function commit(regId, token) {
+function applyValuesToState(state, map, values) {
+    if (!values || typeof values !== 'object' || Array.isArray(values)) {
+        return { ok: true, value: 'true', errorCode: 0 };
+    }
+    for (const [element, value] of Object.entries(values)) {
+        const result = applyValueToState(state, map, element, value);
+        if (!result.ok) return result;
+    }
+    return { ok: true, value: 'true', errorCode: 0 };
+}
+
+async function setValue(regId, token, element, value) {
+    return setValues(regId, token, { [String(element || '')]: value });
+}
+
+/** Persist multiple SetValue calls with one registration read and one state write. */
+async function setValues(regId, token, values) {
     const reg = await loadRegAuthorized(regId, token);
     const state = await getOrCreateState(reg);
-    if (!state.initialized) {
-        return { ok: false, value: 'false', errorCode: 301 };
-    }
+    if (!state.initialized) return { ok: false, value: 'false', errorCode: 301 };
 
     const map = rawMap(state);
-    // Ensure lessonStatus reflects 2004 success/completion if only those were set
-    state.lessonStatus = deriveLessonStatus(state, map);
+    const result = applyValuesToState(state, map, values);
+    if (!result.ok) return result;
+    saveRawMap(state, map);
+    await state.save();
+    return result;
+}
 
+function rollSessionTime(state) {
     const sessionSec = parseTimeToSeconds(state.sessionTime);
     const totalSec = parseTimeToSeconds(state.totalTime);
     if (sessionSec > 0) {
         state.totalTime = formatTime(totalSec + sessionSec);
         state.sessionTime = '00:00:00.00';
     }
+}
 
+async function commit(regId, token, values = null) {
+    const reg = await loadRegAuthorized(regId, token);
+    const state = await getOrCreateState(reg);
+    if (!state.initialized) return { ok: false, value: 'false', errorCode: 301 };
+
+    const map = rawMap(state);
+    const applied = applyValuesToState(state, map, values);
+    if (!applied.ok) return applied;
+    saveRawMap(state, map);
+    state.lessonStatus = deriveLessonStatus(state, map);
+    rollSessionTime(state);
     state.stateVersion = (state.stateVersion || 0) + 1;
     await state.save();
 
@@ -412,6 +397,7 @@ async function commit(regId, token) {
         value: 'true',
         errorCode: 0,
         stateVersion: state.stateVersion,
+        registration: registrationSnapshot(reg),
         summary: {
             registrationId: reg.id,
             lessonStatus: state.lessonStatus,
@@ -422,15 +408,29 @@ async function commit(regId, token) {
     };
 }
 
-async function finish(regId, token) {
-    const commitResult = await commit(regId, token);
-    if (!commitResult.ok) return commitResult;
-
+async function finish(regId, token, values = null) {
     const reg = await loadRegAuthorized(regId, token);
     const state = await getOrCreateState(reg);
+    if (!state.initialized) return { ok: false, value: 'false', errorCode: 301 };
 
+    // Finish is its own atomic persistence pass instead of calling commit() and
+    // then reloading registration/state a second time.
+    const map = rawMap(state);
+    const applied = applyValuesToState(state, map, values);
+    if (!applied.ok) return applied;
+    saveRawMap(state, map);
+    state.lessonStatus = deriveLessonStatus(state, map);
+    rollSessionTime(state);
+    state.stateVersion = (state.stateVersion || 0) + 1;
     state.initialized = false;
     await state.save();
+
+    reg.lastLessonStatus = state.lessonStatus;
+    reg.lastScoreRaw = state.scoreRaw;
+    reg.lastTotalTime = state.totalTime;
+    reg.lastCommitAt = new Date();
+    if (['completed', 'passed', 'failed'].includes(state.lessonStatus)) reg.status = 'completed';
+    await reg.save();
 
     if (state.attemptId) {
         const attempt = await ScormAttempt.findByPk(state.attemptId);
@@ -441,16 +441,19 @@ async function finish(regId, token) {
         }
     }
 
-    if (['completed', 'passed', 'failed'].includes(state.lessonStatus)) {
-        reg.status = 'completed';
-        await reg.save();
-    }
-
     return {
         ok: true,
         value: 'true',
         errorCode: 0,
-        summary: commitResult.summary
+        stateVersion: state.stateVersion,
+        registration: registrationSnapshot(reg),
+        summary: {
+            registrationId: reg.id,
+            lessonStatus: state.lessonStatus,
+            scoreRaw: state.scoreRaw,
+            totalTime: state.totalTime,
+            updatedAt: reg.lastCommitAt
+        }
     };
 }
 
@@ -462,11 +465,13 @@ module.exports = {
     initialize,
     getValue,
     setValue,
+    setValues,
     commit,
     finish,
     errorString,
     parseTimeToSeconds,
     parseIso8601Duration,
     formatTime,
+    applyValueToState,
     ERRORS
 };
