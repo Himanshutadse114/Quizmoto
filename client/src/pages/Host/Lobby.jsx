@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
@@ -73,51 +73,60 @@ const Lobby = () => {
     const [players, setPlayers] = useState([]);
     const [session, setSession] = useState(null);
     const [presenceTab, setPresenceTab] = useState('active');
+    const joinedHostRef = useRef(null);
 
     useEffect(() => {
-        if (!socket) return;
+        if (!socket) return undefined;
 
-        socket.emit('join_room', { pin, role: 'host', token });
+        // StrictMode runs effect setup twice in development. Joining the same
+        // room twice needlessly renews the host lease and used to collide with
+        // SQLite transactions. SocketContext owns reconnect joins, so this effect
+        // only needs one initial join for a given socket/pin/token combination.
+        const joinKey = { socket, pin: String(pin || ''), token: String(token || '') };
+        const previous = joinedHostRef.current;
+        if (!previous || previous.socket !== joinKey.socket || previous.pin !== joinKey.pin || previous.token !== joinKey.token) {
+            joinedHostRef.current = joinKey;
+            socket.emit('join_room', { pin, role: 'host', token });
+        }
 
-        socket.on('player_joined', (updatedPlayers) => {
+        const onPlayerJoined = (updatedPlayers) => {
             setPlayers(Array.isArray(updatedPlayers) ? updatedPlayers : []);
-        });
-
-        socket.on('player_left', (payload) => {
-            if (payload && Array.isArray(payload.players)) {
-                setPlayers(payload.players);
-            }
-        });
-
-        socket.on('room_info', (sessionData) => {
+        };
+        const onPlayerLeft = (payload) => {
+            if (payload && Array.isArray(payload.players)) setPlayers(payload.players);
+        };
+        const onRoomInfo = (sessionData) => {
             setSession(sessionData);
-            if (sessionData.players) {
-                setPlayers(sessionData.players);
-            }
-        });
-
-        socket.on('error', (msg) => {
+            if (sessionData.players) setPlayers(sessionData.players);
+        };
+        const onError = (msg) => {
             console.error('Socket Error:', msg);
             alert(msg);
-        });
-
-        socket.on('question_started', (data) => {
+        };
+        const onQuestionStarted = (data) => {
             try {
                 if (data) sessionStorage.setItem('pending_question_started', JSON.stringify(data));
             } catch (_) {}
             navigate(`/host/game/${pin}`);
-        });
+        };
+
+        socket.on('player_joined', onPlayerJoined);
+        socket.on('player_left', onPlayerLeft);
+        socket.on('room_info', onRoomInfo);
+        socket.on('error', onError);
+        socket.on('question_started', onQuestionStarted);
 
         return () => {
-            socket.off('player_joined');
-            socket.off('player_left');
-            socket.off('room_info');
-            socket.off('error');
-            socket.off('question_started');
+            socket.off('player_joined', onPlayerJoined);
+            socket.off('player_left', onPlayerLeft);
+            socket.off('room_info', onRoomInfo);
+            socket.off('error', onError);
+            socket.off('question_started', onQuestionStarted);
         };
     }, [socket, pin, token, navigate]);
 
     const startGame = () => {
+        if (!socket) return;
         socket.emit('start_question', { pin, token });
     };
 
@@ -154,7 +163,7 @@ const Lobby = () => {
             (acc, p) => {
                 const team = p.teamName;
                 if (team && acc[team]) acc[team].push(p);
-                else acc['OTHERS'].push(p);
+                else acc.OTHERS.push(p);
                 return acc;
             },
             { RED: [], BLUE: [], YELLOW: [], GREEN: [], OTHERS: [] }
