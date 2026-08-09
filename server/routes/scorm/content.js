@@ -143,6 +143,133 @@ function authoredRuntimeBridge() {
 </script>`;
 }
 
+function universalRuntimeProgressBridge() {
+    return `
+<script id="quizmoto-runtime-progress-bridge-v1">
+(function(){
+  if(window.__quizmotoRuntimeProgressBridgeV1)return;
+  window.__quizmotoRuntimeProgressBridgeV1=true;
+
+  var lastSignature='',timer=null;
+
+  function findRuntime(){
+    try{
+      if(window.parent&&window.parent!==window){
+        if(window.parent.API_1484_11)return {kind:'2004',api:window.parent.API_1484_11};
+        if(window.parent.API)return {kind:'12',api:window.parent.API};
+      }
+    }catch(e){}
+    try{
+      if(window.API_1484_11)return {kind:'2004',api:window.API_1484_11};
+      if(window.API)return {kind:'12',api:window.API};
+    }catch(e){}
+    return null;
+  }
+
+  function setValue(rt,key,value){
+    try{
+      if(rt.kind==='2004')return rt.api.SetValue(key,String(value));
+      return rt.api.LMSSetValue(key,String(value));
+    }catch(e){return 'false'}
+  }
+
+  function commit(rt){
+    try{
+      if(rt.kind==='2004')return rt.api.Commit('');
+      return rt.api.LMSCommit('');
+    }catch(e){return 'false'}
+  }
+
+  function clamp(value){
+    var n=Number(value);
+    if(!Number.isFinite(n))return null;
+    return Math.max(0,Math.min(100,Math.round(n*10)/10));
+  }
+
+  function percentFromText(text){
+    var m=String(text||'').match(/(^|\s)(\d{1,3}(?:\.\d+)?)\s*%/);
+    return m?clamp(m[2]):null;
+  }
+
+  function inspect(){
+    var slides=Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    if(slides.length>1){
+      var active=document.querySelector('.slide.active');
+      var index=slides.indexOf(active);
+      if(index<0)index=0;
+      return {progress:clamp(index/Math.max(1,slides.length-1)*100),location:String(index),source:'slides'};
+    }
+
+    var progressEl=document.querySelector('progress');
+    if(progressEl){
+      var max=Number(progressEl.max||100),value=Number(progressEl.value);
+      if(Number.isFinite(max)&&max>0&&Number.isFinite(value)){
+        return {progress:clamp(value/max*100),location:null,source:'progress'};
+      }
+    }
+
+    var aria=document.querySelector('[role="progressbar"][aria-valuenow]');
+    if(aria){
+      var now=Number(aria.getAttribute('aria-valuenow'));
+      var min=Number(aria.getAttribute('aria-valuemin')||0);
+      var maxAria=Number(aria.getAttribute('aria-valuemax')||100);
+      if(Number.isFinite(now)&&Number.isFinite(min)&&Number.isFinite(maxAria)&&maxAria>min){
+        return {progress:clamp((now-min)/(maxAria-min)*100),location:null,source:'aria'};
+      }
+    }
+
+    var candidates=document.querySelectorAll('#progress-text,.progress-text,[data-progress],[class*="progress-percent"],[id*="progress-percent"]');
+    for(var i=0;i<candidates.length;i++){
+      var p=percentFromText(candidates[i].textContent);
+      if(p!=null)return {progress:p,location:null,source:'text'};
+    }
+    return null;
+  }
+
+  function persist(){
+    var state=inspect();
+    if(!state||state.progress==null)return;
+    var rt=findRuntime();
+    if(!rt)return;
+    var signature=state.progress+'|'+(state.location||'');
+    if(signature===lastSignature)return;
+
+    var ok=setValue(rt,'quizmoto.progress_percent',state.progress);
+    if(ok==='false')return;
+    if(state.location!=null){
+      setValue(rt,'cmi.core.lesson_location',state.location);
+      setValue(rt,'cmi.location',state.location);
+    }
+    if(state.progress>0&&state.progress<100){
+      setValue(rt,'cmi.core.lesson_status','incomplete');
+      setValue(rt,'cmi.completion_status','incomplete');
+    }
+    commit(rt);
+    lastSignature=signature;
+  }
+
+  function queue(){
+    if(timer)clearTimeout(timer);
+    timer=setTimeout(function(){timer=null;persist()},120);
+  }
+
+  document.addEventListener('click',queue,true);
+  document.addEventListener('keyup',queue,true);
+  window.addEventListener('hashchange',queue);
+  window.addEventListener('popstate',queue);
+  if(document.readyState==='complete')setTimeout(persist,350);
+  else window.addEventListener('load',function(){setTimeout(persist,350)});
+
+  try{
+    var observer=new MutationObserver(queue);
+    observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','aria-valuenow','value']});
+  }catch(e){}
+
+  setInterval(persist,1500);
+})();
+</script>`;
+}
+
 function patchAuthoredHtml(source) {
     let patched = String(source || '');
 
@@ -169,16 +296,31 @@ function patchAuthoredHtml(source) {
     return patchMobileCourse(patched);
 }
 
-async function patchAiAuthorHtmlIfNeeded(packageId, rel, buf) {
+function injectUniversalProgressBridge(source) {
+    let patched = String(source || '');
+    if (patched.includes('quizmoto-runtime-progress-bridge-v1')) return patched;
+    if (patched.includes('</body>')) return patched.replace('</body>', `${universalRuntimeProgressBridge()}\n</body>`);
+    return patched + universalRuntimeProgressBridge();
+}
+
+async function patchHtmlIfNeeded(packageId, rel, buf) {
     if (!/\.html?$/i.test(String(rel || ''))) return { buffer: buf, patched: false };
 
     const pkg = await ScormPackage.findByPk(packageId, { attributes: ['id', 'source'] });
-    if (!pkg || pkg.source !== 'ai_author') return { buffer: buf, patched: false };
+    if (!pkg) return { buffer: buf, patched: false };
 
     const source = buf.toString('utf8');
-    const patched = patchAuthoredHtml(source);
-    if (patched === source) return { buffer: buf, patched: false };
+    let patched = source;
+    if (pkg.source === 'ai_author') patched = patchAuthoredHtml(patched);
 
+    // All SCORM content is served same-origin through this route. Inject a tiny
+    // no-op-unless-detected observer so live completion can be captured from
+    // common progress UI while the SCO is still running. Quizmoto-authored
+    // modules are tracked exactly from their active .slide; third-party packages
+    // only participate when they expose a standard progress element/value.
+    patched = injectUniversalProgressBridge(patched);
+
+    if (patched === source) return { buffer: buf, patched: false };
     return { buffer: Buffer.from(patched, 'utf8'), patched: true };
 }
 
@@ -186,7 +328,7 @@ async function sendContent(res, packageId, rel) {
     const key = packageContentKey(packageId, rel);
     const storage = getObjectStorage();
     const buf = await storage.getObjectBuffer(key);
-    const served = await patchAiAuthorHtmlIfNeeded(packageId, rel, buf);
+    const served = await patchHtmlIfNeeded(packageId, rel, buf);
 
     res.setHeader('Content-Type', guessContentType(rel));
     res.setHeader('Cache-Control', served.patched ? 'private, no-store' : 'private, max-age=300');
@@ -230,4 +372,5 @@ router.get('/:packageId/*path', async (req, res) => {
 
 router.patchAuthoredHtml = patchAuthoredHtml;
 router.authoredRuntimeBridge = authoredRuntimeBridge;
+router.universalRuntimeProgressBridge = universalRuntimeProgressBridge;
 module.exports = router;
