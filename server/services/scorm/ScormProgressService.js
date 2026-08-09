@@ -20,6 +20,7 @@ function packageAnalysis(packageRow) {
 }
 
 function clampPercent(value) {
+    if (value == null || String(value).trim() === '') return null;
     const n = Number(value);
     if (!Number.isFinite(n)) return null;
     return Math.max(0, Math.min(100, Math.round(n * 10) / 10));
@@ -49,6 +50,17 @@ function progressFromLocation(location, packageRow) {
     return null;
 }
 
+function progressFromSuspendData(value) {
+    const data = parseJson(value, null);
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+    return clampPercent(
+        data.quizmotoProgress ??
+        data.progressPercent ??
+        data.progress ??
+        data.completionPercent
+    );
+}
+
 function stateValues(state) {
     if (!state) return {};
     if (state.values && typeof state.values === 'object') return state.values;
@@ -60,6 +72,15 @@ function deriveProgress({ registration, cmiState, packageRow }) {
     const map = stateValues(cmiState);
 
     if (isFinished(lessonStatus) || registration?.status === 'completed') return 100;
+
+    // Quizmoto-authored SCORM 1.2 modules persist their exact UI progress in
+    // cmi.suspend_data. Prefer that signal before the legacy v2 progress column:
+    // older saves could contain an accidental 0 there even while suspend_data
+    // correctly recorded the learner at (for example) 50%.
+    const suspendProgress = progressFromSuspendData(
+        cmiState?.suspendData || map['cmi.suspend_data'] || null
+    );
+    if (suspendProgress != null) return suspendProgress;
 
     const explicit = clampPercent(cmiState?.progressPercent);
     if (explicit != null) return explicit;
@@ -153,6 +174,7 @@ module.exports = {
     locationLabel,
     serializeRegistration,
     progressFromLocation,
+    progressFromSuspendData,
     authoredPartCount,
     packageAnalysis
 };
