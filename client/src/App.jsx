@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
@@ -42,6 +42,19 @@ function RouteFallback() {
   );
 }
 
+function LegacyQuizRedirect({ kind }) {
+  const { id, pin } = useParams();
+  const targets = {
+    dashboard: '/scorm/live-quiz',
+    create: '/scorm/live-quiz/create',
+    reports: '/scorm/live-quiz/reports',
+    edit: `/scorm/live-quiz/edit/${id || ''}`,
+    lobby: `/scorm/live-quiz/lobby/${pin || ''}`,
+    game: `/scorm/live-quiz/game/${pin || ''}`
+  };
+  return <Navigate to={targets[kind] || '/scorm/live-quiz'} replace />;
+}
+
 function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
@@ -55,15 +68,14 @@ function AppRoutes() {
         <Route path="/player/lobby" element={<PlayerLobby />} />
         <Route path="/player/game" element={<PlayerGame />} />
 
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/create-quiz" element={<CreateQuiz />} />
-        <Route path="/edit-quiz/:id" element={<EditQuiz />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/host/lobby/:pin" element={<Lobby />} />
-        <Route path="/host/game/:pin" element={<GameView />} />
-
         <Route path="/scorm" element={<ScormPlatformShell />}>
           <Route index element={<ScormHome />} />
+          <Route path="live-quiz" element={<Dashboard />} />
+          <Route path="live-quiz/create" element={<CreateQuiz />} />
+          <Route path="live-quiz/edit/:id" element={<EditQuiz />} />
+          <Route path="live-quiz/reports" element={<Reports />} />
+          <Route path="live-quiz/lobby/:pin" element={<Lobby />} />
+          <Route path="live-quiz/game/:pin" element={<GameView />} />
           <Route path="courses" element={<ScormCourses />} />
           <Route path="courses/:id" element={<ScormCourseDetail />} />
           <Route path="tracking" element={<ScormTracking />} />
@@ -72,6 +84,14 @@ function AppRoutes() {
           <Route path="visual-studio" element={<ScormVisualStudio />} />
           <Route path="reports" element={<ScormReports />} />
         </Route>
+
+        {/* Backwards-compatible host URLs now redirect into SCORM World. */}
+        <Route path="/dashboard" element={<LegacyQuizRedirect kind="dashboard" />} />
+        <Route path="/create-quiz" element={<LegacyQuizRedirect kind="create" />} />
+        <Route path="/edit-quiz/:id" element={<LegacyQuizRedirect kind="edit" />} />
+        <Route path="/reports" element={<LegacyQuizRedirect kind="reports" />} />
+        <Route path="/host/lobby/:pin" element={<LegacyQuizRedirect kind="lobby" />} />
+        <Route path="/host/game/:pin" element={<LegacyQuizRedirect kind="game" />} />
 
         <Route path="/scorm/learn/:inviteCode" element={<ScormLearnLanding />} />
         <Route path="/scorm/player/:registrationId" element={<ScormPlayerShell />} />
