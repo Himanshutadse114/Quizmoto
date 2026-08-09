@@ -3,6 +3,7 @@ const ScormCourse = require('./ScormCourse');
 const ScormRegistration = require('./ScormRegistration');
 const ScormAttempt = require('./ScormAttempt');
 const ScormCmiState = require('./ScormCmiState');
+const ScormRuntimeSnapshot = require('./ScormRuntimeSnapshot');
 const ScormXapiStatement = require('./ScormXapiStatement');
 
 ScormPackage.hasMany(ScormCourse, { foreignKey: 'packageId', as: 'courses' });
@@ -17,6 +18,9 @@ ScormAttempt.belongsTo(ScormRegistration, { foreignKey: 'registrationId', as: 'r
 ScormRegistration.hasOne(ScormCmiState, { foreignKey: 'registrationId', as: 'cmiState' });
 ScormCmiState.belongsTo(ScormRegistration, { foreignKey: 'registrationId', as: 'registration' });
 
+ScormRegistration.hasOne(ScormRuntimeSnapshot, { foreignKey: 'registrationId', as: 'runtimeSnapshot' });
+ScormRuntimeSnapshot.belongsTo(ScormRegistration, { foreignKey: 'registrationId', as: 'registration' });
+
 ScormRegistration.hasMany(ScormXapiStatement, { foreignKey: 'registrationId', as: 'xapiStatements' });
 ScormXapiStatement.belongsTo(ScormRegistration, { foreignKey: 'registrationId', as: 'registration' });
 
@@ -26,5 +30,6 @@ module.exports = {
     ScormRegistration,
     ScormAttempt,
     ScormCmiState,
+    ScormRuntimeSnapshot,
     ScormXapiStatement
 };
