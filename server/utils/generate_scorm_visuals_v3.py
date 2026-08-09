@@ -9,30 +9,14 @@ import generate_scorm_visuals_v2 as animated
 base = animated.base
 _current_base_svg = base.base_svg
 _theme = {
-    'primary': '#F97316',
-    'accent': '#FDBA74',
-    'soft': '#FFF7ED',
-}
-
-# Keep the improved vector geometry, but remap the previous purple palette so
-# every generated SVG matches the restored policy-to-scorm Modern Corporate UI.
-_PALETTE_REMAP = {
-    '#5147e8': '#F97316',
-    '#5147E8': '#F97316',
-    '#8F87FF': '#FB923C',
-    '#f0efff': '#FFF7ED',
-    '#F0EFFF': '#FFF7ED',
-    '#F8F7FF': '#FFFBF7',
-    '#C9C6FF': '#FED7AA',
-    '#EDEBFF': '#FFEDD5',
-    '#312e81': '#0F172A',
+    'primary': '#f97316',
+    'accent': '#fdba74',
+    'soft': '#fff1e6',
 }
 
 
 def themed_base_svg(inner, title='Learning visual'):
     svg = _current_base_svg(inner, title)
-    for old, new in _PALETTE_REMAP.items():
-        svg = svg.replace(old, new)
     style = (
         f'--qm-primary:{_theme["primary"]};'
         f'--qm-accent:{_theme["accent"]};'

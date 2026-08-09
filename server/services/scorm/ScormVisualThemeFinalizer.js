@@ -1,85 +1,77 @@
 const JSZip = require('jszip');
 const { buildScormPackageZip: buildFinalPackage } = require('./ScormExperienceFinalizer');
 
-// Restores the original policy-to-scorm-engine "Modern Corporate" visual
-// language while keeping the newer immersive layout and Mulish typography.
-const PERFECT_THEME = {
-    id: 1,
-    name: 'Quizmoto Modern Corporate',
-    primary: '#F97316',
-    primaryDark: '#EA580C',
-    accent: '#FDBA74',
-    bg: '#0F172A',
+const CODA_INSPIRED_THEME = {
+    primary: '#003D21',
+    primaryDark: '#000000',
+    accent: '#AAFDC0',
+    bg: '#F8F9EB',
     surface: '#FFFFFF',
-    text: '#1E293B',
-    muted: '#64748B',
-    soft: '#FFF7ED',
-    secondaryBg: '#F8FAFC'
+    text: '#000000',
+    muted: '#5A5A4F',
+    soft: '#EDEEE1'
 };
 
-const VISUAL_THEMES = { 1: PERFECT_THEME, 2: PERFECT_THEME, 3: PERFECT_THEME };
-const MULISH_LINK = '<link id="quizmoto-mulish-font" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;600;700;800;900&display=swap">';
+const VISUAL_THEMES = {
+    1: { ...CODA_INSPIRED_THEME },
+    3: { ...CODA_INSPIRED_THEME },
+    4: { ...CODA_INSPIRED_THEME },
+    5: { ...CODA_INSPIRED_THEME }
+};
 
-function templateCss(theme = PERFECT_THEME) {
-    return `
-<style id="quizmoto-scorm-policy-theme">
-:root{--primary:${theme.primary}!important;--primary-dark:${theme.primaryDark}!important;--accent:${theme.accent}!important;--bg:${theme.bg}!important;--surface:${theme.surface}!important;--text:${theme.text}!important;--muted:${theme.muted}!important;--soft:${theme.soft}!important;--secondary-bg:${theme.secondaryBg}!important;--line:#E2E8F0!important}
-*{box-sizing:border-box!important;text-shadow:none!important;font-family:"Mulish","Segoe UI",Arial,sans-serif!important}
-html,body{background:${theme.bg}!important;color:${theme.text}!important;font-family:"Mulish","Segoe UI",Arial,sans-serif!important}
-#app{background:${theme.surface}!important;background-image:none!important;overflow:hidden!important}
-header{height:70px!important;padding:0 clamp(18px,2.4vw,38px)!important;background:${theme.primary}!important;color:#fff!important;border-bottom:0!important;box-shadow:0 2px 10px rgba(15,23,42,.12)!important}
-footer{height:70px!important;padding:0 clamp(18px,2.4vw,38px)!important;background:${theme.secondaryBg}!important;color:${theme.text}!important;border-top:1px solid rgba(15,23,42,.06)!important;box-shadow:none!important}
-.brand-mark{width:42px!important;height:42px!important;background:#fff!important;color:${theme.primary}!important;border:0!important;border-radius:12px!important;box-shadow:0 4px 14px rgba(15,23,42,.12)!important;font-weight:900!important}
-header h1{font-size:clamp(14px,1.2vw,18px)!important;font-weight:900!important;letter-spacing:-.02em!important;color:#fff!important;max-width:min(54vw,780px)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-.progress-shell{height:8px!important;max-width:440px!important;background:rgba(255,255,255,.24)!important;border:0!important;border-radius:999px!important;overflow:hidden!important}.progress-fill{background:${theme.accent}!important;background-image:none!important}.progress-text{color:#fff!important;font-weight:900!important}.part{color:#94A3B8!important;font-weight:900!important;letter-spacing:.08em!important}
-.nav-btn{min-width:108px!important;padding:11px 18px!important;border-radius:12px!important;font-family:"Mulish","Segoe UI",Arial,sans-serif!important;font-size:13px!important;font-weight:900!important;box-shadow:none!important;transition:.18s ease!important;text-transform:none!important;letter-spacing:0!important}.nav-btn.primary{background:${theme.primary}!important;color:#fff!important;border:1px solid ${theme.primary}!important}.nav-btn.primary:hover{background:${theme.primaryDark}!important;border-color:${theme.primaryDark}!important;transform:translateY(-1px)!important}.nav-btn.secondary{background:#fff!important;color:#64748B!important;border:1px solid #E2E8F0!important}.nav-btn.secondary:hover{background:#FFF7ED!important;border-color:#FED7AA!important;color:${theme.primaryDark}!important}
-main{height:calc(100vh - 140px)!important;min-height:0!important;overflow:hidden!important;background:${theme.surface}!important}.slide{height:100%!important;min-height:0!important;padding:clamp(18px,2.4vw,34px)!important;background:${theme.surface}!important;overflow:hidden!important}.slide.active{align-items:center!important;justify-content:center!important}
-.qmx-copy h2,.final-card h1,.quiz-card h2,.title{color:${theme.text}!important;font-family:"Mulish","Segoe UI",Arial,sans-serif!important;font-weight:900!important}.qmx-copy-body p,.lead,.concept-card p,.step p,.milestone p,.compare-item,.hub-item,.qmx-detail,.qmx-prompt,.qmx-count{color:${theme.muted}!important}.qmx-kicker,.eyebrow,.step-no,.hub-item b{color:${theme.primary}!important;font-family:"Mulish","Segoe UI",Arial,sans-serif!important}
-.qmx-point{font-family:"Mulish","Segoe UI",Arial,sans-serif!important}.qmx-point:hover,.qmx-point.active{background:${theme.primary}!important;color:#fff!important;border-color:${theme.primary}!important}.qmx-detail{background:#FFF7ED!important;color:#9A3412!important;border-color:#FED7AA!important}.qmx-badge{color:${theme.primaryDark}!important;background:rgba(255,255,255,.94)!important;border-color:#FED7AA!important}
-.chip,.concept-number,.takeaway{background:#FFEDD5!important;color:#9A3412!important;border-color:${theme.primary}!important}.hero-art,.spot-visual{background:${theme.primary}!important;background-image:none!important;color:#fff!important}.timeline:before{background:${theme.primary}!important}.dot{border-color:${theme.primary}!important}
-.quiz-option{font-family:"Mulish","Segoe UI",Arial,sans-serif!important;background:#fff!important;border-color:#F1F5F9!important}.quiz-option:hover{border-color:${theme.primary}!important;background:#FFFCF7!important}.quiz-option.correct{background:#F0FDF4!important;border:2px solid #22C55E!important;color:#166534!important}.quiz-option.incorrect{background:#FEF2F2!important;border:2px solid #EF4444!important;color:#991B1B!important}.feedback{border-radius:14px!important}
-.final-card{background:${theme.primary}!important;color:#fff!important}.final-card h1,.final-card p{color:#fff!important}
-@media(max-width:900px){main{height:auto!important;min-height:calc(100vh - 140px)!important;overflow:auto!important}.slide{height:auto!important;min-height:calc(100vh - 140px)!important;overflow:visible!important}}
-@media(max-width:680px){header{height:58px!important;padding:0 11px!important}footer{height:60px!important;padding:0 11px!important}main{min-height:calc(100vh - 118px)!important}.slide{min-height:calc(100vh - 118px)!important;padding:11px!important}.brand-mark{width:34px!important;height:34px!important}.nav-btn{min-width:0!important;padding:9px 11px!important;font-size:11px!important}}
+const EDITORIAL_COURSE_CSS = `
+<style id="quizmoto-scorm-editorial-theme">
+:root{--primary:#003D21!important;--primary-dark:#000000!important;--accent:#AAFDC0!important;--bg:#F8F9EB!important;--surface:#FFFFFF!important;--text:#000000!important;--muted:#5A5A4F!important;--soft:#EDEEE1!important;--line:#C0C2A9!important;--lilac:#D3BEFF!important;--sky:#B0F4FF!important;--rose:#FFC0E6!important}
+*{text-shadow:none!important;box-shadow:none!important}
+html,body,#app{background:#F8F9EB!important;color:#000!important;font-family:Arial,Helvetica,sans-serif!important}
+#app{background-image:none!important}
+header,footer{background:#F8F9EB!important;color:#000!important;border-color:#000!important;box-shadow:none!important}
+.brand-mark{background:#003D21!important;color:#F8F9EB!important;border:1px solid #000!important;border-radius:13px!important;box-shadow:none!important}
+.progress-shell{background:#EDEEE1!important;border:1px solid #C0C2A9!important;border-radius:999px!important}.progress-fill{background:#003D21!important;background-image:none!important}.progress-text,.part{color:#5A5A4F!important}
+.nav-btn{border-radius:13px!important;font-family:Arial,Helvetica,sans-serif!important;font-weight:700!important}.nav-btn.primary{background:#000!important;color:#F8F9EB!important;border:1px solid #000!important}.nav-btn.primary:hover{background:#003D21!important;border-color:#003D21!important;transform:translateY(-1px)!important}.nav-btn.secondary{background:#F8F9EB!important;color:#000!important;border:1px solid #000!important}.nav-btn.secondary:hover{background:#AAFDC0!important}
+.slide{background:#F8F9EB!important}.glass,.qmx-copy,.qmx-visual,.concept-card,.step,.milestone p,.compare-col,.hub-item,.quiz-card,.quiz-option,.final-card{background:#FFF!important;border:1px solid #C0C2A9!important;border-radius:22px!important;box-shadow:none!important}
+.qmx-copy,.qmx-visual{border-radius:22px!important}.qmx-visual{background:#EDEEE1!important;background-image:none!important}.qmx-badge{background:#F8F9EB!important;border:1px solid #000!important;color:#000!important;box-shadow:none!important;border-radius:999px!important}
+.eyebrow,.qmx-kicker,.step-no,.hub-item b{color:#003D21!important;font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important;letter-spacing:.05em!important}.title,.qmx-copy h2,.final-card h1,.quiz-card h2{font-family:"Monument Grotesk","Arial Black","Helvetica Neue",Arial,sans-serif!important;color:#000!important;font-weight:800!important;letter-spacing:-.055em!important;line-height:.94!important}.lead,.qmx-copy p,.concept-card p,.step p,.milestone p,.compare-item,.hub-item,.qmx-detail,.qmx-prompt,.qmx-count{color:#5A5A4F!important;line-height:1.5!important}
+.chip,.concept-number,.takeaway,.qmx-detail{background:#AAFDC0!important;color:#000!important;border-color:#000!important}.chip{border:1px solid #000!important}.concept-card:before{background:#003D21!important}
+.hero-art,.spot-visual{background:#003D21!important;background-image:none!important;color:#F8F9EB!important;border:1px solid #000!important}.hero-art svg,.spot-visual svg{color:#F8F9EB!important;filter:none!important}.hero-art:before,.hero-art:after,.spot-visual:before{border-color:#AAFDC0!important;opacity:.42!important}
+.step:not(:last-child):after{background:#000!important;color:#F8F9EB!important}.timeline:before{background:#003D21!important}.dot{background:#F8F9EB!important;border-color:#003D21!important;box-shadow:0 0 0 4px #AAFDC0!important}
+.compare-col.good{background:#AAFDC0!important;border-top:1px solid #000!important}.compare-col.warn{background:#FFC0E6!important;border-top:1px solid #000!important}.compare-col.good .compare-title,.compare-col.warn .compare-title{color:#000!important}.good .badge-dot{background:#003D21!important}.warn .badge-dot{background:#3F0929!important}
+.qmx-point{background:#F8F9EB!important;color:#5A5A4F!important;border:1px solid #C0C2A9!important;box-shadow:none!important}.qmx-point:hover,.qmx-point.active{background:#AAFDC0!important;color:#000!important;border-color:#000!important;transform:translateY(-1px)!important}
+.quiz-option{box-shadow:none!important}.quiz-option:hover{border-color:#000!important;background:#F8F9EB!important}.quiz-option.correct{background:#AAFDC0!important;border:2px solid #000!important;color:#000!important}.quiz-option.incorrect{background:#FFC0E6!important;border:2px solid #3F0929!important;color:#3F0929!important;text-decoration:none!important}.feedback{border-radius:13px!important;background:#D3BEFF!important;color:#000!important;border:1px solid #000!important}
+.score-ring{background:conic-gradient(#003D21 0deg,#AAFDC0 270deg,#EDEEE1 270deg)!important}.score-ring:before{background:#F8F9EB!important}.score-ring span{color:#000!important;font-family:"Arial Black",Arial,sans-serif!important}
+@media(max-width:680px){header{height:54px!important;padding:0 12px!important}footer{height:56px!important;padding:0 12px!important}.slide{padding:12px!important}.title{font-size:clamp(25px,8vw,34px)!important;line-height:.94!important}.lead{font-size:13px!important}.qmx-copy{padding:16px!important}.qmx-visual{min-height:220px!important}.nav-btn{padding:9px 12px!important;font-size:12px!important}}
 </style>`;
-}
 
-async function applyPolicyCourseTheme(buffer) {
+async function applyEditorialCourseTheme(buffer) {
     const zip = await JSZip.loadAsync(buffer);
     const indexFile = zip.file('index.html');
     if (!indexFile) return buffer;
 
     let html = await indexFile.async('string');
-    html = html.replace(/<body([^>]*)>/i, (match, attrs) => {
-        const cleaned = String(attrs || '').replace(/\sclass=("[^"]*"|'[^']*')/i, '');
-        return `<body${cleaned} class="qmx-template qmx-template-policy-modern">`;
-    });
-    if (!html.includes('quizmoto-mulish-font')) {
-        html = html.replace('</head>', `${MULISH_LINK}\n</head>`);
+    if (!html.includes('quizmoto-scorm-editorial-theme')) {
+        html = html.replace('</head>', `${EDITORIAL_COURSE_CSS}\n</head>`);
+        zip.file('index.html', html);
     }
-    if (!html.includes('quizmoto-scorm-policy-theme')) {
-        html = html.replace('</head>', `${templateCss(PERFECT_THEME)}\n</head>`);
-    }
-    zip.file('index.html', html);
+
+    // This remains an intermediate package. The tracking finalizer performs the
+    // single compressed output pass after all HTML/runtime patches are complete.
     return zip.generateAsync({ type: 'nodebuffer', compression: 'STORE' });
 }
 
 async function buildScormPackageZip(rawAnalysis, opts = {}) {
+    const templateId = Number(opts.templateId) || 1;
+    const visualTheme = VISUAL_THEMES[templateId] || VISUAL_THEMES[1];
     const analysis = {
         ...(rawAnalysis || {}),
-        templateId: 1,
-        templateName: PERFECT_THEME.name,
-        visualTheme: PERFECT_THEME
+        visualTheme
     };
-    const buffer = await buildFinalPackage(analysis, { ...opts, templateId: 1 });
-    return applyPolicyCourseTheme(buffer);
+    const buffer = await buildFinalPackage(analysis, { ...opts, templateId });
+    return applyEditorialCourseTheme(buffer);
 }
 
 module.exports = {
     buildScormPackageZip,
     VISUAL_THEMES,
-    PERFECT_THEME,
-    applyEditorialCourseTheme: applyPolicyCourseTheme,
-    applyPolicyCourseTheme,
-    templateCss
+    applyEditorialCourseTheme,
+    EDITORIAL_COURSE_CSS
 };
