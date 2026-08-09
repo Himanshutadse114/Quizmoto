@@ -4,32 +4,53 @@ const auth = require('../middleware');
 const { acceptInvite } = require('../../services/scorm/ScormInviteService');
 const { ScormRegistration, ScormCourse } = require('../../models/scorm');
 
-router.post('/accept', async (req, res) => {
+async function joinInvite(req, res) {
     try {
         const { inviteCode, learnerName, learnerEmail } = req.body || {};
         if (!inviteCode) return res.status(400).json({ message: 'inviteCode required' });
+        if (!String(learnerName || '').trim()) {
+            return res.status(400).json({ message: 'learnerName required' });
+        }
+
         const result = await acceptInvite({
-            inviteCode,
-            learnerName,
-            learnerEmail
+            inviteCode: String(inviteCode).trim(),
+            learnerName: String(learnerName).trim(),
+            learnerEmail: learnerEmail ? String(learnerEmail).trim() : null
         });
         const pkg = result.course.package;
+        const registrationId = result.registration.id;
+        const entryHref = pkg ? pkg.entryHref : null;
+
         res.status(201).json({
-            registrationId: result.registration.id,
+            registrationId,
             course: {
                 id: result.course.id,
                 title: result.course.title,
                 description: result.course.description
             },
             packageId: pkg ? pkg.id : null,
-            entryHref: pkg ? pkg.entryHref : null,
-            token: result.token
+            entryHref,
+            token: result.token,
+            // Backwards-compatible alias for older learner clients.
+            playToken: result.token,
+            playerPath: `/scorm/player/${registrationId}`,
+            playUrl: `/api/scorm/play/${registrationId}`
         });
     } catch (err) {
         const code = err.code === 'NOT_FOUND' ? 404 : err.code === 'PACKAGE_NOT_READY' ? 409 : 500;
+        console.error('[scorm-invite] join failed', {
+            inviteCode: req.body?.inviteCode || null,
+            error: err?.message || String(err),
+            dbCode: err?.original?.code || err?.parent?.code || null
+        });
         res.status(code).json({ message: err.message, code: err.code });
     }
-});
+}
+
+// /accept is canonical. /join remains as a compatibility alias because older
+// deployed learner bundles used that URL.
+router.post('/accept', joinInvite);
+router.post('/join', joinInvite);
 
 router.post('/:id/revoke', auth, async (req, res) => {
     try {
