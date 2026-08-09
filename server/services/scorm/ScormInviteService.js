@@ -25,11 +25,21 @@ function signRegistrationToken(registrationId, courseId) {
 }
 
 function verifyRegistrationToken(token) {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    if (decoded.typ !== 'scorm_reg' || !decoded.scormRegId) {
-        throw new Error('Invalid registration token');
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded.typ !== 'scorm_reg' || !decoded.scormRegId) {
+            const err = new Error('Invalid registration token');
+            err.code = 'FORBIDDEN';
+            throw err;
+        }
+        return decoded;
+    } catch (error) {
+        if (error?.code === 'FORBIDDEN') throw error;
+        const err = new Error('Invalid or expired registration token');
+        err.code = 'FORBIDDEN';
+        err.cause = error;
+        throw err;
     }
-    return decoded;
 }
 
 async function createInviteCode() {
