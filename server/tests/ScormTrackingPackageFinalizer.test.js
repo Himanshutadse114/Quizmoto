@@ -14,6 +14,16 @@ describe('ScormTrackingPackageFinalizer', () => {
         expect(patched).to.not.include('sessionStartMs=Date.now();render();if');
     });
 
+    it('restores a saved lesson location before render and activates that slide', () => {
+        const html = "doLMSInitialize();doLMSSetValue('cmi.core.score.min','0');doLMSSetValue('cmi.core.score.max','100');doLMSSetValue('cmi.core.lesson_status','incomplete');el('finish-btn').addEventListener('click',exitSco);updateNav()}";
+        const patched = patchTrackingRuntime(html);
+        expect(patched).to.include("doLMSGetValue('cmi.core.lesson_location')");
+        expect(patched).to.include("currentSlide=Math.max(0,Number(savedLocation))");
+        expect(patched).to.include("doLMSGetValue('cmi.core.lesson_status')");
+        expect(patched).to.include("if(!/^(completed|passed|failed)$/i.test(String(savedStatus||'')))");
+        expect(patched).to.include("resumeSlides[currentSlide].classList.add('active')");
+    });
+
     it('persists location and progress context on each screen navigation', () => {
         const html = "commitProgress({'cmi.core.lesson_location':String(currentSlide)})";
         const patched = patchTrackingRuntime(html);
