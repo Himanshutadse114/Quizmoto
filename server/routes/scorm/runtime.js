@@ -4,7 +4,6 @@ const Runtime = require('../../services/scorm/ScormRuntimeService');
 const { ensureScormRuntimeSchema } = require('../../services/scorm/ScormRuntimeSchemaGuard');
 const {
     ScormRegistration,
-    ScormCmiState,
     ScormCourse,
     ScormPackage
 } = require('../../models/scorm');
@@ -46,10 +45,12 @@ function logRuntimeFailure(operation, req, err, elements = []) {
 }
 
 async function ensureRuntimeReady() {
+    // Keep the legacy guard while old CMI rows are used as a compatibility
+    // projection/migration source. Canonical commits use runtime snapshots.
     await ensureScormRuntimeSchema();
 }
 
-async function bootstrapAiAuthorProgress(regId) {
+async function bootstrapAiAuthorProgress(regId, token) {
     try {
         const reg = await ScormRegistration.findByPk(regId, {
             include: [{
@@ -60,20 +61,16 @@ async function bootstrapAiAuthorProgress(regId) {
         });
         if (!reg?.course?.package || reg.course.package.source !== 'ai_author') return false;
 
-        const state = await ScormCmiState.findOne({ where: { registrationId: reg.id } });
-        if (!state) return false;
-
-        let changed = false;
-        if (state.lessonLocation == null || String(state.lessonLocation).trim() === '') {
-            state.lessonLocation = '0';
-            changed = true;
-        }
-        if (!state.lessonStatus || state.lessonStatus === 'not attempted') {
-            state.lessonStatus = 'incomplete';
-            changed = true;
-        }
-        if (changed) await state.save();
-        return changed;
+        const [location, status] = await Promise.all([
+            Runtime.getValue(regId, token, 'cmi.core.lesson_location'),
+            Runtime.getValue(regId, token, 'cmi.core.lesson_status')
+        ]);
+        const values = {};
+        if (!String(location?.value || '').trim()) values['cmi.core.lesson_location'] = '0';
+        if (!status?.value || status.value === 'not attempted') values['cmi.core.lesson_status'] = 'incomplete';
+        if (!Object.keys(values).length) return false;
+        await Runtime.commit(regId, token, values);
+        return true;
     } catch (_) {
         return false;
     }
@@ -114,8 +111,7 @@ router.post('/:regId/initialize', async (req, res) => {
         await ensureRuntimeReady();
         const token = bearer(req);
         const result = await Runtime.initialize(req.params.regId, token);
-        const bootstrapped = await bootstrapAiAuthorProgress(req.params.regId);
-        if (bootstrapped) await Runtime.commit(req.params.regId, token);
+        await bootstrapAiAuthorProgress(req.params.regId, token);
         await emitRegistration(req.params.regId, 'initialize');
         res.json(result);
     } catch (err) {
