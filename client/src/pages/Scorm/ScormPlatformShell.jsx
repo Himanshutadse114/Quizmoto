@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import './scormEditorialTheme.css';
 import './scormDashboard.css';
+import './scormContrastPolish.css';
 
 const NAV_GROUPS = [
   {
