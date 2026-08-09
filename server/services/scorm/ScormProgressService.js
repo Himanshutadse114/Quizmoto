@@ -67,33 +67,76 @@ function stateValues(state) {
     return parseJson(state.rawMapJson, {});
 }
 
+function liveScoreProgress(cmiState, map) {
+    const raw = Number(cmiState?.scoreRaw ?? map['cmi.core.score.raw'] ?? map['cmi.score.raw']);
+    if (!Number.isFinite(raw)) return null;
+
+    const min = Number(map['cmi.core.score.min'] ?? map['cmi.score.min']);
+    const max = Number(map['cmi.core.score.max'] ?? map['cmi.score.max']);
+    let percent = null;
+
+    if (Number.isFinite(min) && Number.isFinite(max) && max > min) {
+        percent = ((raw - min) / (max - min)) * 100;
+    } else if (raw >= 0 && raw <= 100) {
+        percent = raw;
+    }
+
+    const normalized = clampPercent(percent);
+    if (normalized == null) return null;
+
+    // A running SCO can report a perfect provisional score before it has actually
+    // completed. Keep score-derived progress below 100 until SCORM itself reports
+    // completed/passed/failed.
+    return Math.min(99.9, normalized);
+}
+
 function deriveProgress({ registration, cmiState, packageRow }) {
     const lessonStatus = cmiState?.lessonStatus || registration?.lastLessonStatus || null;
     const map = stateValues(cmiState);
 
     if (isFinished(lessonStatus) || registration?.status === 'completed') return 100;
 
-    // Quizmoto-authored SCORM 1.2 modules persist their exact UI progress in
-    // cmi.suspend_data. Prefer that signal before the legacy v2 progress column:
-    // older saves could contain an accidental 0 there even while suspend_data
-    // correctly recorded the learner at (for example) 50%.
+    // Preserve zero-valued progress signals as a final fallback, but do not let a
+    // stale zero hide other live activity such as a changing score. Several third-
+    // party SCORM packages continuously update score/interactions while leaving
+    // their completion/progress fields at zero until the very end.
+    let zeroSignal = null;
+
     const suspendProgress = progressFromSuspendData(
         cmiState?.suspendData || map['cmi.suspend_data'] || null
     );
-    if (suspendProgress != null) return suspendProgress;
+    if (suspendProgress != null) {
+        if (suspendProgress > 0) return suspendProgress;
+        zeroSignal = 0;
+    }
 
     const explicit = clampPercent(cmiState?.progressPercent);
-    if (explicit != null) return explicit;
+    if (explicit != null) {
+        if (explicit > 0) return explicit;
+        zeroSignal = 0;
+    }
 
     const progressMeasure = Number(map['cmi.progress_measure']);
     if (Number.isFinite(progressMeasure) && progressMeasure >= 0 && progressMeasure <= 1) {
-        return clampPercent(progressMeasure * 100);
+        const measured = clampPercent(progressMeasure * 100);
+        if (measured > 0) return measured;
+        zeroSignal = 0;
     }
 
     const location = cmiState?.lessonLocation || map['cmi.location'] || map['cmi.core.lesson_location'] || null;
     const fromLocation = progressFromLocation(location, packageRow);
-    if (fromLocation != null) return fromLocation;
+    if (fromLocation != null) {
+        if (fromLocation > 0) return fromLocation;
+        zeroSignal = 0;
+    }
 
+    // Last-resort live proxy: if the SCO is actively changing a normalized score,
+    // surface that percentage rather than showing a misleading permanent 0%.
+    // Exact SCORM completion signals still take precedence above.
+    const fromScore = liveScoreProgress(cmiState, map);
+    if (fromScore != null && fromScore > 0) return fromScore;
+
+    if (zeroSignal != null) return zeroSignal;
     if (!lessonStatus || String(lessonStatus).toLowerCase() === 'not attempted') return 0;
     return null;
 }
@@ -175,6 +218,7 @@ module.exports = {
     serializeRegistration,
     progressFromLocation,
     progressFromSuspendData,
+    liveScoreProgress,
     authoredPartCount,
     packageAnalysis
 };
