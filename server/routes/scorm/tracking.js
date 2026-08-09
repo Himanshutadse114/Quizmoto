@@ -4,10 +4,9 @@ const auth = require('../middleware');
 const {
     ScormCourse,
     ScormPackage,
-    ScormRegistration,
-    ScormCmiState,
-    ScormRuntimeSnapshot
+    ScormRegistration
 } = require('../../models/scorm');
+const LearningState = require('../../services/scorm/ScormLearningStateService');
 const { serializeRegistration } = require('../../services/scorm/ScormProgressService');
 
 function learnerRows(course) {
@@ -48,10 +47,23 @@ function courseSummary(course) {
     };
 }
 
+async function attachLearningState(courses) {
+    const registrations = courses.flatMap((course) => (
+        Array.isArray(course.registrations) ? course.registrations : []
+    ));
+    const states = await LearningState.listByRegistrationIds(registrations.map((reg) => reg.id));
+    for (const reg of registrations) {
+        const state = states.get(String(reg.id)) || null;
+        if (typeof reg.setDataValue === 'function') reg.setDataValue('learningStateV2', state);
+        else reg.learningStateV2 = state;
+    }
+    return courses;
+}
+
 async function loadHostCourses(hostId, courseId = null) {
     const where = { hostId };
     if (courseId) where.id = courseId;
-    return ScormCourse.findAll({
+    const courses = await ScormCourse.findAll({
         where,
         include: [
             {
@@ -63,15 +75,12 @@ async function loadHostCourses(hostId, courseId = null) {
                 model: ScormRegistration,
                 as: 'registrations',
                 required: false,
-                where: { isPreview: false },
-                include: [
-                    { model: ScormRuntimeSnapshot, as: 'runtimeSnapshot', required: false },
-                    { model: ScormCmiState, as: 'cmiState', required: false }
-                ]
+                where: { isPreview: false }
             }
         ],
         order: [['updatedAt', 'DESC']]
     });
+    return attachLearningState(courses);
 }
 
 function newestFirst(rows) {
@@ -100,6 +109,11 @@ router.get('/summary', auth, async (req, res) => {
             learners: newestFirst(rows)
         });
     } catch (err) {
+        console.error('[scorm-tracking-v2] summary failed', {
+            hostId: req.userId,
+            error: err?.message || String(err),
+            dbCode: err?.original?.code || err?.parent?.code || null
+        });
         res.status(500).json({ message: err.message || 'Failed to load SCORM tracking' });
     }
 });
@@ -116,6 +130,12 @@ router.get('/course/:courseId', auth, async (req, res) => {
             learners
         });
     } catch (err) {
+        console.error('[scorm-tracking-v2] course failed', {
+            hostId: req.userId,
+            courseId: req.params.courseId,
+            error: err?.message || String(err),
+            dbCode: err?.original?.code || err?.parent?.code || null
+        });
         res.status(500).json({ message: err.message || 'Failed to load course tracking' });
     }
 });
