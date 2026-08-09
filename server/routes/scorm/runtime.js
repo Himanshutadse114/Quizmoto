@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Runtime = require('../../services/scorm/ScormRuntimeService');
-const { ensureScormRuntimeSchema } = require('../../services/scorm/ScormRuntimeSchemaGuard');
+const RuntimeStore = require('../../services/scorm/ScormRuntimeSnapshotStore');
 const {
     ScormRegistration,
     ScormCourse,
@@ -45,9 +45,10 @@ function logRuntimeFailure(operation, req, err, elements = []) {
 }
 
 async function ensureRuntimeReady() {
-    // Keep the legacy guard while old CMI rows are used as a compatibility
-    // projection/migration source. Canonical commits use runtime snapshots.
-    await ensureScormRuntimeSchema();
+    // The LMS runtime depends only on its fresh snapshot table. The legacy CMI
+    // schema is deliberately not repaired/queried here, so legacy schema drift
+    // cannot block Initialize/Get/Commit/Finish.
+    await RuntimeStore.ensureReady();
 }
 
 async function bootstrapAiAuthorProgress(regId, token) {
