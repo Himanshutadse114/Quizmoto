@@ -14,7 +14,9 @@ function readPlayerInfo() {
 function rejoinActiveRealtimeRoom(socket) {
     const pathname = window.location.pathname || '';
 
-    const hostMatch = pathname.match(/\/host\/(?:lobby|game)\/([^/?#]+)\/?$/);
+    const hostMatch =
+        pathname.match(/\/scorm\/live-quiz\/(?:lobby|game)\/([^/?#]+)\/?$/) ||
+        pathname.match(/\/host\/(?:lobby|game)\/([^/?#]+)\/?$/);
     if (hostMatch) {
         const token = localStorage.getItem('token');
         if (token) {
@@ -58,6 +60,7 @@ function routeNeedsRealtime(pathname) {
     const path = String(pathname || '');
     if (path === '/join' || path === '/join/') return true;
     if (/^\/host\/(?:lobby|game)\/[^/]+\/?$/.test(path)) return true;
+    if (/^\/scorm\/live-quiz\/(?:lobby|game)\/[^/]+\/?$/.test(path)) return true;
     if (/^\/player\/(?:lobby|game)\/?$/.test(path)) return true;
     if (/^\/scorm\/courses\/[^/]+\/?$/.test(path)) return true;
     return false;
