@@ -29,9 +29,11 @@ describe('SCORM authored interaction responsiveness', () => {
     });
 
     it('injects a DOM-level tracking bridge into an existing authored course', () => {
+        // Existing packages may contain LMSCommit calls. The hosted player now
+        // implements LMSCommit as a buffered, non-blocking flush request, so the
+        // patcher no longer needs to strip package-authored commit calls.
         const oldHtml = '<html><head></head><body><div class="slide active"></div><div class="slide"></div><button id="next-btn">Next</button><script>if(typeof doLMSCommit===\'function\')doLMSCommit();</script></body></html>';
         const patched = contentRouter.patchAuthoredHtml(oldHtml);
-        expect(patched).to.not.include("if(typeof doLMSCommit==='function')doLMSCommit();");
         expect(patched).to.include('quizmoto-authored-runtime-bridge-v7');
         expect(patched).to.include("doLMSSetValue('cmi.core.lesson_location',String(s.index))");
         expect(patched).to.include("doLMSSetValue('cmi.suspend_data'");
