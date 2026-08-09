@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   BookOpen,
@@ -8,7 +8,7 @@ import {
   Library,
   Sparkles,
   Palette,
-  Gamepad2,
+  ArrowLeft,
   Menu,
   X,
   ChevronRight,
@@ -25,7 +25,6 @@ const NAV_GROUPS = [
     label: 'Workspace',
     items: [
       { to: '/scorm', end: true, label: 'Overview', icon: LayoutDashboard },
-      { to: '/scorm/live-quiz', label: 'Live Quiz', icon: Gamepad2 },
       { to: '/scorm/courses', label: 'Courses', icon: BookOpen },
       { to: '/scorm/tracking', label: 'Learner tracking', icon: Activity },
       { to: '/scorm/reports', label: 'Reports', icon: BarChart3 }
@@ -44,11 +43,6 @@ const NAV_GROUPS = [
 const NAV = NAV_GROUPS.flatMap((group) => group.items);
 
 function pageLabel(pathname) {
-  if (pathname.startsWith('/scorm/live-quiz/create')) return 'Create live quiz';
-  if (pathname.startsWith('/scorm/live-quiz/edit/')) return 'Edit live quiz';
-  if (pathname.startsWith('/scorm/live-quiz/reports')) return 'Live Quiz reports';
-  if (pathname.startsWith('/scorm/live-quiz/lobby/')) return 'Live Quiz lobby';
-  if (pathname.startsWith('/scorm/live-quiz/game/')) return 'Live Quiz session';
   if (pathname.startsWith('/scorm/courses/')) return 'Course workspace';
   const exact = NAV.find((item) => item.end && item.to === pathname);
   if (exact) return exact.label;
@@ -107,9 +101,9 @@ function Brand() {
 function MobileTabBar() {
   const items = [
     { to: '/scorm', end: true, label: 'Home', icon: LayoutDashboard },
-    { to: '/scorm/live-quiz', label: 'Live Quiz', icon: Gamepad2 },
     { to: '/scorm/courses', label: 'Courses', icon: BookOpen },
-    { to: '/scorm/tracking', label: 'Tracking', icon: Activity }
+    { to: '/scorm/tracking', label: 'Tracking', icon: Activity },
+    { to: '/scorm/author', label: 'Create', icon: Sparkles }
   ];
 
   return (
@@ -132,21 +126,8 @@ function MobileTabBar() {
 export default function ScormPlatformShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const label = pageLabel(location.pathname);
-
-  // Host lobby/game views remain presentation-first, but they are now children
-  // of SCORM World in the route hierarchy and return to its Live Quiz module.
-  const immersiveLiveQuiz =
-    location.pathname.startsWith('/scorm/live-quiz/lobby/') ||
-    location.pathname.startsWith('/scorm/live-quiz/game/');
-
-  if (immersiveLiveQuiz) {
-    return (
-      <div className="scorm-editorial min-h-screen relative z-20">
-        <Outlet />
-      </div>
-    );
-  }
 
   return (
     <div className="scorm-editorial min-h-screen relative z-20">
@@ -157,7 +138,7 @@ export default function ScormPlatformShell() {
 
         <Navigation />
 
-        <div className="scorm-sidebar-footer p-3 border-t">
+        <div className="scorm-sidebar-footer p-3 border-t space-y-2.5">
           <div className="scorm-status-card rounded-xl px-3.5 py-3">
             <div className="flex items-center gap-2 text-[11px] font-semibold">
               <span className="scorm-status-dot" />
@@ -165,6 +146,14 @@ export default function ScormPlatformShell() {
             </div>
             <div className="mt-1.5 text-[10px] leading-relaxed">SCORM progress, score and resume state are being captured.</div>
           </div>
+          <button
+            type="button"
+            onClick={() => navigate('/scorm/live-quiz')}
+            className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"
+          >
+            <span className="flex items-center gap-2"><ArrowLeft size={14} /> Live Quiz</span>
+            <ChevronRight size={13} />
+          </button>
         </div>
       </aside>
 
@@ -188,6 +177,16 @@ export default function ScormPlatformShell() {
               </button>
             </div>
             <Navigation onNavigate={() => setMobileOpen(false)} />
+            <div className="p-3 border-t">
+              <button
+                type="button"
+                onClick={() => { setMobileOpen(false); navigate('/scorm/live-quiz'); }}
+                className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"
+              >
+                <span className="flex items-center gap-2"><ArrowLeft size={14} /> Live Quiz</span>
+                <ChevronRight size={13} />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -209,6 +208,15 @@ export default function ScormPlatformShell() {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/scorm/live-quiz')}
+              aria-label="Return to Live Quiz"
+              className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"
+            >
+              <ArrowLeft size={14} />
+              <span>Live Quiz</span>
+            </button>
             <Link
               to="/scorm/library?upload=1"
               className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"
