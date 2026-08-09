@@ -14,6 +14,7 @@ router.use('/courses', require('./courses'));
 router.use('/tracking', require('./tracking'));
 router.use('/preview', require('./preview'));
 router.use('/registrations', require('./registrations'));
+router.use('/session', require('./session'));
 router.use('/runtime', require('./runtime'));
 router.use('/content', require('./content'));
 router.use('/play', require('./play'));
