@@ -12,11 +12,18 @@ async function clearPreviewRuntime(registrationId, transaction = null) {
     const options = { where: { registrationId } };
     if (transaction) options.transaction = transaction;
 
-    // Canonical runtime state and legacy CMI state both reference this
-    // registration. Remove them before attempts when resetting the reusable QA
-    // registration.
+    // The canonical snapshot is authoritative. Legacy CMI cleanup must never
+    // stop an admin from starting a clean QA run if that historical table has
+    // schema drift or corrupt rows.
     await ScormRuntimeSnapshot.destroy(options);
-    await ScormCmiState.destroy(options);
+    try {
+        await ScormCmiState.destroy(options);
+    } catch (err) {
+        console.warn('[scorm-preview] legacy CMI cleanup skipped', {
+            registrationId,
+            error: err?.message || String(err)
+        });
+    }
     await ScormAttempt.destroy(options);
     await ScormXapiStatement.destroy(options);
 }
