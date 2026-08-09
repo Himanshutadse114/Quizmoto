@@ -55,9 +55,9 @@ router.get('/:regId', async (req, res) => {
         const learnerName = reg.learnerName || 'Learner';
         const courseTitle = reg.course.title || 'SCORM Player';
 
-        // Quizmoto-authored packages use a known CMI surface, so their synchronous
-        // SCORM API calls can be buffered locally and persisted as one batch on
-        // Commit/Finish. Third-party packages keep the legacy immediate behaviour.
+        // Quizmoto-authored packages use a known CMI surface. SetValue remains a
+        // synchronous in-memory operation, while Commit is persisted asynchronously
+        // so slide/answer interactions never wait on a network round trip.
         const boot = JSON.stringify({
             token,
             runtimeBase,
@@ -86,9 +86,11 @@ router.get('/:regId', async (req, res) => {
             '(function(){\n' +
             'var BOOT=' + boot + ';\n' +
             'var TOKEN=BOOT.token,RUNTIME=BOOT.runtimeBase,XAPI_EP=BOOT.xapiEndpoint;\n' +
-            'var BUFFERED=BOOT.bufferedWrites===true,initialized=false,pendingValues=Object.create(null);\n' +
+            'var BUFFERED=BOOT.bufferedWrites===true,initialized=false,pendingValues=Object.create(null),localValues=Object.create(null);\n' +
+            'var autosaveTimer=null,autosaveInFlight=false,autosaveAgain=false;\n' +
             'var lastError={code:0};\n' +
             'function setStatus(t){try{var el=document.getElementById("status");if(el)el.textContent=t;}catch(e){}}\n' +
+            'function notifyOpener(type,data){try{if(window.opener&&!window.opener.closed){window.opener.postMessage({type:type,registrationId:' + JSON.stringify(String(reg.id)) + ',data:data||null},"*");}}catch(e){}}\n' +
             'function syncCall(method,path,body){\n' +
             '  try{\n' +
             '    var xhr=new XMLHttpRequest();\n' +
@@ -101,20 +103,34 @@ router.get('/:regId', async (req, res) => {
             '    return data;\n' +
             '  }catch(e){lastError.code=101;return {ok:false,value:method==="GET"?"":"false",errorCode:101};}\n' +
             '}\n' +
+            'function hasPending(){return Object.keys(pendingValues).length>0;}\n' +
             'function restorePending(values){if(!values)return;Object.keys(values).forEach(function(k){if(!Object.prototype.hasOwnProperty.call(pendingValues,k))pendingValues[k]=values[k];});}\n' +
+            'function clearAutosaveTimer(){if(autosaveTimer){clearTimeout(autosaveTimer);autosaveTimer=null;}}\n' +
+            'function scheduleAutosave(delay){if(!BUFFERED||!initialized)return;clearAutosaveTimer();autosaveTimer=setTimeout(function(){autosaveTimer=null;asyncFlushBuffered();},delay==null?220:delay);}\n' +
+            'function asyncFlushBuffered(){\n' +
+            '  if(!BUFFERED||!initialized||!hasPending())return;\n' +
+            '  if(autosaveInFlight){autosaveAgain=true;return;}\n' +
+            '  var values=pendingValues;pendingValues=Object.create(null);autosaveInFlight=true;\n' +
+            '  fetch(RUNTIME+"/commit",{method:"POST",headers:{"Authorization":"Bearer "+TOKEN,"Content-Type":"application/json"},body:JSON.stringify({values:values}),credentials:"same-origin",cache:"no-store"})\n' +
+            '    .then(function(r){if(!r.ok)throw new Error("commit "+r.status);return r.json();})\n' +
+            '    .then(function(d){lastError.code=d.errorCode!=null?d.errorCode:(d.ok===false?101:0);if(d.ok===false){restorePending(values);return;}if(d.summary&&d.summary.lessonStatus)setStatus("SCORM - "+d.summary.lessonStatus);notifyOpener("quizmoto-scorm-progress",d.summary||null);})\n' +
+            '    .catch(function(){restorePending(values);lastError.code=101;})\n' +
+            '    .finally(function(){autosaveInFlight=false;if(autosaveAgain||hasPending()){autosaveAgain=false;scheduleAutosave(80);}});\n' +
+            '}\n' +
             'function flushBuffered(path){\n' +
+            '  clearAutosaveTimer();autosaveAgain=false;\n' +
             '  var values=pendingValues;pendingValues=Object.create(null);\n' +
             '  var d=syncCall("POST",path,{values:values});\n' +
-            '  if(d.ok===false)restorePending(values);\n' +
+            '  if(d.ok===false)restorePending(values);else notifyOpener("quizmoto-scorm-progress",d.summary||null);\n' +
             '  return d;\n' +
             '}\n' +
             'var ERRORS={0:"No error",101:"General exception",201:"Invalid argument error",301:"Not initialized",351:"Not implemented error",391:"Not initialized error",402:"Invalid set value",403:"Element is read only",404:"Element is write only",405:"Incorrect data type"};\n' +
             'var api12={\n' +
-            '  LMSInitialize:function(p){var d=syncCall("POST",RUNTIME+"/initialize",{});lastError.code=d.errorCode!=null?d.errorCode:(d.ok===false?101:0);initialized=d.ok!==false;if(initialized){pendingValues=Object.create(null);setStatus("SCORM - "+(d.entry==="resume"?"Resumed":"Started"));}return initialized?"true":"false";},\n' +
+            '  LMSInitialize:function(p){var d=syncCall("POST",RUNTIME+"/initialize",{});lastError.code=d.errorCode!=null?d.errorCode:(d.ok===false?101:0);initialized=d.ok!==false;if(initialized){pendingValues=Object.create(null);localValues=Object.create(null);setStatus("SCORM - "+(d.entry==="resume"?"Resumed":"Started"));}return initialized?"true":"false";},\n' +
             '  LMSFinish:function(p){var d=BUFFERED?flushBuffered(RUNTIME+"/finish"):syncCall("POST",RUNTIME+"/finish",{});lastError.code=d.errorCode!=null?d.errorCode:(d.ok===false?101:0);if(d.ok!==false){initialized=false;setStatus("SCORM - "+(d.summary&&d.summary.lessonStatus?d.summary.lessonStatus:"Finished"));}return d.ok===false?"false":"true";},\n' +
-            '  LMSGetValue:function(el){if(BUFFERED&&Object.prototype.hasOwnProperty.call(pendingValues,el)){lastError.code=0;return String(pendingValues[el]);}var d=syncCall("GET",RUNTIME+"/get?el="+encodeURIComponent(el||""));return d.value!=null?String(d.value):"";},\n' +
-            '  LMSSetValue:function(el,v){if(BUFFERED){if(!initialized){lastError.code=301;return "false";}pendingValues[String(el||"")]=v==null?"":String(v);lastError.code=0;return "true";}var d=syncCall("POST",RUNTIME+"/set",{element:el,value:v});return d.ok===false?"false":"true";},\n' +
-            '  LMSCommit:function(p){var d=BUFFERED?flushBuffered(RUNTIME+"/commit"):syncCall("POST",RUNTIME+"/commit",{});if(d.summary&&d.summary.lessonStatus)setStatus("SCORM - "+d.summary.lessonStatus);if(d.summary&&d.summary.scoreRaw!=null)setStatus("SCORM - score "+d.summary.scoreRaw);return d.ok===false?"false":"true";},\n' +
+            '  LMSGetValue:function(el){if(BUFFERED&&Object.prototype.hasOwnProperty.call(localValues,el)){lastError.code=0;return String(localValues[el]);}var d=syncCall("GET",RUNTIME+"/get?el="+encodeURIComponent(el||""));return d.value!=null?String(d.value):"";},\n' +
+            '  LMSSetValue:function(el,v){if(BUFFERED){if(!initialized){lastError.code=301;return "false";}var key=String(el||""),value=v==null?"":String(v);pendingValues[key]=value;localValues[key]=value;lastError.code=0;scheduleAutosave();return "true";}var d=syncCall("POST",RUNTIME+"/set",{element:el,value:v});return d.ok===false?"false":"true";},\n' +
+            '  LMSCommit:function(p){if(BUFFERED){scheduleAutosave(0);lastError.code=0;return "true";}var d=syncCall("POST",RUNTIME+"/commit",{});if(d.summary&&d.summary.lessonStatus)setStatus("SCORM - "+d.summary.lessonStatus);if(d.summary&&d.summary.scoreRaw!=null)setStatus("SCORM - score "+d.summary.scoreRaw);return d.ok===false?"false":"true";},\n' +
             '  LMSGetLastError:function(){return String(lastError.code||0);},\n' +
             '  LMSGetErrorString:function(code){return ERRORS[Number(code)]||"Unknown error";},\n' +
             '  LMSGetDiagnostic:function(code){return api12.LMSGetErrorString(code);}\n' +
@@ -161,10 +177,11 @@ router.get('/:regId', async (req, res) => {
             '  try{window.API.LMSFinish("");}catch(e){}\n' +
             '}\n' +
             'function closePlayer(){\n' +
-            '  try{if(window.opener&&!window.opener.closed){window.opener.postMessage({type:"quizmoto-scorm-exit"},"*");}}catch(e){}\n' +
+            '  try{notifyParentExit();}catch(e){}\n' +
             '  try{window.close();}catch(e){}\n' +
             '  setTimeout(function(){try{window.location.href="about:blank";}catch(e2){}},200);\n' +
             '}\n' +
+            'function notifyParentExit(){try{if(window.opener&&!window.opener.closed){window.opener.postMessage({type:"quizmoto-scorm-exit",registrationId:' + JSON.stringify(String(reg.id)) + '},"*");}}catch(e){}}\n' +
             'document.getElementById("btnSave").onclick=function(){try{window.API.LMSCommit("");}catch(e){}};\n' +
             'document.getElementById("btnExit").onclick=function(){persistAndFinish();closePlayer();};\n' +
             'window.addEventListener("beforeunload",function(){persistAndFinish();});\n' +
