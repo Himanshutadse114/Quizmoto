@@ -9,6 +9,7 @@ const {
     ScormRuntimeSnapshot
 } = require('../../models/scorm');
 const { serializePreviewStats } = require('../../services/scorm/ScormPreviewStatsService');
+const LearningState = require('../../services/scorm/ScormLearningStateService');
 
 router.get('/course/:courseId', auth, async (req, res) => {
     try {
@@ -43,10 +44,20 @@ router.get('/course/:courseId', auth, async (req, res) => {
             });
         }
 
+        // The learner/player shell now persists to scorm_learning_state_v2. The
+        // preview panel historically loaded only the legacy runtime tables, which
+        // left completion/location/status stuck at their old values even though
+        // the new POST /api/scorm/session saves were succeeding.
+        const v2States = await LearningState.listByRegistrationIds([registration.id]);
+        const learningStateV2 = v2States.get(String(registration.id)) || null;
+        const previewRegistration = learningStateV2
+            ? { ...registration.toJSON(), learningStateV2 }
+            : registration;
+
         return res.json({
             available: true,
             courseId: course.id,
-            preview: serializePreviewStats(registration, course)
+            preview: serializePreviewStats(previewRegistration, course)
         });
     } catch (err) {
         console.error('[scorm-preview-stats] load failed', err);
