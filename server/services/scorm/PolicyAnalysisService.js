@@ -1,14 +1,14 @@
 /**
- * Server-side port of policy-to-scorm-engine/geminiService.ts
+ * Server-side policy/PDF/PPT -> visual learning analysis.
  * Gemini API key stays on the server (GEMINI_API_KEY).
  */
 const JSZip = require('jszip');
 const logger = require('../../utils/logger');
 
 const DETAIL_CONFIG = {
-    detailed: { slides: '8-12', screenWords: '35-65' },
-    condensed: { slides: '5-7', screenWords: '28-50' },
-    summary: { slides: '3-4', screenWords: '20-38' }
+    detailed: { slides: '8-12', screenWords: '65-95' },
+    condensed: { slides: '5-7', screenWords: '55-80' },
+    summary: { slides: '3-4', screenWords: '45-70' }
 };
 
 const DEFAULT_MODEL_CANDIDATES = [
@@ -75,18 +75,10 @@ function friendlyGeminiError(status, bodyText, lastModel) {
     if (status === 400 && /api key not valid|invalid api key/i.test(bodyText || '')) {
         return { message: 'Gemini API key is invalid. Create a key in Google AI Studio and set GEMINI_API_KEY on the backend.', code: 'GEMINI_KEY_INVALID' };
     }
-    if (status === 403) {
-        return { message: 'Gemini API rejected the key (403). Check API access and backend key restrictions.', code: 'GEMINI_FORBIDDEN' };
-    }
-    if (status === 404) {
-        return { message: `Gemini model not available (${lastModel || 'unknown'}). Configure a supported Flash model and redeploy.`, code: 'GEMINI_MODEL_NOT_FOUND' };
-    }
-    if (status === 429) {
-        return { message: 'Gemini rate limit / quota exceeded. Wait and retry or review quota.', code: 'GEMINI_QUOTA' };
-    }
-    if (/no longer available/i.test(bodyText || '')) {
-        return { message: 'Gemini model was retired. Configure a current Flash model and redeploy.', code: 'GEMINI_MODEL_RETIRED' };
-    }
+    if (status === 403) return { message: 'Gemini API rejected the key (403). Check API access and backend key restrictions.', code: 'GEMINI_FORBIDDEN' };
+    if (status === 404) return { message: `Gemini model not available (${lastModel || 'unknown'}). Configure a supported Flash model and redeploy.`, code: 'GEMINI_MODEL_NOT_FOUND' };
+    if (status === 429) return { message: 'Gemini rate limit / quota exceeded. Wait and retry or review quota.', code: 'GEMINI_QUOTA' };
+    if (/no longer available/i.test(bodyText || '')) return { message: 'Gemini model was retired. Configure a current Flash model and redeploy.', code: 'GEMINI_MODEL_RETIRED' };
     return { message: `Gemini API error (${status})${lastModel ? ` model=${lastModel}` : ''}`, code: 'GEMINI_API_ERROR' };
 }
 
@@ -113,27 +105,26 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
     }
 
     parts.push({
-        text: `You are a world-class instructional designer, visual storyteller and presentation architect. Transform this source into a ${detailLevel} digital learning experience that feels authored, paced and designed — not like a document automatically chopped into slides.
+        text: `You are a world-class instructional designer, learning storyteller and presentation architect. Transform this source into a ${detailLevel} premium digital learning experience. It must feel authored and worth reading, not like a document automatically chopped into slides.
 
 QUALITY BAR:
-The course should feel closer to a premium AI presentation or modern interactive story than a traditional LMS deck. Every screen must earn its place. Learners should want to continue because the narrative is clear, the visual structure changes naturally, and the copy is concise enough to scan but useful enough to remember.
+Think Articulate Storyline + a polished modern AI presentation. The course must balance meaningful explanation with visual storytelling. Do NOT make screens that contain only a few words. Equally, do not dump dense policy text onto the learner. Every screen should teach one clear idea using a graceful hierarchy: strong title, useful paragraph, visual structure, and concise supporting points.
 
-Build a learning arc, not a list of pages:
-- Start with a strong orientation or hook: why this topic matters to the learner.
-- Move into the core concepts, risks, process or behaviours in a logical sequence.
-- Use concrete practical wording and source-supported examples where available.
-- End major sections with an action, takeaway, decision, checklist or memorable recap.
-- Avoid repeating the same idea using different words.
-- Do not create filler screens just to reach the requested count.
-
-RULES — follow all of these strictly:
+Create a learning arc:
+- Begin with relevance: why the topic matters to the learner.
+- Build concepts in a logical order.
+- Explain practical meaning, not just definitions.
+- Use source-supported examples, consequences and scenarios where available.
+- Turn rules into clear learner behaviour.
+- End important sections with a memorable action, decision or takeaway.
+- Avoid filler and repetition.
 
 1. LEARNING SCREENS (generate ${level.slides} screens):
-   - "title": strong, human, specific title. Prefer a message or idea over a generic topic label. Keep it concise.
-   - "content": approximately ${level.screenWords} words. Write 1–3 short paragraphs or sentences with natural rhythm. No long essay blocks.
-   - "keyPoints": 3–6 compact points, preferably under 12 words each. These must add value rather than repeat the content.
+   - "title": concise, specific, human and meaningful. Prefer a message over a generic topic label.
+   - "content": approximately ${level.screenWords} words. Usually one well-written paragraph, or two short paragraphs when contrast or sequence benefits from it. The paragraph must contain real instructional value: explain what the idea means, why it matters, how it appears in practice, or what the learner should do. Avoid filler.
+   - "keyPoints": exactly 3–5 concise supporting points where possible, preferably under 12 words each. They must add information rather than repeat the paragraph.
    - "layout": choose exactly one of: "process", "cards", "timeline", "comparison", "hub", "spotlight", "matrix", "cycle".
-   - Pick the layout from the meaning of the content:
+   - Match layout to meaning:
        process = steps/workflow/attack flow/how something works
        timeline = stages/phases/journey/sequence over time
        comparison = safe vs unsafe, do vs don't, correct vs risky behaviour
@@ -142,44 +133,44 @@ RULES — follow all of these strictly:
        cards = independent concepts/tips/items
        matrix = likelihood vs impact, severity, prioritisation, risk categories
        cycle = repeating lifecycle, continuous improvement, recurring process
-   - Vary visual rhythm. Do not use the same layout on consecutive screens unless the source genuinely requires it.
-   - "visualTitle": 2–6 words that work as the central label of a diagram, not merely a copy of the screen title.
-   - "interaction": an object with:
-       "type": choose one of "step_explore", "hotspot_explore", "compare_reveal", "focus_reveal" based on the layout,
-       "prompt": a short, purposeful learner instruction, preferably under 12 words.
-   - "imageQuery": keep a short 2–3 word visual keyword for compatibility; the renderer uses deterministic vectors.
+   - Vary the visual rhythm. Do not use the same layout consecutively unless the content requires it.
+   - "visualTitle": 2–6 words suitable for the centre of a diagram.
+   - "interaction": object with "type" from "step_explore", "hotspot_explore", "compare_reveal", "focus_reveal", plus a short purposeful "prompt".
+   - "imageQuery": a short 2–3 word keyword for compatibility.
 
-2. PRESENTATION-QUALITY WRITING:
-   - Give each screen one dominant message that can be understood in a few seconds.
-   - Use sentence case and natural professional language. Avoid bureaucratic wording unless it is a required policy phrase.
-   - Prefer concrete verbs: verify, report, stop, review, protect, compare, escalate, confirm.
-   - Convert dense source material into hierarchy: headline → explanation → visual points.
-   - Never repeat the same sentence in content and keyPoints.
-   - Never create a title such as "Introduction", "Overview", "Key Points", "Conclusion" or "Important Information" unless the source specifically requires it.
-   - Avoid excessive colons, slash-heavy wording, and generic AI phrases such as "In today's digital landscape".
+2. WRITING QUALITY:
+   - Write for an intelligent busy learner. Every paragraph should be smooth, concrete and useful.
+   - Use natural professional language and sentence case.
+   - Prefer concrete verbs: verify, report, protect, confirm, review, stop, compare, escalate.
+   - Explain context and consequence when supported by the source.
+   - Do not write generic AI phrases such as "In today's digital landscape" or "It is important to note".
+   - Never use empty titles such as "Introduction", "Overview", "Key Points" or "Conclusion" unless the source explicitly requires them.
+   - Never repeat a sentence from content inside keyPoints.
+   - Do not invent statistics, dates, penalties, controls, examples or policy requirements.
 
 3. VISUAL STORYTELLING:
-   - Structure points so the selected layout will look balanced and intentional.
-   - For process/timeline/cycle, keyPoints must be in the correct sequence and similar in length.
-   - For comparison, put recommended/safe behaviour first and risky behaviour second; keep both sides parallel in wording.
-   - For hub/cards, use short sibling concepts of similar granularity.
-   - For matrix, use concise labels that can fit clearly into four quadrants.
-   - For spotlight, focus on one memorable action or insight rather than several unrelated points.
-   - At least one third of the screens should invite exploration rather than passive reading.
+   - Each screen gets one dominant visual idea. The visual and paragraph should complement each other, not duplicate each other.
+   - Process/timeline/cycle points must be correctly sequenced and similarly sized.
+   - Comparison points should be parallel: recommended behaviour first, risky behaviour second.
+   - Hub/cards should contain sibling concepts at the same level of detail.
+   - Matrix labels must stay concise enough to fit clearly.
+   - Spotlight screens should focus on one memorable insight.
+   - At least one third of the screens should invite exploration.
 
 4. LEARNER VALUE:
-   - Prioritise what the learner needs to notice, decide or do — not every sentence in the source.
-   - When the source contains examples, scenarios or consequences, use them to make the lesson more concrete.
-   - When a source contains a rule, explain the practical behaviour the learner should follow.
-   - Do not invent facts, statistics, policy requirements, penalties, dates, controls or examples not supported by the source.
+   - Prioritise what the learner needs to understand, notice, decide or do.
+   - If the source contains a definition, explain its practical meaning.
+   - If it contains a rule, explain how the learner should act.
+   - If it contains a risk, explain the consequence or signal when supported.
+   - If it contains an example, use it to make the lesson concrete.
 
 5. QUIZ (generate 5–8 questions):
-   - Test specific, useful knowledge from the source rather than trivia.
-   - Prefer scenario-based or decision-based questions when supported by the source.
-   - Exactly 4 answer options per question.
+   - Test useful knowledge and decisions, not trivia.
+   - Prefer realistic scenario-based questions when supported by the source.
+   - Exactly 4 answer options.
    - Make distractors plausible but clearly distinguishable using the source.
-   - "correctAnswer" is the 0-based index of the correct option.
-   - "explanation": one concise explanation that reinforces the learning point.
+   - "correctAnswer" is the 0-based correct option index.
+   - "explanation": 1–2 concise sentences that reinforce why the answer is correct.
 
 6. OUTPUT must be valid JSON with keys: title, summary, slides, quiz.`
     });
@@ -221,13 +212,11 @@ RULES — follow all of these strictly:
                 e.code = 'GEMINI_BAD_JSON';
                 throw e;
             }
-
             if (!analysis.title || !Array.isArray(analysis.slides) || !Array.isArray(analysis.quiz)) {
                 const e = new Error('Gemini analysis missing required fields (title, slides, quiz)');
                 e.code = 'GEMINI_INCOMPLETE';
                 throw e;
             }
-
             logger.info('scorm_gemini_ok', {
                 module: 'scorm',
                 model,
