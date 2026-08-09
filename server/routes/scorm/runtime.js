@@ -21,6 +21,17 @@ function runtimeHttpCode(err) {
     return 500;
 }
 
+function runtimeFailurePayload(err, value = 'false') {
+    return {
+        message: err?.message || 'SCORM runtime operation failed',
+        errorCode: 101,
+        value,
+        failureKind: err?.name || null,
+        dbCode: err?.original?.code || err?.parent?.code || null,
+        constraint: err?.original?.constraint || err?.parent?.constraint || null
+    };
+}
+
 function logRuntimeFailure(operation, req, err, elements = []) {
     const dbCode = err?.original?.code || err?.parent?.code || null;
     const safeElements = Array.from(new Set((elements || []).filter(Boolean).map(String))).slice(0, 20);
@@ -109,7 +120,7 @@ router.post('/:regId/initialize', async (req, res) => {
         res.json(result);
     } catch (err) {
         logRuntimeFailure('initialize', req, err);
-        res.status(runtimeHttpCode(err)).json({ message: err.message, errorCode: 101 });
+        res.status(runtimeHttpCode(err)).json(runtimeFailurePayload(err, ''));
     }
 });
 
@@ -121,7 +132,7 @@ router.get('/:regId/get', async (req, res) => {
         res.json(result);
     } catch (err) {
         logRuntimeFailure('get', req, err, [element]);
-        res.status(runtimeHttpCode(err)).json({ message: err.message, errorCode: 101, value: '' });
+        res.status(runtimeHttpCode(err)).json(runtimeFailurePayload(err, ''));
     }
 });
 
@@ -139,7 +150,7 @@ router.post('/:regId/set', async (req, res) => {
         res.json(result);
     } catch (err) {
         logRuntimeFailure('set', req, err, elements);
-        res.status(runtimeHttpCode(err)).json({ message: err.message, errorCode: 101, value: 'false' });
+        res.status(runtimeHttpCode(err)).json(runtimeFailurePayload(err));
     }
 });
 
@@ -152,7 +163,7 @@ router.post('/:regId/commit', async (req, res) => {
         res.json(result);
     } catch (err) {
         logRuntimeFailure('commit', req, err, values && typeof values === 'object' ? Object.keys(values) : []);
-        res.status(runtimeHttpCode(err)).json({ message: err.message, errorCode: 101, value: 'false' });
+        res.status(runtimeHttpCode(err)).json(runtimeFailurePayload(err));
     }
 });
 
@@ -165,7 +176,7 @@ router.post('/:regId/finish', async (req, res) => {
         res.json(result);
     } catch (err) {
         logRuntimeFailure('finish', req, err, values && typeof values === 'object' ? Object.keys(values) : []);
-        res.status(runtimeHttpCode(err)).json({ message: err.message, errorCode: 101, value: 'false' });
+        res.status(runtimeHttpCode(err)).json(runtimeFailurePayload(err));
     }
 });
 
