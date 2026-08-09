@@ -96,6 +96,17 @@ function patchTrackingRuntime(html) {
         "writeSessionTime();doLMSCommit();commitTimer=setInterval(function(){if(!completed)commitProgress()},15000)}render();};window.addEventListener('beforeunload'"
     );
 
+    // Restore a suspended Quizmoto course before render() so reopening does not
+    // immediately overwrite the saved lesson_location with screen zero.
+    out = out.replace(
+        "doLMSInitialize();doLMSSetValue('cmi.core.score.min','0');doLMSSetValue('cmi.core.score.max','100');doLMSSetValue('cmi.core.lesson_status','incomplete');",
+        "doLMSInitialize();var savedStatus='';try{var savedLocation=typeof doLMSGetValue==='function'?doLMSGetValue('cmi.core.lesson_location'):'';savedStatus=typeof doLMSGetValue==='function'?doLMSGetValue('cmi.core.lesson_status'):'';if(/^\\d+$/.test(String(savedLocation||'')))currentSlide=Math.max(0,Number(savedLocation))}catch(e){}doLMSSetValue('cmi.core.score.min','0');doLMSSetValue('cmi.core.score.max','100');if(!/^(completed|passed|failed)$/i.test(String(savedStatus||'')))doLMSSetValue('cmi.core.lesson_status','incomplete');"
+    );
+    out = out.replace(
+        "el('finish-btn').addEventListener('click',exitSco);updateNav()}",
+        "el('finish-btn').addEventListener('click',exitSco);var resumeSlides=area.querySelectorAll('.slide');if(currentSlide>0&&currentSlide<resumeSlides.length){resumeSlides[0].classList.remove('active');resumeSlides[currentSlide].classList.add('active')}else if(currentSlide<0||currentSlide>=resumeSlides.length){currentSlide=0}updateNav()}"
+    );
+
     // Persist both the zero-based screen location and a small suspend payload on
     // every navigation action. The location remains SCORM 1.2 compatible and is
     // what Quizmoto uses to derive completion percentage and the last screen.
@@ -152,9 +163,10 @@ async function buildScormPackageZip(rawAnalysis, opts = {}) {
             const content = JSON.parse(await contentFile.async('string'));
             zip.file('content.json', JSON.stringify({
                 ...content,
-                trackingVersion: 3,
+                trackingVersion: 4,
                 progressTracking: 'lesson_location',
                 exitTracking: 'synchronous_suspend_flush',
+                resumeTracking: 'lesson_location_restore',
                 mobileOptimized: true,
                 mobileLayoutVersion: 1
             }, null, 2));
