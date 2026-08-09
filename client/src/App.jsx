@@ -68,14 +68,16 @@ function AppRoutes() {
         <Route path="/player/lobby" element={<PlayerLobby />} />
         <Route path="/player/game" element={<PlayerGame />} />
 
+        {/* Live Quiz keeps its original standalone UI; only the URL path changed. */}
+        <Route path="/scorm/live-quiz" element={<Dashboard />} />
+        <Route path="/scorm/live-quiz/create" element={<CreateQuiz />} />
+        <Route path="/scorm/live-quiz/edit/:id" element={<EditQuiz />} />
+        <Route path="/scorm/live-quiz/reports" element={<Reports />} />
+        <Route path="/scorm/live-quiz/lobby/:pin" element={<Lobby />} />
+        <Route path="/scorm/live-quiz/game/:pin" element={<GameView />} />
+
         <Route path="/scorm" element={<ScormPlatformShell />}>
           <Route index element={<ScormHome />} />
-          <Route path="live-quiz" element={<Dashboard />} />
-          <Route path="live-quiz/create" element={<CreateQuiz />} />
-          <Route path="live-quiz/edit/:id" element={<EditQuiz />} />
-          <Route path="live-quiz/reports" element={<Reports />} />
-          <Route path="live-quiz/lobby/:pin" element={<Lobby />} />
-          <Route path="live-quiz/game/:pin" element={<GameView />} />
           <Route path="courses" element={<ScormCourses />} />
           <Route path="courses/:id" element={<ScormCourseDetail />} />
           <Route path="tracking" element={<ScormTracking />} />
@@ -85,7 +87,7 @@ function AppRoutes() {
           <Route path="reports" element={<ScormReports />} />
         </Route>
 
-        {/* Backwards-compatible host URLs now redirect into SCORM World. */}
+        {/* Preserve old links while redirecting to the new Live Quiz paths. */}
         <Route path="/dashboard" element={<LegacyQuizRedirect kind="dashboard" />} />
         <Route path="/create-quiz" element={<LegacyQuizRedirect kind="create" />} />
         <Route path="/edit-quiz/:id" element={<LegacyQuizRedirect kind="edit" />} />
