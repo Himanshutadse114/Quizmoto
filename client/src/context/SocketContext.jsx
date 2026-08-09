@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
-const SocketContext = createContext();
+const SocketContext = createContext(null);
 
 function readPlayerInfo() {
     try {
@@ -11,11 +11,6 @@ function readPlayerInfo() {
     }
 }
 
-/**
- * Socket.IO creates a new socket id after a transport reconnect and room
- * membership is not retained. Rejoin the active Live Quiz room centrally so
- * every host/player screen gets the same recovery behaviour.
- */
 function rejoinActiveLiveQuiz(socket) {
     const pathname = window.location.pathname || '';
 
@@ -47,30 +42,68 @@ function rejoinActiveLiveQuiz(socket) {
     }
 }
 
+function routeNeedsRealtime(pathname) {
+    const path = String(pathname || '');
+    if (path === '/join' || path === '/join/') return true;
+    if (/^\/host\/(?:lobby|game)\/[^/]+\/?$/.test(path)) return true;
+    if (/^\/player\/(?:lobby|game)\/?$/.test(path)) return true;
+    // Course detail subscribes to SCORM registration updates. Other SCORM pages
+    // use normal HTTP and should not pay for a persistent Socket.IO connection.
+    if (/^\/scorm\/courses\/[^/]+\/?$/.test(path)) return true;
+    return false;
+}
+
 export const SocketProvider = ({ children }) => {
+    const { pathname } = useLocation();
     const [socket, setSocket] = useState(null);
+    const needsRealtime = useMemo(() => routeNeedsRealtime(pathname), [pathname]);
 
     useEffect(() => {
-        const backendUrl = import.meta.env.VITE_BACKEND_URL || window.location.origin;
-        const newSocket = io(backendUrl, {
-            transports: ['websocket', 'polling'],
-            reconnection: true,
-            reconnectionAttempts: Infinity,
-            reconnectionDelay: 400,
-            reconnectionDelayMax: 5000,
-            timeout: 20000,
-            forceNew: false
+        if (!needsRealtime) {
+            setSocket(null);
+            return undefined;
+        }
+
+        let active = true;
+        let newSocket = null;
+        let onConnect = null;
+
+        (async () => {
+            // Keep socket.io-client out of login, authoring and normal SCORM
+            // navigation bundles. It is downloaded only when realtime is needed.
+            const { io } = await import('socket.io-client');
+            if (!active) return;
+
+            const backendUrl = import.meta.env.VITE_BACKEND_URL || window.location.origin;
+            newSocket = io(backendUrl, {
+                transports: ['websocket', 'polling'],
+                reconnection: true,
+                reconnectionAttempts: Infinity,
+                reconnectionDelay: 400,
+                reconnectionDelayMax: 5000,
+                timeout: 20000,
+                forceNew: false
+            });
+
+            onConnect = () => rejoinActiveLiveQuiz(newSocket);
+            newSocket.on('connect', onConnect);
+            if (!active) {
+                try { newSocket.close(); } catch (_) {}
+                return;
+            }
+            setSocket(newSocket);
+        })().catch(() => {
+            if (active) setSocket(null);
         });
 
-        const onConnect = () => rejoinActiveLiveQuiz(newSocket);
-        newSocket.on('connect', onConnect);
-        setSocket(newSocket);
-
         return () => {
-            try { newSocket.off('connect', onConnect); } catch (_) {}
-            try { newSocket.close(); } catch (_) {}
+            active = false;
+            if (newSocket) {
+                try { if (onConnect) newSocket.off('connect', onConnect); } catch (_) {}
+                try { newSocket.close(); } catch (_) {}
+            }
         };
-    }, []);
+    }, [needsRealtime]);
 
     return (
         <SocketContext.Provider value={socket}>
@@ -80,3 +113,4 @@ export const SocketProvider = ({ children }) => {
 };
 
 export const useSocket = () => useContext(SocketContext);
+export { routeNeedsRealtime };
