@@ -55,16 +55,16 @@ router.get('/:regId', async (req, res) => {
         const learnerName = reg.learnerName || 'Learner';
         const courseTitle = reg.course.title || 'SCORM Player';
 
-        // Quizmoto-authored packages use a known CMI surface. SetValue remains a
-        // synchronous in-memory operation, while Commit is persisted asynchronously
-        // so slide/answer interactions never wait on a network round trip.
+        // All hosted SCORM packages use the same in-memory SetValue contract.
+        // Writes are batched to Commit/Finish in the background so imported games
+        // and authored courses never block the UI on one HTTP/DB round trip per CMI write.
         const boot = JSON.stringify({
             token,
             runtimeBase,
             xapiEndpoint,
             learnerName,
             contentSrc,
-            bufferedWrites: pkg.source === 'ai_author'
+            bufferedWrites: true
         });
 
         const html =
