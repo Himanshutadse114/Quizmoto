@@ -41,6 +41,15 @@ describe('SCORM authored interaction responsiveness', () => {
         expect(patched).to.include('quizmoto-mobile-course-css');
     });
 
+    it('merges progress into existing suspend data instead of erasing quiz resume answers', () => {
+        const bridge = contentRouter.authoredRuntimeBridge();
+        expect(bridge).to.include("var raw=doLMSGetValue('cmi.suspend_data')");
+        expect(bridge).to.include('resume.quizmotoSlide=s.index');
+        expect(bridge).to.include('resume.quizmotoProgress=s.progress');
+        expect(bridge).to.include("JSON.stringify(mergedSuspendState(s))");
+        expect(bridge).to.not.include("JSON.stringify({quizmotoSlide:s.index,quizmotoProgress:s.progress})");
+    });
+
     it('does not inject the authored tracking bridge more than once', () => {
         const html = '<html><head></head><body><div class="slide active"></div></body></html>';
         const once = contentRouter.patchAuthoredHtml(html);
