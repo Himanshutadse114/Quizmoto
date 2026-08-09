@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Runtime = require('../../services/scorm/ScormRuntimeService');
 const RuntimeStore = require('../../services/scorm/ScormRuntimeSnapshotStore');
+const { verifyRegistrationToken } = require('../../services/scorm/ScormInviteService');
 const {
     ScormRegistration,
     ScormCourse,
@@ -45,10 +46,70 @@ function logRuntimeFailure(operation, req, err, elements = []) {
 }
 
 async function ensureRuntimeReady() {
-    // The LMS runtime depends only on its fresh snapshot table. The legacy CMI
-    // schema is deliberately not repaired/queried here, so legacy schema drift
-    // cannot block Initialize/Get/Commit/Finish.
+    // The LMS runtime depends only on its isolated snapshot table. The legacy
+    // CMI schema is deliberately not repaired/queried here, so schema drift in
+    // an old table cannot block Initialize/Get/Commit/Finish.
     await RuntimeStore.ensureReady();
+}
+
+/**
+ * Emergency-safe initialization path.
+ *
+ * Attempt history is useful audit metadata, but it must never prevent the LMS
+ * API from starting. Production databases that predate the latest attempt
+ * schema can therefore continue to track learner state while attempt history is
+ * repaired asynchronously in a later deployment.
+ */
+async function initializeWithoutAttemptHistory(regId, token) {
+    const decoded = verifyRegistrationToken(token);
+    if (String(decoded.scormRegId) !== String(regId)) {
+        const err = new Error('Token does not match registration');
+        err.code = 'FORBIDDEN';
+        throw err;
+    }
+
+    const reg = await ScormRegistration.findByPk(regId);
+    if (!reg || reg.status === 'revoked') {
+        const err = new Error('Registration not found or revoked');
+        err.code = 'NOT_FOUND';
+        throw err;
+    }
+
+    const state = await RuntimeStore.load(reg.id);
+    const resume =
+        (state.suspendData && state.suspendData.length > 0) ||
+        (state.lessonStatus &&
+            state.lessonStatus !== 'not attempted' &&
+            state.lessonStatus !== 'completed' &&
+            state.lessonStatus !== 'passed' &&
+            state.lessonStatus !== 'failed');
+
+    state.attemptId = null;
+    state.entry = resume ? 'resume' : 'ab-initio';
+    state.sessionTime = '00:00:00.00';
+    state.initialized = true;
+    await RuntimeStore.save(reg.id, state, { projectLegacy: false });
+
+    if (reg.status === 'invited') {
+        try {
+            reg.status = 'active';
+            await reg.save();
+        } catch (err) {
+            console.warn('[scorm-runtime] fallback registration activation skipped', {
+                registrationId: reg.id,
+                error: err?.message || String(err)
+            });
+        }
+    }
+
+    return {
+        ok: true,
+        value: 'true',
+        errorCode: 0,
+        entry: state.entry,
+        stateVersion: state.stateVersion,
+        attemptHistoryAvailable: false
+    };
 }
 
 async function bootstrapAiAuthorProgress(regId, token) {
@@ -111,7 +172,21 @@ router.post('/:regId/initialize', async (req, res) => {
     try {
         await ensureRuntimeReady();
         const token = bearer(req);
-        const result = await Runtime.initialize(req.params.regId, token);
+        let result;
+        try {
+            result = await Runtime.initialize(req.params.regId, token);
+        } catch (primaryErr) {
+            // Authentication/authorization errors must remain visible. Database
+            // errors in optional attempt-history bookkeeping may use the safe
+            // initialization path instead of taking down the learner session.
+            if (primaryErr?.code === 'FORBIDDEN' || primaryErr?.code === 'NOT_FOUND') throw primaryErr;
+            console.warn('[scorm-runtime] primary initialize failed; using safe runtime initialization', {
+                registrationId: req.params.regId,
+                error: primaryErr?.message || String(primaryErr),
+                dbCode: primaryErr?.original?.code || primaryErr?.parent?.code || null
+            });
+            result = await initializeWithoutAttemptHistory(req.params.regId, token);
+        }
         await bootstrapAiAuthorProgress(req.params.regId, token);
         await emitRegistration(req.params.regId, 'initialize');
         res.json(result);
