@@ -6,9 +6,9 @@ const JSZip = require('jszip');
 const logger = require('../../utils/logger');
 
 const DETAIL_CONFIG = {
-    detailed: { slides: '8-12', screenWords: '45-75' },
-    condensed: { slides: '5-7', screenWords: '30-55' },
-    summary: { slides: '3-4', screenWords: '20-40' }
+    detailed: { slides: '8-12', screenWords: '35-65' },
+    condensed: { slides: '5-7', screenWords: '28-50' },
+    summary: { slides: '3-4', screenWords: '20-38' }
 };
 
 const DEFAULT_MODEL_CANDIDATES = [
@@ -65,8 +65,6 @@ function thinkingLevel() {
 
 function generationConfigForModel(model) {
     const config = { responseMimeType: 'application/json' };
-    // Gemini 3.x accepts thinkingLevel. Older 2.5 fallbacks use a different
-    // thinking-budget API, so do not send a 3.x-only field to them.
     if (/^gemini-3(?:\.|-|$)/i.test(String(model || ''))) {
         config.thinkingConfig = { thinkingLevel: thinkingLevel() };
     }
@@ -115,53 +113,75 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
     }
 
     parts.push({
-        text: `You are an expert instructional designer and visual learning architect. Transform this source into a ${detailLevel}, engaging corporate e-learning module.
+        text: `You are a world-class instructional designer, visual storyteller and presentation architect. Transform this source into a ${detailLevel} digital learning experience that feels authored, paced and designed — not like a document automatically chopped into slides.
 
-The learner should feel they are moving through a professionally designed interactive course, NOT reading a document split into slides.
+QUALITY BAR:
+The course should feel closer to a premium AI presentation or modern interactive story than a traditional LMS deck. Every screen must earn its place. Learners should want to continue because the narrative is clear, the visual structure changes naturally, and the copy is concise enough to scan but useful enough to remember.
+
+Build a learning arc, not a list of pages:
+- Start with a strong orientation or hook: why this topic matters to the learner.
+- Move into the core concepts, risks, process or behaviours in a logical sequence.
+- Use concrete practical wording and source-supported examples where available.
+- End major sections with an action, takeaway, decision, checklist or memorable recap.
+- Avoid repeating the same idea using different words.
+- Do not create filler screens just to reach the requested count.
 
 RULES — follow all of these strictly:
 
-1. SLIDES (generate ${level.slides} learning screens):
-   - "title": clear professional screen title, title case, concise.
-   - "content": concise on-screen explanation, approximately ${level.screenWords} words. Do not write long essay paragraphs.
-   - "keyPoints": 3–6 short learning points, preferably under 14 words each.
+1. LEARNING SCREENS (generate ${level.slides} screens):
+   - "title": strong, human, specific title. Prefer a message or idea over a generic topic label. Keep it concise.
+   - "content": approximately ${level.screenWords} words. Write 1–3 short paragraphs or sentences with natural rhythm. No long essay blocks.
+   - "keyPoints": 3–6 compact points, preferably under 12 words each. These must add value rather than repeat the content.
    - "layout": choose exactly one of: "process", "cards", "timeline", "comparison", "hub", "spotlight", "matrix", "cycle".
-   - Pick the layout based on the meaning of the content:
+   - Pick the layout from the meaning of the content:
        process = steps/workflow/attack flow/how something works
        timeline = stages/phases/journey/sequence over time
-       comparison = safe vs unsafe, do vs don't, correct vs risky behavior
+       comparison = safe vs unsafe, do vs don't, correct vs risky behaviour
        hub = categories/components/pillars/related concepts around one idea
-       spotlight = one critical warning, risk, action, or takeaway
+       spotlight = one critical warning, risk, action, insight or takeaway
        cards = independent concepts/tips/items
        matrix = likelihood vs impact, severity, prioritisation, risk categories
        cycle = repeating lifecycle, continuous improvement, recurring process
-   - Vary layouts throughout the course. Do not use the same layout on consecutive screens unless necessary.
-   - "visualTitle": 2–6 word central label suitable for a diagram or visual.
+   - Vary visual rhythm. Do not use the same layout on consecutive screens unless the source genuinely requires it.
+   - "visualTitle": 2–6 words that work as the central label of a diagram, not merely a copy of the screen title.
    - "interaction": an object with:
        "type": choose one of "step_explore", "hotspot_explore", "compare_reveal", "focus_reveal" based on the layout,
-       "prompt": one short learner instruction, preferably under 14 words.
-   - "imageQuery": retain a short 2–3 word visual keyword for compatibility, but the renderer uses deterministic vectors.
+       "prompt": a short, purposeful learner instruction, preferably under 12 words.
+   - "imageQuery": keep a short 2–3 word visual keyword for compatibility; the renderer uses deterministic vectors.
 
-2. VISUAL WRITING:
-   - Prefer short phrases that can fit inside cards, diagrams, timelines, matrices and process nodes.
-   - Never repeat the same sentence in both content and keyPoints.
-   - Make each screen teach one clear idea.
-   - Where the policy describes a sequence, explicitly structure keyPoints in the correct order.
-   - Where the policy describes contrasting behaviour, put recommended behaviour first and risky behaviour second.
-   - Where the policy describes risk, structure keyPoints from lower concern to higher concern when appropriate.
+2. PRESENTATION-QUALITY WRITING:
+   - Give each screen one dominant message that can be understood in a few seconds.
+   - Use sentence case and natural professional language. Avoid bureaucratic wording unless it is a required policy phrase.
+   - Prefer concrete verbs: verify, report, stop, review, protect, compare, escalate, confirm.
+   - Convert dense source material into hierarchy: headline → explanation → visual points.
+   - Never repeat the same sentence in content and keyPoints.
+   - Never create a title such as "Introduction", "Overview", "Key Points", "Conclusion" or "Important Information" unless the source specifically requires it.
+   - Avoid excessive colons, slash-heavy wording, and generic AI phrases such as "In today's digital landscape".
 
-3. ENGAGEMENT:
-   - At least one third of the learning screens should naturally invite exploration rather than passive reading.
-   - Do not invent facts, statistics, policy requirements, penalties, dates, or controls that are not supported by the source.
-   - Interactions are for exploration only unless the source clearly supports a right/wrong decision.
+3. VISUAL STORYTELLING:
+   - Structure points so the selected layout will look balanced and intentional.
+   - For process/timeline/cycle, keyPoints must be in the correct sequence and similar in length.
+   - For comparison, put recommended/safe behaviour first and risky behaviour second; keep both sides parallel in wording.
+   - For hub/cards, use short sibling concepts of similar granularity.
+   - For matrix, use concise labels that can fit clearly into four quadrants.
+   - For spotlight, focus on one memorable action or insight rather than several unrelated points.
+   - At least one third of the screens should invite exploration rather than passive reading.
 
-4. QUIZ (generate 5–8 questions):
-   - Test specific knowledge from the source.
-   - 4 answer options per question.
+4. LEARNER VALUE:
+   - Prioritise what the learner needs to notice, decide or do — not every sentence in the source.
+   - When the source contains examples, scenarios or consequences, use them to make the lesson more concrete.
+   - When a source contains a rule, explain the practical behaviour the learner should follow.
+   - Do not invent facts, statistics, policy requirements, penalties, dates, controls or examples not supported by the source.
+
+5. QUIZ (generate 5–8 questions):
+   - Test specific, useful knowledge from the source rather than trivia.
+   - Prefer scenario-based or decision-based questions when supported by the source.
+   - Exactly 4 answer options per question.
+   - Make distractors plausible but clearly distinguishable using the source.
    - "correctAnswer" is the 0-based index of the correct option.
-   - "explanation": one concise explanation of why the correct answer is right.
+   - "explanation": one concise explanation that reinforces the learning point.
 
-5. OUTPUT must be valid JSON with keys: title, summary, slides, quiz.`
+6. OUTPUT must be valid JSON with keys: title, summary, slides, quiz.`
     });
 
     const candidates = modelCandidates();
