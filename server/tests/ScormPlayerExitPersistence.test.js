@@ -27,10 +27,11 @@ describe('SCORM player local-first persistence', () => {
         expect(source).to.include('.finally(loadContent)');
         expect(source).to.include('frame.src=BOOT.contentSrc');
         expect(source).to.include('installDefaults(!!(d&&d.resume))');
+        expect(source).to.include('revision=Math.max(0,Number(d&&d.clientRevision||0))');
     });
 
-    it('persists a full state document asynchronously', () => {
-        expect(source).to.include('clientVersion:2,values:localValues');
+    it('persists a full versioned state document asynchronously', () => {
+        expect(source).to.include('clientVersion:2,clientRevision:revision,values:localValues');
         expect(source).to.include('fetch(SESSION,{method:"POST"');
         expect(source).to.include('scheduleSave(900,"autosave")');
         expect(source).to.include('setInterval(function(){if(dirty&&!saveInFlight)persist("heartbeat",false);},5000)');
