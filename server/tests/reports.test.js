@@ -7,8 +7,8 @@ const path = require('path');
 const xlsx = require('xlsx');
 
 const { sequelize } = require('../config/database');
-const { Quiz, Question } = require('../models/Quiz');
-const { GameSession, Player, PlayerAnswer } = require('../models/GameSession');
+const { Quiz } = require('../models/Quiz');
+const { GameSession, Player } = require('../models/GameSession');
 const User = require('../models/User');
 
 let app;
@@ -23,7 +23,7 @@ let tempDir;
 const quizzesRouter = require('../routes/quizzes');
 
 describe('Reports API (/api/quizzes/reports)', function () {
-    this.timeout(20000); // Allow python script to run
+    this.timeout(20000);
 
     before(async () => {
         const { connectDB } = require('../config/database');
@@ -31,7 +31,7 @@ describe('Reports API (/api/quizzes/reports)', function () {
         app = express();
         app.use(express.json());
         app.use('/api/quizzes', quizzesRouter);
-        app.get('/health', (req, res) => res.status(200).json({ status: 'ok' })); // Mocking the index.js health for isolated test
+        app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
 
         await sequelize.sync({ force: true });
 
@@ -56,7 +56,7 @@ describe('Reports API (/api/quizzes/reports)', function () {
             analytics: JSON.stringify({ avgScore: 100 })
         });
         sessionId = session.id;
-        
+
         await Player.create({
             sessionId,
             nickname: 'ReportPlayer',
@@ -88,12 +88,11 @@ describe('Reports API (/api/quizzes/reports)', function () {
                 .get(`/api/quizzes/reports/${sessionId}/export?format=pdf`)
                 .set('Authorization', `Bearer ${hostToken}`)
                 .set('x-test-run-id', testRunId);
-            
+
             expect(res.status).to.equal(200);
             expect(res.headers['content-type']).to.include('application/pdf');
             expect(res.body.toString('ascii').startsWith('%PDF-')).to.be.true;
 
-            // Wait briefly to allow async cleanup to finish in quizzes.js download callback
             await new Promise(r => setTimeout(r, 500));
             expect(fs.readdirSync(tempDir)).to.be.empty;
         });
@@ -104,17 +103,14 @@ describe('Reports API (/api/quizzes/reports)', function () {
                 .set('Authorization', `Bearer ${hostToken}`)
                 .set('x-test-run-id', testRunId)
                 .responseType('blob');
-            
+
             expect(res.status).to.equal(200);
             expect(res.headers['content-type']).to.include('spreadsheetml');
             expect(res.body.toString('ascii').startsWith('PK')).to.be.true;
 
-            // Validate using xlsx
             const workbook = xlsx.read(res.body, { type: 'buffer' });
             expect(workbook.SheetNames).to.be.an('array').that.is.not.empty;
-            
-            // Checking actual content based on what generate_report.py does.
-            // It typically generates 'Overview', 'Players' etc. Let's check for 'Players'
+
             const hasPlayers = workbook.SheetNames.includes('Players');
             if (hasPlayers) {
                 const sheet = workbook.Sheets['Players'];
@@ -122,7 +118,6 @@ describe('Reports API (/api/quizzes/reports)', function () {
                 expect(json.length).to.be.greaterThan(0);
                 expect(JSON.stringify(json)).to.include('ReportPlayer');
             } else {
-                // If it generates generic sheets, just check that at least one sheet has data.
                 const firstSheetName = workbook.SheetNames[0];
                 const sheet = workbook.Sheets[firstSheetName];
                 const json = xlsx.utils.sheet_to_json(sheet);
@@ -132,39 +127,37 @@ describe('Reports API (/api/quizzes/reports)', function () {
             await new Promise(r => setTimeout(r, 500));
             expect(fs.readdirSync(tempDir)).to.be.empty;
         });
-        
-        it('should gracefully handle Python dependency failure without crashing Node and clear files', async () => {
+
+        it('falls back to Node when Python is unavailable without crashing the API', async () => {
             process.env.TEST_PYTHON_FAIL = '1';
-            
+
             const res = await request(app)
                 .get(`/api/quizzes/reports/${sessionId}/export?format=pdf`)
                 .set('Authorization', `Bearer ${hostToken}`)
                 .set('x-test-run-id', testRunId);
-            
-            delete process.env.TEST_PYTHON_FAIL;
-            
-            expect(res.status).to.equal(500);
-            expect(res.body.message).to.equal('Report generation failed');
 
-            // Hit health endpoint to prove Node is alive
+            delete process.env.TEST_PYTHON_FAIL;
+
+            expect(res.status).to.equal(200);
+            expect(res.headers['content-type']).to.include('application/pdf');
+            expect(res.body.toString('ascii').startsWith('%PDF-')).to.be.true;
+
             const healthRes = await request(app).get('/health');
             expect(healthRes.status).to.equal(200);
 
-            // Prove we can still make API requests
             const nextRes = await request(app)
                 .get('/api/quizzes/reports/all')
                 .set('Authorization', `Bearer ${hostToken}`);
             expect(nextRes.status).to.equal(200);
 
-            // Assert cleanup happened even on failure
             await new Promise(r => setTimeout(r, 500));
             expect(fs.readdirSync(tempDir)).to.be.empty;
         });
     });
 
     after(() => {
-        if (fs.existsSync(tempDir)) {
-            fs.rmSync(tempDir, { recursive: true, force: true });
-        }
+        delete process.env.TEST_PYTHON_FAIL;
+        delete process.env.TEST_TEMP_DIR_ROOT;
+        if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
     });
 });
