@@ -162,7 +162,7 @@ const startServer = async () => {
         const socketHandlers = require('./services/socketHandlers');
         socketHandlers(io);
 
-        // SCORM World live roster (Wave 2)
+        // SCORM World live roster
         try {
             const ScormRealtime = require('./services/scorm/ScormRealtime');
             ScormRealtime.setIO(io);
@@ -170,9 +170,11 @@ const startServer = async () => {
             logger.warn('scorm_realtime_init_failed', { module: 'scorm', error: e.message });
         }
 
-        // SCORM Wave 2: live roster rooms + commit/finish emit (non-invasive hooks)
+        // SCORM admin tracking rooms. Runtime commit/finish events are emitted by
+        // routes/scorm/runtime.js itself. Do not monkey-patch Runtime.commit here:
+        // the previous two-argument wrapper silently discarded the third
+        // buffered `values` argument containing location, score and interactions.
         try {
-            const ScormRealtime = require('./services/scorm/ScormRealtime');
             const jwt = require('jsonwebtoken');
             const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
             io.on('connection', (socket) => {
@@ -197,45 +199,6 @@ const startServer = async () => {
                     } catch (_) {}
                 });
             });
-
-            const Runtime = require('./services/scorm/ScormRuntimeService');
-            const { ScormRegistration } = require('./models/scorm');
-            const wrapEmit = (fn, eventName) => async (regId, token) => {
-                const result = await fn(regId, token);
-                if (result && result.ok) {
-                    try {
-                        const reg = await ScormRegistration.findByPk(regId);
-                        // QA preview commits are intentionally isolated from the
-                        // operational learner roster and realtime learner UI.
-                        if (reg && reg.courseId && !reg.isPreview) {
-                            ScormRealtime.emitRegistrationUpdate({
-                                courseId: reg.courseId,
-                                event: eventName,
-                                registration: {
-                                    id: reg.id,
-                                    courseId: reg.courseId,
-                                    learnerName: reg.learnerName,
-                                    learnerEmail: reg.learnerEmail,
-                                    status: reg.status,
-                                    lastLessonStatus: reg.lastLessonStatus,
-                                    lastScoreRaw: reg.lastScoreRaw,
-                                    lastTotalTime: reg.lastTotalTime,
-                                    lastCommitAt: reg.lastCommitAt,
-                                    isPreview: false,
-                                    updatedAt: reg.updatedAt || reg.lastCommitAt || new Date()
-                                }
-                            });
-                        }
-                    } catch (_) {}
-                }
-                return result;
-            };
-            if (typeof Runtime.commit === 'function') {
-                Runtime.commit = wrapEmit(Runtime.commit.bind(Runtime), 'commit');
-            }
-            if (typeof Runtime.finish === 'function') {
-                Runtime.finish = wrapEmit(Runtime.finish.bind(Runtime), 'finish');
-            }
         } catch (e) {
             logger.warn('scorm_wave2_hooks_failed', { module: 'scorm', error: e.message });
         }
