@@ -3,7 +3,8 @@ const {
     deriveProgress,
     locationLabel,
     serializeRegistration,
-    authoredPartCount
+    authoredPartCount,
+    packageAnalysis
 } = require('../services/scorm/ScormProgressService');
 
 function packageRow(overrides = {}) {
@@ -27,7 +28,6 @@ function packageRow(overrides = {}) {
 describe('ScormProgressService', () => {
     it('calculates authored module progress from the saved lesson location', () => {
         const pkg = packageRow();
-        // intro + 3 slides + 2 quiz + final = 7 parts; location 3 = 50%.
         expect(authoredPartCount(pkg)).to.equal(7);
         expect(deriveProgress({
             registration: { status: 'active' },
@@ -70,26 +70,10 @@ describe('ScormProgressService', () => {
 
     it('maps authored lesson locations to meaningful screen labels', () => {
         const pkg = packageRow();
-        expect(locationLabel({
-            registration: { status: 'active' },
-            cmiState: { lessonLocation: '0' },
-            packageRow: pkg
-        })).to.equal('Introduction');
-        expect(locationLabel({
-            registration: { status: 'active' },
-            cmiState: { lessonLocation: '2' },
-            packageRow: pkg
-        })).to.equal('Verify the message');
-        expect(locationLabel({
-            registration: { status: 'active' },
-            cmiState: { lessonLocation: '4' },
-            packageRow: pkg
-        })).to.equal('Knowledge check 1');
-        expect(locationLabel({
-            registration: { status: 'active' },
-            cmiState: { lessonLocation: '6' },
-            packageRow: pkg
-        })).to.equal('Completion screen');
+        expect(locationLabel({ registration: { status: 'active' }, cmiState: { lessonLocation: '0' }, packageRow: pkg })).to.equal('Introduction');
+        expect(locationLabel({ registration: { status: 'active' }, cmiState: { lessonLocation: '2' }, packageRow: pkg })).to.equal('Verify the message');
+        expect(locationLabel({ registration: { status: 'active' }, cmiState: { lessonLocation: '4' }, packageRow: pkg })).to.equal('Knowledge check 1');
+        expect(locationLabel({ registration: { status: 'active' }, cmiState: { lessonLocation: '6' }, packageRow: pkg })).to.equal('Completion screen');
     });
 
     it('serializes availability separately from progress value', () => {
@@ -113,5 +97,40 @@ describe('ScormProgressService', () => {
         expect(row.progressAvailable).to.equal(false);
         expect(row.lastLocation).to.equal('external-page');
         expect(row.stateVersion).to.equal(4);
+    });
+
+    it('does not serialize the entire course association for every learner row', () => {
+        let courseToJsonCalls = 0;
+        const pkg = packageRow();
+        const course = {
+            title: 'Large roster course',
+            status: 'published',
+            inviteCode: 'LARGE1',
+            package: pkg,
+            registrations: new Array(500).fill({ id: 'unused' }),
+            toJSON() {
+                courseToJsonCalls += 1;
+                throw new Error('course.toJSON should not be called by row serialization');
+            }
+        };
+
+        const row = serializeRegistration({
+            id: 'reg-fast',
+            status: 'active',
+            cmiState: { lessonStatus: 'incomplete', lessonLocation: '2', rawMapJson: '{}' }
+        }, course);
+
+        expect(courseToJsonCalls).to.equal(0);
+        expect(row.courseTitle).to.equal('Large roster course');
+        expect(row.progressPercent).to.be.a('number');
+    });
+
+    it('reuses parsed package analysis while the package payload is unchanged', () => {
+        const pkg = packageRow();
+        const first = packageAnalysis(pkg);
+        const second = packageAnalysis(pkg);
+        expect(second).to.equal(first);
+        pkg.analysisJson = JSON.stringify({ slides: [{ title: 'Changed' }], quiz: [] });
+        expect(packageAnalysis(pkg)).to.not.equal(first);
     });
 });
