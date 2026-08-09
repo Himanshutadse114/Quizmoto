@@ -3,7 +3,6 @@ const { buildScormPackageZip: buildVisualPackage } = require('./ScormVisualPacka
 const { generateVisualAssets } = require('./ScormVisualAssetService');
 
 const LAYOUTS = ['process', 'cards', 'timeline', 'comparison', 'hub', 'spotlight', 'matrix', 'cycle'];
-const WIDE_LAYOUTS = new Set(['process', 'timeline', 'comparison', 'matrix', 'cycle']);
 
 function inferLayout(slide, index) {
     const explicit = String(slide?.layout || slide?.slideType || '').trim().toLowerCase();
@@ -23,13 +22,13 @@ function interactionFor(slide, layout) {
     const explicit = slide?.interaction && typeof slide.interaction === 'object' ? { ...slide.interaction } : null;
     if (explicit?.type) return explicit;
     if (layout === 'process' || layout === 'timeline' || layout === 'cycle') {
-        return { type: 'step_explore', prompt: 'Explore each stage to reinforce the sequence.' };
+        return { type: 'step_explore', prompt: 'Explore each stage, then continue when the sequence is clear.' };
     }
     if (layout === 'hub' || layout === 'cards' || layout === 'matrix') {
-        return { type: 'hotspot_explore', prompt: 'Explore the learning points before continuing.' };
+        return { type: 'hotspot_explore', prompt: 'Explore each point to connect the visual with the lesson.' };
     }
     if (layout === 'comparison') {
-        return { type: 'compare_reveal', prompt: 'Compare the recommended and risky behaviours.' };
+        return { type: 'compare_reveal', prompt: 'Compare both sides before moving on.' };
     }
     return { type: 'focus_reveal', prompt: 'Review the key idea before continuing.' };
 }
@@ -39,7 +38,7 @@ function enrichAnalysis(raw) {
     const slides = Array.isArray(analysis.slides) ? analysis.slides : [];
     return {
         ...analysis,
-        experienceVersion: 5,
+        experienceVersion: 6,
         slides: slides.map((slide, index) => {
             const item = slide && typeof slide === 'object' ? slide : {};
             const layout = inferLayout(item, index);
@@ -55,31 +54,32 @@ function enrichAnalysis(raw) {
 
 function injectExperienceCss(html) {
     const css = `
-<style id="quizmoto-experience-v5">
-.qmx-stage{width:min(1320px,100%);height:100%;max-height:700px;margin:auto;display:flex;align-items:center;justify-content:center;min-height:0}
-.qmx-scene{position:relative;width:100%;height:100%;min-height:0;overflow:hidden;border:1px solid var(--line);border-radius:28px;background:var(--surface,#fff);display:grid;grid-template-columns:minmax(330px,.8fr) minmax(0,1.2fr);grid-template-rows:minmax(0,1fr) auto;box-shadow:0 20px 60px rgba(19,24,38,.06)}
-.qmx-scene.qmx-wide{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto}
-.qmx-copy{position:relative;z-index:2;padding:clamp(30px,3.4vw,52px);display:flex;flex-direction:column;justify-content:center;min-width:0;overflow:auto;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;scrollbar-width:thin}
-.qmx-wide .qmx-copy{padding:clamp(22px,2.4vw,34px) clamp(30px,3.8vw,58px) 16px;display:grid;grid-template-columns:minmax(250px,.72fr) minmax(420px,1.28fr);column-gap:clamp(30px,4vw,68px);row-gap:6px;align-items:end;overflow:visible}
-.qmx-kicker{font-size:10px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:var(--primary);margin-bottom:11px}
-.qmx-copy h2{font-size:clamp(32px,3.15vw,51px);line-height:1.01;letter-spacing:-.048em;margin:0 0 17px;color:var(--text,#111);max-width:15ch}
-.qmx-copy-body{display:grid;gap:10px;max-width:62ch}.qmx-copy-body p{font-size:clamp(14px,1.12vw,17px);line-height:1.66;color:var(--muted,#66706a);margin:0}
-.qmx-wide .qmx-kicker,.qmx-wide .qmx-copy h2{grid-column:1}.qmx-wide .qmx-copy h2{max-width:13ch;margin-bottom:0}.qmx-wide .qmx-copy-body{grid-column:2;grid-row:1 / span 2;align-self:end;max-width:74ch}
-.qmx-visual{position:relative;min-width:0;min-height:0;height:100%;padding:clamp(26px,3vw,44px);display:flex;align-items:center;justify-content:center;overflow:hidden;background:linear-gradient(145deg,var(--soft,#eef2ec),color-mix(in srgb,var(--soft,#eef2ec) 54%,white));border:0!important;border-left:1px solid var(--line)!important;border-radius:0!important;box-shadow:none!important}
-.qmx-wide .qmx-visual{border-left:0!important;border-top:1px solid var(--line)!important;padding:clamp(16px,2vw,28px) clamp(38px,4.5vw,72px)}
-.qmx-visual img,.qmx-visual svg{display:block;width:auto!important;height:auto!important;max-width:88%!important;max-height:84%!important;object-fit:contain!important;transform:none!important;transform-origin:center!important;filter:none!important;margin:auto!important}
-.qmx-wide .qmx-visual img,.qmx-wide .qmx-visual svg{max-width:90%!important;max-height:88%!important}
-.qmx-badge{position:absolute;right:18px;top:18px;background:rgba(255,255,255,.9);border:1px solid var(--line);color:var(--primary-dark);padding:7px 10px;border-radius:999px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.09em;z-index:3;backdrop-filter:blur(10px)}
+<style id="quizmoto-experience-v6">
+.qmx-stage{width:min(1360px,100%);height:100%;max-height:720px;margin:auto;display:flex;align-items:center;justify-content:center;min-height:0}
+.qmx-scene{position:relative;width:100%;height:100%;min-height:0;overflow:hidden;background:transparent;display:grid;grid-template-columns:minmax(360px,.9fr) minmax(0,1.1fr);grid-template-rows:minmax(0,1fr);gap:clamp(26px,3vw,46px);align-items:stretch}
+.qmx-scene.qmx-wide{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);gap:clamp(18px,2.2vw,28px)}
+.qmx-copy{position:relative;z-index:2;padding:clamp(18px,1.5vw,24px) clamp(4px,.6vw,10px);display:flex;flex-direction:column;justify-content:center;min-width:0;overflow:auto;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;scrollbar-width:thin}
+.qmx-wide .qmx-copy{padding:0 clamp(10px,1.8vw,26px);display:grid;grid-template-columns:minmax(260px,.78fr) minmax(430px,1.22fr);column-gap:clamp(34px,5vw,82px);row-gap:8px;align-items:end;overflow:visible}
+.qmx-kicker{font-size:11px;font-weight:900;letter-spacing:.15em;text-transform:uppercase;color:var(--primary);margin-bottom:12px}
+.qmx-copy h2{font-size:clamp(34px,3.35vw,55px);line-height:1.02;letter-spacing:-.045em;margin:0 0 20px;color:var(--text,#171923);max-width:16ch;font-weight:900}
+.qmx-copy-body{display:grid;gap:12px;max-width:60ch}.qmx-copy-body p{font-size:clamp(15px,1.18vw,18px);line-height:1.72;color:var(--muted,#5e6472);margin:0;font-weight:500}
+.qmx-wide .qmx-kicker,.qmx-wide .qmx-copy h2{grid-column:1}.qmx-wide .qmx-copy h2{max-width:14ch;margin-bottom:0}.qmx-wide .qmx-copy-body{grid-column:2;grid-row:1 / span 2;align-self:end;max-width:76ch}
+.qmx-visual{position:relative;min-width:0;min-height:0;height:100%;padding:clamp(24px,2.8vw,42px);display:flex;align-items:center;justify-content:center;overflow:hidden;background:linear-gradient(145deg,#F2F1FF 0%,#F8F8FD 54%,#EEEDFF 100%);border:1px solid var(--line)!important;border-radius:30px!important;box-shadow:0 18px 56px rgba(38,36,89,.07)!important}
+.qmx-wide .qmx-visual{padding:clamp(18px,2.4vw,34px) clamp(30px,4.5vw,74px);min-height:0}
+.qmx-visual img,.qmx-visual svg{display:block;width:auto!important;height:auto!important;max-width:92%!important;max-height:88%!important;object-fit:contain!important;transform:none!important;transform-origin:center!important;filter:none!important;margin:auto!important}
+.qmx-wide .qmx-visual img,.qmx-wide .qmx-visual svg{max-width:94%!important;max-height:90%!important}
+.qmx-badge{position:absolute;right:18px;top:18px;background:rgba(255,255,255,.92);border:1px solid rgba(79,70,229,.14);color:var(--primary-dark);padding:8px 11px;border-radius:999px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.09em;z-index:3;backdrop-filter:blur(10px)}
 .qmx-fallback{padding:30px;text-align:center;color:var(--muted);font-size:13px}
-.qmx-interaction{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 18px;align-items:center;padding:14px clamp(22px,2.8vw,40px) 16px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--surface,#fff) 96%,var(--soft,#eef2ec));z-index:4}
-.qmx-points{display:flex;flex-wrap:wrap;gap:8px;min-width:0}.qmx-point{appearance:none;border:1px solid color-mix(in srgb,var(--text,#111) 16%,transparent);background:var(--surface,#fff);color:var(--muted,#66706a);border-radius:999px;padding:8px 12px;font-size:10.5px;font-weight:800;cursor:pointer;transition:.18s;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}.qmx-point:hover,.qmx-point.active{border-color:var(--primary);background:var(--accent);color:var(--primary-dark);transform:translateY(-1px)}
-.qmx-count{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);white-space:nowrap}
-.qmx-detail{grid-column:1/-1;padding:10px 13px;border-radius:12px;background:color-mix(in srgb,var(--accent) 46%,white);border-left:4px solid var(--primary);font-size:12px;line-height:1.48;font-weight:700;color:var(--primary-dark);min-height:38px}
-.qmx-prompt{grid-column:1/-1;font-size:10px;color:var(--muted);font-weight:700;margin-top:-2px}
-.qmx-enter{animation:qmxIn .42s ease both}@keyframes qmxIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
-@media(max-width:1080px){.qmx-scene:not(.qmx-wide){grid-template-columns:minmax(300px,.9fr) minmax(0,1.1fr)}.qmx-copy{padding:28px}.qmx-copy h2{font-size:clamp(29px,4vw,43px)}}
-@media(max-width:900px){.qmx-stage{height:auto;max-height:none}.qmx-scene,.qmx-scene.qmx-wide{height:auto;grid-template-columns:1fr;grid-template-rows:auto minmax(300px,42vh) auto}.qmx-copy,.qmx-wide .qmx-copy{display:block;padding:24px;overflow:visible}.qmx-copy h2,.qmx-wide .qmx-copy h2{max-width:18ch;margin-bottom:13px}.qmx-wide .qmx-copy-body{max-width:66ch}.qmx-visual,.qmx-wide .qmx-visual{border-left:0!important;border-top:1px solid var(--line)!important;min-height:300px;height:min(42vh,430px);padding:20px}.qmx-visual img,.qmx-visual svg,.qmx-wide .qmx-visual img,.qmx-wide .qmx-visual svg{max-width:90%!important;max-height:88%!important}}
-@media(max-width:680px){.qmx-scene,.qmx-scene.qmx-wide{border-radius:18px;grid-template-rows:auto minmax(245px,34vh) auto}.qmx-copy,.qmx-wide .qmx-copy{padding:18px}.qmx-copy h2,.qmx-wide .qmx-copy h2{font-size:27px;line-height:1.03;margin-bottom:10px}.qmx-copy-body{gap:8px}.qmx-copy-body p{font-size:13px;line-height:1.55}.qmx-visual,.qmx-wide .qmx-visual{min-height:245px;height:min(34vh,315px);padding:12px}.qmx-visual img,.qmx-visual svg,.qmx-wide .qmx-visual img,.qmx-wide .qmx-visual svg{max-width:92%!important;max-height:90%!important}.qmx-interaction{padding:11px 13px 12px;grid-template-columns:1fr}.qmx-count{display:none}.qmx-point{max-width:100%;font-size:10px}.qmx-detail{font-size:11px}.qmx-badge{right:10px;top:10px}}
+.qmx-explore{grid-column:1/-1;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+.qmx-wide .qmx-explore{margin-top:0;padding:14px clamp(10px,1.8vw,26px) 0;border-top:0}
+.qmx-explore-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.qmx-explore-title{font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--primary)}.qmx-count{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);white-space:nowrap}
+.qmx-points{display:flex;flex-wrap:wrap;gap:8px;min-width:0}.qmx-point{appearance:none;border:1px solid rgba(79,70,229,.15);background:#fff;color:#555B69;border-radius:12px;padding:9px 12px;font-size:10.5px;font-weight:800;cursor:pointer;transition:.18s;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;box-shadow:0 3px 12px rgba(38,36,89,.035)}.qmx-point:hover,.qmx-point.active{border-color:var(--primary);background:var(--primary);color:#fff;transform:translateY(-1px)}
+.qmx-detail{margin-top:10px;padding:12px 14px;border-radius:14px;background:rgba(221,217,255,.48);border:1px solid rgba(79,70,229,.12);font-size:12px;line-height:1.5;font-weight:700;color:var(--primary-dark);min-height:40px}.qmx-prompt{font-size:10px;color:var(--muted);font-weight:700;margin-top:8px}
+.qmx-wide .qmx-explore{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px}.qmx-wide .qmx-explore-head{grid-column:1/-1}.qmx-wide .qmx-points{grid-column:1}.qmx-wide .qmx-detail{grid-column:1/-1}.qmx-wide .qmx-prompt{grid-column:1/-1}
+.qmx-enter{animation:qmxIn .42s ease both}@keyframes qmxIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media(max-width:1080px){.qmx-scene:not(.qmx-wide){grid-template-columns:minmax(310px,.94fr) minmax(0,1.06fr);gap:26px}.qmx-copy h2{font-size:clamp(31px,4vw,46px)}}
+@media(max-width:900px){.qmx-stage{height:auto;max-height:none}.qmx-scene,.qmx-scene.qmx-wide{height:auto;grid-template-columns:1fr;grid-template-rows:auto minmax(300px,42vh);gap:18px}.qmx-copy,.qmx-wide .qmx-copy{display:block;padding:8px 4px;overflow:visible}.qmx-copy h2,.qmx-wide .qmx-copy h2{max-width:20ch;margin-bottom:14px}.qmx-wide .qmx-copy-body{max-width:68ch}.qmx-visual,.qmx-wide .qmx-visual{min-height:300px;height:min(42vh,440px);padding:20px;border-radius:24px!important}.qmx-visual img,.qmx-visual svg,.qmx-wide .qmx-visual img,.qmx-wide .qmx-visual svg{max-width:92%!important;max-height:90%!important}.qmx-explore,.qmx-wide .qmx-explore{padding:14px 4px 0;margin-top:0;border-top:0}}
+@media(max-width:680px){.qmx-scene,.qmx-scene.qmx-wide{grid-template-rows:auto minmax(245px,34vh);gap:12px}.qmx-copy,.qmx-wide .qmx-copy{padding:4px 2px}.qmx-copy h2,.qmx-wide .qmx-copy h2{font-size:28px;line-height:1.04;margin-bottom:11px}.qmx-copy-body{gap:8px}.qmx-copy-body p{font-size:13.5px;line-height:1.6}.qmx-visual,.qmx-wide .qmx-visual{min-height:245px;height:min(34vh,320px);padding:12px;border-radius:18px!important}.qmx-visual img,.qmx-visual svg,.qmx-wide .qmx-visual img,.qmx-wide .qmx-visual svg{max-width:94%!important;max-height:92%!important}.qmx-count{display:none}.qmx-point{max-width:100%;font-size:10px;padding:8px 10px}.qmx-detail{font-size:11px}.qmx-badge{right:10px;top:10px}.qmx-explore,.qmx-wide .qmx-explore{padding-top:10px}}
 @media(prefers-reduced-motion:reduce){.qmx-enter{animation:none}.qmx-point{transition:none}}
 </style>`;
     return html.replace('</head>', `${css}\n</head>`);
@@ -87,7 +87,7 @@ function injectExperienceCss(html) {
 
 function experienceScript() {
     return `
-<script id="quizmoto-experience-v5-script">
+<script id="quizmoto-experience-v6-script">
 (function(){
   function esc(s){var M={'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'};return String(s||'').replace(/[<>&"']/g,function(c){return M[c]||c})}
   function points(s){var a=Array.isArray(s.keyPoints)?s.keyPoints.filter(Boolean):[];if(!a.length&&s.content)a=[s.content];return a.slice(0,5)}
@@ -95,13 +95,14 @@ function experienceScript() {
   function splitParagraphs(value){
     var text=String(value||'').trim();if(!text)return [];
     var natural=text.split(/\n\s*\n/).map(function(x){return x.trim()}).filter(Boolean);if(natural.length>1)return natural.slice(0,3);
-    var words=text.split(/\s+/);if(words.length<72)return [text];
-    var sentences=text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[text];if(sentences.length<3)return [text];
-    var target=Math.ceil(sentences.length/2);return [sentences.slice(0,target).join(' ').trim(),sentences.slice(target).join(' ').trim()].filter(Boolean);
+    var sentences=text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[text];
+    var words=text.split(/\s+/);if(words.length<64||sentences.length<3)return [text];
+    var firstCount=Math.ceil(sentences.length/2);
+    return [sentences.slice(0,firstCount).join(' ').trim(),sentences.slice(firstCount).join(' ').trim()].filter(Boolean);
   }
-  function bodyHtml(value){var p=splitParagraphs(value);return p.map(function(x){return '<p>'+esc(x)+'</p>'}).join('')}
+  function bodyHtml(value){return splitParagraphs(value).map(function(x){return '<p>'+esc(x)+'</p>'}).join('')}
   function shortLabel(value,max){var s=String(value||'').trim();return s.length>max?s.slice(0,max-1).trim()+'…':s}
-  function buttonLabel(layout,n,value){var prefix='';if(layout==='process')prefix=(n+1)+'. ';else if(layout==='timeline')prefix='Stage '+(n+1)+': ';return prefix+shortLabel(value,44-prefix.length)}
+  function buttonLabel(layout,n,value){var prefix='';if(layout==='process')prefix='Step '+(n+1)+' · ';else if(layout==='timeline')prefix='Stage '+(n+1)+' · ';return prefix+shortLabel(value,46-prefix.length)}
   function enhance(){
     var data=window.__quizmotoData;if(!data||!Array.isArray(data.slides))return;
     var slides=document.querySelectorAll('.slide');
@@ -112,7 +113,8 @@ function experienceScript() {
       var frame=document.createElement('div');frame.className='qmx-stage qmx-enter';
       var pointButtons=list.map(function(p,n){return '<button type="button" class="qmx-point" data-index="'+n+'" title="'+esc(p)+'">'+esc(buttonLabel(layout,n,p))+'</button>'}).join('');
       var visual=asset?'<img src="'+esc(asset)+'" alt="'+esc(s.visualTitle||s.title)+'"/>':'<div class="qmx-fallback">Visual asset unavailable. The lesson content remains fully accessible.</div>';
-      frame.innerHTML='<section class="qmx-scene '+(isWide(layout)?'qmx-wide':'')+'" data-layout="'+esc(layout)+'"><div class="qmx-copy"><div class="qmx-kicker">Part '+(i+1)+' · '+esc(layout)+'</div><h2>'+esc(s.title)+'</h2><div class="qmx-copy-body">'+bodyHtml(s.content)+'</div></div><div class="qmx-visual">'+visual+'<div class="qmx-badge">Interactive visual</div></div><div class="qmx-interaction"><div class="qmx-points">'+pointButtons+'</div><div class="qmx-count" data-count>0 / '+list.length+' explored</div><div class="qmx-detail" data-detail>'+(list.length?'Choose a point to reveal the supporting detail.':'Review the visual and continue when ready.')+'</div><div class="qmx-prompt">'+esc((s.interaction&&s.interaction.prompt)||'Explore the visual before continuing.')+'</div></div></section>';
+      var explore='<div class="qmx-explore"><div class="qmx-explore-head"><span class="qmx-explore-title">Explore the key ideas</span><span class="qmx-count" data-count>0 / '+list.length+' explored</span></div><div class="qmx-points">'+pointButtons+'</div><div class="qmx-detail" data-detail>'+(list.length?'Choose a point to reveal the supporting detail.':'Review the visual and continue when ready.')+'</div><div class="qmx-prompt">'+esc((s.interaction&&s.interaction.prompt)||'Explore the visual before continuing.')+'</div></div>';
+      frame.innerHTML='<section class="qmx-scene '+(isWide(layout)?'qmx-wide':'')+'" data-layout="'+esc(layout)+'"><div class="qmx-copy"><div class="qmx-kicker">Part '+(i+1)+'</div><h2>'+esc(s.title)+'</h2><div class="qmx-copy-body">'+bodyHtml(s.content)+'</div>'+(!isWide(layout)?explore:'')+'</div><div class="qmx-visual">'+visual+'<div class="qmx-badge">Explore</div></div>'+(isWide(layout)?explore:'')+'</section>';
       stage.replaceWith(frame);
       var explored={};var detail=frame.querySelector('[data-detail]');var count=frame.querySelector('[data-count]');
       frame.querySelectorAll('.qmx-point').forEach(function(btn){btn.addEventListener('click',function(){var idx=Number(btn.getAttribute('data-index'));explored[idx]=true;frame.querySelectorAll('.qmx-point').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');if(detail)detail.textContent=list[idx]||'';if(count)count.textContent=Object.keys(explored).length+' / '+list.length+' explored';})});
@@ -175,7 +177,7 @@ async function buildScormPackageZip(rawAnalysis, opts = {}) {
         ...analysis,
         generatedBy: 'quizmoto',
         generator: 'Quizmoto Immersive Learning Author',
-        version: 5,
+        version: 6,
         visualEngine: assets.length ? 'python-svg+html' : 'html-fallback'
     }, null, 2));
 
@@ -193,6 +195,5 @@ async function buildScormPackageZip(rawAnalysis, opts = {}) {
 module.exports = {
     buildScormPackageZip,
     enrichAnalysis,
-    inferLayout,
-    WIDE_LAYOUTS
+    inferLayout
 };
