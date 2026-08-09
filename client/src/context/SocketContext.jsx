@@ -47,8 +47,6 @@ function routeNeedsRealtime(pathname) {
     if (path === '/join' || path === '/join/') return true;
     if (/^\/host\/(?:lobby|game)\/[^/]+\/?$/.test(path)) return true;
     if (/^\/player\/(?:lobby|game)\/?$/.test(path)) return true;
-    // Course detail subscribes to SCORM registration updates. Other SCORM pages
-    // use normal HTTP and should not pay for a persistent Socket.IO connection.
     if (/^\/scorm\/courses\/[^/]+\/?$/.test(path)) return true;
     return false;
 }
@@ -67,10 +65,9 @@ export const SocketProvider = ({ children }) => {
         let active = true;
         let newSocket = null;
         let onConnect = null;
+        let hasConnectedOnce = false;
 
         (async () => {
-            // Keep socket.io-client out of login, authoring and normal SCORM
-            // navigation bundles. It is downloaded only when realtime is needed.
             const { io } = await import('socket.io-client');
             if (!active) return;
 
@@ -85,8 +82,19 @@ export const SocketProvider = ({ children }) => {
                 forceNew: false
             });
 
-            onConnect = () => rejoinActiveLiveQuiz(newSocket);
+            // Route components perform the initial join as soon as they receive
+            // the socket object (Socket.IO safely buffers emits until connected).
+            // Only auto-rejoin after a real reconnect. Doing both on first connect
+            // sent duplicate host joins and could overlap lease transactions.
+            onConnect = () => {
+                if (!hasConnectedOnce) {
+                    hasConnectedOnce = true;
+                    return;
+                }
+                rejoinActiveLiveQuiz(newSocket);
+            };
             newSocket.on('connect', onConnect);
+
             if (!active) {
                 try { newSocket.close(); } catch (_) {}
                 return;
