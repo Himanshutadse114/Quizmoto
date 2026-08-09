@@ -109,9 +109,6 @@ describe('Phase 2 Reliability Acceptance (P2-T11)', function () {
             state: 'QUESTION_OPEN',
             stateVersion: 3,
             currentQuestionIndex: 0,
-            // Keep this fixture inside the authoritative answer window. The
-            // production service now correctly rejects submissions after the
-            // server deadline, which is tested separately.
             questionStartTime: new Date(now - 1000),
             questionOpensAt: new Date(now - 1000),
             questionClosesAt: new Date(now + 4000)
@@ -132,14 +129,10 @@ describe('Phase 2 Reliability Acceptance (P2-T11)', function () {
         const second = await AnswerSubmissionService.submitAnswer(session.pin, 'DupPlayer', 1);
         expect(second.error).to.equal('Answer already submitted');
 
-        const answers = await PlayerAnswer.findAll({
-            where: { sessionId: session.id }
-        });
+        const answers = await PlayerAnswer.findAll({ where: { sessionId: session.id } });
         expect(answers).to.have.length(1);
 
-        const player = await Player.findOne({
-            where: { sessionId: session.id, nickname: 'DupPlayer' }
-        });
+        const player = await Player.findOne({ where: { sessionId: session.id, nickname: 'DupPlayer' } });
         expect(player.lastAnswerIndex).to.equal(1);
     });
 
@@ -187,7 +180,7 @@ describe('Phase 2 Reliability Acceptance (P2-T11)', function () {
         });
         expect(reveal.ok).to.equal(true);
 
-        const finish = await SessionCommandService.executeFinishGame({
+        const finish = await SessionCommandService.executeEndGame({
             commandId: crypto.randomUUID(),
             sessionId: session.id,
             actorId: String(host.id),
@@ -207,12 +200,13 @@ describe('Phase 2 Reliability Acceptance (P2-T11)', function () {
             stateVersion: 2
         });
 
-        const result = await SessionWatchdogService.runOnce({ force: true, now: new Date() });
-        expect(result.remediated).to.be.at.least(1);
+        const result = await SessionWatchdogService.scan({ force: true, timeoutMs: 1000 });
+        expect(result.remediated).to.be.an('array');
+        expect(result.remediated.some((row) => row.sessionId === session.id)).to.equal(true);
 
         await session.reload();
         expect(session.state).to.equal('PAUSED');
-        expect(session.lastErrorCode).to.equal('WATCHDOG_STUCK_STARTING');
+        expect(session.lastErrorCode).to.equal('WATCHDOG_STARTING_TIMEOUT');
     });
 
     it('A7: host lease blocks second owner until expiry', async () => {
@@ -268,17 +262,8 @@ describe('Phase 2 Reliability Acceptance (P2-T11)', function () {
             order: [[{ model: Question, as: 'questions' }, 'id', 'ASC']]
         });
 
-        const playerState = SessionRecoveryService.buildPlayerRecoveryState(
-            session,
-            player,
-            loadedQuiz,
-            Date.now()
-        );
-        const hostState = SessionRecoveryService.buildHostRecoveryState(
-            session,
-            loadedQuiz,
-            Date.now()
-        );
+        const playerState = SessionRecoveryService.buildPlayerRecoveryState(session, player, loadedQuiz, Date.now());
+        const hostState = SessionRecoveryService.buildHostRecoveryState(session, loadedQuiz, Date.now());
 
         expect(playerState.question.correctIndex).to.equal(undefined);
         expect(hostState.currentQuestion.correctIndex).to.be.a('number');
