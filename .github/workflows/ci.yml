@@ -38,4 +38,19 @@ jobs:
       run: npm --prefix server test
 
     - name: Run E2E tests
-      run: npm run test:e2e
+      shell: bash
+      run: |
+        set -o pipefail
+        npm run test:e2e 2>&1 | tee playwright-e2e.log
+
+    - name: Upload E2E diagnostics
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-diagnostics-${{ github.run_id }}
+        if-no-files-found: ignore
+        retention-days: 7
+        path: |
+          playwright-e2e.log
+          test-results/
+          playwright-report/
