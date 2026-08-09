@@ -1,4 +1,5 @@
 const { serializeRegistration } = require('./ScormProgressService');
+const RuntimeStore = require('./ScormRuntimeSnapshotStore');
 
 function asPlain(value) {
     if (!value) return null;
@@ -26,9 +27,6 @@ function interactionCount(interactionsJson, rawMapJson = null) {
         return Object.keys(parsedInteractions).length;
     }
 
-    // Quizmoto's SCORM runtime stores arbitrary cmi.interactions.* keys in the
-    // raw CMI map. Older preview stats looked only at interactionsJson, which is
-    // not populated by the runtime and therefore always showed zero.
     const map = parseJson(rawMapJson, null);
     if (!map || typeof map !== 'object' || Array.isArray(map)) return 0;
 
@@ -65,18 +63,25 @@ function scorePercent(scoreRaw, scoreMin, scoreMax) {
     return null;
 }
 
+function runtimeStateFor(registration, plainRegistration) {
+    const snapshot = plainRegistration.runtimeSnapshot || registration.runtimeSnapshot;
+    const canonical = RuntimeStore.snapshotState(snapshot);
+    if (canonical) return canonical;
+    return asPlain(plainRegistration.cmiState || registration.cmiState) || {};
+}
+
 function serializePreviewStats(registration, course) {
     if (!registration) return null;
 
     const plainRegistration = asPlain(registration) || {};
-    const cmiState = asPlain(plainRegistration.cmiState || registration.cmiState) || {};
+    const cmiState = runtimeStateFor(registration, plainRegistration);
     const row = serializeRegistration(registration, course);
 
-    const scoreRaw = row.lastScoreRaw != null ? row.lastScoreRaw : cmiState.scoreRaw;
+    const scoreRaw = cmiState.scoreRaw != null ? cmiState.scoreRaw : row.lastScoreRaw;
     const scoreMin = cmiState.scoreMin != null ? cmiState.scoreMin : null;
     const scoreMax = cmiState.scoreMax != null ? cmiState.scoreMax : null;
-    const totalTime = row.lastTotalTime || cmiState.totalTime || null;
-    const lessonStatus = row.lastLessonStatus || cmiState.lessonStatus || null;
+    const totalTime = cmiState.totalTime || row.lastTotalTime || null;
+    const lessonStatus = cmiState.lessonStatus || row.lastLessonStatus || null;
     const progressPercent = row.progressPercent;
 
     return {
@@ -97,8 +102,8 @@ function serializePreviewStats(registration, course) {
         interactionCount: interactionCount(cmiState.interactionsJson, cmiState.rawMapJson),
         initialized: !!cmiState.initialized,
         stateVersion: cmiState.stateVersion ?? null,
-        lastCommitAt: row.lastCommitAt || null,
-        lastActivityAt: row.lastCommitAt || row.updatedAt || null,
+        lastCommitAt: row.lastCommitAt || plainRegistration.runtimeSnapshot?.updatedAt || null,
+        lastActivityAt: row.lastCommitAt || plainRegistration.runtimeSnapshot?.updatedAt || row.updatedAt || null,
         updatedAt: row.updatedAt || null
     };
 }
