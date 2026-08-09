@@ -3,13 +3,14 @@ const crypto = require('crypto');
 const { sequelize } = require('../config/database');
 const RuntimeStore = require('../services/scorm/ScormRuntimeSnapshotStore');
 
-describe('SCORM runtime PostgreSQL snapshot persistence', function () {
+const describePostgres = sequelize.getDialect() === 'postgres' ? describe : describe.skip;
+
+describePostgres('SCORM runtime PostgreSQL snapshot persistence', function () {
     this.timeout(15000);
 
     const registrationId = crypto.randomUUID();
 
     before(async () => {
-        expect(sequelize.getDialect()).to.equal('postgres');
         await sequelize.authenticate();
         RuntimeStore.resetReadyForTests();
         await RuntimeStore.ensureReady();
