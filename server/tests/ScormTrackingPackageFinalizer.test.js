@@ -18,16 +18,19 @@ describe('ScormTrackingPackageFinalizer', () => {
         const html = "doLMSInitialize();doLMSSetValue('cmi.core.score.min','0');doLMSSetValue('cmi.core.score.max','100');doLMSSetValue('cmi.core.lesson_status','incomplete');el('finish-btn').addEventListener('click',exitSco);updateNav()}";
         const patched = patchTrackingRuntime(html);
         expect(patched).to.include("doLMSGetValue('cmi.core.lesson_location')");
-        expect(patched).to.include("currentSlide=Math.max(0,Number(savedLocation))");
+        expect(patched).to.include('currentSlide=Math.max(0,Number(savedLocation))');
         expect(patched).to.include("doLMSGetValue('cmi.core.lesson_status')");
         expect(patched).to.include("if(!/^(completed|passed|failed)$/i.test(String(savedStatus||'')))");
         expect(patched).to.include("resumeSlides[currentSlide].classList.add('active')");
     });
 
-    it('persists location and progress context on each screen navigation', () => {
-        const html = "commitProgress({'cmi.core.lesson_location':String(currentSlide)})";
+    it('persists location and progress context after the new slide can paint', () => {
+        const html = "sessionStartMs=Date.now(),commitTimer=null;function commitProgress(extra){if(typeof doLMSSetValue!=='function')return;try{writeSessionTime();if(extra){for(var k in extra){if(Object.prototype.hasOwnProperty.call(extra,k))doLMSSetValue(k,String(extra[k]))}}doLMSCommit()}catch(e){}}commitProgress({'cmi.core.lesson_location':String(currentSlide)})";
         const patched = patchTrackingRuntime(html);
-        expect(patched).to.include("'cmi.core.lesson_location':String(currentSlide)");
+        expect(patched).to.include('progressCommitTimer=null');
+        expect(patched).to.include('function scheduleProgressCommit(extra)');
+        expect(patched).to.include('setTimeout(function(){progressCommitTimer=null;if(!completed)commitProgress(extra)},45)');
+        expect(patched).to.include("scheduleProgressCommit({'cmi.core.lesson_location':String(currentSlide)");
         expect(patched).to.include("'cmi.suspend_data':JSON.stringify({quizmotoSlide:currentSlide,quizmotoProgress:p})");
     });
 
@@ -49,6 +52,12 @@ describe('ScormTrackingPackageFinalizer', () => {
         expect(patched).to.include("doLMSSetValue('cmi.core.lesson_status','incomplete')");
         expect(patched).to.include("doLMSSetValue('cmi.core.exit','suspend')");
         expect(patched).to.include("window.addEventListener('beforeunload',function(){flushSuspendState(true)})");
+    });
+
+    it('cancels a deferred navigation save before the synchronous exit flush', () => {
+        const html = "sessionStartMs=Date.now(),commitTimer=null;window.addEventListener('beforeunload',function(){if(completed)return;try{writeSessionTime();if(typeof doLMSSetValue==='function'){doLMSSetValue('cmi.core.exit','suspend');doLMSCommit()}}catch(e){}})";
+        const patched = patchTrackingRuntime(html);
+        expect(patched).to.include("if(typeof progressCommitTimer!=='undefined'&&progressCommitTimer){clearTimeout(progressCommitTimer);progressCommitTimer=null}");
     });
 
     it('injects compact responsive rules into generated learner courses', () => {
