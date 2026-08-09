@@ -151,17 +151,37 @@ router.get('/:regId', async (req, res) => {
             '" allow="autoplay; fullscreen" allowfullscreen></iframe>\n' +
             '<script>\n' +
             '(function(){\n' +
+            'var exiting=false;\n' +
+            'function flushFrameState(){\n' +
+            '  try{\n' +
+            '    var frame=document.getElementById("frame");\n' +
+            '    var w=frame&&frame.contentWindow;\n' +
+            '    if(!w)return false;\n' +
+            '    if(typeof w.__quizmotoFlushScormState==="function"){w.__quizmotoFlushScormState(true);return true;}\n' +
+            '    if(typeof w.dispatchEvent==="function"){\n' +
+            '      var ev;\n' +
+            '      try{ev=new w.Event("beforeunload");}catch(e1){ev=w.document.createEvent("Event");ev.initEvent("beforeunload",false,false);}\n' +
+            '      w.dispatchEvent(ev);\n' +
+            '      return true;\n' +
+            '    }\n' +
+            '  }catch(e){}\n' +
+            '  return false;\n' +
+            '}\n' +
+            'function persistAndFinish(){\n' +
+            '  if(exiting)return;\n' +
+            '  exiting=true;\n' +
+            '  flushFrameState();\n' +
+            '  try{window.API.LMSCommit("");}catch(e){}\n' +
+            '  try{window.API.LMSFinish("");}catch(e){}\n' +
+            '}\n' +
             'function closePlayer(){\n' +
             '  try{if(window.opener&&!window.opener.closed){window.opener.postMessage({type:"quizmoto-scorm-exit"},"*");}}catch(e){}\n' +
             '  try{window.close();}catch(e){}\n' +
             '  setTimeout(function(){try{window.location.href="about:blank";}catch(e2){}},200);\n' +
             '}\n' +
             'document.getElementById("btnSave").onclick=function(){try{window.API.LMSCommit("");}catch(e){}};\n' +
-            'document.getElementById("btnExit").onclick=function(){\n' +
-            '  try{window.API.LMSFinish("");}catch(e){}\n' +
-            '  closePlayer();\n' +
-            '};\n' +
-            'window.addEventListener("beforeunload",function(){try{window.API.LMSCommit("");}catch(e){}});\n' +
+            'document.getElementById("btnExit").onclick=function(){persistAndFinish();closePlayer();};\n' +
+            'window.addEventListener("beforeunload",function(){persistAndFinish();});\n' +
             '})();\n' +
             '</script>\n' +
             '</body>\n' +
