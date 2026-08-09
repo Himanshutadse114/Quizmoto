@@ -19,6 +19,15 @@ describe('SCORM runtime schema guard', () => {
         expect(guardSource).to.include("ensureColumns('scorm_attempts'");
     });
 
+    it('upgrades legacy bounded SCORM payload columns to TEXT', () => {
+        expect(guardSource).to.include('qi.changeColumn(tableName, column');
+        expect(guardSource).to.include("'lessonLocation'");
+        expect(guardSource).to.include("'suspendData'");
+        expect(guardSource).to.include("'interactionsJson'");
+        expect(guardSource).to.include("'rawMapJson'");
+        expect(guardSource).to.include('type: DataTypes.TEXT');
+    });
+
     it('serializes concurrent schema checks through one shared promise', () => {
         expect(guardSource).to.include('let ensurePromise = null');
         expect(guardSource).to.include('if (!ensurePromise)');
