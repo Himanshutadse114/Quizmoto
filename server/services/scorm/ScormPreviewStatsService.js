@@ -101,8 +101,17 @@ function serializePreviewStats(registration, course) {
     const scoreMin = stateValue(primaryState, ['cmi.core.score.min', 'cmi.score.min']) ?? legacyState?.scoreMin ?? null;
     const scoreMax = stateValue(primaryState, ['cmi.core.score.max', 'cmi.score.max']) ?? legacyState?.scoreMax ?? null;
     const totalTime = primaryState?.totalTime || row.lastTotalTime || legacyState?.totalTime || null;
-    const lessonStatus = primaryState?.lessonStatus || row.lastLessonStatus || legacyState?.lessonStatus || null;
     const progressPercent = row.progressPercent;
+    let lessonStatus = primaryState?.lessonStatus || row.lastLessonStatus || legacyState?.lessonStatus || null;
+
+    // Some SCORM packages keep lesson_status at "not attempted" while actively
+    // updating score/interactions. Once we have live progress, present the actual
+    // running state to the admin instead of the stale authored status string.
+    const statusKey = String(lessonStatus || '').toLowerCase();
+    if (Number(progressPercent) > 0 && Number(progressPercent) < 100 &&
+        (!statusKey || statusKey === 'not attempted' || statusKey === 'unknown')) {
+        lessonStatus = 'incomplete';
+    }
 
     // Prefer the v2 learner-state location. Legacy preview state is retained only
     // as a compatibility fallback for older QA registrations.
