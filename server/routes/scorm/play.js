@@ -109,7 +109,7 @@ function installDefaults(resume){
   localValues["cmi.core.entry"]=resume?"resume":"ab-initio";
   localValues["cmi.entry"]=resume?"resume":"ab-initio";
 }
-function snapshotPayload(eventName){return JSON.stringify({event:eventName||"commit",clientVersion:2,values:localValues});}
+function snapshotPayload(eventName){return JSON.stringify({event:eventName||"commit",clientVersion:2,clientRevision:revision,values:localValues});}
 function clearSaveTimer(){if(saveTimer){clearTimeout(saveTimer);saveTimer=null;}}
 function scheduleSave(delay,eventName){if(!initialized&&!stateLoaded)return;clearSaveTimer();saveTimer=setTimeout(function(){saveTimer=null;persist(eventName||"autosave",false);},delay==null?1200:delay);}
 function persist(eventName,keepalive){
@@ -148,7 +148,7 @@ function loadSavedState(){
   setStatus("SCORM - loading saved progress");
   fetch(SESSION,{method:"GET",headers:{"Authorization":"Bearer "+TOKEN},credentials:"same-origin",cache:"no-store"})
     .then(function(r){if(!r.ok)throw new Error("state load "+r.status);return r.json();})
-    .then(function(d){localValues=copyValues(d&&d.values);installDefaults(!!(d&&d.resume));stateLoaded=true;setStatus("SCORM - "+(d&&d.resume?"progress restored":"ready"));})
+    .then(function(d){localValues=copyValues(d&&d.values);revision=Math.max(0,Number(d&&d.clientRevision||0));savedRevision=revision;installDefaults(!!(d&&d.resume));stateLoaded=true;setStatus("SCORM - "+(d&&d.resume?"progress restored":"ready"));})
     .catch(function(){localValues=Object.create(null);installDefaults(false);stateLoaded=true;setStatus("SCORM - ready · save service retrying");})
     .finally(loadContent);
 }
