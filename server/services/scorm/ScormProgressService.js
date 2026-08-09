@@ -1,3 +1,4 @@
+const RuntimeStore = require('./ScormRuntimeSnapshotStore');
 const packageAnalysisCache = new WeakMap();
 
 function parseJson(value, fallback = {}) {
@@ -103,9 +104,16 @@ function field(row, key) {
     return row.dataValues?.[key];
 }
 
+function stateForRegistration(registration, plain) {
+    const snapshot = plain.runtimeSnapshot || registration?.runtimeSnapshot || null;
+    const canonical = RuntimeStore.snapshotState(snapshot);
+    if (canonical) return canonical;
+    return plain.cmiState || registration?.cmiState || null;
+}
+
 function serializeRegistration(registration, course = null) {
     const plain = typeof registration?.toJSON === 'function' ? registration.toJSON() : { ...(registration || {}) };
-    const cmiState = plain.cmiState || registration?.cmiState || null;
+    const cmiState = stateForRegistration(registration, plain);
 
     // Do not call course.toJSON() here. A loaded course contains its full
     // registrations association, so doing that once per learner repeatedly
@@ -119,6 +127,7 @@ function serializeRegistration(registration, course = null) {
     const lastLocation = locationLabel({ registration: plain, cmiState, packageRow });
 
     delete plain.cmiState;
+    delete plain.runtimeSnapshot;
     return {
         ...plain,
         progressPercent,
@@ -126,6 +135,9 @@ function serializeRegistration(registration, course = null) {
         lastLocation,
         stateVersion: cmiState?.stateVersion ?? null,
         lastLocationRaw: cmiState?.lessonLocation || null,
+        lastLessonStatus: cmiState?.lessonStatus || plain.lastLessonStatus || null,
+        lastScoreRaw: cmiState?.scoreRaw != null ? cmiState.scoreRaw : plain.lastScoreRaw,
+        lastTotalTime: cmiState?.totalTime || plain.lastTotalTime || null,
         courseTitle,
         courseStatus,
         inviteCode
