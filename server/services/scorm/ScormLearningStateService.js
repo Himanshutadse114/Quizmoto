@@ -82,15 +82,21 @@ function deriveState(values, previous = null) {
     const lessonStatus = normalizeStatus(values) || previous?.lessonStatus || 'not attempted';
     const scoreRaw = finiteNumber(firstValue(values, ['cmi.core.score.raw', 'cmi.score.raw']));
     const lessonLocation = firstValue(values, ['cmi.core.lesson_location', 'cmi.location']);
-    const suspendData = firstValue(values, ['cmi.suspend_data']) || '';
+    const suspendData = firstValue(values, ['cmi.suspend_data']) || previous?.suspendData || '';
 
     const explicitTotal = firstValue(values, ['cmi.core.total_time', 'cmi.total_time']);
     const sessionTime = firstValue(values, ['cmi.core.session_time', 'cmi.session_time']);
-    let totalSeconds = explicitTotal ? secondsFromTime(explicitTotal) : 0;
-    if (!explicitTotal && sessionTime) {
-        totalSeconds = secondsFromTime(previous?.totalTime || '') + secondsFromTime(sessionTime);
+    const explicitSeconds = secondsFromTime(explicitTotal);
+    const previousSeconds = secondsFromTime(previous?.totalTime || '');
+    const sessionSeconds = secondsFromTime(sessionTime);
+    let totalTime;
+    if (explicitTotal && explicitSeconds > 0) {
+        totalTime = explicitTotal;
+    } else if (sessionSeconds > 0) {
+        totalTime = formatScorm12Time(previousSeconds + sessionSeconds);
+    } else {
+        totalTime = previous?.totalTime || explicitTotal || '00:00:00.00';
     }
-    const totalTime = explicitTotal || (totalSeconds > 0 ? formatScorm12Time(totalSeconds) : previous?.totalTime || '00:00:00.00');
 
     const progressMeasure = finiteNumber(firstValue(values, ['cmi.progress_measure']));
     const customProgress = finiteNumber(firstValue(values, ['quizmoto.progress', 'quizmoto.progress_percent']));
@@ -129,6 +135,7 @@ async function ensureReady() {
                         total_time TEXT,
                         progress_percent DOUBLE PRECISION,
                         sequence BIGINT NOT NULL DEFAULT 0,
+                        client_revision BIGINT NOT NULL DEFAULT 0,
                         created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
@@ -142,6 +149,7 @@ async function ensureReady() {
                     `ALTER TABLE scorm_learning_state_v2 ADD COLUMN IF NOT EXISTS total_time TEXT`,
                     `ALTER TABLE scorm_learning_state_v2 ADD COLUMN IF NOT EXISTS progress_percent DOUBLE PRECISION`,
                     `ALTER TABLE scorm_learning_state_v2 ADD COLUMN IF NOT EXISTS sequence BIGINT NOT NULL DEFAULT 0`,
+                    `ALTER TABLE scorm_learning_state_v2 ADD COLUMN IF NOT EXISTS client_revision BIGINT NOT NULL DEFAULT 0`,
                     `ALTER TABLE scorm_learning_state_v2 ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP`,
                     `ALTER TABLE scorm_learning_state_v2 ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP`
                 ];
@@ -158,10 +166,16 @@ async function ensureReady() {
                         total_time TEXT,
                         progress_percent REAL,
                         sequence INTEGER NOT NULL DEFAULT 0,
+                        client_revision INTEGER NOT NULL DEFAULT 0,
                         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                 `);
+                try {
+                    await sequelize.query('ALTER TABLE scorm_learning_state_v2 ADD COLUMN client_revision INTEGER NOT NULL DEFAULT 0');
+                } catch (_) {
+                    // SQLite has no ADD COLUMN IF NOT EXISTS; an existing column is fine.
+                }
             }
         })().catch((err) => {
             readyPromise = null;
@@ -205,6 +219,7 @@ function rowToState(row) {
         totalTime: row.total_time || '00:00:00.00',
         progressPercent: row.progress_percent != null ? Number(row.progress_percent) : null,
         sequence: Number(row.sequence || 0),
+        clientRevision: Number(row.client_revision || 0),
         updatedAt: row.updated_at || null
     };
 }
@@ -235,6 +250,7 @@ async function getState(registrationId, token) {
             totalTime: '00:00:00.00',
             progressPercent: 0,
             sequence: 0,
+            clientRevision: 0,
             updatedAt: null,
             resume: false
         };
@@ -268,31 +284,31 @@ async function projectRegistration(reg, state) {
     }
 }
 
-async function saveState(registrationId, token, payload = {}) {
-    const reg = await authorize(registrationId, token);
+async function persistDocument(registrationId, payload = {}) {
     await ensureReady();
-
     const values = asPlainObject(payload.values);
     const previous = rowToState(await readRow(registrationId));
     const derived = deriveState(values, previous);
-    const stateJson = JSON.stringify(values);
+    const requestedRevision = Math.max(0, Math.floor(Number(payload.clientRevision) || 0));
+    const clientRevision = requestedRevision || Math.max(1, Number(previous?.clientRevision || 0) + 1);
     const replacements = {
         registrationId,
-        stateJson,
+        stateJson: JSON.stringify(values),
         lessonStatus: derived.lessonStatus,
         scoreRaw: derived.scoreRaw,
         lessonLocation: derived.lessonLocation,
         suspendData: derived.suspendData,
         totalTime: derived.totalTime,
-        progressPercent: derived.progressPercent
+        progressPercent: derived.progressPercent,
+        clientRevision
     };
 
     if (sequelize.getDialect() === 'postgres') {
         await sequelize.query(`
             INSERT INTO scorm_learning_state_v2
-                (registration_id, state_json, lesson_status, score_raw, lesson_location, suspend_data, total_time, progress_percent, sequence, created_at, updated_at)
+                (registration_id, state_json, lesson_status, score_raw, lesson_location, suspend_data, total_time, progress_percent, sequence, client_revision, created_at, updated_at)
             VALUES
-                (:registrationId, :stateJson, :lessonStatus, :scoreRaw, :lessonLocation, :suspendData, :totalTime, :progressPercent, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                (:registrationId, :stateJson, :lessonStatus, :scoreRaw, :lessonLocation, :suspendData, :totalTime, :progressPercent, 1, :clientRevision, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ON CONFLICT (registration_id) DO UPDATE SET
                 state_json = EXCLUDED.state_json,
                 lesson_status = EXCLUDED.lesson_status,
@@ -302,14 +318,16 @@ async function saveState(registrationId, token, payload = {}) {
                 total_time = EXCLUDED.total_time,
                 progress_percent = EXCLUDED.progress_percent,
                 sequence = scorm_learning_state_v2.sequence + 1,
+                client_revision = EXCLUDED.client_revision,
                 updated_at = CURRENT_TIMESTAMP
+            WHERE EXCLUDED.client_revision >= scorm_learning_state_v2.client_revision
         `, { replacements });
     } else {
         await sequelize.query(`
             INSERT INTO scorm_learning_state_v2
-                (registration_id, state_json, lesson_status, score_raw, lesson_location, suspend_data, total_time, progress_percent, sequence, created_at, updated_at)
+                (registration_id, state_json, lesson_status, score_raw, lesson_location, suspend_data, total_time, progress_percent, sequence, client_revision, created_at, updated_at)
             VALUES
-                (:registrationId, :stateJson, :lessonStatus, :scoreRaw, :lessonLocation, :suspendData, :totalTime, :progressPercent, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                (:registrationId, :stateJson, :lessonStatus, :scoreRaw, :lessonLocation, :suspendData, :totalTime, :progressPercent, 1, :clientRevision, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ON CONFLICT(registration_id) DO UPDATE SET
                 state_json = excluded.state_json,
                 lesson_status = excluded.lesson_status,
@@ -319,11 +337,18 @@ async function saveState(registrationId, token, payload = {}) {
                 total_time = excluded.total_time,
                 progress_percent = excluded.progress_percent,
                 sequence = scorm_learning_state_v2.sequence + 1,
+                client_revision = excluded.client_revision,
                 updated_at = CURRENT_TIMESTAMP
+            WHERE excluded.client_revision >= scorm_learning_state_v2.client_revision
         `, { replacements });
     }
 
-    const saved = rowToState(await readRow(registrationId));
+    return rowToState(await readRow(registrationId));
+}
+
+async function saveState(registrationId, token, payload = {}) {
+    const reg = await authorize(registrationId, token);
+    const saved = await persistDocument(registrationId, payload);
     await projectRegistration(reg, saved);
     return {
         ok: true,
@@ -336,10 +361,12 @@ async function listByRegistrationIds(registrationIds) {
     const ids = Array.from(new Set((registrationIds || []).filter(Boolean).map(String)));
     if (!ids.length) return new Map();
     await ensureReady();
-    const placeholders = ids.map(() => '?').join(',');
     const rows = await sequelize.query(
-        `SELECT * FROM scorm_learning_state_v2 WHERE registration_id IN (${placeholders})`,
-        { replacements: ids, type: QueryTypes.SELECT }
+        'SELECT * FROM scorm_learning_state_v2 WHERE registration_id IN (:registrationIds)',
+        {
+            replacements: { registrationIds: ids },
+            type: QueryTypes.SELECT
+        }
     );
     const out = new Map();
     for (const row of rows) {
@@ -347,6 +374,14 @@ async function listByRegistrationIds(registrationIds) {
         if (state) out.set(String(state.registrationId), state);
     }
     return out;
+}
+
+async function destroyState(registrationId) {
+    await ensureReady();
+    await sequelize.query(
+        'DELETE FROM scorm_learning_state_v2 WHERE registration_id = :registrationId',
+        { replacements: { registrationId } }
+    );
 }
 
 function resetReadyForTests() {
@@ -359,6 +394,8 @@ module.exports = {
     authorize,
     getState,
     saveState,
+    persistDocument,
+    destroyState,
     listByRegistrationIds,
     deriveState,
     rowToState,
