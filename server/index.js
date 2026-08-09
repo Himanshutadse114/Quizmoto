@@ -44,10 +44,26 @@ if (isProduction && (
     process.exit(1);
 }
 
+// SCORM learner content is served by this backend and posts its progress back to
+// /api/scorm/session on the same Render origin. Browsers send an Origin header on
+// POST requests even when they are same-origin, so the backend must allow its own
+// public origin in addition to the frontend allowlist. RENDER_EXTERNAL_URL follows
+// service renames automatically and avoids hard-coding a Render hostname.
+let renderExternalOrigin = '';
+try {
+    const renderExternalUrl = String(process.env.RENDER_EXTERNAL_URL || '').trim();
+    if (renderExternalUrl) renderExternalOrigin = new URL(renderExternalUrl).origin;
+} catch (_) {
+    renderExternalOrigin = '';
+}
+const allowedCorsOrigins = new Set(configuredCorsOrigins);
+if (renderExternalOrigin) allowedCorsOrigins.add(renderExternalOrigin);
+
 const corsOrigin = (origin, callback) => {
     // Native/mobile clients, health checks and server-to-server requests may not
-    // include an Origin header. Browser origins must match the configured list.
-    if (!origin || allowDevelopmentWildcard || configuredCorsOrigins.includes(origin)) {
+    // include an Origin header. Browser origins must match the configured list
+    // or the backend's own public Render origin.
+    if (!origin || allowDevelopmentWildcard || allowedCorsOrigins.has(origin)) {
         return callback(null, true);
     }
     return callback(new Error('Origin is not allowed by CORS'));
