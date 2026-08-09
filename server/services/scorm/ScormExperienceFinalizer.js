@@ -7,6 +7,7 @@ function interactionTrackingScript() {
 (function(){
   function install(){
     var data=window.__quizmotoData||{};
+    var answered=Object.create(null),hits=0,totalQuestions=Math.max(1,(data.quiz||[]).length);
     document.querySelectorAll('.quiz-option').forEach(function(btn){
       btn.addEventListener('click',function(){
         var qi=Number(btn.getAttribute('data-qi'));
@@ -15,8 +16,8 @@ function interactionTrackingScript() {
         var correct=Number(q.correctAnswer);
 
         // Let the browser paint the selected/correct-answer feedback first. The
-        // interaction values remain SCORM-tracked, but persistence is handled by
-        // the next course progress commit, the periodic save, or exit flush.
+        // interaction values remain SCORM-tracked, while Quizmoto's player runtime
+        // batches persistence in the background.
         setTimeout(function(){
           try{
             if(typeof doLMSSetValue==='function'){
@@ -26,6 +27,18 @@ function interactionTrackingScript() {
               doLMSSetValue(base+'.student_response',String(oi));
               doLMSSetValue(base+'.result',oi===correct?'correct':'wrong');
               try{doLMSSetValue(base+'.correct_responses.0.pattern',String(correct))}catch(e){}
+
+              // Admin QA should see score evolve while testing, not only after
+              // Finish Course. Use the same final-score denominator (all quiz
+              // questions), so the provisional value converges to the final score.
+              if(!answered[qi]){
+                answered[qi]=true;
+                if(oi===correct)hits++;
+              }
+              var provisional=Math.round((hits/totalQuestions)*100);
+              doLMSSetValue('cmi.core.score.min','0');
+              doLMSSetValue('cmi.core.score.max','100');
+              doLMSSetValue('cmi.core.score.raw',String(provisional));
             }
           }catch(e){}
         },0);
@@ -64,9 +77,10 @@ async function buildScormPackageZip(analysis, opts = {}) {
             const content = JSON.parse(await contentFile.async('string'));
             zip.file('content.json', JSON.stringify({
                 ...content,
-                version: 5,
+                version: 6,
                 interactionTracking: 'scorm_1_2_cmi_interactions',
-                interactionPersistence: 'deferred_to_progress_commit'
+                interactionPersistence: 'background_batched',
+                provisionalScoreTracking: true
             }, null, 2));
         } catch (_) {
             // Keep package usable if metadata cannot be upgraded.
