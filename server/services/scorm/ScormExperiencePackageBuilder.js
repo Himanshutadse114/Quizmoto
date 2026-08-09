@@ -19,9 +19,7 @@ function inferLayout(slide, index) {
 }
 
 function interactionFor(slide, layout) {
-    const explicit = slide?.interaction && typeof slide.interaction === 'object'
-        ? { ...slide.interaction }
-        : null;
+    const explicit = slide?.interaction && typeof slide.interaction === 'object' ? { ...slide.interaction } : null;
     if (explicit?.type) return explicit;
     if (layout === 'process' || layout === 'timeline' || layout === 'cycle') {
         return { type: 'step_explore', prompt: 'Explore each stage to reinforce the sequence.' };
@@ -120,9 +118,7 @@ async function buildScormPackageZip(rawAnalysis, opts = {}) {
     const baseBuffer = await buildVisualPackage(analysis, opts);
     const zip = await JSZip.loadAsync(baseBuffer);
 
-    assets.forEach((asset) => {
-        zip.file(asset.zipPath, asset.body);
-    });
+    assets.forEach((asset) => zip.file(asset.zipPath, asset.body));
     if (assets.length) {
         zip.file('assets/visuals/visual-manifest.json', JSON.stringify({
             generatedBy: 'quizmoto-python-vector-engine',
@@ -155,7 +151,8 @@ async function buildScormPackageZip(rawAnalysis, opts = {}) {
         zip.file('imsmanifest.xml', manifest);
     }
 
-    return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+    // Intermediate ZIP: defer CPU-heavy DEFLATE to the final tracking layer.
+    return zip.generateAsync({ type: 'nodebuffer', compression: 'STORE' });
 }
 
 module.exports = {
