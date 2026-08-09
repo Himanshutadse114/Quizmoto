@@ -5,7 +5,8 @@ const {
     ScormCourse,
     ScormPackage,
     ScormRegistration,
-    ScormCmiState
+    ScormCmiState,
+    ScormRuntimeSnapshot
 } = require('../../models/scorm');
 const { serializeRegistration } = require('../../services/scorm/ScormProgressService');
 
@@ -63,7 +64,10 @@ async function loadHostCourses(hostId, courseId = null) {
                 as: 'registrations',
                 required: false,
                 where: { isPreview: false },
-                include: [{ model: ScormCmiState, as: 'cmiState' }]
+                include: [
+                    { model: ScormRuntimeSnapshot, as: 'runtimeSnapshot', required: false },
+                    { model: ScormCmiState, as: 'cmiState', required: false }
+                ]
             }
         ],
         order: [['updatedAt', 'DESC']]
