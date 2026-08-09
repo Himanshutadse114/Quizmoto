@@ -11,25 +11,40 @@ describe('SCORM authored interaction responsiveness', () => {
         expect(firstWrite).to.be.greaterThan(timer);
     });
 
-    it('does not force an LMSCommit directly from the answer click tracker', () => {
+    it('does not force a blocking LMSCommit directly from the generated answer tracker', () => {
         const source = interactionTrackingScript();
         expect(source).to.not.include("typeof doLMSCommit==='function'");
         expect(source).to.not.include('doLMSCommit()');
     });
 
-    it('still records the full SCORM 1.2 interaction payload', () => {
+    it('records interactions plus a provisional QA score after each answer', () => {
         const source = interactionTrackingScript();
         expect(source).to.include("base+'.id'");
         expect(source).to.include("base+'.type'");
         expect(source).to.include("base+'.student_response'");
         expect(source).to.include("base+'.result'");
         expect(source).to.include("base+'.correct_responses.0.pattern'");
+        expect(source).to.include("doLMSSetValue('cmi.core.score.raw',String(provisional))");
+        expect(source).to.include('Math.round((hits/totalQuestions)*100)');
     });
 
-    it('removes the legacy answer-click commit when an existing authored course is served', () => {
-        const oldHtml = '<html><head></head><body><script>if(typeof doLMSCommit===\'function\')doLMSCommit();</script></body></html>';
+    it('injects a DOM-level tracking bridge into an existing authored course', () => {
+        const oldHtml = '<html><head></head><body><div class="slide active"></div><div class="slide"></div><button id="next-btn">Next</button><script>if(typeof doLMSCommit===\'function\')doLMSCommit();</script></body></html>';
         const patched = contentRouter.patchAuthoredHtml(oldHtml);
         expect(patched).to.not.include("if(typeof doLMSCommit==='function')doLMSCommit();");
+        expect(patched).to.include('quizmoto-authored-runtime-bridge-v7');
+        expect(patched).to.include("doLMSSetValue('cmi.core.lesson_location',String(s.index))");
+        expect(patched).to.include("doLMSSetValue('cmi.suspend_data'");
+        expect(patched).to.include("target.id==='next-btn'||target.id==='prev-btn'");
+        expect(patched).to.include("target.matches('.quiz-option')");
+        expect(patched).to.include("doLMSSetValue('cmi.core.score.raw',String(provisional))");
         expect(patched).to.include('quizmoto-mobile-course-css');
+    });
+
+    it('does not inject the authored tracking bridge more than once', () => {
+        const html = '<html><head></head><body><div class="slide active"></div></body></html>';
+        const once = contentRouter.patchAuthoredHtml(html);
+        const twice = contentRouter.patchAuthoredHtml(once);
+        expect((twice.match(/id="quizmoto-authored-runtime-bridge-v7"/g) || []).length).to.equal(1);
     });
 });
