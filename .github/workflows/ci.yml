@@ -52,7 +52,7 @@ jobs:
     - name: Run server unit tests
       run: npm --prefix server test
 
-    - name: Run SCORM runtime PostgreSQL test
+    - name: Run SCORM PostgreSQL persistence tests
       working-directory: server
       env:
         NODE_ENV: test
@@ -64,7 +64,9 @@ jobs:
         DB_PASS: testpass
         DB_SSL: "false"
         JWT_SECRET: ci_scorm_runtime_secret
-      run: npx mocha tests/ScormRuntimePostgres.test.js --exit
+      run: |
+        npx mocha tests/ScormLearningStatePostgres.test.js --exit
+        npx mocha tests/ScormRuntimePostgres.test.js --exit
 
     - name: Run E2E tests
       shell: bash
