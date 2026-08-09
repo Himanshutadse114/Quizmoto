@@ -147,6 +147,8 @@ export default function ScormCourseDetail() {
     loadRoster().catch(() => {});
     loadPreviewStats({ silent: true });
     const rosterTimer = setInterval(() => loadRoster().catch(() => {}), 12000);
+    // Fallback only. Normal preview updates are event-driven so a backgrounded
+    // admin tab still refreshes while the popup course has focus.
     const previewTimer = setInterval(() => loadPreviewStats({ silent: true }), 5000);
     return () => {
       clearInterval(rosterTimer);
@@ -159,6 +161,16 @@ export default function ScormCourseDetail() {
     const onUpdate = (payload) => {
       if (!payload || String(payload.courseId) !== String(id)) return;
       setLive(true);
+
+      // Preview registrations are intentionally excluded from the learner roster.
+      // Refreshing only loadRoster() meant preview commits were effectively
+      // ignored by the Admin Preview Results panel, especially while the admin
+      // tab was backgrounded behind the course popup.
+      const isPreviewUpdate = payload.isPreview === true || payload.registration?.isPreview === true;
+      if (isPreviewUpdate) {
+        loadPreviewStats({ silent: true });
+        return;
+      }
       loadRoster().catch(() => {});
     };
     const onJoined = () => setLive(true);
@@ -170,7 +182,17 @@ export default function ScormCourseDetail() {
       socket.off('scorm_registration_update', onUpdate);
       socket.off('scorm_course_joined', onJoined);
     };
-  }, [socket, token, id, loadRoster]);
+  }, [socket, token, id, loadRoster, loadPreviewStats]);
+
+  useEffect(() => {
+    const onPlayerMessage = (event) => {
+      const type = event?.data?.type;
+      if (type !== 'quizmoto-scorm-exit' && type !== 'quizmoto-scorm-progress') return;
+      loadPreviewStats({ silent: true });
+    };
+    window.addEventListener('message', onPlayerMessage);
+    return () => window.removeEventListener('message', onPlayerMessage);
+  }, [loadPreviewStats]);
 
   const publish = async () => {
     try {
@@ -194,7 +216,7 @@ export default function ScormCourseDetail() {
       const res = await axios.post(apiUrl(`/api/scorm/courses/${id}/preview`), {}, { headers });
       openPlayerPopup(res.data.registrationId, res.data.token, res.data.packageId, res.data.entryHref);
       await loadPreviewStats({ silent: true });
-      setMsg('QA preview opened. The private Admin Preview Results panel will update with score, progress, status, time and location. This QA data stays outside learner tracking and reports.');
+      setMsg('QA preview opened. The private Admin Preview Results panel updates live with score, progress, status, time and location. This QA data stays outside learner tracking and reports.');
     } catch (err) {
       setMsg(err.response?.data?.message || err.message);
     } finally {
@@ -300,7 +322,7 @@ export default function ScormCourseDetail() {
           <>
             <div className="flex flex-wrap items-center gap-2 mb-4">
               <span className="scorm-preview-badge rounded-full px-2.5 py-1 text-[9px] uppercase tracking-[0.08em] font-semibold">{previewStatusLabel(previewStats.qaState)}</span>
-              <span className="scorm-preview-muted text-[10px]">Auto-refreshes every 5 seconds</span>
+              <span className="scorm-preview-muted text-[10px]">Live updates · 5-second fallback refresh</span>
               {previewStats.lastActivityAt && <span className="scorm-preview-muted text-[10px]">• Last activity {activityLabel(previewStats.lastActivityAt)}</span>}
             </div>
 
