@@ -5,15 +5,15 @@ const { expect } = require('chai');
 describe('SCORM player exit persistence', () => {
     const source = fs.readFileSync(path.join(__dirname, '../routes/scorm/play.js'), 'utf8');
 
-    it('buffers Quizmoto-authored SetValue calls and schedules background autosave', () => {
-        expect(source).to.include("bufferedWrites: pkg.source === 'ai_author'");
+    it('buffers SetValue calls for authored and uploaded packages and schedules background autosave', () => {
+        expect(source).to.include('bufferedWrites: true');
         expect(source).to.include('pendingValues=Object.create(null),localValues=Object.create(null)');
         expect(source).to.include('pendingValues[key]=value;localValues[key]=value');
         expect(source).to.include('scheduleAutosave()');
         expect(source).to.include('fetch(RUNTIME+"/commit"');
     });
 
-    it('makes authored LMSCommit non-blocking while keeping explicit final flush synchronous', () => {
+    it('makes buffered LMSCommit non-blocking while keeping explicit final flush synchronous', () => {
         expect(source).to.include('LMSCommit:function(p){if(BUFFERED){scheduleAutosave(0);lastError.code=0;return "true";}');
         expect(source).to.include('LMSFinish:function(p){var d=BUFFERED?flushBuffered(RUNTIME+"/finish")');
         expect(source).to.include('syncCall("POST",path,{values:values})');
