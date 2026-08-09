@@ -5,7 +5,6 @@ import { SocketProvider } from './context/SocketContext';
 import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
 
 // Pages
-import Home from './pages/Home';
 import Login from './pages/Host/Login';
 import Dashboard from './pages/Host/Dashboard';
 import CreateQuiz from './pages/Host/CreateQuiz';
@@ -45,7 +44,8 @@ function App() {
             <div className="bg-shape shape-4 w-56 h-56 border-[28px] border-quizmoto-red rounded-lg -rotate-12" />
 
             <Routes>
-              <Route path="/" element={<Home />} />
+              {/* No marketing website for now: enter directly through the product login flow. */}
+              <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<Login />} />
 
               <Route path="/player/login" element={<PlayerLogin />} />
@@ -77,7 +77,7 @@ function App() {
               <Route path="/scorm/learn/:inviteCode" element={<ScormLearnLanding />} />
               <Route path="/scorm/player/:registrationId" element={<ScormPlayerShell />} />
 
-              <Route path="*" element={<Navigate to="/" />} />
+              <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
           </div>
         </Router>
