@@ -74,7 +74,7 @@ function deriveProgress({ registration, cmiState, packageRow }) {
     if (fromLocation != null) return fromLocation;
 
     if (!lessonStatus || String(lessonStatus).toLowerCase() === 'not attempted') return 0;
-    return registration?.status === 'active' ? 1 : null;
+    return null;
 }
 
 function locationLabel({ registration, cmiState, packageRow }) {
