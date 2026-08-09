@@ -20,6 +20,8 @@ const DEFAULT_MODEL_CANDIDATES = [
     'gemini-flash-latest'
 ];
 
+const GEMINI_3_THINKING_LEVELS = new Set(['minimal', 'low', 'medium', 'high']);
+
 async function extractTextFromPptx(base64Data) {
     try {
         const zip = await JSZip.loadAsync(base64Data, { base64: true });
@@ -54,6 +56,21 @@ function modelCandidates() {
     return preferred
         ? [preferred, ...DEFAULT_MODEL_CANDIDATES.filter((m) => m !== preferred)]
         : [...DEFAULT_MODEL_CANDIDATES];
+}
+
+function thinkingLevel() {
+    const configured = String(process.env.GEMINI_SCORM_THINKING_LEVEL || 'low').trim().toLowerCase();
+    return GEMINI_3_THINKING_LEVELS.has(configured) ? configured : 'low';
+}
+
+function generationConfigForModel(model) {
+    const config = { responseMimeType: 'application/json' };
+    // Gemini 3.x accepts thinkingLevel. Older 2.5 fallbacks use a different
+    // thinking-budget API, so do not send a 3.x-only field to them.
+    if (/^gemini-3(?:\.|-|$)/i.test(String(model || ''))) {
+        config.thinkingConfig = { thinkingLevel: thinkingLevel() };
+    }
+    return config;
 }
 
 function friendlyGeminiError(status, bodyText, lastModel) {
@@ -147,11 +164,6 @@ RULES — follow all of these strictly:
 5. OUTPUT must be valid JSON with keys: title, summary, slides, quiz.`
     });
 
-    const body = {
-        contents: [{ parts }],
-        generationConfig: { responseMimeType: 'application/json' }
-    };
-
     const candidates = modelCandidates();
     let lastStatus = 0;
     let lastBody = '';
@@ -159,6 +171,10 @@ RULES — follow all of these strictly:
 
     for (const model of candidates) {
         lastModel = model;
+        const body = {
+            contents: [{ parts }],
+            generationConfig: generationConfigForModel(model)
+        };
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
         let res;
         try {
@@ -192,7 +208,12 @@ RULES — follow all of these strictly:
                 throw e;
             }
 
-            logger.info('scorm_gemini_ok', { module: 'scorm', model, slides: analysis.slides.length });
+            logger.info('scorm_gemini_ok', {
+                module: 'scorm',
+                model,
+                thinkingLevel: /^gemini-3(?:\.|-|$)/i.test(model) ? thinkingLevel() : 'model-default',
+                slides: analysis.slides.length
+            });
             return analysis;
         }
 
@@ -214,5 +235,8 @@ module.exports = {
     analyzePolicy,
     getApiKey,
     extractTextFromPptx,
+    modelCandidates,
+    thinkingLevel,
+    generationConfigForModel,
     DEFAULT_MODEL_CANDIDATES
 };
