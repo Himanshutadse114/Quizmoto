@@ -72,7 +72,10 @@ async function buildScormPackageZip(analysis, opts = {}) {
             // Keep package usable if metadata cannot be upgraded.
         }
     }
-    return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+
+    // This ZIP is an intermediate pipeline artifact. The tracking finalizer does
+    // the single DEFLATE pass for the user-facing package.
+    return zip.generateAsync({ type: 'nodebuffer', compression: 'STORE' });
 }
 
 module.exports = {
