@@ -2,59 +2,59 @@ const fs = require('fs');
 const path = require('path');
 const { expect } = require('chai');
 
-describe('SCORM player exit persistence', () => {
+describe('SCORM player local-first persistence', () => {
     const source = fs.readFileSync(path.join(__dirname, '../routes/scorm/play.js'), 'utf8');
 
-    it('buffers SetValue calls for authored and uploaded packages and schedules background autosave', () => {
-        expect(source).to.include('bufferedWrites: true');
-        expect(source).to.include('pendingValues=Object.create(null),localValues=Object.create(null)');
-        expect(source).to.include('pendingValues[key]=value;localValues[key]=value');
-        expect(source).to.include('scheduleAutosave()');
-        expect(source).to.include('fetch(RUNTIME+"/commit"');
+    it('does not depend on the legacy per-call runtime endpoints', () => {
+        expect(source).to.not.include('/api/scorm/runtime/');
+        expect(source).to.not.include('RUNTIME+"/initialize"');
+        expect(source).to.not.include('RUNTIME+"/commit"');
+        expect(source).to.not.include('xhr.open(method,path,false)');
+        expect(source).to.include("const sessionEndpoint = '/api/scorm/session/' + reg.id");
     });
 
-    it('makes buffered LMSCommit non-blocking while keeping explicit final flush synchronous', () => {
-        expect(source).to.include('LMSCommit:function(p){if(BUFFERED){scheduleAutosave(0);lastError.code=0;return "true";}');
-        expect(source).to.include('LMSFinish:function(p){var d=BUFFERED?flushBuffered(RUNTIME+"/finish")');
-        expect(source).to.include('syncCall("POST",path,{values:values})');
+    it('keeps SCORM Get/Set/Initialize/Commit synchronous and in memory', () => {
+        expect(source).to.include('localValues=Object.create(null)');
+        expect(source).to.include('LMSInitialize:function(){');
+        expect(source).to.include('localValues[key]=v==null?"":String(v)');
+        expect(source).to.include('Object.prototype.hasOwnProperty.call(localValues,key)');
+        expect(source).to.include('LMSCommit:function(){if(initialized){dirty=true;revision++;persist("commit",false);}');
     });
 
-    it('keeps locally written values visible to LMSGetValue before autosave completes', () => {
-        expect(source).to.include('Object.prototype.hasOwnProperty.call(localValues,el)');
-        expect(source).to.include('return String(localValues[el])');
+    it('loads saved attempt state before loading SCORM content', () => {
+        expect(source).to.include('src="about:blank"');
+        expect(source).to.include('function loadSavedState()');
+        expect(source).to.include('.finally(loadContent)');
+        expect(source).to.include('frame.src=BOOT.contentSrc');
+        expect(source).to.include('installDefaults(!!(d&&d.resume))');
     });
 
-    it('notifies the admin opener after successful background or final persistence', () => {
-        expect(source).to.include('notifyOpener("quizmoto-scorm-progress",d.summary||null)');
-        expect(source).to.include('registrationId:');
+    it('persists a full state document asynchronously', () => {
+        expect(source).to.include('clientVersion:2,values:localValues');
+        expect(source).to.include('fetch(SESSION,{method:"POST"');
+        expect(source).to.include('scheduleSave(900,"autosave")');
+        expect(source).to.include('setInterval(function(){if(dirty&&!saveInFlight)persist("heartbeat",false);},5000)');
     });
 
-    it('flushes iframe state before finishing the LMS runtime', () => {
-        const start = source.indexOf("'function persistAndFinish(){\\n' +");
+    it('uses lifecycle-safe persistence without blocking navigation', () => {
+        expect(source).to.include('navigator.sendBeacon');
+        expect(source).to.include('keepalive:body.length<60000');
+        expect(source).to.include('document.addEventListener("visibilitychange"');
+        expect(source).to.include('window.addEventListener("pagehide"');
+    });
+
+    it('notifies the opener after successful persistence', () => {
+        expect(source).to.include('notifyOpener("quizmoto-scorm-progress",d&&d.summary?d.summary:null)');
+        expect(source).to.include('registrationId:BOOT.registrationId');
+    });
+
+    it('flushes authored iframe state before finishing the local LMS API', () => {
+        const start = source.indexOf('function persistAndFinish(){');
         expect(start).to.be.greaterThan(-1);
-        const end = source.indexOf("'function closePlayer(){\\n' +", start);
+        const end = source.indexOf('function notifyParentExit()', start);
         expect(end).to.be.greaterThan(start);
         const block = source.slice(start, end);
-
-        const flush = block.indexOf('flushFrameState()');
-        const finish = block.indexOf('window.API.LMSFinish');
-        expect(flush).to.be.greaterThan(-1);
-        expect(finish).to.be.greaterThan(flush);
-    });
-
-    it('does not add a redundant parent commit after the explicit Quizmoto flush', () => {
-        expect(source).to.include('if(flushMode!=="explicit"){try{window.API.LMSCommit("");}catch(e){}}');
-    });
-
-    it('uses the same persistence path for the Exit button and browser close', () => {
-        expect(source).to.include('document.getElementById("btnExit").onclick=function(){persistAndFinish();closePlayer();};');
-        expect(source).to.include('window.addEventListener("beforeunload",function(){persistAndFinish();});');
-    });
-
-    it('supports both the explicit Quizmoto flush hook and existing-package unload fallback', () => {
-        expect(source).to.include('typeof w.__quizmotoFlushScormState==="function"');
-        expect(source).to.include('w.__quizmotoFlushScormState(true)');
-        expect(source).to.include('new w.Event("beforeunload")');
-        expect(source).to.include('w.dispatchEvent(ev)');
+        expect(block.indexOf('flushFrameState()')).to.be.greaterThan(-1);
+        expect(block.indexOf('window.API.LMSFinish')).to.be.greaterThan(block.indexOf('flushFrameState()'));
     });
 });
