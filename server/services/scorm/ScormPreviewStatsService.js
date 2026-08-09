@@ -16,18 +16,36 @@ function parseJson(value, fallback = null) {
 }
 
 function finiteNumber(value) {
+    if (value == null || String(value).trim() === '') return null;
     const number = Number(value);
     return Number.isFinite(number) ? number : null;
 }
 
-function interactionCount(interactionsJson, rawMapJson = null) {
+function stateMap(state) {
+    if (!state) return {};
+    if (state.values && typeof state.values === 'object') return state.values;
+    return parseJson(state.rawMapJson, {}) || {};
+}
+
+function stateValue(state, keys) {
+    const map = stateMap(state);
+    for (const key of keys) {
+        const value = map[key];
+        if (value != null && String(value).trim() !== '') return value;
+    }
+    return null;
+}
+
+function interactionCount(interactionsJson, rawMapJson = null, values = null) {
     const parsedInteractions = parseJson(interactionsJson, null);
     if (Array.isArray(parsedInteractions)) return parsedInteractions.length;
     if (parsedInteractions && typeof parsedInteractions === 'object') {
         return Object.keys(parsedInteractions).length;
     }
 
-    const map = parseJson(rawMapJson, null);
+    const map = values && typeof values === 'object' && !Array.isArray(values)
+        ? values
+        : parseJson(rawMapJson, null);
     if (!map || typeof map !== 'object' || Array.isArray(map)) return 0;
 
     const indices = new Set();
@@ -40,12 +58,12 @@ function interactionCount(interactionsJson, rawMapJson = null) {
 
 function qaState({ registration, cmiState, progressPercent }) {
     const lessonStatus = String(
-        registration?.lastLessonStatus || cmiState?.lessonStatus || ''
+        cmiState?.lessonStatus || registration?.lastLessonStatus || ''
     ).toLowerCase();
 
     if (['passed', 'failed', 'completed'].includes(lessonStatus)) return lessonStatus;
     if (registration?.status === 'completed' || Number(progressPercent) >= 100) return 'completed';
-    if (cmiState?.initialized || registration?.lastCommitAt) return 'in progress';
+    if (Number(cmiState?.sequence || 0) > 0 || cmiState?.initialized || registration?.lastCommitAt) return 'in progress';
     return 'ready';
 }
 
@@ -74,28 +92,29 @@ function serializePreviewStats(registration, course) {
     if (!registration) return null;
 
     const plainRegistration = asPlain(registration) || {};
-    const cmiState = runtimeStateFor(registration, plainRegistration);
+    const legacyState = runtimeStateFor(registration, plainRegistration);
+    const learningStateV2 = asPlain(plainRegistration.learningStateV2 || registration.learningStateV2) || null;
+    const primaryState = learningStateV2 || legacyState;
     const row = serializeRegistration(registration, course);
 
-    const scoreRaw = cmiState.scoreRaw != null ? cmiState.scoreRaw : row.lastScoreRaw;
-    const scoreMin = cmiState.scoreMin != null ? cmiState.scoreMin : null;
-    const scoreMax = cmiState.scoreMax != null ? cmiState.scoreMax : null;
-    const totalTime = cmiState.totalTime || row.lastTotalTime || null;
-    const lessonStatus = cmiState.lessonStatus || row.lastLessonStatus || null;
+    const scoreRaw = primaryState?.scoreRaw != null ? primaryState.scoreRaw : row.lastScoreRaw;
+    const scoreMin = stateValue(primaryState, ['cmi.core.score.min', 'cmi.score.min']) ?? legacyState?.scoreMin ?? null;
+    const scoreMax = stateValue(primaryState, ['cmi.core.score.max', 'cmi.score.max']) ?? legacyState?.scoreMax ?? null;
+    const totalTime = primaryState?.totalTime || row.lastTotalTime || legacyState?.totalTime || null;
+    const lessonStatus = primaryState?.lessonStatus || row.lastLessonStatus || legacyState?.lessonStatus || null;
     const progressPercent = row.progressPercent;
 
-    // Admin QA preview deliberately remains on the legacy runtime store. Do not
-    // let the new learner v2 serializer hide its exact QA lesson location when
-    // the registration itself is already marked completed.
-    const lastLocationRaw = cmiState.lessonLocation || row.lastLocationRaw || null;
+    // Prefer the v2 learner-state location. Legacy preview state is retained only
+    // as a compatibility fallback for older QA registrations.
+    const lastLocationRaw = primaryState?.lessonLocation || row.lastLocationRaw || legacyState?.lessonLocation || null;
     const lastLocation = lastLocationRaw
-        ? locationLabel({ registration: row, cmiState, packageRow: course?.package || null })
+        ? locationLabel({ registration: row, cmiState: primaryState, packageRow: course?.package || null })
         : row.lastLocation;
 
     return {
         registrationId: row.id,
         isPreview: true,
-        qaState: qaState({ registration: row, cmiState, progressPercent }),
+        qaState: qaState({ registration: row, cmiState: primaryState, progressPercent }),
         progressPercent,
         progressAvailable: row.progressAvailable,
         scoreRaw: finiteNumber(scoreRaw),
@@ -104,14 +123,18 @@ function serializePreviewStats(registration, course) {
         scorePercent: scorePercent(scoreRaw, scoreMin, scoreMax),
         lessonStatus,
         totalTime,
-        sessionTime: cmiState.sessionTime || null,
+        sessionTime: stateValue(primaryState, ['cmi.core.session_time', 'cmi.session_time']) || legacyState?.sessionTime || null,
         lastLocation,
         lastLocationRaw,
-        interactionCount: interactionCount(cmiState.interactionsJson, cmiState.rawMapJson),
-        initialized: !!cmiState.initialized,
-        stateVersion: cmiState.stateVersion ?? null,
-        lastCommitAt: row.lastCommitAt || plainRegistration.runtimeSnapshot?.updatedAt || null,
-        lastActivityAt: row.lastCommitAt || plainRegistration.runtimeSnapshot?.updatedAt || row.updatedAt || null,
+        interactionCount: interactionCount(
+            legacyState?.interactionsJson,
+            legacyState?.rawMapJson,
+            learningStateV2?.values || null
+        ),
+        initialized: Number(learningStateV2?.sequence || 0) > 0 || !!legacyState?.initialized,
+        stateVersion: learningStateV2?.sequence ?? legacyState?.stateVersion ?? null,
+        lastCommitAt: row.lastCommitAt || learningStateV2?.updatedAt || plainRegistration.runtimeSnapshot?.updatedAt || null,
+        lastActivityAt: row.lastCommitAt || learningStateV2?.updatedAt || plainRegistration.runtimeSnapshot?.updatedAt || row.updatedAt || null,
         updatedAt: row.updatedAt || null
     };
 }
