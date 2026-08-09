@@ -50,6 +50,44 @@ describe('ScormProgressService', () => {
         })).to.equal(50);
     });
 
+    it('uses a changing normalized score as live progress when the SCO leaves progress at zero', () => {
+        expect(deriveProgress({
+            registration: { status: 'active', lastLessonStatus: 'not attempted' },
+            cmiState: {
+                lessonStatus: 'not attempted',
+                scoreRaw: 13,
+                lessonLocation: '0',
+                progressPercent: 0,
+                values: {
+                    'cmi.core.score.raw': '13',
+                    'cmi.core.score.min': '0',
+                    'cmi.core.score.max': '100',
+                    'quizmoto.progress_percent': '0',
+                    'cmi.core.lesson_location': '0',
+                    'cmi.interactions.0.id': 'question_1'
+                }
+            },
+            packageRow: { analysisJson: null }
+        })).to.equal(13);
+    });
+
+    it('does not mark an unfinished SCO completed from a provisional perfect score', () => {
+        expect(deriveProgress({
+            registration: { status: 'active' },
+            cmiState: {
+                lessonStatus: 'incomplete',
+                scoreRaw: 100,
+                progressPercent: 0,
+                values: {
+                    'cmi.core.score.raw': '100',
+                    'cmi.core.score.min': '0',
+                    'cmi.core.score.max': '100'
+                }
+            },
+            packageRow: { analysisJson: null }
+        })).to.equal(99.9);
+    });
+
     it('uses an explicit v2 progress percentage when supplied', () => {
         expect(deriveProgress({
             registration: { status: 'active' },
