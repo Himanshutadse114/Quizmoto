@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Runtime = require('../../services/scorm/ScormRuntimeService');
+const { ensureScormRuntimeSchema } = require('../../services/scorm/ScormRuntimeSchemaGuard');
 const {
     ScormRegistration,
     ScormCmiState,
@@ -31,6 +32,10 @@ function logRuntimeFailure(operation, req, err, elements = []) {
         code: err?.code || null,
         dbCode
     });
+}
+
+async function ensureRuntimeReady() {
+    await ensureScormRuntimeSchema();
 }
 
 async function bootstrapAiAuthorProgress(regId) {
@@ -95,6 +100,7 @@ async function emitRegistration(regId, event, snapshot = null) {
 
 router.post('/:regId/initialize', async (req, res) => {
     try {
+        await ensureRuntimeReady();
         const token = bearer(req);
         const result = await Runtime.initialize(req.params.regId, token);
         const bootstrapped = await bootstrapAiAuthorProgress(req.params.regId);
@@ -110,6 +116,7 @@ router.post('/:regId/initialize', async (req, res) => {
 router.get('/:regId/get', async (req, res) => {
     const element = req.query.el || req.query.element;
     try {
+        await ensureRuntimeReady();
         const result = await Runtime.getValue(req.params.regId, bearer(req), element);
         res.json(result);
     } catch (err) {
@@ -124,6 +131,7 @@ router.post('/:regId/set', async (req, res) => {
         ? Object.keys(values)
         : [element];
     try {
+        await ensureRuntimeReady();
         const token = bearer(req);
         const result = values && typeof values === 'object' && !Array.isArray(values)
             ? await Runtime.setValues(req.params.regId, token, values)
@@ -138,6 +146,7 @@ router.post('/:regId/set', async (req, res) => {
 router.post('/:regId/commit', async (req, res) => {
     const values = req.body?.values;
     try {
+        await ensureRuntimeReady();
         const result = await Runtime.commit(req.params.regId, bearer(req), values);
         await emitRegistration(req.params.regId, 'commit', result.registration || null);
         res.json(result);
@@ -150,6 +159,7 @@ router.post('/:regId/commit', async (req, res) => {
 router.post('/:regId/finish', async (req, res) => {
     const values = req.body?.values;
     try {
+        await ensureRuntimeReady();
         const result = await Runtime.finish(req.params.regId, bearer(req), values);
         await emitRegistration(req.params.regId, 'finish', result.registration || null);
         res.json(result);
