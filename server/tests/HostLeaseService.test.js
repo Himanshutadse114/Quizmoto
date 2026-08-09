@@ -57,6 +57,30 @@ describe('HostLeaseService (Phase 2)', function () {
         expect(session.hostLeaseExpiresAt).to.not.equal(null);
     });
 
+    it('serializes concurrent same-owner renewals without sqlite transaction collisions', async () => {
+        const results = await Promise.all([
+            HostLeaseService.acquireOrRenew({
+                sessionId: session.id,
+                ownerId: 'same-socket',
+                ttlMs: 5000,
+                force: true
+            }),
+            HostLeaseService.acquireOrRenew({
+                sessionId: session.id,
+                ownerId: 'same-socket',
+                ttlMs: 5000,
+                force: true
+            })
+        ]);
+
+        expect(results.every((result) => result.ok)).to.equal(true);
+        expect(results.map((result) => result.code)).to.include('ACQUIRED');
+        expect(results.map((result) => result.code)).to.include('RENEWED');
+
+        await session.reload();
+        expect(String(session.hostLeaseOwner)).to.equal('same-socket');
+    });
+
     it('rejects second owner while lease is active', async () => {
         await HostLeaseService.acquireOrRenew({
             sessionId: session.id,
@@ -74,6 +98,29 @@ describe('HostLeaseService (Phase 2)', function () {
 
         expect(blocked.ok).to.equal(false);
         expect(blocked.code).to.equal('LEASE_HELD');
+    });
+
+    it('serializes concurrent competing owners and permits only the first active lease', async () => {
+        const [first, second] = await Promise.all([
+            HostLeaseService.acquireOrRenew({
+                sessionId: session.id,
+                ownerId: 'host-A',
+                ttlMs: 60000,
+                force: true
+            }),
+            HostLeaseService.acquireOrRenew({
+                sessionId: session.id,
+                ownerId: 'host-B',
+                ttlMs: 60000,
+                force: true
+            })
+        ]);
+
+        const successes = [first, second].filter((result) => result.ok);
+        const blocked = [first, second].filter((result) => !result.ok);
+        expect(successes).to.have.length(1);
+        expect(blocked).to.have.length(1);
+        expect(blocked[0].code).to.equal('LEASE_HELD');
     });
 
     it('allows takeover after lease expiry', async () => {
