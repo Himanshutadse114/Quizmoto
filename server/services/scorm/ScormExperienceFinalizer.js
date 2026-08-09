@@ -77,7 +77,7 @@ async function buildScormPackageZip(analysis, opts = {}) {
             const content = JSON.parse(await contentFile.async('string'));
             zip.file('content.json', JSON.stringify({
                 ...content,
-                version: 6,
+                version: 8,
                 interactionTracking: 'scorm_1_2_cmi_interactions',
                 interactionPersistence: 'background_batched',
                 provisionalScoreTracking: true
