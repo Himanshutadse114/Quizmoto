@@ -29,6 +29,18 @@ describe('ScormTrackingPackageFinalizer', () => {
         expect(patched).to.include('lastSessionWriteMs=now');
     });
 
+    it('exposes a synchronous suspend flush that saves the current screen before exit', () => {
+        const html = "window.addEventListener('beforeunload',function(){if(completed)return;try{writeSessionTime();if(typeof doLMSSetValue==='function'){doLMSSetValue('cmi.core.exit','suspend');doLMSCommit()}}catch(e){}})";
+        const patched = patchTrackingRuntime(html);
+        expect(patched).to.include('function flushSuspendState(markExit)');
+        expect(patched).to.include('window.__quizmotoFlushScormState=flushSuspendState');
+        expect(patched).to.include("doLMSSetValue('cmi.core.lesson_location',String(currentSlide))");
+        expect(patched).to.include("doLMSSetValue('cmi.suspend_data',JSON.stringify({quizmotoSlide:currentSlide,quizmotoProgress:p}))");
+        expect(patched).to.include("doLMSSetValue('cmi.core.lesson_status','incomplete')");
+        expect(patched).to.include("doLMSSetValue('cmi.core.exit','suspend')");
+        expect(patched).to.include("window.addEventListener('beforeunload',function(){flushSuspendState(true)})");
+    });
+
     it('injects compact responsive rules into generated learner courses', () => {
         const html = '<html><head><title>Course</title></head><body></body></html>';
         const patched = patchMobileCourse(html);
