@@ -14,6 +14,25 @@ function bearer(req) {
     return h.replace(/^Bearer\s+/i, '').trim();
 }
 
+function runtimeHttpCode(err) {
+    if (err?.code === 'FORBIDDEN') return 403;
+    if (err?.code === 'NOT_FOUND') return 404;
+    return 500;
+}
+
+function logRuntimeFailure(operation, req, err, elements = []) {
+    const dbCode = err?.original?.code || err?.parent?.code || null;
+    const safeElements = Array.from(new Set((elements || []).filter(Boolean).map(String))).slice(0, 20);
+    console.error('[scorm-runtime] operation failed', {
+        operation,
+        registrationId: req.params?.regId || null,
+        elements: safeElements,
+        error: err?.message || String(err),
+        code: err?.code || null,
+        dbCode
+    });
+}
+
 async function bootstrapAiAuthorProgress(regId) {
     try {
         const reg = await ScormRegistration.findByPk(regId, {
@@ -83,54 +102,60 @@ router.post('/:regId/initialize', async (req, res) => {
         await emitRegistration(req.params.regId, 'initialize');
         res.json(result);
     } catch (err) {
-        const code = err.code === 'FORBIDDEN' ? 403 : err.code === 'NOT_FOUND' ? 404 : 500;
-        res.status(code).json({ message: err.message, errorCode: 101 });
+        logRuntimeFailure('initialize', req, err);
+        res.status(runtimeHttpCode(err)).json({ message: err.message, errorCode: 101 });
     }
 });
 
 router.get('/:regId/get', async (req, res) => {
+    const element = req.query.el || req.query.element;
     try {
-        const result = await Runtime.getValue(req.params.regId, bearer(req), req.query.el || req.query.element);
+        const result = await Runtime.getValue(req.params.regId, bearer(req), element);
         res.json(result);
     } catch (err) {
-        const code = err.code === 'FORBIDDEN' ? 403 : err.code === 'NOT_FOUND' ? 404 : 500;
-        res.status(code).json({ message: err.message, errorCode: 101, value: '' });
+        logRuntimeFailure('get', req, err, [element]);
+        res.status(runtimeHttpCode(err)).json({ message: err.message, errorCode: 101, value: '' });
     }
 });
 
 router.post('/:regId/set', async (req, res) => {
+    const { element, value, values } = req.body || {};
+    const elements = values && typeof values === 'object' && !Array.isArray(values)
+        ? Object.keys(values)
+        : [element];
     try {
-        const { element, value, values } = req.body || {};
         const token = bearer(req);
         const result = values && typeof values === 'object' && !Array.isArray(values)
             ? await Runtime.setValues(req.params.regId, token, values)
             : await Runtime.setValue(req.params.regId, token, element, value);
         res.json(result);
     } catch (err) {
-        const code = err.code === 'FORBIDDEN' ? 403 : err.code === 'NOT_FOUND' ? 404 : 500;
-        res.status(code).json({ message: err.message, errorCode: 101, value: 'false' });
+        logRuntimeFailure('set', req, err, elements);
+        res.status(runtimeHttpCode(err)).json({ message: err.message, errorCode: 101, value: 'false' });
     }
 });
 
 router.post('/:regId/commit', async (req, res) => {
+    const values = req.body?.values;
     try {
-        const result = await Runtime.commit(req.params.regId, bearer(req), req.body?.values);
+        const result = await Runtime.commit(req.params.regId, bearer(req), values);
         await emitRegistration(req.params.regId, 'commit', result.registration || null);
         res.json(result);
     } catch (err) {
-        const code = err.code === 'FORBIDDEN' ? 403 : err.code === 'NOT_FOUND' ? 404 : 500;
-        res.status(code).json({ message: err.message, errorCode: 101, value: 'false' });
+        logRuntimeFailure('commit', req, err, values && typeof values === 'object' ? Object.keys(values) : []);
+        res.status(runtimeHttpCode(err)).json({ message: err.message, errorCode: 101, value: 'false' });
     }
 });
 
 router.post('/:regId/finish', async (req, res) => {
+    const values = req.body?.values;
     try {
-        const result = await Runtime.finish(req.params.regId, bearer(req), req.body?.values);
+        const result = await Runtime.finish(req.params.regId, bearer(req), values);
         await emitRegistration(req.params.regId, 'finish', result.registration || null);
         res.json(result);
     } catch (err) {
-        const code = err.code === 'FORBIDDEN' ? 403 : err.code === 'NOT_FOUND' ? 404 : 500;
-        res.status(code).json({ message: err.message, errorCode: 101, value: 'false' });
+        logRuntimeFailure('finish', req, err, values && typeof values === 'object' ? Object.keys(values) : []);
+        res.status(runtimeHttpCode(err)).json({ message: err.message, errorCode: 101, value: 'false' });
     }
 });
 
