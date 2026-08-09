@@ -9,13 +9,16 @@ import argparse
 import html
 import json
 import math
-import os
 import re
 import sys
 from pathlib import Path
 
 WIDTH = 960
 HEIGHT = 520
+SAFE_LEFT = 62
+SAFE_RIGHT = WIDTH - 62
+SAFE_TOP = 48
+SAFE_BOTTOM = HEIGHT - 48
 
 
 def esc(value):
@@ -49,18 +52,16 @@ def svg_text(x, y, value, size=18, weight=700, fill='#1e293b', anchor='middle', 
     lines = text_lines(value, max_chars=max_chars, max_lines=max_lines)
     lh = line_height or int(size * 1.25)
     start_y = y - ((len(lines) - 1) * lh / 2)
-    spans = []
-    for idx, line in enumerate(lines):
-        spans.append(f'<tspan x="{x}" y="{start_y + idx * lh:.1f}">{esc(line)}</tspan>')
+    spans = [f'<tspan x="{x}" y="{start_y + idx * lh:.1f}">{esc(line)}</tspan>' for idx, line in enumerate(lines)]
     return f'<text x="{x}" y="{y}" text-anchor="{anchor}" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="{size}" font-weight="{weight}" fill="{fill}">{"".join(spans)}</text>'
 
 
 def base_svg(inner, title='Learning visual'):
-    return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {HEIGHT}" role="img" aria-label="{esc(title)}">
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {HEIGHT}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="{esc(title)}">
 <defs>
-  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#0f172a" flood-opacity=".10"/></filter>
-  <linearGradient id="accentGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--qm-primary,#f97316)"/><stop offset="1" stop-color="var(--qm-accent,#fdba74)"/></linearGradient>
-  <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="var(--qm-primary,#f97316)"/></marker>
+  <filter id="shadow" x="-18%" y="-18%" width="136%" height="136%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0f172a" flood-opacity=".08"/></filter>
+  <linearGradient id="accentGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--qm-primary,#4f46e5)"/><stop offset="1" stop-color="var(--qm-accent,#ddd9ff)"/></linearGradient>
+  <marker id="arrow" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="var(--qm-primary,#4f46e5)"/></marker>
 </defs>
 {inner}
 </svg>'''
@@ -76,48 +77,50 @@ def points(slide, limit=6):
 
 def visual_process(slide):
     items = points(slide, 4)
-    n = len(items)
+    n = max(1, len(items))
     gap = 24
-    card_w = min(205, (WIDTH - 100 - gap * (n - 1)) / max(1, n))
+    usable = SAFE_RIGHT - SAFE_LEFT
+    card_w = min(198, (usable - gap * (n - 1)) / n)
     total = card_w * n + gap * (n - 1)
     x0 = (WIDTH - total) / 2
+    y, card_h = 150, 220
     chunks = []
     for i, item in enumerate(items):
         x = x0 + i * (card_w + gap)
-        if i < n - 1:
-            x1 = x + card_w
-            x2 = x + card_w + gap - 6
-            chunks.append(f'<path d="M{x1:.1f} 260 H{x2:.1f}" stroke="var(--qm-primary,#f97316)" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity=".75"/>')
-        chunks.append(f'<g class="qm-node" style="--delay:{i * 90}ms" filter="url(#shadow)"><rect x="{x:.1f}" y="150" width="{card_w:.1f}" height="220" rx="24" fill="#fff" stroke="#e2e8f0"/><circle cx="{x + card_w/2:.1f}" cy="190" r="25" fill="var(--qm-soft,#fff1e6)"/><text x="{x + card_w/2:.1f}" y="198" text-anchor="middle" font-family="Inter,Arial" font-size="20" font-weight="900" fill="var(--qm-primary,#f97316)">{i+1}</text>{svg_text(x + card_w/2, 282, item, size=16, weight=750, max_chars=25, max_lines=4)}</g>')
+        if i < len(items) - 1:
+            chunks.append(f'<path class="qm-path" d="M{x + card_w:.1f} 260 H{x + card_w + gap - 7:.1f}" stroke="var(--qm-primary,#4f46e5)" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow)" opacity=".55"/>')
+        chunks.append(f'<g class="qm-node" style="--delay:{i * 90}ms" filter="url(#shadow)"><rect x="{x:.1f}" y="{y}" width="{card_w:.1f}" height="{card_h}" rx="22" fill="#fff" stroke="#e2e8f0"/><circle cx="{x + card_w/2:.1f}" cy="192" r="23" fill="var(--qm-soft,#efeffd)"/><text x="{x + card_w/2:.1f}" y="199" text-anchor="middle" font-family="Inter,Arial" font-size="18" font-weight="900" fill="var(--qm-primary,#4f46e5)">{i+1}</text>{svg_text(x + card_w/2, 282, item, size=15, weight=750, max_chars=24, max_lines=4)}</g>')
     return base_svg(''.join(chunks), slide.get('title'))
 
 
 def visual_timeline(slide):
     items = points(slide, 5)
-    n = len(items)
-    left, right, y = 105, WIDTH - 105, 215
-    chunks = [f'<path class="qm-path" d="M{left} {y}H{right}" stroke="url(#accentGrad)" stroke-width="8" stroke-linecap="round"/>']
+    n = max(1, len(items))
+    left, right, y = 120, WIDTH - 120, 260
+    chunks = [f'<path class="qm-path" d="M{left} {y}H{right}" stroke="url(#accentGrad)" stroke-width="7" stroke-linecap="round"/>']
     for i, item in enumerate(items):
         x = left if n == 1 else left + (right-left) * i/(n-1)
         down = i % 2 == 0
-        card_y = 270 if down else 32
-        line_y2 = card_y if not down else card_y
-        chunks.append(f'<g class="qm-node" style="--delay:{i * 100}ms"><line x1="{x:.1f}" y1="{y}" x2="{x:.1f}" y2="{270 if down else 190}" stroke="#cbd5e1" stroke-width="3"/><circle cx="{x:.1f}" cy="{y}" r="22" fill="#fff" stroke="var(--qm-primary,#f97316)" stroke-width="7"/><rect x="{x-78:.1f}" y="{card_y}" width="156" height="150" rx="20" fill="#fff" stroke="#e2e8f0" filter="url(#shadow)"/>{svg_text(x, card_y+74, item, size=14, weight=750, max_chars=22, max_lines=4)}</g>')
+        card_y = 302 if down else 62
+        chunks.append(f'<g class="qm-node" style="--delay:{i * 100}ms"><line x1="{x:.1f}" y1="{y}" x2="{x:.1f}" y2="{302 if down else 190}" stroke="#cbd5e1" stroke-width="3"/><circle cx="{x:.1f}" cy="{y}" r="18" fill="#fff" stroke="var(--qm-primary,#4f46e5)" stroke-width="6"/><rect x="{x-70:.1f}" y="{card_y}" width="140" height="118" rx="18" fill="#fff" stroke="#e2e8f0" filter="url(#shadow)"/>{svg_text(x, card_y+59, item, size=13, weight=750, max_chars=20, max_lines=4)}</g>')
     return base_svg(''.join(chunks), slide.get('title'))
 
 
 def visual_hub(slide):
     items = points(slide, 6)
-    cx, cy, radius = 480, 260, 185
+    cx, cy = 480, 260
+    radius = 152 if len(items) >= 5 else 165
+    node_r = 52 if len(items) >= 5 else 58
+    center_r = 76
     chunks = []
     for i, item in enumerate(items):
         angle = -math.pi/2 + (2*math.pi*i/max(1,len(items)))
         x = cx + math.cos(angle)*radius
         y = cy + math.sin(angle)*radius
-        chunks.append(f'<line class="qm-path" x1="{cx}" y1="{cy}" x2="{x:.1f}" y2="{y:.1f}" stroke="var(--qm-accent,#fdba74)" stroke-width="5" opacity=".8"/>')
-        chunks.append(f'<g class="qm-node" style="--delay:{i*90}ms" filter="url(#shadow)"><circle cx="{x:.1f}" cy="{y:.1f}" r="66" fill="#fff" stroke="var(--qm-primary,#f97316)" stroke-width="5"/>{svg_text(x, y, item, size=12, weight=750, max_chars=16, max_lines=4)}</g>')
+        chunks.append(f'<line class="qm-path" x1="{cx}" y1="{cy}" x2="{x:.1f}" y2="{y:.1f}" stroke="var(--qm-accent,#ddd9ff)" stroke-width="4" opacity=".75"/>')
+        chunks.append(f'<g class="qm-node" style="--delay:{i*90}ms" filter="url(#shadow)"><circle cx="{x:.1f}" cy="{y:.1f}" r="{node_r}" fill="#fff" stroke="var(--qm-primary,#4f46e5)" stroke-width="4"/>{svg_text(x, y, item, size=11, weight=750, max_chars=15, max_lines=4)}</g>')
     center = str(slide.get('visualTitle') or slide.get('title') or 'Key concept')
-    chunks.append(f'<g class="qm-center" filter="url(#shadow)"><circle cx="{cx}" cy="{cy}" r="91" fill="url(#accentGrad)"/>{svg_text(cx, cy, center, size=17, weight=900, fill="#fff", max_chars=17, max_lines=3)}</g>')
+    chunks.append(f'<g class="qm-center" filter="url(#shadow)"><circle cx="{cx}" cy="{cy}" r="{center_r}" fill="url(#accentGrad)"/>{svg_text(cx, cy, center, size=16, weight=900, fill="#fff", max_chars=16, max_lines=3)}</g>')
     return base_svg(''.join(chunks), slide.get('title'))
 
 
@@ -127,11 +130,11 @@ def visual_comparison(slide):
     good, bad = items[:half], items[half:]
     if not bad:
         bad = ['Avoid the opposite behaviour and verify before acting.']
-    chunks = ['<rect x="55" y="55" width="400" height="410" rx="30" fill="#f0fdf4" stroke="#86efac"/><rect x="505" y="55" width="400" height="410" rx="30" fill="#fef2f2" stroke="#fca5a5"/>', svg_text(255, 102, 'RECOMMENDED', size=18, weight=900, fill='#15803d'), svg_text(705, 102, 'WATCH OUT', size=18, weight=900, fill='#dc2626')]
-    for col, arr, x, color, symbol in [(0, good, 90, '#16a34a', '✓'), (1, bad, 540, '#ef4444', '!')]:
+    chunks = ['<rect x="70" y="65" width="375" height="390" rx="28" fill="#f0fdf4" stroke="#bbf7d0"/><rect x="515" y="65" width="375" height="390" rx="28" fill="#fef2f2" stroke="#fecaca"/>', svg_text(257, 108, 'RECOMMENDED', size=17, weight=900, fill='#15803d'), svg_text(702, 108, 'WATCH OUT', size=17, weight=900, fill='#dc2626')]
+    for col, arr, x, color, symbol in [(0, good, 96, '#16a34a', '✓'), (1, bad, 541, '#ef4444', '!')]:
         for i, item in enumerate(arr[:4]):
-            y = 148 + i*78
-            chunks.append(f'<g class="qm-node" style="--delay:{(i+col*2)*90}ms"><circle cx="{x+18}" cy="{y+18}" r="18" fill="{color}"/><text x="{x+18}" y="{y+24}" text-anchor="middle" font-family="Arial" font-size="18" font-weight="900" fill="#fff">{symbol}</text>{svg_text(x+48, y+18, item, size=14, weight=700, fill="#334155", anchor="start", max_chars=36, max_lines=3)}</g>')
+            y = 150 + i*76
+            chunks.append(f'<g class="qm-node" style="--delay:{(i+col*2)*90}ms"><circle cx="{x+16}" cy="{y+16}" r="16" fill="{color}"/><text x="{x+16}" y="{y+22}" text-anchor="middle" font-family="Arial" font-size="16" font-weight="900" fill="#fff">{symbol}</text>{svg_text(x+44, y+16, item, size=13, weight=700, fill="#334155", anchor="start", max_chars=34, max_lines=3)}</g>')
     return base_svg(''.join(chunks), slide.get('title'))
 
 
@@ -139,46 +142,50 @@ def visual_cards(slide):
     items = points(slide, 6)
     cols = 3 if len(items) > 4 else 2
     rows = math.ceil(len(items)/cols)
-    card_w = 250 if cols == 3 else 350
-    card_h = 155 if rows >= 2 else 200
-    gap_x, gap_y = 28, 26
+    gap_x, gap_y = 24, 22
+    usable_w = SAFE_RIGHT - SAFE_LEFT
+    usable_h = SAFE_BOTTOM - SAFE_TOP
+    card_w = (usable_w - (cols-1)*gap_x) / cols
+    card_h = min(150 if rows > 1 else 205, (usable_h - (rows-1)*gap_y) / rows)
     total_w = cols*card_w + (cols-1)*gap_x
-    x0 = (WIDTH-total_w)/2
     total_h = rows*card_h + (rows-1)*gap_y
+    x0 = (WIDTH-total_w)/2
     y0 = (HEIGHT-total_h)/2
     chunks = []
     for i, item in enumerate(items):
         col, row = i % cols, i // cols
         x, y = x0 + col*(card_w+gap_x), y0 + row*(card_h+gap_y)
-        chunks.append(f'<g class="qm-node" style="--delay:{i*80}ms" filter="url(#shadow)"><rect x="{x:.1f}" y="{y:.1f}" width="{card_w}" height="{card_h}" rx="24" fill="#fff" stroke="#e2e8f0"/><rect x="{x:.1f}" y="{y:.1f}" width="8" height="{card_h}" rx="4" fill="var(--qm-primary,#f97316)"/><circle cx="{x+44:.1f}" cy="{y+42:.1f}" r="21" fill="var(--qm-soft,#fff1e6)"/><text x="{x+44:.1f}" y="{y+49:.1f}" text-anchor="middle" font-family="Inter,Arial" font-size="18" font-weight="900" fill="var(--qm-primary,#f97316)">{i+1}</text>{svg_text(x+28, y+95, item, size=14, weight=750, fill="#334155", anchor="start", max_chars=30, max_lines=3)}</g>')
+        chunks.append(f'<g class="qm-node" style="--delay:{i*80}ms" filter="url(#shadow)"><rect x="{x:.1f}" y="{y:.1f}" width="{card_w:.1f}" height="{card_h:.1f}" rx="22" fill="#fff" stroke="#e2e8f0"/><rect x="{x:.1f}" y="{y:.1f}" width="7" height="{card_h:.1f}" rx="3.5" fill="var(--qm-primary,#4f46e5)"/><circle cx="{x+40:.1f}" cy="{y+38:.1f}" r="19" fill="var(--qm-soft,#efeffd)"/><text x="{x+40:.1f}" y="{y+44:.1f}" text-anchor="middle" font-family="Inter,Arial" font-size="16" font-weight="900" fill="var(--qm-primary,#4f46e5)">{i+1}</text>{svg_text(x+24, y+88, item, size=13, weight=750, fill="#334155", anchor="start", max_chars=28, max_lines=3)}</g>')
     return base_svg(''.join(chunks), slide.get('title'))
 
 
 def visual_spotlight(slide):
     item = points(slide, 1)[0]
     title = slide.get('visualTitle') or slide.get('title') or 'Key takeaway'
-    inner = f'''<circle class="qm-pulse" cx="480" cy="250" r="190" fill="var(--qm-soft,#fff1e6)"/>
-<circle cx="480" cy="250" r="135" fill="url(#accentGrad)" filter="url(#shadow)"/>
-<path d="M480 142l82 34v62c0 66-35 108-82 126-47-18-82-60-82-126v-62l82-34z" fill="none" stroke="#fff" stroke-width="12" stroke-linejoin="round"/>
-<path d="M440 252l27 27 58-66" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
-{svg_text(480, 430, title, size=18, weight=900, fill="#1e293b", max_chars=32, max_lines=2)}
-{svg_text(480, 482, item, size=13, weight=650, fill="#64748b", max_chars=70, max_lines=2)}'''
+    inner = f'''<circle class="qm-pulse" cx="480" cy="230" r="165" fill="var(--qm-soft,#efeffd)"/>
+<circle cx="480" cy="230" r="118" fill="url(#accentGrad)" filter="url(#shadow)"/>
+<path d="M480 135l70 29v54c0 57-30 94-70 110-40-16-70-53-70-110v-54l70-29z" fill="none" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+<path d="M446 231l23 23 49-56" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+{svg_text(480, 414, title, size=18, weight=900, fill="#1e293b", max_chars=32, max_lines=2)}
+{svg_text(480, 462, item, size=13, weight=650, fill="#64748b", max_chars=68, max_lines=2)}'''
     return base_svg(inner, slide.get('title'))
 
 
 def visual_matrix(slide):
     items = points(slide, 4)
     labels = items + ['']*(4-len(items))
-    inner = ['<text x="480" y="45" text-anchor="middle" font-family="Inter,Arial" font-size="15" font-weight="900" fill="#475569">IMPACT →</text>', '<text x="35" y="265" text-anchor="middle" transform="rotate(-90 35 265)" font-family="Inter,Arial" font-size="15" font-weight="900" fill="#475569">LIKELIHOOD →</text>']
-    cells = [(90,65,'#dcfce7','#15803d','LOW'), (500,65,'#fef3c7','#b45309','MEDIUM'), (90,275,'#fef3c7','#b45309','MEDIUM'), (500,275,'#fee2e2','#b91c1c','HIGH')]
+    inner = ['<text x="480" y="42" text-anchor="middle" font-family="Inter,Arial" font-size="14" font-weight="900" fill="#475569">IMPACT →</text>', '<text x="42" y="260" text-anchor="middle" transform="rotate(-90 42 260)" font-family="Inter,Arial" font-size="14" font-weight="900" fill="#475569">LIKELIHOOD →</text>']
+    cells = [(92,62,'#dcfce7','#15803d','LOW'), (500,62,'#fef3c7','#b45309','MEDIUM'), (92,272,'#fef3c7','#b45309','MEDIUM'), (500,272,'#fee2e2','#b91c1c','HIGH')]
     for i,(x,y,bg,fg,level) in enumerate(cells):
-        inner.append(f'<g class="qm-node" style="--delay:{i*100}ms"><rect x="{x}" y="{y}" width="370" height="180" rx="24" fill="{bg}"/><text x="{x+24}" y="{y+34}" font-family="Inter,Arial" font-size="12" font-weight="900" fill="{fg}">{level}</text>{svg_text(x+185,y+100,labels[i] or level.title()+" risk",size=15,weight=750,fill="#334155",max_chars=35,max_lines=3)}</g>')
+        inner.append(f'<g class="qm-node" style="--delay:{i*100}ms"><rect x="{x}" y="{y}" width="360" height="176" rx="22" fill="{bg}"/><text x="{x+22}" y="{y+31}" font-family="Inter,Arial" font-size="11" font-weight="900" fill="{fg}">{level}</text>{svg_text(x+180,y+99,labels[i] or level.title()+" risk",size=14,weight=750,fill="#334155",max_chars=34,max_lines=3)}</g>')
     return base_svg(''.join(inner), slide.get('title'))
 
 
 def visual_cycle(slide):
     items = points(slide, 5)
-    cx, cy, radius = 480, 260, 165
+    cx, cy = 480, 260
+    radius = 148
+    node_r = 56
     chunks = []
     coords = []
     for i in range(len(items)):
@@ -186,10 +193,10 @@ def visual_cycle(slide):
         coords.append((cx+math.cos(angle)*radius, cy+math.sin(angle)*radius))
     for i,(x,y) in enumerate(coords):
         nx,ny=coords[(i+1)%len(coords)]
-        chunks.append(f'<path class="qm-path" d="M{x:.1f} {y:.1f} Q{cx:.1f} {cy:.1f} {nx:.1f} {ny:.1f}" fill="none" stroke="var(--qm-accent,#fdba74)" stroke-width="5" marker-end="url(#arrow)" opacity=".65"/>')
+        chunks.append(f'<path class="qm-path" d="M{x:.1f} {y:.1f} Q{cx:.1f} {cy:.1f} {nx:.1f} {ny:.1f}" fill="none" stroke="var(--qm-accent,#ddd9ff)" stroke-width="4" marker-end="url(#arrow)" opacity=".62"/>')
     for i,((x,y),item) in enumerate(zip(coords,items)):
-        chunks.append(f'<g class="qm-node" style="--delay:{i*100}ms" filter="url(#shadow)"><circle cx="{x:.1f}" cy="{y:.1f}" r="72" fill="#fff" stroke="var(--qm-primary,#f97316)" stroke-width="5"/>{svg_text(x,y,item,size=13,weight=750,max_chars=18,max_lines=4)}</g>')
-    chunks.append(f'<circle cx="{cx}" cy="{cy}" r="70" fill="url(#accentGrad)"/>{svg_text(cx,cy,slide.get("visualTitle") or slide.get("title") or "Cycle",size=15,weight=900,fill="#fff",max_chars=18,max_lines=3)}')
+        chunks.append(f'<g class="qm-node" style="--delay:{i*100}ms" filter="url(#shadow)"><circle cx="{x:.1f}" cy="{y:.1f}" r="{node_r}" fill="#fff" stroke="var(--qm-primary,#4f46e5)" stroke-width="4"/>{svg_text(x,y,item,size=12,weight=750,max_chars=16,max_lines=4)}</g>')
+    chunks.append(f'<circle cx="{cx}" cy="{cy}" r="68" fill="url(#accentGrad)"/>{svg_text(cx,cy,slide.get("visualTitle") or slide.get("title") or "Cycle",size=15,weight=900,fill="#fff",max_chars=17,max_lines=3)}')
     return base_svg(''.join(chunks), slide.get('title'))
 
 
