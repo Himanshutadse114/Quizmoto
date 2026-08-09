@@ -1,6 +1,7 @@
 /**
  * SCORM World report generator (PDF + Excel).
  * Mirrors live-quiz Quizmoto report structure for published courses.
+ * Admin QA previews are intentionally excluded from all report output.
  */
 
 const fs = require('fs');
@@ -26,7 +27,6 @@ function courseMeta(course) {
             const sb = b.lastScoreRaw != null ? Number(b.lastScoreRaw) : -1;
             return sb - sa;
         });
-    const previews = regs.filter((r) => r.isPreview);
     const withScore = learners.filter((r) => r.lastScoreRaw != null && !Number.isNaN(Number(r.lastScoreRaw)));
     const completed = learners.filter((r) => isCompletedStatus(r.lastLessonStatus));
     const avgScore =
@@ -44,7 +44,6 @@ function courseMeta(course) {
         packageTitle: course.package ? safeStr(course.package.title, '') : '',
         packageVersion: course.package ? safeStr(course.package.version, '') : '',
         learners,
-        previews,
         stats: {
             totalLearners: learners.length,
             completed: completed.length,
@@ -129,20 +128,6 @@ function generatePdf(course, outputPath) {
                 });
             }
 
-            if (meta.previews.length > 0) {
-                doc.moveDown(0.5);
-                doc.fillColor('#46178f').fontSize(12).text('Host previews (excluded from averages)');
-                doc.moveDown(0.2);
-                doc.fillColor('#666666').fontSize(9);
-                meta.previews.forEach((r) => {
-                    doc.text(
-                        `- ${safeStr(r.learnerName, 'Preview')} | Lesson: ${safeStr(r.lastLessonStatus, '—')} | Score: ${
-                            r.lastScoreRaw != null ? r.lastScoreRaw : '—'
-                        }`
-                    );
-                });
-            }
-
             doc.end();
             stream.on('finish', () => resolve(outputPath));
             stream.on('error', reject);
@@ -189,8 +174,7 @@ async function generateExcel(course, outputPath) {
         'Lesson status',
         'Score',
         'Total time',
-        'Last update',
-        'Preview'
+        'Last update'
     ]);
     meta.learners.forEach((r, i) => {
         ws2.addRow([
@@ -205,25 +189,7 @@ async function generateExcel(course, outputPath) {
                 ? new Date(r.lastCommitAt).toISOString()
                 : r.updatedAt
                   ? new Date(r.updatedAt).toISOString()
-                  : '',
-            false
-        ]);
-    });
-    meta.previews.forEach((r) => {
-        ws2.addRow([
-            '',
-            r.learnerName || 'Preview',
-            r.learnerEmail || '',
-            r.status || '',
-            r.lastLessonStatus || '',
-            r.lastScoreRaw != null ? r.lastScoreRaw : '',
-            r.lastTotalTime || '',
-            r.lastCommitAt
-                ? new Date(r.lastCommitAt).toISOString()
-                : r.updatedAt
-                  ? new Date(r.updatedAt).toISOString()
-                  : '',
-            true
+                  : ''
         ]);
     });
 

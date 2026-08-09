@@ -1,16 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Activity, Search, CheckCircle2, Clock3, CircleDashed, Users, MapPin, ExternalLink, Eye } from 'lucide-react';
+import { Activity, Search, CheckCircle2, Clock3, CircleDashed, Users, MapPin, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 
 function statusLabel(row) {
-  if (row.isPreview) {
-    if (row.progressAvailable && row.progressPercent >= 100) return 'Preview complete';
-    if (row.progressAvailable && row.progressPercent > 0) return 'Preview in progress';
-    return 'Preview';
-  }
   if (!row.progressAvailable) return row.status === 'active' ? 'In progress' : 'Unavailable';
   if (row.progressPercent >= 100) return 'Completed';
   if (row.progressPercent > 0) return 'In progress';
@@ -34,7 +29,7 @@ const SummaryCard = ({ label, value, icon: Icon, bg = '#FFFFFF' }) => (
 export default function ScormTracking() {
   const { token } = useAuth();
   const navigate = useNavigate();
-  const [data, setData] = useState({ overview: {}, courses: [], learners: [], previews: [] });
+  const [data, setData] = useState({ overview: {}, courses: [], learners: [] });
   const [query, setQuery] = useState('');
   const [courseId, setCourseId] = useState('all');
   const [progressFilter, setProgressFilter] = useState('all');
@@ -45,7 +40,7 @@ export default function ScormTracking() {
     const headers = { Authorization: `Bearer ${token}` };
     let mounted = true;
     const load = () => axios.get(apiUrl('/api/scorm/tracking/summary'), { headers })
-      .then((res) => mounted && setData(res.data || { overview: {}, courses: [], learners: [], previews: [] }))
+      .then((res) => mounted && setData(res.data || { overview: {}, courses: [], learners: [] }))
       .catch((err) => mounted && setError(err.response?.data?.message || err.message));
     load();
     const timer = setInterval(load, 12000);
@@ -54,23 +49,22 @@ export default function ScormTracking() {
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const combined = [...(data.learners || []), ...(data.previews || [])].sort((a, b) => {
+    const learners = [...(data.learners || [])].sort((a, b) => {
       const at = new Date(a.lastCommitAt || a.updatedAt || 0).getTime();
       const bt = new Date(b.lastCommitAt || b.updatedAt || 0).getTime();
       return bt - at;
     });
 
-    return combined.filter((row) => {
+    return learners.filter((row) => {
       if (courseId !== 'all' && String(row.courseId) !== String(courseId)) return false;
-      if (progressFilter === 'preview' && !row.isPreview) return false;
-      if (progressFilter === 'completed' && !(row.progressAvailable && row.progressPercent >= 100 && !row.isPreview)) return false;
-      if (progressFilter === 'progress' && !(!row.isPreview && ((row.progressAvailable && row.progressPercent > 0 && row.progressPercent < 100) || (!row.progressAvailable && row.status === 'active')))) return false;
-      if (progressFilter === 'not-started' && !(!row.isPreview && row.progressAvailable && row.progressPercent <= 0 && row.status !== 'active')) return false;
-      if (progressFilter === 'unavailable' && (row.progressAvailable || row.isPreview)) return false;
+      if (progressFilter === 'completed' && !(row.progressAvailable && row.progressPercent >= 100)) return false;
+      if (progressFilter === 'progress' && !((row.progressAvailable && row.progressPercent > 0 && row.progressPercent < 100) || (!row.progressAvailable && row.status === 'active'))) return false;
+      if (progressFilter === 'not-started' && !(row.progressAvailable && row.progressPercent <= 0 && row.status !== 'active')) return false;
+      if (progressFilter === 'unavailable' && row.progressAvailable) return false;
       if (!q) return true;
       return `${row.learnerName || ''} ${row.learnerEmail || ''} ${row.courseTitle || ''} ${row.lastLocation || ''}`.toLowerCase().includes(q);
     });
-  }, [data.learners, data.previews, query, courseId, progressFilter]);
+  }, [data.learners, query, courseId, progressFilter]);
 
   const overview = data.overview || {};
 
@@ -79,14 +73,13 @@ export default function ScormTracking() {
       <div className="mb-7 pb-7 border-b border-black max-w-4xl">
         <div className="scorm-micro text-[10px] uppercase font-bold text-[#5A5A4F]">Learning operations</div>
         <h2 className="scorm-display uppercase text-[42px] md:text-[56px] mt-2">Learner tracking.</h2>
-        <p className="text-sm mt-3 leading-relaxed max-w-3xl">See completion, last known course location, score and activity. Preview sessions stay visible for QA but remain outside learner statistics.</p>
+        <p className="text-sm mt-3 leading-relaxed max-w-3xl">See completion, last known course location, score and activity. Admin QA previews are isolated and never appear as learner activity.</p>
       </div>
 
       {error && <div className="mb-5 p-4 rounded-xl border border-black bg-[#FFC0E6] text-black text-sm">{error}</div>}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
         <SummaryCard label="Learners" value={overview.learners || 0} icon={Users} />
-        <SummaryCard label="Previews" value={overview.previewSessions || 0} icon={Eye} bg="#D3BEFF" />
         <SummaryCard label="Completed" value={overview.completed || 0} icon={CheckCircle2} bg="#AAFDC0" />
         <SummaryCard label="In progress" value={overview.inProgress || 0} icon={Clock3} bg="#B0F4FF" />
         <SummaryCard label="Not started" value={overview.notStarted || 0} icon={CircleDashed} />
@@ -101,7 +94,7 @@ export default function ScormTracking() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search learner, preview, course or last location"
+              placeholder="Search learner, course or last location"
               className="w-full pl-9 pr-3 py-2.5 text-sm"
             />
           </div>
@@ -110,10 +103,9 @@ export default function ScormTracking() {
             {(data.courses || []).map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
           </select>
           <select value={progressFilter} onChange={(e) => setProgressFilter(e.target.value)} className="px-3 py-2.5 text-xs font-medium min-w-[180px]">
-            <option value="all">All sessions</option>
-            <option value="preview">Host previews</option>
-            <option value="completed">Completed learners</option>
-            <option value="progress">Learners in progress</option>
+            <option value="all">All learners</option>
+            <option value="completed">Completed</option>
+            <option value="progress">In progress</option>
             <option value="not-started">Not started</option>
             <option value="unavailable">Progress unavailable</option>
           </select>
@@ -123,7 +115,7 @@ export default function ScormTracking() {
           <table className="w-full min-w-[1100px] text-sm">
             <thead>
               <tr className="text-left scorm-micro text-[9px] uppercase font-bold text-[#5A5A4F] border-b border-black bg-[#EDEEE1]">
-                <th className="px-5 py-3.5">Learner / preview</th>
+                <th className="px-5 py-3.5">Learner</th>
                 <th className="px-5 py-3.5">Course</th>
                 <th className="px-5 py-3.5 min-w-[220px]">Completion</th>
                 <th className="px-5 py-3.5">Last location</th>
@@ -134,15 +126,12 @@ export default function ScormTracking() {
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 && <tr><td colSpan={8} className="p-10 text-center text-[#5A5A4F]">No sessions match this view.</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={8} className="p-10 text-center text-[#5A5A4F]">No learners match this view.</td></tr>}
               {rows.map((row) => (
-                <tr key={row.id} className={`border-b border-[#EDEEE1] ${row.isPreview ? 'bg-[#D3BEFF]' : 'bg-white'} hover:bg-[#AAFDC0]`}>
+                <tr key={row.id} className="border-b border-[#EDEEE1] bg-white hover:bg-[#AAFDC0]">
                   <td className="px-5 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="font-bold text-black">{row.learnerName || (row.isPreview ? 'Host Preview' : 'Learner')}</div>
-                      {row.isPreview && <span className="scorm-micro rounded-full bg-[#F8F9EB] border border-black px-2 py-0.5 text-[8px] uppercase font-bold text-black">Preview</span>}
-                    </div>
-                    <div className="text-[11px] text-[#5A5A4F] mt-0.5">{row.learnerEmail || (row.isPreview ? 'Host QA session' : 'No email')}</div>
+                    <div className="font-bold text-black">{row.learnerName || 'Learner'}</div>
+                    <div className="text-[11px] text-[#5A5A4F] mt-0.5">{row.learnerEmail || 'No email'}</div>
                   </td>
                   <td className="px-5 py-4">
                     <div className="font-medium max-w-[220px] truncate text-black">{row.courseTitle || 'Course'}</div>

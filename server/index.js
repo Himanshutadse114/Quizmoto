@@ -122,6 +122,24 @@ const startServer = async () => {
     try {
         await connectDB();
 
+        // Historical admin previews used to create a new registration per click.
+        // Compact them once at boot so production data is clean after deployment.
+        if (process.env.NODE_ENV !== 'test') {
+            try {
+                const { cleanupPreviewRegistrations } = require('./services/scorm/ScormPreviewService');
+                const cleanup = await cleanupPreviewRegistrations();
+                if (cleanup.removedDuplicates > 0) {
+                    logger.info('scorm_preview_duplicates_cleaned', {
+                        module: 'scorm',
+                        removed: cleanup.removedDuplicates,
+                        courses: cleanup.coursesChecked
+                    });
+                }
+            } catch (e) {
+                logger.warn('scorm_preview_cleanup_failed', { module: 'scorm', error: e.message });
+            }
+        }
+
         if (process.env.NODE_ENV === 'test') {
             const { seedTestFixtures } = require('./tests/fixtures');
             await seedTestFixtures();
@@ -187,7 +205,9 @@ const startServer = async () => {
                 if (result && result.ok) {
                     try {
                         const reg = await ScormRegistration.findByPk(regId);
-                        if (reg && reg.courseId) {
+                        // QA preview commits are intentionally isolated from the
+                        // operational learner roster and realtime learner UI.
+                        if (reg && reg.courseId && !reg.isPreview) {
                             ScormRealtime.emitRegistrationUpdate({
                                 courseId: reg.courseId,
                                 event: eventName,
@@ -201,7 +221,7 @@ const startServer = async () => {
                                     lastScoreRaw: reg.lastScoreRaw,
                                     lastTotalTime: reg.lastTotalTime,
                                     lastCommitAt: reg.lastCommitAt,
-                                    isPreview: !!reg.isPreview,
+                                    isPreview: false,
                                     updatedAt: reg.updatedAt || reg.lastCommitAt || new Date()
                                 }
                             });

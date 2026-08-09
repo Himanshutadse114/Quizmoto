@@ -21,7 +21,7 @@ const isLiveGameRoute = (pathname) => (
  * - host and player hear the same musical language;
  * - reconnect/recovery events do not lose audio state;
  * - future Live Quiz screens get click SFX automatically;
- * - SCORM World and the internal website preview remain silent and independent.
+ * - SCORM World remains silent and independent from Live Quiz audio.
  */
 const LiveQuizAudioDirector = () => {
     const socket = useSocket();
@@ -30,8 +30,7 @@ const LiveQuizAudioDirector = () => {
     const podiumMusicTimerRef = useRef(null);
 
     useEffect(() => {
-        const excludedProductRoute = pathname.startsWith('/scorm') || pathname.startsWith('/website-preview');
-        const liveQuizProduct = !excludedProductRoute;
+        const liveQuizProduct = !pathname.startsWith('/scorm');
         audio.setEnabled(liveQuizProduct);
 
         if (!liveQuizProduct) return;

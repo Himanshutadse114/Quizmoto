@@ -25,11 +25,6 @@ function openPlayerPopup(registrationId, token, packageId, entryHref) {
 }
 
 function progressLabel(row) {
-  if (row.isPreview) {
-    if (row.progressAvailable && row.progressPercent >= 100) return 'Preview complete';
-    if (row.progressAvailable && row.progressPercent > 0) return 'Preview in progress';
-    return 'Preview';
-  }
   if (!row.progressAvailable) return row.status === 'active' ? 'In progress' : 'Unavailable';
   if (row.progressPercent >= 100) return 'Completed';
   if (row.progressPercent > 0) return 'In progress';
@@ -57,6 +52,8 @@ export default function ScormCourseDetail() {
   const [trackingSummary, setTrackingSummary] = useState(null);
   const [msg, setMsg] = useState(null);
   const [inviteUrl, setInviteUrl] = useState('');
+  const [previewing, setPreviewing] = useState(false);
+  const [previewCheckedAt, setPreviewCheckedAt] = useState(null);
   const socket = useSocket();
   const [live, setLive] = useState(false);
 
@@ -120,16 +117,22 @@ export default function ScormCourseDetail() {
   };
 
   const preview = async () => {
+    if (previewing) return;
+    setPreviewing(true);
     try {
       const res = await axios.post(apiUrl(`/api/scorm/courses/${id}/preview`), {}, { headers });
-      await loadRoster().catch(() => {});
       openPlayerPopup(res.data.registrationId, res.data.token, res.data.packageId, res.data.entryHref);
-      setMsg('Preview opened. Host preview progress appears below but is excluded from learner totals.');
-    } catch (err) { setMsg(err.response?.data?.message || err.message); }
+      setPreviewCheckedAt(new Date());
+      setMsg('QA preview opened successfully. Admin preview activity is not recorded as learner progress and will not appear in tracking or reports.');
+    } catch (err) {
+      setMsg(err.response?.data?.message || err.message);
+    } finally {
+      setPreviewing(false);
+    }
   };
 
   const revoke = async (regId) => {
-    if (!window.confirm('Revoke this registration?')) return;
+    if (!window.confirm('Revoke this learner registration?')) return;
     try {
       await axios.post(apiUrl(`/api/scorm/registrations/${regId}/revoke`), {}, { headers });
       await loadRoster();
@@ -143,10 +146,8 @@ export default function ScormCourseDetail() {
 
   if (!course) return <div className="p-8 text-[#5A5A4F]">{msg || 'Loading course…'}</div>;
 
-  const learnerRegs = regs.filter((r) => !r.isPreview);
-  const previewRegs = regs.filter((r) => r.isPreview);
-  const completed = trackingSummary?.completed ?? learnerRegs.filter((r) => r.progressAvailable && r.progressPercent >= 100).length;
-  const active = trackingSummary?.active ?? learnerRegs.filter((r) => (r.progressAvailable && r.progressPercent > 0 && r.progressPercent < 100) || (!r.progressAvailable && r.status === 'active')).length;
+  const completed = trackingSummary?.completed ?? regs.filter((r) => r.progressAvailable && r.progressPercent >= 100).length;
+  const active = trackingSummary?.active ?? regs.filter((r) => (r.progressAvailable && r.progressPercent > 0 && r.progressPercent < 100) || (!r.progressAvailable && r.status === 'active')).length;
   const avgProgress = Number(trackingSummary?.averageProgress || 0);
   const unavailable = Number(trackingSummary?.unavailable || 0);
 
@@ -161,6 +162,11 @@ export default function ScormCourseDetail() {
             <span className={`scorm-micro text-[8px] uppercase font-bold px-2.5 py-1 rounded-full border border-black ${course.status === 'published' ? 'bg-[#AAFDC0]' : 'bg-[#D3BEFF]'}`}>{course.status}</span>
             <span className="scorm-micro text-[9px] text-[#5A5A4F]">Invite {course.inviteCode}</span>
             <span className="scorm-micro text-[9px] text-[#5A5A4F]">{course.package?.standard || 'SCORM'}</span>
+            {previewCheckedAt && (
+              <span className="scorm-micro text-[8px] uppercase font-bold px-2.5 py-1 rounded-full border border-black bg-[#B0F4FF] text-black">
+                QA preview checked
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -169,8 +175,8 @@ export default function ScormCourseDetail() {
           ) : (
             <button onClick={unpublish} className="scorm-button-secondary px-4 py-2.5 text-xs font-bold">Unpublish</button>
           )}
-          <button onClick={preview} className="scorm-button-secondary px-4 py-2.5 text-xs font-bold inline-flex items-center gap-2">
-            <Eye size={14} /> Preview as learner
+          <button disabled={previewing} onClick={preview} className="scorm-button-secondary px-4 py-2.5 text-xs font-bold inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait">
+            <Eye size={14} /> {previewing ? 'Opening preview…' : 'Preview course'}
           </button>
         </div>
       </div>
@@ -189,9 +195,8 @@ export default function ScormCourseDetail() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
-        <Metric label="Learners" value={learnerRegs.length} icon={Users} />
-        <Metric label="Preview sessions" value={previewRegs.length} icon={Eye} bg="#D3BEFF" />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+        <Metric label="Learners" value={regs.length} icon={Users} />
         <Metric label="In progress" value={active} icon={Clock3} bg="#B0F4FF" />
         <Metric label="Completed" value={completed} icon={CheckCircle2} bg="#AAFDC0" />
         <Metric label="Average progress" value={`${avgProgress.toFixed(0)}%`} bg="#AAFDC0" />
@@ -202,7 +207,7 @@ export default function ScormCourseDetail() {
         <div className="px-5 md:px-6 py-4 border-b border-black flex items-center justify-between gap-3 bg-[#F8F9EB]">
           <div>
             <div className="scorm-micro text-[9px] uppercase font-bold text-[#5A5A4F]">Learning operations</div>
-            <h3 className="text-[20px] mt-1">Progress roster</h3>
+            <h3 className="text-[20px] mt-1">Learner progress</h3>
           </div>
           <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#5A5A4F]">
             <span className={`w-2 h-2 rounded-full ${live ? 'bg-[#003D21]' : 'bg-[#C0C2A9]'}`} />
@@ -214,7 +219,7 @@ export default function ScormCourseDetail() {
           <table className="w-full min-w-[1150px] text-sm">
             <thead>
               <tr className="text-left scorm-micro text-[9px] uppercase font-bold text-[#5A5A4F] border-b border-black bg-[#EDEEE1]">
-                <th className="p-4">Learner / preview</th>
+                <th className="p-4">Learner</th>
                 <th className="p-4 min-w-[220px]">Completion</th>
                 <th className="p-4">Last location</th>
                 <th className="p-4">Lesson status</th>
@@ -225,15 +230,12 @@ export default function ScormCourseDetail() {
               </tr>
             </thead>
             <tbody>
-              {regs.length === 0 && <tr><td colSpan={8} className="p-10 text-center text-[#5A5A4F]">No learner or preview sessions yet.</td></tr>}
+              {regs.length === 0 && <tr><td colSpan={8} className="p-10 text-center text-[#5A5A4F]">No learners have started this course yet.</td></tr>}
               {regs.map((r) => (
-                <tr key={r.id} className={`border-b border-[#EDEEE1] ${r.isPreview ? 'bg-[#D3BEFF]' : 'bg-white'} hover:bg-[#AAFDC0]`}>
+                <tr key={r.id} className="border-b border-[#EDEEE1] bg-white hover:bg-[#AAFDC0]">
                   <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      <div className="font-bold text-black">{r.learnerName || (r.isPreview ? 'Host Preview' : 'Learner')}</div>
-                      {r.isPreview && <span className="scorm-micro rounded-full bg-[#F8F9EB] border border-black px-2 py-0.5 text-[8px] uppercase font-bold text-black">Preview</span>}
-                    </div>
-                    <div className="text-[11px] text-[#5A5A4F] mt-0.5">{r.learnerEmail || (r.isPreview ? 'Host QA session' : 'No email')}</div>
+                    <div className="font-bold text-black">{r.learnerName || 'Learner'}</div>
+                    <div className="text-[11px] text-[#5A5A4F] mt-0.5">{r.learnerEmail || 'No email'}</div>
                   </td>
                   <td className="p-4">
                     <div className="flex justify-between gap-3 mb-2">

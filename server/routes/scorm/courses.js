@@ -7,6 +7,7 @@ const {
     ScormRegistration
 } = require('../../models/scorm');
 const { createInviteCode, signRegistrationToken } = require('../../services/scorm/ScormInviteService');
+const { prepareCoursePreview } = require('../../services/scorm/ScormPreviewService');
 const ScormReportService = require('../../services/ScormReportService');
 
 router.get('/', auth, async (req, res) => {
@@ -163,7 +164,7 @@ router.get('/:id/registrations', auth, async (req, res) => {
     const course = await ScormCourse.findOne({ where: { id: req.params.id, hostId: req.userId } });
     if (!course) return res.status(404).json({ message: 'Not found' });
     const regs = await ScormRegistration.findAll({
-        where: { courseId: course.id },
+        where: { courseId: course.id, isPreview: false },
         order: [['updatedAt', 'DESC']]
     });
     res.json(regs);
@@ -179,22 +180,25 @@ router.post('/:id/preview', auth, async (req, res) => {
         if (!course.package || course.package.status !== 'ready') {
             return res.status(400).json({ message: 'Package not ready' });
         }
-        const reg = await ScormRegistration.create({
-            courseId: course.id,
-            learnerName: 'Host Preview',
-            learnerEmail: null,
-            status: 'active',
-            isPreview: true
-        });
+
+        // Admin preview is a single reusable QA identity per course. It is reset
+        // before every launch, so repeated previews never create learner rows.
+        const prepared = await prepareCoursePreview(course.id);
+        const reg = prepared.registration;
         const token = signRegistrationToken(reg.id, course.id);
+
         res.status(201).json({
             registrationId: reg.id,
             token,
             packageId: course.package.id,
             entryHref: course.package.entryHref,
-            playUrl: `/api/scorm/play/${reg.id}`
+            playUrl: `/api/scorm/play/${reg.id}`,
+            qaOnly: true,
+            reusedPreview: prepared.reused,
+            deduplicatedPreviews: prepared.removedDuplicates
         });
     } catch (err) {
+        if (err.code === 'COURSE_NOT_FOUND') return res.status(404).json({ message: 'Not found' });
         res.status(500).json({ message: err.message });
     }
 });

@@ -71,6 +71,12 @@ function learnerResult(registration) {
         .replace(/\b\w/g, (ch) => ch.toUpperCase());
 }
 
+function learnerOnlyCourseJson(course) {
+    const courseJson = course && typeof course.toJSON === 'function' ? course.toJSON() : { ...(course || {}) };
+    courseJson.registrations = (courseJson.registrations || []).filter((r) => !r.isPreview);
+    return courseJson;
+}
+
 async function loadCourseForExport(courseId, hostId) {
     const course = await ScormCourse.findOne({
         where: { id: courseId, hostId },
@@ -82,7 +88,9 @@ async function loadCourseForExport(courseId, hostId) {
             },
             {
                 model: ScormRegistration,
-                as: 'registrations'
+                as: 'registrations',
+                required: false,
+                where: { isPreview: false }
             }
         ]
     });
@@ -104,6 +112,8 @@ async function listCourseReports(hostId) {
             {
                 model: ScormRegistration,
                 as: 'registrations',
+                required: false,
+                where: { isPreview: false },
                 attributes: [
                     'id',
                     'learnerName',
@@ -275,7 +285,9 @@ async function generateReportFile({ courseId, hostId, format = 'pdf' }) {
     const ext = format === 'pdf' ? '.pdf' : '.xlsx';
     const jsonPath = path.join(dir, `scorm_report_${safeId}_${timestamp}.json`);
     const outputPath = path.join(dir, `scorm_report_${safeId}_${timestamp}${ext}`);
-    const courseJson = course.toJSON();
+    // Defense in depth: even if an association/filter changes later, admin QA
+    // registrations must never reach either report engine.
+    const courseJson = learnerOnlyCourseJson(course);
     fs.writeFileSync(jsonPath, JSON.stringify(courseJson));
 
     const forceNode = ['1', 'true', 'yes', 'on'].includes(
@@ -353,6 +365,7 @@ module.exports = {
     listCourseReports,
     generateReportFile,
     loadCourseForExport,
+    learnerOnlyCourseJson,
     safeUnlink,
     contentTypeFor
 };
