@@ -5,6 +5,10 @@ const { packageContentKey } = require('../../services/scorm/storageKeys');
 const { ScormPackage, ScormRegistration, ScormCourse } = require('../../models/scorm');
 const jwt = require('jsonwebtoken');
 const { guessContentType } = require('../../services/scorm/ScormUnpackService');
+const {
+    patchTrackingRuntime,
+    patchMobileCourse
+} = require('../../services/scorm/ScormTrackingPackageFinalizer');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
@@ -44,16 +48,45 @@ async function resolvePackageAccess(accessToken, packageIdHint) {
     return null;
 }
 
+async function patchAiAuthorHtmlIfNeeded(packageId, rel, buf) {
+    if (!/\.html?$/i.test(String(rel || ''))) {
+        return { buffer: buf, patched: false };
+    }
+
+    const pkg = await ScormPackage.findByPk(packageId, {
+        attributes: ['id', 'source']
+    });
+    if (!pkg || pkg.source !== 'ai_author') {
+        return { buffer: buf, patched: false };
+    }
+
+    const source = buf.toString('utf8');
+    const patched = patchMobileCourse(patchTrackingRuntime(source));
+    if (patched === source) {
+        return { buffer: buf, patched: false };
+    }
+
+    return {
+        buffer: Buffer.from(patched, 'utf8'),
+        patched: true
+    };
+}
+
 async function sendContent(res, packageId, rel) {
     const key = packageContentKey(packageId, rel);
     const storage = getObjectStorage();
     const buf = await storage.getObjectBuffer(key);
+    const served = await patchAiAuthorHtmlIfNeeded(packageId, rel, buf);
+
     res.setHeader('Content-Type', guessContentType(rel));
-    res.setHeader('Cache-Control', 'private, max-age=300');
+    // Patched authored entry HTML must not be cached, otherwise a browser can
+    // continue running an older exit/resume runtime for several minutes after
+    // deployment. Static package assets remain cacheable.
+    res.setHeader('Cache-Control', served.patched ? 'private, no-store' : 'private, max-age=300');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     // Content is only framed by same-origin play page
     res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
-    res.send(buf);
+    res.send(served.buffer);
 }
 
 function normalizeRel(pathParam) {
