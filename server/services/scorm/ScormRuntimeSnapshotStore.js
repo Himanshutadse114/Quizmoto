@@ -1,7 +1,6 @@
-const {
-    ScormCmiState,
-    ScormRuntimeSnapshot
-} = require('../../models/scorm');
+const { QueryTypes } = require('sequelize');
+const { sequelize } = require('../../config/database');
+const { ScormCmiState } = require('../../models/scorm');
 
 const STATE_KEYS = [
     'attemptId',
@@ -23,11 +22,66 @@ const STATE_KEYS = [
 
 let readyPromise = null;
 
+/**
+ * Keep the canonical runtime table independent from sequelize.sync().
+ *
+ * Production deliberately tolerates a failed global sync so the rest of the
+ * application can boot against an older database. That behaviour is useful for
+ * the application, but it must not leave the SCORM runtime believing its table
+ * exists. Create/repair this tiny table explicitly instead of calling
+ * Model.sync() from learner requests.
+ */
 async function ensureReady() {
     if (!readyPromise) {
-        // sync() without alter only creates this brand-new table when absent. It
-        // never mutates the legacy CMI schema and is safe to call once per process.
-        readyPromise = ScormRuntimeSnapshot.sync().catch((err) => {
+        readyPromise = (async () => {
+            const dialect = sequelize.getDialect();
+
+            if (dialect === 'postgres') {
+                await sequelize.query(`
+                    CREATE TABLE IF NOT EXISTS "scorm_runtime_snapshots" (
+                        "registrationId" UUID PRIMARY KEY,
+                        "payloadJson" TEXT NOT NULL DEFAULT '{}',
+                        "stateVersion" INTEGER NOT NULL DEFAULT 0,
+                        "initialized" BOOLEAN NOT NULL DEFAULT FALSE,
+                        "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                `);
+
+                // Repair an interrupted/partial earlier creation without relying
+                // on Sequelize's alter/sync machinery.
+                const additions = [
+                    `ALTER TABLE "scorm_runtime_snapshots" ADD COLUMN IF NOT EXISTS "payloadJson" TEXT NOT NULL DEFAULT '{}'`,
+                    `ALTER TABLE "scorm_runtime_snapshots" ADD COLUMN IF NOT EXISTS "stateVersion" INTEGER NOT NULL DEFAULT 0`,
+                    `ALTER TABLE "scorm_runtime_snapshots" ADD COLUMN IF NOT EXISTS "initialized" BOOLEAN NOT NULL DEFAULT FALSE`,
+                    `ALTER TABLE "scorm_runtime_snapshots" ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+                    `ALTER TABLE "scorm_runtime_snapshots" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP`
+                ];
+                for (const sql of additions) await sequelize.query(sql);
+            } else if (dialect === 'mysql') {
+                await sequelize.query(`
+                    CREATE TABLE IF NOT EXISTS \`scorm_runtime_snapshots\` (
+                        \`registrationId\` CHAR(36) NOT NULL PRIMARY KEY,
+                        \`payloadJson\` LONGTEXT NOT NULL,
+                        \`stateVersion\` INTEGER NOT NULL DEFAULT 0,
+                        \`initialized\` BOOLEAN NOT NULL DEFAULT FALSE,
+                        \`createdAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        \`updatedAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                `);
+            } else {
+                await sequelize.query(`
+                    CREATE TABLE IF NOT EXISTS \`scorm_runtime_snapshots\` (
+                        \`registrationId\` VARCHAR(36) NOT NULL PRIMARY KEY,
+                        \`payloadJson\` TEXT NOT NULL DEFAULT '{}',
+                        \`stateVersion\` INTEGER NOT NULL DEFAULT 0,
+                        \`initialized\` BOOLEAN NOT NULL DEFAULT 0,
+                        \`createdAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        \`updatedAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                `);
+            }
+        })().catch((err) => {
             readyPromise = null;
             throw err;
         });
@@ -90,26 +144,82 @@ function payloadFromSnapshot(snapshot) {
     }
 }
 
-async function writeSnapshot(registrationId, state) {
+async function readSnapshot(registrationId) {
+    await ensureReady();
+    const dialect = sequelize.getDialect();
+    const quotedTable = dialect === 'postgres' ? '"scorm_runtime_snapshots"' : '`scorm_runtime_snapshots`';
+    const quotedId = dialect === 'postgres' ? '"registrationId"' : '`registrationId`';
+    const rows = await sequelize.query(
+        `SELECT * FROM ${quotedTable} WHERE ${quotedId} = :registrationId LIMIT 1`,
+        {
+            replacements: { registrationId },
+            type: QueryTypes.SELECT
+        }
+    );
+    return rows[0] || null;
+}
+
+async function writeSnapshot(registrationId, state, options = {}) {
     await ensureReady();
     const normalized = normalizeState(state);
-    await ScormRuntimeSnapshot.upsert({
+    const payloadJson = JSON.stringify(normalized);
+    const replacements = {
         registrationId,
-        payloadJson: JSON.stringify(normalized),
+        payloadJson,
         stateVersion: normalized.stateVersion,
         initialized: normalized.initialized
-    });
+    };
+    const queryOptions = { replacements };
+    if (options.transaction) queryOptions.transaction = options.transaction;
+
+    const dialect = sequelize.getDialect();
+    if (dialect === 'postgres') {
+        await sequelize.query(`
+            INSERT INTO "scorm_runtime_snapshots"
+                ("registrationId", "payloadJson", "stateVersion", "initialized", "createdAt", "updatedAt")
+            VALUES
+                (:registrationId, :payloadJson, :stateVersion, :initialized, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT ("registrationId") DO UPDATE SET
+                "payloadJson" = EXCLUDED."payloadJson",
+                "stateVersion" = EXCLUDED."stateVersion",
+                "initialized" = EXCLUDED."initialized",
+                "updatedAt" = CURRENT_TIMESTAMP
+        `, queryOptions);
+    } else if (dialect === 'mysql') {
+        await sequelize.query(`
+            INSERT INTO \`scorm_runtime_snapshots\`
+                (\`registrationId\`, \`payloadJson\`, \`stateVersion\`, \`initialized\`, \`createdAt\`, \`updatedAt\`)
+            VALUES
+                (:registrationId, :payloadJson, :stateVersion, :initialized, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON DUPLICATE KEY UPDATE
+                \`payloadJson\` = VALUES(\`payloadJson\`),
+                \`stateVersion\` = VALUES(\`stateVersion\`),
+                \`initialized\` = VALUES(\`initialized\`),
+                \`updatedAt\` = CURRENT_TIMESTAMP
+        `, queryOptions);
+    } else {
+        await sequelize.query(`
+            INSERT INTO \`scorm_runtime_snapshots\`
+                (\`registrationId\`, \`payloadJson\`, \`stateVersion\`, \`initialized\`, \`createdAt\`, \`updatedAt\`)
+            VALUES
+                (:registrationId, :payloadJson, :stateVersion, :initialized, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT(\`registrationId\`) DO UPDATE SET
+                \`payloadJson\` = excluded.\`payloadJson\`,
+                \`stateVersion\` = excluded.\`stateVersion\`,
+                \`initialized\` = excluded.\`initialized\`,
+                \`updatedAt\` = CURRENT_TIMESTAMP
+        `, queryOptions);
+    }
     return normalized;
 }
 
 async function load(registrationId) {
-    await ensureReady();
-    const snapshot = await ScormRuntimeSnapshot.findByPk(registrationId);
+    const snapshot = await readSnapshot(registrationId);
     const canonical = payloadFromSnapshot(snapshot);
     if (canonical) return canonical;
 
-    // One-time migration-on-read. A broken legacy table must never prevent a
-    // learner from receiving a usable runtime state.
+    // One-time migration-on-read. Failure of the historical CMI table is never
+    // fatal to the learner runtime.
     let migrated = null;
     try {
         const legacy = await ScormCmiState.findOne({ where: { registrationId } });
@@ -151,16 +261,22 @@ function queueLegacyProjection(registrationId, state) {
 }
 
 async function save(registrationId, state, options = {}) {
-    const normalized = await writeSnapshot(registrationId, state);
+    const normalized = await writeSnapshot(registrationId, state, options);
     if (options.projectLegacy !== false) queueLegacyProjection(registrationId, normalized);
     return normalized;
 }
 
 async function destroy(registrationId, options = {}) {
     await ensureReady();
-    const destroyOptions = { where: { registrationId } };
-    if (options.transaction) destroyOptions.transaction = options.transaction;
-    await ScormRuntimeSnapshot.destroy(destroyOptions);
+    const dialect = sequelize.getDialect();
+    const quotedTable = dialect === 'postgres' ? '"scorm_runtime_snapshots"' : '`scorm_runtime_snapshots`';
+    const quotedId = dialect === 'postgres' ? '"registrationId"' : '`registrationId`';
+    const queryOptions = { replacements: { registrationId } };
+    if (options.transaction) queryOptions.transaction = options.transaction;
+    await sequelize.query(
+        `DELETE FROM ${quotedTable} WHERE ${quotedId} = :registrationId`,
+        queryOptions
+    );
 }
 
 function snapshotState(snapshot) {
