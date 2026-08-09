@@ -26,8 +26,15 @@ describe('SCORM admin preview stats', () => {
                 lessonLocation: '3',
                 totalTime: '00:07:42.00',
                 sessionTime: '00:02:14.00',
-                interactionsJson: JSON.stringify([{ id: 'q1' }, { id: 'q2' }, { id: 'q3' }]),
-                rawMapJson: '{}',
+                interactionsJson: null,
+                rawMapJson: JSON.stringify({
+                    'cmi.interactions.0.id': 'quiz_1',
+                    'cmi.interactions.0.result': 'correct',
+                    'cmi.interactions.1.id': 'quiz_2',
+                    'cmi.interactions.1.result': 'wrong',
+                    'cmi.interactions.2.id': 'quiz_3',
+                    'cmi.interactions.2.result': 'correct'
+                }),
                 stateVersion: 9
             }
         };
@@ -62,9 +69,27 @@ describe('SCORM admin preview stats', () => {
         expect(scorePercent(75, null, null)).to.equal(75);
     });
 
-    it('counts array and object interaction payloads safely', () => {
+    it('counts interaction payloads from the legacy column when present', () => {
         expect(interactionCount('[{"id":1},{"id":2}]')).to.equal(2);
         expect(interactionCount('{"q1":{},"q2":{},"q3":{}}')).to.equal(3);
+    });
+
+    it('counts unique cmi.interactions indices from the actual runtime raw map', () => {
+        const rawMap = JSON.stringify({
+            'cmi.interactions.0.id': 'quiz_1',
+            'cmi.interactions.0.type': 'choice',
+            'cmi.interactions.0.result': 'correct',
+            'cmi.interactions.1.id': 'quiz_2',
+            'cmi.interactions.1.result': 'wrong',
+            'cmi.core.lesson_location': '4'
+        });
+        expect(interactionCount(null, rawMap)).to.equal(2);
+        expect(interactionCount('not-json', rawMap)).to.equal(2);
+    });
+
+    it('returns zero for malformed or empty interaction state', () => {
         expect(interactionCount('not-json')).to.equal(0);
+        expect(interactionCount(null, 'not-json')).to.equal(0);
+        expect(interactionCount(null, '{}')).to.equal(0);
     });
 });
