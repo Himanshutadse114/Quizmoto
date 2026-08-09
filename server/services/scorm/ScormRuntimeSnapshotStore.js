@@ -21,6 +21,20 @@ const STATE_KEYS = [
     'initialized'
 ];
 
+let readyPromise = null;
+
+async function ensureReady() {
+    if (!readyPromise) {
+        // sync() without alter only creates this brand-new table when absent. It
+        // never mutates the legacy CMI schema and is safe to call once per process.
+        readyPromise = ScormRuntimeSnapshot.sync().catch((err) => {
+            readyPromise = null;
+            throw err;
+        });
+    }
+    await readyPromise;
+}
+
 function defaultState() {
     return {
         attemptId: null,
@@ -77,6 +91,7 @@ function payloadFromSnapshot(snapshot) {
 }
 
 async function writeSnapshot(registrationId, state) {
+    await ensureReady();
     const normalized = normalizeState(state);
     await ScormRuntimeSnapshot.upsert({
         registrationId,
@@ -88,6 +103,7 @@ async function writeSnapshot(registrationId, state) {
 }
 
 async function load(registrationId) {
+    await ensureReady();
     const snapshot = await ScormRuntimeSnapshot.findByPk(registrationId);
     const canonical = payloadFromSnapshot(snapshot);
     if (canonical) return canonical;
@@ -141,6 +157,7 @@ async function save(registrationId, state, options = {}) {
 }
 
 async function destroy(registrationId, options = {}) {
+    await ensureReady();
     const destroyOptions = { where: { registrationId } };
     if (options.transaction) destroyOptions.transaction = options.transaction;
     await ScormRuntimeSnapshot.destroy(destroyOptions);
@@ -150,7 +167,12 @@ function snapshotState(snapshot) {
     return payloadFromSnapshot(snapshot);
 }
 
+function resetReadyForTests() {
+    readyPromise = null;
+}
+
 module.exports = {
+    ensureReady,
     defaultState,
     normalizeState,
     snapshotState,
@@ -158,5 +180,6 @@ module.exports = {
     save,
     destroy,
     projectLegacy,
+    resetReadyForTests,
     STATE_KEYS
 };
