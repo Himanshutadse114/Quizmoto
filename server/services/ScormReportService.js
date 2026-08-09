@@ -13,6 +13,8 @@ const {
     ScormPackage,
     ScormRegistration
 } = require('../models/scorm');
+const LearningState = require('./scorm/ScormLearningStateService');
+const { serializeRegistration } = require('./scorm/ScormProgressService');
 const { generateScormReportNode } = require('../utils/scormReportGenerator');
 
 const execFileAsync = promisify(execFile);
@@ -54,7 +56,7 @@ function isCompletedStatus(lessonStatus) {
 }
 
 function learnerResult(registration) {
-    const lesson = String(registration.lastLessonStatus || '').toLowerCase();
+    const lesson = String(registration.lastLessonStatus || registration.lessonStatus || '').toLowerCase();
     const status = String(registration.status || '').toLowerCase();
     if (lesson === 'passed') return 'Passed';
     if (lesson === 'failed') return 'Failed';
@@ -66,14 +68,37 @@ function learnerResult(registration) {
         }
         return 'Not Attempted';
     }
-    return String(registration.lastLessonStatus || 'In Progress')
+    return String(registration.lastLessonStatus || registration.lessonStatus || 'In Progress')
         .replace(/_/g, ' ')
         .replace(/\b\w/g, (ch) => ch.toUpperCase());
 }
 
+async function attachLearningState(courseOrCourses) {
+    const courses = Array.isArray(courseOrCourses) ? courseOrCourses : [courseOrCourses].filter(Boolean);
+    const registrations = courses.flatMap((course) => (
+        Array.isArray(course?.registrations) ? course.registrations.filter((r) => !r.isPreview) : []
+    ));
+    if (!registrations.length) return courseOrCourses;
+
+    const states = await LearningState.listByRegistrationIds(registrations.map((r) => r.id));
+    for (const reg of registrations) {
+        const state = states.get(String(reg.id)) || null;
+        if (typeof reg.setDataValue === 'function') reg.setDataValue('learningStateV2', state);
+        else reg.learningStateV2 = state;
+    }
+    return courseOrCourses;
+}
+
 function learnerOnlyCourseJson(course) {
     const courseJson = course && typeof course.toJSON === 'function' ? course.toJSON() : { ...(course || {}) };
-    courseJson.registrations = (courseJson.registrations || []).filter((r) => !r.isPreview);
+    const modelRegs = Array.isArray(course?.registrations) ? course.registrations : [];
+    if (modelRegs.length) {
+        courseJson.registrations = modelRegs
+            .filter((r) => !r.isPreview)
+            .map((r) => serializeRegistration(r, course));
+    } else {
+        courseJson.registrations = (courseJson.registrations || []).filter((r) => !r.isPreview);
+    }
     return courseJson;
 }
 
@@ -84,7 +109,7 @@ async function loadCourseForExport(courseId, hostId) {
             {
                 model: ScormPackage,
                 as: 'package',
-                attributes: ['id', 'title', 'status', 'entryHref', 'standard', 'source']
+                attributes: ['id', 'title', 'status', 'entryHref', 'standard', 'source', 'analysisJson']
             },
             {
                 model: ScormRegistration,
@@ -94,6 +119,7 @@ async function loadCourseForExport(courseId, hostId) {
             }
         ]
     });
+    if (course) await attachLearningState(course);
     return course;
 }
 
@@ -107,7 +133,7 @@ async function listCourseReports(hostId) {
             {
                 model: ScormPackage,
                 as: 'package',
-                attributes: ['id', 'title', 'status', 'standard']
+                attributes: ['id', 'title', 'status', 'standard', 'analysisJson']
             },
             {
                 model: ScormRegistration,
@@ -131,11 +157,15 @@ async function listCourseReports(hostId) {
         order: [['updatedAt', 'DESC']]
     });
 
+    await attachLearningState(courses);
+
     return courses
         .filter((c) => c.status !== 'archived')
         .filter((c) => !c.package || c.package.status !== 'deleted')
         .map((c) => {
-            const regs = (c.registrations || []).filter((r) => !r.isPreview);
+            const regs = (c.registrations || [])
+                .filter((r) => !r.isPreview)
+                .map((r) => serializeRegistration(r, c));
             const completed = regs.filter((r) => isCompletedStatus(r.lastLessonStatus));
             const inProgress = regs.filter((r) => learnerResult(r) === 'In Progress');
             const notAttempted = regs.filter((r) => learnerResult(r) === 'Not Attempted');
@@ -160,6 +190,9 @@ async function listCourseReports(hostId) {
                     result: learnerResult(r),
                     score: r.lastScoreRaw,
                     totalTime: r.lastTotalTime,
+                    progressPercent: r.progressPercent,
+                    progressAvailable: r.progressAvailable,
+                    lastLocation: r.lastLocation,
                     lastActivity: r.lastCommitAt || r.updatedAt
                 }))
                 .sort((a, b) => {
@@ -366,6 +399,7 @@ module.exports = {
     generateReportFile,
     loadCourseForExport,
     learnerOnlyCourseJson,
+    attachLearningState,
     safeUnlink,
     contentTypeFor
 };
