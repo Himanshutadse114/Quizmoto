@@ -1,17 +1,15 @@
 /**
- * SCORM 1.2 + SCORM 2004 (partial) LMS Runtime — server-backed CMI store.
+ * SCORM 1.2 + SCORM 2004 (partial) LMS Runtime.
  *
- * Storyline / Articulate SCORM 2004 packages write:
- *   cmi.score.raw|min|max|scaled, cmi.completion_status, cmi.success_status,
- *   cmi.session_time (ISO-8601 PT…), cmi.location, cmi.exit, cmi.suspend_data
- * SCORM 1.2 packages write cmi.core.* equivalents.
- * Both are mapped into the same state columns used by the host roster.
+ * Canonical learner state is persisted as one atomic runtime snapshot per
+ * registration. The historical scorm_cmi_states table is now only a
+ * best-effort compatibility projection and can never fail LMSCommit/Finish.
  */
 const {
     ScormRegistration,
-    ScormAttempt,
-    ScormCmiState
+    ScormAttempt
 } = require('../../models/scorm');
+const RuntimeStore = require('./ScormRuntimeSnapshotStore');
 const { verifyRegistrationToken } = require('./ScormInviteService');
 
 const ERRORS = {
@@ -55,6 +53,23 @@ const READ_ONLY = new Set([
     'cmi.mode',
     'cmi.credit'
 ]);
+
+// A single backend instance is the supported production topology. Serialize
+// mutations per registration so an autosave and an explicit Save/Exit cannot
+// overwrite one another with stale snapshots.
+const mutationQueues = new Map();
+
+async function withMutationLock(regId, work) {
+    const key = String(regId);
+    const previous = mutationQueues.get(key) || Promise.resolve();
+    const current = previous.catch(() => {}).then(work);
+    mutationQueues.set(key, current);
+    try {
+        return await current;
+    } finally {
+        if (mutationQueues.get(key) === current) mutationQueues.delete(key);
+    }
+}
 
 /** SCORM 1.2 times: HHHH:MM:SS.ss or HH:MM:SS */
 function parseTimeToSeconds(t) {
@@ -120,8 +135,6 @@ async function loadRegAuthorized(regId, token) {
         err.code = 'FORBIDDEN';
         throw err;
     }
-    // Runtime calls only need the registration itself. Avoid joining course/package
-    // tables on every SetValue/GetValue/Commit request.
     const reg = await ScormRegistration.findByPk(regId);
     if (!reg || reg.status === 'revoked') {
         const err = new Error('Registration not found or revoked');
@@ -129,21 +142,6 @@ async function loadRegAuthorized(regId, token) {
         throw err;
     }
     return reg;
-}
-
-async function getOrCreateState(reg) {
-    let state = await ScormCmiState.findOne({ where: { registrationId: reg.id } });
-    if (!state) {
-        state = await ScormCmiState.create({
-            registrationId: reg.id,
-            lessonStatus: 'not attempted',
-            totalTime: '00:00:00.00',
-            sessionTime: '00:00:00.00',
-            stateVersion: 0,
-            initialized: false
-        });
-    }
-    return state;
 }
 
 function rawMap(state) {
@@ -174,47 +172,76 @@ function registrationSnapshot(reg) {
     };
 }
 
-async function initialize(regId, token) {
-    const reg = await loadRegAuthorized(regId, token);
-    const state = await getOrCreateState(reg);
+function queueRegistrationSummary(reg, state, markCompleted = false) {
+    reg.lastLessonStatus = state.lessonStatus;
+    reg.lastScoreRaw = state.scoreRaw;
+    reg.lastTotalTime = state.totalTime;
+    reg.lastCommitAt = new Date();
+    if (markCompleted && ['completed', 'passed', 'failed'].includes(state.lessonStatus)) {
+        reg.status = 'completed';
+    }
 
-    let attempt = await ScormAttempt.findOne({
-        where: { registrationId: reg.id },
-        order: [['attemptNo', 'DESC']]
-    });
-    if (!attempt || attempt.finishedAt) {
-        const nextNo = attempt ? attempt.attemptNo + 1 : 1;
-        attempt = await ScormAttempt.create({
-            registrationId: reg.id,
-            attemptNo: nextNo,
-            startedAt: new Date()
+    setImmediate(() => {
+        reg.save().catch((err) => {
+            console.warn('[scorm-runtime] registration summary update failed', {
+                registrationId: reg.id,
+                error: err?.message || String(err),
+                dbCode: err?.original?.code || err?.parent?.code || null
+            });
         });
-    }
+    });
+}
 
-    state.attemptId = attempt.id;
-    const resume =
-        (state.suspendData && state.suspendData.length > 0) ||
-        (state.lessonStatus &&
-            state.lessonStatus !== 'not attempted' &&
-            state.lessonStatus !== 'completed' &&
-            state.lessonStatus !== 'passed' &&
-            state.lessonStatus !== 'failed');
-    state.entry = resume ? 'resume' : 'ab-initio';
-    state.sessionTime = '00:00:00.00';
-    state.initialized = true;
-    await state.save();
+async function initialize(regId, token) {
+    return withMutationLock(regId, async () => {
+        const reg = await loadRegAuthorized(regId, token);
+        const state = await RuntimeStore.load(reg.id);
 
-    if (reg.status === 'invited') {
-        reg.status = 'active';
-        await reg.save();
-    }
+        let attempt = await ScormAttempt.findOne({
+            where: { registrationId: reg.id },
+            order: [['attemptNo', 'DESC']]
+        });
+        if (!attempt || attempt.finishedAt) {
+            const nextNo = attempt ? attempt.attemptNo + 1 : 1;
+            attempt = await ScormAttempt.create({
+                registrationId: reg.id,
+                attemptNo: nextNo,
+                startedAt: new Date()
+            });
+        }
 
-    return { ok: true, value: 'true', errorCode: 0, entry: state.entry, stateVersion: state.stateVersion };
+        state.attemptId = attempt.id;
+        const resume =
+            (state.suspendData && state.suspendData.length > 0) ||
+            (state.lessonStatus &&
+                state.lessonStatus !== 'not attempted' &&
+                state.lessonStatus !== 'completed' &&
+                state.lessonStatus !== 'passed' &&
+                state.lessonStatus !== 'failed');
+        state.entry = resume ? 'resume' : 'ab-initio';
+        state.sessionTime = '00:00:00.00';
+        state.initialized = true;
+        await RuntimeStore.save(reg.id, state);
+
+        if (reg.status === 'invited') {
+            reg.status = 'active';
+            try {
+                await reg.save();
+            } catch (err) {
+                console.warn('[scorm-runtime] registration activation update failed', {
+                    registrationId: reg.id,
+                    error: err?.message || String(err)
+                });
+            }
+        }
+
+        return { ok: true, value: 'true', errorCode: 0, entry: state.entry, stateVersion: state.stateVersion };
+    });
 }
 
 async function getValue(regId, token, element) {
     const reg = await loadRegAuthorized(regId, token);
-    const state = await getOrCreateState(reg);
+    const state = await RuntimeStore.load(reg.id);
     if (!state.initialized) return { ok: false, value: '', errorCode: 301 };
 
     const map = rawMap(state);
@@ -271,9 +298,6 @@ async function getValue(regId, token, element) {
 /** Apply a CMI value to already-loaded state without hitting the database. */
 function applyValueToState(state, map, element, value) {
     const el = String(element || '');
-    // PostgreSQL TEXT cannot store NUL bytes. Some older third-party SCORM
-    // packages include them in suspend/interaction payloads, so strip only
-    // that invalid code point while preserving the rest of the learner state.
     const val = (value == null ? '' : String(value)).replace(/\u0000/g, '');
 
     if (READ_ONLY.has(el)) return { ok: false, value: 'false', errorCode: 403 };
@@ -310,7 +334,9 @@ function applyValueToState(state, map, element, value) {
     } else if (el === 'cmi.core.exit' || el === 'cmi.exit') {
         state.exit = val.slice(0, 255);
     } else if (el === 'cmi.suspend_data') {
-        if (val.length > 65536) return { ok: false, value: 'false', errorCode: 405 };
+        // SCORM 2004 can legitimately carry substantially more suspend data
+        // than SCORM 1.2. The snapshot store is intentionally large-text backed.
+        if (val.length > 1024 * 1024) return { ok: false, value: 'false', errorCode: 405 };
         state.suspendData = val;
     } else if (el === 'cmi.completion_status') {
         if (!COMPLETION_STATUS.has(val)) return { ok: false, value: 'false', errorCode: 405 };
@@ -330,7 +356,7 @@ function applyValueToState(state, map, element, value) {
         if (Number.isNaN(n) || n < 0 || n > 1) return { ok: false, value: 'false', errorCode: 405 };
         map[el] = val;
     } else {
-        // interactions.*, objectives.*, adl.nav.*, etc.
+        // interactions.*, objectives.*, adl.nav.*, comments, preferences, etc.
         map[el] = val;
     }
 
@@ -352,18 +378,19 @@ async function setValue(regId, token, element, value) {
     return setValues(regId, token, { [String(element || '')]: value });
 }
 
-/** Persist multiple SetValue calls with one registration read and one state write. */
 async function setValues(regId, token, values) {
-    const reg = await loadRegAuthorized(regId, token);
-    const state = await getOrCreateState(reg);
-    if (!state.initialized) return { ok: false, value: 'false', errorCode: 301 };
+    return withMutationLock(regId, async () => {
+        const reg = await loadRegAuthorized(regId, token);
+        const state = await RuntimeStore.load(reg.id);
+        if (!state.initialized) return { ok: false, value: 'false', errorCode: 301 };
 
-    const map = rawMap(state);
-    const result = applyValuesToState(state, map, values);
-    if (!result.ok) return result;
-    saveRawMap(state, map);
-    await state.save();
-    return result;
+        const map = rawMap(state);
+        const result = applyValuesToState(state, map, values);
+        if (!result.ok) return result;
+        saveRawMap(state, map);
+        await RuntimeStore.save(reg.id, state);
+        return result;
+    });
 }
 
 function rollSessionTime(state) {
@@ -375,117 +402,93 @@ function rollSessionTime(state) {
     }
 }
 
-async function updateRegistrationSummary(reg, state, markCompleted = false) {
-    reg.lastLessonStatus = state.lessonStatus;
-    reg.lastScoreRaw = state.scoreRaw;
-    reg.lastTotalTime = state.totalTime;
-    reg.lastCommitAt = new Date();
-    if (markCompleted && ['completed', 'passed', 'failed'].includes(state.lessonStatus)) {
-        reg.status = 'completed';
-    }
-
-    try {
-        await reg.save();
-        return true;
-    } catch (err) {
-        // The registration row is a reporting/cache projection. The CMI state
-        // above is the authoritative learner state and must not be turned into
-        // a failed LMSCommit just because this auxiliary summary write failed.
-        console.warn('[scorm-runtime] registration summary update failed', {
-            registrationId: reg.id,
-            error: err?.message || String(err),
-            dbCode: err?.original?.code || err?.parent?.code || null
-        });
-        return false;
-    }
-}
-
 async function commit(regId, token, values = null) {
-    const reg = await loadRegAuthorized(regId, token);
-    const state = await getOrCreateState(reg);
-    if (!state.initialized) return { ok: false, value: 'false', errorCode: 301 };
+    return withMutationLock(regId, async () => {
+        const reg = await loadRegAuthorized(regId, token);
+        const state = await RuntimeStore.load(reg.id);
+        if (!state.initialized) return { ok: false, value: 'false', errorCode: 301 };
 
-    const map = rawMap(state);
-    const applied = applyValuesToState(state, map, values);
-    if (!applied.ok) return applied;
-    saveRawMap(state, map);
-    state.lessonStatus = deriveLessonStatus(state, map);
-    rollSessionTime(state);
-    state.stateVersion = (state.stateVersion || 0) + 1;
-    await state.save();
+        const map = rawMap(state);
+        const applied = applyValuesToState(state, map, values);
+        if (!applied.ok) return applied;
+        saveRawMap(state, map);
+        state.lessonStatus = deriveLessonStatus(state, map);
+        rollSessionTime(state);
+        state.stateVersion = (state.stateVersion || 0) + 1;
 
-    const summarySaved = await updateRegistrationSummary(reg, state, false);
+        // This is the only authoritative persistence operation for LMSCommit.
+        await RuntimeStore.save(reg.id, state);
+        queueRegistrationSummary(reg, state, false);
 
-    return {
-        ok: true,
-        value: 'true',
-        errorCode: 0,
-        stateVersion: state.stateVersion,
-        summarySaved,
-        registration: registrationSnapshot(reg),
-        summary: {
-            registrationId: reg.id,
-            lessonStatus: state.lessonStatus,
-            scoreRaw: state.scoreRaw,
-            totalTime: state.totalTime,
-            updatedAt: reg.lastCommitAt
-        }
-    };
+        return {
+            ok: true,
+            value: 'true',
+            errorCode: 0,
+            stateVersion: state.stateVersion,
+            registration: registrationSnapshot(reg),
+            summary: {
+                registrationId: reg.id,
+                lessonStatus: state.lessonStatus,
+                scoreRaw: state.scoreRaw,
+                totalTime: state.totalTime,
+                updatedAt: reg.lastCommitAt
+            }
+        };
+    });
 }
 
 async function finish(regId, token, values = null) {
-    const reg = await loadRegAuthorized(regId, token);
-    const state = await getOrCreateState(reg);
-    if (!state.initialized) return { ok: false, value: 'false', errorCode: 301 };
+    return withMutationLock(regId, async () => {
+        const reg = await loadRegAuthorized(regId, token);
+        const state = await RuntimeStore.load(reg.id);
+        if (!state.initialized) return { ok: false, value: 'false', errorCode: 301 };
 
-    // Finish is its own atomic persistence pass instead of calling commit() and
-    // then reloading registration/state a second time.
-    const map = rawMap(state);
-    const applied = applyValuesToState(state, map, values);
-    if (!applied.ok) return applied;
-    saveRawMap(state, map);
-    state.lessonStatus = deriveLessonStatus(state, map);
-    rollSessionTime(state);
-    state.stateVersion = (state.stateVersion || 0) + 1;
-    state.initialized = false;
-    await state.save();
+        const map = rawMap(state);
+        const applied = applyValuesToState(state, map, values);
+        if (!applied.ok) return applied;
+        saveRawMap(state, map);
+        state.lessonStatus = deriveLessonStatus(state, map);
+        rollSessionTime(state);
+        state.stateVersion = (state.stateVersion || 0) + 1;
+        state.initialized = false;
 
-    const summarySaved = await updateRegistrationSummary(reg, state, true);
+        await RuntimeStore.save(reg.id, state);
+        queueRegistrationSummary(reg, state, true);
 
-    if (state.attemptId) {
-        try {
-            const attempt = await ScormAttempt.findByPk(state.attemptId);
-            if (attempt && !attempt.finishedAt) {
-                attempt.finishedAt = new Date();
-                attempt.exitType = (state.exit || 'normal').slice(0, 255);
-                await attempt.save();
-            }
-        } catch (err) {
-            // Attempt history is secondary to the authoritative CMI state.
-            console.warn('[scorm-runtime] attempt finalization failed', {
-                registrationId: reg.id,
-                attemptId: state.attemptId,
-                error: err?.message || String(err),
-                dbCode: err?.original?.code || err?.parent?.code || null
+        if (state.attemptId) {
+            setImmediate(async () => {
+                try {
+                    const attempt = await ScormAttempt.findByPk(state.attemptId);
+                    if (attempt && !attempt.finishedAt) {
+                        attempt.finishedAt = new Date();
+                        attempt.exitType = (state.exit || 'normal').slice(0, 255);
+                        await attempt.save();
+                    }
+                } catch (err) {
+                    console.warn('[scorm-runtime] attempt finalization failed', {
+                        registrationId: reg.id,
+                        attemptId: state.attemptId,
+                        error: err?.message || String(err)
+                    });
+                }
             });
         }
-    }
 
-    return {
-        ok: true,
-        value: 'true',
-        errorCode: 0,
-        stateVersion: state.stateVersion,
-        summarySaved,
-        registration: registrationSnapshot(reg),
-        summary: {
-            registrationId: reg.id,
-            lessonStatus: state.lessonStatus,
-            scoreRaw: state.scoreRaw,
-            totalTime: state.totalTime,
-            updatedAt: reg.lastCommitAt
-        }
-    };
+        return {
+            ok: true,
+            value: 'true',
+            errorCode: 0,
+            stateVersion: state.stateVersion,
+            registration: registrationSnapshot(reg),
+            summary: {
+                registrationId: reg.id,
+                lessonStatus: state.lessonStatus,
+                scoreRaw: state.scoreRaw,
+                totalTime: state.totalTime,
+                updatedAt: reg.lastCommitAt
+            }
+        };
+    });
 }
 
 function errorString(code) {
