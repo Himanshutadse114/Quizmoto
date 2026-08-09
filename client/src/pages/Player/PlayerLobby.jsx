@@ -10,8 +10,7 @@ const PlayerLobby = () => {
     const navigate = useNavigate();
     const [playerInfo, setPlayerInfo] = useState(null);
     const [isHostDisconnected, setIsHostDisconnected] = useState(false);
-    /** When true, cleanup must NOT leave_session (navigating into the live game). */
-    const stayingInSessionRef = useRef(false);
+    const joinedSocketRef = useRef(null);
 
     const leaveSession = useCallback((opts = {}) => {
         const clearStorage = opts.clearStorage !== false;
@@ -33,94 +32,79 @@ const PlayerLobby = () => {
         const info = JSON.parse(localStorage.getItem('player_info'));
         if (!info) {
             navigate('/join');
-            return;
+            return undefined;
         }
         setPlayerInfo(info);
 
-        if (!socket) return;
+        if (!socket) return undefined;
 
-        stayingInSessionRef.current = false;
+        // React StrictMode intentionally runs an effect setup/cleanup/setup cycle
+        // in development. Joining twice is harmless but noisy, and cleanup must
+        // never be interpreted as a real learner exit. Reuse the same socket
+        // session until an actual reconnect, which SocketContext already handles.
+        if (joinedSocketRef.current !== socket) {
+            joinedSocketRef.current = socket;
+            socket.emit('join_room', {
+                pin: info.pin,
+                nickname: info.nickname,
+                role: 'player',
+                token: info.token,
+                avatar: info.avatar,
+                teamName: info.teamName
+            });
+        }
 
-        socket.emit('join_room', {
-            pin: info.pin,
-            nickname: info.nickname,
-            role: 'player',
-            token: info.token
-        });
-
-        socket.on('question_started', (data) => {
-            stayingInSessionRef.current = true;
+        const onQuestionStarted = (data) => {
             try {
                 sessionStorage.setItem('pending_question_started', JSON.stringify(data));
             } catch (_) {}
             navigate('/player/game');
-        });
+        };
 
-        socket.on('session_info', (data) => {
+        const onSessionInfo = (data) => {
             if (data.status === 'question' || data.status === 'result') {
-                stayingInSessionRef.current = true;
                 navigate('/player/game');
             }
-        });
+        };
 
-        socket.on('host_left', (data) => {
+        const onHostLeft = (data) => {
             setIsHostDisconnected(false);
-            stayingInSessionRef.current = true;
             try { localStorage.removeItem('player_info'); } catch (_) {}
             alert((data && data.message) || 'Host left the session.');
             navigate('/');
-        });
+        };
 
-        socket.on('host_disconnected', () => {
-            setIsHostDisconnected(true);
-        });
-
-        socket.on('host_reconnected', () => {
-            setIsHostDisconnected(false);
-        });
-
-        socket.on('error', (msg) => {
+        const onHostDisconnected = () => setIsHostDisconnected(true);
+        const onHostReconnected = () => setIsHostDisconnected(false);
+        const onError = (msg) => {
             if (msg === 'Game not found' || msg === 'Game is already finished' || msg === 'Unauthorized Host Entry') {
-                stayingInSessionRef.current = true;
                 alert(msg);
                 try { localStorage.removeItem('player_info'); } catch (_) {}
                 navigate('/');
             }
-        });
-
-        const rejoin = () => {
-            try {
-                const info = JSON.parse(localStorage.getItem('player_info') || 'null');
-                if (!info || !info.pin) return;
-                socket.emit('join_room', {
-                    pin: info.pin,
-                    nickname: info.nickname,
-                    role: 'player',
-                    token: info.token,
-                    avatar: info.avatar
-                });
-            } catch (_) {}
         };
-        socket.on('connect', rejoin);
-        socket.on('reconnect', rejoin);
+
+        socket.on('question_started', onQuestionStarted);
+        socket.on('session_info', onSessionInfo);
+        socket.on('host_left', onHostLeft);
+        socket.on('host_disconnected', onHostDisconnected);
+        socket.on('host_reconnected', onHostReconnected);
+        socket.on('error', onError);
 
         return () => {
-            socket.off('connect', rejoin);
-            socket.off('reconnect', rejoin);
-            socket.off('question_started');
-            socket.off('session_info');
-            socket.off('host_disconnected');
-            socket.off('host_left');
-            socket.off('host_reconnected');
-            socket.off('error');
-            if (!stayingInSessionRef.current) {
-                leaveSession({ clearStorage: true });
-            }
+            socket.off('question_started', onQuestionStarted);
+            socket.off('session_info', onSessionInfo);
+            socket.off('host_disconnected', onHostDisconnected);
+            socket.off('host_left', onHostLeft);
+            socket.off('host_reconnected', onHostReconnected);
+            socket.off('error', onError);
+            // IMPORTANT: never emit leave_session from React effect cleanup.
+            // Cleanup runs during StrictMode verification and normal route effect
+            // lifecycle. A player leaves only via the explicit Leave session CTA.
         };
-    }, [socket, navigate, leaveSession]);
+    }, [socket, navigate]);
 
     const handleLeaveClick = () => {
-        stayingInSessionRef.current = true;
         leaveSession({ clearStorage: true });
         navigate('/');
     };
