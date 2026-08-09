@@ -64,6 +64,73 @@ describe('SCORM admin preview stats', () => {
         expect(result.stateVersion).to.equal(9);
     });
 
+    it('prefers v2 learner state over stale legacy preview state', () => {
+        const registration = {
+            id: 'preview-v2',
+            courseId: 'course-v2',
+            status: 'active',
+            isPreview: true,
+            lastLessonStatus: 'incomplete',
+            lastScoreRaw: 50,
+            lastCommitAt: '2026-08-09T14:00:00.000Z',
+            updatedAt: '2026-08-09T14:00:00.000Z',
+            cmiState: {
+                initialized: false,
+                lessonStatus: 'not attempted',
+                scoreRaw: null,
+                scoreMin: null,
+                scoreMax: null,
+                lessonLocation: null,
+                totalTime: null,
+                rawMapJson: '{}',
+                stateVersion: 0
+            },
+            learningStateV2: {
+                lessonStatus: 'incomplete',
+                scoreRaw: 50,
+                lessonLocation: '3',
+                suspendData: JSON.stringify({ quizmotoSlide: 3, quizmotoProgress: 50 }),
+                totalTime: '00:03:15.00',
+                progressPercent: 0,
+                sequence: 7,
+                values: {
+                    'cmi.core.score.raw': '50',
+                    'cmi.core.lesson_location': '3',
+                    'cmi.core.lesson_status': 'incomplete',
+                    'cmi.core.session_time': '00:00:20.00',
+                    'cmi.suspend_data': JSON.stringify({ quizmotoSlide: 3, quizmotoProgress: 50 }),
+                    'cmi.interactions.0.id': 'quiz_1',
+                    'cmi.interactions.0.result': 'correct'
+                }
+            }
+        };
+        const course = {
+            title: 'Security Essentials',
+            status: 'draft',
+            inviteCode: 'ABC123',
+            package: {
+                analysisJson: JSON.stringify({
+                    slides: [{ title: 'Intro' }, { title: 'Threats' }, { title: 'Response' }],
+                    quiz: [{}, {}]
+                })
+            }
+        };
+
+        const result = serializePreviewStats(registration, course);
+
+        expect(result.qaState).to.equal('in progress');
+        expect(result.progressPercent).to.equal(50);
+        expect(result.progressAvailable).to.equal(true);
+        expect(result.lessonStatus).to.equal('incomplete');
+        expect(result.lastLocation).to.equal('Response');
+        expect(result.totalTime).to.equal('00:03:15.00');
+        expect(result.sessionTime).to.equal('00:00:20.00');
+        expect(result.scoreRaw).to.equal(50);
+        expect(result.scoreMax).to.equal(null);
+        expect(result.interactionCount).to.equal(1);
+        expect(result.stateVersion).to.equal(7);
+    });
+
     it('normalizes scores when a custom min/max range is supplied', () => {
         expect(scorePercent(40, 20, 60)).to.equal(50);
         expect(scorePercent(75, null, null)).to.equal(75);
