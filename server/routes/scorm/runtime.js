@@ -44,14 +44,13 @@ async function bootstrapAiAuthorProgress(regId) {
     }
 }
 
-async function emitRegistration(regId, event) {
+async function emitRegistration(regId, event, snapshot = null) {
     try {
-        const reg = await ScormRegistration.findByPk(regId);
-        if (!reg) return;
-        Realtime.emitRegistrationUpdate({
-            courseId: reg.courseId,
-            event,
-            registration: {
+        let registration = snapshot;
+        if (!registration) {
+            const reg = await ScormRegistration.findByPk(regId);
+            if (!reg) return;
+            registration = {
                 id: reg.id,
                 courseId: reg.courseId,
                 learnerName: reg.learnerName,
@@ -63,7 +62,12 @@ async function emitRegistration(regId, event) {
                 lastTotalTime: reg.lastTotalTime,
                 lastCommitAt: reg.lastCommitAt,
                 updatedAt: reg.updatedAt
-            }
+            };
+        }
+        Realtime.emitRegistrationUpdate({
+            courseId: registration.courseId,
+            event,
+            registration
         });
     } catch (_) {
         // Realtime is an optimization only; runtime persistence must never fail because of it.
@@ -75,9 +79,6 @@ router.post('/:regId/initialize', async (req, res) => {
         const token = bearer(req);
         const result = await Runtime.initialize(req.params.regId, token);
         const bootstrapped = await bootstrapAiAuthorProgress(req.params.regId);
-        // Persist an initial Host Preview / learner state immediately. This also
-        // makes older AI-authored packages visible even if their first client-side
-        // lesson_location write occurred before LMSInitialize.
         if (bootstrapped) await Runtime.commit(req.params.regId, token);
         await emitRegistration(req.params.regId, 'initialize');
         res.json(result);
@@ -100,15 +101,10 @@ router.get('/:regId/get', async (req, res) => {
 router.post('/:regId/set', async (req, res) => {
     try {
         const { element, value, values } = req.body || {};
-        if (values && typeof values === 'object') {
-            let last = { ok: true, value: 'true', errorCode: 0 };
-            for (const [el, val] of Object.entries(values)) {
-                last = await Runtime.setValue(req.params.regId, bearer(req), el, val);
-                if (!last.ok) break;
-            }
-            return res.json(last);
-        }
-        const result = await Runtime.setValue(req.params.regId, bearer(req), element, value);
+        const token = bearer(req);
+        const result = values && typeof values === 'object' && !Array.isArray(values)
+            ? await Runtime.setValues(req.params.regId, token, values)
+            : await Runtime.setValue(req.params.regId, token, element, value);
         res.json(result);
     } catch (err) {
         const code = err.code === 'FORBIDDEN' ? 403 : err.code === 'NOT_FOUND' ? 404 : 500;
@@ -118,8 +114,8 @@ router.post('/:regId/set', async (req, res) => {
 
 router.post('/:regId/commit', async (req, res) => {
     try {
-        const result = await Runtime.commit(req.params.regId, bearer(req));
-        await emitRegistration(req.params.regId, 'commit');
+        const result = await Runtime.commit(req.params.regId, bearer(req), req.body?.values);
+        await emitRegistration(req.params.regId, 'commit', result.registration || null);
         res.json(result);
     } catch (err) {
         const code = err.code === 'FORBIDDEN' ? 403 : err.code === 'NOT_FOUND' ? 404 : 500;
@@ -129,8 +125,8 @@ router.post('/:regId/commit', async (req, res) => {
 
 router.post('/:regId/finish', async (req, res) => {
     try {
-        const result = await Runtime.finish(req.params.regId, bearer(req));
-        await emitRegistration(req.params.regId, 'finish');
+        const result = await Runtime.finish(req.params.regId, bearer(req), req.body?.values);
+        await emitRegistration(req.params.regId, 'finish', result.registration || null);
         res.json(result);
     } catch (err) {
         const code = err.code === 'FORBIDDEN' ? 403 : err.code === 'NOT_FOUND' ? 404 : 500;
