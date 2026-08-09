@@ -4,6 +4,7 @@ const {
     ScormRegistration,
     ScormAttempt,
     ScormCmiState,
+    ScormRuntimeSnapshot,
     ScormXapiStatement
 } = require('../../models/scorm');
 
@@ -11,7 +12,10 @@ async function clearPreviewRuntime(registrationId, transaction = null) {
     const options = { where: { registrationId } };
     if (transaction) options.transaction = transaction;
 
-    // CMI state references the active attempt, so remove it before attempts.
+    // Canonical runtime state and legacy CMI state both reference this
+    // registration. Remove them before attempts when resetting the reusable QA
+    // registration.
+    await ScormRuntimeSnapshot.destroy(options);
     await ScormCmiState.destroy(options);
     await ScormAttempt.destroy(options);
     await ScormXapiStatement.destroy(options);
