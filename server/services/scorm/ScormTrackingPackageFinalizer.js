@@ -116,6 +116,14 @@ function patchTrackingRuntime(html) {
         "function writeSessionTime(){if(typeof doLMSSetValue!=='function')return;try{var now=Date.now();doLMSSetValue('cmi.core.session_time',formatSessionTime(now-lastSessionWriteMs));lastSessionWriteMs=now}catch(e){}}"
     );
 
+    // Expose an explicit synchronous flush hook to the same-origin player shell.
+    // The shell calls this before LMSFinish so a mid-course Exit cannot close the
+    // runtime first and then lose the iframe's final location/time/suspend commit.
+    out = out.replace(
+        "window.addEventListener('beforeunload',function(){if(completed)return;try{writeSessionTime();if(typeof doLMSSetValue==='function'){doLMSSetValue('cmi.core.exit','suspend');doLMSCommit()}}catch(e){}})",
+        "function flushSuspendState(markExit){if(completed)return true;try{var slides=document.querySelectorAll('.slide');var p=Math.round(currentSlide/Math.max(1,slides.length-1)*100);writeSessionTime();if(typeof doLMSSetValue==='function'){doLMSSetValue('cmi.core.lesson_location',String(currentSlide));doLMSSetValue('cmi.suspend_data',JSON.stringify({quizmotoSlide:currentSlide,quizmotoProgress:p}));doLMSSetValue('cmi.core.lesson_status','incomplete');if(markExit!==false)doLMSSetValue('cmi.core.exit','suspend');return typeof doLMSCommit==='function'?doLMSCommit()!=='false':true}}catch(e){}return false}window.__quizmotoFlushScormState=flushSuspendState;window.addEventListener('beforeunload',function(){flushSuspendState(true)})"
+    );
+
     return out;
 }
 
@@ -144,8 +152,9 @@ async function buildScormPackageZip(rawAnalysis, opts = {}) {
             const content = JSON.parse(await contentFile.async('string'));
             zip.file('content.json', JSON.stringify({
                 ...content,
-                trackingVersion: 2,
+                trackingVersion: 3,
                 progressTracking: 'lesson_location',
+                exitTracking: 'synchronous_suspend_flush',
                 mobileOptimized: true,
                 mobileLayoutVersion: 1
             }, null, 2));
