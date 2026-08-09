@@ -17,9 +17,9 @@ const SummaryCard = ({ label, value, icon: Icon, bg = '#FFFFFF' }) => (
     <div className="flex items-start justify-between gap-3">
       <div>
         <div className="scorm-display text-2xl leading-none">{value}</div>
-        <div className="scorm-micro mt-2 text-[8px] uppercase font-bold text-[#5A5A4F]">{label}</div>
+        <div className="scorm-micro mt-2 text-[8px] uppercase font-semibold text-[#667085]">{label}</div>
       </div>
-      <div className="w-8 h-8 rounded-lg bg-[#F8F9EB] grid place-items-center border border-black text-black">
+      <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] grid place-items-center border border-black text-black">
         <Icon size={15} />
       </div>
     </div>
@@ -71,26 +71,26 @@ export default function ScormTracking() {
   return (
     <div className="p-4 md:p-7 lg:p-9 max-w-[1500px] mx-auto">
       <div className="mb-7 pb-7 border-b border-black max-w-4xl">
-        <div className="scorm-micro text-[10px] uppercase font-bold text-[#5A5A4F]">Learning operations</div>
-        <h2 className="scorm-display uppercase text-[42px] md:text-[56px] mt-2">Learner tracking.</h2>
+        <div className="scorm-micro text-[10px] uppercase font-semibold text-[#667085]">Learning operations</div>
+        <h2 className="scorm-display text-[42px] md:text-[56px] mt-2">Learner tracking</h2>
         <p className="text-sm mt-3 leading-relaxed max-w-3xl">See completion, last known course location, score and activity. Admin QA previews are isolated and never appear as learner activity.</p>
       </div>
 
-      {error && <div className="mb-5 p-4 rounded-xl border border-black bg-[#FFC0E6] text-black text-sm">{error}</div>}
+      {error && <div className="mb-5 p-4 rounded-xl border border-black bg-[#FEF3F2] text-black text-sm">{error}</div>}
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
         <SummaryCard label="Learners" value={overview.learners || 0} icon={Users} />
-        <SummaryCard label="Completed" value={overview.completed || 0} icon={CheckCircle2} bg="#AAFDC0" />
-        <SummaryCard label="In progress" value={overview.inProgress || 0} icon={Clock3} bg="#B0F4FF" />
+        <SummaryCard label="Completed" value={overview.completed || 0} icon={CheckCircle2} bg="#ECFDF3" />
+        <SummaryCard label="In progress" value={overview.inProgress || 0} icon={Clock3} bg="#ECFDFF" />
         <SummaryCard label="Not started" value={overview.notStarted || 0} icon={CircleDashed} />
-        <SummaryCard label="Unavailable" value={overview.unavailable || 0} icon={CircleDashed} bg="#FFC0E6" />
-        <SummaryCard label="Average progress" value={`${Number(overview.averageProgress || 0).toFixed(0)}%`} icon={Activity} bg="#AAFDC0" />
+        <SummaryCard label="Unavailable" value={overview.unavailable || 0} icon={CircleDashed} bg="#FEF3F2" />
+        <SummaryCard label="Average progress" value={`${Number(overview.averageProgress || 0).toFixed(0)}%`} icon={Activity} bg="#F4F3FF" />
       </div>
 
       <div className="border border-black rounded-[22px] overflow-hidden bg-white">
-        <div className="p-4 md:p-5 border-b border-black grid grid-cols-1 xl:grid-cols-[1fr_auto_auto] gap-3 bg-[#F8F9EB]">
+        <div className="p-4 md:p-5 border-b border-black grid grid-cols-1 xl:grid-cols-[1fr_auto_auto] gap-3 bg-[#F8FAFC]">
           <div className="relative">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5A5A4F]" />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#667085]" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -114,7 +114,7 @@ export default function ScormTracking() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1100px] text-sm">
             <thead>
-              <tr className="text-left scorm-micro text-[9px] uppercase font-bold text-[#5A5A4F] border-b border-black bg-[#EDEEE1]">
+              <tr className="text-left scorm-micro text-[9px] uppercase font-semibold text-[#667085] border-b border-black bg-[#F8FAFC]">
                 <th className="px-5 py-3.5">Learner</th>
                 <th className="px-5 py-3.5">Course</th>
                 <th className="px-5 py-3.5 min-w-[220px]">Completion</th>
@@ -126,37 +126,37 @@ export default function ScormTracking() {
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 && <tr><td colSpan={8} className="p-10 text-center text-[#5A5A4F]">No learners match this view.</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={8} className="p-10 text-center text-[#667085]">No learners match this view.</td></tr>}
               {rows.map((row) => (
-                <tr key={row.id} className="border-b border-[#EDEEE1] bg-white hover:bg-[#AAFDC0]">
+                <tr key={row.id} className="border-b border-[#E4E7EC] bg-white hover:bg-[#FAFAFF]">
                   <td className="px-5 py-4">
-                    <div className="font-bold text-black">{row.learnerName || 'Learner'}</div>
-                    <div className="text-[11px] text-[#5A5A4F] mt-0.5">{row.learnerEmail || 'No email'}</div>
+                    <div className="font-semibold text-black">{row.learnerName || 'Learner'}</div>
+                    <div className="text-[11px] text-[#667085] mt-0.5">{row.learnerEmail || 'No email'}</div>
                   </td>
                   <td className="px-5 py-4">
                     <div className="font-medium max-w-[220px] truncate text-black">{row.courseTitle || 'Course'}</div>
-                    <div className="scorm-micro text-[9px] text-[#5A5A4F] mt-1">{row.inviteCode || ''}</div>
+                    <div className="scorm-micro text-[9px] text-[#667085] mt-1">{row.inviteCode || ''}</div>
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center justify-between gap-3 mb-2">
-                      <span className="text-[11px] font-bold text-black">{row.progressAvailable ? `${Number(row.progressPercent).toFixed(0)}%` : '—'}</span>
-                      <span className="scorm-micro text-[8px] uppercase font-bold text-[#5A5A4F]">{statusLabel(row)}</span>
+                      <span className="text-[11px] font-semibold text-black">{row.progressAvailable ? `${Number(row.progressPercent).toFixed(0)}%` : '—'}</span>
+                      <span className="scorm-micro text-[8px] uppercase font-semibold text-[#667085]">{statusLabel(row)}</span>
                     </div>
-                    <div className="h-2 rounded-full bg-[#EDEEE1] border border-[#C0C2A9] overflow-hidden">
-                      {row.progressAvailable && <div className="h-full bg-[#003D21]" style={{ width: `${Math.max(0, Math.min(100, row.progressPercent || 0))}%` }} />}
+                    <div className="h-2 rounded-full bg-[#EAECF0] overflow-hidden">
+                      {row.progressAvailable && <div className="h-full bg-[#635BFF]" style={{ width: `${Math.max(0, Math.min(100, row.progressPercent || 0))}%` }} />}
                     </div>
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-start gap-2 max-w-[260px]">
-                      <MapPin size={13} className="text-[#5A5A4F] mt-0.5 shrink-0" />
-                      <span className="text-[11px] font-medium text-[#5A5A4F]">{row.lastLocation || 'Not started'}</span>
+                      <MapPin size={13} className="text-[#98A2B3] mt-0.5 shrink-0" />
+                      <span className="text-[11px] font-medium text-[#667085]">{row.lastLocation || 'Not started'}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-4 font-bold text-black">{row.lastScoreRaw != null ? row.lastScoreRaw : '—'}</td>
-                  <td className="px-5 py-4 font-mono text-[11px] text-[#5A5A4F]">{row.lastTotalTime || '—'}</td>
-                  <td className="px-5 py-4 text-[11px] text-[#5A5A4F]">{row.lastCommitAt ? new Date(row.lastCommitAt).toLocaleString() : row.updatedAt ? new Date(row.updatedAt).toLocaleString() : '—'}</td>
+                  <td className="px-5 py-4 font-semibold text-black">{row.lastScoreRaw != null ? row.lastScoreRaw : '—'}</td>
+                  <td className="px-5 py-4 font-mono text-[11px] text-[#667085]">{row.lastTotalTime || '—'}</td>
+                  <td className="px-5 py-4 text-[11px] text-[#667085]">{row.lastCommitAt ? new Date(row.lastCommitAt).toLocaleString() : row.updatedAt ? new Date(row.updatedAt).toLocaleString() : '—'}</td>
                   <td className="px-5 py-4">
-                    <Link to={`/scorm/courses/${row.courseId}`} className="inline-flex items-center gap-1 text-[10px] font-bold text-[#003D21] hover:text-black">Open <ExternalLink size={11} /></Link>
+                    <Link to={`/scorm/courses/${row.courseId}`} className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#635BFF] hover:text-[#5145CD]">Open <ExternalLink size={11} /></Link>
                   </td>
                 </tr>
               ))}
