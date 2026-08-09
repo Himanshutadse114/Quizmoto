@@ -49,8 +49,11 @@ async function ensureReady() {
                 `);
 
                 // Repair an interrupted/partial earlier creation without relying
-                // on Sequelize's alter/sync machinery.
+                // on Sequelize's alter/sync machinery. A previous deploy may
+                // have created the table but failed before all columns or the
+                // primary/unique constraint were present.
                 const additions = [
+                    `ALTER TABLE "scorm_runtime_snapshots" ADD COLUMN IF NOT EXISTS "registrationId" UUID`,
                     `ALTER TABLE "scorm_runtime_snapshots" ADD COLUMN IF NOT EXISTS "payloadJson" TEXT NOT NULL DEFAULT '{}'`,
                     `ALTER TABLE "scorm_runtime_snapshots" ADD COLUMN IF NOT EXISTS "stateVersion" INTEGER NOT NULL DEFAULT 0`,
                     `ALTER TABLE "scorm_runtime_snapshots" ADD COLUMN IF NOT EXISTS "initialized" BOOLEAN NOT NULL DEFAULT FALSE`,
@@ -58,6 +61,21 @@ async function ensureReady() {
                     `ALTER TABLE "scorm_runtime_snapshots" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP`
                 ];
                 for (const sql of additions) await sequelize.query(sql);
+
+                // Make ON CONFLICT reliable even if an earlier partial table was
+                // created without its primary key. Remove only unusable/duplicate
+                // snapshot rows; registration data itself is untouched.
+                await sequelize.query(`DELETE FROM "scorm_runtime_snapshots" WHERE "registrationId" IS NULL`);
+                await sequelize.query(`
+                    DELETE FROM "scorm_runtime_snapshots" older
+                    USING "scorm_runtime_snapshots" newer
+                    WHERE older."registrationId" = newer."registrationId"
+                      AND older.ctid < newer.ctid
+                `);
+                await sequelize.query(`
+                    CREATE UNIQUE INDEX IF NOT EXISTS "scorm_runtime_snapshots_registration_id_uq"
+                    ON "scorm_runtime_snapshots" ("registrationId")
+                `);
             } else if (dialect === 'mysql') {
                 await sequelize.query(`
                     CREATE TABLE IF NOT EXISTS \`scorm_runtime_snapshots\` (
