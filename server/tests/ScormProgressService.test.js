@@ -36,6 +36,20 @@ describe('ScormProgressService', () => {
         })).to.equal(50);
     });
 
+    it('uses Quizmoto suspend progress even when an older v2 row contains an accidental zero', () => {
+        expect(deriveProgress({
+            registration: { status: 'active', lastLessonStatus: 'incomplete' },
+            cmiState: {
+                lessonStatus: 'incomplete',
+                lessonLocation: '3',
+                progressPercent: 0,
+                suspendData: JSON.stringify({ quizmotoSlide: 3, quizmotoProgress: 50 }),
+                values: {}
+            },
+            packageRow: packageRow()
+        })).to.equal(50);
+    });
+
     it('uses an explicit v2 progress percentage when supplied', () => {
         expect(deriveProgress({
             registration: { status: 'active' },
@@ -64,7 +78,7 @@ describe('ScormProgressService', () => {
     it('returns 100 percent for a finished registration', () => {
         expect(deriveProgress({
             registration: { status: 'completed', lastLessonStatus: 'passed' },
-            cmiState: { lessonStatus: 'passed', values: {} },
+            cmiState: { lessonStatus: 'passed', progressPercent: 0, values: {} },
             packageRow: packageRow()
         })).to.equal(100);
     });
@@ -75,6 +89,7 @@ describe('ScormProgressService', () => {
             cmiState: {
                 lessonStatus: 'incomplete',
                 lessonLocation: 'chapter-two',
+                progressPercent: null,
                 values: {}
             },
             packageRow: { analysisJson: null }
