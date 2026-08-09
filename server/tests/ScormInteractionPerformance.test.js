@@ -1,5 +1,6 @@
 const { expect } = require('chai');
 const { interactionTrackingScript } = require('../services/scorm/ScormExperienceFinalizer');
+const contentRouter = require('../routes/scorm/content');
 
 describe('SCORM authored interaction responsiveness', () => {
     it('defers interaction tracking until after answer feedback can paint', () => {
@@ -23,5 +24,12 @@ describe('SCORM authored interaction responsiveness', () => {
         expect(source).to.include("base+'.student_response'");
         expect(source).to.include("base+'.result'");
         expect(source).to.include("base+'.correct_responses.0.pattern'");
+    });
+
+    it('removes the legacy answer-click commit when an existing authored course is served', () => {
+        const oldHtml = '<html><head></head><body><script>if(typeof doLMSCommit===\'function\')doLMSCommit();</script></body></html>';
+        const patched = contentRouter.patchAuthoredHtml(oldHtml);
+        expect(patched).to.not.include("if(typeof doLMSCommit==='function')doLMSCommit();");
+        expect(patched).to.include('quizmoto-mobile-course-css');
     });
 });
