@@ -9,9 +9,9 @@ import generate_scorm_visuals_v2 as animated
 base = animated.base
 _current_base_svg = base.base_svg
 _theme = {
-    'primary': '#f97316',
-    'accent': '#fdba74',
-    'soft': '#fff1e6',
+    'primary': '#5147E8',
+    'accent': '#E2DFFF',
+    'soft': '#F0EFFF',
 }
 
 
