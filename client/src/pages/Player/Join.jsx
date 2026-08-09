@@ -28,7 +28,6 @@ const Join = () => {
     const [resumeInfo, setResumeInfo] = useState(null);
     const [resuming, setResuming] = useState(false);
 
-    // Detect accidental leave: saved player_info means seat can be resumed
     useEffect(() => {
         try {
             const raw = localStorage.getItem('player_info');
@@ -43,7 +42,6 @@ const Join = () => {
         } catch (_) {}
     }, []);
 
-    // Prefill from logged-in player profile (login → dashboard → join)
     useEffect(() => {
         const storedProfile = localStorage.getItem('playerProfile');
         if (storedProfile) {
@@ -60,7 +58,6 @@ const Join = () => {
         }
     }, []);
 
-    // Socket listeners — same path for login, guest join, and resume
     useEffect(() => {
         if (!socket) return;
 
@@ -77,7 +74,6 @@ const Join = () => {
             localStorage.setItem('player_info', JSON.stringify(info));
             setResumeInfo(info);
             setResuming(false);
-            // Default to lobby; session_info will redirect into active game if needed
             navigate('/player/lobby');
         };
 
@@ -91,30 +87,32 @@ const Join = () => {
             } catch (_) {}
         };
 
-        socket.on('joined_successfully', onJoined);
-        socket.on('session_info', onSessionInfo);
-        socket.on('room_info', (data) => {
+        const onRoomInfo = (data) => {
             setGameMode(data.gameMode || 'classic');
-        });
-        socket.on('error', (msg) => {
+        };
+
+        const onError = (msg) => {
             setResuming(false);
             setError(typeof msg === 'string' ? msg : (msg && msg.message) || 'Join failed');
-            // Stale resume seat (game finished / removed)
             if (msg === 'Game not found' || msg === 'Game is already finished') {
                 try { localStorage.removeItem('player_info'); } catch (_) {}
                 setResumeInfo(null);
             }
-        });
+        };
+
+        socket.on('joined_successfully', onJoined);
+        socket.on('session_info', onSessionInfo);
+        socket.on('room_info', onRoomInfo);
+        socket.on('error', onError);
 
         return () => {
             socket.off('joined_successfully', onJoined);
             socket.off('session_info', onSessionInfo);
-            socket.off('room_info');
-            socket.off('error');
+            socket.off('room_info', onRoomInfo);
+            socket.off('error', onError);
         };
     }, [socket, navigate, pin, nickname, selectedAvatar, teamName]);
 
-    // Soft room probe when PIN is complete
     useEffect(() => {
         if (!socket || !pin || String(pin).length !== 6) return;
         socket.emit('join_room', { pin, role: 'player_check' });
@@ -140,9 +138,13 @@ const Join = () => {
 
     const handleJoin = (e) => {
         e.preventDefault();
-        if (!socket) return;
+        if (!socket) {
+            setError('Connecting to the live session. Please try again in a moment.');
+            return;
+        }
         if (gameMode === 'team' && !teamName) return setError('Please select a team');
 
+        setError('');
         const docElm = document.documentElement;
         try {
             const requestFs = docElm.requestFullscreen ||
@@ -151,9 +153,12 @@ const Join = () => {
                 docElm.msRequestFullscreen;
 
             if (requestFs) {
-                requestFs.call(docElm).catch(err => {
-                    console.log(`Error attempting to enable full-screen mode: ${err.message}`);
-                });
+                const fullscreenResult = requestFs.call(docElm);
+                if (fullscreenResult && typeof fullscreenResult.catch === 'function') {
+                    fullscreenResult.catch(err => {
+                        console.log(`Error attempting to enable full-screen mode: ${err.message}`);
+                    });
+                }
             }
         } catch (err) {
             console.warn('Fullscreen API not supported', err);
@@ -173,6 +178,8 @@ const Join = () => {
             teamName
         });
     };
+
+    const realtimeReady = !!socket;
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-quizmoto-purple">
@@ -235,8 +242,8 @@ const Join = () => {
                         <button
                             type="button"
                             onClick={handleResume}
-                            disabled={resuming}
-                            className="w-full bg-quizmoto-purple text-white font-black py-3.5 rounded-2xl text-base hover:bg-opacity-90 transition-all shadow-[0_4px_0_0_#33125e] active:translate-y-0.5 active:shadow-none uppercase tracking-tight disabled:opacity-60"
+                            disabled={resuming || !realtimeReady}
+                            className="w-full bg-quizmoto-purple text-white font-black py-3.5 rounded-2xl text-base hover:bg-opacity-90 transition-all shadow-[0_4px_0_0_#33125e] active:translate-y-0.5 active:shadow-none uppercase tracking-tight disabled:opacity-60 disabled:cursor-wait"
                         >
                             {resuming ? 'Rejoining…' : 'Resume game'}
                         </button>
@@ -283,10 +290,17 @@ const Join = () => {
                     </div>
                     <button
                         type="submit"
-                        className="w-full bg-quizmoto-purple text-white font-black py-5 rounded-[20px] text-lg hover:bg-opacity-90 transition-all shadow-[0_6px_0_0_#33125e] active:translate-y-1 active:shadow-none uppercase tracking-tight italic"
+                        disabled={!realtimeReady}
+                        aria-busy={!realtimeReady}
+                        className="w-full bg-quizmoto-purple text-white font-black py-5 rounded-[20px] text-lg hover:bg-opacity-90 transition-all shadow-[0_6px_0_0_#33125e] active:translate-y-1 active:shadow-none uppercase tracking-tight italic disabled:opacity-60 disabled:cursor-wait disabled:active:translate-y-0"
                     >
                         Join Battle
                     </button>
+                    {!realtimeReady && (
+                        <p className="text-center text-[9px] font-black uppercase tracking-[0.18em] text-quizmoto-purple/45" role="status">
+                            Connecting to live session…
+                        </p>
+                    )}
                 </form>
             </motion.div>
         </div>
