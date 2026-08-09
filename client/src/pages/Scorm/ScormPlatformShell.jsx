@@ -12,12 +12,12 @@ import {
   Menu,
   X,
   ChevronRight,
-  CircleCheck,
   Plus,
   Upload,
   Layers3
 } from 'lucide-react';
 import './scormEditorialTheme.css';
+import './scormDashboard.css';
 
 const NAV_GROUPS = [
   {
