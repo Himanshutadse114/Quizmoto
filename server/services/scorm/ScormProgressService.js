@@ -1,4 +1,3 @@
-const RuntimeStore = require('./ScormRuntimeSnapshotStore');
 const packageAnalysisCache = new WeakMap();
 
 function parseJson(value, fallback = {}) {
@@ -50,11 +49,20 @@ function progressFromLocation(location, packageRow) {
     return null;
 }
 
+function stateValues(state) {
+    if (!state) return {};
+    if (state.values && typeof state.values === 'object') return state.values;
+    return parseJson(state.rawMapJson, {});
+}
+
 function deriveProgress({ registration, cmiState, packageRow }) {
     const lessonStatus = cmiState?.lessonStatus || registration?.lastLessonStatus || null;
-    const map = parseJson(cmiState?.rawMapJson, {});
+    const map = stateValues(cmiState);
 
     if (isFinished(lessonStatus) || registration?.status === 'completed') return 100;
+
+    const explicit = clampPercent(cmiState?.progressPercent);
+    if (explicit != null) return explicit;
 
     const progressMeasure = Number(map['cmi.progress_measure']);
     if (Number.isFinite(progressMeasure) && progressMeasure >= 0 && progressMeasure <= 1) {
@@ -66,14 +74,17 @@ function deriveProgress({ registration, cmiState, packageRow }) {
     if (fromLocation != null) return fromLocation;
 
     if (!lessonStatus || String(lessonStatus).toLowerCase() === 'not attempted') return 0;
-    return null;
+    return registration?.status === 'active' ? 1 : null;
 }
 
 function locationLabel({ registration, cmiState, packageRow }) {
-    const location = cmiState?.lessonLocation || null;
+    const map = stateValues(cmiState);
+    const location = cmiState?.lessonLocation || map['cmi.location'] || map['cmi.core.lesson_location'] || null;
     if (!location) {
         if (isFinished(cmiState?.lessonStatus || registration?.lastLessonStatus)) return 'Completed';
-        return registration?.status === 'active' ? 'Started — location unavailable' : 'Not started';
+        return registration?.status === 'active' || Number(cmiState?.sequence || 0) > 0
+            ? 'Started — location unavailable'
+            : 'Not started';
     }
 
     const raw = String(location).trim();
@@ -105,19 +116,13 @@ function field(row, key) {
 }
 
 function stateForRegistration(registration, plain) {
-    const snapshot = plain.runtimeSnapshot || registration?.runtimeSnapshot || null;
-    const canonical = RuntimeStore.snapshotState(snapshot);
-    if (canonical) return canonical;
-    return plain.cmiState || registration?.cmiState || null;
+    return plain.learningStateV2 || registration?.learningStateV2 || null;
 }
 
 function serializeRegistration(registration, course = null) {
     const plain = typeof registration?.toJSON === 'function' ? registration.toJSON() : { ...(registration || {}) };
     const cmiState = stateForRegistration(registration, plain);
 
-    // Do not call course.toJSON() here. A loaded course contains its full
-    // registrations association, so doing that once per learner repeatedly
-    // serializes the whole roster and grows roughly quadratically with roster size.
     const packageRow = field(course, 'package') || registration?.course?.package || null;
     const courseTitle = field(course, 'title') || registration?.course?.title || null;
     const courseStatus = field(course, 'status') || registration?.course?.status || null;
@@ -126,14 +131,13 @@ function serializeRegistration(registration, course = null) {
     const progressPercent = deriveProgress({ registration: plain, cmiState, packageRow });
     const lastLocation = locationLabel({ registration: plain, cmiState, packageRow });
 
-    delete plain.cmiState;
-    delete plain.runtimeSnapshot;
+    delete plain.learningStateV2;
     return {
         ...plain,
         progressPercent,
         progressAvailable: progressPercent != null,
         lastLocation,
-        stateVersion: cmiState?.stateVersion ?? null,
+        stateVersion: cmiState?.sequence ?? null,
         lastLocationRaw: cmiState?.lessonLocation || null,
         lastLessonStatus: cmiState?.lessonStatus || plain.lastLessonStatus || null,
         lastScoreRaw: cmiState?.scoreRaw != null ? cmiState.scoreRaw : plain.lastScoreRaw,
