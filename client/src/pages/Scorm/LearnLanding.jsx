@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { BookOpen, ArrowRight } from 'lucide-react';
 import { apiUrl } from '../../config';
@@ -7,7 +7,6 @@ import './scormEditorialTheme.css';
 
 export default function ScormLearnLanding() {
   const { inviteCode } = useParams();
-  const navigate = useNavigate();
   const [course, setCourse] = useState(null);
   const [error, setError] = useState(null);
   const [name, setName] = useState('');
@@ -63,10 +62,13 @@ export default function ScormLearnLanding() {
         entryHref,
         packageId: packageId || ''
       });
-      navigate(`/scorm/player/${registrationId}?${q.toString()}`);
+
+      // Public invite learners launch directly into the same-origin backend
+      // player. This intentionally avoids the old intermediate React popup
+      // launcher, which was both unnecessary and vulnerable to popup blocking.
+      window.location.assign(apiUrl(`/api/scorm/play/${registrationId}?${q.toString()}`));
     } catch (err) {
       setError(err.response?.data?.message || err.message);
-    } finally {
       setLoading(false);
     }
   };
@@ -91,7 +93,7 @@ export default function ScormLearnLanding() {
             <div className="w-11 h-11 rounded-xl bg-white grid place-items-center text-[#647b6e] border border-[#e0e7e2] mb-7">
               <BookOpen size={20} />
             </div>
-            <div className="text-[11px] font-semibold text-[#78877f] mb-2">SCORM World</div>
+            <div className="text-[11px] font-semibold text-[#78877f]">SCORM World</div>
             <h1 className="text-3xl sm:text-4xl md:text-[44px] font-semibold tracking-[-0.045em] leading-[1.02] break-words text-[#2d3933]">
               {course?.title || 'Loading course…'}
             </h1>
