@@ -271,7 +271,10 @@ async function getValue(regId, token, element) {
 /** Apply a CMI value to already-loaded state without hitting the database. */
 function applyValueToState(state, map, element, value) {
     const el = String(element || '');
-    const val = value == null ? '' : String(value);
+    // PostgreSQL TEXT cannot store NUL bytes. Some older third-party SCORM
+    // packages include them in suspend/interaction payloads, so strip only
+    // that invalid code point while preserving the rest of the learner state.
+    const val = (value == null ? '' : String(value)).replace(/\u0000/g, '');
 
     if (READ_ONLY.has(el)) return { ok: false, value: 'false', errorCode: 403 };
 
@@ -305,7 +308,7 @@ function applyValueToState(state, map, element, value) {
         state.sessionTime = formatTime(secs);
         if (/^P/i.test(val)) map['cmi.session_time'] = val;
     } else if (el === 'cmi.core.exit' || el === 'cmi.exit') {
-        state.exit = val;
+        state.exit = val.slice(0, 255);
     } else if (el === 'cmi.suspend_data') {
         if (val.length > 65536) return { ok: false, value: 'false', errorCode: 405 };
         state.suspendData = val;
@@ -372,6 +375,31 @@ function rollSessionTime(state) {
     }
 }
 
+async function updateRegistrationSummary(reg, state, markCompleted = false) {
+    reg.lastLessonStatus = state.lessonStatus;
+    reg.lastScoreRaw = state.scoreRaw;
+    reg.lastTotalTime = state.totalTime;
+    reg.lastCommitAt = new Date();
+    if (markCompleted && ['completed', 'passed', 'failed'].includes(state.lessonStatus)) {
+        reg.status = 'completed';
+    }
+
+    try {
+        await reg.save();
+        return true;
+    } catch (err) {
+        // The registration row is a reporting/cache projection. The CMI state
+        // above is the authoritative learner state and must not be turned into
+        // a failed LMSCommit just because this auxiliary summary write failed.
+        console.warn('[scorm-runtime] registration summary update failed', {
+            registrationId: reg.id,
+            error: err?.message || String(err),
+            dbCode: err?.original?.code || err?.parent?.code || null
+        });
+        return false;
+    }
+}
+
 async function commit(regId, token, values = null) {
     const reg = await loadRegAuthorized(regId, token);
     const state = await getOrCreateState(reg);
@@ -386,17 +414,14 @@ async function commit(regId, token, values = null) {
     state.stateVersion = (state.stateVersion || 0) + 1;
     await state.save();
 
-    reg.lastLessonStatus = state.lessonStatus;
-    reg.lastScoreRaw = state.scoreRaw;
-    reg.lastTotalTime = state.totalTime;
-    reg.lastCommitAt = new Date();
-    await reg.save();
+    const summarySaved = await updateRegistrationSummary(reg, state, false);
 
     return {
         ok: true,
         value: 'true',
         errorCode: 0,
         stateVersion: state.stateVersion,
+        summarySaved,
         registration: registrationSnapshot(reg),
         summary: {
             registrationId: reg.id,
@@ -425,19 +450,24 @@ async function finish(regId, token, values = null) {
     state.initialized = false;
     await state.save();
 
-    reg.lastLessonStatus = state.lessonStatus;
-    reg.lastScoreRaw = state.scoreRaw;
-    reg.lastTotalTime = state.totalTime;
-    reg.lastCommitAt = new Date();
-    if (['completed', 'passed', 'failed'].includes(state.lessonStatus)) reg.status = 'completed';
-    await reg.save();
+    const summarySaved = await updateRegistrationSummary(reg, state, true);
 
     if (state.attemptId) {
-        const attempt = await ScormAttempt.findByPk(state.attemptId);
-        if (attempt && !attempt.finishedAt) {
-            attempt.finishedAt = new Date();
-            attempt.exitType = state.exit || 'normal';
-            await attempt.save();
+        try {
+            const attempt = await ScormAttempt.findByPk(state.attemptId);
+            if (attempt && !attempt.finishedAt) {
+                attempt.finishedAt = new Date();
+                attempt.exitType = (state.exit || 'normal').slice(0, 255);
+                await attempt.save();
+            }
+        } catch (err) {
+            // Attempt history is secondary to the authoritative CMI state.
+            console.warn('[scorm-runtime] attempt finalization failed', {
+                registrationId: reg.id,
+                attemptId: state.attemptId,
+                error: err?.message || String(err),
+                dbCode: err?.original?.code || err?.parent?.code || null
+            });
         }
     }
 
@@ -446,6 +476,7 @@ async function finish(regId, token, values = null) {
         value: 'true',
         errorCode: 0,
         stateVersion: state.stateVersion,
+        summarySaved,
         registration: registrationSnapshot(reg),
         summary: {
             registrationId: reg.id,
