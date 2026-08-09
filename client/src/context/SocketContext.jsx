@@ -11,7 +11,7 @@ function readPlayerInfo() {
     }
 }
 
-function rejoinActiveLiveQuiz(socket) {
+function rejoinActiveRealtimeRoom(socket) {
     const pathname = window.location.pathname || '';
 
     const hostMatch = pathname.match(/\/host\/(?:lobby|game)\/([^/?#]+)\/?$/);
@@ -37,6 +37,18 @@ function rejoinActiveLiveQuiz(socket) {
                 token: info.token,
                 avatar: info.avatar,
                 teamName: info.teamName
+            });
+        }
+        return;
+    }
+
+    const scormCourseMatch = pathname.match(/^\/scorm\/courses\/([^/?#]+)\/?$/);
+    if (scormCourseMatch) {
+        const token = localStorage.getItem('token');
+        if (token) {
+            socket.emit('join_scorm_course', {
+                courseId: decodeURIComponent(scormCourseMatch[1]),
+                token
             });
         }
     }
@@ -83,15 +95,14 @@ export const SocketProvider = ({ children }) => {
             });
 
             // Route components perform the initial join as soon as they receive
-            // the socket object (Socket.IO safely buffers emits until connected).
-            // Only auto-rejoin after a real reconnect. Doing both on first connect
-            // sent duplicate host joins and could overlap lease transactions.
+            // the socket object. Only auto-rejoin after a real reconnect; doing
+            // both on first connect caused duplicate host lease transactions.
             onConnect = () => {
                 if (!hasConnectedOnce) {
                     hasConnectedOnce = true;
                     return;
                 }
-                rejoinActiveLiveQuiz(newSocket);
+                rejoinActiveRealtimeRoom(newSocket);
             };
             newSocket.on('connect', onConnect);
 
@@ -121,4 +132,4 @@ export const SocketProvider = ({ children }) => {
 };
 
 export const useSocket = () => useContext(SocketContext);
-export { routeNeedsRealtime };
+export { routeNeedsRealtime, rejoinActiveRealtimeRoom };
