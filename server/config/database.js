@@ -63,31 +63,24 @@ const connectDB = async () => {
         require('../models/scorm');
 
         // Centralized Associations
-        // Quiz <-> Question
         Quiz.hasMany(Question, { as: 'questions', foreignKey: 'quizId', onDelete: 'CASCADE' });
         Question.belongsTo(Quiz, { foreignKey: 'quizId' });
 
-        // GameSession <-> Quiz
         GameSession.belongsTo(Quiz, { foreignKey: 'quizId' });
         Quiz.hasMany(GameSession, { foreignKey: 'quizId', as: 'sessions' });
 
-        // GameSession <-> Player
         GameSession.hasMany(Player, { as: 'players', foreignKey: 'sessionId', onDelete: 'CASCADE' });
         Player.belongsTo(GameSession, { foreignKey: 'sessionId' });
 
-        // GameSession <-> PlayerAnswer
         GameSession.hasMany(PlayerAnswer, { as: 'answers', foreignKey: 'sessionId', onDelete: 'CASCADE' });
         PlayerAnswer.belongsTo(GameSession, { foreignKey: 'sessionId' });
 
-        // Player <-> PlayerAnswer
         Player.hasMany(PlayerAnswer, { as: 'answers', foreignKey: 'playerId', onDelete: 'CASCADE' });
         PlayerAnswer.belongsTo(Player, { foreignKey: 'playerId' });
 
-        // Player <-> PlayerProfile
         PlayerProfile.hasMany(Player, { as: 'sessionPlayers', foreignKey: 'playerProfileId' });
         Player.belongsTo(PlayerProfile, { foreignKey: 'playerProfileId', as: 'profile' });
 
-        // Phase 2: Round / SessionEvent / IdempotencyRecord
         GameSession.hasMany(Round, { as: 'rounds', foreignKey: 'sessionId', onDelete: 'CASCADE' });
         Round.belongsTo(GameSession, { foreignKey: 'sessionId' });
 
@@ -97,15 +90,17 @@ const connectDB = async () => {
         GameSession.hasMany(IdempotencyRecord, { as: 'idempotencyRecords', foreignKey: 'sessionId', onDelete: 'CASCADE' });
         IdempotencyRecord.belongsTo(GameSession, { foreignKey: 'sessionId' });
 
-        // Add columns individually - handle duplicate column errors for MySQL & PostgreSQL
+        // Add columns individually - handle duplicate column errors for MySQL & PostgreSQL.
+        // sequelize.sync() does not alter existing production tables, so every additive
+        // runtime field must be explicitly migrated here for long-lived Render databases.
         const addColumnIfMissing = async (sql) => {
             try {
                 await sequelize.query(sql);
             } catch (e) {
                 const isDuplicateCol =
-                    (e.original && e.original.errno === 1060) ||           // MySQL
-                    (e.original && e.original.code === '42701') ||          // PostgreSQL
-                    (e.message && e.message.includes('already exists'));     // fallback
+                    (e.original && e.original.errno === 1060) ||
+                    (e.original && e.original.code === '42701') ||
+                    (e.message && e.message.includes('already exists'));
                 if (!isDuplicateCol) {
                     console.warn('Database migration note:', e.message);
                 }
@@ -113,7 +108,6 @@ const connectDB = async () => {
         };
 
         if (isPostgres) {
-            // PostgreSQL syntax: double quotes, no AFTER clause
             await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "gameMode" VARCHAR(255) DEFAULT 'classic'`);
             await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "analytics" JSON NULL`);
             await addColumnIfMissing(`ALTER TABLE "Players" ADD COLUMN "teamName" VARCHAR(255) NULL`);
@@ -127,7 +121,6 @@ const connectDB = async () => {
             await addColumnIfMissing(`ALTER TABLE "PlayerProfiles" ADD COLUMN "googleId" VARCHAR(255) NULL`);
             await addColumnIfMissing(`ALTER TABLE "PlayerProfiles" ALTER COLUMN "password" DROP NOT NULL`);
 
-            // Phase 2 additive columns on GameSessions
             await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "state" VARCHAR(32) DEFAULT 'LOBBY'`);
             await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "stateVersion" BIGINT NOT NULL DEFAULT 0`);
             await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "activeRoundId" VARCHAR(36) NULL`);
@@ -141,7 +134,6 @@ const connectDB = async () => {
             await addColumnIfMissing(`ALTER TABLE "GameSessions" ADD COLUMN "lastErrorCode" VARCHAR(64) NULL`);
             await addColumnIfMissing(`ALTER TABLE "PlayerAnswers" ADD COLUMN "roundId" VARCHAR(36) NULL`);
         } else if (isMysql) {
-            // MySQL syntax: backticks, supports AFTER clause
             await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `gameMode` VARCHAR(255) DEFAULT \'classic\' AFTER `status`');
             await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `analytics` JSON NULL AFTER `questionStartTime`');
             await addColumnIfMissing('ALTER TABLE `Players` ADD COLUMN `teamName` VARCHAR(255) NULL AFTER `nickname`');
@@ -155,7 +147,6 @@ const connectDB = async () => {
             await addColumnIfMissing('ALTER TABLE `PlayerProfiles` ADD COLUMN `googleId` VARCHAR(255) NULL');
             await addColumnIfMissing('ALTER TABLE `PlayerProfiles` MODIFY `password` VARCHAR(255) NULL');
 
-            // Phase 2 additive columns on GameSessions
             await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `state` VARCHAR(32) DEFAULT \'LOBBY\'');
             await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `stateVersion` BIGINT NOT NULL DEFAULT 0');
             await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `activeRoundId` VARCHAR(36) NULL');
@@ -170,7 +161,7 @@ const connectDB = async () => {
             await addColumnIfMissing('ALTER TABLE `PlayerAnswers` ADD COLUMN `roundId` VARCHAR(36) NULL');
         }
 
-        // Standard sync (without alter) to ensure basic table existence including Phase 2 + SCORM models
+        // Standard sync (without alter) to ensure basic table existence including Phase 2 + SCORM models.
         try {
             await sequelize.sync();
             console.log('Database models synced ✅');
@@ -178,9 +169,6 @@ const connectDB = async () => {
             console.error('Sequelize sync error:', syncErr.message);
         }
 
-        // Keep the built-in Live Quiz library professional even for defaults that
-        // were imported before emoji-free seed titles were introduced. Exact-title
-        // matching avoids modifying user-created quiz names.
         const defaultQuizTitleCleanup = [
             ['🛡️ Phishing Awareness Challenge', 'Phishing Awareness Challenge'],
             ['🔑 Password & Account Security', 'Password & Account Security'],
@@ -195,15 +183,64 @@ const connectDB = async () => {
             }
         }
 
-        // SCORM additive columns (existing tables from earlier deploys lack newer fields)
+        // SCORM additive migrations. These deliberately run after sync so the
+        // tables exist on a fresh installation and older installations are upgraded.
         if (isPostgres) {
             await addColumnIfMissing(`ALTER TABLE "scorm_packages" ADD COLUMN "analysisJson" TEXT NULL`);
             await addColumnIfMissing(`ALTER TABLE "scorm_packages" ADD COLUMN "templateId" INTEGER NULL`);
             await addColumnIfMissing(`ALTER TABLE "scorm_packages" ADD COLUMN "source" VARCHAR(255) DEFAULT 'upload'`);
+
+            await addColumnIfMissing(`ALTER TABLE "scorm_registrations" ADD COLUMN "isPreview" BOOLEAN NOT NULL DEFAULT FALSE`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_registrations" ADD COLUMN "lastLessonStatus" VARCHAR(255) NULL`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_registrations" ADD COLUMN "lastScoreRaw" DOUBLE PRECISION NULL`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_registrations" ADD COLUMN "lastTotalTime" VARCHAR(255) NULL`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_registrations" ADD COLUMN "lastCommitAt" TIMESTAMP WITH TIME ZONE NULL`);
+
+            await addColumnIfMissing(`ALTER TABLE "scorm_cmi_states" ADD COLUMN "attemptId" UUID NULL`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_cmi_states" ADD COLUMN "lessonStatus" VARCHAR(255) DEFAULT 'not attempted'`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_cmi_states" ADD COLUMN "scoreRaw" DOUBLE PRECISION NULL`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_cmi_states" ADD COLUMN "scoreMin" DOUBLE PRECISION NULL`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_cmi_states" ADD COLUMN "scoreMax" DOUBLE PRECISION NULL`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_cmi_states" ADD COLUMN "lessonLocation" TEXT NULL`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_cmi_states" ADD COLUMN "suspendData" TEXT NULL`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_cmi_states" ADD COLUMN "entry" VARCHAR(255) NULL`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_cmi_states" ADD COLUMN "exit" VARCHAR(255) NULL`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_cmi_states" ADD COLUMN "totalTime" VARCHAR(255) DEFAULT '00:00:00.00'`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_cmi_states" ADD COLUMN "sessionTime" VARCHAR(255) DEFAULT '00:00:00.00'`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_cmi_states" ADD COLUMN "interactionsJson" TEXT NULL`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_cmi_states" ADD COLUMN "rawMapJson" TEXT NULL`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_cmi_states" ADD COLUMN "stateVersion" INTEGER NOT NULL DEFAULT 0`);
+            await addColumnIfMissing(`ALTER TABLE "scorm_cmi_states" ADD COLUMN "initialized" BOOLEAN NOT NULL DEFAULT FALSE`);
+
+            await addColumnIfMissing(`ALTER TABLE "scorm_attempts" ADD COLUMN "exitType" VARCHAR(255) NULL`);
         } else if (isMysql) {
-            await addColumnIfMissing('ALTER TABLE `scorm_packages` ADD COLUMN `analysisJson` TEXT NULL');
+            await addColumnIfMissing('ALTER TABLE `scorm_packages` ADD COLUMN `analysisJson` LONGTEXT NULL');
             await addColumnIfMissing('ALTER TABLE `scorm_packages` ADD COLUMN `templateId` INTEGER NULL');
             await addColumnIfMissing("ALTER TABLE `scorm_packages` ADD COLUMN `source` VARCHAR(255) DEFAULT 'upload'");
+
+            await addColumnIfMissing('ALTER TABLE `scorm_registrations` ADD COLUMN `isPreview` BOOLEAN NOT NULL DEFAULT FALSE');
+            await addColumnIfMissing('ALTER TABLE `scorm_registrations` ADD COLUMN `lastLessonStatus` VARCHAR(255) NULL');
+            await addColumnIfMissing('ALTER TABLE `scorm_registrations` ADD COLUMN `lastScoreRaw` DOUBLE NULL');
+            await addColumnIfMissing('ALTER TABLE `scorm_registrations` ADD COLUMN `lastTotalTime` VARCHAR(255) NULL');
+            await addColumnIfMissing('ALTER TABLE `scorm_registrations` ADD COLUMN `lastCommitAt` DATETIME NULL');
+
+            await addColumnIfMissing('ALTER TABLE `scorm_cmi_states` ADD COLUMN `attemptId` CHAR(36) NULL');
+            await addColumnIfMissing("ALTER TABLE `scorm_cmi_states` ADD COLUMN `lessonStatus` VARCHAR(255) DEFAULT 'not attempted'");
+            await addColumnIfMissing('ALTER TABLE `scorm_cmi_states` ADD COLUMN `scoreRaw` DOUBLE NULL');
+            await addColumnIfMissing('ALTER TABLE `scorm_cmi_states` ADD COLUMN `scoreMin` DOUBLE NULL');
+            await addColumnIfMissing('ALTER TABLE `scorm_cmi_states` ADD COLUMN `scoreMax` DOUBLE NULL');
+            await addColumnIfMissing('ALTER TABLE `scorm_cmi_states` ADD COLUMN `lessonLocation` LONGTEXT NULL');
+            await addColumnIfMissing('ALTER TABLE `scorm_cmi_states` ADD COLUMN `suspendData` LONGTEXT NULL');
+            await addColumnIfMissing('ALTER TABLE `scorm_cmi_states` ADD COLUMN `entry` VARCHAR(255) NULL');
+            await addColumnIfMissing('ALTER TABLE `scorm_cmi_states` ADD COLUMN `exit` VARCHAR(255) NULL');
+            await addColumnIfMissing("ALTER TABLE `scorm_cmi_states` ADD COLUMN `totalTime` VARCHAR(255) DEFAULT '00:00:00.00'");
+            await addColumnIfMissing("ALTER TABLE `scorm_cmi_states` ADD COLUMN `sessionTime` VARCHAR(255) DEFAULT '00:00:00.00'");
+            await addColumnIfMissing('ALTER TABLE `scorm_cmi_states` ADD COLUMN `interactionsJson` LONGTEXT NULL');
+            await addColumnIfMissing('ALTER TABLE `scorm_cmi_states` ADD COLUMN `rawMapJson` LONGTEXT NULL');
+            await addColumnIfMissing('ALTER TABLE `scorm_cmi_states` ADD COLUMN `stateVersion` INTEGER NOT NULL DEFAULT 0');
+            await addColumnIfMissing('ALTER TABLE `scorm_cmi_states` ADD COLUMN `initialized` BOOLEAN NOT NULL DEFAULT FALSE');
+
+            await addColumnIfMissing('ALTER TABLE `scorm_attempts` ADD COLUMN `exitType` VARCHAR(255) NULL');
         }
 
         isConnected = true;
