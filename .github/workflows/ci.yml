@@ -10,6 +10,21 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: quizmototest
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd="pg_isready -U testuser -d quizmototest"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
     - uses: actions/checkout@v4
 
@@ -36,6 +51,20 @@ jobs:
 
     - name: Run server unit tests
       run: npm --prefix server test
+
+    - name: Run SCORM runtime PostgreSQL test
+      working-directory: server
+      env:
+        NODE_ENV: test
+        DB_DIALECT: postgres
+        DB_HOST: localhost
+        DB_PORT: 5434
+        DB_NAME: quizmototest
+        DB_USER: testuser
+        DB_PASS: testpass
+        DB_SSL: "false"
+        JWT_SECRET: ci_scorm_runtime_secret
+      run: npx mocha tests/ScormRuntimePostgres.test.js --exit
 
     - name: Run E2E tests
       shell: bash
