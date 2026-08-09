@@ -12,8 +12,6 @@ const CODA_INSPIRED_THEME = {
     soft: '#EDEEE1'
 };
 
-// Layout/content template IDs remain intact, while all generated courses share
-// one coherent Coda-inspired visual identity.
 const VISUAL_THEMES = {
     1: { ...CODA_INSPIRED_THEME },
     3: { ...CODA_INSPIRED_THEME },
@@ -55,7 +53,9 @@ async function applyEditorialCourseTheme(buffer) {
         zip.file('index.html', html);
     }
 
-    return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+    // This remains an intermediate package. The tracking finalizer performs the
+    // single compressed output pass after all HTML/runtime patches are complete.
+    return zip.generateAsync({ type: 'nodebuffer', compression: 'STORE' });
 }
 
 async function buildScormPackageZip(rawAnalysis, opts = {}) {
