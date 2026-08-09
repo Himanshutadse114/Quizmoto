@@ -41,17 +41,13 @@ async function resolvePackageAccess(accessToken, packageIdHint) {
 function patchAuthoredHtml(source) {
     let patched = String(source || '');
 
-    // Stored courses generated before tracking v5 still use immediate navigation
-    // commits. Upgrade them at serve time. Already-v5 packages are left alone so
-    // the runtime patch stays idempotent.
-    if (!patched.includes('function scheduleProgressCommit(extra)')) {
-        patched = patchTrackingRuntime(patched);
-    }
+    // patchTrackingRuntime is deliberately idempotent so stored v4/v5 modules can
+    // receive newer resume/tracking fixes without duplicating injected helpers.
+    patched = patchTrackingRuntime(patched);
 
     // Older interaction tracking committed synchronously inside the answer click
-    // handler. The player now buffers authored SetValue calls, so the interaction
-    // can safely ride the next progress/periodic/exit commit and feedback paints
-    // immediately. Newly generated packages no longer contain this snippet.
+    // handler. The player buffers authored SetValue calls, so the interaction can
+    // ride the next progress/periodic/exit commit and feedback paints immediately.
     patched = patched.replace(
         "if(typeof doLMSCommit==='function')doLMSCommit();",
         ''
