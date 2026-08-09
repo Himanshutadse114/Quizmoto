@@ -19,11 +19,25 @@ function finiteNumber(value) {
     return Number.isFinite(number) ? number : null;
 }
 
-function interactionCount(value) {
-    const parsed = parseJson(value, null);
-    if (Array.isArray(parsed)) return parsed.length;
-    if (parsed && typeof parsed === 'object') return Object.keys(parsed).length;
-    return 0;
+function interactionCount(interactionsJson, rawMapJson = null) {
+    const parsedInteractions = parseJson(interactionsJson, null);
+    if (Array.isArray(parsedInteractions)) return parsedInteractions.length;
+    if (parsedInteractions && typeof parsedInteractions === 'object') {
+        return Object.keys(parsedInteractions).length;
+    }
+
+    // Quizmoto's SCORM runtime stores arbitrary cmi.interactions.* keys in the
+    // raw CMI map. Older preview stats looked only at interactionsJson, which is
+    // not populated by the runtime and therefore always showed zero.
+    const map = parseJson(rawMapJson, null);
+    if (!map || typeof map !== 'object' || Array.isArray(map)) return 0;
+
+    const indices = new Set();
+    for (const key of Object.keys(map)) {
+        const match = String(key).match(/^cmi\.interactions\.(\d+)\./i);
+        if (match) indices.add(match[1]);
+    }
+    return indices.size;
 }
 
 function qaState({ registration, cmiState, progressPercent }) {
@@ -80,7 +94,7 @@ function serializePreviewStats(registration, course) {
         sessionTime: cmiState.sessionTime || null,
         lastLocation: row.lastLocation,
         lastLocationRaw: row.lastLocationRaw,
-        interactionCount: interactionCount(cmiState.interactionsJson),
+        interactionCount: interactionCount(cmiState.interactionsJson, cmiState.rawMapJson),
         initialized: !!cmiState.initialized,
         stateVersion: cmiState.stateVersion ?? null,
         lastCommitAt: row.lastCommitAt || null,
