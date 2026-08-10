@@ -4,16 +4,50 @@ const auth = require('../middleware');
 const {
     ScormCourse,
     ScormPackage,
-    ScormRegistration
+    ScormRegistration,
+    ScormAttempt
 } = require('../../models/scorm');
 const LearningState = require('../../services/scorm/ScormLearningStateService');
 const { serializeRegistration } = require('../../services/scorm/ScormProgressService');
 
+function activityTime(row) {
+    return new Date(row.lastCommitAt || row.updatedAt || row.createdAt || 0).getTime();
+}
+
+function registrationRow(reg, course) {
+    const row = serializeRegistration(reg, course);
+    const attempts = Array.isArray(reg.attempts)
+        ? reg.attempts
+        : Array.isArray(reg.dataValues?.attempts) ? reg.dataValues.attempts : [];
+    return {
+        ...row,
+        attemptCount: Math.max(1, attempts.length)
+    };
+}
+
 function learnerRows(course) {
     const regs = Array.isArray(course.registrations) ? course.registrations : [];
-    return regs
+    const rows = regs
         .filter((reg) => !reg.isPreview)
-        .map((reg) => serializeRegistration(reg, course));
+        .map((reg) => registrationRow(reg, course));
+
+    // New joins reuse one canonical registration. This grouping also cleans up
+    // old duplicate rows that may already exist from before email deduplication.
+    const grouped = new Map();
+    for (const row of rows) {
+        const email = String(row.learnerEmail || '').trim().toLowerCase();
+        const key = email ? `${row.courseId}:${email}` : `${row.courseId}:registration:${row.id}`;
+        const current = grouped.get(key);
+        if (!current) {
+            grouped.set(key, { ...row });
+            continue;
+        }
+
+        const combinedAttempts = Number(current.attemptCount || 1) + Number(row.attemptCount || 1);
+        const newest = activityTime(row) > activityTime(current) ? row : current;
+        grouped.set(key, { ...newest, attemptCount: combinedAttempts });
+    }
+    return Array.from(grouped.values());
 }
 
 function summarizeRows(rows) {
@@ -75,7 +109,13 @@ async function loadHostCourses(hostId, courseId = null) {
                 model: ScormRegistration,
                 as: 'registrations',
                 required: false,
-                where: { isPreview: false }
+                where: { isPreview: false },
+                include: [{
+                    model: ScormAttempt,
+                    as: 'attempts',
+                    required: false,
+                    attributes: ['id', 'attemptNo', 'startedAt', 'finishedAt']
+                }]
             }
         ],
         order: [['updatedAt', 'DESC']]
@@ -84,11 +124,7 @@ async function loadHostCourses(hostId, courseId = null) {
 }
 
 function newestFirst(rows) {
-    return rows.sort((a, b) => {
-        const at = new Date(a.lastCommitAt || a.updatedAt || 0).getTime();
-        const bt = new Date(b.lastCommitAt || b.updatedAt || 0).getTime();
-        return bt - at;
-    });
+    return rows.sort((a, b) => activityTime(b) - activityTime(a));
 }
 
 router.get('/summary', auth, async (req, res) => {
