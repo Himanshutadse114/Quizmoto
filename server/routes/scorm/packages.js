@@ -54,14 +54,16 @@ router.post('/upload', auth, express.raw({
             return res.status(413).json({ message: `Max upload ${scormMaxUploadMb()} MB` });
         }
 
-        const aiAnalysis = await tryExtractAiAnalysis(zipBuf);
+        // Keep the upload request lightweight. Large Storyline/Rise ZIPs can use
+        // substantial memory when opened with JSZip, so do not inspect or unpack
+        // the archive before the HTTP response has been returned to the browser.
         const pkg = await ScormPackage.create({
             hostId: req.userId,
-            title: String(title || (aiAnalysis && aiAnalysis.title) || 'Uploaded package').slice(0, 200),
+            title: String(title || 'Uploaded package').slice(0, 200),
             status: 'processing',
-            source: aiAnalysis ? 'ai_author' : 'upload',
+            source: 'upload',
             byteSize: zipBuf.length,
-            analysisJson: aiAnalysis ? JSON.stringify(aiAnalysis) : null
+            analysisJson: null
         });
 
         const storage = getObjectStorage();
@@ -87,28 +89,54 @@ router.post('/upload', auth, express.raw({
                 logger.error('scorm_inline_unpack_failed', { module: 'scorm', error: e.message });
             }
             await pkg.reload();
-        } else {
+            return res.status(201).json({
+                packageId: pkg.id,
+                status: pkg.status,
+                jobId,
+                entryHref: pkg.entryHref,
+                errorMessage: pkg.errorMessage,
+                source: pkg.source
+            });
+        }
+
+        try {
             const job = await JobQueueService.enqueue({
                 type: JOB_TYPES.SCORM_VALIDATE_UNPACK,
                 payload: { packageId: pkg.id, hostId: req.userId },
                 idempotencyKey: `scorm-unpack:${pkg.id}`
             });
             jobId = job.id;
-            setImmediate(() => {
-                unpackPackage(pkg.id).catch((err) => {
-                    logger.error('scorm_bg_unpack_failed', { module: 'scorm', error: err.message });
-                });
+        } catch (e) {
+            logger.warn('scorm_unpack_job_enqueue_failed', {
+                module: 'scorm',
+                packageId: pkg.id,
+                error: e.message
             });
         }
 
-        await pkg.reload();
-        res.status(201).json({
+        // Schedule the compatibility background processor only after the response
+        // has fully flushed. Deployments without a dedicated worker still process
+        // packages, while the upload request itself is no longer held open during
+        // ZIP validation/extraction.
+        res.once('finish', () => {
+            setImmediate(() => {
+                unpackPackage(pkg.id).catch((err) => {
+                    logger.error('scorm_bg_unpack_failed', {
+                        module: 'scorm',
+                        packageId: pkg.id,
+                        error: err.message
+                    });
+                });
+            });
+        });
+
+        return res.status(201).json({
             packageId: pkg.id,
-            status: pkg.status,
+            status: 'processing',
             jobId,
-            entryHref: pkg.entryHref,
-            errorMessage: pkg.errorMessage,
-            source: pkg.source
+            entryHref: null,
+            errorMessage: null,
+            source: 'upload'
         });
     } catch (err) {
         logger.error('scorm_upload_failed', { module: 'scorm', error: err.message });
