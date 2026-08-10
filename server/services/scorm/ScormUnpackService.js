@@ -7,6 +7,18 @@ const { packageZipKey, packageContentKey, packageContentPrefix, packageMetaKey }
 const { validateAndExtract } = require('./ScormZipValidator');
 const logger = require('../../utils/logger');
 
+function extractAiAnalysis(files) {
+    try {
+        const entry = files && files.get && files.get('content.json');
+        if (!entry) return null;
+        const analysis = JSON.parse(Buffer.from(entry).toString('utf8'));
+        if (!analysis || !analysis.title || !Array.isArray(analysis.slides)) return null;
+        return analysis;
+    } catch (_) {
+        return null;
+    }
+}
+
 async function unpackPackage(packageId) {
     const pkg = await ScormPackage.findByPk(packageId);
     if (!pkg) {
@@ -35,6 +47,7 @@ async function unpackPackage(packageId) {
     try {
         const result = await validateAndExtract(zipBuf);
         const prefix = packageContentPrefix(packageId);
+        const aiAnalysis = extractAiAnalysis(result.files);
 
         for (const [relPath, data] of result.files.entries()) {
             const key = packageContentKey(packageId, relPath);
@@ -63,6 +76,10 @@ async function unpackPackage(packageId) {
         pkg.byteSize = zipBuf.length;
         pkg.status = 'ready';
         pkg.errorMessage = null;
+        if (aiAnalysis) {
+            pkg.source = 'ai_author';
+            pkg.analysisJson = JSON.stringify(aiAnalysis);
+        }
         await pkg.save();
 
         logger.info('scorm_unpack_ok', {
