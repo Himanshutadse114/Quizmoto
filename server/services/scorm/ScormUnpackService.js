@@ -18,6 +18,83 @@ function parseAiAnalysis(data) {
     }
 }
 
+function positiveInt(value, fallback) {
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+}
+
+/**
+ * Keep ZIP inflation memory-safe while allowing several storage writes to overlap.
+ * This matters especially for Storyline/Rise packages containing hundreds of small
+ * files, where waiting for every S3/R2/local write serially makes validation slow.
+ */
+function createBoundedUploadQueue(storage, packageId) {
+    const concurrency = positiveInt(
+        process.env.SCORM_UNPACK_UPLOAD_CONCURRENCY,
+        storage.driver === 's3' ? 6 : 4
+    );
+    const pendingMb = positiveInt(process.env.SCORM_UNPACK_PENDING_MB, 24);
+    const maxPendingBytes = pendingMb * 1024 * 1024;
+
+    const active = new Set();
+    let pendingBytes = 0;
+    let firstError = null;
+
+    function start(relPath, data) {
+        const task = {
+            bytes: data.length,
+            promise: null
+        };
+        const key = packageContentKey(packageId, relPath);
+        const contentType = guessContentType(relPath);
+
+        pendingBytes += task.bytes;
+        active.add(task);
+
+        task.promise = storage
+            .putObject({ key, body: data, contentType })
+            .catch((err) => {
+                if (!firstError) firstError = err;
+            })
+            .finally(() => {
+                pendingBytes -= task.bytes;
+                active.delete(task);
+            });
+    }
+
+    async function waitForCapacity(nextBytes) {
+        while (
+            active.size > 0 &&
+            (active.size >= concurrency || pendingBytes + nextBytes > maxPendingBytes)
+        ) {
+            await Promise.race(Array.from(active, (task) => task.promise));
+            if (firstError) throw firstError;
+        }
+        if (firstError) throw firstError;
+    }
+
+    return {
+        async enqueue(relPath, data) {
+            await waitForCapacity(data.length);
+            start(relPath, data);
+        },
+        async drain() {
+            if (active.size > 0) {
+                await Promise.all(Array.from(active, (task) => task.promise));
+            }
+            if (firstError) throw firstError;
+        },
+        get stats() {
+            return {
+                concurrency,
+                maxPendingBytes,
+                active: active.size,
+                pendingBytes
+            };
+        }
+    };
+}
+
 async function unpackPackage(packageId) {
     const pkg = await ScormPackage.findByPk(packageId);
     if (!pkg) {
@@ -44,20 +121,36 @@ async function unpackPackage(packageId) {
     }
 
     const compressedByteSize = zipBuf.length;
+    let uploads = null;
 
     try {
         const prefix = packageContentPrefix(packageId);
         let aiAnalysis = null;
+        uploads = createBoundedUploadQueue(storage, packageId);
+
+        logger.info('scorm_unpack_started', {
+            module: 'scorm',
+            packageId,
+            compressedByteSize,
+            storageDriver: storage.driver || 'unknown',
+            uploadConcurrency: uploads.stats.concurrency,
+            uploadPendingBytes: uploads.stats.maxPendingBytes
+        });
 
         const result = await validateAndExtractSequential(zipBuf, async (relPath, data) => {
             if (relPath === 'content.json' && !aiAnalysis) {
                 aiAnalysis = parseAiAnalysis(data);
             }
 
-            const key = packageContentKey(packageId, relPath);
-            const ct = guessContentType(relPath);
-            await storage.putObject({ key, body: data, contentType: ct });
+            // The queue applies both a concurrency cap and a byte budget. Small
+            // assets upload in parallel; large media automatically applies
+            // back-pressure so peak memory stays bounded.
+            await uploads.enqueue(relPath, data);
         });
+
+        // Ensure the final in-flight storage writes have completed before marking
+        // the package ready.
+        await uploads.drain();
 
         // Release the compressed archive before the remaining metadata/database
         // writes so GC can reclaim it as soon as possible.
@@ -100,6 +193,9 @@ async function unpackPackage(packageId) {
         });
         return pkg;
     } catch (err) {
+        if (uploads) {
+            await uploads.drain().catch(() => {});
+        }
         zipBuf = null;
         pkg.status = 'failed';
         pkg.errorMessage = err.message || 'Unpack failed';
