@@ -4,14 +4,13 @@
 const { ScormPackage } = require('../../models/scorm');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
 const { packageZipKey, packageContentKey, packageContentPrefix, packageMetaKey } = require('./storageKeys');
-const { validateAndExtract } = require('./ScormZipValidator');
+const { validateAndExtractSequential } = require('./ScormZipValidator');
 const logger = require('../../utils/logger');
 
-function extractAiAnalysis(files) {
+function parseAiAnalysis(data) {
     try {
-        const entry = files && files.get && files.get('content.json');
-        if (!entry) return null;
-        const analysis = JSON.parse(Buffer.from(entry).toString('utf8'));
+        if (!data) return null;
+        const analysis = JSON.parse(Buffer.from(data).toString('utf8'));
         if (!analysis || !analysis.title || !Array.isArray(analysis.slides)) return null;
         return analysis;
     } catch (_) {
@@ -44,23 +43,33 @@ async function unpackPackage(packageId) {
         throw e;
     }
 
-    try {
-        const result = await validateAndExtract(zipBuf);
-        const prefix = packageContentPrefix(packageId);
-        const aiAnalysis = extractAiAnalysis(result.files);
+    const compressedByteSize = zipBuf.length;
 
-        for (const [relPath, data] of result.files.entries()) {
+    try {
+        const prefix = packageContentPrefix(packageId);
+        let aiAnalysis = null;
+
+        const result = await validateAndExtractSequential(zipBuf, async (relPath, data) => {
+            if (relPath === 'content.json' && !aiAnalysis) {
+                aiAnalysis = parseAiAnalysis(data);
+            }
+
             const key = packageContentKey(packageId, relPath);
             const ct = guessContentType(relPath);
             await storage.putObject({ key, body: data, contentType: ct });
-        }
+        });
+
+        // Release the compressed archive before the remaining metadata/database
+        // writes so GC can reclaim it as soon as possible.
+        zipBuf = null;
 
         const meta = {
             entryHref: result.entryHref,
             manifestPath: result.manifestPath,
             standard: result.standard,
             fileCount: result.fileCount,
-            manifestHash: result.manifestHash
+            manifestHash: result.manifestHash,
+            totalUncompressed: result.totalUncompressed
         };
         await storage.putObject({
             key: packageMetaKey(packageId),
@@ -73,7 +82,7 @@ async function unpackPackage(packageId) {
         pkg.standard = result.standard;
         pkg.manifestHash = result.manifestHash;
         pkg.fileCount = result.fileCount;
-        pkg.byteSize = zipBuf.length;
+        pkg.byteSize = compressedByteSize;
         pkg.status = 'ready';
         pkg.errorMessage = null;
         if (aiAnalysis) {
@@ -86,10 +95,12 @@ async function unpackPackage(packageId) {
             module: 'scorm',
             packageId,
             entryHref: result.entryHref,
-            fileCount: result.fileCount
+            fileCount: result.fileCount,
+            totalUncompressed: result.totalUncompressed
         });
         return pkg;
     } catch (err) {
+        zipBuf = null;
         pkg.status = 'failed';
         pkg.errorMessage = err.message || 'Unpack failed';
         await pkg.save();
@@ -115,8 +126,12 @@ function guessContentType(path) {
     if (p.endsWith('.gif')) return 'image/gif';
     if (p.endsWith('.svg')) return 'image/svg+xml';
     if (p.endsWith('.woff2')) return 'font/woff2';
+    if (p.endsWith('.woff')) return 'font/woff';
+    if (p.endsWith('.ttf')) return 'font/ttf';
     if (p.endsWith('.mp3')) return 'audio/mpeg';
+    if (p.endsWith('.wav')) return 'audio/wav';
     if (p.endsWith('.mp4')) return 'video/mp4';
+    if (p.endsWith('.webm')) return 'video/webm';
     return 'application/octet-stream';
 }
 
