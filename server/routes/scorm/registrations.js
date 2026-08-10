@@ -23,6 +23,7 @@ async function joinInvite(req, res) {
 
         res.status(201).json({
             registrationId,
+            attemptNo: result.attemptNo || 1,
             course: {
                 id: result.course.id,
                 title: result.course.title,
