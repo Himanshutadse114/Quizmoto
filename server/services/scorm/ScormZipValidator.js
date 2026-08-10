@@ -63,12 +63,26 @@ function resolveEntryHref(manifestXml) {
     return null;
 }
 
+function immediate() {
+    return new Promise((resolve) => setImmediate(resolve));
+}
+
 /**
+ * Validate a SCORM ZIP and extract one file at a time.
+ *
+ * This is the production-safe path for large Storyline/Rise packages. JSZip still
+ * parses the compressed archive, but we never retain every inflated file in RAM at
+ * once. `onFile` is awaited before the next entry is inflated, which keeps peak
+ * memory close to compressed ZIP size + the largest individual file.
+ *
  * @param {Buffer} zipBuffer
- * @returns {Promise<{ files: Map<string, Buffer>, manifestPath: string, entryHref: string, standard: string, manifestHash: string, fileCount: number, totalUncompressed: number }>}
+ * @param {(path: string, data: Buffer) => Promise<void>|void} onFile
+ * @returns {Promise<{ manifestPath: string, entryHref: string, standard: string, manifestHash: string, fileCount: number, totalUncompressed: number }>}
  */
-async function validateAndExtract(zipBuffer) {
+async function validateAndExtractSequential(zipBuffer, onFile = async () => {}) {
     const maxBytes = scormMaxUploadMb() * 1024 * 1024;
+    const maxUncompressedBytes = maxBytes * MAX_UNCOMPRESSED_RATIO;
+
     if (!Buffer.isBuffer(zipBuffer) || zipBuffer.length === 0) {
         const err = new Error('Empty or invalid ZIP buffer');
         err.code = 'INVALID_ZIP';
@@ -83,93 +97,136 @@ async function validateAndExtract(zipBuffer) {
     let zip;
     try {
         zip = await JSZip.loadAsync(zipBuffer);
-    } catch (e) {
+    } catch (_) {
         const err = new Error('Invalid ZIP file');
         err.code = 'INVALID_ZIP';
         throw err;
     }
 
-    const paths = Object.keys(zip.files).filter((p) => !zip.files[p].dir);
-    if (paths.length === 0) {
+    const entries = Object.keys(zip.files)
+        .filter((p) => !zip.files[p].dir)
+        .map((raw) => ({ raw, norm: raw.replace(/\\/g, '/') }));
+
+    if (entries.length === 0) {
         const err = new Error('ZIP contains no files');
         err.code = 'EMPTY_ZIP';
         throw err;
     }
-    if (paths.length > MAX_ENTRIES) {
+    if (entries.length > MAX_ENTRIES) {
         const err = new Error(`Too many files in package (max ${MAX_ENTRIES})`);
         err.code = 'TOO_MANY_FILES';
         throw err;
     }
 
-    for (const p of paths) {
-        if (isUnsafePath(p)) {
-            const err = new Error(`Unsafe path in ZIP: ${p}`);
+    for (const entry of entries) {
+        if (isUnsafePath(entry.norm)) {
+            const err = new Error(`Unsafe path in ZIP: ${entry.norm}`);
             err.code = 'UNSAFE_PATH';
             throw err;
         }
     }
 
-    const manifestPath = findManifestPath(paths);
+    // JSZip exposes central-directory uncompressed sizes on loaded entries. Use
+    // those values as an early zip-bomb guard before any large file is inflated.
+    let declaredUncompressed = 0;
+    for (const entry of entries) {
+        const declared = Number(zip.files[entry.raw]?._data?.uncompressedSize);
+        if (Number.isFinite(declared) && declared >= 0) declaredUncompressed += declared;
+        if (declaredUncompressed > maxUncompressedBytes) {
+            const err = new Error('Uncompressed size too large (possible zip bomb)');
+            err.code = 'ZIP_BOMB';
+            throw err;
+        }
+    }
+
+    const normalizedPaths = entries.map((entry) => entry.norm);
+    const pathSet = new Set(normalizedPaths);
+    const manifestPath = findManifestPath(normalizedPaths);
     if (!manifestPath) {
         const err = new Error('Missing imsmanifest.xml');
         err.code = 'NO_MANIFEST';
         throw err;
     }
 
-    const files = new Map();
-    let totalUncompressed = 0;
-    for (const p of paths) {
-        const data = await zip.files[p].async('nodebuffer');
-        totalUncompressed += data.length;
-        if (totalUncompressed > maxBytes * MAX_UNCOMPRESSED_RATIO) {
-            const err = new Error('Uncompressed size too large (possible zip bomb)');
-            err.code = 'ZIP_BOMB';
-            throw err;
-        }
-        const norm = p.replace(/\\/g, '/');
-        files.set(norm, data);
+    const manifestEntry = entries.find((entry) => entry.norm === manifestPath);
+    let manifestXml;
+    try {
+        manifestXml = await zip.files[manifestEntry.raw].async('string');
+    } catch (_) {
+        const err = new Error('Unable to read imsmanifest.xml');
+        err.code = 'INVALID_MANIFEST';
+        throw err;
     }
 
-    const manifestXml = files.get(manifestPath).toString('utf8');
     const standard = detectStandard(manifestXml);
     let entryHref = resolveEntryHref(manifestXml);
+    if (entryHref) entryHref = entryHref.replace(/\\/g, '/').replace(/^\.\//, '');
 
     const manifestDir = manifestPath.includes('/')
         ? manifestPath.slice(0, manifestPath.lastIndexOf('/') + 1)
         : '';
-    if (entryHref && manifestDir && !files.has(entryHref) && files.has(manifestDir + entryHref)) {
+
+    if (entryHref && manifestDir && !pathSet.has(entryHref) && pathSet.has(manifestDir + entryHref)) {
         entryHref = manifestDir + entryHref;
     }
 
-    if (!entryHref || !files.has(entryHref.replace(/^\.\//, ''))) {
-        const candidates = [...files.keys()].filter((k) =>
-            /index\.html?$/i.test(k) || /\.html?$/i.test(k)
-        );
+    if (!entryHref || !pathSet.has(entryHref)) {
+        const candidates = normalizedPaths.filter((k) => /index\.html?$/i.test(k) || /\.html?$/i.test(k));
         if (!entryHref && candidates.length) {
             entryHref = candidates.sort((a, b) => a.length - b.length)[0];
         }
-        if (!entryHref || !files.has(entryHref)) {
+        if (!entryHref || !pathSet.has(entryHref)) {
             const err = new Error('Launch entry HTML not found in package');
             err.code = 'MISSING_ENTRY';
             throw err;
         }
     }
 
+    let totalUncompressed = 0;
+    for (let i = 0; i < entries.length; i += 1) {
+        const entry = entries[i];
+        const data = await zip.files[entry.raw].async('nodebuffer');
+        totalUncompressed += data.length;
+        if (totalUncompressed > maxUncompressedBytes) {
+            const err = new Error('Uncompressed size too large (possible zip bomb)');
+            err.code = 'ZIP_BOMB';
+            throw err;
+        }
+
+        await onFile(entry.norm, data);
+
+        // Give the HTTP server and GC regular opportunities to run while a large
+        // package is being expanded in the same process.
+        if ((i + 1) % 4 === 0) await immediate();
+    }
+
     const manifestHash = crypto.createHash('sha256').update(manifestXml).digest('hex').slice(0, 32);
 
     return {
-        files,
         manifestPath,
         entryHref,
         standard: standard === 'unknown' ? 'scorm_1_2' : standard,
         manifestHash,
-        fileCount: files.size,
+        fileCount: entries.length,
         totalUncompressed
     };
 }
 
+/**
+ * Backwards-compatible helper used by tests/legacy callers that still need all
+ * extracted files. Production unpacking uses validateAndExtractSequential().
+ */
+async function validateAndExtract(zipBuffer) {
+    const files = new Map();
+    const result = await validateAndExtractSequential(zipBuffer, async (path, data) => {
+        files.set(path, data);
+    });
+    return { ...result, files };
+}
+
 module.exports = {
     validateAndExtract,
+    validateAndExtractSequential,
     isUnsafePath,
     findManifestPath,
     detectStandard,
