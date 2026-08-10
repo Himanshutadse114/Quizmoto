@@ -4,18 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const s = String(reader.result || '');
-      const i = s.indexOf(',');
-      resolve(i >= 0 ? s.slice(i + 1) : s);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
+const MAX_SCORM_UPLOAD_MB = 100;
 
 export default function ScormLibrary() {
   const { token } = useAuth();
@@ -40,14 +29,31 @@ export default function ScormLibrary() {
   const onFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const maxBytes = MAX_SCORM_UPLOAD_MB * 1024 * 1024;
+    if (file.size > maxBytes) {
+      setMsg(`Maximum SCORM ZIP size is ${MAX_SCORM_UPLOAD_MB} MB.`);
+      e.target.value = '';
+      return;
+    }
+
     setUploading(true);
     setMsg('Uploading & validating SCORM package…');
     try {
-      const zipBase64 = await fileToBase64(file);
+      const packageTitle = title || file.name.replace(/\.zip$/i, '');
       const res = await axios.post(
-        apiUrl('/api/scorm/packages/upload-json'),
-        { zipBase64, title: title || file.name.replace(/\.zip$/i, '') },
-        { headers, timeout: 120000 }
+        apiUrl('/api/scorm/packages/upload'),
+        file,
+        {
+          headers: {
+            ...headers,
+            'Content-Type': 'application/zip',
+            'X-SCORM-Title': packageTitle
+          },
+          timeout: 300000,
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity
+        }
       );
       setMsg(
         `Package ${res.data.status}${res.data.entryHref ? ` · entry ${res.data.entryHref}` : ''}${
@@ -127,7 +133,7 @@ export default function ScormLibrary() {
         <div>
           <h1 className="text-3xl font-black italic tracking-tighter mb-2">Package library</h1>
           <p className="text-white/50 text-sm">
-            Upload SCORM ZIP or create from policy (PDF/PPT). Only Quizmoto AI packages can be edited.
+            Upload SCORM ZIP up to {MAX_SCORM_UPLOAD_MB} MB or create from policy (PDF/PPT). Only Quizmoto AI packages can be edited.
           </p>
         </div>
         <Link
@@ -157,6 +163,7 @@ export default function ScormLibrary() {
             className="block w-full text-sm text-white/70 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-quizmoto-blue file:text-white file:font-black file:cursor-pointer"
           />
         </label>
+        <p className="mt-2 text-[11px] text-white/40">Maximum package size: {MAX_SCORM_UPLOAD_MB} MB.</p>
         {msg && <p className="mt-3 text-sm text-white/70">{msg}</p>}
         {uploading && <p className="mt-2 text-xs text-quizmoto-yellow animate-pulse">Processing…</p>}
       </div>

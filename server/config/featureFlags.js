@@ -31,7 +31,7 @@ const featureFlags = {
 
 function scormMaxUploadMb() {
     const n = Number(process.env.SCORM_MAX_UPLOAD_MB);
-    return Number.isFinite(n) && n > 0 ? n : 40;
+    return Number.isFinite(n) && n > 0 ? n : 100;
 }
 
 module.exports = { featureFlags, envBool, scormMaxUploadMb };

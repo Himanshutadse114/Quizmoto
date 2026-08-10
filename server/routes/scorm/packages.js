@@ -25,7 +25,10 @@ async function tryExtractAiAnalysis(zipBuf) {
     }
 }
 
-router.post('/upload', auth, express.raw({ type: ['application/zip', 'application/octet-stream'], limit: '50mb' }), async (req, res) => {
+router.post('/upload', auth, express.raw({
+    type: ['application/zip', 'application/octet-stream'],
+    limit: `${scormMaxUploadMb()}mb`
+}), async (req, res) => {
     try {
         let zipBuf = null;
         let title = req.query.title || req.headers['x-scorm-title'] || 'Uploaded package';
