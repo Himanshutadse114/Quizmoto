@@ -26,6 +26,14 @@ export default function ScormLibrary() {
     load().catch((e) => setMsg(e.response?.data?.message || e.message));
   }, [token]);
 
+  useEffect(() => {
+    if (!token || !packages.some((p) => p.status === 'processing')) return undefined;
+    const timer = window.setInterval(() => {
+      load().catch(() => {});
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [token, packages]);
+
   const onFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -38,7 +46,7 @@ export default function ScormLibrary() {
     }
 
     setUploading(true);
-    setMsg('Uploading & validating SCORM package…');
+    setMsg('Uploading SCORM package…');
     try {
       const packageTitle = title || file.name.replace(/\.zip$/i, '');
       const res = await axios.post(
@@ -56,9 +64,11 @@ export default function ScormLibrary() {
         }
       );
       setMsg(
-        `Package ${res.data.status}${res.data.entryHref ? ` · entry ${res.data.entryHref}` : ''}${
-          res.data.errorMessage ? ` · ${res.data.errorMessage}` : ''
-        }`
+        res.data.status === 'processing'
+          ? 'Upload complete. SCORM package is being validated in the background…'
+          : `Package ${res.data.status}${res.data.entryHref ? ` · entry ${res.data.entryHref}` : ''}${
+              res.data.errorMessage ? ` · ${res.data.errorMessage}` : ''
+            }`
       );
       await load();
     } catch (err) {
@@ -165,7 +175,7 @@ export default function ScormLibrary() {
         </label>
         <p className="mt-2 text-[11px] text-white/40">Maximum package size: {MAX_SCORM_UPLOAD_MB} MB.</p>
         {msg && <p className="mt-3 text-sm text-white/70">{msg}</p>}
-        {uploading && <p className="mt-2 text-xs text-quizmoto-yellow animate-pulse">Processing…</p>}
+        {uploading && <p className="mt-2 text-xs text-quizmoto-yellow animate-pulse">Uploading…</p>}
       </div>
 
       <div className="space-y-3">
@@ -183,6 +193,9 @@ export default function ScormLibrary() {
                   {p.entryHref ? ` · ${p.entryHref}` : ''}
                   {p.fileCount != null ? ` · ${p.fileCount} files` : ''}
                 </div>
+                {p.status === 'processing' && (
+                  <div className="text-xs text-quizmoto-yellow mt-1 animate-pulse">Validating and extracting…</div>
+                )}
                 {p.errorMessage && <div className="text-xs text-red-300 mt-1">{p.errorMessage}</div>}
               </div>
               <div className="flex flex-wrap gap-2 shrink-0">
