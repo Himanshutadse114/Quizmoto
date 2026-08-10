@@ -59,7 +59,8 @@ function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* SCORM World is the primary Quizmoto workspace. */}
+        <Route path="/" element={<Navigate to="/scorm" replace />} />
         <Route path="/login" element={<Login />} />
 
         <Route path="/player/login" element={<PlayerLogin />} />
@@ -98,7 +99,7 @@ function AppRoutes() {
         <Route path="/scorm/learn/:inviteCode" element={<ScormLearnLanding />} />
         <Route path="/scorm/player/:registrationId" element={<ScormPlayerShell />} />
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/scorm" replace />} />
       </Routes>
     </Suspense>
   );
