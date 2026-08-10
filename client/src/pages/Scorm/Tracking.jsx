@@ -73,7 +73,7 @@ export default function ScormTracking() {
       <div className="mb-7 pb-7 border-b border-black max-w-4xl">
         <div className="scorm-micro text-[10px] uppercase font-semibold text-[#667085]">Learning operations</div>
         <h2 className="scorm-display text-[42px] md:text-[56px] mt-2">Learner tracking</h2>
-        <p className="text-sm mt-3 leading-relaxed max-w-3xl">See completion, last known course location, score and activity. Admin QA previews are isolated and never appear as learner activity.</p>
+        <p className="text-sm mt-3 leading-relaxed max-w-3xl">See completion, attempts, last known course location, score and activity. Admin QA previews are isolated and never appear as learner activity.</p>
       </div>
 
       {error && <div className="mb-5 p-4 rounded-xl border border-black bg-[#FEF3F2] text-black text-sm">{error}</div>}
@@ -112,11 +112,12 @@ export default function ScormTracking() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px] text-sm">
+          <table className="w-full min-w-[1180px] text-sm">
             <thead>
               <tr className="text-left scorm-micro text-[9px] uppercase font-semibold text-[#667085] border-b border-black bg-[#F8FAFC]">
                 <th className="px-5 py-3.5">Learner</th>
                 <th className="px-5 py-3.5">Course</th>
+                <th className="px-5 py-3.5">Attempts</th>
                 <th className="px-5 py-3.5 min-w-[220px]">Completion</th>
                 <th className="px-5 py-3.5">Last location</th>
                 <th className="px-5 py-3.5">Score</th>
@@ -126,7 +127,7 @@ export default function ScormTracking() {
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 && <tr><td colSpan={8} className="p-10 text-center text-[#667085]">No learners match this view.</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={9} className="p-10 text-center text-[#667085]">No learners match this view.</td></tr>}
               {rows.map((row) => (
                 <tr key={row.id} className="border-b border-[#E4E7EC] bg-white hover:bg-[#FAFAFF]">
                   <td className="px-5 py-4">
@@ -136,6 +137,11 @@ export default function ScormTracking() {
                   <td className="px-5 py-4">
                     <div className="font-medium max-w-[220px] truncate text-black">{row.courseTitle || 'Course'}</div>
                     <div className="scorm-micro text-[9px] text-[#667085] mt-1">{row.inviteCode || ''}</div>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className="inline-flex min-w-8 h-8 px-2 items-center justify-center rounded-full border border-black bg-[#F4F3FF] text-xs font-black text-black">
+                      {Math.max(1, Number(row.attemptCount || 1))}
+                    </span>
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center justify-between gap-3 mb-2">
