@@ -417,10 +417,11 @@ export default function ScormCourseDetail() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1150px] text-sm">
+          <table className="w-full min-w-[1230px] text-sm">
             <thead>
               <tr className="text-left scorm-micro text-[9px] uppercase font-semibold text-[#475467] border-b border-black bg-[#F2F4F7]">
                 <th className="p-4">Learner</th>
+                <th className="p-4">Attempts</th>
                 <th className="p-4 min-w-[220px]">Completion</th>
                 <th className="p-4">Last location</th>
                 <th className="p-4">Lesson status</th>
@@ -431,12 +432,17 @@ export default function ScormCourseDetail() {
               </tr>
             </thead>
             <tbody>
-              {regs.length === 0 && <tr><td colSpan={8} className="p-10 text-center text-[#667085]">No learners have started this course yet.</td></tr>}
+              {regs.length === 0 && <tr><td colSpan={9} className="p-10 text-center text-[#667085]">No learners have started this course yet.</td></tr>}
               {regs.map((r) => (
                 <tr key={r.id} className="border-b border-[#E4E7EC] bg-white hover:bg-[#F7F8FF]">
                   <td className="p-4">
                     <div className="font-semibold text-[#101828]">{r.learnerName || 'Learner'}</div>
                     <div className="text-[11px] text-[#667085] mt-0.5">{r.learnerEmail || 'No email'}</div>
+                  </td>
+                  <td className="p-4">
+                    <span className="inline-flex min-w-8 h-8 px-2 items-center justify-center rounded-full border border-black bg-[#F4F3FF] text-xs font-black text-[#101828]">
+                      {Math.max(1, Number(r.attemptCount || 1))}
+                    </span>
                   </td>
                   <td className="p-4">
                     <div className="flex justify-between gap-3 mb-2">
