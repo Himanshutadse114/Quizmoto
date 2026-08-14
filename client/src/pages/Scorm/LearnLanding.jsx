@@ -5,6 +5,7 @@ import { BookOpen, ArrowRight } from 'lucide-react';
 import { apiUrl } from '../../config';
 import './scormEditorialTheme.css';
 import './scormContrastPolish.css';
+import './scormModernDark.css';
 
 export default function ScormLearnLanding() {
   const { inviteCode } = useParams();
