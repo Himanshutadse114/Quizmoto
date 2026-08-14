@@ -1,0 +1,217 @@
+/*
+ * Final SCORM World Workbench consistency pass.
+ * Removes legacy blue/cyan UI leakage while preserving the actual learner-course
+ * colour previews shown by Course Experience V5.
+ */
+
+/* Dashboard operational icons should share one Workbench action colour. */
+.scorm-editorial.scorm-workbench .scorm-metric-violet .scorm-metric-icon,
+.scorm-editorial.scorm-workbench .scorm-metric-cyan .scorm-metric-icon,
+.scorm-editorial.scorm-workbench .scorm-metric-green .scorm-metric-icon,
+.scorm-editorial.scorm-workbench .scorm-metric-amber .scorm-metric-icon,
+.scorm-editorial.scorm-workbench .scorm-metric-neutral .scorm-metric-icon,
+.scorm-editorial.scorm-workbench .scorm-action-violet .scorm-action-icon,
+.scorm-editorial.scorm-workbench .scorm-action-cyan .scorm-action-icon,
+.scorm-editorial.scorm-workbench .scorm-action-green .scorm-action-icon,
+.scorm-editorial.scorm-workbench .scorm-progress-icon,
+.scorm-editorial.scorm-workbench .scorm-empty-icon,
+.scorm-editorial.scorm-workbench .scorm-action-arrow {
+  background: rgba(255, 138, 31, .085) !important;
+  border-color: rgba(255, 138, 31, .30) !important;
+  color: var(--wb-orange) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-metric-icon svg,
+.scorm-editorial.scorm-workbench .scorm-action-icon svg,
+.scorm-editorial.scorm-workbench .scorm-progress-icon svg,
+.scorm-editorial.scorm-workbench .scorm-empty-icon svg,
+.scorm-editorial.scorm-workbench .scorm-action-arrow svg {
+  color: inherit !important;
+  stroke: currentColor !important;
+}
+
+/* Catch Tailwind colour families that were not part of the first dark-theme pass. */
+.scorm-editorial.scorm-workbench main [class*="text-cyan-"],
+.scorm-editorial.scorm-workbench main [class*="text-sky-"],
+.scorm-editorial.scorm-workbench main [class*="text-indigo-"],
+.scorm-editorial.scorm-workbench main [class*="text-blue-"] {
+  color: var(--wb-orange) !important;
+}
+
+.scorm-editorial.scorm-workbench main [class*="bg-cyan-"],
+.scorm-editorial.scorm-workbench main [class*="bg-sky-"],
+.scorm-editorial.scorm-workbench main [class*="bg-indigo-"],
+.scorm-editorial.scorm-workbench main [class*="bg-blue-"] {
+  background: rgba(255, 138, 31, .08) !important;
+}
+
+.scorm-editorial.scorm-workbench main [class*="border-cyan-"],
+.scorm-editorial.scorm-workbench main [class*="border-sky-"],
+.scorm-editorial.scorm-workbench main [class*="border-indigo-"],
+.scorm-editorial.scorm-workbench main [class*="border-blue-"] {
+  border-color: rgba(255, 138, 31, .30) !important;
+}
+
+/* Course Author: replace the older blue authoring surfaces with warm Workbench surfaces. */
+.scorm-editorial.scorm-workbench main [class*="bg-[#08111c]"],
+.scorm-editorial.scorm-workbench main [class*="bg-[#0a131f]"],
+.scorm-editorial.scorm-workbench main [class*="bg-[#0d1928]"] {
+  background: #151310 !important;
+}
+
+.scorm-editorial.scorm-workbench main [class*="bg-[#102747]"],
+.scorm-editorial.scorm-workbench main [class*="bg-[#122541]"] {
+  background: rgba(255, 138, 31, .105) !important;
+}
+
+.scorm-editorial.scorm-workbench main [class*="border-[#36516f]"],
+.scorm-editorial.scorm-workbench main [class*="border-[#4b6f96]"],
+.scorm-editorial.scorm-workbench main [class*="border-[#26374d]"],
+.scorm-editorial.scorm-workbench main [class*="border-[#315a8b]"],
+.scorm-editorial.scorm-workbench main [class*="border-[#477bc4]"] {
+  border-color: #4a3e32 !important;
+}
+
+/* Source document drop zone. */
+.scorm-editorial.scorm-workbench label[class*="border-[#36516f]"] {
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.008) 0, rgba(255,255,255,.008) 1px, transparent 1px, transparent 4px),
+    #14120f !important;
+  border-color: #554637 !important;
+  border-width: 1px !important;
+  border-radius: var(--wb-radius) !important;
+  box-shadow: inset 0 0 0 1px rgba(243, 234, 213, .018) !important;
+}
+
+.scorm-editorial.scorm-workbench label[class*="border-[#36516f]"]:hover {
+  background: #1a1713 !important;
+  border-color: var(--wb-orange) !important;
+}
+
+.scorm-editorial.scorm-workbench label[class*="border-[#36516f]"] svg {
+  color: var(--wb-orange) !important;
+}
+
+/* Course depth selector: clear warm selected state instead of blue. */
+.scorm-editorial.scorm-workbench button[class*="border-[#26374d]"][class*="bg-[#0a131f]"] {
+  background: #151310 !important;
+  border-color: #463a2f !important;
+  color: var(--wb-cream-soft) !important;
+}
+
+.scorm-editorial.scorm-workbench button[class*="border-[#26374d]"][class*="bg-[#0a131f]"]:hover {
+  background: #1d1915 !important;
+  border-color: #755b41 !important;
+}
+
+.scorm-editorial.scorm-workbench button[class*="border-[#477bc4]"][class*="bg-[#102747]"] {
+  background: linear-gradient(180deg, rgba(255,138,31,.145), rgba(255,138,31,.075)) !important;
+  border-color: var(--wb-orange) !important;
+  color: var(--wb-cream) !important;
+  box-shadow: inset 3px 0 0 var(--wb-orange), inset 0 1px 0 rgba(255,255,255,.035) !important;
+}
+
+/* Screen navigator selected/hover states in AI Course Author. */
+.scorm-editorial.scorm-workbench button[class*="bg-[#122541]"][class*="border-[#315a8b]"] {
+  background: linear-gradient(90deg, rgba(255,138,31,.14), rgba(255,138,31,.045)) !important;
+  border-color: rgba(255,138,31,.52) !important;
+  color: var(--wb-cream) !important;
+  box-shadow: inset 3px 0 0 var(--wb-orange) !important;
+}
+
+.scorm-editorial.scorm-workbench button[class*="hover:bg-[#0d1928]"]:hover {
+  background: #201c17 !important;
+  border-color: #4a3e32 !important;
+}
+
+/*
+ * Course Experience V5 theme cards.
+ * The palette preview remains the true learner-course colour; the framing belongs
+ * to SCORM World and therefore uses the warm Workbench system.
+ */
+.scorm-editorial.scorm-workbench button[class*="p-3"][class*="text-left"][style*="linear-gradient(145deg"] {
+  border: 1px solid #5a4938 !important;
+  border-radius: var(--wb-radius) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(243, 234, 213, .035),
+    0 0 0 1px rgba(0,0,0,.28) !important;
+  padding: 11px !important;
+  transform: none;
+}
+
+.scorm-editorial.scorm-workbench button[class*="p-3"][class*="text-left"][style*="linear-gradient(145deg"]:hover {
+  border-color: #9a744c !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(243, 234, 213, .06),
+    0 5px 16px rgba(0,0,0,.22) !important;
+  transform: translateY(-2px);
+}
+
+.scorm-editorial.scorm-workbench button[class*="p-3"][class*="text-left"][class*="ring-2"][style*="linear-gradient(145deg"] {
+  border: 2px solid var(--wb-orange) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(243, 234, 213, .16),
+    0 0 0 2px #15120f,
+    0 0 0 4px rgba(255, 138, 31, .42),
+    0 7px 18px rgba(0,0,0,.28) !important;
+  transform: translateY(-2px) !important;
+}
+
+.scorm-editorial.scorm-workbench button[class*="p-3"][class*="text-left"][style*="linear-gradient(145deg"] > div[class*="h-16"] {
+  border-color: rgba(243, 234, 213, .18) !important;
+  border-radius: 4px !important;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.28);
+}
+
+.scorm-editorial.scorm-workbench button[class*="p-3"][class*="text-left"][style*="linear-gradient(145deg"] > div[class*="text-[12px]"] {
+  color: var(--wb-cream) !important;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  letter-spacing: .035em !important;
+  text-transform: uppercase;
+}
+
+.scorm-editorial.scorm-workbench button[class*="p-3"][class*="text-left"][style*="linear-gradient(145deg"] > div[class*="text-[10px]"] {
+  color: #c2ad8c !important;
+  font-family: "IBM Plex Mono", monospace !important;
+  line-height: 1.45;
+}
+
+/* Selected course-theme check belongs to the admin frame, not the learner palette. */
+.scorm-editorial.scorm-workbench button[class*="ring-2"][style*="linear-gradient(145deg"] > div[class*="absolute"][class*="top-2.5"] {
+  background: var(--wb-orange) !important;
+  color: #17110b !important;
+  border: 1px solid #ffb163;
+  box-shadow: 0 0 0 2px rgba(17,16,14,.70);
+}
+
+/* Compact theme switcher shown after analysis. */
+.scorm-editorial.scorm-workbench button[class*="w-9"][class*="h-9"][style*="linear-gradient(145deg"] {
+  border-color: #574939 !important;
+  border-radius: 5px !important;
+  box-shadow: inset 0 0 0 1px rgba(243,234,213,.08) !important;
+}
+
+.scorm-editorial.scorm-workbench button[class*="w-9"][class*="h-9"][style*="linear-gradient(145deg"]:hover {
+  border-color: #a77b4c !important;
+  transform: translateY(-1px) scale(1.04);
+}
+
+.scorm-editorial.scorm-workbench button[class*="w-9"][class*="h-9"][class*="scale-110"][style*="linear-gradient(145deg"] {
+  border-color: var(--wb-orange) !important;
+  box-shadow:
+    0 0 0 2px #15120f,
+    0 0 0 4px rgba(255,138,31,.46) !important;
+}
+
+/* Make ordinary authoring metadata warm rather than cool slate. */
+.scorm-editorial.scorm-workbench main [class*="text-slate-300"] { color: var(--wb-cream-soft) !important; }
+.scorm-editorial.scorm-workbench main [class*="text-slate-400"] { color: #c0aa88 !important; }
+.scorm-editorial.scorm-workbench main [class*="text-slate-500"] { color: var(--wb-muted) !important; }
+
+@media (max-width: 767px) {
+  .scorm-editorial.scorm-workbench button[class*="p-3"][class*="text-left"][style*="linear-gradient(145deg"] {
+    min-height: 138px;
+  }
+}
