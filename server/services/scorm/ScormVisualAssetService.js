@@ -30,7 +30,7 @@ function pythonCandidates() {
 }
 
 async function runVisualGenerator(inputPath, outputDir) {
-    const script = path.join(__dirname, '../../utils/generate_scorm_visuals_v4.py');
+    const script = path.join(__dirname, '../../utils/generate_scorm_visuals_v5.py');
     if (!fs.existsSync(script)) {
         const err = new Error('SCORM visual generator script is missing');
         err.code = 'SCORM_VISUAL_SCRIPT_MISSING';
@@ -58,6 +58,17 @@ async function runVisualGenerator(inputPath, outputDir) {
     throw lastErr || new Error('No Python runtime is available for SCORM visuals');
 }
 
+function readAsset(outputDir, file) {
+    const safeFile = path.basename(String(file || ''));
+    const diskPath = path.join(outputDir, safeFile);
+    if (!safeFile || !fs.existsSync(diskPath)) return null;
+    return {
+        file: safeFile,
+        zipPath: `assets/visuals/${safeFile}`,
+        body: fs.readFileSync(diskPath)
+    };
+}
+
 async function generateVisualAssets(analysis) {
     const root = process.env.SCORM_VISUAL_TMP_DIR || path.join(__dirname, '../../data/tmp');
     ensureDir(root);
@@ -74,26 +85,34 @@ async function generateVisualAssets(analysis) {
         if (!fs.existsSync(manifestPath)) {
             throw new Error('Python visual generator did not create a manifest');
         }
+
         const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
         const visuals = Array.isArray(parsed.visuals) ? parsed.visuals : [];
-        const assets = visuals.map((item) => {
-            const file = path.basename(String(item.file || ''));
-            const diskPath = path.join(outputDir, file);
-            if (!file || !fs.existsSync(diskPath)) return null;
+        return visuals.map((item) => {
+            const desktop = readAsset(outputDir, item.desktopFile || item.file);
+            const mobile = readAsset(outputDir, item.mobileFile);
+            if (!desktop) return null;
             return {
                 index: Number(item.index),
                 layout: String(item.layout || 'cards'),
-                file,
-                zipPath: `assets/visuals/${file}`,
-                body: fs.readFileSync(diskPath)
+                screenType: String(item.screenType || ''),
+                file: desktop.file,
+                zipPath: desktop.zipPath,
+                body: desktop.body,
+                desktopFile: desktop.file,
+                desktopZipPath: desktop.zipPath,
+                desktopBody: desktop.body,
+                mobileFile: mobile ? mobile.file : null,
+                mobileZipPath: mobile ? mobile.zipPath : null,
+                mobileBody: mobile ? mobile.body : null
             };
         }).filter(Boolean);
-        return assets;
     } finally {
         safeRm(jobDir);
     }
 }
 
 module.exports = {
-    generateVisualAssets
+    generateVisualAssets,
+    runVisualGenerator
 };
