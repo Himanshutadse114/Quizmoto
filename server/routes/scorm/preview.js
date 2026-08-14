@@ -8,11 +8,13 @@ const {
     ScormCmiState,
     ScormRuntimeSnapshot
 } = require('../../models/scorm');
+const { resolveCourseOrPackageId } = require('../../services/scorm/ScormCourseWorkspaceService');
 const { serializePreviewStats } = require('../../services/scorm/ScormPreviewStatsService');
 const LearningState = require('../../services/scorm/ScormLearningStateService');
 
 router.get('/course/:courseId', auth, async (req, res) => {
     try {
+        await resolveCourseOrPackageId({ id: req.params.courseId, hostId: req.userId });
         const course = await ScormCourse.findOne({
             where: { id: req.params.courseId, hostId: req.userId },
             include: [{
