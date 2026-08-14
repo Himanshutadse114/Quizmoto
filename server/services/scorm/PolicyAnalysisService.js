@@ -6,10 +6,32 @@ const JSZip = require('jszip');
 const logger = require('../../utils/logger');
 
 const DETAIL_CONFIG = {
-    detailed: { slides: '8-12', screenWords: '70-105', minWords: 58 },
-    condensed: { slides: '5-7', screenWords: '58-88', minWords: 48 },
-    summary: { slides: '3-4', screenWords: '48-76', minWords: 38 }
+    detailed: { slides: '8-12', screenWords: '65-95', minWords: 50 },
+    condensed: { slides: '5-7', screenWords: '52-78', minWords: 42 },
+    summary: { slides: '3-4', screenWords: '42-65', minWords: 34 }
 };
+
+const VISUAL_POINT_WORD_LIMITS = {
+    process: 8,
+    timeline: 8,
+    cycle: 8,
+    matrix: 8,
+    hub: 10,
+    cards: 11,
+    comparison: 12,
+    spotlight: 12
+};
+
+const GENERIC_TITLES = new Set([
+    'introduction',
+    'overview',
+    'key points',
+    'key takeaways',
+    'summary',
+    'conclusion',
+    'important information',
+    'things to remember'
+]);
 
 const DEFAULT_MODEL_CANDIDATES = [
     'gemini-3.6-flash',
@@ -86,19 +108,93 @@ function wordCount(value) {
     return String(value || '').trim().split(/\s+/).filter(Boolean).length;
 }
 
-function analysisNeedsRefinement(analysis, detailLevel) {
+function normalizedText(value) {
+    return String(value || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function qualityIssues(analysis, detailLevel) {
     const slides = Array.isArray(analysis?.slides) ? analysis.slides : [];
-    if (!slides.length) return true;
+    if (!slides.length) return ['No learning screens were generated.'];
+
     const minWords = (DETAIL_CONFIG[detailLevel] || DETAIL_CONFIG.detailed).minWords;
+    const allowance = Math.max(1, Math.floor(slides.length * 0.15));
     let thin = 0;
     let weakPoints = 0;
+    let overlongPoints = 0;
+    let genericTitles = 0;
+    let duplicatePoints = 0;
+    const seenTitles = new Set();
+    let duplicateTitles = 0;
+
     for (const slide of slides) {
         if (wordCount(slide?.content) < minWords) thin += 1;
-        const points = Array.isArray(slide?.keyPoints) ? slide.keyPoints.filter((x) => String(x || '').trim()) : [];
+
+        const title = normalizedText(slide?.title);
+        if (GENERIC_TITLES.has(title)) genericTitles += 1;
+        if (title) {
+            if (seenTitles.has(title)) duplicateTitles += 1;
+            seenTitles.add(title);
+        }
+
+        const points = Array.isArray(slide?.keyPoints)
+            ? slide.keyPoints.filter((x) => String(x || '').trim())
+            : [];
         if (points.length < 3) weakPoints += 1;
+
+        const layout = String(slide?.layout || '').toLowerCase();
+        const pointLimit = VISUAL_POINT_WORD_LIMITS[layout] || 11;
+        const seenPoints = new Set();
+        for (const point of points) {
+            if (wordCount(point) > pointLimit) overlongPoints += 1;
+            const key = normalizedText(point);
+            if (key && seenPoints.has(key)) duplicatePoints += 1;
+            if (key) seenPoints.add(key);
+        }
     }
-    const allowance = Math.max(1, Math.floor(slides.length * 0.15));
-    return thin > allowance || weakPoints > allowance;
+
+    const issues = [];
+    if (thin > allowance) issues.push(`${thin} screens are too thin for the selected detail level.`);
+    if (weakPoints > allowance) issues.push(`${weakPoints} screens have fewer than three useful visual points.`);
+    if (overlongPoints > allowance) issues.push(`${overlongPoints} visual points are too long to display cleanly in diagrams.`);
+    if (genericTitles > allowance) issues.push(`${genericTitles} screen titles are generic rather than message-led.`);
+    if (duplicatePoints > 0) issues.push('At least one screen repeats the same supporting point.');
+    if (duplicateTitles > 0) issues.push('At least one screen title is duplicated.');
+
+    const quiz = Array.isArray(analysis?.quiz) ? analysis.quiz : [];
+    if (quiz.length) {
+        let malformedQuiz = 0;
+        const seenQuestions = new Set();
+        for (const item of quiz) {
+            const options = Array.isArray(item?.options) ? item.options : [];
+            const correct = Number(item?.correctAnswer);
+            const questionKey = normalizedText(item?.question);
+            const hasDuplicateQuestion = questionKey && seenQuestions.has(questionKey);
+            if (questionKey) seenQuestions.add(questionKey);
+            if (
+                !questionKey ||
+                options.length !== 4 ||
+                !Number.isInteger(correct) ||
+                correct < 0 ||
+                correct >= options.length ||
+                wordCount(item?.explanation) < 6 ||
+                hasDuplicateQuestion
+            ) {
+                malformedQuiz += 1;
+            }
+        }
+        if (quiz.length < 5 || quiz.length > 8) issues.push('The knowledge check should contain 5–8 questions.');
+        if (malformedQuiz) issues.push(`${malformedQuiz} quiz questions need stronger structure or explanations.`);
+    }
+
+    return issues;
+}
+
+function analysisNeedsRefinement(analysis, detailLevel) {
+    return qualityIssues(analysis, detailLevel).length > 0;
 }
 
 function parseAnalysis(text) {
@@ -155,75 +251,85 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
         sourceParts.push({ inlineData: { data: fileBase64, mimeType: mimeType || 'application/pdf' } });
     }
 
-    const instruction = `You are a world-class instructional designer, learning storyteller and presentation architect. Transform this source into a ${detailLevel} premium digital learning experience. It must feel authored, substantial and worth reading — not like a document automatically chopped into slides.
+    const instruction = `You are a world-class instructional designer, learning storyteller and presentation architect. Transform this source into a ${detailLevel} premium digital learning experience. It must feel authored, purposeful and easy to learn from — not like a document automatically chopped into slides.
 
 QUALITY BAR:
-Think Articulate Storyline combined with a polished modern AI presentation. Every learning screen must have enough substance to teach something meaningful. Do not create thin screens containing only a sentence or a few words. Also do not paste dense source text. Use a graceful hierarchy: strong title, useful paragraph, visual structure and concise supporting points.
+Think a polished Articulate Storyline lesson combined with a modern editorial presentation. Every screen should answer three learner questions: What is this? Why does it matter here? What should I notice, decide or do? Keep the explanatory copy substantial, but keep the visual labels extremely scannable so the diagrams remain readable on laptops and phones.
 
 Create a learning arc:
 - Begin with relevance: why this topic matters to the learner.
-- Build concepts in a logical sequence.
-- Explain practical meaning, not just definitions.
-- Use source-supported examples, consequences and scenarios where available.
-- Translate rules into clear learner behaviour.
+- Build concepts in a logical sequence with clear transitions.
+- Explain practical meaning rather than repeating definitions.
+- Use source-supported examples, consequences and micro-scenarios where available.
+- Translate rules into observable learner behaviour.
 - End major ideas with a memorable action, decision or takeaway.
-- Avoid filler, repetition and vague motivational language.
+- Avoid filler, repetition, corporate jargon and vague motivational language.
 
 1. LEARNING SCREENS (generate ${level.slides} screens):
-   - "title": concise, specific, human and meaningful. Prefer a message over a generic topic label.
-   - "content": approximately ${level.screenWords} words. Write one polished paragraph or two short paragraphs. Each paragraph must add real instructional value by explaining what the idea means, why it matters, how it appears in practice, what can go wrong, or what the learner should do. Never return a slide with only a few words of body copy.
-   - "keyPoints": 3–5 concise supporting points, preferably under 12 words each. They must add information rather than repeat the paragraph.
+   - "title": concise, specific, human and message-led. Prefer a useful message over a generic topic label.
+   - "content": approximately ${level.screenWords} words. Usually 2–4 well-shaped sentences or two short paragraphs. Explain meaning, relevance, practical context, consequence and/or the learner action supported by the source. Do not turn the body into a bullet list and do not repeat every keyPoint in sentence form.
+   - "keyPoints": 3–5 concise supporting points that are visually scannable and add information rather than repeating the paragraph.
+       * process / timeline / cycle: target 3–8 words per point.
+       * matrix: target 2–8 words per point.
+       * hub: target 4–10 words per point.
+       * cards: target 4–11 words per point.
+       * comparison / spotlight: target 4–12 words per point.
+       * Treat these as visual labels, not miniature paragraphs.
    - "layout": choose exactly one of: "process", "cards", "timeline", "comparison", "hub", "spotlight", "matrix", "cycle".
    - Match layout to meaning:
-       process = steps/workflow/attack flow/how something works
-       timeline = stages/phases/journey/sequence over time
-       comparison = safe vs unsafe, do vs don't, correct vs risky behaviour
-       hub = categories/components/pillars/related concepts around one idea
-       spotlight = one critical warning, risk, action, insight or takeaway
-       cards = independent concepts/tips/items
-       matrix = likelihood vs impact, severity, prioritisation, risk categories
-       cycle = repeating lifecycle, continuous improvement, recurring process
+       process = ordered steps, workflow, attack flow or how something works
+       timeline = stages, phases or a journey over time
+       comparison = safe vs unsafe, recommended vs risky, correct vs incorrect behaviour
+       hub = sibling categories, components, pillars or related concepts
+       spotlight = one critical warning, action, insight or takeaway
+       cards = independent concepts, tips or items
+       matrix = likelihood vs impact, severity, prioritisation or risk categories only when the source supports those dimensions
+       cycle = a genuinely repeating lifecycle or continuous process
    - Vary visual rhythm. Avoid the same layout on consecutive screens unless the source genuinely requires it.
-   - "visualTitle": 2–6 words suitable for the centre of a diagram.
-   - "interaction": object with "type" from "step_explore", "hotspot_explore", "compare_reveal", "focus_reveal", plus a short purposeful "prompt".
+   - "visualTitle": 2–5 words that remain readable in the centre of a diagram.
+   - "interaction": object with "type" from "step_explore", "hotspot_explore", "compare_reveal", "focus_reveal", plus a short action-oriented "prompt".
    - "imageQuery": a short 2–3 word keyword for compatibility.
 
 2. WRITING QUALITY:
-   - Write for an intelligent busy learner. The copy should feel editorial, clear and confident.
-   - Use natural professional language and sentence case.
-   - Prefer concrete verbs: verify, report, protect, confirm, review, stop, compare, escalate.
-   - Explain context and consequence when supported by the source.
-   - Use examples or micro-scenarios when the source provides enough information.
-   - Avoid generic AI phrases such as "In today's digital landscape" or "It is important to note".
-   - Never use empty titles such as "Introduction", "Overview", "Key Points" or "Conclusion" unless the source explicitly requires them.
+   - Write for an intelligent busy learner. Use clear professional language and sentence case.
+   - Prefer concrete verbs such as verify, report, protect, confirm, review, stop, compare and escalate.
+   - Use the paragraph for explanation and the visual points for scanning. They should complement, not mirror, one another.
+   - When the source supports it, turn abstract guidance into a short realistic situation: what the learner notices, what decision they face, and what the safe action is.
+   - Aim for at least one source-grounded example, micro-scenario or consequence across every three learning screens when the source has enough detail.
+   - Avoid generic AI phrases such as "In today's digital landscape", "It is important to note", "In conclusion" and "This section will discuss".
+   - Never use empty titles such as "Introduction", "Overview", "Key Points", "Summary" or "Conclusion" unless the source explicitly requires that wording.
    - Never repeat a sentence from content inside keyPoints.
    - Do not invent statistics, dates, penalties, controls, examples or policy requirements.
 
 3. VISUAL STORYTELLING:
-   - Each screen gets one dominant visual idea. The visual and paragraph should complement each other, not duplicate each other.
-   - Process/timeline/cycle points must be correctly sequenced and similar in length.
-   - Comparison points should be parallel: recommended behaviour first, risky behaviour second.
-   - Hub/cards should contain sibling concepts at the same level of detail.
-   - Matrix labels must stay concise enough to fit clearly.
-   - Spotlight screens should focus on one memorable insight.
-   - At least one third of the screens should invite exploration.
+   - Each screen gets one dominant visual idea. The visual shows structure; the paragraph explains meaning.
+   - Process/timeline/cycle points must be correctly sequenced, parallel and short enough to scan.
+   - Comparison points must be parallel and clearly separable into recommended versus risky behaviour.
+   - Hub/cards must contain sibling concepts at a similar level of detail.
+   - Matrix labels must be concise and only use matrix structure when likelihood/impact or equivalent dimensions are source-supported.
+   - Spotlight screens should focus on one memorable insight rather than multiple unrelated ideas.
+   - At least one third of screens should invite useful exploration, not decorative clicking.
 
 4. LEARNER VALUE:
    - Prioritise what the learner needs to understand, notice, decide or do.
    - If the source contains a definition, explain its practical meaning.
    - If it contains a rule, explain how the learner should act.
-   - If it contains a risk, explain the consequence or signal when supported.
+   - If it contains a risk, explain the source-supported consequence or warning signal.
    - If it contains an example, use it to make the lesson concrete.
+   - If several source sections say the same thing, consolidate them instead of creating repetitive screens.
 
 5. QUIZ (generate 5–8 questions):
-   - Test useful knowledge and decisions, not trivia.
-   - Prefer realistic scenario-based questions when supported by the source.
-   - Exactly 4 answer options.
-   - Make distractors plausible but clearly distinguishable using the source.
+   - Test useful knowledge and decisions, not trivia or wording recall.
+   - Prefer realistic scenario-based questions whenever the source supports a scenario.
+   - Exactly 4 answer options per question.
+   - Keep answer options concise, parallel in grammar and plausible. Do not make the correct answer obvious by length or tone.
    - "correctAnswer" is the 0-based correct option index.
-   - "explanation": 1–2 concise sentences that reinforce why the answer is correct.
+   - "explanation": 1–2 source-grounded sentences, normally 15–40 words, that explain the decision and reinforce the correct behaviour. Never return only "Correct" or restate the answer verbatim.
 
-6. OUTPUT must be valid JSON with keys: title, summary, slides, quiz.`;
+6. SUMMARY:
+   - "summary" should be a concise learner-facing orientation, not a document abstract. Explain what the learner will be able to recognise, decide or do after the lesson without promising unsupported outcomes.
+
+7. OUTPUT must be valid JSON with keys: title, summary, slides, quiz.`;
 
     const baseParts = [...sourceParts, { text: instruction }];
     const candidates = modelCandidates();
@@ -247,18 +353,30 @@ Create a learning arc:
             const text = response.raw?.candidates?.[0]?.content?.parts?.map((p) => p.text || '').join('') || '{}';
             let analysis = parseAnalysis(text);
 
-            if (analysisNeedsRefinement(analysis, detailLevel)) {
-                const refinementPrompt = `QUALITY REFINEMENT PASS:\nThe draft below is structurally usable but some learning screens are too thin or lack enough supporting points. Revise the entire JSON using the original source above. Preserve factual accuracy and the overall learning sequence, but make every content screen substantial and worth reading. Keep body copy within the requested ${level.screenWords} words, use one graceful paragraph or two short paragraphs, and ensure 3–5 useful keyPoints on each screen. Do not add unsupported facts. Return only the improved JSON.\n\nDRAFT JSON:\n${JSON.stringify(analysis)}`;
+            const initialIssues = qualityIssues(analysis, detailLevel);
+            if (initialIssues.length) {
+                const refinementPrompt = `QUALITY REFINEMENT PASS:\nThe draft is structurally usable but it misses part of the learner-experience quality bar. Issues detected: ${initialIssues.join(' ')}\n\nRevise the entire JSON using the original source above. Preserve factual accuracy and the learning sequence. Keep body copy within the requested ${level.screenWords} words. Make visual keyPoints substantially shorter than the paragraph and obey the layout-specific word limits. Replace generic or duplicated titles with source-grounded message titles. Remove repetition across screens. Ensure quiz questions have exactly four concise options, a valid correctAnswer index and a useful source-grounded explanation. Do not add unsupported facts. Return only the improved JSON.\n\nDRAFT JSON:\n${JSON.stringify(analysis)}`;
                 try {
                     const refined = await callGemini({ apiKey, model, parts: [...baseParts, { text: refinementPrompt }] });
                     if (refined.res.ok) {
                         const refinedText = refined.raw?.candidates?.[0]?.content?.parts?.map((p) => p.text || '').join('') || '{}';
                         const candidate = parseAnalysis(refinedText);
-                        if (!analysisNeedsRefinement(candidate, detailLevel)) {
+                        const refinedIssues = qualityIssues(candidate, detailLevel);
+                        if (refinedIssues.length < initialIssues.length) {
                             analysis = candidate;
-                            logger.info('scorm_gemini_refined', { module: 'scorm', model, slides: analysis.slides.length });
+                            logger.info('scorm_gemini_refined', {
+                                module: 'scorm',
+                                model,
+                                issuesBefore: initialIssues.length,
+                                issuesAfter: refinedIssues.length,
+                                slides: analysis.slides.length
+                            });
                         } else {
-                            logger.warn('scorm_gemini_refinement_still_thin', { module: 'scorm', model });
+                            logger.warn('scorm_gemini_refinement_quality_plateau', {
+                                module: 'scorm',
+                                model,
+                                issues: refinedIssues
+                            });
                         }
                     }
                 } catch (refineErr) {
@@ -270,7 +388,8 @@ Create a learning arc:
                 module: 'scorm',
                 model,
                 thinkingLevel: /^gemini-3(?:\.|-|$)/i.test(model) ? thinkingLevel() : 'model-default',
-                slides: analysis.slides.length
+                slides: analysis.slides.length,
+                remainingQualityIssues: qualityIssues(analysis, detailLevel).length
             });
             return analysis;
         }
@@ -297,6 +416,9 @@ module.exports = {
     thinkingLevel,
     generationConfigForModel,
     DEFAULT_MODEL_CANDIDATES,
+    DETAIL_CONFIG,
+    VISUAL_POINT_WORD_LIMITS,
     analysisNeedsRefinement,
+    qualityIssues,
     wordCount
 };
