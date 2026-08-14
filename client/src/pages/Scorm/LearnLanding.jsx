@@ -4,6 +4,7 @@ import axios from 'axios';
 import { BookOpen, ArrowRight } from 'lucide-react';
 import { apiUrl } from '../../config';
 import './scormEditorialTheme.css';
+import './scormContrastPolish.css';
 
 export default function ScormLearnLanding() {
   const { inviteCode } = useParams();
@@ -77,7 +78,7 @@ export default function ScormLearnLanding() {
     return (
       <div className="scorm-editorial min-h-screen flex items-center justify-center p-5 md:p-8 relative z-20">
         <div className="scorm-soft-card max-w-lg w-full p-7 md:p-9 text-center">
-          <div className="w-11 h-11 mx-auto rounded-xl bg-[#f7eeee] grid place-items-center text-[#a86963] mb-4"><BookOpen size={20} /></div>
+          <div className="w-11 h-11 mx-auto rounded-xl bg-[#35131d] border border-[#7f2739] grid place-items-center text-[#fda4af] mb-4"><BookOpen size={20} /></div>
           <h1 className="text-2xl font-semibold mb-2">Course unavailable</h1>
           <p className="text-sm leading-relaxed">{error}</p>
         </div>
@@ -88,33 +89,33 @@ export default function ScormLearnLanding() {
   return (
     <div className="scorm-editorial min-h-screen flex items-center justify-center p-4 md:p-8 relative z-20">
       <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1.05fr_.95fr] scorm-soft-card overflow-hidden">
-        <section className="scorm-tint-sage p-7 sm:p-9 md:p-11 lg:p-12 border-b lg:border-b-0 lg:border-r border-[#e1e6e2] flex flex-col justify-between min-h-[330px]">
+        <section className="scorm-tint-sage p-7 sm:p-9 md:p-11 lg:p-12 border-b lg:border-b-0 lg:border-r border-[#223a59] flex flex-col justify-between min-h-[330px]">
           <div>
-            <div className="w-11 h-11 rounded-xl bg-white grid place-items-center text-[#647b6e] border border-[#e0e7e2] mb-7">
+            <div className="w-11 h-11 rounded-xl bg-[#0e2039] grid place-items-center text-[#bfdbfe] border border-[#2a4b74] mb-7">
               <BookOpen size={20} />
             </div>
-            <div className="text-[11px] font-semibold text-[#78877f]">SCORM World</div>
-            <h1 className="text-3xl sm:text-4xl md:text-[44px] font-semibold tracking-[-0.045em] leading-[1.02] break-words text-[#2d3933]">
+            <div className="text-[11px] font-semibold text-[#93a4bb]">SCORM World</div>
+            <h1 className="text-3xl sm:text-4xl md:text-[44px] font-semibold tracking-[-0.045em] leading-[1.02] break-words text-[#f8fafc]">
               {course?.title || 'Loading course…'}
             </h1>
-            <p className="mt-4 text-sm md:text-[15px] leading-relaxed max-w-xl text-[#68746e]">
+            <p className="mt-4 text-sm md:text-[15px] leading-relaxed max-w-xl text-[#cbd5e1]">
               {course?.description || 'Enter your details to begin this learning experience.'}
             </p>
           </div>
-          <div className="mt-8 flex items-center gap-2 text-[10px] text-[#8a958f]">
+          <div className="mt-8 flex items-center gap-2 text-[10px] text-[#93a4bb]">
             <span className="font-semibold">Invite code</span>
-            <span className="font-mono bg-white/70 border border-white rounded-lg px-2 py-1 text-[#64716b]">{inviteCode}</span>
+            <span className="font-mono bg-[#0e2039] border border-[#2a4b74] rounded-lg px-2 py-1 text-[#bfdbfe]">{inviteCode}</span>
           </div>
         </section>
 
-        <section className="bg-white p-7 sm:p-9 md:p-10 lg:p-11 flex flex-col justify-center">
-          <div className="text-[11px] font-semibold text-[#829087]">Learner details</div>
+        <section className="bg-[#08111e] p-7 sm:p-9 md:p-10 lg:p-11 flex flex-col justify-center">
+          <div className="text-[11px] font-semibold text-[#93a4bb]">Learner details</div>
           <h2 className="text-2xl md:text-[30px] font-semibold tracking-[-0.035em] mt-1 mb-2">Ready when you are</h2>
           <p className="text-xs leading-relaxed mb-6">Your progress will be saved automatically while you learn.</p>
 
           <form onSubmit={start} className="space-y-4">
             <div>
-              <label className="block text-[11px] font-semibold text-[#5d6963] mb-1.5">Your name</label>
+              <label className="block text-[11px] font-semibold text-[#cbd5e1] mb-1.5">Your name</label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -124,7 +125,7 @@ export default function ScormLearnLanding() {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-[#5d6963] mb-1.5">Email <span className="font-normal text-[#9aa39f]">optional</span></label>
+              <label className="block text-[11px] font-semibold text-[#cbd5e1] mb-1.5">Email <span className="font-normal text-[#71839c]">optional</span></label>
               <input
                 type="email"
                 value={email}
@@ -133,7 +134,7 @@ export default function ScormLearnLanding() {
                 placeholder="you@example.com"
               />
             </div>
-            {error && <div className="rounded-xl border border-[#ead4d1] bg-[#f7eeee] p-3 text-xs text-[#9e625d]">{error}</div>}
+            {error && <div className="rounded-xl border border-[#7f2739] bg-[#35131d] p-3 text-xs text-[#fecdd3]">{error}</div>}
             <button
               type="submit"
               disabled={loading || !course}
