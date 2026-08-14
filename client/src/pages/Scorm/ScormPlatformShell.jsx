@@ -20,6 +20,7 @@ import './scormEditorialTheme.css';
 import './scormDashboard.css';
 import './scormContrastPolish.css';
 import './scormModernDark.css';
+import './scormWorkbenchTheme.css';
 
 const NAV_GROUPS = [
   {
@@ -92,8 +93,10 @@ function Brand() {
         <Layers3 size={19} strokeWidth={2.2} />
       </div>
       <div className="min-w-0">
-        <div className="scorm-display scorm-brand-name text-[16px] leading-none truncate">SCORM World</div>
-        <div className="scorm-brand-subtitle mt-1 text-[10px] truncate">Learning operations</div>
+        <div className="scorm-display scorm-brand-name text-[16px] leading-none truncate">
+          <span>SCORM</span> <span className="wb-accent">WORLD</span>
+        </div>
+        <div className="scorm-brand-subtitle mt-1 text-[10px] truncate">learning workbench</div>
       </div>
     </Link>
   );
@@ -131,7 +134,7 @@ export default function ScormPlatformShell() {
   const label = pageLabel(location.pathname);
 
   return (
-    <div className="scorm-editorial min-h-screen relative z-20">
+    <div className="scorm-editorial scorm-workbench min-h-screen relative z-20">
       <aside className="scorm-sidebar fixed inset-y-0 left-0 z-40 hidden lg:flex w-[268px] flex-col border-r">
         <div className="scorm-brand-wrap h-[76px] px-5 flex items-center border-b">
           <Brand />
@@ -204,7 +207,7 @@ export default function ScormPlatformShell() {
           </button>
 
           <div className="min-w-0">
-            <div className="scorm-breadcrumb text-[10px] font-medium">SCORM World <span>/</span> Workspace</div>
+            <div className="scorm-breadcrumb text-[10px] font-medium">SCORM WORLD <span>·</span> WORKBENCH</div>
             <h1 className="scorm-page-title text-[18px] md:text-[20px] truncate mt-0.5">{label}</h1>
           </div>
 
