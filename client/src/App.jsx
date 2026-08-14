@@ -106,7 +106,7 @@ function AppRoutes() {
 
 function AppSurface() {
   const { pathname } = useLocation();
-  const isLiveQuiz = pathname.startsWith('/scorm/live-quiz');
+  const isLiveQuiz = pathname.startsWith('/scorm/live-quiz') || pathname === '/join' || pathname.startsWith('/player/');
   const isLogin = pathname === '/login';
 
   return (
