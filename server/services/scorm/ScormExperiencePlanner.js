@@ -34,15 +34,19 @@ function splitCopy(content) {
 function metaphorFor(slide) {
     if (clean(slide.visualMetaphor)) return clean(slide.visualMetaphor).toLowerCase();
     const text = `${slide.title || ''} ${slide.content || ''}`.toLowerCase();
-    if (/email|phish|inbox|message/.test(text)) return 'email';
+
+    // Prefer the most specific visual signal before broad attack-channel terms.
+    // For example, "QR phishing" must remain a QR experience instead of being
+    // downgraded to the generic email/phishing metaphor.
+    if (/qr|quick response/.test(text)) return 'qr';
+    if (/voice|deepfake|audio|synthetic|artificial intelligence|\bai\b/.test(text)) return 'ai-wave';
     if (/password|credential|login|authentication|mfa|passkey/.test(text)) return 'lock';
     if (/phone|sms|whatsapp|call|mobile/.test(text)) return 'phone';
     if (/ransom|file|attachment|document/.test(text)) return 'file';
     if (/cloud|share|drive/.test(text)) return 'cloud';
     if (/identity|account|employee|user|person/.test(text)) return 'identity';
-    if (/voice|deepfake|audio|synthetic|artificial intelligence|\bai\b/.test(text)) return 'ai-wave';
-    if (/qr|quick response/.test(text)) return 'qr';
     if (/browser|website|url|link/.test(text)) return 'browser';
+    if (/email|phish|inbox|message/.test(text)) return 'email';
     if (/warning|incident|threat|malware|risk|attack/.test(text)) return 'warning';
     return 'shield';
 }
