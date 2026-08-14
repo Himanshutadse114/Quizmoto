@@ -57,10 +57,21 @@ def resolved_icon_kind(slide):
     return 'shield'
 
 
-# All core render functions resolve this module-level symbol at call time, so
-# replacing it here keeps the proven V5 layout engine intact while making
+# Keep a lightweight semantic marker in generated SVGs. Besides making the
+# output easier to inspect, it gives CI a stable way to prove that an explicit
+# author choice such as QR is the artwork that was actually rendered.
+_core_icon = engine.icon
+
+
+def semantic_icon(kind, x, y, size, theme, opacity=1):
+    return f'<g data-qm-icon-kind="{kind}">{_core_icon(kind, x, y, size, theme, opacity)}</g>'
+
+
+# All core render functions resolve these module-level symbols at call time, so
+# replacing them here keeps the proven V5 layout engine intact while making
 # explicit author intent authoritative.
 engine.icon_kind = resolved_icon_kind
+engine.icon = semantic_icon
 
 
 if __name__ == '__main__':
