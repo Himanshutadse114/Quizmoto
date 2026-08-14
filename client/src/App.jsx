@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
@@ -68,7 +68,6 @@ function AppRoutes() {
         <Route path="/player/lobby" element={<PlayerLobby />} />
         <Route path="/player/game" element={<PlayerGame />} />
 
-        {/* Live Quiz management gets its own responsive menu; gameplay remains full-screen. */}
         <Route path="/scorm/live-quiz" element={<LiveQuizShell />}>
           <Route index element={<Dashboard />} />
           <Route path="create" element={<CreateQuiz />} />
@@ -105,19 +104,33 @@ function AppRoutes() {
   );
 }
 
+function AppSurface() {
+  const { pathname } = useLocation();
+  const isLiveQuiz = pathname.startsWith('/scorm/live-quiz');
+  const isLogin = pathname === '/login';
+
+  return (
+    <div className={`min-h-screen bg-quizmoto-darkPurple text-white relative ${isLiveQuiz ? 'live-quiz-stage' : ''}`}>
+      {!isLogin && (
+        <>
+          <div className="bg-shape shape-1 w-64 h-64 border-[32px] border-white rounded-full" />
+          <div className="bg-shape shape-2 w-48 h-48 border-[24px] border-quizmoto-yellow rotate-45" />
+          <div className="bg-shape shape-3 w-32 h-32 bg-quizmoto-blue rounded-xl" />
+          <div className="bg-shape shape-4 w-56 h-56 border-[28px] border-quizmoto-red rounded-lg -rotate-12" />
+        </>
+      )}
+      <AppRoutes />
+    </div>
+  );
+}
+
 function App() {
   return (
     <AuthProvider>
       <Router basename={import.meta.env.VITE_APP_BASENAME || '/'}>
         <SocketProvider>
           <LiveQuizAudioDirector />
-          <div className="min-h-screen bg-quizmoto-darkPurple text-white relative">
-            <div className="bg-shape shape-1 w-64 h-64 border-[32px] border-white rounded-full" />
-            <div className="bg-shape shape-2 w-48 h-48 border-[24px] border-quizmoto-yellow rotate-45" />
-            <div className="bg-shape shape-3 w-32 h-32 bg-quizmoto-blue rounded-xl" />
-            <div className="bg-shape shape-4 w-56 h-56 border-[28px] border-quizmoto-red rounded-lg -rotate-12" />
-            <AppRoutes />
-          </div>
+          <AppSurface />
         </SocketProvider>
       </Router>
     </AuthProvider>
