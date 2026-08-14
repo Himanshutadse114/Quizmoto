@@ -19,6 +19,7 @@ import {
 import './scormEditorialTheme.css';
 import './scormDashboard.css';
 import './scormContrastPolish.css';
+import './scormModernDark.css';
 
 const NAV_GROUPS = [
   {
