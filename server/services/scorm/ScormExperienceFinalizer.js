@@ -12,7 +12,12 @@ function assessmentExperienceCss() {
 .qmx-option-letter{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:9px;margin-right:10px;vertical-align:middle;background:color-mix(in srgb,var(--primary) 13%,var(--surface-2));border:1px solid color-mix(in srgb,var(--primary) 30%,var(--line));color:var(--accent);font-size:10px;font-weight:850;transition:inherit}
 .quiz-option:hover:not(:disabled) .qmx-option-letter,.quiz-option[aria-pressed="true"] .qmx-option-letter{background:color-mix(in srgb,var(--primary) 30%,var(--surface));color:#fff;border-color:var(--primary)}
 .quiz-option.correct .qmx-option-letter{background:#067A5C!important;color:#fff!important;border-color:#34D399!important}.quiz-option.incorrect .qmx-option-letter{background:#8E2942!important;color:#fff!important;border-color:#FB7185!important}
-@media(max-width:680px){.qmx-quiz-label{font-size:8.5px;margin-bottom:10px}.qmx-option-letter{width:26px;height:26px;margin-right:8px}.quiz-option{text-align:left!important}}
+@media(max-width:680px){
+  .qmx-quiz-label{font-size:8.5px;margin-bottom:10px}.qmx-option-letter{width:26px;height:26px;margin-right:8px}.quiz-option{text-align:left!important}
+  .qmx-screen .qmx-visual img{width:100%!important;height:auto!important;max-width:100%!important;max-height:none!important;min-width:0!important;object-fit:contain!important}
+  .qmx-screen .qmx-visual picture{display:block!important;width:100%!important;height:auto!important;overflow:visible!important}
+  .qmx-screen .qmx-visual{overflow:hidden!important;min-height:0!important;height:auto!important;touch-action:auto!important}
+}
 </style>`;
 }
 
