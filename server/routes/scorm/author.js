@@ -11,6 +11,7 @@ const { planExperienceV5 } = require('../../services/scorm/ScormExperiencePlanne
 const { buildScormPackageZip } = require('../../services/scorm/ScormTrackingPackageFinalizer');
 const { getTheme, listThemes, normalizeThemeId } = require('../../services/scorm/ScormThemeCatalog');
 const { ScormPackage } = require('../../models/scorm');
+const { ensureCourseForPackage } = require('../../services/scorm/ScormCourseWorkspaceService');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
 const { packageZipKey } = require('../../services/scorm/storageKeys');
 const { unpackPackage } = require('../../services/scorm/ScormUnpackService');
@@ -140,9 +141,21 @@ router.post('/generate', auth, async (req, res) => {
             logger.error('scorm_ai_unpack_failed', { module: 'scorm', packageId: pkg.id, error: e.message });
         }
         await pkg.reload();
+
+        let course = null;
+        if (pkg.status === 'ready') {
+            course = await ensureCourseForPackage({
+                packageId: pkg.id,
+                hostId: req.userId,
+                title: pkg.title
+            });
+        }
+
         res.status(201).json({
             ok: true,
             packageId: pkg.id,
+            courseId: course?.id || null,
+            workspaceReady: Boolean(course),
             status: pkg.status,
             entryHref: pkg.entryHref,
             standard: pkg.standard,
