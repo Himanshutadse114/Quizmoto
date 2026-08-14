@@ -104,6 +104,10 @@
 .live-quiz-shell .rounded-2xl,.live-quiz-shell [class*="rounded-[24px]"] { border-radius:14px !important; }
 .live-quiz-shell h1 { text-transform:uppercase; font-weight:800 !important; }
 .live-quiz-shell .shadow-2xl { box-shadow:0 14px 34px rgba(0,0,0,.24); }
+.live-quiz-shell .lq-content > div > header { min-height:58px; }
+.live-quiz-shell .lq-content > div > header h1 { line-height:.95; }
+.live-quiz-shell .lq-content > div > header button { min-height:42px; }
+.live-quiz-shell .lq-content .bg-white.text-gray-800 { border-top:1px solid rgba(255,255,255,.12); }
 
 /* Gameplay/lobby keep their colour identity but get common typography + rectangular controls. */
 .live-quiz-stage button { border-radius:12px !important; }
@@ -133,14 +137,31 @@
 
 @media (max-width: 767px) {
   .live-quiz-shell .lq-content > div { padding:18px 14px 88px !important; }
+  .live-quiz-shell .lq-content > div > header { flex-direction:column !important; align-items:stretch !important; gap:12px !important; margin-bottom:20px !important; }
+  .live-quiz-shell .lq-content > div > header > .flex { width:100%; flex-wrap:wrap; }
+  .live-quiz-shell .lq-content > div > header > .flex > button { flex:1 1 140px; min-height:44px; justify-content:center; }
   .live-quiz-shell header { align-items:flex-start; }
   .live-quiz-shell h1 { font-size:clamp(2rem,11vw,3.1rem) !important; line-height:.95; }
   .live-quiz-shell .grid[class*="md:grid-cols-3"] { grid-template-columns:1fr 1fr !important; }
   .live-quiz-shell button { min-height:44px; }
+  .live-quiz-shell .lq-content .space-y-10 { gap:24px !important; }
+  .live-quiz-shell .lq-content .bg-white.text-gray-800 { padding:18px !important; }
+  .live-quiz-shell .lq-content .grid[class*="md:grid-cols-2"] { grid-template-columns:1fr !important; }
+  .live-quiz-shell .lq-content table { min-width:620px; }
   .live-quiz-stage { overflow-x:hidden; }
   .live-quiz-stage > header { align-items:stretch !important; }
   .live-quiz-stage > header > div { width:100%; }
   .live-quiz-stage > header button { min-height:44px; }
   .live-quiz-stage [class*="rounded-[48px]"] { border-radius:16px !important; }
+  .live-quiz-stage .fixed.inset-x-0.bottom-0 > div { border-radius:14px !important; }
   .lq-login-card { padding:24px 20px; }
+  .lq-google-wrap { padding:12px 8px; overflow:hidden; }
+}
+
+@media (max-width: 420px) {
+  .lq-mobile-topbar { padding-inline:10px; }
+  .lq-quick-create { padding-inline:9px; }
+  .lq-nav-caption { font-size:9px; }
+  .live-quiz-shell .lq-content > div { padding-inline:11px !important; }
+  .live-quiz-stage [class*="grid-cols-2"] { gap:8px !important; }
 }
