@@ -8,6 +8,7 @@ const {
 } = require('../../models/scorm');
 const { createInviteCode, signRegistrationToken } = require('../../services/scorm/ScormInviteService');
 const { prepareCoursePreview } = require('../../services/scorm/ScormPreviewService');
+const { resolveCourseOrPackageId } = require('../../services/scorm/ScormCourseWorkspaceService');
 const ScormReportService = require('../../services/ScormReportService');
 
 router.get('/', auth, async (req, res) => {
@@ -123,6 +124,7 @@ router.get('/:id/report', auth, async (req, res) => {
 });
 
 router.get('/:id', auth, async (req, res) => {
+    await resolveCourseOrPackageId({ id: req.params.id, hostId: req.userId });
     const course = await ScormCourse.findOne({
         where: { id: req.params.id, hostId: req.userId },
         include: [{ model: ScormPackage, as: 'package' }]
@@ -133,6 +135,7 @@ router.get('/:id', auth, async (req, res) => {
 
 router.patch('/:id', auth, async (req, res) => {
     try {
+        await resolveCourseOrPackageId({ id: req.params.id, hostId: req.userId });
         const course = await ScormCourse.findOne({ where: { id: req.params.id, hostId: req.userId } });
         if (!course) return res.status(404).json({ message: 'Not found' });
         const { title, description, status, settings } = req.body || {};
@@ -161,6 +164,7 @@ router.patch('/:id', auth, async (req, res) => {
 });
 
 router.get('/:id/registrations', auth, async (req, res) => {
+    await resolveCourseOrPackageId({ id: req.params.id, hostId: req.userId });
     const course = await ScormCourse.findOne({ where: { id: req.params.id, hostId: req.userId } });
     if (!course) return res.status(404).json({ message: 'Not found' });
     const regs = await ScormRegistration.findAll({
@@ -172,6 +176,7 @@ router.get('/:id/registrations', auth, async (req, res) => {
 
 router.post('/:id/preview', auth, async (req, res) => {
     try {
+        await resolveCourseOrPackageId({ id: req.params.id, hostId: req.userId });
         const course = await ScormCourse.findOne({
             where: { id: req.params.id, hostId: req.userId },
             include: [{ model: ScormPackage, as: 'package' }]
