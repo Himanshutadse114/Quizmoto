@@ -4,6 +4,7 @@ import { ArrowLeft, ExternalLink, BookOpen } from 'lucide-react';
 import { apiUrl } from '../../config';
 import './scormEditorialTheme.css';
 import './scormContrastPolish.css';
+import './scormModernDark.css';
 
 /**
  * Opens the same-origin backend player in a popup window so the host/learner
