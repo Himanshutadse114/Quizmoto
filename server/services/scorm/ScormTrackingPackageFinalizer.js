@@ -129,9 +129,9 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   .qmx-visual.qmx-visual-pan img{width:650px!important;min-width:650px!important}
 }
 
-@media (orientation: landscape) and (max-height: 500px) and (min-width: 560px) and (max-width: 920px){
-  header{height:50px!important;min-height:50px!important;padding-top:0!important}
-  footer{height:54px!important;min-height:54px!important;padding-top:5px!important;padding-bottom:max(5px,env(safe-area-inset-bottom))!important}
+@media (orientation: landscape) and (max-height: 500px) and (min-width: 560px) and (max-width: 1024px){
+  header{height:50px!important;min-height:50px!important;padding-top:0!important;padding-left:max(14px,env(safe-area-inset-left))!important;padding-right:max(14px,env(safe-area-inset-right))!important}
+  footer{height:56px!important;min-height:56px!important;padding-top:5px!important;padding-bottom:max(5px,env(safe-area-inset-bottom))!important;padding-left:max(14px,env(safe-area-inset-left))!important;padding-right:max(14px,env(safe-area-inset-right))!important}
   .brand-mark{width:32px!important;height:32px!important}
   header h1{font-size:12px!important;max-width:28vw}
   .slide{padding:10px max(14px,env(safe-area-inset-right)) 12px max(14px,env(safe-area-inset-left))!important}
@@ -141,15 +141,15 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   .qmx-copy p{font-size:13px!important;line-height:1.48!important}
   .qmx-toolbar{margin-top:10px!important}
   .qmx-points{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important}
-  .qmx-point{min-height:42px!important;font-size:12px!important;padding:8px!important}
+  .qmx-point{min-height:44px!important;font-size:12px!important;padding:8px!important}
   .qmx-detail{min-height:56px!important;font-size:12px!important;padding:10px 11px!important}
   .qmx-prompt{display:none!important}
   .qmx-visual,.qmx-frame.qmx-wide .qmx-visual{min-height:270px!important;max-height:calc(100dvh - 126px);padding:6px!important}
   .qmx-visual img{max-height:290px!important}
   .qmx-visual.qmx-visual-pan{min-height:285px!important;overflow-x:auto!important}
   .qmx-visual.qmx-visual-pan img{width:560px!important;min-width:560px!important;max-height:none!important}
-  .quiz-card{padding:16px!important}.quiz-card .title{font-size:24px!important}.quiz-options{grid-template-columns:1fr 1fr!important;gap:8px!important}.quiz-option{min-height:44px!important;font-size:12px!important;padding:10px!important}
-  .nav-btn{min-height:40px!important;font-size:12px!important}.part{font-size:10px!important}
+  .quiz-card{padding:16px!important}.quiz-card .title{font-size:24px!important}.quiz-options{grid-template-columns:1fr 1fr!important;gap:8px!important}.quiz-option{min-height:44px!important;font-size:13px!important;padding:10px!important}
+  .nav-btn{min-height:44px!important;font-size:12px!important}.part{font-size:10px!important}
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -160,7 +160,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 function patchTrackingRuntime(html) {
     let out = String(html || '');
 
-    // Initialize the LMS before render() so the first tracked location is valid.
+    // Initialize the LMS before rendering the first tracked screen.
     out = out.replace(
         "window.onload=function(){sessionStartMs=Date.now();render();if(typeof doLMSInitialize==='function'){doLMSInitialize();",
         "window.onload=function(){sessionStartMs=Date.now();lastSessionWriteMs=sessionStartMs;if(typeof doLMSInitialize==='function'){doLMSInitialize();"
