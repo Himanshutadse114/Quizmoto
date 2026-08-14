@@ -1,0 +1,703 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+/*
+ * SCORM World — Workbench theme.
+ * Inspired by the warm black / cream / orange industrial tool aesthetic.
+ * Scoped to .scorm-workbench so learner-facing SCORM packages keep their own themes.
+ */
+
+.scorm-editorial.scorm-workbench {
+  --wb-canvas: #11100e;
+  --wb-canvas-deep: #0c0b0a;
+  --wb-surface: #1a1815;
+  --wb-surface-2: #211e1a;
+  --wb-surface-3: #28231e;
+  --wb-line: #3b342c;
+  --wb-line-soft: rgba(255, 234, 206, .10);
+  --wb-cream: #f3ead5;
+  --wb-cream-soft: #d8c9ad;
+  --wb-tan: #b79c77;
+  --wb-muted: #826f56;
+  --wb-orange: #ff8a1f;
+  --wb-orange-strong: #ff9f43;
+  --wb-orange-dark: #c76312;
+  --wb-green: #79dc7a;
+  --wb-red: #e76858;
+  --wb-yellow: #f1c75b;
+  --wb-radius: 7px;
+  --wb-radius-sm: 5px;
+  --wb-shadow: 0 12px 30px rgba(0, 0, 0, .22);
+
+  --scorm-canvas: var(--wb-canvas);
+  --scorm-surface: var(--wb-surface);
+  --scorm-surface-soft: var(--wb-surface-2);
+  --scorm-surface-muted: var(--wb-surface-3);
+  --scorm-ink: var(--wb-cream);
+  --scorm-ink-soft: var(--wb-cream-soft);
+  --scorm-muted: var(--wb-tan);
+  --scorm-subtle: var(--wb-muted);
+  --scorm-line: var(--wb-line);
+  --scorm-line-strong: #514536;
+  --scorm-sidebar: #0e0d0b;
+  --scorm-sidebar-soft: #171511;
+  --scorm-accent: var(--wb-orange);
+  --scorm-accent-strong: var(--wb-orange-strong);
+  --scorm-accent-soft: rgba(255, 138, 31, .10);
+  --scorm-green: var(--wb-green);
+  --scorm-green-soft: rgba(121, 220, 122, .09);
+  --scorm-amber: var(--wb-yellow);
+  --scorm-amber-soft: rgba(241, 199, 91, .08);
+  --scorm-red: var(--wb-red);
+  --scorm-red-soft: rgba(231, 104, 88, .09);
+
+  min-height: 100vh;
+  color: var(--wb-cream) !important;
+  font-family: "Barlow", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0, rgba(255,255,255,.012) 1px, transparent 1px, transparent 4px),
+    radial-gradient(circle at 18% -10%, rgba(255, 138, 31, .045), transparent 24rem),
+    linear-gradient(180deg, #14120f 0%, #11100e 55%, #0d0c0a 100%) !important;
+}
+
+.scorm-editorial.scorm-workbench,
+.scorm-editorial.scorm-workbench * {
+  scrollbar-color: #4c4032 #12100e;
+}
+
+.scorm-editorial.scorm-workbench ::-webkit-scrollbar { width: 10px; height: 10px; }
+.scorm-editorial.scorm-workbench ::-webkit-scrollbar-track { background: #12100e; }
+.scorm-editorial.scorm-workbench ::-webkit-scrollbar-thumb {
+  background: #4c4032;
+  border: 2px solid #12100e;
+  border-radius: 2px;
+}
+
+/* Typography */
+.scorm-editorial.scorm-workbench .scorm-display,
+.scorm-editorial.scorm-workbench .scorm-page-title,
+.scorm-editorial.scorm-workbench h1,
+.scorm-editorial.scorm-workbench h2,
+.scorm-editorial.scorm-workbench h3,
+.scorm-editorial.scorm-workbench h4,
+.scorm-editorial.scorm-workbench .scorm-brand-name {
+  font-family: "Barlow Condensed", "Arial Narrow", Impact, sans-serif !important;
+  color: var(--wb-cream) !important;
+  font-style: normal !important;
+  text-transform: uppercase;
+  letter-spacing: .018em !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-display,
+.scorm-editorial.scorm-workbench h1,
+.scorm-editorial.scorm-workbench h2 {
+  font-weight: 800 !important;
+}
+
+.scorm-editorial.scorm-workbench h3,
+.scorm-editorial.scorm-workbench h4,
+.scorm-editorial.scorm-workbench .scorm-page-title,
+.scorm-editorial.scorm-workbench .scorm-brand-name {
+  font-weight: 700 !important;
+}
+
+.scorm-editorial.scorm-workbench main h2 {
+  font-size: clamp(2.35rem, 5vw, 4.1rem) !important;
+  line-height: .94 !important;
+}
+
+.scorm-editorial.scorm-workbench .wb-accent,
+.scorm-editorial.scorm-workbench .scorm-display .wb-accent,
+.scorm-editorial.scorm-workbench .scorm-brand-name .wb-accent {
+  color: var(--wb-orange) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-breadcrumb,
+.scorm-editorial.scorm-workbench .scorm-eyebrow,
+.scorm-editorial.scorm-workbench .scorm-nav-section,
+.scorm-editorial.scorm-workbench .scorm-meta,
+.scorm-editorial.scorm-workbench .scorm-micro,
+.scorm-editorial.scorm-workbench label,
+.scorm-editorial.scorm-workbench [class*="tracking-widest"],
+.scorm-editorial.scorm-workbench [class*="uppercase"] {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+  letter-spacing: .13em !important;
+}
+
+.scorm-editorial.scorm-workbench p,
+.scorm-editorial.scorm-workbench main [class*="text-[#6"],
+.scorm-editorial.scorm-workbench main [class*="text-[#7"],
+.scorm-editorial.scorm-workbench main [class*="text-[#8"],
+.scorm-editorial.scorm-workbench main [class*="text-[#9"] {
+  color: var(--wb-tan) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-eyebrow,
+.scorm-editorial.scorm-workbench .scorm-breadcrumb,
+.scorm-editorial.scorm-workbench .scorm-nav-section,
+.scorm-editorial.scorm-workbench .scorm-meta,
+.scorm-editorial.scorm-workbench .scorm-micro {
+  color: var(--wb-tan) !important;
+  text-transform: uppercase;
+}
+
+.scorm-editorial.scorm-workbench .scorm-breadcrumb::before {
+  content: "// ";
+  color: var(--wb-orange);
+}
+
+/* Canvas */
+.scorm-editorial.scorm-workbench .scorm-main,
+.scorm-editorial.scorm-workbench main {
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.010) 0, rgba(255,255,255,.010) 1px, transparent 1px, transparent 4px),
+    radial-gradient(circle at 75% -15%, rgba(255, 138, 31, .035), transparent 26rem),
+    linear-gradient(180deg, #14120f 0%, #100f0d 100%) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-page-hero {
+  padding-top: 30px;
+  padding-bottom: 28px;
+  border-color: var(--wb-line) !important;
+}
+
+/* Top bar */
+.scorm-editorial.scorm-workbench .scorm-topbar {
+  background: rgba(17, 16, 14, .94) !important;
+  border-color: #342e27 !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.scorm-editorial.scorm-workbench .scorm-topbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,138,31,.26), transparent);
+  pointer-events: none;
+}
+
+.scorm-editorial.scorm-workbench .scorm-page-title {
+  font-size: 21px !important;
+  line-height: 1 !important;
+}
+
+/* Sidebar */
+.scorm-editorial.scorm-workbench .scorm-sidebar,
+.scorm-editorial.scorm-workbench .scorm-mobile-drawer {
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.008) 0, rgba(255,255,255,.008) 1px, transparent 1px, transparent 4px),
+    linear-gradient(180deg, #0d0c0a 0%, #12100e 100%) !important;
+  border-color: #302a23 !important;
+  box-shadow: none !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-brand-wrap,
+.scorm-editorial.scorm-workbench .scorm-sidebar-footer,
+.scorm-editorial.scorm-workbench .scorm-mobile-drawer > div {
+  border-color: #302a23 !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-brand-mark {
+  border-radius: 50% !important;
+  color: #14110d !important;
+  background: var(--wb-orange) !important;
+  border: 1px solid #ff9f43 !important;
+  box-shadow: none !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-brand-name {
+  font-size: 19px !important;
+  letter-spacing: .04em !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-brand-subtitle {
+  font-family: "IBM Plex Mono", monospace !important;
+  color: var(--wb-muted) !important;
+  font-size: 9px !important;
+  letter-spacing: .08em;
+  text-transform: lowercase;
+}
+
+.scorm-editorial.scorm-workbench .scorm-nav-section {
+  color: #8f775a !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  letter-spacing: .16em !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-nav-item {
+  min-height: 46px;
+  border-radius: var(--wb-radius-sm) !important;
+  color: #bca889 !important;
+  border: 1px solid transparent;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 12px !important;
+  letter-spacing: .015em;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .15s ease;
+}
+
+.scorm-editorial.scorm-workbench .scorm-nav-item:hover {
+  background: #1a1713 !important;
+  border-color: #3b342c !important;
+  color: var(--wb-cream) !important;
+  transform: translateX(2px);
+}
+
+.scorm-editorial.scorm-workbench .scorm-nav-icon {
+  width: 29px !important;
+  height: 29px !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  border: 1px solid #43392e !important;
+  color: #a68c69 !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-nav-active {
+  background: linear-gradient(90deg, rgba(255,138,31,.115), rgba(255,138,31,.025)) !important;
+  border-color: rgba(255,138,31,.32) !important;
+  color: var(--wb-cream) !important;
+  box-shadow: inset 3px 0 0 var(--wb-orange) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-nav-active .scorm-nav-icon {
+  color: #15110c !important;
+  background: var(--wb-orange) !important;
+  border-color: var(--wb-orange) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-nav-chevron { color: var(--wb-orange) !important; }
+
+.scorm-editorial.scorm-workbench .scorm-status-card {
+  background: #171511 !important;
+  border: 1px solid #393229 !important;
+  border-radius: var(--wb-radius) !important;
+  color: var(--wb-cream-soft) !important;
+  box-shadow: none !important;
+  font-family: "IBM Plex Mono", monospace !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-status-dot {
+  background: var(--wb-green) !important;
+  box-shadow: 0 0 0 2px rgba(121,220,122,.10), 0 0 8px rgba(121,220,122,.18) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-sidebar-switch,
+.scorm-editorial.scorm-workbench .scorm-topbar-icon,
+.scorm-editorial.scorm-workbench .scorm-drawer-close {
+  background: #171511 !important;
+  color: var(--wb-tan) !important;
+  border: 1px solid #3b342c !important;
+  border-radius: var(--wb-radius) !important;
+  box-shadow: none !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-sidebar-switch:hover,
+.scorm-editorial.scorm-workbench .scorm-topbar-icon:hover,
+.scorm-editorial.scorm-workbench .scorm-drawer-close:hover {
+  background: #211d18 !important;
+  border-color: var(--wb-orange) !important;
+  color: var(--wb-cream) !important;
+}
+
+/* Panels and cards */
+.scorm-editorial.scorm-workbench .scorm-panel,
+.scorm-editorial.scorm-workbench .scorm-metric-card,
+.scorm-editorial.scorm-workbench .scorm-action-card,
+.scorm-editorial.scorm-workbench .scorm-soft-card,
+.scorm-editorial.scorm-workbench main [class~="bg-white"],
+.scorm-editorial.scorm-workbench main [class*="bg-white/"] {
+  background: #1a1815 !important;
+  border-color: #3a332b !important;
+  color: var(--wb-cream) !important;
+  box-shadow: none !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-panel,
+.scorm-editorial.scorm-workbench .scorm-metric-card,
+.scorm-editorial.scorm-workbench .scorm-action-card,
+.scorm-editorial.scorm-workbench main [class*="rounded-3xl"],
+.scorm-editorial.scorm-workbench main [class*="rounded-2xl"],
+.scorm-editorial.scorm-workbench main [class*="rounded-["] {
+  border-radius: var(--wb-radius) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-panel-header {
+  background: #211e1a !important;
+  border-color: #3a332b !important;
+  min-height: 62px;
+}
+
+.scorm-editorial.scorm-workbench .scorm-panel-header h3,
+.scorm-editorial.scorm-workbench .scorm-action-card > .font-semibold,
+.scorm-editorial.scorm-workbench .scorm-course-row .font-semibold {
+  color: var(--wb-cream) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-metric-card {
+  min-height: 116px;
+  padding: 17px 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.scorm-editorial.scorm-workbench .scorm-metric-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--wb-orange), transparent 74%);
+  opacity: .78;
+}
+
+.scorm-editorial.scorm-workbench .scorm-metric-card::after,
+.scorm-editorial.scorm-workbench .scorm-action-card::before {
+  display: none !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-metric-value {
+  color: var(--wb-orange) !important;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 29px !important;
+  font-weight: 600 !important;
+  letter-spacing: -.045em !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-metric-label {
+  color: var(--wb-tan) !important;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 9px !important;
+  letter-spacing: .12em !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-metric-icon,
+.scorm-editorial.scorm-workbench .scorm-action-icon,
+.scorm-editorial.scorm-workbench .scorm-empty-icon,
+.scorm-editorial.scorm-workbench .scorm-action-arrow {
+  background: rgba(255,138,31,.08) !important;
+  border: 1px solid rgba(255,138,31,.26) !important;
+  color: var(--wb-orange) !important;
+  border-radius: 50% !important;
+  box-shadow: none !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-action-card {
+  min-height: 172px;
+  padding: 18px;
+  border-top: 2px solid rgba(255,138,31,.32) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-action-card:hover {
+  transform: translateY(-2px);
+  background: #211e1a !important;
+  border-color: rgba(255,138,31,.55) !important;
+  box-shadow: var(--wb-shadow) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-action-card > div.text-xs,
+.scorm-editorial.scorm-workbench .scorm-action-card p {
+  color: var(--wb-tan) !important;
+}
+
+/* Course/activity lists */
+.scorm-editorial.scorm-workbench .scorm-list > * + * { border-color: #332d26 !important; }
+
+.scorm-editorial.scorm-workbench .scorm-course-row,
+.scorm-editorial.scorm-workbench .scorm-activity-row {
+  background: #1a1815 !important;
+  color: var(--wb-cream) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-row:hover,
+.scorm-editorial.scorm-workbench .scorm-activity-row:hover {
+  background: #211e1a !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-text-link {
+  color: var(--wb-orange) !important;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 10px !important;
+  letter-spacing: .025em;
+}
+
+.scorm-editorial.scorm-workbench .scorm-text-link:hover { color: var(--wb-orange-strong) !important; }
+
+.scorm-editorial.scorm-workbench .scorm-status-pill {
+  border-radius: 3px !important;
+  font-family: "IBM Plex Mono", monospace !important;
+  letter-spacing: .08em !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-status-pill.is-published {
+  background: rgba(121,220,122,.08) !important;
+  border-color: rgba(121,220,122,.30) !important;
+  color: var(--wb-green) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-status-pill.is-draft {
+  background: rgba(241,199,91,.06) !important;
+  border-color: rgba(241,199,91,.24) !important;
+  color: var(--wb-yellow) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-health-pill {
+  background: #171511 !important;
+  border-color: #3b342c !important;
+  border-radius: 3px !important;
+  color: var(--wb-tan) !important;
+  box-shadow: none !important;
+  font-family: "IBM Plex Mono", monospace !important;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.scorm-editorial.scorm-workbench .scorm-health-pill.is-online {
+  background: rgba(121,220,122,.06) !important;
+  border-color: rgba(121,220,122,.24) !important;
+  color: var(--wb-green) !important;
+}
+
+/* Progress */
+.scorm-editorial.scorm-workbench .scorm-progress-track {
+  height: 6px;
+  border-radius: 1px !important;
+  background: #302a23 !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-progress-fill,
+.scorm-editorial.scorm-workbench .scorm-progress-fill.is-light {
+  border-radius: 1px !important;
+  background: linear-gradient(90deg, var(--wb-orange), #f0b94e) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-progress-hero {
+  padding: 22px;
+  border-radius: var(--wb-radius) !important;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.010) 0, rgba(255,255,255,.010) 1px, transparent 1px, transparent 4px),
+    linear-gradient(145deg, #201c17 0%, #171411 100%) !important;
+  border: 1px solid #463a2f !important;
+  border-top: 2px solid var(--wb-orange) !important;
+  color: var(--wb-cream) !important;
+  box-shadow: none !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-progress-hero h3,
+.scorm-editorial.scorm-workbench .scorm-progress-hero div,
+.scorm-editorial.scorm-workbench .scorm-progress-hero span { color: inherit !important; }
+
+.scorm-editorial.scorm-workbench .scorm-progress-kicker { color: var(--wb-orange) !important; }
+.scorm-editorial.scorm-workbench .scorm-progress-number {
+  color: var(--wb-cream) !important;
+  font-family: "Barlow Condensed", sans-serif !important;
+  font-size: clamp(4rem, 8vw, 5.5rem) !important;
+  font-weight: 800 !important;
+  letter-spacing: -.02em !important;
+}
+.scorm-editorial.scorm-workbench .scorm-progress-icon {
+  background: rgba(255,138,31,.08) !important;
+  border-color: rgba(255,138,31,.28) !important;
+  color: var(--wb-orange) !important;
+  border-radius: 50% !important;
+}
+.scorm-editorial.scorm-workbench .scorm-activity-progress {
+  background: rgba(255,138,31,.08) !important;
+  color: var(--wb-orange) !important;
+  border: 1px solid rgba(255,138,31,.24);
+  border-radius: 3px !important;
+  font-family: "IBM Plex Mono", monospace !important;
+}
+
+/* Inputs / form controls */
+.scorm-editorial.scorm-workbench input,
+.scorm-editorial.scorm-workbench textarea,
+.scorm-editorial.scorm-workbench select {
+  background: #0f0e0c !important;
+  color: var(--wb-cream) !important;
+  border: 1px solid #43392e !important;
+  border-radius: var(--wb-radius-sm) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.012) !important;
+  font-family: "IBM Plex Mono", monospace !important;
+}
+
+.scorm-editorial.scorm-workbench input::placeholder,
+.scorm-editorial.scorm-workbench textarea::placeholder { color: #7c6950 !important; }
+
+.scorm-editorial.scorm-workbench input:hover,
+.scorm-editorial.scorm-workbench textarea:hover,
+.scorm-editorial.scorm-workbench select:hover { border-color: #62503d !important; }
+
+.scorm-editorial.scorm-workbench input:focus,
+.scorm-editorial.scorm-workbench textarea:focus,
+.scorm-editorial.scorm-workbench select:focus {
+  outline: none !important;
+  border-color: var(--wb-orange) !important;
+  box-shadow: 0 0 0 2px rgba(255,138,31,.12) !important;
+}
+
+.scorm-editorial.scorm-workbench input[type="file"]::file-selector-button {
+  border-radius: 3px !important;
+  background: var(--wb-orange) !important;
+  color: #17110b !important;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-weight: 600 !important;
+}
+
+/* Buttons */
+.scorm-editorial.scorm-workbench .scorm-button-primary,
+.scorm-editorial.scorm-workbench button[class*="bg-quizmoto"],
+.scorm-editorial.scorm-workbench a[class*="bg-quizmoto"] {
+  background: var(--wb-orange) !important;
+  border: 1px solid var(--wb-orange) !important;
+  color: #17110b !important;
+  border-radius: var(--wb-radius-sm) !important;
+  box-shadow: none !important;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-weight: 600 !important;
+  letter-spacing: .035em;
+}
+
+.scorm-editorial.scorm-workbench .scorm-button-primary:hover,
+.scorm-editorial.scorm-workbench button[class*="bg-quizmoto"]:hover,
+.scorm-editorial.scorm-workbench a[class*="bg-quizmoto"]:hover {
+  background: var(--wb-orange-strong) !important;
+  border-color: var(--wb-orange-strong) !important;
+  color: #17110b !important;
+  transform: translateY(-1px);
+  box-shadow: 0 7px 18px rgba(255,138,31,.10) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-button-secondary {
+  background: #171511 !important;
+  border: 1px solid #574531 !important;
+  color: var(--wb-orange) !important;
+  border-radius: var(--wb-radius-sm) !important;
+  box-shadow: none !important;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-weight: 600 !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-button-secondary:hover {
+  background: #211d18 !important;
+  border-color: var(--wb-orange) !important;
+  color: var(--wb-cream) !important;
+}
+
+.scorm-editorial.scorm-workbench button:focus-visible,
+.scorm-editorial.scorm-workbench a:focus-visible {
+  outline: 2px solid var(--wb-orange) !important;
+  outline-offset: 2px;
+}
+
+/* Alerts */
+.scorm-editorial.scorm-workbench .scorm-alert {
+  border-radius: var(--wb-radius-sm) !important;
+  box-shadow: none !important;
+  font-family: "IBM Plex Mono", monospace !important;
+}
+.scorm-editorial.scorm-workbench .scorm-alert-info {
+  background: rgba(255,138,31,.06) !important;
+  border-color: rgba(255,138,31,.26) !important;
+  color: #eab66f !important;
+}
+.scorm-editorial.scorm-workbench .scorm-alert-danger {
+  background: rgba(231,104,88,.07) !important;
+  border-color: rgba(231,104,88,.28) !important;
+  color: #f09185 !important;
+}
+
+/* Generic table normalization */
+.scorm-editorial.scorm-workbench table {
+  background: #171511 !important;
+  border-color: #393229 !important;
+  color: var(--wb-cream-soft) !important;
+}
+.scorm-editorial.scorm-workbench thead,
+.scorm-editorial.scorm-workbench th {
+  background: #211e1a !important;
+  color: var(--wb-tan) !important;
+  border-color: #393229 !important;
+  font-family: "IBM Plex Mono", monospace !important;
+  text-transform: uppercase;
+  letter-spacing: .10em;
+  font-size: 10px;
+}
+.scorm-editorial.scorm-workbench td,
+.scorm-editorial.scorm-workbench tr {
+  border-color: #332d26 !important;
+}
+.scorm-editorial.scorm-workbench tbody tr:hover { background: #211e1a !important; }
+
+/* Legacy utility colors inside SCORM admin */
+.scorm-editorial.scorm-workbench main [class*="text-blue-"],
+.scorm-editorial.scorm-workbench main [class*="text-purple-"],
+.scorm-editorial.scorm-workbench main [class*="text-violet-"],
+.scorm-editorial.scorm-workbench main [class*="text-quizmoto-"] { color: var(--wb-orange) !important; }
+.scorm-editorial.scorm-workbench main [class*="text-green-"],
+.scorm-editorial.scorm-workbench main [class*="text-emerald-"] { color: var(--wb-green) !important; }
+.scorm-editorial.scorm-workbench main [class*="text-red-"] { color: var(--wb-red) !important; }
+.scorm-editorial.scorm-workbench main [class*="text-yellow-"],
+.scorm-editorial.scorm-workbench main [class*="text-amber-"] { color: var(--wb-yellow) !important; }
+
+.scorm-editorial.scorm-workbench main [class*="bg-blue-"],
+.scorm-editorial.scorm-workbench main [class*="bg-purple-"],
+.scorm-editorial.scorm-workbench main [class*="bg-violet-"] {
+  background: rgba(255,138,31,.08) !important;
+}
+
+.scorm-editorial.scorm-workbench main [class*="border-blue-"],
+.scorm-editorial.scorm-workbench main [class*="border-purple-"],
+.scorm-editorial.scorm-workbench main [class*="border-violet-"] {
+  border-color: rgba(255,138,31,.30) !important;
+}
+
+/* Mobile navigation */
+.scorm-editorial.scorm-workbench .scorm-mobile-tabbar {
+  background: rgba(19, 17, 14, .96) !important;
+  border: 1px solid #41372d !important;
+  border-radius: 7px !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,.32) !important;
+  backdrop-filter: blur(16px);
+}
+.scorm-editorial.scorm-workbench .scorm-mobile-tab {
+  color: #8f785b !important;
+  border-radius: 4px !important;
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 9px !important;
+  letter-spacing: .02em;
+}
+.scorm-editorial.scorm-workbench .scorm-mobile-tab.is-active {
+  background: rgba(255,138,31,.10) !important;
+  color: var(--wb-orange) !important;
+  box-shadow: inset 0 -2px 0 var(--wb-orange) !important;
+}
+
+/* Selection */
+.scorm-editorial.scorm-workbench ::selection {
+  background: var(--wb-orange);
+  color: #15110c;
+}
+
+@media (max-width: 767px) {
+  .scorm-editorial.scorm-workbench .scorm-page-hero { padding-top: 18px; }
+  .scorm-editorial.scorm-workbench main h2 { font-size: clamp(2.2rem, 12vw, 3.25rem) !important; }
+  .scorm-editorial.scorm-workbench .scorm-metric-card { min-height: 106px; padding: 14px; }
+  .scorm-editorial.scorm-workbench .scorm-metric-value { font-size: 25px !important; }
+  .scorm-editorial.scorm-workbench .scorm-action-card { min-height: 152px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scorm-editorial.scorm-workbench *,
+  .scorm-editorial.scorm-workbench *::before,
+  .scorm-editorial.scorm-workbench *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
