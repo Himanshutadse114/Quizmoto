@@ -83,21 +83,31 @@ describe('ScormTrackingPackageFinalizer', () => {
         expect((twice.match(/function flushSuspendState\(markExit\)/g) || []).length).to.equal(1);
     });
 
-    it('injects compact responsive rules into generated learner courses', () => {
-        const html = '<html><head><title>Course</title></head><body></body></html>';
+    it('injects polished responsive rules and mobile viewport support into generated learner courses', () => {
+        const html = '<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Course</title></head><body></body></html>';
         const patched = patchMobileCourse(html);
         expect(patched).to.include('id="quizmoto-mobile-course-css"');
+        expect(patched).to.include('viewport-fit=cover');
+        expect(patched).to.include('interactive-widget=resizes-content');
         expect(patched).to.include('@media (max-width: 680px)');
-        expect(patched).to.include('.hero{grid-template-columns:1fr');
-        expect(patched).to.include('.quiz-options{grid-template-columns:1fr');
-        expect(patched).to.include('footer{height:56px');
+        expect(patched).to.include('height:100dvh');
+        expect(patched).to.include('env(safe-area-inset-bottom)');
+        expect(patched).to.include('.nav-btn{min-height:44px');
+        expect(patched).to.include('.quiz-option{padding:13px 14px!important;min-height:52px');
+        expect(patched).to.include('.qmx-point{min-height:44px');
+        expect(patched).to.include('.qmx-visual.qmx-visual-pan');
+        expect(patched).to.include('width:680px!important;min-width:680px!important');
+        expect(patched).to.include('@media (orientation: landscape) and (max-height: 500px)');
         expect(MOBILE_COURSE_CSS).to.include('@media (max-width: 390px)');
     });
 
-    it('does not inject the mobile stylesheet twice', () => {
+    it('does not inject the mobile stylesheet or viewport configuration twice', () => {
         const html = '<html><head><title>Course</title></head><body></body></html>';
         const once = patchMobileCourse(html);
         const twice = patchMobileCourse(once);
         expect(twice).to.equal(once);
+        expect((twice.match(/quizmoto-mobile-course-css/g) || []).length).to.equal(1);
+        expect((twice.match(/name="viewport"/g) || []).length).to.equal(1);
+        expect((twice.match(/viewport-fit=cover/g) || []).length).to.equal(1);
     });
 });
