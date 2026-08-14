@@ -8,6 +8,13 @@ import ReactionBar from '../../components/ReactionBar';
 import FinalPodium from '../../components/FinalPodium';
 import { audio } from '../../utils/audioEngine';
 
+const ANSWER_META = [
+    { label: 'A', symbol: '▲' },
+    { label: 'B', symbol: '◆' },
+    { label: 'C', symbol: '●' },
+    { label: 'D', symbol: '■' }
+];
+
 const PlayerGame = () => {
     const socket = useSocket();
     const navigate = useNavigate();
@@ -414,16 +421,17 @@ const PlayerGame = () => {
     })();
 
     const colors = ['bg-quizmoto-red', 'bg-quizmoto-blue', 'bg-quizmoto-yellow', 'bg-quizmoto-green'];
+    const optionText = (opt) => typeof opt === 'string' ? opt : (opt && opt.text) || String(opt);
 
     return (
-        <div className="h-screen flex flex-col p-4 bg-quizmoto-purple overflow-hidden fixed inset-0 text-white">
+        <div className="min-h-[100dvh] h-[100dvh] flex flex-col px-3 py-3 sm:p-4 bg-quizmoto-purple overflow-y-auto fixed inset-0 text-white overscroll-contain">
             {isHostDisconnected && (
                 <div className="absolute inset-0 z-50 bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
                     <div className="bg-white text-quizmoto-purple p-8 rounded-3xl text-center max-w-sm shadow-2xl">
                         <h2 className="text-2xl font-black mb-4 uppercase tracking-tight">Host Disconnected</h2>
                         <p className="font-bold opacity-80 mb-6">Waiting for the host to reconnect...</p>
                         <div className="w-8 h-8 border-4 border-quizmoto-purple/20 border-t-quizmoto-purple rounded-full animate-spin mx-auto mb-6" />
-                        <button type="button" onClick={handleLeave} className="text-sm underline opacity-60 font-black tracking-widest">
+                        <button type="button" onClick={handleLeave} className="min-h-11 px-4 text-sm underline opacity-60 font-black tracking-widest">
                             LEAVE GAME
                         </button>
                     </div>
@@ -449,40 +457,54 @@ const PlayerGame = () => {
 
                 {gameState === 'question' && question && (
                     <motion.div key="question" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        className="flex-1 flex flex-col min-h-0">
-                        <div className="flex justify-between items-center mb-3 shrink-0">
-                            <span className="text-sm font-bold text-white/50">
+                        className="flex-1 w-full max-w-4xl mx-auto flex flex-col min-h-0">
+                        <div className="flex justify-between items-center gap-3 mb-3 shrink-0">
+                            <span className="inline-flex min-h-10 items-center rounded-full border border-white/10 bg-white/5 px-3 text-sm font-bold text-white/60">
                                 Q{(question.index || 0) + 1}/{question.totalQuestions || '?'}
                             </span>
-                            <span className={'text-lg font-black tabular-nums ' + (timeLeft <= 5 ? 'text-quizmoto-yellow' : '')}>
+                            <span className={'inline-flex min-h-10 min-w-16 items-center justify-center rounded-full border px-3 text-base font-black tabular-nums ' + (timeLeft <= 5 ? 'border-quizmoto-yellow/50 bg-quizmoto-yellow/15 text-quizmoto-yellow' : 'border-white/10 bg-white/5 text-white')}>
                                 {timeLeft}s
                             </span>
                         </div>
-                        <h1 className="text-xl md:text-2xl font-bold text-center mb-4 shrink-0 px-2">
-                            {question.questionText}
-                        </h1>
+
+                        <div className="shrink-0 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 sm:px-6 sm:py-5 mb-3">
+                            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-center leading-snug">
+                                {question.questionText}
+                            </h1>
+                        </div>
+
                         {question.image && (
                             <div className="flex justify-center mb-3 shrink-0">
                                 <img src={question.image} alt="" className="max-h-28 rounded-xl object-contain" />
                             </div>
                         )}
-                        <div className="grid grid-cols-2 gap-2 md:gap-4 flex-1 pb-4 min-h-0">
-                            {options.map((opt, idx) => (
-                                <button
-                                    key={idx}
-                                    type="button"
-                                    onClick={() => submitAnswer(idx)}
-                                    disabled={lastAnswer !== -1}
-                                    className={
-                                        colors[idx % 4] +
-                                        ' text-white p-4 md:p-6 rounded-2xl font-black text-xl md:text-3xl shadow-lg disabled:opacity-50 transition-transform active:scale-95 flex items-center justify-center text-center leading-snug'
-                                    }
-                                >
-                                    <span className="w-full text-center">
-                                        {typeof opt === 'string' ? opt : (opt && opt.text) || String(opt)}
-                                    </span>
-                                </button>
-                            ))}
+
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4 flex-1 pb-3 min-h-0 auto-rows-fr">
+                            {options.map((opt, idx) => {
+                                const text = optionText(opt);
+                                const meta = ANSWER_META[idx % ANSWER_META.length];
+                                return (
+                                    <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={() => submitAnswer(idx)}
+                                        disabled={lastAnswer !== -1}
+                                        aria-label={`Answer ${meta.label}: ${text}`}
+                                        className={
+                                            colors[idx % 4] +
+                                            ' relative min-h-[104px] sm:min-h-[128px] text-white px-3 py-4 sm:px-5 sm:py-5 rounded-[22px] font-black text-base sm:text-xl md:text-2xl shadow-lg border border-white/15 disabled:opacity-50 transition-[transform,filter,box-shadow] hover:brightness-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/70 active:scale-[0.98] flex items-center justify-center text-center leading-snug touch-manipulation'
+                                        }
+                                    >
+                                        <span className="absolute left-3 top-3 inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded-full border border-white/25 bg-black/20 px-2 text-xs font-black shadow-sm" aria-hidden="true">
+                                            <span className="text-[11px]">{meta.symbol}</span>
+                                            <span>{meta.label}</span>
+                                        </span>
+                                        <span className="w-full text-center px-1 pt-7 sm:px-4 sm:pt-5 break-words">
+                                            {text}
+                                        </span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </motion.div>
                 )}
@@ -494,7 +516,9 @@ const PlayerGame = () => {
                             {timeLeft}s
                         </div>
                         <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mb-4" />
-                        <p className="font-black text-white text-lg">Answer locked in</p>
+                        <p className="font-black text-white text-lg">
+                            {lastAnswer >= 0 ? `Answer ${ANSWER_META[lastAnswer % ANSWER_META.length].label} locked in` : 'Answer locked in'}
+                        </p>
                         <p className="font-bold text-white/50 text-sm mt-1 text-center">
                             Waiting for others — time left on this question
                         </p>
@@ -552,7 +576,7 @@ const PlayerGame = () => {
                                     if (localStorage.getItem('playerToken')) navigate('/player/dashboard');
                                     else navigate('/');
                                 }}
-                                className="px-4 py-2 rounded-xl bg-white text-quizmoto-purple text-xs font-black shadow-lg"
+                                className="min-h-11 px-4 py-2 rounded-xl bg-white text-quizmoto-purple text-xs font-black shadow-lg"
                             >
                                 Done
                             </button>
