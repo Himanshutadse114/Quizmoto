@@ -7,6 +7,7 @@ const router = express.Router();
 const auth = require('../middleware');
 const { featureFlags, scormMaxUploadMb } = require('../../config/featureFlags');
 const { analyzePolicy } = require('../../services/scorm/PolicyAnalysisService');
+const { planExperienceV5 } = require('../../services/scorm/ScormExperiencePlanner');
 const { buildScormPackageZip } = require('../../services/scorm/ScormTrackingPackageFinalizer');
 const { getTheme, listThemes, normalizeThemeId } = require('../../services/scorm/ScormThemeCatalog');
 const { ScormPackage } = require('../../models/scorm');
@@ -56,11 +57,12 @@ router.post('/analyze', auth, async (req, res) => {
 
         const selectedThemeId = normalizeThemeId(themeId || templateId || 1);
         const selectedTheme = getTheme(selectedThemeId);
-        const analysis = await analyzePolicy({
+        let analysis = await analyzePolicy({
             fileBase64: raw,
             mimeType: mimeType || 'application/pdf',
             detailLevel: detailLevel || 'detailed'
         });
+        analysis = planExperienceV5(analysis);
         if (titleHint && !analysis.title) analysis.title = titleHint;
         analysis.themeId = selectedThemeId;
         analysis.themeName = selectedTheme.name;
@@ -85,6 +87,7 @@ router.post('/generate', auth, async (req, res) => {
             const raw = String(fileBase64).replace(/^data:[^;]+;base64,/, '');
             analysis = await analyzePolicy({ fileBase64: raw, mimeType: mimeType || 'application/pdf', detailLevel: detailLevel || 'detailed' });
         }
+        analysis = planExperienceV5(analysis);
         analysis = {
             ...(analysis || {}),
             themeId: selectedThemeId,
