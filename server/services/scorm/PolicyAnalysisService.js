@@ -44,6 +44,57 @@ const DEFAULT_MODEL_CANDIDATES = [
 
 const GEMINI_3_THINKING_LEVELS = new Set(['minimal', 'low', 'medium', 'high']);
 
+const SCORM_ANALYSIS_SCHEMA = {
+    type: 'object',
+    properties: {
+        title: { type: 'string' },
+        summary: { type: 'string' },
+        slides: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    title: { type: 'string' },
+                    content: { type: 'string' },
+                    keyPoints: { type: 'array', items: { type: 'string' } },
+                    layout: {
+                        type: 'string',
+                        enum: ['process', 'cards', 'timeline', 'comparison', 'hub', 'spotlight', 'matrix', 'cycle']
+                    },
+                    visualTitle: { type: 'string' },
+                    interaction: {
+                        type: 'object',
+                        properties: {
+                            type: {
+                                type: 'string',
+                                enum: ['step_explore', 'hotspot_explore', 'compare_reveal', 'focus_reveal']
+                            },
+                            prompt: { type: 'string' }
+                        },
+                        required: ['type', 'prompt']
+                    },
+                    imageQuery: { type: 'string' }
+                },
+                required: ['title', 'content', 'keyPoints', 'layout', 'visualTitle', 'interaction', 'imageQuery']
+            }
+        },
+        quiz: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    question: { type: 'string' },
+                    options: { type: 'array', items: { type: 'string' } },
+                    correctAnswer: { type: 'integer' },
+                    explanation: { type: 'string' }
+                },
+                required: ['question', 'options', 'correctAnswer', 'explanation']
+            }
+        }
+    },
+    required: ['title', 'summary', 'slides', 'quiz']
+};
+
 async function extractTextFromPptx(base64Data) {
     try {
         const zip = await JSZip.loadAsync(base64Data, { base64: true });
@@ -86,7 +137,12 @@ function thinkingLevel() {
 }
 
 function generationConfigForModel(model) {
-    const config = { responseMimeType: 'application/json' };
+    const config = {
+        responseMimeType: 'application/json',
+        responseJsonSchema: SCORM_ANALYSIS_SCHEMA,
+        maxOutputTokens: 32768,
+        temperature: 0.35
+    };
     if (/^gemini-3(?:\.|-|$)/i.test(String(model || ''))) {
         config.thinkingConfig = { thinkingLevel: thinkingLevel() };
     }
@@ -197,13 +253,51 @@ function analysisNeedsRefinement(analysis, detailLevel) {
     return qualityIssues(analysis, detailLevel).length > 0;
 }
 
+function jsonParseCandidates(text) {
+    const raw = String(text || '').replace(/^\uFEFF/, '').trim();
+    const candidates = [];
+    const add = (value) => {
+        const candidate = String(value || '').trim();
+        if (candidate && !candidates.includes(candidate)) candidates.push(candidate);
+    };
+
+    add(raw);
+
+    const unfenced = raw
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```\s*$/i, '')
+        .trim();
+    add(unfenced);
+
+    const firstBrace = unfenced.indexOf('{');
+    const lastBrace = unfenced.lastIndexOf('}');
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+        const objectText = unfenced.slice(firstBrace, lastBrace + 1);
+        add(objectText);
+        add(objectText.replace(/,\s*([}\]])/g, '$1'));
+    }
+
+    return candidates;
+}
+
 function parseAnalysis(text) {
-    let analysis;
-    try {
-        analysis = JSON.parse(text || '{}');
-    } catch (_) {
+    let analysis = null;
+    let parseError = null;
+
+    for (const candidate of jsonParseCandidates(text)) {
+        try {
+            analysis = JSON.parse(candidate);
+            parseError = null;
+            break;
+        } catch (err) {
+            parseError = err;
+        }
+    }
+
+    if (!analysis) {
         const e = new Error('Gemini returned invalid JSON');
         e.code = 'GEMINI_BAD_JSON';
+        e.cause = parseError || undefined;
         throw e;
     }
     if (!analysis.title || !Array.isArray(analysis.slides) || !Array.isArray(analysis.quiz)) {
@@ -212,6 +306,21 @@ function parseAnalysis(text) {
         throw e;
     }
     return analysis;
+}
+
+function geminiCandidate(raw) {
+    const candidate = raw?.candidates?.[0] || {};
+    const parts = Array.isArray(candidate?.content?.parts) ? candidate.content.parts : [];
+    const text = parts
+        .filter((part) => part && part.thought !== true)
+        .map((part) => part.text || '')
+        .join('')
+        .trim();
+    return {
+        text,
+        finishReason: String(candidate.finishReason || ''),
+        candidateCount: Array.isArray(raw?.candidates) ? raw.candidates.length : 0
+    };
 }
 
 async function callGemini({ apiKey, model, parts }) {
@@ -336,6 +445,7 @@ Create a learning arc:
     let lastStatus = 0;
     let lastBody = '';
     let lastModel = candidates[0];
+    let lastStructuredError = null;
 
     for (const model of candidates) {
         lastModel = model;
@@ -350,8 +460,27 @@ Create a learning arc:
         }
 
         if (response.res.ok) {
-            const text = response.raw?.candidates?.[0]?.content?.parts?.map((p) => p.text || '').join('') || '{}';
-            let analysis = parseAnalysis(text);
+            const candidate = geminiCandidate(response.raw);
+            let analysis;
+            try {
+                analysis = parseAnalysis(candidate.text);
+            } catch (parseErr) {
+                if (parseErr.code === 'GEMINI_BAD_JSON' || parseErr.code === 'GEMINI_INCOMPLETE') {
+                    lastStructuredError = parseErr;
+                    lastStatus = 200;
+                    lastBody = parseErr.code;
+                    logger.warn('scorm_gemini_structured_output_invalid', {
+                        module: 'scorm',
+                        model,
+                        code: parseErr.code,
+                        finishReason: candidate.finishReason || 'unknown',
+                        textLength: candidate.text.length,
+                        candidateCount: candidate.candidateCount
+                    });
+                    continue;
+                }
+                throw parseErr;
+            }
 
             const initialIssues = qualityIssues(analysis, detailLevel);
             if (initialIssues.length) {
@@ -359,11 +488,11 @@ Create a learning arc:
                 try {
                     const refined = await callGemini({ apiKey, model, parts: [...baseParts, { text: refinementPrompt }] });
                     if (refined.res.ok) {
-                        const refinedText = refined.raw?.candidates?.[0]?.content?.parts?.map((p) => p.text || '').join('') || '{}';
-                        const candidate = parseAnalysis(refinedText);
-                        const refinedIssues = qualityIssues(candidate, detailLevel);
+                        const refinedCandidate = geminiCandidate(refined.raw);
+                        const candidateAnalysis = parseAnalysis(refinedCandidate.text);
+                        const refinedIssues = qualityIssues(candidateAnalysis, detailLevel);
                         if (refinedIssues.length < initialIssues.length) {
-                            analysis = candidate;
+                            analysis = candidateAnalysis;
                             logger.info('scorm_gemini_refined', {
                                 module: 'scorm',
                                 model,
@@ -401,6 +530,12 @@ Create a learning arc:
         if (!retryable) break;
     }
 
+    if (lastStructuredError && (!lastStatus || lastStatus === 200 || lastStatus === 404)) {
+        const e = new Error('Gemini could not produce a valid course structure after retrying the available models. Please retry course generation.');
+        e.code = lastStructuredError.code || 'GEMINI_BAD_JSON';
+        throw e;
+    }
+
     const friendly = friendlyGeminiError(lastStatus, lastBody, lastModel);
     const e = new Error(friendly.message);
     e.code = friendly.code;
@@ -418,7 +553,11 @@ module.exports = {
     DEFAULT_MODEL_CANDIDATES,
     DETAIL_CONFIG,
     VISUAL_POINT_WORD_LIMITS,
+    SCORM_ANALYSIS_SCHEMA,
     analysisNeedsRefinement,
     qualityIssues,
-    wordCount
+    wordCount,
+    jsonParseCandidates,
+    parseAnalysis,
+    geminiCandidate
 };
