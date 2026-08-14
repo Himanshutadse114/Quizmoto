@@ -3,81 +3,157 @@ const { buildScormPackageZip: buildVisualPackage } = require('./ScormVisualTheme
 
 const MOBILE_COURSE_CSS = `
 <style id="quizmoto-mobile-course-css">
+html,body{width:100%;max-width:100%;overscroll-behavior:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+#app{min-height:100vh;height:100vh;min-height:100dvh;height:100dvh;max-width:100vw;overflow:hidden}
+main{min-width:0;min-height:0;overflow:hidden}
+.slide{-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-gutter:stable}
+button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+
 @media (max-width: 680px){
-  html,body{font-size:14px}
-  #app{min-height:100%;height:100%}
-  header{height:52px;padding:0 10px;gap:8px}
-  .brand-mark{width:30px;height:30px;border-radius:10px;font-size:12px;flex:0 0 auto}
-  header h1{font-size:11px;max-width:32vw}
-  .progress-shell{height:5px;max-width:100px;margin-left:auto}
-  .progress-text{font-size:9px;white-space:nowrap}
+  html,body{font-size:16px;background:#05070D}
+  #app{min-height:100dvh;height:100dvh}
+  header{
+    height:calc(58px + env(safe-area-inset-top));
+    min-height:calc(58px + env(safe-area-inset-top));
+    padding-top:env(safe-area-inset-top);
+    padding-right:max(14px,env(safe-area-inset-right));
+    padding-left:max(14px,env(safe-area-inset-left));
+    padding-bottom:0;
+    gap:10px;
+  }
+  .brand-mark{width:36px!important;height:36px!important;border-radius:12px!important;font-size:13px;flex:0 0 auto}
+  header h1{font-size:13px!important;line-height:1.2;max-width:36vw;color:#E8EEF7!important}
+  .progress-shell{height:6px!important;max-width:112px;margin-left:auto;flex:1 1 70px}
+  .progress-text{font-size:11px!important;white-space:nowrap}
   main{min-height:0}
-  .slide{padding:10px 10px 12px}
-  .slide.active{align-items:flex-start}
-  .stage{width:100%;padding:0;margin:auto}
-  footer{height:56px;padding:0 10px;gap:8px}
-  .nav-btn{padding:9px 12px;border-radius:10px;font-size:11px;min-width:0}
-  .part{font-size:8px;letter-spacing:.09em;max-width:38vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .eyebrow{font-size:9px;letter-spacing:.11em}
-  .title{font-size:clamp(20px,6vw,26px);line-height:1.08;margin:5px 0 8px;letter-spacing:-.025em}
-  .lead{font-size:12px;line-height:1.48;max-width:none}
-  .section-head{margin-bottom:12px}
-  .section-head .title{font-size:clamp(19px,5.8vw,24px);margin-bottom:6px}
-  .glass{border-radius:18px;box-shadow:0 10px 28px rgba(15,23,42,.08)}
-  .hero{grid-template-columns:1fr;gap:14px;padding:16px}
-  .hero-art{min-height:155px;border-radius:18px}
-  .hero-core svg{width:92px;height:92px}
-  .kp-row{gap:6px;margin-top:12px}
-  .chip{font-size:9px;padding:6px 8px}
-  .cards-grid{grid-template-columns:1fr;gap:8px}
-  .concept-card{padding:12px 12px 12px 15px;border-radius:14px;box-shadow:none}
-  .concept-number{width:28px;height:28px;border-radius:9px;margin-bottom:7px;font-size:11px}
-  .concept-card p{font-size:11px;line-height:1.4}
-  .process{grid-template-columns:1fr;gap:8px}
-  .step{min-height:0;padding:12px;border-radius:14px}
-  .step:not(:last-child):after{display:none}
-  .step-no{font-size:8px}
-  .step p{font-size:11px;line-height:1.4;margin-top:6px}
-  .timeline{grid-template-columns:1fr;gap:8px;padding-top:0}
-  .timeline:before{display:none}
-  .milestone{display:grid;grid-template-columns:30px 1fr;align-items:start;gap:8px;text-align:left}
-  .dot{width:26px;height:26px;border-width:5px;margin:8px 0 0;box-shadow:0 0 0 3px var(--soft)}
-  .milestone p{font-size:11px;line-height:1.4;padding:11px;border-radius:13px}
-  .compare{grid-template-columns:1fr;gap:9px}
-  .compare-col{padding:13px;border-radius:15px}
-  .compare-title{font-size:9px;margin-bottom:7px}
-  .compare-item{font-size:11px;line-height:1.38;padding:7px 0}
-  .badge-dot{width:18px;height:18px;font-size:9px}
-  .hub-wrap{grid-template-columns:1fr;gap:12px}
-  .hub-svg{max-height:190px}
-  .hub-list{grid-template-columns:1fr;gap:7px}
-  .hub-item{padding:10px;border-radius:12px;font-size:10.5px;line-height:1.38}
-  .spotlight{grid-template-columns:1fr;gap:12px}
-  .spot-visual{height:165px;border-radius:18px}
-  .spot-visual svg{width:92px;height:92px}
-  .takeaway{padding:11px 12px;border-radius:13px;font-size:11px;line-height:1.4;margin-top:10px}
-  .quiz-wrap{width:100%;max-width:none}
-  .quiz-card{padding:15px;border-radius:18px}
-  .quiz-options{grid-template-columns:1fr;gap:7px;margin-top:13px}
-  .quiz-option{padding:10px 11px;min-height:44px;border-radius:12px;font-size:11px}
-  .feedback{font-size:10px;padding:9px 10px;margin-top:8px}
-  .final-card{padding:18px 14px;border-radius:18px}
-  .score-ring{width:105px;height:105px;margin:14px auto}
-  .score-ring:before{inset:10px}
-  .score-ring span{font-size:27px}
+  .slide{padding:16px 14px 20px!important;scroll-padding-bottom:84px}
+  .slide.active{align-items:flex-start!important;justify-content:center!important}
+  .stage,.qmx-stage{width:100%!important;padding:0;margin:auto}
+  footer{
+    height:calc(64px + env(safe-area-inset-bottom));
+    min-height:calc(64px + env(safe-area-inset-bottom));
+    padding-top:8px!important;
+    padding-right:max(14px,env(safe-area-inset-right))!important;
+    padding-bottom:max(8px,env(safe-area-inset-bottom))!important;
+    padding-left:max(14px,env(safe-area-inset-left))!important;
+    gap:10px;
+  }
+  .nav-btn{min-height:44px!important;padding:10px 15px!important;border-radius:12px!important;font-size:13px!important;line-height:1.15;min-width:78px;display:inline-flex;align-items:center;justify-content:center}
+  .part{font-size:11px!important;line-height:1.2;letter-spacing:.04em!important;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+  .eyebrow,.qmx-kicker{font-size:11px!important;letter-spacing:.08em!important;line-height:1.3}
+  .title{font-size:clamp(26px,7.5vw,34px)!important;line-height:1.04!important;margin:7px 0 11px!important;letter-spacing:-.035em!important;text-wrap:balance}
+  .lead{font-size:15px!important;line-height:1.62!important;max-width:none}
+  .section-head{margin-bottom:18px}
+  .section-head .title{font-size:clamp(24px,7vw,31px)!important;margin-bottom:9px!important}
+  .glass{border-radius:20px!important}
+  .hero{grid-template-columns:1fr!important;gap:18px!important;padding:20px!important}
+  .hero-art{min-height:210px!important;height:210px!important;border-radius:20px!important}
+  .hero-core svg{width:128px!important;height:128px!important}
+  .kp-row{gap:8px!important;margin-top:16px!important}
+  .chip{font-size:12px!important;line-height:1.25;padding:8px 10px!important}
+  .cards-grid{grid-template-columns:1fr!important;gap:10px!important}
+  .concept-card{padding:16px 16px 16px 19px!important;border-radius:16px!important}
+  .concept-number{width:34px!important;height:34px!important;border-radius:10px!important;margin-bottom:10px!important;font-size:13px!important}
+  .concept-card p{font-size:14px!important;line-height:1.5!important}
+  .process{grid-template-columns:1fr!important;gap:10px!important}
+  .step{min-height:0!important;padding:16px!important;border-radius:16px!important}
+  .step:not(:last-child):after{display:none!important}
+  .step-no{font-size:11px!important}
+  .step p{font-size:14px!important;line-height:1.5!important;margin-top:8px!important}
+  .timeline{grid-template-columns:1fr!important;gap:10px!important;padding-top:0!important}
+  .timeline:before{display:none!important}
+  .milestone{display:grid;grid-template-columns:38px 1fr;align-items:start;gap:10px;text-align:left}
+  .dot{width:30px!important;height:30px!important;border-width:5px!important;margin:10px 0 0!important}
+  .milestone p{font-size:14px!important;line-height:1.5!important;padding:14px!important;border-radius:15px!important}
+  .compare{grid-template-columns:1fr!important;gap:11px!important}
+  .compare-col{padding:16px!important;border-radius:17px!important}
+  .compare-title{font-size:11px!important;margin-bottom:9px!important}
+  .compare-item{font-size:14px!important;line-height:1.48!important;padding:9px 0!important}
+  .badge-dot{width:24px!important;height:24px!important;font-size:12px!important}
+  .hub-wrap{grid-template-columns:1fr!important;gap:14px!important}
+  .hub-svg{max-height:250px!important}
+  .hub-list{grid-template-columns:1fr!important;gap:8px!important}
+  .hub-item{padding:13px!important;border-radius:14px!important;font-size:13px!important;line-height:1.48!important}
+  .spotlight{grid-template-columns:1fr!important;gap:15px!important}
+  .spot-visual{height:220px!important;border-radius:20px!important}
+  .spot-visual svg{width:130px!important;height:130px!important}
+  .takeaway{padding:14px 15px!important;border-radius:15px!important;font-size:14px!important;line-height:1.5!important;margin-top:12px!important}
+  .quiz-wrap{width:100%;max-width:none!important}
+  .quiz-card{padding:20px!important;border-radius:20px!important}
+  .quiz-options{grid-template-columns:1fr!important;gap:10px!important;margin-top:17px!important}
+  .quiz-option{padding:13px 14px!important;min-height:52px!important;border-radius:14px!important;font-size:14px!important;line-height:1.35!important}
+  .feedback{font-size:13px!important;line-height:1.5!important;padding:12px 13px!important;margin-top:10px!important}
+  .final-card{padding:24px 18px!important;border-radius:20px!important}
+  .score-ring{width:122px!important;height:122px!important;margin:18px auto!important}
+  .score-ring:before{inset:11px!important}
+  .score-ring span{font-size:31px!important}
+
+  .qmx-frame,.qmx-frame.qmx-wide{grid-template-columns:1fr!important;gap:14px!important}
+  .qmx-copy{padding:20px!important;border-radius:20px!important}
+  .qmx-copy h2{font-size:clamp(26px,7vw,34px)!important;line-height:1.04!important;margin-bottom:12px!important}
+  .qmx-copy p{font-size:15px!important;line-height:1.62!important}
+  .qmx-toolbar{margin-top:17px!important;gap:10px!important;align-items:flex-start!important;flex-direction:column!important}
+  .qmx-points{width:100%;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important}
+  .qmx-point{min-height:44px!important;min-width:0!important;padding:10px 12px!important;font-size:13px!important;line-height:1.2!important;text-align:center}
+  .qmx-count{font-size:11px!important;line-height:1.3!important;white-space:normal!important}
+  .qmx-detail{min-height:72px!important;margin-top:12px!important;padding:14px 15px!important;border-radius:14px!important;font-size:14px!important;line-height:1.5!important}
+  .qmx-detail-label{font-size:10px!important;line-height:1.25!important;margin-bottom:5px!important}
+  .qmx-prompt{font-size:12px!important;line-height:1.45!important;margin-top:9px!important}
+  .qmx-badge{font-size:10px!important;right:10px!important;top:10px!important;padding:7px 9px!important}
+  .qmx-visual,.qmx-frame.qmx-wide .qmx-visual{min-height:300px!important;border-radius:18px!important;padding:8px!important;order:2}
+  .qmx-copy{order:1}
+  .qmx-visual img{width:100%;height:auto;max-width:100%;max-height:340px;object-fit:contain}
+  .qmx-visual.qmx-visual-pan{display:block!important;min-height:390px!important;overflow-x:auto!important;overflow-y:hidden!important;scroll-snap-type:x proximity;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;scrollbar-width:thin}
+  .qmx-visual.qmx-visual-pan img{width:680px!important;min-width:680px!important;max-width:none!important;height:auto!important;max-height:none!important;scroll-snap-align:center;margin:0!important}
+  .qmx-pan-hint{position:sticky;left:12px;bottom:10px;display:inline-flex;align-items:center;gap:5px;background:rgba(5,10,18,.9);color:#E7EEF8;border:1px solid #334861;border-radius:999px;padding:7px 9px;font-size:11px;font-weight:700;line-height:1;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.22);transition:opacity .2s ease}
+  .qmx-visual.has-panned .qmx-pan-hint{opacity:0}
 }
+
 @media (max-width: 390px){
   header h1{display:none}
-  .progress-shell{max-width:78px}
-  .slide{padding:8px}
-  .title{font-size:20px}
-  .section-head .title{font-size:19px}
-  .lead{font-size:11px}
-  footer{height:52px;padding:0 8px}
-  .nav-btn{padding:8px 10px;font-size:10px}
-  .part{font-size:7px;max-width:32vw}
-  .hero{padding:12px}
-  .hero-art{min-height:130px}
+  .progress-shell{max-width:94px}
+  .progress-text{display:none!important}
+  .slide{padding:14px 10px 18px!important}
+  .title{font-size:25px!important}
+  .section-head .title{font-size:23px!important}
+  .lead,.qmx-copy p{font-size:14px!important}
+  footer{gap:7px}
+  .nav-btn{font-size:12px!important;min-width:72px;padding-left:12px!important;padding-right:12px!important}
+  .part{font-size:10px!important;max-width:30vw}
+  .hero{padding:16px!important}
+  .hero-art{min-height:185px!important;height:185px!important}
+  .qmx-copy{padding:17px!important}
+  .qmx-points{grid-template-columns:1fr 1fr}
+  .qmx-point{font-size:12px!important}
+  .qmx-visual.qmx-visual-pan{min-height:372px!important}
+  .qmx-visual.qmx-visual-pan img{width:650px!important;min-width:650px!important}
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (min-width: 560px) and (max-width: 920px){
+  header{height:50px!important;min-height:50px!important;padding-top:0!important}
+  footer{height:54px!important;min-height:54px!important;padding-top:5px!important;padding-bottom:max(5px,env(safe-area-inset-bottom))!important}
+  .brand-mark{width:32px!important;height:32px!important}
+  header h1{font-size:12px!important;max-width:28vw}
+  .slide{padding:10px max(14px,env(safe-area-inset-right)) 12px max(14px,env(safe-area-inset-left))!important}
+  .qmx-frame,.qmx-frame.qmx-wide{grid-template-columns:minmax(250px,.82fr) minmax(360px,1.18fr)!important;gap:12px!important;align-items:start!important}
+  .qmx-copy{padding:16px!important;max-height:calc(100dvh - 126px);overflow:auto}
+  .qmx-copy h2{font-size:24px!important;margin-bottom:8px!important}
+  .qmx-copy p{font-size:13px!important;line-height:1.48!important}
+  .qmx-toolbar{margin-top:10px!important}
+  .qmx-points{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important}
+  .qmx-point{min-height:42px!important;font-size:12px!important;padding:8px!important}
+  .qmx-detail{min-height:56px!important;font-size:12px!important;padding:10px 11px!important}
+  .qmx-prompt{display:none!important}
+  .qmx-visual,.qmx-frame.qmx-wide .qmx-visual{min-height:270px!important;max-height:calc(100dvh - 126px);padding:6px!important}
+  .qmx-visual img{max-height:290px!important}
+  .qmx-visual.qmx-visual-pan{min-height:285px!important;overflow-x:auto!important}
+  .qmx-visual.qmx-visual-pan img{width:560px!important;min-width:560px!important;max-height:none!important}
+  .quiz-card{padding:16px!important}.quiz-card .title{font-size:24px!important}.quiz-options{grid-template-columns:1fr 1fr!important;gap:8px!important}.quiz-option{min-height:44px!important;font-size:12px!important;padding:10px!important}
+  .nav-btn{min-height:40px!important;font-size:12px!important}.part{font-size:10px!important}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .qmx-pan-hint{transition:none!important}
 }
 </style>`;
 
@@ -166,8 +242,19 @@ function patchTrackingRuntime(html) {
 }
 
 function patchMobileCourse(html) {
-    const source = String(html || '');
-    if (!source || source.includes('quizmoto-mobile-course-css')) return source;
+    let source = String(html || '');
+    if (!source) return source;
+
+    const viewport = '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">';
+    if (/<meta\s+name=["']viewport["'][^>]*>/i.test(source)) {
+        source = source.replace(/<meta\s+name=["']viewport["'][^>]*>/i, viewport);
+    } else if (source.includes('</head>')) {
+        source = source.replace('</head>', `${viewport}\n</head>`);
+    } else {
+        source = `${viewport}\n${source}`;
+    }
+
+    if (source.includes('quizmoto-mobile-course-css')) return source;
     if (source.includes('</head>')) return source.replace('</head>', `${MOBILE_COURSE_CSS}\n</head>`);
     return `${MOBILE_COURSE_CSS}\n${source}`;
 }
@@ -193,7 +280,8 @@ async function buildScormPackageZip(rawAnalysis, opts = {}) {
                 resumeTracking: 'lesson_location_and_quiz_results_restore',
                 navigationPersistence: 'post_paint_debounced_commit',
                 mobileOptimized: true,
-                mobileLayoutVersion: 1
+                mobileLayoutVersion: 2,
+                mobilePresentation: 'dynamic_viewport_safe_area_touch_pan'
             }, null, 2));
         } catch (_) {
             // Keep the original content.json if an older package has malformed metadata.
