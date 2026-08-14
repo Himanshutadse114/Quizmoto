@@ -35,5 +35,31 @@ describe('SCORM responsive vector engine V5', function () {
         expect(mobile).to.include(theme.visualBg);
         expect(desktop).to.include('LEARNING VISUAL');
         expect(mobile).to.include('STEP 1');
+        expect(desktop).to.include('data-qm-icon-kind="mail"');
+    });
+
+    it('honours an explicit QR metaphor even when the learning text also says phishing', async () => {
+        const theme = getTheme(6);
+        const assets = await generateVisualAssets({
+            title: 'QR Phishing Awareness',
+            visualTheme: theme,
+            slides: [{
+                title: 'QR phishing warning',
+                content: 'A phishing QR code can move the learner from a physical prompt to a malicious website.',
+                keyPoints: ['Pause before scanning', 'Inspect the destination', 'Verify unexpected prompts'],
+                layout: 'spotlight',
+                screenType: 'takeaway',
+                visualTitle: 'Check the QR',
+                visualMetaphor: 'qr'
+            }],
+            quiz: []
+        });
+
+        expect(assets).to.have.length(1);
+        const desktop = assets[0].desktopBody.toString('utf8');
+        const mobile = assets[0].mobileBody.toString('utf8');
+        expect(desktop).to.include('data-qm-icon-kind="qr"');
+        expect(mobile).to.include('data-qm-icon-kind="qr"');
+        expect(desktop).to.not.include('data-qm-icon-kind="mail"');
     });
 });
