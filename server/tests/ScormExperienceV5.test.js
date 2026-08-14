@@ -28,7 +28,7 @@ describe('Course Experience V5', () => {
         expect(result.revealText).to.include('The message creates urgency');
     });
 
-    it('plans varied screen experiences without repeating the same screen type consecutively', () => {
+    it('plans varied AI defaults without repeating the same inferred screen type consecutively', () => {
         const result = planExperienceV5({
             title: 'Awareness',
             slides: [
@@ -46,6 +46,19 @@ describe('Course Experience V5', () => {
         }
         expect(result.slides[2].screenType).to.equal('process');
         expect(result.slides[3].screenType).to.equal('scenario');
+    });
+
+    it('preserves explicit author screen types and backgrounds even when consecutive screens match', () => {
+        const result = planExperienceV5({
+            slides: [
+                { title: 'Decision one', content: 'Choose what to inspect.', layout: 'cards', screenType: 'scenario', backgroundStyle: 'focus' },
+                { title: 'Decision two', content: 'Choose the next action.', layout: 'cards', screenType: 'scenario', backgroundStyle: 'focus' }
+            ]
+        });
+        expect(result.slides[0].screenType).to.equal('scenario');
+        expect(result.slides[1].screenType).to.equal('scenario');
+        expect(result.slides[0].backgroundStyle).to.equal('focus');
+        expect(result.slides[1].backgroundStyle).to.equal('focus');
     });
 
     it('selects cybersecurity visual metaphors from the learning content', () => {
