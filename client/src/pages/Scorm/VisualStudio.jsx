@@ -1,203 +1,118 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { AlertTriangle, Check, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, Monitor, Smartphone, Sparkles, Tablet } from 'lucide-react';
 import { apiUrl } from '../../config';
+import {
+  BACKGROUND_STYLES,
+  COURSE_LAYOUTS,
+  COURSE_THEMES,
+  METAPHORS,
+  SCREEN_TYPES,
+  courseTheme,
+  normalizeCourseSlide,
+  visualFitIssues,
+  wordCount
+} from './courseExperienceV5';
 
-const LAYOUTS = [
-  ['cards', 'Cards'],
-  ['process', 'Process'],
-  ['timeline', 'Timeline'],
-  ['comparison', 'Comparison'],
-  ['hub', 'Hub diagram'],
-  ['spotlight', 'Spotlight'],
-  ['matrix', 'Risk matrix'],
-  ['cycle', 'Cycle']
+const DEVICES = [
+  ['desktop', 'Desktop', Monitor],
+  ['tablet', 'Tablet', Tablet],
+  ['mobile', 'Mobile', Smartphone]
 ];
 
-const THEMES = [
-  [1, 'Midnight Blue'],
-  [4, 'Emerald Focus'],
-  [5, 'Modern Rose'],
-  [3, 'Amber Signal']
-];
-
-const THEME_COLORS = {
-  1: { primary: '#2563eb', accent: '#22d3ee', soft: '#dbeafe' },
-  3: { primary: '#d97706', accent: '#fbbf24', soft: '#fef3c7' },
-  4: { primary: '#059669', accent: '#34d399', soft: '#d1fae5' },
-  5: { primary: '#db2777', accent: '#f472b6', soft: '#fce7f3' }
-};
-
-const POINT_WORD_LIMITS = {
-  process: 8,
-  timeline: 8,
-  cycle: 8,
-  matrix: 8,
-  hub: 10,
-  cards: 11,
-  comparison: 12,
-  spotlight: 12
-};
-
-function wordCount(value) {
-  return String(value || '').trim().split(/\s+/).filter(Boolean).length;
-}
-
-function normalizeSlide(s, index) {
-  return {
-    ...s,
-    title: s?.title || `Section ${index + 1}`,
-    content: s?.content || '',
-    keyPoints: Array.isArray(s?.keyPoints) ? s.keyPoints : [],
-    layout: s?.layout || 'cards',
-    visualTitle: s?.visualTitle || s?.title || `Section ${index + 1}`,
-    interaction: {
-      type: s?.interaction?.type || 'hotspot_explore',
-      prompt: s?.interaction?.prompt || 'Explore the learning points before continuing.'
-    }
-  };
-}
-
-function visualFitIssues(slide) {
-  const issues = [];
-  const limit = POINT_WORD_LIMITS[slide.layout] || 11;
-  const longPoints = (slide.keyPoints || []).filter((point) => wordCount(point) > limit).length;
-  if (longPoints) issues.push(`${longPoints} visual ${longPoints === 1 ? 'point is' : 'points are'} longer than the recommended ${limit} words.`);
-  if (wordCount(slide.visualTitle) > 5) issues.push('Visual title is longer than 5 words and may feel cramped in the diagram.');
-  if (wordCount(slide.content) > 100) issues.push('Body copy is dense for a single learning screen. Consider tightening it below 100 words.');
-  if ((slide.keyPoints || []).length > 6) issues.push('Only the first 6 visual points can be displayed in the generated vector.');
-  return issues;
-}
-
-function PreviewVisual({ slide, colors }) {
-  const points = (slide.keyPoints || []).filter(Boolean).slice(0, 6);
-
-  const Card = ({ p, i }) => (
-    <div className="rounded-[18px] border border-slate-200 bg-white p-4 shadow-sm" style={{ borderTop: `3px solid ${colors.primary}` }}>
-      <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm mb-3" style={{ background: colors.soft, color: colors.primary }}>{String(i + 1).padStart(2, '0')}</div>
-      <div className="text-[14px] font-semibold text-slate-700 leading-[1.45]">{p}</div>
+function ArtworkCard({ point, index, theme, compact = false }) {
+  return (
+    <div className="rounded-xl border border-white/10 flex items-center gap-2.5" style={{ background: `linear-gradient(145deg,${theme.visual},${theme.surface})`, padding: compact ? '9px' : '12px' }}>
+      <span className="shrink-0 rounded-lg flex items-center justify-center text-white font-bold" style={{ width: compact ? 26 : 32, height: compact ? 26 : 32, fontSize: compact ? 9 : 10, background: theme.primary }}>{index + 1}</span>
+      <span className="text-white/75 font-semibold leading-snug" style={{ fontSize: compact ? 10 : 12 }}>{point}</span>
     </div>
   );
-
-  if (slide.layout === 'process') {
-    return <div className="grid grid-cols-2 gap-3">{points.slice(0, 4).map((p, i) => <Card key={i} p={p} i={i} />)}</div>;
-  }
-
-  if (slide.layout === 'timeline') {
-    return (
-      <div className="grid grid-cols-2 gap-4">
-        {points.slice(0, 4).map((p, i) => (
-          <div key={i} className="relative rounded-[18px] border border-slate-200 bg-white p-4 pt-5 shadow-sm">
-            <div className="absolute -top-3 left-4 w-7 h-7 rounded-full border-4 bg-white" style={{ borderColor: colors.primary }} />
-            <div className="text-[10px] font-bold uppercase tracking-[.12em] mt-2" style={{ color: colors.primary }}>Stage {i + 1}</div>
-            <div className="text-[14px] font-semibold text-slate-700 mt-2 leading-[1.45]">{p}</div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (slide.layout === 'comparison') {
-    const half = Math.max(1, Math.ceil(points.length / 2));
-    const good = points.slice(0, half);
-    const bad = points.slice(half);
-    return (
-      <div className="grid md:grid-cols-2 gap-3">
-        <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 p-4">
-          <div className="font-bold text-emerald-700 text-[11px] uppercase tracking-[.12em] mb-3">Recommended</div>
-          {good.map((p, i) => <div key={i} className="flex gap-2 text-[13px] font-semibold text-slate-700 mb-2.5"><span className="text-emerald-600">✓</span><span>{p}</span></div>)}
-        </div>
-        <div className="rounded-[20px] border border-rose-200 bg-rose-50 p-4">
-          <div className="font-bold text-rose-700 text-[11px] uppercase tracking-[.12em] mb-3">Watch out</div>
-          {(bad.length ? bad : ['Verify before acting.']).map((p, i) => <div key={i} className="flex gap-2 text-[13px] font-semibold text-slate-700 mb-2.5"><span className="text-rose-600">!</span><span>{p}</span></div>)}
-        </div>
-      </div>
-    );
-  }
-
-  if (slide.layout === 'hub' || slide.layout === 'cycle') {
-    return (
-      <div className="min-h-[390px] flex items-center justify-center overflow-hidden">
-        <div className="relative w-[390px] h-[350px] max-w-full">
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full text-white flex items-center justify-center text-center text-[15px] font-bold p-4 shadow-xl" style={{ background: `linear-gradient(145deg,${colors.primary},${colors.accent})` }}>{slide.visualTitle}</div>
-          {points.slice(0, 6).map((p, i) => {
-            const angle = (Math.PI * 2 * i / Math.max(1, points.length)) - Math.PI / 2;
-            const x = 155 + Math.cos(angle) * 132;
-            const y = 135 + Math.sin(angle) * 122;
-            return (
-              <div key={i} title={p} className="absolute w-[78px] min-h-[64px] rounded-2xl bg-white border flex flex-col items-center justify-center px-2 text-center shadow-md" style={{ left: x, top: y, borderColor: colors.primary }}>
-                <div className="text-[10px] font-bold" style={{ color: colors.primary }}>{String(i + 1).padStart(2, '0')}</div>
-                <div className="text-[10px] leading-tight text-slate-600 font-semibold line-clamp-2 mt-1">{p}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  if (slide.layout === 'matrix') {
-    return (
-      <div className="grid grid-cols-2 gap-3">
-        {['Low', 'Medium', 'Medium', 'High'].map((label, i) => (
-          <div key={i} className={`rounded-[18px] p-5 min-h-[135px] border ${i === 3 ? 'bg-rose-50 border-rose-200' : i === 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
-            <div className="text-[10px] font-bold uppercase tracking-[.12em] text-slate-500">{label}</div>
-            <div className="text-[14px] font-semibold text-slate-700 mt-3 leading-snug">{points[i] || `${label} risk`}</div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (slide.layout === 'spotlight') {
-    return (
-      <div className="rounded-[24px] min-h-[390px] text-white flex flex-col items-center justify-center text-center p-8 shadow-xl" style={{ background: `radial-gradient(circle at 30% 20%,${colors.accent},transparent 28%),linear-gradient(145deg,${colors.primary},#0f172a)` }}>
-        <div className="w-36 h-36 rounded-full border-[18px] border-white/20 flex items-center justify-center mb-6"><div className="text-6xl font-light">!</div></div>
-        <div className="text-[26px] font-bold tracking-tight">{slide.visualTitle}</div>
-        <div className="text-[14px] leading-relaxed text-white/80 mt-3 max-w-sm">{points[0]}</div>
-      </div>
-    );
-  }
-
-  return <div className="grid md:grid-cols-2 gap-3">{points.map((p, i) => <Card key={i} p={p} i={i} />)}</div>;
 }
 
-function Preview({ slide, theme }) {
+function PreviewArtwork({ slide, theme, mobile }) {
   const points = (slide.keyPoints || []).filter(Boolean).slice(0, 6);
-  const colors = THEME_COLORS[theme] || THEME_COLORS[1];
+  const layout = slide.layout || 'cards';
 
+  if (layout === 'comparison') {
+    const half = Math.max(1, Math.ceil(points.length / 2));
+    const groups = [
+      ['Recommended', '#34D399', '✓', points.slice(0, half)],
+      ['Watch out', '#FB7185', '!', points.slice(half).length ? points.slice(half) : ['Pause and verify before acting.']]
+    ];
+    return (
+      <div className={`grid ${mobile ? 'grid-cols-1' : 'grid-cols-2'} gap-3 w-full`}>
+        {groups.map(([label, color, mark, list]) => <div key={label} className="rounded-2xl border border-white/10 p-4" style={{ background: `${theme.surface}DD`, borderTop: `4px solid ${color}` }}><div className="text-[10px] uppercase tracking-[.12em] font-bold mb-3" style={{ color }}>{label}</div>{list.slice(0, 3).map((p, i) => <div key={i} className="flex gap-2 items-start mb-2 text-white/70 text-[11px] leading-snug"><span className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0" style={{ background: color }}>{mark}</span><span>{p}</span></div>)}</div>)}
+      </div>
+    );
+  }
+
+  if (layout === 'matrix') {
+    return <div className="grid grid-cols-2 gap-2.5 w-full">{['#10B981', '#F59E0B', '#F59E0B', '#F43F5E'].map((color, i) => <div key={i} className="rounded-2xl border p-3 min-h-[110px]" style={{ borderColor: `${color}66`, background: `${theme.surface}DD` }}><div className="text-[9px] uppercase tracking-[.1em] font-bold" style={{ color }}>{i === 0 ? 'Lower' : i === 3 ? 'Higher' : 'Watch'}</div><div className="text-white/75 text-[11px] font-semibold mt-3 leading-snug">{points[i] || 'Risk signal'}</div></div>)}</div>;
+  }
+
+  if (layout === 'hub') {
+    return (
+      <div className="w-full flex flex-col items-center gap-4">
+        <div className="w-32 h-32 rounded-full flex items-center justify-center text-center text-white font-semibold p-4 shadow-2xl" style={{ background: `radial-gradient(circle at 30% 20%,${theme.accent},transparent 45%),linear-gradient(145deg,${theme.primary},${theme.dark})` }}><div><div className="text-[9px] uppercase tracking-[.1em] opacity-60 mb-1">{slide.visualMetaphor}</div><div className="text-[14px] leading-tight">{slide.visualTitle}</div></div></div>
+        <div className="grid grid-cols-2 gap-2 w-full">{points.map((p, i) => <ArtworkCard key={i} point={p} index={i} theme={theme} compact={mobile} />)}</div>
+      </div>
+    );
+  }
+
+  if (layout === 'spotlight') {
+    return <div className="w-full min-h-[280px] flex flex-col items-center justify-center text-center"><div className="w-36 h-36 rounded-full flex items-center justify-center shadow-2xl" style={{ background: `radial-gradient(circle at 30% 20%,${theme.accent},transparent 43%),linear-gradient(145deg,${theme.primary},${theme.dark})` }}><div className="text-5xl text-white">!</div></div><div className="text-white text-xl font-semibold mt-5">{slide.visualTitle}</div><div className="text-white/55 text-xs mt-2 max-w-xs">{points[0]}</div></div>;
+  }
+
+  if (layout === 'process' || layout === 'timeline' || layout === 'cycle') {
+    return (
+      <div className={`w-full flex ${mobile ? 'flex-col' : 'flex-row'} items-stretch gap-2.5`}>
+        {points.slice(0, mobile ? 5 : 4).map((p, i) => <React.Fragment key={i}><div className={`${mobile ? 'w-full' : 'flex-1'} relative`}><ArtworkCard point={p} index={i} theme={theme} compact={mobile} /></div>{i < Math.min(points.length, mobile ? 5 : 4) - 1 && <div className={`flex items-center justify-center font-bold ${mobile ? 'h-4' : 'w-4'}`} style={{ color: theme.accent }}>{mobile ? '↓' : '→'}</div>}</React.Fragment>)}
+      </div>
+    );
+  }
+
+  return <div className={`grid ${mobile ? 'grid-cols-2' : 'grid-cols-2'} gap-2.5 w-full`}>{points.map((p, i) => <ArtworkCard key={i} point={p} index={i} theme={theme} compact={mobile} />)}</div>;
+}
+
+function CoursePreview({ slide, themeId, device }) {
+  const theme = courseTheme(themeId);
+  const mobile = device === 'mobile';
+  const tablet = device === 'tablet';
+  const width = mobile ? 390 : tablet ? 760 : 1180;
+  const points = (slide.keyPoints || []).filter(Boolean).slice(0, 6);
   return (
-    <div className="rounded-[26px] overflow-hidden border border-[#1d2b3d] bg-[#05070d] shadow-2xl">
-      <div className="h-[58px] px-4 md:px-5 flex items-center gap-3 border-b border-[#172536] bg-[#070b12]">
-        <div className="w-9 h-9 rounded-xl text-white flex items-center justify-center font-bold shadow-lg" style={{ background: colors.primary }}>Q</div>
-        <div className="min-w-0">
-          <div className="text-[12px] text-slate-200 font-semibold truncate">Learner course preview</div>
-          <div className="text-[10px] text-slate-500">Screen experience · responsive approximation</div>
+    <div className="mx-auto transition-[max-width] duration-300" style={{ maxWidth: width }}>
+      <div className="rounded-[28px] overflow-hidden border border-white/10 shadow-2xl" style={{ background: `linear-gradient(165deg,${theme.bg2},${theme.bg})` }}>
+        <div className={`${mobile ? 'h-14 px-3' : 'h-16 px-5'} flex items-center gap-3 border-b border-white/10`}>
+          <div className="w-9 h-9 rounded-xl text-white flex items-center justify-center font-bold" style={{ background: `linear-gradient(145deg,${theme.primary},${theme.dark})` }}>Q</div>
+          {!mobile && <div className="min-w-0"><div className="text-[12px] text-white font-semibold truncate">Learner course</div><div className="text-[9px] text-white/35">Course Experience V5</div></div>}
+          <div className="ml-auto flex items-center gap-2"><div className={`${mobile ? 'w-24' : 'w-40'} h-1.5 bg-white/10 rounded-full overflow-hidden`}><div className="w-[42%] h-full rounded-full" style={{ background: `linear-gradient(90deg,${theme.primary},${theme.accent})` }} /></div>{!mobile && <span className="text-[9px] text-white/35">42%</span>}</div>
         </div>
-        <div className="ml-auto hidden sm:flex items-center gap-2 w-[180px]"><div className="h-1.5 bg-[#142033] rounded-full overflow-hidden flex-1"><div className="h-full w-[42%] rounded-full" style={{ background: `linear-gradient(90deg,${colors.primary},${colors.accent})` }} /></div><span className="text-[10px] text-slate-500">42%</span></div>
-      </div>
 
-      <div className="p-4 md:p-6 bg-[radial-gradient(circle_at_80%_0%,rgba(37,99,235,.08),transparent_24rem)]">
-        <div className="grid lg:grid-cols-[.68fr_1.32fr] gap-4 md:gap-5 items-stretch">
-          <section className="rounded-[22px] border border-[#1e2f44] bg-[#0b111b] p-5 md:p-6 flex flex-col justify-center min-w-0">
-            <div className="text-[10px] uppercase tracking-[.13em] font-bold mb-2" style={{ color: colors.accent }}>Section · {slide.layout}</div>
-            <h2 className="text-[28px] md:text-[34px] font-semibold tracking-[-.04em] leading-[1.04] text-slate-50 text-balance">{slide.title}</h2>
-            <p className="text-[14px] md:text-[15px] text-slate-300 mt-4 leading-[1.65]">{slide.content}</p>
-            {points.length > 0 && <div className="mt-5 flex flex-wrap gap-2">{points.map((_, i) => <button type="button" key={i} className="rounded-xl border border-[#29405d] bg-[#0e1a2a] px-3 py-2 text-[11px] font-semibold text-slate-300">{slide.layout === 'process' ? `Step ${i + 1}` : slide.layout === 'timeline' ? `Stage ${i + 1}` : `Point ${i + 1}`}</button>)}</div>}
-            <div className="mt-3 rounded-xl border border-[#243852] bg-[#101c2c] px-3.5 py-3 text-[12px] leading-relaxed text-slate-300">{slide.interaction?.prompt}</div>
-          </section>
+        <div className={`${mobile ? 'p-3' : tablet ? 'p-4' : 'p-6'} relative`} style={{ background: `radial-gradient(circle at 78% 15%,${theme.primary}18,transparent 36%),linear-gradient(160deg,${theme.bg2},${theme.bg})` }}>
+          <div className={`grid ${mobile || tablet ? 'grid-cols-1' : 'grid-cols-[.7fr_1.3fr]'} gap-3.5`}>
+            <section className={`rounded-[22px] border border-white/10 ${mobile ? 'p-4' : 'p-6'} flex flex-col justify-center`} style={{ background: theme.surface }}>
+              <div className="text-[9px] uppercase tracking-[.13em] font-bold mb-2" style={{ color: theme.accent }}>{slide.screenType} · {slide.layout}</div>
+              <h2 className={`${mobile ? 'text-[25px]' : 'text-[34px]'} font-semibold tracking-[-.045em] leading-[1.03] text-white`}>{slide.title}</h2>
+              <p className={`${mobile ? 'text-[13px]' : 'text-[14px]'} text-white/65 mt-3 leading-[1.6]`}>{slide.introText || slide.content}</p>
+            </section>
 
-          <section className="rounded-[22px] border border-slate-200 bg-[#f7f9fc] p-3 md:p-5 min-h-[430px] flex items-center justify-center overflow-hidden">
-            <div className="w-full"><PreviewVisual slide={slide} colors={colors} /></div>
-          </section>
+            <section className={`rounded-[22px] border border-white/10 relative overflow-hidden flex items-center justify-center ${mobile ? 'p-4 min-h-[400px]' : 'p-6 min-h-[420px]'}`} style={{ background: `radial-gradient(circle at 75% 15%,${theme.accent}24,transparent 40%),linear-gradient(145deg,${theme.visual},${theme.bg2})` }}>
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: slide.backgroundStyle === 'grid' ? `linear-gradient(${theme.accent}22 1px,transparent 1px),linear-gradient(90deg,${theme.accent}22 1px,transparent 1px)` : 'none', backgroundSize: '30px 30px' }} />
+              <div className="relative w-full"><PreviewArtwork slide={slide} theme={theme} mobile={mobile} /></div>
+              <div className="absolute left-3 bottom-3 rounded-full border border-white/10 bg-black/30 backdrop-blur px-2.5 py-1.5 text-[8px] uppercase tracking-[.1em] text-white/55">Responsive vector preview</div>
+            </section>
+
+            <section className={`${mobile || tablet ? '' : 'col-start-1'} rounded-2xl border border-white/10 p-3.5`} style={{ background: `${theme.surface}CC` }}>
+              <div className="text-[10px] text-white/45 mb-2">{slide.interaction?.prompt}</div>
+              <div className={`grid ${mobile ? 'grid-cols-2' : 'grid-cols-2'} gap-2`}>{points.slice(0, 4).map((_, i) => <button type="button" key={i} className="rounded-xl border border-white/10 min-h-[42px] px-2.5 text-[10px] text-white/70 text-left" style={{ background: `${theme.primary}18` }}><span className="inline-flex w-5 h-5 rounded-md items-center justify-center mr-1.5 text-[8px] text-white" style={{ background: theme.primary }}>{i + 1}</span>{slide.layout === 'process' ? `Step ${i + 1}` : 'Explore'}</button>)}</div>
+              {!!slide.revealText && <div className="mt-2.5 rounded-xl border border-white/10 px-3 py-2.5 text-[10px] leading-relaxed text-white/45">Detail appears here after interaction.</div>}
+            </section>
+          </div>
         </div>
-      </div>
 
-      <div className="h-[62px] border-t border-[#172536] bg-[#070b12] px-4 md:px-5 flex items-center justify-between gap-3">
-        <button type="button" className="inline-flex items-center gap-1.5 rounded-xl border border-[#283a50] bg-[#0a131f] px-3.5 py-2 text-[11px] font-semibold text-slate-400"><ChevronLeft size={14} /> Previous</button>
-        <span className="text-[10px] uppercase tracking-[.1em] font-semibold text-slate-500">Learner navigation</span>
-        <button type="button" className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[11px] font-semibold text-white" style={{ background: colors.primary }}>Continue <ChevronRight size={14} /></button>
+        <div className={`${mobile ? 'h-16 px-3' : 'h-[66px] px-5'} border-t border-white/10 flex items-center justify-between gap-2`}><button type="button" className="rounded-xl border border-white/10 px-3 py-2 text-[10px] text-white/50"><ChevronLeft size={13} className="inline mr-1" />Previous</button><span className="text-[9px] text-white/30">Part 3 of 8</span><button type="button" className="rounded-xl px-3 py-2 text-[10px] text-white font-semibold" style={{ background: theme.primary }}>Continue <ChevronRight size={13} className="inline ml-1" /></button></div>
       </div>
     </div>
   );
@@ -211,10 +126,11 @@ export default function VisualStudio() {
   const packageId = searchParams.get('edit') || '';
   const [packages, setPackages] = useState([]);
   const [analysis, setAnalysis] = useState(null);
-  const [templateId, setTemplateId] = useState(1);
+  const [themeId, setThemeId] = useState(1);
   const [selected, setSelected] = useState(0);
+  const [device, setDevice] = useState('desktop');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
   const [saved, setSaved] = useState('');
 
   useEffect(() => {
@@ -224,12 +140,12 @@ export default function VisualStudio() {
 
   useEffect(() => {
     if (!packageId) { setAnalysis(null); return; }
-    setBusy(true); setError(null);
+    setBusy(true); setError('');
     axios.get(apiUrl(`/api/scorm/packages/${packageId}/analysis`), { headers })
       .then((res) => {
-        const a = res.data.analysis || {};
-        setAnalysis({ ...a, slides: (a.slides || []).map(normalizeSlide) });
-        setTemplateId(res.data.templateId || 1);
+        const data = res.data.analysis || {};
+        setAnalysis({ ...data, slides: (data.slides || []).map(normalizeCourseSlide) });
+        setThemeId(Number(res.data.templateId) || Number(data.themeId) || 1);
         setSelected(0);
       })
       .catch((err) => setError(err.response?.data?.message || err.message))
@@ -247,114 +163,63 @@ export default function VisualStudio() {
 
   const save = async () => {
     if (!analysis || !packageId) return;
-    setBusy(true); setError(null); setSaved('');
+    setBusy(true); setError(''); setSaved('');
     try {
       await axios.post(apiUrl('/api/scorm/author/generate'), {
-        analysis,
-        templateId,
+        analysis: { ...analysis, themeId, themeName: courseTheme(themeId).name },
+        templateId: themeId,
         replacePackageId: packageId
       }, { headers, timeout: 180000 });
-      setSaved('Visual course rebuilt successfully');
+      setSaved('Course Experience V5 rebuilt successfully');
     } catch (err) {
       setError(err.response?.data?.message || err.message);
     } finally { setBusy(false); }
   };
 
   const slide = analysis?.slides?.[selected];
-  const fitIssues = slide ? visualFitIssues(slide) : [];
+  const issues = visualFitIssues(slide);
 
   return (
-    <div className="min-h-screen p-4 md:p-7 max-w-[1540px] mx-auto relative z-10 pb-24">
+    <div className="min-h-screen p-4 md:p-7 max-w-[1580px] mx-auto relative z-10 pb-24">
       <div className="flex flex-wrap justify-between gap-4 items-start mb-6">
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[.12em] text-slate-500">SCORM World · Authoring</div>
-          <h1 className="text-3xl md:text-[36px] font-semibold tracking-[-.045em] mt-1">Visual Studio</h1>
-          <p className="text-sm mt-2 max-w-2xl">Edit generated learning content, control the visual layout and preview the learner experience before rebuilding the package.</p>
-        </div>
+        <div><div className="text-[10px] font-semibold uppercase tracking-[.13em] text-slate-500">SCORM World · Course Experience V5</div><h1 className="text-3xl md:text-[38px] font-semibold tracking-[-.05em] mt-1">Visual Studio</h1><p className="text-sm mt-2 max-w-2xl text-slate-400">Edit the experience, theme and responsive composition. Desktop, tablet and mobile previews use the same V5 hierarchy as the generated learner course.</p></div>
         {analysis && <button type="button" disabled={busy} onClick={save} className="scorm-button-primary px-5 py-3 font-semibold text-sm inline-flex items-center gap-2 disabled:opacity-50"><Sparkles size={16} />{busy ? 'Rebuilding…' : 'Save & rebuild package'}</button>}
       </div>
 
       {error && <div className="scorm-alert-danger mb-5 rounded-xl border p-3 text-sm">{error}</div>}
-      {saved && <div className="mb-5 rounded-xl bg-[#0b1f2d] border border-[#24455c] p-3 text-sm text-[#b9d7e7] inline-flex items-center gap-2"><Check size={15} />{saved}</div>}
+      {saved && <div className="mb-5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 p-3 text-sm text-emerald-100 inline-flex items-center gap-2"><Check size={15} />{saved}</div>}
 
-      {!packageId && (
-        <div className="scorm-panel rounded-3xl border p-6">
-          <div className="text-xs font-semibold uppercase tracking-[.12em] text-slate-500 mb-4">Choose an AI-authored package</div>
-          <div className="grid md:grid-cols-2 gap-3">
-            {packages.filter((p) => p.source === 'ai_author').map((p) => (
-              <button key={p.id} type="button" onClick={() => setSearchParams({ edit: p.id })} className="text-left rounded-2xl border border-[#26374d] bg-[#0a131f] hover:bg-[#101d2c] p-4 transition-colors">
-                <div className="font-semibold">{p.title}</div>
-                <div className="text-xs text-slate-500 mt-1">{p.standard || 'SCORM 1.2'} · {p.status}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {packageId && busy && !analysis && <div className="scorm-panel rounded-3xl border p-10 text-center text-slate-400">Loading visual blueprint…</div>}
+      {!packageId && <div className="scorm-panel rounded-3xl border p-6"><div className="text-xs font-semibold uppercase tracking-[.12em] text-slate-500 mb-4">Choose an AI-authored package</div><div className="grid md:grid-cols-2 gap-3">{packages.filter((p) => p.source === 'ai_author').map((p) => <button key={p.id} type="button" onClick={() => setSearchParams({ edit: p.id })} className="text-left rounded-2xl border border-[#26374d] bg-[#0a131f] hover:bg-[#101d2c] p-4"><div className="font-semibold">{p.title}</div><div className="text-xs text-slate-500 mt-1">{p.standard || 'SCORM 1.2'} · {p.status}</div></button>)}</div></div>}
+      {packageId && busy && !analysis && <div className="scorm-panel rounded-3xl border p-10 text-center text-slate-400">Loading course experience…</div>}
 
       {analysis && slide && (
-        <div className="grid xl:grid-cols-[240px_minmax(0,1fr)_360px] gap-4 items-start">
-          <aside className="scorm-panel rounded-3xl border p-3 xl:sticky xl:top-24 max-h-[78vh] overflow-auto">
-            <div className="text-[10px] font-semibold uppercase tracking-[.12em] text-slate-500 px-2 py-2">Screens</div>
-            {analysis.slides.map((s, i) => (
-              <button key={i} type="button" onClick={() => setSelected(i)} className={`w-full text-left rounded-xl px-3 py-3 mb-1 border transition-colors ${selected === i ? 'bg-[#122541] text-white border-[#315a8b]' : 'bg-transparent text-slate-300 border-transparent hover:bg-[#0d1928]'}`}>
-                <div className="text-[9px] uppercase tracking-[.11em] opacity-55 font-semibold">{String(i + 1).padStart(2, '0')} · {s.layout}</div>
-                <div className="text-xs font-semibold truncate mt-1">{s.title}</div>
-              </button>
-            ))}
+        <div className="grid xl:grid-cols-[230px_minmax(0,1fr)_370px] gap-4 items-start">
+          <aside className="scorm-panel rounded-3xl border p-3 xl:sticky xl:top-24 max-h-[80vh] overflow-auto">
+            <div className="text-[10px] font-semibold uppercase tracking-[.12em] text-slate-500 px-2 py-2">Learning experiences</div>
+            {analysis.slides.map((item, i) => <button key={i} type="button" onClick={() => setSelected(i)} className={`w-full text-left rounded-xl px-3 py-3 mb-1 border ${selected === i ? 'bg-[#122541] text-white border-[#315a8b]' : 'bg-transparent text-slate-300 border-transparent hover:bg-[#0d1928]'}`}><div className="text-[9px] uppercase tracking-[.11em] opacity-55 font-semibold">{String(i + 1).padStart(2, '0')} · {item.screenType || item.layout}</div><div className="text-xs font-semibold truncate mt-1">{item.title}</div></button>)}
           </aside>
 
-          <main className="min-w-0"><Preview slide={slide} theme={templateId} /></main>
-
-          <aside className="scorm-panel rounded-3xl border p-4 space-y-4 xl:sticky xl:top-24 max-h-[78vh] overflow-auto">
-            {fitIssues.length > 0 && (
-              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5">
-                <div className="flex items-center gap-2 text-amber-200 text-xs font-semibold"><AlertTriangle size={15} />Visual fit</div>
-                <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-amber-100/75 list-disc pl-4">{fitIssues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Screen title</label>
-              <input value={slide.title || ''} onChange={(e) => updateSlide({ title: e.target.value })} className="w-full p-2.5 text-sm" />
+          <main className="min-w-0 space-y-3">
+            <div className="flex flex-wrap justify-between gap-3 items-center scorm-panel rounded-2xl border p-3">
+              <div className="flex gap-2">{DEVICES.map(([id, label, Icon]) => <button key={id} type="button" onClick={() => setDevice(id)} className={`rounded-xl border px-3 py-2 text-[11px] font-semibold inline-flex items-center gap-1.5 ${device === id ? 'bg-[#173b73] border-[#3b82f6] text-white' : 'bg-[#0a131f] border-[#26374d] text-slate-400'}`}><Icon size={14} />{label}</button>)}</div>
+              <div className="text-[10px] text-slate-500">{device === 'mobile' ? '390px portrait composition' : device === 'tablet' ? '760px adaptive composition' : '1180px desktop composition'}</div>
             </div>
+            <CoursePreview slide={slide} themeId={themeId} device={device} />
+          </main>
 
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Body content</label>
-              <textarea rows={6} value={slide.content || ''} onChange={(e) => updateSlide({ content: e.target.value })} className="w-full p-2.5 text-sm leading-relaxed" />
-              <div className="mt-1.5 text-[10px] text-slate-500">{wordCount(slide.content)} words · ideal roughly 45–95 for one screen</div>
-            </div>
+          <aside className="scorm-panel rounded-3xl border p-4 space-y-4 xl:sticky xl:top-24 max-h-[80vh] overflow-auto">
+            {issues.length > 0 && <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5"><div className="flex items-center gap-2 text-amber-200 text-xs font-semibold"><AlertTriangle size={15} />Experience fit</div><ul className="mt-2 space-y-1.5 text-[11px] text-amber-100/75 list-disc pl-4">{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul></div>}
 
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Visual points</label>
-              <textarea rows={6} value={(slide.keyPoints || []).join('\n')} onChange={(e) => updateSlide({ keyPoints: e.target.value.split('\n').map((value) => value.trim()).filter(Boolean) })} className="w-full p-2.5 text-sm leading-relaxed" placeholder="One concise visual point per line" />
-              <div className="mt-1.5 text-[10px] text-slate-500">One point per line · recommended max {POINT_WORD_LIMITS[slide.layout] || 11} words each</div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Layout</label>
-              <div className="grid grid-cols-2 gap-2">
-                {LAYOUTS.map(([id, label]) => <button key={id} type="button" onClick={() => updateSlide({ layout: id })} className={`rounded-xl px-2 py-2 text-[11px] font-semibold border ${slide.layout === id ? 'bg-[#173b73] text-white border-[#3b82f6]' : 'bg-[#0a131f] text-slate-400 border-[#26374d] hover:border-[#38516f]'}`}>{label}</button>)}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Visual title</label>
-              <input value={slide.visualTitle || ''} onChange={(e) => updateSlide({ visualTitle: e.target.value })} className="w-full p-2.5 text-sm" />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Interaction prompt</label>
-              <textarea rows={3} value={slide.interaction?.prompt || ''} onChange={(e) => updateSlide({ interaction: { ...(slide.interaction || {}), prompt: e.target.value } })} className="w-full p-2.5 text-sm" />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Theme accent</label>
-              <select value={templateId} onChange={(e) => { setTemplateId(Number(e.target.value)); setSaved('Unsaved changes'); }} className="w-full p-2.5 text-sm">{THEMES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>
-            </div>
-
-            <div className="rounded-xl bg-[#08111c] border border-[#21334a] p-3 text-[11px] text-slate-500 leading-relaxed">The final package uses Python-generated SVG vectors. This preview now mirrors the final dark learner shell, spacing and visual proportions; the exact vector artwork is produced when the package is rebuilt.</div>
+            <div><label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Course theme</label><div className="grid grid-cols-4 gap-2">{COURSE_THEMES.map((theme) => <button key={theme.id} type="button" onClick={() => { setThemeId(theme.id); setSaved('Unsaved changes'); }} title={theme.name} className={`h-11 rounded-xl border-2 ${themeId === theme.id ? 'border-white' : 'border-white/10'}`} style={{ background: `linear-gradient(145deg,${theme.primary},${theme.accent})` }} />)}</div><div className="text-[10px] text-slate-500 mt-1.5">{courseTheme(themeId).name}</div></div>
+            <div><label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Screen title</label><input value={slide.title || ''} onChange={(e) => updateSlide({ title: e.target.value })} className="w-full p-2.5 text-sm" /></div>
+            <div><label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Screen type</label><select value={slide.screenType || 'concept'} onChange={(e) => updateSlide({ screenType: e.target.value })} className="w-full p-2.5 text-sm">{SCREEN_TYPES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></div>
+            <div><label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Initial context</label><textarea rows={4} value={slide.introText || ''} onChange={(e) => updateSlide({ introText: e.target.value })} className="w-full p-2.5 text-sm leading-relaxed" /><div className="mt-1 text-[10px] text-slate-500">{wordCount(slide.introText)} words</div></div>
+            <div><label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Progressive reveal</label><textarea rows={5} value={slide.revealText || ''} onChange={(e) => updateSlide({ revealText: e.target.value })} className="w-full p-2.5 text-sm leading-relaxed" /></div>
+            <div><label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Visual labels</label><textarea rows={5} value={(slide.keyPoints || []).join('\n')} onChange={(e) => updateSlide({ keyPoints: e.target.value.split('\n').map((value) => value.trim()).filter(Boolean) })} className="w-full p-2.5 text-sm" /></div>
+            <div className="grid grid-cols-2 gap-2"><div><label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Layout</label><select value={slide.layout} onChange={(e) => updateSlide({ layout: e.target.value })} className="w-full p-2.5 text-xs">{COURSE_LAYOUTS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></div><div><label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Background</label><select value={slide.backgroundStyle || 'mesh'} onChange={(e) => updateSlide({ backgroundStyle: e.target.value })} className="w-full p-2.5 text-xs">{BACKGROUND_STYLES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></div></div>
+            <div className="grid grid-cols-2 gap-2"><div><label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Metaphor</label><select value={slide.visualMetaphor || 'shield'} onChange={(e) => updateSlide({ visualMetaphor: e.target.value })} className="w-full p-2.5 text-xs">{METAPHORS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></div><div><label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Visual title</label><input value={slide.visualTitle || ''} onChange={(e) => updateSlide({ visualTitle: e.target.value })} className="w-full p-2.5 text-xs" /></div></div>
+            <div><label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Interaction prompt</label><textarea rows={3} value={slide.interaction?.prompt || ''} onChange={(e) => updateSlide({ interaction: { ...(slide.interaction || {}), prompt: e.target.value } })} className="w-full p-2.5 text-sm" /></div>
+            <div className="rounded-xl bg-[#08111c] border border-[#21334a] p-3 text-[11px] text-slate-500 leading-relaxed">Generation creates separate desktop and portrait-mobile SVG artwork. The mobile preview is a composition preview—not a shrunken desktop canvas.</div>
           </aside>
         </div>
       )}
