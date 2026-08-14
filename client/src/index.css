@@ -82,3 +82,75 @@ body {
   left: 70%;
   animation: float 25s infinite linear reverse;
 }
+
+/*
+ * Visual Studio renders a learner-course preview inside the dark SCORM admin UI.
+ * Keep that canvas isolated from SCORM admin theme overrides so authors see the
+ * actual selected course palette rather than a darkened approximation.
+ */
+.scorm-editorial [style*="--preview-primary"] {
+  color-scheme: light;
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.scorm-editorial [style*="--preview-primary"] [class~="bg-white"] {
+  background: #ffffff !important;
+}
+
+.scorm-editorial [style*="--preview-primary"] [class*="bg-slate-50"] {
+  background: #f8fafc !important;
+}
+
+.scorm-editorial [style*="--preview-primary"] [class*="bg-green-50"] {
+  background: #f0fdf4 !important;
+}
+
+.scorm-editorial [style*="--preview-primary"] [class*="bg-red-50"] {
+  background: #fef2f2 !important;
+}
+
+.scorm-editorial [style*="--preview-primary"] [class*="bg-green-100"] {
+  background: #dcfce7 !important;
+}
+
+.scorm-editorial [style*="--preview-primary"] [class*="bg-red-100"] {
+  background: #fee2e2 !important;
+}
+
+.scorm-editorial [style*="--preview-primary"] [class*="bg-amber-100"] {
+  background: #fef3c7 !important;
+}
+
+.scorm-editorial [style*="--preview-primary"] [class*="border-slate-200"] {
+  border-color: #e2e8f0 !important;
+}
+
+.scorm-editorial [style*="--preview-primary"] [class*="text-slate-900"] {
+  color: #0f172a !important;
+}
+
+.scorm-editorial [style*="--preview-primary"] [class*="text-slate-700"] {
+  color: #334155 !important;
+}
+
+.scorm-editorial [style*="--preview-primary"] [class*="text-slate-600"] {
+  color: #475569 !important;
+}
+
+.scorm-editorial [style*="--preview-primary"] [class*="text-slate-500"] {
+  color: #64748b !important;
+}
+
+.scorm-editorial [style*="--preview-primary"] [class*="text-green-700"] {
+  color: #15803d !important;
+}
+
+.scorm-editorial [style*="--preview-primary"] [class*="text-red-700"] {
+  color: #b91c1c !important;
+}
+
+.scorm-editorial [style*="--preview-primary"] p {
+  color: #475569 !important;
+}

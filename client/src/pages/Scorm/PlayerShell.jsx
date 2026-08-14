@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, BookOpen } from 'lucide-react';
 import { apiUrl } from '../../config';
 import './scormEditorialTheme.css';
+import './scormContrastPolish.css';
 
 /**
  * Opens the same-origin backend player in a popup window so the host/learner
@@ -66,21 +67,21 @@ export default function ScormPlayerShell() {
   return (
     <div className="scorm-editorial min-h-screen flex items-center justify-center p-4 md:p-8 relative z-20">
       <div className="w-full max-w-3xl scorm-soft-card overflow-hidden grid grid-cols-1 md:grid-cols-[.42fr_.58fr]">
-        <div className="scorm-tint-blue p-6 md:p-8 border-b md:border-b-0 md:border-r border-[#e1e6e2] flex flex-col justify-between min-h-[230px]">
+        <div className="scorm-tint-blue p-6 md:p-8 border-b md:border-b-0 md:border-r border-[#223a59] flex flex-col justify-between min-h-[230px]">
           <div>
-            <div className="w-11 h-11 rounded-xl bg-white border border-[#dbe4e9] grid place-items-center text-[#738e9f]">
+            <div className="w-11 h-11 rounded-xl bg-[#0e2039] border border-[#2a4b74] grid place-items-center text-[#bfdbfe]">
               <BookOpen size={20} />
             </div>
-            <div className="mt-6 text-[11px] font-semibold text-[#8296a2]">SCORM World</div>
-            <div className="mt-1 text-2xl md:text-[30px] font-semibold tracking-[-0.04em] leading-tight text-[#35454e]">
+            <div className="mt-6 text-[11px] font-semibold text-[#93a4bb]">SCORM World</div>
+            <div className="mt-1 text-2xl md:text-[30px] font-semibold tracking-[-0.04em] leading-tight text-[#f8fafc]">
               Your course is opening in a separate window.
             </div>
           </div>
-          <div className="mt-8 text-[10px] text-[#8d9ca5]">Registration {registrationId}</div>
+          <div className="mt-8 text-[10px] text-[#71839c]">Registration {registrationId}</div>
         </div>
 
-        <div className="bg-white p-6 md:p-10 flex flex-col justify-center">
-          <div className="text-[11px] font-semibold text-[#829087] mb-1">Course launcher</div>
+        <div className="bg-[#08111e] p-6 md:p-10 flex flex-col justify-center">
+          <div className="text-[11px] font-semibold text-[#93a4bb] mb-1">Course launcher</div>
           <h1 className="text-2xl md:text-[32px] font-semibold tracking-[-0.04em] leading-tight mb-3">
             {error ? 'We could not open the course' : opened ? 'Course opened' : 'Opening your course'}
           </h1>
@@ -99,7 +100,7 @@ export default function ScormPlayerShell() {
               <ArrowLeft size={14} /> Go back
             </button>
             {opened && !error && (
-              <div className="px-4 py-2.5 rounded-xl bg-[#edf3ef] border border-[#dbe6df] text-[#607568] text-xs font-semibold inline-flex items-center gap-2">
+              <div className="px-4 py-2.5 rounded-xl bg-[#0b2a24] border border-[#1d6e55] text-[#a7f3d0] text-xs font-semibold inline-flex items-center gap-2">
                 <ExternalLink size={14} /> Open in new window
               </div>
             )}
