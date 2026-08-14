@@ -47,7 +47,7 @@ const PresenceTab = ({ id, label, count, active, onClick, icon: Icon }) => (
     <button
         type="button"
         onClick={() => onClick(id)}
-        className={`flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+        className={`flex min-h-11 items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${
             active
                 ? 'bg-white text-quizmoto-purple border-white shadow-lg'
                 : 'bg-white/5 text-white/50 border-white/10 hover:text-white hover:bg-white/10'
@@ -78,10 +78,6 @@ const Lobby = () => {
     useEffect(() => {
         if (!socket) return undefined;
 
-        // StrictMode runs effect setup twice in development. Joining the same
-        // room twice needlessly renews the host lease and used to collide with
-        // SQLite transactions. SocketContext owns reconnect joins, so this effect
-        // only needs one initial join for a given socket/pin/token combination.
         const joinKey = { socket, pin: String(pin || ''), token: String(token || '') };
         const previous = joinedHostRef.current;
         if (!previous || previous.socket !== joinKey.socket || previous.pin !== joinKey.pin || previous.token !== joinKey.token) {
@@ -187,7 +183,7 @@ const Lobby = () => {
                                 key={m}
                                 type="button"
                                 onClick={() => toggleMode(m)}
-                                className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                                className={`min-h-10 px-3 sm:px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
                                     session?.gameMode === m
                                         ? 'bg-white text-quizmoto-purple shadow-lg'
                                         : 'text-white/40 hover:text-white'
@@ -197,7 +193,7 @@ const Lobby = () => {
                             </button>
                         ))}
                     </div>
-                    <div className="bg-white/10 px-3 sm:px-4 py-1.5 rounded-full font-black flex items-center gap-2 border border-white/10 text-[10px]">
+                    <div className="min-h-10 bg-white/10 px-3 sm:px-4 py-1.5 rounded-full font-black flex items-center gap-2 border border-white/10 text-[10px]">
                         <Users size={16} />
                         <span className="text-emerald-300">{onlinePlayers.length} active</span>
                         <span className="text-white/30">·</span>
@@ -206,9 +202,9 @@ const Lobby = () => {
                     <button
                         type="button"
                         onClick={abortSession}
-                        className="px-3 sm:px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border border-red-400/40 text-red-300 bg-red-500/10 hover:bg-red-500/20 transition-all"
+                        className="min-h-10 px-3 sm:px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border border-red-400/30 text-red-300/80 bg-red-500/5 hover:bg-red-500/15 hover:text-red-200 transition-all"
                     >
-                        Abort
+                        End session
                     </button>
                 </div>
             </header>
@@ -239,31 +235,29 @@ const Lobby = () => {
 
                     <div className="flex flex-col items-center gap-4 sm:gap-6 w-full max-w-md">
                         <motion.button
-                            whileHover={canStart ? { scale: 1.05, translateY: -3 } : {}}
-                            whileTap={canStart ? { scale: 0.95 } : {}}
+                            whileHover={canStart ? { scale: 1.03, translateY: -2 } : {}}
+                            whileTap={canStart ? { scale: 0.98 } : {}}
                             onClick={startGame}
                             disabled={!canStart}
                             type="button"
-                            className={`w-full py-5 sm:py-8 rounded-[24px] sm:rounded-[32px] font-black text-xl sm:text-3xl shadow-xl flex items-center justify-center gap-3 sm:gap-4 transition-all ${
+                            className={`w-full min-h-[88px] sm:min-h-[112px] py-5 sm:py-8 rounded-[24px] sm:rounded-[32px] font-black text-xl sm:text-3xl shadow-xl flex items-center justify-center gap-3 sm:gap-4 transition-all ${
                                 canStart
-                                    ? 'bg-white text-quizmoto-purple shadow-[0_8px_0_0_rgba(255,255,255,0.2)] hover:shadow-none hover:translate-y-1'
+                                    ? 'bg-white text-quizmoto-purple shadow-[0_8px_0_0_rgba(255,255,255,0.2)] hover:shadow-none hover:translate-y-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/40'
                                     : 'bg-white/10 text-white/20 cursor-not-allowed border border-white/5'
                             }`}
                         >
                             <Play size={28} className="sm:w-9 sm:h-9" fill="currentColor" /> START GAME
                         </motion.button>
-                        <p className="font-black opacity-30 animate-pulse text-[10px] uppercase tracking-[0.3em] text-center">
-                            {canStart
-                                ? `${onlinePlayers.length} player${onlinePlayers.length === 1 ? '' : 's'} ready`
-                                : 'Waiting for active players…'}
-                        </p>
-                        <button
-                            type="button"
-                            onClick={abortSession}
-                            className="mt-1 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-red-400/40 text-red-300 bg-red-500/10 hover:bg-red-500/20 transition-all"
-                        >
-                            Abort Session
-                        </button>
+                        <div className="text-center">
+                            <p className="font-black opacity-40 text-[10px] uppercase tracking-[0.3em]">
+                                {canStart
+                                    ? `${onlinePlayers.length} player${onlinePlayers.length === 1 ? '' : 's'} ready`
+                                    : 'Waiting for active players…'}
+                            </p>
+                            <p className="mt-2 text-xs font-semibold text-white/35">
+                                {canStart ? 'Start when everyone is ready. The host controls the pace.' : 'At least one active player is required to start.'}
+                            </p>
+                        </div>
                     </div>
                 </div>
 
