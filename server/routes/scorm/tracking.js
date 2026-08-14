@@ -9,6 +9,7 @@ const {
 } = require('../../models/scorm');
 const LearningState = require('../../services/scorm/ScormLearningStateService');
 const { serializeRegistration } = require('../../services/scorm/ScormProgressService');
+const { resolveCourseOrPackageId } = require('../../services/scorm/ScormCourseWorkspaceService');
 
 function activityTime(row) {
     return new Date(row.lastCommitAt || row.updatedAt || row.createdAt || 0).getTime();
@@ -156,6 +157,7 @@ router.get('/summary', auth, async (req, res) => {
 
 router.get('/course/:courseId', auth, async (req, res) => {
     try {
+        await resolveCourseOrPackageId({ id: req.params.courseId, hostId: req.userId });
         const courses = await loadHostCourses(req.userId, req.params.courseId);
         const course = courses[0];
         if (!course || course.status === 'archived') return res.status(404).json({ message: 'Course not found' });
