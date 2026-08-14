@@ -21,6 +21,7 @@ import './scormDashboard.css';
 import './scormContrastPolish.css';
 import './scormModernDark.css';
 import './scormWorkbenchTheme.css';
+import './scormWorkbenchConsistency.css';
 
 const NAV_GROUPS = [
   {
