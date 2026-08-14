@@ -27,7 +27,7 @@ describe('ScormCourseWorkspaceService', () => {
         };
         ScormPackage.findOne = async ({ where }) => {
             expect(where).to.deep.equal({ id: packageId, hostId });
-            return { id: packageId, title: 'Generated security course', status: 'ready' };
+            return { id: packageId, title: 'Generated security course', status: 'ready', source: 'ai_author' };
         };
         ScormCourse.create = async (values) => {
             createdRows.push(values);
@@ -80,7 +80,7 @@ describe('ScormCourseWorkspaceService', () => {
             if (created && (where?.id === created.id || where?.packageId === created.packageId)) return created;
             return null;
         };
-        ScormPackage.findOne = async () => ({ id: packageId, title: 'Recovered course', status: 'ready' });
+        ScormPackage.findOne = async () => ({ id: packageId, title: 'Recovered course', status: 'ready', source: 'ai_author' });
         ScormCourse.create = async (values) => {
             created = { ...values };
             return created;
@@ -95,10 +95,21 @@ describe('ScormCourseWorkspaceService', () => {
     it('does not create a workspace for a package that is not ready', async () => {
         let creates = 0;
         ScormCourse.findOne = async () => null;
-        ScormPackage.findOne = async () => ({ id: 'pkg', title: 'Broken', status: 'error' });
+        ScormPackage.findOne = async () => ({ id: 'pkg', title: 'Broken', status: 'error', source: 'ai_author' });
         ScormCourse.create = async () => { creates += 1; };
 
         const course = await ensureCourseForPackage({ packageId: 'pkg', hostId: 9 });
+        expect(course).to.equal(null);
+        expect(creates).to.equal(0);
+    });
+
+    it('does not auto-create a course for a normal uploaded SCORM package', async () => {
+        let creates = 0;
+        ScormCourse.findOne = async () => null;
+        ScormPackage.findOne = async () => ({ id: 'uploaded-pkg', title: 'Uploaded package', status: 'ready', source: 'upload' });
+        ScormCourse.create = async () => { creates += 1; };
+
+        const course = await ensureCourseForPackage({ packageId: 'uploaded-pkg', hostId: 10 });
         expect(course).to.equal(null);
         expect(creates).to.equal(0);
     });
