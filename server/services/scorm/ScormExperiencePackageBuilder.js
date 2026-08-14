@@ -122,6 +122,7 @@ function injectExperienceCss(html) {
 .qmx-prompt{font-size:11px;line-height:1.45;margin-top:10px;font-weight:600}
 .qmx-badge{position:absolute;right:14px;top:14px;padding:7px 10px;border-radius:999px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.09em}
 .qmx-fallback{padding:30px;text-align:center;font-size:13px;line-height:1.55;max-width:480px}
+.qmx-pan-hint{display:none}
 .qmx-enter{animation:qmxIn .46s cubic-bezier(.16,1,.3,1) both}
 @keyframes qmxIn{from{opacity:0;transform:translateY(10px) scale(.994)}to{opacity:1;transform:none}}
 @keyframes qmxDetail{0%{opacity:.55;transform:translateY(3px)}100%{opacity:1;transform:none}}
@@ -153,9 +154,12 @@ function experienceScript() {
       var node=slides[i+1];if(!node)return;
       var stage=node.querySelector('.stage');if(!stage)return;
       var list=points(s),layout=String(s.layout||'cards'),asset=s.visualAsset||'';
+      var wide=['process','timeline','comparison','matrix','cycle'].indexOf(layout)>=0;
+      var pannable=['process','timeline','comparison','hub','matrix','cycle'].indexOf(layout)>=0;
       var frame=document.createElement('div');frame.className='qmx-stage qmx-enter';
       var pointButtons=list.map(function(p,n){var label=pointName(layout,n);return '<button type="button" class="qmx-point" data-index="'+n+'" aria-label="Explore '+esc(label)+': '+esc(p)+'">'+esc(label)+'</button>'}).join('');
-      frame.innerHTML='<div class="qmx-frame '+(['process','timeline','comparison','matrix','cycle'].indexOf(layout)>=0?'qmx-wide':'')+'"><div class="qmx-copy"><div class="qmx-kicker">Section '+(i+1)+' · '+esc(layout)+'</div><h2>'+esc(s.title)+'</h2><p>'+esc(s.content)+'</p><div class="qmx-toolbar"><div class="qmx-points" role="group" aria-label="Explore learning points">'+pointButtons+'</div><div class="qmx-count" data-count aria-live="polite">0 / '+list.length+' explored</div></div><div class="qmx-detail" data-detail role="status" aria-live="polite"><span class="qmx-detail-label">Explore the visual</span><span data-detail-text>'+(list.length?'Choose a learning point to reveal its detail.':'Review the visual and continue when ready.')+'</span></div><div class="qmx-prompt">'+esc((s.interaction&&s.interaction.prompt)||'Explore the visual before continuing.')+'</div></div><div class="qmx-visual">'+(asset?'<img src="'+esc(asset)+'" alt="'+esc(s.visualTitle||s.title)+'" loading="eager" decoding="async"/>':'<div class="qmx-fallback">The visual could not be generated. The full learning explanation is still available on this screen.</div>')+'<div class="qmx-badge">Interactive visual</div></div></div>';
+      var panHint=pannable?'<div class="qmx-pan-hint" aria-hidden="true">Swipe diagram ↔</div>':'';
+      frame.innerHTML='<div class="qmx-frame '+(wide?'qmx-wide':'')+'" data-layout="'+esc(layout)+'"><div class="qmx-copy"><div class="qmx-kicker">Section '+(i+1)+' · '+esc(layout)+'</div><h2>'+esc(s.title)+'</h2><p>'+esc(s.content)+'</p><div class="qmx-toolbar"><div class="qmx-points" role="group" aria-label="Explore learning points">'+pointButtons+'</div><div class="qmx-count" data-count aria-live="polite">0 / '+list.length+' explored</div></div><div class="qmx-detail" data-detail role="status" aria-live="polite"><span class="qmx-detail-label">Explore the visual</span><span data-detail-text>'+(list.length?'Choose a learning point to reveal its detail.':'Review the visual and continue when ready.')+'</span></div><div class="qmx-prompt">'+esc((s.interaction&&s.interaction.prompt)||'Explore the visual before continuing.')+'</div></div><div class="qmx-visual '+(pannable?'qmx-visual-pan':'')+'" tabindex="0" role="group" aria-label="'+esc(s.visualTitle||s.title)+' learning diagram">'+(asset?'<img src="'+esc(asset)+'" alt="'+esc(s.visualTitle||s.title)+'" loading="eager" decoding="async"/>':'<div class="qmx-fallback">The visual could not be generated. The full learning explanation is still available on this screen.</div>')+panHint+'<div class="qmx-badge">Interactive visual</div></div></div>';
       stage.replaceWith(frame);
       var explored={},detail=frame.querySelector('[data-detail]'),detailText=frame.querySelector('[data-detail-text]'),detailLabel=frame.querySelector('.qmx-detail-label'),count=frame.querySelector('[data-count]'),buttons=Array.prototype.slice.call(frame.querySelectorAll('.qmx-point'));
       function selectPoint(idx,focus){
@@ -180,8 +184,21 @@ function experienceScript() {
           selectPoint(next,true);
         });
       });
-      var image=frame.querySelector('.qmx-visual img');
-      if(image)image.addEventListener('error',function(){var visual=frame.querySelector('.qmx-visual');if(visual)visual.innerHTML='<div class="qmx-fallback">The visual could not be displayed. Use the explanation and learning points on this screen to continue.</div>'});
+      var visual=frame.querySelector('.qmx-visual'),image=frame.querySelector('.qmx-visual img');
+      function positionMobileVisual(){
+        if(!image||!visual||!pannable||window.innerWidth>680)return;
+        if(layout==='hub'||layout==='cycle')visual.scrollLeft=Math.max(0,(visual.scrollWidth-visual.clientWidth)/2);
+      }
+      if(visual&&pannable){
+        var markPanned=function(){visual.classList.add('has-panned')};
+        visual.addEventListener('scroll',markPanned,{passive:true});
+        visual.addEventListener('touchmove',markPanned,{passive:true});
+      }
+      if(image){
+        image.addEventListener('load',positionMobileVisual);
+        if(image.complete)setTimeout(positionMobileVisual,0);
+        image.addEventListener('error',function(){if(visual)visual.innerHTML='<div class="qmx-fallback">The visual could not be displayed. Use the explanation and learning points on this screen to continue.</div>'});
+      }
     });
   }
   function enhanceQuiz(data){
