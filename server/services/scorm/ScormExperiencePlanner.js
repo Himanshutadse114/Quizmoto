@@ -126,10 +126,13 @@ function planExperienceV5(rawAnalysis) {
 
     const planned = slides.map((rawSlide, index) => {
         const slide = rawSlide && typeof rawSlide === 'object' ? rawSlide : {};
+        const explicitType = clean(slide.screenType).toLowerCase();
+        const hasExplicitType = SCREEN_TYPES.includes(explicitType);
         let type = preferredType(slide, index);
-        if (type === previousType) type = alternateType(type, slide, index);
+        if (!hasExplicitType && type === previousType) type = alternateType(type, slide, index);
         const copy = splitCopy(slide.content);
-        const background = clean(slide.backgroundStyle).toLowerCase() || backgroundFor(type, index, previousBackground);
+        const explicitBackground = clean(slide.backgroundStyle).toLowerCase();
+        const background = explicitBackground || backgroundFor(type, index, previousBackground);
         const result = {
             ...slide,
             screenType: type,
