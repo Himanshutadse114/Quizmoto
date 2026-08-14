@@ -3,10 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'rea
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
+import './pages/Host/liveQuizTheme.css';
 
-// Route-level code splitting keeps Live Quiz, learner and SCORM admin screens out
-// of each other's initial bundles.
 const Login = lazy(() => import('./pages/Host/Login'));
+const LiveQuizShell = lazy(() => import('./pages/Host/LiveQuizShell'));
 const Dashboard = lazy(() => import('./pages/Host/Dashboard'));
 const CreateQuiz = lazy(() => import('./pages/Host/CreateQuiz'));
 const EditQuiz = lazy(() => import('./pages/Host/EditQuiz'));
@@ -59,7 +59,6 @@ function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
-        {/* SCORM World is the primary Quizmoto workspace. */}
         <Route path="/" element={<Navigate to="/scorm" replace />} />
         <Route path="/login" element={<Login />} />
 
@@ -69,11 +68,13 @@ function AppRoutes() {
         <Route path="/player/lobby" element={<PlayerLobby />} />
         <Route path="/player/game" element={<PlayerGame />} />
 
-        {/* Live Quiz keeps its original standalone UI; only the URL path changed. */}
-        <Route path="/scorm/live-quiz" element={<Dashboard />} />
-        <Route path="/scorm/live-quiz/create" element={<CreateQuiz />} />
-        <Route path="/scorm/live-quiz/edit/:id" element={<EditQuiz />} />
-        <Route path="/scorm/live-quiz/reports" element={<Reports />} />
+        {/* Live Quiz management gets its own responsive menu; gameplay remains full-screen. */}
+        <Route path="/scorm/live-quiz" element={<LiveQuizShell />}>
+          <Route index element={<Dashboard />} />
+          <Route path="create" element={<CreateQuiz />} />
+          <Route path="edit/:id" element={<EditQuiz />} />
+          <Route path="reports" element={<Reports />} />
+        </Route>
         <Route path="/scorm/live-quiz/lobby/:pin" element={<Lobby />} />
         <Route path="/scorm/live-quiz/game/:pin" element={<GameView />} />
 
@@ -88,7 +89,6 @@ function AppRoutes() {
           <Route path="reports" element={<ScormReports />} />
         </Route>
 
-        {/* Preserve old links while redirecting to the new Live Quiz paths. */}
         <Route path="/dashboard" element={<LegacyQuizRedirect kind="dashboard" />} />
         <Route path="/create-quiz" element={<LegacyQuizRedirect kind="create" />} />
         <Route path="/edit-quiz/:id" element={<LegacyQuizRedirect kind="edit" />} />
