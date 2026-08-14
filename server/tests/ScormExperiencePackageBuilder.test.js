@@ -1,7 +1,8 @@
 const { expect } = require('chai');
 const {
     enrichAnalysis,
-    inferLayout
+    inferLayout,
+    dedupePoints
 } = require('../services/scorm/ScormExperiencePackageBuilder');
 
 describe('ScormExperiencePackageBuilder', () => {
@@ -30,7 +31,7 @@ describe('ScormExperiencePackageBuilder', () => {
             quiz: []
         };
         const result = enrichAnalysis(input);
-        expect(result.experienceVersion).to.equal(3);
+        expect(result.experienceVersion).to.equal(4);
         expect(result.slides).to.have.length(1);
         expect(result.slides[0].title).to.equal('Phishing Process');
         expect(result.slides[0].layout).to.equal('process');
@@ -52,5 +53,34 @@ describe('ScormExperiencePackageBuilder', () => {
             type: 'focus_reveal',
             prompt: 'Select the takeaway.'
         });
+    });
+
+    it('cleans duplicate visual points before vector generation', () => {
+        expect(dedupePoints([
+            'Verify the sender',
+            '  Verify   the sender  ',
+            'Report suspicious email',
+            '',
+            null
+        ])).to.deep.equal([
+            'Verify the sender',
+            'Report suspicious email'
+        ]);
+    });
+
+    it('normalizes quiz copy without changing scoring metadata', () => {
+        const result = enrichAnalysis({
+            slides: [],
+            quiz: [{
+                question: '  What should you do?  ',
+                options: [' Report it ', 'Ignore it', 'Reply', 'Forward it'],
+                correctAnswer: 0,
+                explanation: '  Reporting allows the organisation to investigate.  '
+            }]
+        });
+        expect(result.quiz[0].question).to.equal('What should you do?');
+        expect(result.quiz[0].options[0]).to.equal('Report it');
+        expect(result.quiz[0].correctAnswer).to.equal(0);
+        expect(result.quiz[0].explanation).to.equal('Reporting allows the organisation to investigate.');
     });
 });
