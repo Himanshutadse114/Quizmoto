@@ -17,20 +17,13 @@ router.get('/', auth, async (req, res) => {
         include: [{ model: ScormPackage, as: 'package' }],
         order: [['createdAt', 'DESC']]
     });
-    // Hide archived courses and courses whose package was deleted
     res.json(
         courses.filter(
-            (c) =>
-                c.status !== 'archived' &&
-                c.package &&
-                c.package.status !== 'deleted'
+            (c) => c.status !== 'archived' && c.package && c.package.status !== 'deleted'
         )
     );
 });
 
-/**
- * List SCORM course reports (summary) — same role as /api/quizzes/reports/all
- */
 router.get('/reports/all', auth, async (req, res) => {
     try {
         const reports = await ScormReportService.listCourseReports(req.userId);
@@ -38,6 +31,46 @@ router.get('/reports/all', auth, async (req, res) => {
     } catch (err) {
         console.error('[scorm-reports] list failed', err);
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+router.get('/reports/learners', auth, async (req, res) => {
+    try {
+        const query = String(req.query.q || '').slice(0, 160);
+        const learners = await ScormReportService.listLearners(req.userId, query);
+        res.json(learners);
+    } catch (err) {
+        console.error('[scorm-reports] learner search failed', err);
+        res.status(500).json({ message: 'Unable to search learners' });
+    }
+});
+
+router.get('/reports/learner', auth, async (req, res) => {
+    try {
+        const email = String(req.query.email || '').trim();
+        const format = String(req.query.format || 'pdf').toLowerCase();
+        if (!email) return res.status(400).json({ message: 'Learner email is required' });
+        if (!['pdf', 'excel'].includes(format)) return res.status(400).json({ message: 'Invalid format' });
+
+        const generated = await ScormReportService.generateLearnerReportFile({
+            hostId: req.userId,
+            email,
+            format
+        });
+
+        res.download(generated.outputPath, generated.downloadName, (err) => {
+            ScormReportService.safeUnlink(generated.outputPath);
+            if (err && !res.headersSent) res.status(500).json({ message: 'Learner report download failed' });
+        });
+    } catch (err) {
+        console.error('[scorm-reports] learner export failed', {
+            message: err && err.message,
+            code: err && err.code
+        });
+        if (err.code === 'LEARNER_EMAIL_REQUIRED') return res.status(400).json({ message: 'Learner email is required' });
+        if (err.code === 'LEARNER_NOT_FOUND') return res.status(404).json({ message: 'Learner not found for this SCORM AI account' });
+        if (err.code === 'INVALID_FORMAT') return res.status(400).json({ message: 'Invalid format' });
+        res.status(500).json({ message: 'Learner report generation failed' });
     }
 });
 
@@ -82,15 +115,10 @@ router.get('/code/:inviteCode', async (req, res) => {
     });
 });
 
-/**
- * Download course report PDF or Excel — mirrors /api/quizzes/reports/:id/export
- */
 router.get('/:id/report', auth, async (req, res) => {
     try {
         const format = String(req.query.format || 'pdf').toLowerCase();
-        if (!['pdf', 'excel'].includes(format)) {
-            return res.status(400).json({ message: 'Invalid format' });
-        }
+        if (!['pdf', 'excel'].includes(format)) return res.status(400).json({ message: 'Invalid format' });
 
         const generated = await ScormReportService.generateReportFile({
             courseId: req.params.id,
@@ -100,9 +128,7 @@ router.get('/:id/report', auth, async (req, res) => {
 
         res.download(generated.outputPath, generated.downloadName, (err) => {
             ScormReportService.safeUnlink(generated.outputPath);
-            if (err && !res.headersSent) {
-                res.status(500).json({ message: 'Report download failed' });
-            }
+            if (err && !res.headersSent) res.status(500).json({ message: 'Report download failed' });
         });
     } catch (err) {
         console.error('[scorm-reports] export failed', {
@@ -110,12 +136,8 @@ router.get('/:id/report', auth, async (req, res) => {
             code: err && err.code,
             stack: err && err.stack ? String(err.stack).slice(0, 1500) : null
         });
-        if (err.code === 'COURSE_NOT_FOUND') {
-            return res.status(404).json({ message: 'Course not found' });
-        }
-        if (err.code === 'INVALID_FORMAT') {
-            return res.status(400).json({ message: 'Invalid format' });
-        }
+        if (err.code === 'COURSE_NOT_FOUND') return res.status(404).json({ message: 'Course not found' });
+        if (err.code === 'INVALID_FORMAT') return res.status(400).json({ message: 'Invalid format' });
         res.status(500).json({
             message: 'Report generation failed',
             detail: process.env.NODE_ENV === 'production' ? undefined : (err && err.message)
@@ -186,8 +208,6 @@ router.post('/:id/preview', auth, async (req, res) => {
             return res.status(400).json({ message: 'Package not ready' });
         }
 
-        // Admin preview is a single reusable QA identity per course. It is reset
-        // before every launch, so repeated previews never create learner rows.
         const prepared = await prepareCoursePreview(course.id);
         const reg = prepared.registration;
         const token = signRegistrationToken(reg.id, course.id);
