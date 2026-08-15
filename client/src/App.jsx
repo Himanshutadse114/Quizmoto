@@ -5,7 +5,11 @@ import { SocketProvider } from './context/SocketContext';
 import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
 import './pages/Host/liveQuizTheme.css';
 import './pages/Host/classicQuizmoto.css';
+import './pages/Host/quizmotoHostWorkbench.css';
+import './pages/Host/quizmotoEditWorkbench.css';
+import './pages/Host/quizmotoCreateWorkbench.css';
 import './pages/Host/quizmotoElectricArena.css';
+import './pages/Host/quizmotoArenaPolish.css';
 import './pages/Scorm/scormVisualStudioFixes.css';
 
 const Login = lazy(() => import('./pages/Host/Login'));
