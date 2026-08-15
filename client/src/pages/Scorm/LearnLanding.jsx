@@ -42,33 +42,33 @@ export default function ScormLearnLanding() {
         token,
         playToken,
         entryHref,
-        packageId
+        packageId,
+        playUrl
       } = res.data;
       const registrationToken = token || playToken || '';
 
-      if (!registrationId || !registrationToken || !entryHref) {
-        throw new Error('Course launch information is incomplete. Please reopen the invite link.');
+      // The backend validates/reconstructs package launch metadata before it
+      // creates the registration. The client only needs the signed registration
+      // identity to enter the canonical same-origin player route.
+      if (!registrationId || !registrationToken) {
+        throw new Error('Course registration could not be created. Please reopen the invite link.');
       }
 
       const launch = {
         token: registrationToken,
-        entryHref,
+        entryHref: entryHref || '',
         packageId: packageId || ''
       };
       try {
         sessionStorage.setItem(`scorm_reg_${registrationId}`, JSON.stringify(launch));
       } catch (_) {}
 
-      const q = new URLSearchParams({
-        token: registrationToken,
-        entryHref,
-        packageId: packageId || ''
-      });
+      const q = new URLSearchParams({ token: registrationToken });
+      if (entryHref) q.set('entryHref', entryHref);
+      if (packageId) q.set('packageId', packageId);
 
-      // Public invite learners launch directly into the same-origin backend
-      // player. This intentionally avoids the old intermediate React popup
-      // launcher, which was both unnecessary and vulnerable to popup blocking.
-      window.location.assign(apiUrl(`/api/scorm/play/${registrationId}?${q.toString()}`));
+      const canonicalPlayUrl = playUrl || `/api/scorm/play/${registrationId}`;
+      window.location.assign(apiUrl(`${canonicalPlayUrl}?${q.toString()}`));
     } catch (err) {
       setError(err.response?.data?.message || err.message);
       setLoading(false);
@@ -95,7 +95,7 @@ export default function ScormLearnLanding() {
             <div className="w-11 h-11 rounded-xl bg-[#0e2039] grid place-items-center text-[#bfdbfe] border border-[#2a4b74] mb-7">
               <BookOpen size={20} />
             </div>
-            <div className="text-[11px] font-semibold text-[#93a4bb]">SCORM World</div>
+            <div className="text-[11px] font-semibold text-[#93a4bb]">SCORM AI</div>
             <h1 className="text-3xl sm:text-4xl md:text-[44px] font-semibold tracking-[-0.045em] leading-[1.02] break-words text-[#f8fafc]">
               {course?.title || 'Loading course…'}
             </h1>
