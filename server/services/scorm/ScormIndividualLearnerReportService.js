@@ -168,7 +168,11 @@ async function buildLearnerReport({ hostId, email }) {
         };
     });
 
-    const scores = attempts.map((a) => Number(a.score)).filter(Number.isFinite);
+    const scores = attempts
+        .map((a) => a.score)
+        .filter((value) => value !== null && value !== undefined && value !== '')
+        .map(Number)
+        .filter(Number.isFinite);
     const questionsCaptured = attempts.reduce((sum, a) => sum + Number(a.answerSummary.captured || 0), 0);
     const gradedQuestions = attempts.reduce((sum, a) => sum + Number(a.answerSummary.graded || 0), 0);
     const correctAnswers = attempts.reduce((sum, a) => sum + Number(a.answerSummary.correct || 0), 0);
