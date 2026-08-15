@@ -1,13 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Layers3, LockKeyhole, Mail, UserRound } from 'lucide-react';
+import { ArrowLeft, Layers3, LockKeyhole, Mail, ShieldCheck, UserRound } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import './scormAuthWorkbench.css';
 
 export default function ScormAuth() {
   const navigate = useNavigate();
-  const { loginScorm, registerScorm, prepareScormLogin, token } = useAuth();
+  const {
+    loginScorm,
+    loginScormWithGoogle,
+    registerScorm,
+    prepareScormLogin,
+    token
+  } = useAuth();
   const [mode, setMode] = useState('login');
   const [username, setUsername] = useState('');
   const [identifier, setIdentifier] = useState('');
@@ -43,6 +50,23 @@ export default function ScormAuth() {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    if (!credentialResponse?.credential) {
+      setError('Google Sign-In did not return a valid credential.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await loginScormWithGoogle(credentialResponse.credential);
+      navigate('/scorm');
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Google Sign-In failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const goBackToQuizmoto = () => navigate(token ? '/host' : '/login');
   const isLogin = mode === 'login';
 
@@ -53,7 +77,7 @@ export default function ScormAuth() {
           <button type="button" onClick={goBackToQuizmoto} className="sa-back">
             <ArrowLeft size={15} /> <span>Back to Quizmoto</span>
           </button>
-          <div className="sa-top-note">Separate SCORM AI access</div>
+          <div className="sa-top-note">Approval-only SCORM AI access</div>
         </div>
 
         <motion.main
@@ -70,9 +94,9 @@ export default function ScormAuth() {
               Create, publish and track AI-assisted SCORM learning experiences from a dedicated workspace protected separately from Quizmoto.
             </p>
             <div className="sa-points" aria-label="SCORM AI workspace highlights">
-              <div className="sa-point"><span className="sa-point-dot" /> AI-assisted course authoring</div>
-              <div className="sa-point"><span className="sa-point-dot" /> Learner tracking and reports</div>
-              <div className="sa-point"><span className="sa-point-dot" /> SCORM package management</div>
+              <div className="sa-point"><span className="sa-point-dot" /> Google or password authentication</div>
+              <div className="sa-point"><span className="sa-point-dot" /> Administrator-approved accounts only</div>
+              <div className="sa-point"><span className="sa-point-dot" /> Learner tracking and course management</div>
             </div>
           </section>
 
@@ -81,8 +105,8 @@ export default function ScormAuth() {
             <h2 className="sa-form-title">{isLogin ? 'Sign in to SCORM AI' : 'Create your SCORM AI account'}</h2>
             <p className="sa-form-sub">
               {isLogin
-                ? 'Use your SCORM AI credentials to continue.'
-                : 'Create a dedicated account for the SCORM AI workspace.'}
+                ? 'Sign in with an administrator-approved account.'
+                : 'Your email must be approved by the SCORM AI administrator before you can register.'}
             </p>
 
             <div className="sa-tabs" role="tablist" aria-label="SCORM AI authentication mode">
@@ -107,6 +131,23 @@ export default function ScormAuth() {
             </div>
 
             {error && <div className="sa-error">{error}</div>}
+
+            <div className="sa-google-block">
+              <div className="sa-google-label"><ShieldCheck size={13} /> Approved Google account</div>
+              <div className="sa-google-button">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => setError('Google Sign-In failed. Please try again.')}
+                  theme="outline"
+                  size="large"
+                  shape="rectangular"
+                  text="continue_with"
+                  width="320"
+                />
+              </div>
+            </div>
+
+            <div className="sa-divider" aria-hidden="true"><span>or use SCORM AI credentials</span></div>
 
             <form onSubmit={submit} className="sa-form">
               {!isLogin && (
