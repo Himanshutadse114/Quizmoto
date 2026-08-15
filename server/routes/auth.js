@@ -7,6 +7,7 @@ const {
     ADMIN_CONTACT_EMAIL,
     normalizeEmail,
     getAccessRole,
+    findGrant,
     ensureSuperAdminGrant,
     accessDeniedPayload,
     registrationCodeDeniedPayload,
@@ -190,9 +191,8 @@ router.post('/scorm/register', async (req, res) => {
 
         let user = await User.findOne({ where: { email } });
         if (user) {
-            if (user.password) {
-                return res.status(409).json({ message: 'An account already exists for this email. Please log in.' });
-            }
+            // A valid activation code explicitly re-claims any pre-existing
+            // password identity from the old unrestricted SCORM flow.
             user.password = password;
             if (!user.username) user.username = username;
             await user.save();
@@ -239,6 +239,11 @@ router.post('/scorm/login', async (req, res) => {
                 code: 'SCORM_SUPER_ADMIN_GOOGLE_REQUIRED',
                 adminContact: ADMIN_CONTACT_EMAIL
             });
+        }
+
+        const grant = await findGrant(user.email);
+        if (!grant?.registrationCodeUsedAt) {
+            return res.status(403).json(registrationCodeDeniedPayload());
         }
 
         res.json(await scormAuthResponse(user, role));
