@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, KeyRound, Layers3, LockKeyhole, Mail, ShieldCheck, UserRound } from 'lucide-react';
+import { ArrowLeft, Layers3, LockKeyhole, Mail, ShieldCheck, UserRound } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -19,10 +19,10 @@ export default function ScormAuth() {
   const [username, setUsername] = useState('');
   const [identifier, setIdentifier] = useState('');
   const [email, setEmail] = useState('');
-  const [activationCode, setActivationCode] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     prepareScormLogin();
@@ -31,26 +31,51 @@ export default function ScormAuth() {
   const switchMode = (nextMode) => {
     setMode(nextMode);
     setError('');
+    setNotice('');
+  };
+
+  const handlePending = (result, fallbackEmail = '') => {
+    setError('');
+    setNotice(result?.message || 'Your SCORM AI registration is pending administrator approval.');
+    if (fallbackEmail) {
+      setMode('login');
+      setIdentifier(fallbackEmail);
+      setPassword('');
+    }
   };
 
   const submit = async (event) => {
     event.preventDefault();
     setBusy(true);
     setError('');
+    setNotice('');
     try {
       if (mode === 'login') {
-        await loginScorm({ identifier: identifier.trim(), password });
+        const result = await loginScorm({ identifier: identifier.trim(), password });
+        if (result?.pendingApproval) {
+          handlePending(result);
+          return;
+        }
       } else {
-        await registerScorm({
+        const registeredEmail = email.trim().toLowerCase();
+        const result = await registerScorm({
           username: username.trim(),
-          email: email.trim(),
-          password,
-          activationCode: activationCode.trim()
+          email: registeredEmail,
+          password
         });
+        if (result?.pendingApproval) {
+          handlePending(result, registeredEmail);
+          return;
+        }
       }
       navigate('/scorm');
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Authentication failed.');
+      const data = err.response?.data;
+      if (data?.pendingApproval || data?.code === 'SCORM_APPROVAL_PENDING') {
+        handlePending(data);
+      } else {
+        setError(data?.message || err.message || 'Authentication failed.');
+      }
     } finally {
       setBusy(false);
     }
@@ -63,11 +88,21 @@ export default function ScormAuth() {
     }
     setBusy(true);
     setError('');
+    setNotice('');
     try {
-      await loginScormWithGoogle(credentialResponse.credential);
+      const result = await loginScormWithGoogle(credentialResponse.credential);
+      if (result?.pendingApproval) {
+        handlePending(result);
+        return;
+      }
       navigate('/scorm');
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Google Sign-In failed.');
+      const data = err.response?.data;
+      if (data?.pendingApproval || data?.code === 'SCORM_APPROVAL_PENDING') {
+        handlePending(data);
+      } else {
+        setError(data?.message || err.message || 'Google Sign-In failed.');
+      }
     } finally {
       setBusy(false);
     }
@@ -86,7 +121,7 @@ export default function ScormAuth() {
           <button type="button" onClick={goBackToQuizmoto} className="sa-back">
             <ArrowLeft size={15} /> <span>Back to Quizmoto</span>
           </button>
-          <div className="sa-top-note">Approval-only SCORM AI access</div>
+          <div className="sa-top-note">Administrator-approved SCORM AI access</div>
         </div>
 
         <motion.main
@@ -103,19 +138,19 @@ export default function ScormAuth() {
               Create, publish and track AI-assisted SCORM learning experiences from a dedicated workspace protected separately from Quizmoto.
             </p>
             <div className="sa-points" aria-label="SCORM AI workspace highlights">
-              <div className="sa-point"><span className="sa-point-dot" /> Google or password authentication</div>
-              <div className="sa-point"><span className="sa-point-dot" /> Administrator-approved accounts only</div>
-              <div className="sa-point"><span className="sa-point-dot" /> Password registration uses one-time activation</div>
+              <div className="sa-point"><span className="sa-point-dot" /> Register first with your own credentials</div>
+              <div className="sa-point"><span className="sa-point-dot" /> Super Admin unlocks SCORM AI access</div>
+              <div className="sa-point"><span className="sa-point-dot" /> Use the same credentials after approval</div>
             </div>
           </section>
 
           <section className="sa-form-panel">
             <div className="sa-form-kicker">Secure access</div>
-            <h2 className="sa-form-title">{isLogin ? 'Sign in to SCORM AI' : 'Create your SCORM AI account'}</h2>
+            <h2 className="sa-form-title">{isLogin ? 'Sign in to SCORM AI' : 'Register for SCORM AI'}</h2>
             <p className="sa-form-sub">
               {isLogin
-                ? 'Sign in with an administrator-approved account.'
-                : 'Use the approved email and one-time activation code supplied by the SCORM AI administrator.'}
+                ? 'Only accounts approved by the SCORM AI Super Admin can enter the workspace.'
+                : 'Register normally. Your details will be saved immediately, then the Super Admin must approve your account before you can sign in.'}
             </p>
 
             <div className="sa-tabs" role="tablist" aria-label="SCORM AI authentication mode">
@@ -135,14 +170,20 @@ export default function ScormAuth() {
                 onClick={() => switchMode('register')}
                 className={`sa-tab ${!isLogin ? 'is-active' : ''}`}
               >
-                Create account
+                Register
               </button>
             </div>
 
+            {notice && (
+              <div className="sa-notice" role="status">
+                <div className="sa-notice-title">Registration captured — approval pending</div>
+                <div>{notice}</div>
+              </div>
+            )}
             {error && <div className="sa-error">{error}</div>}
 
             <div className="sa-google-block">
-              <div className="sa-google-label"><ShieldCheck size={13} /> Approved Google account</div>
+              <div className="sa-google-label"><ShieldCheck size={13} /> Google account</div>
               <div className="sa-google-button">
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
@@ -154,6 +195,7 @@ export default function ScormAuth() {
                   width="320"
                 />
               </div>
+              <div className="sa-google-hint">If your Google email is not approved yet, the request is captured for Super Admin approval.</div>
             </div>
 
             <div className="sa-divider" aria-hidden="true"><span>or use SCORM AI credentials</span></div>
@@ -178,7 +220,7 @@ export default function ScormAuth() {
               )}
 
               <label>
-                <span className="sa-label">{isLogin ? 'Email or username' : 'Approved email'}</span>
+                <span className="sa-label">{isLogin ? 'Email or username' : 'Email'}</span>
                 <div className="sa-input-wrap">
                   <Mail size={15} />
                   <input
@@ -192,23 +234,6 @@ export default function ScormAuth() {
                   />
                 </div>
               </label>
-
-              {!isLogin && (
-                <label>
-                  <span className="sa-label">One-time activation code</span>
-                  <div className="sa-input-wrap">
-                    <KeyRound size={15} />
-                    <input
-                      value={activationCode}
-                      onChange={(event) => setActivationCode(event.target.value.toUpperCase())}
-                      required
-                      placeholder="XXXX-XXXX-XXXX"
-                      className="sa-input sa-code-input"
-                      autoComplete="one-time-code"
-                    />
-                  </div>
-                </label>
-              )}
 
               <label>
                 <span className="sa-label">Password</span>
@@ -228,7 +253,7 @@ export default function ScormAuth() {
               </label>
 
               <button type="submit" disabled={busy} className="sa-submit">
-                {busy ? 'Please wait…' : isLogin ? 'Log in to SCORM AI' : 'Create SCORM AI account'}
+                {busy ? 'Please wait…' : isLogin ? 'Log in to SCORM AI' : 'Register account'}
               </button>
             </form>
           </section>
