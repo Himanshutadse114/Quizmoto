@@ -13,7 +13,6 @@ import './pages/Host/quizmotoArenaPolish.css';
 import './pages/Host/quizmotoClassicBoundary.css';
 import './pages/Scorm/scormVisualStudioFixes.css';
 
-const Dashboard = lazy(() => import('./pages/Host/Dashboard'));
 const CreateQuiz = lazy(() => import('./pages/Host/CreateQuiz'));
 const EditQuiz = lazy(() => import('./pages/Host/EditQuiz'));
 const Reports = lazy(() => import('./pages/Host/Reports'));
@@ -30,6 +29,7 @@ const ScormPlatformShell = lazy(() => import('./pages/Scorm/ScormPlatformShell')
 const ScormHome = lazy(() => import('./pages/Scorm/Home'));
 const PendingScormHome = lazy(() => import('./pages/Scorm/PendingHome'));
 const ScormFeatureLocked = lazy(() => import('./pages/Scorm/FeatureLocked'));
+const QuizmotoModule = lazy(() => import('./pages/Scorm/QuizmotoModule'));
 const ScormCourses = lazy(() => import('./pages/Scorm/Courses'));
 const ScormTracking = lazy(() => import('./pages/Scorm/Tracking'));
 const ScormLibrary = lazy(() => import('./pages/Scorm/Library'));
@@ -119,7 +119,7 @@ function AppRoutes() {
         <Route path="/scorm" element={<PlatformProtected><ScormPlatformShell /></PlatformProtected>}>
           <Route index element={<ScormHomeGate />} />
 
-          <Route path="quizmoto" element={<Dashboard embedded />} />
+          <Route path="quizmoto" element={<QuizmotoModule />} />
           <Route path="quizmoto/create" element={<CreateQuiz embedded />} />
           <Route path="quizmoto/edit/:id" element={<EditQuiz embedded />} />
           <Route path="quizmoto/reports" element={<Reports embedded />} />
