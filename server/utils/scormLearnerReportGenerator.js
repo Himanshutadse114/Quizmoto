@@ -20,6 +20,32 @@ function resultColor(result) {
     return '#777777';
 }
 
+function drawIdentityTable(doc, report) {
+    const x = 46;
+    const width = 503;
+    const labelWidth = 125;
+    const rowHeight = 38;
+    const top = doc.y + 8;
+    const rows = [
+        ['LEARNER NAME', safe(report.learnerName, 'Learner')],
+        ['EMAIL ADDRESS', safe(report.learnerEmail, 'No email')]
+    ];
+
+    rows.forEach(([label, value], index) => {
+        const y = top + (index * rowHeight);
+        doc.save();
+        doc.rect(x, y, width, rowHeight).fillAndStroke(index % 2 === 0 ? '#FAF8FC' : '#FFFFFF', '#D9D2E5');
+        doc.rect(x, y, labelWidth, rowHeight).fill('#F1EAF8');
+        doc.fillColor('#70558E').font('Helvetica-Bold').fontSize(7.5).text(label, x + 12, y + 14, { width: labelWidth - 20 });
+        doc.fillColor('#241A2E').font('Helvetica-Bold').fontSize(index === 0 ? 11 : 9.5).text(value, x + labelWidth + 14, y + 12, {
+            width: width - labelWidth - 26,
+            ellipsis: true
+        });
+        doc.restore();
+    });
+    doc.y = top + (rows.length * rowHeight) + 12;
+}
+
 function generateLearnerPdf(report, outputPath) {
     return new Promise((resolve, reject) => {
         try {
@@ -29,12 +55,12 @@ function generateLearnerPdf(report, outputPath) {
 
             doc.fillColor('#ff8a1f').fontSize(10).font('Helvetica-Bold').text('SCORM AI · INDIVIDUAL LEARNER REPORT');
             doc.moveDown(0.35);
-            doc.fillColor('#1f1f1f').fontSize(25).text(safe(report.learnerName, 'Learner'));
-            doc.fillColor('#666666').fontSize(11).text(safe(report.learnerEmail, 'No email'));
-            doc.moveDown(0.7);
+            doc.fillColor('#1f1f1f').fontSize(25).font('Helvetica-Bold').text('Individual Learner Report');
+            doc.fillColor('#777777').fontSize(9).font('Helvetica').text('Learner identity and recorded SCORM learning evidence');
+            drawIdentityTable(doc, report);
 
             const summary = report.summary || {};
-            doc.fillColor('#1f1f1f').fontSize(11);
+            doc.fillColor('#1f1f1f').fontSize(11).font('Helvetica');
             doc.text(`Courses: ${summary.courseCount || 0}   Completed: ${summary.completedCount || 0}   Average score: ${summary.averageScore == null ? '—' : summary.averageScore}`);
             doc.text(`Questions captured: ${summary.questionsCaptured || 0}   Correct: ${summary.correctAnswers || 0}   Accuracy: ${summary.answerAccuracy == null ? '—' : `${summary.answerAccuracy}%`}`);
             doc.fillColor('#888888').fontSize(8).text(`Generated: ${new Date().toLocaleString()}`);
@@ -91,8 +117,8 @@ async function generateLearnerExcel(report, outputPath) {
     const overview = workbook.addWorksheet('Learner Overview');
     overview.addRows([
         ['SCORM AI Individual Learner Report'],
-        ['Learner', report.learnerName || 'Learner'],
-        ['Email', report.learnerEmail || ''],
+        ['Learner name', report.learnerName || 'Learner'],
+        ['Email address', report.learnerEmail || ''],
         ['Generated', new Date().toISOString()],
         [],
         ['Courses', report.summary?.courseCount || 0],
