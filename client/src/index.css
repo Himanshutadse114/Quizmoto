@@ -13,7 +13,7 @@
 }
 
 :root {
-  background-color: #25076b;
+  background-color: #11100e;
   color: white;
   font-family: 'Montserrat', sans-serif;
 }
@@ -23,7 +23,7 @@ body {
   display: flex;
   min-height: 100vh;
   overflow-x: hidden;
-  background: radial-gradient(circle at 50% 50%, #46178f 0%, #25076b 100%);
+  background: #11100e;
 }
 
 #root {
@@ -32,7 +32,6 @@ body {
   z-index: 10;
 }
 
-/* Floating Shapes Animation */
 .bg-shape {
   position: fixed;
   z-index: 1;
@@ -42,52 +41,17 @@ body {
 }
 
 @keyframes float {
-  0% {
-    transform: translate(0, 0) rotate(0deg);
-  }
-
-  33% {
-    transform: translate(10vw, 5vh) rotate(120deg);
-  }
-
-  66% {
-    transform: translate(-5vw, 15vh) rotate(240deg);
-  }
-
-  100% {
-    transform: translate(0, 0) rotate(360deg);
-  }
+  0% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(10vw, 5vh) rotate(120deg); }
+  66% { transform: translate(-5vw, 15vh) rotate(240deg); }
+  100% { transform: translate(0, 0) rotate(360deg); }
 }
 
-.shape-1 {
-  top: 10%;
-  left: 10%;
-  animation: float 15s infinite linear;
-}
+.shape-1 { top: 10%; left: 10%; animation: float 15s infinite linear; }
+.shape-2 { top: 60%; left: 80%; animation: float 20s infinite linear reverse; }
+.shape-3 { top: 80%; left: 20%; animation: float 18s infinite linear; }
+.shape-4 { top: 20%; left: 70%; animation: float 25s infinite linear reverse; }
 
-.shape-2 {
-  top: 60%;
-  left: 80%;
-  animation: float 20s infinite linear reverse;
-}
-
-.shape-3 {
-  top: 80%;
-  left: 20%;
-  animation: float 18s infinite linear;
-}
-
-.shape-4 {
-  top: 20%;
-  left: 70%;
-  animation: float 25s infinite linear reverse;
-}
-
-/*
- * Visual Studio renders a learner-course preview inside the dark SCORM admin UI.
- * Keep that canvas isolated from SCORM admin theme overrides so authors see the
- * actual selected course palette rather than a darkened approximation.
- */
 .scorm-editorial [style*="--preview-primary"] {
   color-scheme: light;
   background: #f8fafc !important;
@@ -95,62 +59,18 @@ body {
   color: #0f172a !important;
 }
 
-.scorm-editorial [style*="--preview-primary"] [class~="bg-white"] {
-  background: #ffffff !important;
-}
-
-.scorm-editorial [style*="--preview-primary"] [class*="bg-slate-50"] {
-  background: #f8fafc !important;
-}
-
-.scorm-editorial [style*="--preview-primary"] [class*="bg-green-50"] {
-  background: #f0fdf4 !important;
-}
-
-.scorm-editorial [style*="--preview-primary"] [class*="bg-red-50"] {
-  background: #fef2f2 !important;
-}
-
-.scorm-editorial [style*="--preview-primary"] [class*="bg-green-100"] {
-  background: #dcfce7 !important;
-}
-
-.scorm-editorial [style*="--preview-primary"] [class*="bg-red-100"] {
-  background: #fee2e2 !important;
-}
-
-.scorm-editorial [style*="--preview-primary"] [class*="bg-amber-100"] {
-  background: #fef3c7 !important;
-}
-
-.scorm-editorial [style*="--preview-primary"] [class*="border-slate-200"] {
-  border-color: #e2e8f0 !important;
-}
-
-.scorm-editorial [style*="--preview-primary"] [class*="text-slate-900"] {
-  color: #0f172a !important;
-}
-
-.scorm-editorial [style*="--preview-primary"] [class*="text-slate-700"] {
-  color: #334155 !important;
-}
-
-.scorm-editorial [style*="--preview-primary"] [class*="text-slate-600"] {
-  color: #475569 !important;
-}
-
-.scorm-editorial [style*="--preview-primary"] [class*="text-slate-500"] {
-  color: #64748b !important;
-}
-
-.scorm-editorial [style*="--preview-primary"] [class*="text-green-700"] {
-  color: #15803d !important;
-}
-
-.scorm-editorial [style*="--preview-primary"] [class*="text-red-700"] {
-  color: #b91c1c !important;
-}
-
-.scorm-editorial [style*="--preview-primary"] p {
-  color: #475569 !important;
-}
+.scorm-editorial [style*="--preview-primary"] [class~="bg-white"] { background: #ffffff !important; }
+.scorm-editorial [style*="--preview-primary"] [class*="bg-slate-50"] { background: #f8fafc !important; }
+.scorm-editorial [style*="--preview-primary"] [class*="bg-green-50"] { background: #f0fdf4 !important; }
+.scorm-editorial [style*="--preview-primary"] [class*="bg-red-50"] { background: #fef2f2 !important; }
+.scorm-editorial [style*="--preview-primary"] [class*="bg-green-100"] { background: #dcfce7 !important; }
+.scorm-editorial [style*="--preview-primary"] [class*="bg-red-100"] { background: #fee2e2 !important; }
+.scorm-editorial [style*="--preview-primary"] [class*="bg-amber-100"] { background: #fef3c7 !important; }
+.scorm-editorial [style*="--preview-primary"] [class*="border-slate-200"] { border-color: #e2e8f0 !important; }
+.scorm-editorial [style*="--preview-primary"] [class*="text-slate-900"] { color: #0f172a !important; }
+.scorm-editorial [style*="--preview-primary"] [class*="text-slate-700"] { color: #334155 !important; }
+.scorm-editorial [style*="--preview-primary"] [class*="text-slate-600"] { color: #475569 !important; }
+.scorm-editorial [style*="--preview-primary"] [class*="text-slate-500"] { color: #64748b !important; }
+.scorm-editorial [style*="--preview-primary"] [class*="text-green-700"] { color: #15803d !important; }
+.scorm-editorial [style*="--preview-primary"] [class*="text-red-700"] { color: #b91c1c !important; }
+.scorm-editorial [style*="--preview-primary"] p { color: #475569 !important; }
