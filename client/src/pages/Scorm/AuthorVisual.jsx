@@ -107,6 +107,8 @@ export default function AuthorVisual() {
   const token = localStorage.getItem('token');
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
   const [file, setFile] = useState(null);
+  const [topic, setTopic] = useState('');
+  const [description, setDescription] = useState('');
   const [detailLevel, setDetailLevel] = useState('detailed');
   const [themeId, setThemeId] = useState(1);
   const [analysis, setAnalysis] = useState(null);
@@ -146,14 +148,18 @@ export default function AuthorVisual() {
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ analysis, themeId, detailLevel })); } catch (_) {}
   }, [analysis, themeId, detailLevel, editId]);
 
+  const hasSource = Boolean(file || topic.trim() || description.trim());
+
   const analyze = async () => {
-    if (!file) { setError('Choose a PDF or PowerPoint file first.'); return; }
+    if (!hasSource) { setError('Add a topic and description or upload a source document.'); return; }
     setBusy(true); setError(''); setNotice('');
     try {
-      const fileBase64 = await toBase64(file);
+      const fileBase64 = file ? await toBase64(file) : '';
       const res = await axios.post(apiUrl('/api/scorm/author/analyze'), {
+        topic: topic.trim(),
+        description: description.trim(),
         fileBase64,
-        mimeType: file.type || 'application/pdf',
+        mimeType: file?.type || '',
         detailLevel,
         templateId: themeId
       }, { headers, timeout: 180000 });
@@ -185,7 +191,7 @@ export default function AuthorVisual() {
       }, { headers, timeout: 180000 });
       try { localStorage.removeItem(DRAFT_KEY); } catch (_) {}
       setNotice(editId ? 'Course rebuilt successfully.' : 'Course generated successfully.');
-      const id = res.data?.packageId || editId;
+      const id = res.data?.courseId || res.data?.packageId || editId;
       if (id) navigate(`/scorm/courses/${id}`);
     } catch (err) {
       setError(err.response?.data?.message || err.message);
@@ -201,7 +207,7 @@ export default function AuthorVisual() {
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">SCORM World · Course Experience V5</div>
           <h1 className="text-3xl md:text-[38px] font-semibold tracking-[-.05em] mt-1">AI Course Author</h1>
-          <p className="text-sm text-slate-400 mt-2 max-w-2xl">Turn source material into a responsive, illustrated and interactive SCORM course. Choose the colour experience before generation, then refine each learning screen.</p>
+          <p className="text-sm text-slate-400 mt-2 max-w-2xl">Create a course from a topic and description, a source document, or both. Choose the learner colour theme before generation and refine the experience before publishing.</p>
         </div>
         <div className="flex gap-2"><Link to="/scorm/visual-studio" className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold">Visual Studio</Link>{analysis && <button type="button" onClick={generate} disabled={busy} className="scorm-button-primary px-5 py-2.5 text-xs font-semibold inline-flex items-center gap-2 disabled:opacity-50"><Sparkles size={15} />{busy ? 'Building…' : editId ? 'Rebuild course' : 'Generate SCORM'}</button>}</div>
       </div>
@@ -210,24 +216,34 @@ export default function AuthorVisual() {
       {notice && <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/25 p-3 text-sm text-emerald-100 mb-5 inline-flex items-center gap-2"><Check size={15} />{notice}</div>}
 
       {!analysis && !editId && (
-        <div className="grid xl:grid-cols-[.85fr_1.15fr] gap-5 items-start">
-          <section className="scorm-panel rounded-3xl border p-5 md:p-6 space-y-6">
+        <div className="grid xl:grid-cols-[.9fr_1.1fr] gap-5 items-start">
+          <section className="scorm-panel rounded-3xl border p-5 md:p-6 space-y-5">
             <div>
-              <div className="flex items-center gap-2 text-sm font-semibold"><UploadCloud size={18} />Source document</div>
-              <label className="mt-3 rounded-2xl border border-dashed border-[#36516f] bg-[#08111c] min-h-[150px] flex flex-col items-center justify-center text-center cursor-pointer hover:border-[#4b6f96] transition-colors px-5">
+              <div className="flex items-center gap-2 text-sm font-semibold"><Sparkles size={18} />Create from a brief</div>
+              <div className="grid gap-3 mt-3">
+                <div><label className="block text-[10px] uppercase tracking-[.12em] text-slate-500 font-semibold mb-2">Topic</label><input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. Phishing awareness for employees" className="w-full p-3 text-sm" /></div>
+                <div><label className="block text-[10px] uppercase tracking-[.12em] text-slate-500 font-semibold mb-2">Description / learning context</label><textarea rows={5} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the audience, learning goal, key points, scenarios or behaviours the course should cover." className="w-full p-3 text-sm leading-relaxed resize-y" /></div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 text-[10px] uppercase tracking-[.12em] text-slate-600"><span className="h-px flex-1 bg-current opacity-40" /><span>Optional source document</span><span className="h-px flex-1 bg-current opacity-40" /></div>
+
+            <div>
+              <label className="rounded-2xl border border-dashed min-h-[130px] flex flex-col items-center justify-center text-center cursor-pointer transition-colors px-5 scorm-author-dropzone">
                 <FileText size={25} className="text-slate-500" />
                 <div className="text-sm font-semibold mt-3">{file ? file.name : 'Choose PDF or PowerPoint'}</div>
-                <div className="text-[11px] text-slate-500 mt-1">The source stays in the authoring flow and is transformed server-side.</div>
+                <div className="text-[11px] text-slate-500 mt-1">Add a document when the course needs to stay grounded in existing source material.</div>
                 <input type="file" className="hidden" accept=".pdf,.ppt,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation" onChange={(e) => setFile(e.target.files?.[0] || null)} />
               </label>
+              {file && <button type="button" onClick={() => setFile(null)} className="mt-2 text-xs text-red-300 hover:text-red-200 font-semibold">Remove document</button>}
             </div>
 
             <div>
               <div className="text-[10px] uppercase tracking-[.12em] text-slate-500 font-semibold mb-2">Course depth</div>
-              <div className="grid grid-cols-3 gap-2">{DETAILS.map(([id, label, hint]) => <button key={id} type="button" onClick={() => setDetailLevel(id)} className={`rounded-xl border px-3 py-3 text-left ${detailLevel === id ? 'border-[#477bc4] bg-[#102747]' : 'border-[#26374d] bg-[#0a131f]'}`}><div className="text-xs font-semibold">{label}</div><div className="text-[9px] text-slate-500 mt-1">{hint}</div></button>)}</div>
+              <div className="grid grid-cols-3 gap-2">{DETAILS.map(([id, label, hint]) => <button key={id} type="button" onClick={() => setDetailLevel(id)} className={`rounded-xl border px-3 py-3 text-left scorm-author-depth ${detailLevel === id ? 'is-selected' : ''}`}><div className="text-xs font-semibold">{label}</div><div className="text-[9px] text-slate-500 mt-1">{hint}</div></button>)}</div>
             </div>
 
-            <button type="button" onClick={analyze} disabled={!file || busy} className="scorm-button-primary w-full py-3.5 text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-40"><Sparkles size={17} />{busy ? 'Designing learning experience…' : 'Analyse & design course'}</button>
+            <button type="button" onClick={analyze} disabled={!hasSource || busy} className="scorm-button-primary w-full py-3.5 text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-40"><Sparkles size={17} />{busy ? 'Designing learning experience…' : 'Analyse & design course'}</button>
           </section>
 
           <section className="scorm-panel rounded-3xl border p-5 md:p-6">
