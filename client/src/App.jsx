@@ -8,7 +8,6 @@ import './pages/Scorm/scormVisualStudioFixes.css';
 
 const Landing = lazy(() => import('./pages/Public/Landing'));
 const Login = lazy(() => import('./pages/Host/Login'));
-const LiveQuizShell = lazy(() => import('./pages/Host/LiveQuizShell'));
 const Dashboard = lazy(() => import('./pages/Host/Dashboard'));
 const CreateQuiz = lazy(() => import('./pages/Host/CreateQuiz'));
 const EditQuiz = lazy(() => import('./pages/Host/EditQuiz'));
@@ -71,12 +70,10 @@ function AppRoutes() {
         <Route path="/player/lobby" element={<PlayerLobby />} />
         <Route path="/player/game" element={<PlayerGame />} />
 
-        <Route path="/host" element={<LiveQuizShell />}>
-          <Route index element={<Dashboard />} />
-          <Route path="create" element={<CreateQuiz />} />
-          <Route path="edit/:id" element={<EditQuiz />} />
-          <Route path="reports" element={<Reports />} />
-        </Route>
+        <Route path="/host" element={<Dashboard />} />
+        <Route path="/host/create" element={<CreateQuiz />} />
+        <Route path="/host/edit/:id" element={<EditQuiz />} />
+        <Route path="/host/reports" element={<Reports />} />
         <Route path="/host/lobby/:pin" element={<Lobby />} />
         <Route path="/host/game/:pin" element={<GameView />} />
 
