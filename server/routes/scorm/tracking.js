@@ -9,10 +9,20 @@ const {
 } = require('../../models/scorm');
 const LearningState = require('../../services/scorm/ScormLearningStateService');
 const { serializeRegistration } = require('../../services/scorm/ScormProgressService');
+const { extractInteractions, answerSummary } = require('../../services/scorm/ScormInteractionReportService');
 const { resolveCourseOrPackageId } = require('../../services/scorm/ScormCourseWorkspaceService');
 
 function activityTime(row) {
     return new Date(row.lastCommitAt || row.updatedAt || row.createdAt || 0).getTime();
+}
+
+function attemptRows(attempts) {
+    return (Array.isArray(attempts) ? attempts : []).map((attempt) => ({
+        id: attempt.id,
+        attemptNo: attempt.attemptNo,
+        startedAt: attempt.startedAt,
+        finishedAt: attempt.finishedAt
+    }));
 }
 
 function registrationRow(reg, course) {
@@ -20,9 +30,19 @@ function registrationRow(reg, course) {
     const attempts = Array.isArray(reg.attempts)
         ? reg.attempts
         : Array.isArray(reg.dataValues?.attempts) ? reg.dataValues.attempts : [];
+    const state = typeof reg.getDataValue === 'function'
+        ? reg.getDataValue('learningStateV2')
+        : reg.learningStateV2;
+    const interactions = extractInteractions({ state, packageRow: course?.package || null });
+
     return {
         ...row,
-        attemptCount: Math.max(1, attempts.length)
+        courseTitle: course?.title || row.courseTitle || 'Course',
+        scormStandard: course?.package?.standard || null,
+        attempts: attemptRows(attempts),
+        attemptCount: Math.max(1, attempts.length),
+        interactions,
+        answerSummary: answerSummary(interactions)
     };
 }
 
@@ -44,9 +64,15 @@ function learnerRows(course) {
             continue;
         }
 
-        const combinedAttempts = Number(current.attemptCount || 1) + Number(row.attemptCount || 1);
+        const mergedAttempts = [...(current.attempts || []), ...(row.attempts || [])]
+            .sort((a, b) => Number(a.attemptNo || 0) - Number(b.attemptNo || 0));
+        const combinedAttempts = Math.max(1, Number(current.attemptCount || 1) + Number(row.attemptCount || 1));
         const newest = activityTime(row) > activityTime(current) ? row : current;
-        grouped.set(key, { ...newest, attemptCount: combinedAttempts });
+        grouped.set(key, {
+            ...newest,
+            attempts: mergedAttempts,
+            attemptCount: combinedAttempts
+        });
     }
     return Array.from(grouped.values());
 }
@@ -146,7 +172,7 @@ router.get('/summary', auth, async (req, res) => {
             learners: newestFirst(rows)
         });
     } catch (err) {
-        console.error('[scorm-tracking-v2] summary failed', {
+        console.error('[scorm-tracking-v3] summary failed', {
             hostId: req.userId,
             error: err?.message || String(err),
             dbCode: err?.original?.code || err?.parent?.code || null
@@ -157,8 +183,9 @@ router.get('/summary', auth, async (req, res) => {
 
 router.get('/course/:courseId', auth, async (req, res) => {
     try {
-        await resolveCourseOrPackageId({ id: req.params.courseId, hostId: req.userId });
-        const courses = await loadHostCourses(req.userId, req.params.courseId);
+        const resolved = await resolveCourseOrPackageId({ id: req.params.courseId, hostId: req.userId });
+        const resolvedId = resolved?.id || resolved?.courseId || req.params.courseId;
+        const courses = await loadHostCourses(req.userId, resolvedId);
         const course = courses[0];
         if (!course || course.status === 'archived') return res.status(404).json({ message: 'Course not found' });
         const learners = newestFirst(learnerRows(course));
@@ -168,7 +195,7 @@ router.get('/course/:courseId', auth, async (req, res) => {
             learners
         });
     } catch (err) {
-        console.error('[scorm-tracking-v2] course failed', {
+        console.error('[scorm-tracking-v3] course failed', {
             hostId: req.userId,
             courseId: req.params.courseId,
             error: err?.message || String(err),
