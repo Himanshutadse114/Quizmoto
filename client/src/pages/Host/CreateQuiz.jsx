@@ -31,7 +31,7 @@ const CreateQuiz = () => {
     const { token } = useAuth();
     const navigate = useNavigate();
 
-    const GEN_API_URL = apiUrl('/api/scorm/author/quiz-generate');
+    const GEN_API_URL = apiUrl('/api/quizzes/generate-ai');
     const API_URL = apiUrl('/api/quizzes');
 
     const addQuestion = () => {
