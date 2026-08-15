@@ -43,7 +43,7 @@ function interactionBuckets(values) {
             return;
         }
 
-        match = key.match(/^cmi\.interactions\.(\d+)\.(id|type|student_response|learner_response|result)$/i);
+        match = key.match(/^cmi\.interactions\.(\d+)\.(id|type|description|student_response|learner_response|result)$/i);
         if (match) {
             ensure(match[1])[`scorm_${match[2].toLowerCase()}`] = raw;
             return;
@@ -82,7 +82,7 @@ function extractInteractions({ state, packageRow } = {}) {
                 index,
                 id: text(row.scorm_id) || `question_${index + 1}`,
                 type: text(row.scorm_type) || 'choice',
-                question: text(row.question) || text(authored.question) || `Question ${index + 1}`,
+                question: text(row.question) || text(authored.question) || text(row.scorm_description) || text(row.scorm_id) || `Question ${index + 1}`,
                 selectedAnswer: selectedAnswer || '—',
                 correctAnswer: correctAnswer || '—',
                 selectedIndex,
