@@ -121,7 +121,11 @@ router.get('/active-sessions', auth, async (req, res) => {
         const activeSessions = await GameSession.findAll({
             where: {
                 hostId: req.userId,
-                status: { [Op.ne]: 'finished' }
+                status: { [Op.ne]: 'finished' },
+                [Op.or]: [
+                    { state: null },
+                    { state: { [Op.notIn]: ['FINISHED', 'CANCELLED'] } }
+                ]
             },
             include: [{ model: Quiz, attributes: ['title'] }],
             order: [['updatedAt', 'DESC']]
