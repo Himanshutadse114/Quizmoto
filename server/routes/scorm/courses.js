@@ -10,6 +10,7 @@ const { createInviteCode, signRegistrationToken } = require('../../services/scor
 const { prepareCoursePreview } = require('../../services/scorm/ScormPreviewService');
 const { resolveCourseOrPackageId } = require('../../services/scorm/ScormCourseWorkspaceService');
 const ScormReportService = require('../../services/ScormReportService');
+const ScormIndividualLearnerReportService = require('../../services/scorm/ScormIndividualLearnerReportService');
 
 router.get('/', auth, async (req, res) => {
     const courses = await ScormCourse.findAll({
@@ -37,7 +38,7 @@ router.get('/reports/all', auth, async (req, res) => {
 router.get('/reports/learners', auth, async (req, res) => {
     try {
         const query = String(req.query.q || '').slice(0, 160);
-        const learners = await ScormReportService.listLearners(req.userId, query);
+        const learners = await ScormIndividualLearnerReportService.searchLearners(req.userId, query);
         res.json(learners);
     } catch (err) {
         console.error('[scorm-reports] learner search failed', err);
@@ -52,7 +53,7 @@ router.get('/reports/learner', auth, async (req, res) => {
         if (!email) return res.status(400).json({ message: 'Learner email is required' });
         if (!['pdf', 'excel'].includes(format)) return res.status(400).json({ message: 'Invalid format' });
 
-        const generated = await ScormReportService.generateLearnerReportFile({
+        const generated = await ScormIndividualLearnerReportService.generateLearnerReportFile({
             hostId: req.userId,
             email,
             format
