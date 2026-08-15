@@ -1,5 +1,5 @@
-const crypto = require('crypto');
 const ScormAccessGrant = require('../../models/ScormAccessGrant');
+const ScormAccessRequest = require('../../models/ScormAccessRequest');
 
 const SUPER_ADMIN_EMAIL = String(
     process.env.SCORM_SUPER_ADMIN_EMAIL || 'tadsehimanshu@gmail.com'
@@ -21,36 +21,13 @@ function isSuperAdminEmail(email) {
     return normalizeEmail(email) === SUPER_ADMIN_EMAIL;
 }
 
-function normalizeRegistrationCode(value) {
-    return String(value || '').toUpperCase().replace(/[^A-F0-9]/g, '');
-}
-
-function hashRegistrationCode(value) {
-    return crypto.createHash('sha256').update(normalizeRegistrationCode(value)).digest('hex');
-}
-
-function generateRegistrationCode() {
-    const raw = crypto.randomBytes(6).toString('hex').toUpperCase();
-    return `${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8, 12)}`;
-}
-
-async function assignRegistrationCode(grant) {
-    const activationCode = generateRegistrationCode();
-    grant.registrationCodeHash = hashRegistrationCode(activationCode);
-    grant.registrationCodeUsedAt = null;
-    await grant.save();
-    return activationCode;
-}
-
 async function ensureSuperAdminGrant() {
     const [grant] = await ScormAccessGrant.findOrCreate({
         where: { email: SUPER_ADMIN_EMAIL },
         defaults: {
             email: SUPER_ADMIN_EMAIL,
             role: 'super_admin',
-            addedByEmail: SUPER_ADMIN_EMAIL,
-            registrationCodeHash: null,
-            registrationCodeUsedAt: null
+            addedByEmail: SUPER_ADMIN_EMAIL
         }
     });
 
@@ -61,10 +38,6 @@ async function ensureSuperAdminGrant() {
     }
     if (normalizeEmail(grant.addedByEmail) !== SUPER_ADMIN_EMAIL) {
         grant.addedByEmail = SUPER_ADMIN_EMAIL;
-        changed = true;
-    }
-    if (grant.registrationCodeHash) {
-        grant.registrationCodeHash = null;
         changed = true;
     }
     if (changed) await grant.save();
@@ -90,20 +63,67 @@ async function hasAccess(email) {
     return Boolean(await getAccessRole(email));
 }
 
-function accessDeniedPayload() {
+function pendingApprovalPayload({ captured = true } = {}) {
     return {
-        message: `Your account does not have access to SCORM AI. Please contact the administrator at ${ADMIN_CONTACT_EMAIL}.`,
-        code: 'SCORM_ACCESS_DENIED',
+        message: captured
+            ? `Your registration has been captured, but your SCORM AI account is not authorised yet. Please contact the administrator at ${ADMIN_CONTACT_EMAIL} to unlock access. After approval, you can sign in using the same credentials you just registered.`
+            : `Your SCORM AI account is registered but not authorised yet. Please contact the administrator at ${ADMIN_CONTACT_EMAIL} to unlock access. After approval, use the same registered credentials to sign in.`,
+        code: 'SCORM_APPROVAL_PENDING',
+        pendingApproval: true,
+        registrationCaptured: captured,
         adminContact: ADMIN_CONTACT_EMAIL
     };
 }
 
-function registrationCodeDeniedPayload() {
-    return {
-        message: `A valid SCORM AI activation code is required for password registration. Please contact the administrator at ${ADMIN_CONTACT_EMAIL}.`,
-        code: 'SCORM_ACTIVATION_CODE_REQUIRED',
-        adminContact: ADMIN_CONTACT_EMAIL
-    };
+function accessDeniedPayload() {
+    return pendingApprovalPayload({ captured: false });
+}
+
+async function captureAccessRequest({ userId = null, email, username = null, authMethod = 'password' }) {
+    const normalized = normalizeEmail(email);
+    if (!isValidEmail(normalized) || isSuperAdminEmail(normalized)) return null;
+
+    const role = await getAccessRole(normalized);
+    const desiredStatus = role ? 'approved' : 'pending';
+    const [request] = await ScormAccessRequest.findOrCreate({
+        where: { email: normalized },
+        defaults: {
+            userId,
+            email: normalized,
+            username: username || null,
+            authMethod: authMethod || 'password',
+            status: desiredStatus,
+            requestedAt: new Date(),
+            approvedAt: role ? new Date() : null
+        }
+    });
+
+    let changed = false;
+    if (userId && request.userId !== userId) {
+        request.userId = userId;
+        changed = true;
+    }
+    if (username && request.username !== username) {
+        request.username = username;
+        changed = true;
+    }
+    if (authMethod && request.authMethod !== authMethod) {
+        request.authMethod = request.authMethod && request.authMethod !== authMethod ? 'mixed' : authMethod;
+        changed = true;
+    }
+    if (request.status !== desiredStatus) {
+        request.status = desiredStatus;
+        request.approvedAt = role ? (request.approvedAt || new Date()) : null;
+        if (!role) {
+            request.approvedByUserId = null;
+            request.approvedByEmail = null;
+        }
+        changed = true;
+    }
+    request.requestedAt = new Date();
+    changed = true;
+    if (changed) await request.save();
+    return request;
 }
 
 async function listGrants() {
@@ -116,6 +136,26 @@ async function listGrants() {
     });
 }
 
+async function listAccessRequests({ status = null } = {}) {
+    const where = status ? { status } : {};
+    return ScormAccessRequest.findAll({
+        where,
+        order: [['requestedAt', 'ASC']]
+    });
+}
+
+async function markRequestApproved(email, { approvedByUserId = null, approvedByEmail = null } = {}) {
+    const normalized = normalizeEmail(email);
+    const request = await ScormAccessRequest.findOne({ where: { email: normalized } });
+    if (!request) return null;
+    request.status = 'approved';
+    request.approvedAt = new Date();
+    request.approvedByUserId = approvedByUserId;
+    request.approvedByEmail = normalizeEmail(approvedByEmail) || null;
+    await request.save();
+    return request;
+}
+
 async function addGrant({ email, addedByUserId = null, addedByEmail = null }) {
     const normalized = normalizeEmail(email);
     if (!isValidEmail(normalized)) {
@@ -125,10 +165,10 @@ async function addGrant({ email, addedByUserId = null, addedByEmail = null }) {
     }
 
     if (isSuperAdminEmail(normalized)) {
-        return { grant: await ensureSuperAdminGrant(), activationCode: null };
+        return { grant: await ensureSuperAdminGrant(), request: null };
     }
 
-    const [grant, created] = await ScormAccessGrant.findOrCreate({
+    const [grant] = await ScormAccessGrant.findOrCreate({
         where: { email: normalized },
         defaults: {
             email: normalized,
@@ -139,58 +179,35 @@ async function addGrant({ email, addedByUserId = null, addedByEmail = null }) {
     });
 
     let changed = false;
-    if (!created && grant.role !== 'user') {
+    if (grant.role !== 'user') {
         grant.role = 'user';
         changed = true;
     }
-    if (!grant.addedByEmail && addedByEmail) {
+    if (addedByEmail && normalizeEmail(grant.addedByEmail) !== normalizeEmail(addedByEmail)) {
         grant.addedByEmail = normalizeEmail(addedByEmail);
         changed = true;
     }
-    if (!grant.addedByUserId && addedByUserId) {
+    if (addedByUserId && grant.addedByUserId !== addedByUserId) {
         grant.addedByUserId = addedByUserId;
         changed = true;
     }
     if (changed) await grant.save();
 
-    let activationCode = null;
-    if (created || (!grant.registrationCodeHash && !grant.registrationCodeUsedAt)) {
-        activationCode = await assignRegistrationCode(grant);
-    }
-
-    return { grant, activationCode };
+    const request = await markRequestApproved(normalized, { approvedByUserId: addedByUserId, approvedByEmail: addedByEmail });
+    return { grant, request };
 }
 
-async function rotateRegistrationCode(id) {
-    const grant = await ScormAccessGrant.findByPk(id);
-    if (!grant) return { ok: false, reason: 'not_found' };
-    if (isSuperAdminEmail(grant.email) || grant.role === 'super_admin') {
-        return { ok: false, reason: 'super_admin' };
-    }
-    const activationCode = await assignRegistrationCode(grant);
-    return { ok: true, grant, activationCode };
-}
+async function approveAccessRequest(id, { approvedByUserId = null, approvedByEmail = null } = {}) {
+    const request = await ScormAccessRequest.findByPk(id);
+    if (!request) return { ok: false, reason: 'not_found' };
+    if (isSuperAdminEmail(request.email)) return { ok: false, reason: 'super_admin' };
 
-async function verifyRegistrationCode(email, code) {
-    const normalized = normalizeEmail(email);
-    if (!normalized || isSuperAdminEmail(normalized)) return false;
-    const suppliedHash = hashRegistrationCode(code);
-    const grant = await ScormAccessGrant.findOne({ where: { email: normalized } });
-    if (!grant || !grant.registrationCodeHash || grant.registrationCodeUsedAt) return false;
-
-    const expected = Buffer.from(grant.registrationCodeHash, 'hex');
-    const supplied = Buffer.from(suppliedHash, 'hex');
-    if (expected.length !== supplied.length) return false;
-    return crypto.timingSafeEqual(expected, supplied);
-}
-
-async function markRegistrationCodeUsed(email) {
-    const normalized = normalizeEmail(email);
-    const grant = await ScormAccessGrant.findOne({ where: { email: normalized } });
-    if (!grant) return;
-    grant.registrationCodeHash = null;
-    grant.registrationCodeUsedAt = new Date();
-    await grant.save();
+    const result = await addGrant({
+        email: request.email,
+        addedByUserId: approvedByUserId,
+        addedByEmail: approvedByEmail
+    });
+    return { ok: true, request: result.request || request, grant: result.grant };
 }
 
 async function removeGrant(id) {
@@ -199,8 +216,20 @@ async function removeGrant(id) {
     if (isSuperAdminEmail(grant.email) || grant.role === 'super_admin') {
         return { removed: false, reason: 'super_admin' };
     }
+
+    const email = normalizeEmail(grant.email);
     await grant.destroy();
-    return { removed: true, grant };
+
+    const request = await ScormAccessRequest.findOne({ where: { email } });
+    if (request) {
+        request.status = 'pending';
+        request.approvedAt = null;
+        request.approvedByUserId = null;
+        request.approvedByEmail = null;
+        await request.save();
+    }
+
+    return { removed: true, grant, request };
 }
 
 module.exports = {
@@ -209,17 +238,16 @@ module.exports = {
     normalizeEmail,
     isValidEmail,
     isSuperAdminEmail,
-    normalizeRegistrationCode,
     ensureSuperAdminGrant,
     findGrant,
     getAccessRole,
     hasAccess,
+    pendingApprovalPayload,
     accessDeniedPayload,
-    registrationCodeDeniedPayload,
+    captureAccessRequest,
     listGrants,
+    listAccessRequests,
     addGrant,
-    rotateRegistrationCode,
-    verifyRegistrationCode,
-    markRegistrationCodeUsed,
+    approveAccessRequest,
     removeGrant
 };
