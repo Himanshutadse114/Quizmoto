@@ -229,10 +229,19 @@ router.post('/scorm/register', async (req, res) => {
                 username: user.username,
                 authMethod: user.googleId ? 'mixed' : 'password'
             });
+
+            if (!role) {
+                return res.status(409).json({
+                    ...pendingResponse(user, false),
+                    message: `This SCORM AI account is already registered and is still waiting for administrator approval. Please contact ${ADMIN_CONTACT_EMAIL}. After approval, sign in with the same credentials you already registered.`,
+                    code: 'SCORM_ACCOUNT_EXISTS_PENDING'
+                });
+            }
+
             return res.status(409).json({
-                message: 'This SCORM AI account is already registered. Please log in with the same credentials.',
+                message: 'This SCORM AI account is already registered and approved. Please log in with the same credentials.',
                 code: 'SCORM_ACCOUNT_EXISTS',
-                pendingApproval: !role,
+                pendingApproval: false,
                 adminContact: ADMIN_CONTACT_EMAIL
             });
         }
