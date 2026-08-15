@@ -124,11 +124,14 @@
 .sa-tab.is-active { border-color: #ffb053; color: #211207; background: linear-gradient(180deg,#ffb145,#ff941f); }
 
 .sa-error { margin-top: 10px; padding: 9px 11px; border: 1px solid rgba(255,138,120,.45); border-radius: 7px; color: #ffd0c7; background: rgba(126,44,31,.18); font-size: 11px; line-height: 1.4; }
+.sa-notice { margin-top: 10px; padding: 10px 11px; border: 1px solid rgba(255,196,92,.48); border-radius: 8px; color: #f3d7a7; background: linear-gradient(135deg, rgba(255,148,31,.13), rgba(255,196,92,.06)); font-size: 10.5px; line-height: 1.42; }
+.sa-notice-title { margin-bottom: 4px; color: var(--sa-yellow); font: 700 9px/1.2 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .08em; }
 
 .sa-google-block { margin-top: 11px; }
 .sa-google-label { margin-bottom: 6px; display: flex; align-items: center; gap: 6px; color: #caa775; font: 600 8px/1 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .1em; }
 .sa-google-button { min-height: 42px; padding: 4px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--sa-border-soft); border-radius: 8px; background: #1b120b; }
 .sa-google-button > div { max-width: 100%; }
+.sa-google-hint { margin-top: 5px; color: #8f6d4a; font-size: 9px; line-height: 1.35; }
 
 .sa-divider { margin: 10px 0 0; display: flex; align-items: center; gap: 9px; color: #856543; font: 600 7px/1 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .09em; white-space: nowrap; }
 .sa-divider::before,
@@ -156,19 +159,22 @@
   .sa-title { font-size: 50px; }
   .sa-copy { margin-top: 10px; font-size: 12px; }
   .sa-points { margin-top: 14px; gap: 5px; }
-  .sa-form-panel { padding: 16px 24px; }
+  .sa-form-panel { padding: 14px 24px; }
   .sa-form-title { font-size: 25px; }
   .sa-form-sub { margin-top: 4px; }
-  .sa-tabs { margin-top: 10px; }
-  .sa-tab { min-height: 32px; }
-  .sa-error { margin-top: 7px; padding-block: 7px; }
-  .sa-google-block { margin-top: 8px; }
-  .sa-google-button { min-height: 38px; }
-  .sa-divider { margin-top: 7px; }
-  .sa-form { margin-top: 7px; gap: 7px; }
-  .sa-label { margin-bottom: 4px; }
-  .sa-input { min-height: 36px; }
-  .sa-submit { min-height: 38px; }
+  .sa-tabs { margin-top: 8px; }
+  .sa-tab { min-height: 31px; }
+  .sa-error, .sa-notice { margin-top: 6px; padding-block: 6px; }
+  .sa-notice-title { margin-bottom: 2px; }
+  .sa-google-block { margin-top: 6px; }
+  .sa-google-label { margin-bottom: 4px; }
+  .sa-google-button { min-height: 36px; }
+  .sa-google-hint { display: none; }
+  .sa-divider { margin-top: 6px; }
+  .sa-form { margin-top: 6px; gap: 6px; }
+  .sa-label { margin-bottom: 3px; }
+  .sa-input { min-height: 35px; }
+  .sa-submit { min-height: 37px; }
 }
 
 @media (max-width: 800px) {
