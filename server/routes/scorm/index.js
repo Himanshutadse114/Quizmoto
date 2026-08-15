@@ -4,7 +4,7 @@ const { featureFlags } = require('../../config/featureFlags');
 
 router.use((req, res, next) => {
     if (!featureFlags.scormLms) {
-        return res.status(404).json({ message: 'SCORM World is not enabled' });
+        return res.status(404).json({ message: 'SCORM AI is not enabled' });
     }
     next();
 });
