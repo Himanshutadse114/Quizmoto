@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Clock3,
   LogIn,
-  MailPlus,
   RefreshCw,
   ShieldCheck,
   Trash2,
@@ -16,13 +15,11 @@ import { apiUrl } from '../../config';
 
 export default function AccessAdmin() {
   const { token, user } = useAuth();
-  const [email, setEmail] = useState('');
   const [grants, setGrants] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [superAdminEmail, setSuperAdminEmail] = useState('tadsehimanshu@gmail.com');
   const [adminContact, setAdminContact] = useState('tadsehimanshu@gmail.com');
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [approvingId, setApprovingId] = useState(null);
   const [removingId, setRemovingId] = useState(null);
   const [message, setMessage] = useState('');
@@ -65,25 +62,6 @@ export default function AccessAdmin() {
     }
   };
 
-  const addAccess = async (event) => {
-    event.preventDefault();
-    const nextEmail = email.trim().toLowerCase();
-    if (!nextEmail) return;
-    setSaving(true);
-    setError('');
-    setMessage('');
-    try {
-      await axios.post(apiUrl('/api/scorm/access'), { email: nextEmail }, { headers });
-      setEmail('');
-      setMessage(`${nextEmail} has been authorised for SCORM AI.`);
-      await loadAccess();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Could not add SCORM AI access.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const removeAccess = async (grant) => {
     if (grant.protected) return;
     if (!window.confirm(`Remove SCORM AI access for ${grant.email}? Their existing SCORM AI session will stop working on the next protected request.`)) return;
@@ -92,7 +70,7 @@ export default function AccessAdmin() {
     setMessage('');
     try {
       await axios.delete(apiUrl(`/api/scorm/access/${grant.id}`), { headers });
-      setMessage(`${grant.email} is no longer authorised. If they previously registered, their account is back in Pending Registrations.`);
+      setMessage(`${grant.email} is no longer authorised. Their registered account is back in Pending Registrations and can be approved again later.`);
       await loadAccess();
     } catch (err) {
       setError(err.response?.data?.message || 'Could not remove SCORM AI access.');
@@ -115,7 +93,7 @@ export default function AccessAdmin() {
             <div className="text-[#ffc45c] font-mono text-[9px] uppercase tracking-[.16em]">Super administrator</div>
             <h1 className="mt-2 font-black text-[#f8edd4] text-4xl md:text-5xl leading-none tracking-[-.025em]">SCORM AI Access Control</h1>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[#d0ad80]">
-              Users register first. Their account details are stored but access stays pending until you approve them. Once approved, they sign in with the same password or Google account they originally used—no activation code is required.
+              Users must register first. Their account details are stored, but access stays pending until you approve that captured registration. Once approved, they sign in with the same password or Google account they originally used—no activation code and no second registration.
             </p>
           </div>
           <button type="button" onClick={loadAccess} disabled={loading} className="min-h-10 px-3.5 rounded-lg border border-[#765033] bg-[#2a1a10] text-[#efcf9e] font-mono text-[10px] font-semibold inline-flex items-center justify-center gap-2 hover:border-[#ff941f] disabled:opacity-50">
@@ -151,7 +129,7 @@ export default function AccessAdmin() {
               <div>
                 <div className="text-[#ffc45c] font-mono text-[8px] uppercase tracking-[.13em]">Waiting for your approval</div>
                 <div className="mt-1 text-[#f8edd4] text-xl font-black">Pending Registrations</div>
-                <div className="mt-1 text-[#ae8459] text-xs">These users already registered. Approval unlocks their existing credentials; it does not create a new password.</div>
+                <div className="mt-1 text-[#ae8459] text-xs">Only accounts that have actually registered or attempted Google Sign-In appear here. Approving one unlocks that existing identity.</div>
               </div>
               <div className="px-2.5 py-1.5 rounded-md border border-[#7e552f] bg-[#25170d] text-[#d4ae7c] font-mono text-[9px]">{pendingRequests.length} pending</div>
             </div>
@@ -198,29 +176,6 @@ export default function AccessAdmin() {
               </div>
             )}
           </section>
-
-          <form onSubmit={addAccess} className="border border-[#765033] rounded-xl bg-[#352214] p-4 md:p-5">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[linear-gradient(180deg,#ffc05c,#ff941f)] text-[#2b1606] grid place-items-center shrink-0"><MailPlus size={18} /></div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[#f8edd4] font-bold">Authorise an email in advance</div>
-                <div className="mt-1 text-[#b98e60] text-xs leading-relaxed">Optional: approve an email before the user registers. If they register later with this exact email, their account can enter immediately.</div>
-              </div>
-            </div>
-            <div className="mt-4 grid sm:grid-cols-[minmax(0,1fr)_auto] gap-2">
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="person@company.com"
-                required
-                className="min-h-11 rounded-lg border border-[#694727] bg-[#1f140c] px-3.5 text-[#f8edd4] text-sm outline-none placeholder:text-[#7c5b3b] focus:border-[#ff941f] focus:ring-2 focus:ring-[#ff941f]/10"
-              />
-              <button disabled={saving} className="min-h-11 px-5 rounded-lg border border-[#ffb15f] bg-[linear-gradient(180deg,#ffb145,#ff941f)] text-[#241307] font-mono text-[10px] font-bold shadow-[0_3px_0_#9c4b08] hover:translate-y-[2px] hover:shadow-[0_1px_0_#9c4b08] disabled:opacity-50">
-                {saving ? 'Authorising…' : 'Authorise email'}
-              </button>
-            </div>
-          </form>
 
           <section className="border border-[#68472a] rounded-xl overflow-hidden bg-[#25180f]">
             <div className="px-4 py-3.5 border-b border-[#5d3d23] flex items-center justify-between gap-3 bg-[#2f1e12]">
