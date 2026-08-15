@@ -1,0 +1,100 @@
+.scorm-editorial.scorm-workbench .scorm-course-metric {
+  background: #111722 !important;
+  border-color: #2f2a23 !important;
+  color: var(--wb-cream) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-metric .scorm-micro {
+  color: #c79a66 !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-metric-icon {
+  background: #151a23 !important;
+  border-color: #333028 !important;
+  color: var(--wb-cream-soft) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-list-shell {
+  background: #14110e !important;
+  border-color: #3b3128 !important;
+  box-shadow: none !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-toolbar {
+  background: #111722 !important;
+  border-color: #3a3027 !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-search {
+  background: #0d0b09 !important;
+  border: 1px solid #4a3b2e !important;
+  border-radius: 8px !important;
+  color: var(--wb-cream) !important;
+  font-family: "IBM Plex Mono", monospace !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-search::placeholder {
+  color: #9a7b58 !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-search:focus {
+  border-color: var(--wb-orange) !important;
+  box-shadow: 0 0 0 3px rgba(255,138,31,.08) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-filters {
+  background: #16120f !important;
+  border-color: #4a3b2e !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-filter {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: #c4aa87 !important;
+  min-width: 72px;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-filter:hover {
+  background: #211a14 !important;
+  border-color: #574331 !important;
+  color: var(--wb-cream) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-filter.is-active {
+  background: var(--wb-orange) !important;
+  border-color: #ffa24f !important;
+  color: #17110b !important;
+  box-shadow: 0 2px 0 #9f4700 !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-rows {
+  --tw-divide-opacity: 1;
+  border-color: #2f2821 !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-row {
+  background: #14110e !important;
+  border-color: #2f2821 !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-row:hover {
+  background: #1b1611 !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-status {
+  border-color: #4a3b2e !important;
+  color: #c9a373 !important;
+  background: #19140f !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-status.is-published {
+  color: #78dfa0 !important;
+  border-color: rgba(67,209,122,.28) !important;
+  background: rgba(67,209,122,.055) !important;
+}
+
+.scorm-editorial.scorm-workbench .scorm-course-status.is-draft {
+  color: #d5b98e !important;
+  border-color: #5a4938 !important;
+  background: #19140f !important;
+}
