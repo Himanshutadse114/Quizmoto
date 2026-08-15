@@ -159,17 +159,25 @@ const Dashboard = () => {
         { label: 'Dashboard', icon: LayoutDashboard, active: true, action: () => setMobileMenuOpen(false) },
         { label: 'Create quiz', icon: Plus, action: () => go('/create-quiz') },
         { label: 'Reports', icon: FileText, action: () => go('/reports') },
-        { label: 'SCORM AI', icon: BookOpenCheck, action: () => go('/scorm') },
+        {
+            label: 'SCORM AI',
+            icon: BookOpenCheck,
+            action: () => go('/scorm'),
+            note: 'Approval required · Contact tadsehimanshu@gmail.com'
+        },
         { label: 'Import defaults', icon: Download, action: handleImportDefaults }
     ];
 
     const navigation = (
         <>
             <div className="qh-nav-label">Host workspace</div>
-            {menuItems.map(({ label, icon: Icon, active, action }) => (
-                <button key={label} type="button" onClick={action} className={`qh-nav-button ${active ? 'is-active' : ''}`}>
-                    <Icon size={16} /> {label}
-                </button>
+            {menuItems.map(({ label, icon: Icon, active, action, note }) => (
+                <div key={label} className={`qh-nav-entry ${note ? 'has-note' : ''}`}>
+                    <button type="button" onClick={action} className={`qh-nav-button ${active ? 'is-active' : ''}`}>
+                        <Icon size={16} /> <span>{label}</span>
+                    </button>
+                    {note && <div className="qh-nav-disclaimer">{note}</div>}
+                </div>
             ))}
         </>
     );

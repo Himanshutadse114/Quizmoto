@@ -1,0 +1,79 @@
+/* Final Quizmoto boundary layer.
+   Management pages use Electric Arena; live Lobby/Game/Player flows stay classic. */
+
+/* SCORM AI is gated. Keep the approval requirement visible in the Quizmoto menu. */
+.quizmoto-host-workbench .qh-nav-entry {
+  min-width: 0;
+}
+
+.quizmoto-host-workbench .qh-nav-entry.has-note {
+  padding-bottom: 3px;
+}
+
+.quizmoto-host-workbench .qh-nav-disclaimer {
+  margin: 5px 10px 5px 38px;
+  color: #9a94bd;
+  font: 600 8px/1.45 'Space Mono', 'IBM Plex Mono', monospace;
+  letter-spacing: .02em;
+  overflow-wrap: anywhere;
+}
+
+.quizmoto-host-workbench .qh-nav-entry.has-note:hover .qh-nav-disclaimer {
+  color: #beb9da;
+}
+
+/* Restore the pre-Electric-Arena live stage exactly at the application boundary. */
+.quizmoto-classic-live-stage {
+  color: #ffffff !important;
+  background: #25076b !important;
+  background-color: #25076b !important;
+  background-image: none !important;
+  background-attachment: initial !important;
+}
+
+.quizmoto-classic-live-stage::before {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
+
+/* Undo the Electric Arena glass overrides inside the classic live flow. */
+.quizmoto-classic-live-stage [class*="bg-white/5"] {
+  background-color: rgba(255, 255, 255, .05) !important;
+  backdrop-filter: none !important;
+}
+
+.quizmoto-classic-live-stage [class*="bg-white/10"] {
+  background-color: rgba(255, 255, 255, .10) !important;
+  backdrop-filter: none !important;
+}
+
+.quizmoto-classic-live-stage [class*="border-white/10"] {
+  border-color: rgba(255, 255, 255, .10) !important;
+}
+
+.quizmoto-classic-live-stage [class*="border-white/20"] {
+  border-color: rgba(255, 255, 255, .20) !important;
+}
+
+/* Restore the original Quizmoto live palette from Tailwind config. */
+.quizmoto-classic-live-stage .bg-quizmoto-red { background-color: #eb1736 !important; }
+.quizmoto-classic-live-stage .bg-quizmoto-blue { background-color: #1368ce !important; }
+.quizmoto-classic-live-stage .bg-quizmoto-yellow { background-color: #ffa602 !important; }
+.quizmoto-classic-live-stage .bg-quizmoto-green { background-color: #26890c !important; }
+.quizmoto-classic-live-stage .bg-quizmoto-purple { background-color: #46178f !important; }
+.quizmoto-classic-live-stage .bg-quizmoto-lightPurple { background-color: #864cbf !important; }
+.quizmoto-classic-live-stage .bg-quizmoto-darkPurple { background-color: #25076b !important; }
+
+.quizmoto-classic-live-stage .text-quizmoto-red { color: #eb1736 !important; }
+.quizmoto-classic-live-stage .text-quizmoto-blue { color: #1368ce !important; }
+.quizmoto-classic-live-stage .text-quizmoto-yellow { color: #ffa602 !important; }
+.quizmoto-classic-live-stage .text-quizmoto-green { color: #26890c !important; }
+.quizmoto-classic-live-stage .text-quizmoto-purple { color: #46178f !important; }
+
+@media (max-width: 980px) {
+  .quizmoto-host-workbench .qh-nav-disclaimer {
+    margin-left: 37px;
+    margin-right: 8px;
+  }
+}

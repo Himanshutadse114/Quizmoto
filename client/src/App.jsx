@@ -5,7 +5,12 @@ import { SocketProvider } from './context/SocketContext';
 import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
 import './pages/Host/liveQuizTheme.css';
 import './pages/Host/classicQuizmoto.css';
+import './pages/Host/quizmotoHostWorkbench.css';
+import './pages/Host/quizmotoEditWorkbench.css';
+import './pages/Host/quizmotoCreateWorkbench.css';
 import './pages/Host/quizmotoElectricArena.css';
+import './pages/Host/quizmotoArenaPolish.css';
+import './pages/Host/quizmotoClassicBoundary.css';
 import './pages/Scorm/scormVisualStudioFixes.css';
 
 const Login = lazy(() => import('./pages/Host/Login'));
@@ -124,13 +129,21 @@ function AppSurface() {
   const surfaceClass = !showQuizBackdrop
     ? 'bg-[#11100e]'
     : isQuizGameStage
-      ? 'bg-[#080719] live-quiz-stage'
+      ? 'bg-quizmoto-darkPurple live-quiz-stage quizmoto-classic-live-stage'
       : isHostDashboard
         ? 'bg-[#080719]'
         : 'bg-[#080719] classic-quizmoto-host';
 
   return (
     <div className={`min-h-screen text-white relative ${surfaceClass}`}>
+      {isQuizGameStage && (
+        <>
+          <div className="bg-shape shape-1 w-64 h-64 border-[32px] border-white rounded-full" />
+          <div className="bg-shape shape-2 w-48 h-48 border-[24px] border-quizmoto-yellow rotate-45" />
+          <div className="bg-shape shape-3 w-32 h-32 bg-quizmoto-blue rounded-xl" />
+          <div className="bg-shape shape-4 w-56 h-56 border-[28px] border-quizmoto-red rounded-lg -rotate-12" />
+        </>
+      )}
       <AppRoutes />
     </div>
   );
