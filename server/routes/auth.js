@@ -28,6 +28,12 @@ const scormAuthLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     skip: () => process.env.NODE_ENV === 'test',
+    keyGenerator: (req) => {
+        const identity = normalizeEmail(req.body?.email || req.body?.identifier);
+        if (identity) return `account:${identity}`;
+        const credential = String(req.body?.credential || '');
+        return credential ? `google:${credential.slice(-48)}` : 'scorm-auth-anonymous';
+    },
     message: {
         message: 'Too many SCORM AI authentication attempts. Please wait a few minutes and try again.',
         code: 'SCORM_AUTH_RATE_LIMITED'
@@ -36,6 +42,8 @@ const scormAuthLimiter = rateLimit({
 
 // Protect Google login, password login and activation-code registration from
 // automated guessing without changing Quizmoto host authentication behavior.
+// The limiter key is account-based so reverse-proxy deployments do not place
+// every user behind the same IP-based authentication bucket.
 router.use('/scorm', scormAuthLimiter);
 
 function issueToken(user, scope = 'quizmoto', extraClaims = {}) {
