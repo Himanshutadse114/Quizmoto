@@ -8,6 +8,7 @@ const AuthContext = createContext();
 const API_URL = apiUrl('/api/auth');
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1001652255296-695gf3vjul0fjh1oden4k2n6tvvdvncn.apps.googleusercontent.com';
 const SCORM_ACCESS_KEY = 'scormAccessGranted';
+const PLATFORM_ACCESS_KEY = 'scormPlatformAccess';
 const HOST_TOKEN_BACKUP = 'quizmotoHostToken';
 const HOST_USER_BACKUP = 'quizmotoHostUser';
 
@@ -15,6 +16,9 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem('token'));
     const [scormAccess, setScormAccess] = useState(localStorage.getItem(SCORM_ACCESS_KEY) === '1');
+    const [platformAccess, setPlatformAccess] = useState(
+        localStorage.getItem(PLATFORM_ACCESS_KEY) === '1' || localStorage.getItem(SCORM_ACCESS_KEY) === '1'
+    );
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -46,46 +50,53 @@ export const AuthProvider = ({ children }) => {
         else localStorage.removeItem('user');
     };
 
+    const setAccessFlags = ({ platform = false, scorm = false } = {}) => {
+        setPlatformAccess(platform);
+        setScormAccess(scorm);
+        if (platform) localStorage.setItem(PLATFORM_ACCESS_KEY, '1');
+        else localStorage.removeItem(PLATFORM_ACCESS_KEY);
+        if (scorm) localStorage.setItem(SCORM_ACCESS_KEY, '1');
+        else localStorage.removeItem(SCORM_ACCESS_KEY);
+    };
+
     const loginWithGoogle = async (credential) => {
         const res = await axios.post(`${API_URL}/google`, { credential });
         const userData = { username: res.data.username, avatar: res.data.avatar, email: res.data.email };
-        localStorage.removeItem(SCORM_ACCESS_KEY);
-        setScormAccess(false);
+        setAccessFlags({ platform: false, scorm: false });
         persistSession(res.data.token, userData);
         return res.data;
     };
 
     const prepareScormLogin = () => {
-        if (!scormAccess && token && !localStorage.getItem(HOST_TOKEN_BACKUP)) {
+        if (!platformAccess && token && !localStorage.getItem(HOST_TOKEN_BACKUP)) {
             localStorage.setItem(HOST_TOKEN_BACKUP, token);
             if (user) localStorage.setItem(HOST_USER_BACKUP, JSON.stringify(user));
         }
-        localStorage.removeItem(SCORM_ACCESS_KEY);
-        setScormAccess(false);
+        setAccessFlags({ platform: false, scorm: false });
     };
 
     const enterScormSession = (data) => {
+        if (!data?.token) return data;
+        const approved = Boolean(data.scormAccess ?? (!data.pendingApproval && data.role && data.role !== 'pending'));
         const scormUser = {
             username: data.username,
             avatar: data.avatar || null,
             email: data.email || null,
-            role: data.role || 'user',
+            role: data.role || (approved ? 'user' : 'pending'),
             isSuperAdmin: Boolean(data.isSuperAdmin),
             adminContact: data.adminContact || null,
-            product: 'scorm-ai'
+            product: 'scorm-ai',
+            pendingApproval: Boolean(data.pendingApproval || !approved),
+            platformAccess: true,
+            scormAccess: approved
         };
-        localStorage.setItem(SCORM_ACCESS_KEY, '1');
-        setScormAccess(true);
+        setAccessFlags({ platform: true, scorm: approved });
         persistSession(data.token, scormUser);
         return data;
     };
 
     const resolveScormAuthResponse = (data) => {
-        if (data?.pendingApproval || !data?.token) {
-            localStorage.removeItem(SCORM_ACCESS_KEY);
-            setScormAccess(false);
-            return data;
-        }
+        if (!data?.token) return data;
         return enterScormSession(data);
     };
 
@@ -109,19 +120,11 @@ export const AuthProvider = ({ children }) => {
     };
 
     const refreshScormAccess = async () => {
-        if (!token || !scormAccess) return null;
-        const res = await axios.get(apiUrl('/api/scorm/access/me'), {
+        if (!token || !platformAccess) return null;
+        const res = await axios.get(`${API_URL}/scorm/status`, {
             headers: { Authorization: `Bearer ${token}` }
         });
-        const nextUser = {
-            ...(user || {}),
-            email: res.data.email || user?.email || null,
-            role: res.data.role || 'user',
-            isSuperAdmin: Boolean(res.data.isSuperAdmin),
-            adminContact: res.data.adminContact || user?.adminContact || null,
-            product: 'scorm-ai'
-        };
-        persistSession(token, nextUser);
+        enterScormSession(res.data);
         return res.data;
     };
 
@@ -133,10 +136,9 @@ export const AuthProvider = ({ children }) => {
             if (raw) hostUser = JSON.parse(raw);
         } catch (_) {}
 
-        localStorage.removeItem(SCORM_ACCESS_KEY);
+        setAccessFlags({ platform: false, scorm: false });
         localStorage.removeItem(HOST_TOKEN_BACKUP);
         localStorage.removeItem(HOST_USER_BACKUP);
-        setScormAccess(false);
 
         if (hostToken) {
             persistSession(hostToken, hostUser);
@@ -148,10 +150,9 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
-        localStorage.removeItem(SCORM_ACCESS_KEY);
+        setAccessFlags({ platform: false, scorm: false });
         localStorage.removeItem(HOST_TOKEN_BACKUP);
         localStorage.removeItem(HOST_USER_BACKUP);
-        setScormAccess(false);
         persistSession(null, null);
     };
 
@@ -166,6 +167,7 @@ export const AuthProvider = ({ children }) => {
             refreshScormAccess,
             prepareScormLogin,
             leaveScorm,
+            platformAccess,
             scormAccess,
             logout,
             loading
