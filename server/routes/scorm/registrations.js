@@ -1,8 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware');
+const { sequelize } = require('../../config/database');
 const { acceptInvite } = require('../../services/scorm/ScormInviteService');
-const { ScormRegistration, ScormCourse } = require('../../models/scorm');
+const LearningState = require('../../services/scorm/ScormLearningStateService');
+const {
+    ScormRegistration,
+    ScormCourse,
+    ScormAttempt,
+    ScormCmiState,
+    ScormRuntimeSnapshot,
+    ScormXapiStatement
+} = require('../../models/scorm');
 
 async function joinInvite(req, res) {
     try {
@@ -71,6 +80,51 @@ router.post('/:id/revoke', auth, async (req, res) => {
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ message: err.message });
+    }
+});
+
+// Permanently remove a learner registration and every SCORM record owned by it.
+// This is intentionally different from revoke: revoke preserves audit evidence;
+// delete removes the learner from tracking/reports for this course.
+router.delete('/:id', auth, async (req, res) => {
+    try {
+        const registrationId = String(req.params.id || '').trim();
+        const reg = await ScormRegistration.findByPk(registrationId, {
+            include: [{ model: ScormCourse, as: 'course' }]
+        });
+        if (!reg || !reg.course || reg.course.hostId !== req.userId || reg.isPreview) {
+            return res.status(404).json({ message: 'Learner registration not found' });
+        }
+
+        // The V2 learning-state table is created lazily and is not represented by
+        // a Sequelize model, so ensure it exists before entering the transaction.
+        await LearningState.ensureReady();
+
+        await sequelize.transaction(async (transaction) => {
+            await sequelize.query(
+                'DELETE FROM scorm_learning_state_v2 WHERE registration_id = :registrationId',
+                { replacements: { registrationId }, transaction }
+            );
+            await ScormXapiStatement.destroy({ where: { registrationId }, transaction });
+            await ScormRuntimeSnapshot.destroy({ where: { registrationId }, transaction });
+            await ScormCmiState.destroy({ where: { registrationId }, transaction });
+            await ScormAttempt.destroy({ where: { registrationId }, transaction });
+            await ScormRegistration.destroy({ where: { id: registrationId }, transaction });
+        });
+
+        res.json({
+            ok: true,
+            deletedRegistrationId: registrationId,
+            learnerEmail: reg.learnerEmail || null
+        });
+    } catch (err) {
+        console.error('[scorm-registration] delete failed', {
+            registrationId: req.params.id,
+            hostId: req.userId,
+            error: err?.message || String(err),
+            dbCode: err?.original?.code || err?.parent?.code || null
+        });
+        res.status(500).json({ message: 'Unable to delete learner registration' });
     }
 });
 
