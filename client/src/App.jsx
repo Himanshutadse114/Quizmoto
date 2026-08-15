@@ -61,7 +61,6 @@ function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
-        {/* Classic Quizmoto entry: normal visitors go straight to host login. */}
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
 
@@ -115,18 +114,21 @@ function AppRoutes() {
 
 function AppSurface() {
   const { pathname } = useLocation();
-  const isClassicHost = pathname === '/' || pathname === '/login' || pathname === '/host' || pathname.startsWith('/host/create') || pathname.startsWith('/host/edit') || pathname.startsWith('/host/reports');
+  const isHostDashboard = pathname === '/host';
+  const isClassicHost = pathname === '/' || pathname === '/login' || isHostDashboard || pathname.startsWith('/host/create') || pathname.startsWith('/host/edit') || pathname.startsWith('/host/reports');
   const isQuizGameStage = pathname.startsWith('/host/lobby') || pathname.startsWith('/host/game') || pathname === '/join' || pathname.startsWith('/player/');
   const showQuizBackdrop = isClassicHost || isQuizGameStage;
   const surfaceClass = !showQuizBackdrop
     ? 'bg-[#11100e]'
     : isQuizGameStage
       ? 'bg-quizmoto-darkPurple live-quiz-stage'
-      : 'bg-quizmoto-darkPurple classic-quizmoto-host';
+      : isHostDashboard
+        ? 'bg-[#241307]'
+        : 'bg-quizmoto-darkPurple classic-quizmoto-host';
 
   return (
     <div className={`min-h-screen text-white relative ${surfaceClass}`}>
-      {showQuizBackdrop && pathname !== '/' && (
+      {isQuizGameStage && (
         <>
           <div className="bg-shape shape-1 w-64 h-64 border-[32px] border-white rounded-full" />
           <div className="bg-shape shape-2 w-48 h-48 border-[24px] border-quizmoto-yellow rotate-45" />
