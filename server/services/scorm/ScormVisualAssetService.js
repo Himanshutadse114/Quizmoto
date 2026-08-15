@@ -69,6 +69,48 @@ function readAsset(outputDir, file) {
     };
 }
 
+function shiftNumericAttributes(fragment, attribute, delta) {
+    const pattern = new RegExp(`${attribute}="([0-9.]+)"`, 'g');
+    return fragment.replace(pattern, (_match, value) => {
+        const shifted = Number(value) + delta;
+        return `${attribute}="${Number.isInteger(shifted) ? shifted : shifted.toFixed(1)}"`;
+    });
+}
+
+/**
+ * Desktop vector cards sometimes combine an icon and a long metric label on the
+ * same horizontal line. At laptop scale that leaves too little usable text width.
+ * Keep the original deterministic SVG, but give dense desktop layouts safer type
+ * geometry before they are embedded into the SCORM ZIP.
+ */
+function polishDesktopSvg(body, layout) {
+    if (!body) return body;
+    let svg = Buffer.isBuffer(body) ? body.toString('utf8') : String(body);
+    const kind = String(layout || '').toLowerCase();
+
+    if (kind === 'cards') {
+        // Move card body copy below the icon/POINT row and use almost the full card
+        // width. This removes the horizontal collision visible on 1366/1440px
+        // laptops while preserving the original icon and heading hierarchy.
+        svg = svg.replace(
+            /<text x="([0-9.]+)" y="([0-9.]+)" text-anchor="start" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="720"[\s\S]*?<\/text>/g,
+            (fragment) => {
+                let next = shiftNumericAttributes(fragment, 'x', -70);
+                next = shiftNumericAttributes(next, 'y', 34);
+                return next.replace('font-size="14"', 'font-size="13"');
+            }
+        );
+    } else if (kind === 'hub') {
+        svg = svg.replace(/font-size="13" font-weight="720"/g, 'font-size="11.5" font-weight="720"');
+    } else if (kind === 'timeline') {
+        svg = svg.replace(/font-size="14" font-weight="720"/g, 'font-size="12" font-weight="720"');
+    } else if (kind === 'process' || kind === 'cycle') {
+        svg = svg.replace(/font-size="16" font-weight="760"/g, 'font-size="13.5" font-weight="760"');
+    }
+
+    return Buffer.from(svg, 'utf8');
+}
+
 async function generateVisualAssets(analysis) {
     const root = process.env.SCORM_VISUAL_TMP_DIR || path.join(__dirname, '../../data/tmp');
     ensureDir(root);
@@ -92,16 +134,18 @@ async function generateVisualAssets(analysis) {
             const desktop = readAsset(outputDir, item.desktopFile || item.file);
             const mobile = readAsset(outputDir, item.mobileFile);
             if (!desktop) return null;
+            const layout = String(item.layout || 'cards');
+            const polishedDesktopBody = polishDesktopSvg(desktop.body, layout);
             return {
                 index: Number(item.index),
-                layout: String(item.layout || 'cards'),
+                layout,
                 screenType: String(item.screenType || ''),
                 file: desktop.file,
                 zipPath: desktop.zipPath,
-                body: desktop.body,
+                body: polishedDesktopBody,
                 desktopFile: desktop.file,
                 desktopZipPath: desktop.zipPath,
-                desktopBody: desktop.body,
+                desktopBody: polishedDesktopBody,
                 mobileFile: mobile ? mobile.file : null,
                 mobileZipPath: mobile ? mobile.zipPath : null,
                 mobileBody: mobile ? mobile.body : null
@@ -114,5 +158,7 @@ async function generateVisualAssets(analysis) {
 
 module.exports = {
     generateVisualAssets,
-    runVisualGenerator
+    runVisualGenerator,
+    polishDesktopSvg,
+    shiftNumericAttributes
 };
