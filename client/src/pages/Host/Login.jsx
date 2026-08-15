@@ -1,14 +1,27 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
 import { GoogleLogin } from '@react-oauth/google';
-import { Radio, ShieldCheck, Users, Zap } from 'lucide-react';
+import { ShieldCheck, Users, Zap } from 'lucide-react';
+import './quizmotoArenaPolish.css';
+
+const getGoogleButtonWidth = () => {
+    if (typeof window === 'undefined') return 320;
+    return Math.max(220, Math.min(320, window.innerWidth - 72));
+};
 
 const Login = () => {
     const [error, setError] = useState('');
+    const [googleButtonWidth, setGoogleButtonWidth] = useState(getGoogleButtonWidth);
     const { loginWithGoogle } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const updateWidth = () => setGoogleButtonWidth(getGoogleButtonWidth());
+        window.addEventListener('resize', updateWidth);
+        return () => window.removeEventListener('resize', updateWidth);
+    }, []);
 
     const handleGoogleSuccess = async (credentialResponse) => {
         try {
@@ -64,7 +77,7 @@ const Login = () => {
                             size="large"
                             shape="rectangular"
                             text="continue_with"
-                            width="320"
+                            width={String(googleButtonWidth)}
                         />
                     </div>
 
