@@ -7,10 +7,14 @@ const AuthContext = createContext();
 
 const API_URL = apiUrl('/api/auth');
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1001652255296-695gf3vjul0fjh1oden4k2n6tvvdvncn.apps.googleusercontent.com';
+const SCORM_ACCESS_KEY = 'scormAccessGranted';
+const HOST_TOKEN_BACKUP = 'quizmotoHostToken';
+const HOST_USER_BACKUP = 'quizmotoHostUser';
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem('token'));
+    const [scormAccess, setScormAccess] = useState(localStorage.getItem(SCORM_ACCESS_KEY) === '1');
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -33,23 +37,99 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, [token]);
 
+    const persistSession = (nextToken, nextUser) => {
+        setToken(nextToken || null);
+        setUser(nextUser || null);
+        if (nextToken) localStorage.setItem('token', nextToken);
+        else localStorage.removeItem('token');
+        if (nextUser) localStorage.setItem('user', JSON.stringify(nextUser));
+        else localStorage.removeItem('user');
+    };
+
     const loginWithGoogle = async (credential) => {
         const res = await axios.post(`${API_URL}/google`, { credential });
-        const userData = { username: res.data.username, avatar: res.data.avatar };
-        setToken(res.data.token);
-        setUser(userData);
-        localStorage.setItem('token', res.data.token);
-        localStorage.setItem('user', JSON.stringify(userData));
+        const userData = { username: res.data.username, avatar: res.data.avatar, email: res.data.email };
+        localStorage.removeItem(SCORM_ACCESS_KEY);
+        setScormAccess(false);
+        persistSession(res.data.token, userData);
         return res.data;
     };
 
+    const prepareScormLogin = () => {
+        if (!scormAccess && token && !localStorage.getItem(HOST_TOKEN_BACKUP)) {
+            localStorage.setItem(HOST_TOKEN_BACKUP, token);
+            if (user) localStorage.setItem(HOST_USER_BACKUP, JSON.stringify(user));
+        }
+        localStorage.removeItem(SCORM_ACCESS_KEY);
+        setScormAccess(false);
+    };
+
+    const enterScormSession = (data) => {
+        const scormUser = {
+            username: data.username,
+            avatar: data.avatar || null,
+            email: data.email || null,
+            product: 'scorm-ai'
+        };
+        localStorage.setItem(SCORM_ACCESS_KEY, '1');
+        setScormAccess(true);
+        persistSession(data.token, scormUser);
+        return data;
+    };
+
+    const loginScorm = async ({ identifier, password }) => {
+        const res = await axios.post(`${API_URL}/scorm/login`, { identifier, password });
+        return enterScormSession(res.data);
+    };
+
+    const registerScorm = async ({ username, email, password }) => {
+        const res = await axios.post(`${API_URL}/scorm/register`, { username, email, password });
+        return enterScormSession(res.data);
+    };
+
+    const leaveScorm = () => {
+        const hostToken = localStorage.getItem(HOST_TOKEN_BACKUP);
+        let hostUser = null;
+        try {
+            const raw = localStorage.getItem(HOST_USER_BACKUP);
+            if (raw) hostUser = JSON.parse(raw);
+        } catch (_) {}
+
+        localStorage.removeItem(SCORM_ACCESS_KEY);
+        localStorage.removeItem(HOST_TOKEN_BACKUP);
+        localStorage.removeItem(HOST_USER_BACKUP);
+        setScormAccess(false);
+
+        if (hostToken) {
+            persistSession(hostToken, hostUser);
+            return true;
+        }
+
+        persistSession(null, null);
+        return false;
+    };
+
     const logout = () => {
-        setToken(null);
-        setUser(null);
+        localStorage.removeItem(SCORM_ACCESS_KEY);
+        localStorage.removeItem(HOST_TOKEN_BACKUP);
+        localStorage.removeItem(HOST_USER_BACKUP);
+        setScormAccess(false);
+        persistSession(null, null);
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, loginWithGoogle, logout, loading }}>
+        <AuthContext.Provider value={{
+            user,
+            token,
+            loginWithGoogle,
+            loginScorm,
+            registerScorm,
+            prepareScormLogin,
+            leaveScorm,
+            scormAccess,
+            logout,
+            loading
+        }}>
             <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
                 {children}
             </GoogleOAuthProvider>
