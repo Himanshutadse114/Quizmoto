@@ -69,6 +69,9 @@ export const AuthProvider = ({ children }) => {
             username: data.username,
             avatar: data.avatar || null,
             email: data.email || null,
+            role: data.role || 'user',
+            isSuperAdmin: Boolean(data.isSuperAdmin),
+            adminContact: data.adminContact || null,
             product: 'scorm-ai'
         };
         localStorage.setItem(SCORM_ACCESS_KEY, '1');
@@ -82,9 +85,31 @@ export const AuthProvider = ({ children }) => {
         return enterScormSession(res.data);
     };
 
+    const loginScormWithGoogle = async (credential) => {
+        const res = await axios.post(`${API_URL}/scorm/google`, { credential });
+        return enterScormSession(res.data);
+    };
+
     const registerScorm = async ({ username, email, password }) => {
         const res = await axios.post(`${API_URL}/scorm/register`, { username, email, password });
         return enterScormSession(res.data);
+    };
+
+    const refreshScormAccess = async () => {
+        if (!token || !scormAccess) return null;
+        const res = await axios.get(apiUrl('/api/scorm/access/me'), {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const nextUser = {
+            ...(user || {}),
+            email: res.data.email || user?.email || null,
+            role: res.data.role || 'user',
+            isSuperAdmin: Boolean(res.data.isSuperAdmin),
+            adminContact: res.data.adminContact || user?.adminContact || null,
+            product: 'scorm-ai'
+        };
+        persistSession(token, nextUser);
+        return res.data;
     };
 
     const leaveScorm = () => {
@@ -123,7 +148,9 @@ export const AuthProvider = ({ children }) => {
             token,
             loginWithGoogle,
             loginScorm,
+            loginScormWithGoogle,
             registerScorm,
+            refreshScormAccess,
             prepareScormLogin,
             leaveScorm,
             scormAccess,
