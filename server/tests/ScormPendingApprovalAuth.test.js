@@ -19,7 +19,7 @@ function makeUser(overrides = {}) {
     };
 }
 
-function buildApp({ role = null, existingUser = null } = {}) {
+function buildApp({ role = null, existingUser = null, googlePayload = null } = {}) {
     const captured = [];
     const created = [];
 
@@ -27,6 +27,7 @@ function buildApp({ role = null, existingUser = null } = {}) {
         async findOne({ where }) {
             if (where?.email) return existingUser && existingUser.email === where.email ? existingUser : null;
             if (where?.username) return existingUser && existingUser.username === where.username ? existingUser : null;
+            if (where?.googleId) return existingUser && existingUser.googleId === where.googleId ? existingUser : null;
             if (existingUser) return existingUser;
             return null;
         },
@@ -71,7 +72,15 @@ function buildApp({ role = null, existingUser = null } = {}) {
         }
     };
 
-    class OAuth2Client {}
+    class OAuth2Client {
+        async verifyIdToken() {
+            return {
+                getPayload() {
+                    return googlePayload;
+                }
+            };
+        }
+    }
 
     const authRouter = proxyquire('../routes/auth', {
         '../models/User': User,
@@ -112,6 +121,32 @@ describe('SCORM pending approval authentication', () => {
         expect(captured).to.have.length(1);
         expect(captured[0].email).to.equal('pending@example.com');
         expect(captured[0].authMethod).to.equal('password');
+    });
+
+    it('captures an unapproved Google identity as pending instead of granting SCORM access', async () => {
+        const googlePayload = {
+            sub: 'google-user-1',
+            email: 'google.pending@example.com',
+            email_verified: true,
+            name: 'Google Pending',
+            picture: 'https://example.com/avatar.png'
+        };
+        const { app, captured, created } = buildApp({ role: null, googlePayload });
+
+        const res = await request(app)
+            .post('/scorm/google')
+            .send({ credential: 'google-credential' });
+
+        expect(res.status).to.equal(202);
+        expect(res.body.pendingApproval).to.equal(true);
+        expect(res.body.registrationCaptured).to.equal(true);
+        expect(res.body.token).to.equal(undefined);
+        expect(created).to.have.length(1);
+        expect(created[0].email).to.equal('google.pending@example.com');
+        expect(created[0].googleId).to.equal('google-user-1');
+        expect(captured).to.have.length(1);
+        expect(captured[0].authMethod).to.equal('google');
+        expect(captured[0].email).to.equal('google.pending@example.com');
     });
 
     it('allows registration immediately when the Super Admin pre-approved that email', async () => {
