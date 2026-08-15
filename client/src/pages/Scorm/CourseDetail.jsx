@@ -14,11 +14,14 @@ import {
   MapPin,
   RefreshCw,
   ShieldCheck,
-  MousePointerClick
+  MousePointerClick,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import { useSocket } from '../../context/SocketContext';
+import LearnerAuditDetail from './LearnerAuditDetail';
 
 function openPlayerPopup(registrationId, token, packageId, entryHref) {
   const q = new URLSearchParams({
@@ -43,6 +46,13 @@ function progressLabel(row) {
   if (row.progressPercent >= 100) return 'Completed';
   if (row.progressPercent > 0) return 'In progress';
   return 'Not started';
+}
+
+function learnerInitials(name, email) {
+  const source = String(name || email || 'L').trim();
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length > 1) return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
+  return source.slice(0, 2).toUpperCase();
 }
 
 function previewStatusLabel(value) {
@@ -107,6 +117,7 @@ export default function ScormCourseDetail() {
   const [previewStats, setPreviewStats] = useState(null);
   const [previewStatsLoaded, setPreviewStatsLoaded] = useState(false);
   const [previewStatsLoading, setPreviewStatsLoading] = useState(false);
+  const [expandedRegId, setExpandedRegId] = useState(null);
   const socket = useSocket();
   const [live, setLive] = useState(false);
 
@@ -147,8 +158,6 @@ export default function ScormCourseDetail() {
     loadRoster().catch(() => {});
     loadPreviewStats({ silent: true });
     const rosterTimer = setInterval(() => loadRoster().catch(() => {}), 12000);
-    // Fallback only. Normal preview updates are event-driven so a backgrounded
-    // admin tab still refreshes while the popup course has focus.
     const previewTimer = setInterval(() => loadPreviewStats({ silent: true }), 5000);
     return () => {
       clearInterval(rosterTimer);
@@ -161,11 +170,6 @@ export default function ScormCourseDetail() {
     const onUpdate = (payload) => {
       if (!payload || String(payload.courseId) !== String(id)) return;
       setLive(true);
-
-      // Preview registrations are intentionally excluded from the learner roster.
-      // Refreshing only loadRoster() meant preview commits were effectively
-      // ignored by the Admin Preview Results panel, especially while the admin
-      // tab was backgrounded behind the course popup.
       const isPreviewUpdate = payload.isPreview === true || payload.registration?.isPreview === true;
       if (isPreviewUpdate) {
         loadPreviewStats({ silent: true });
@@ -409,6 +413,7 @@ export default function ScormCourseDetail() {
           <div>
             <div className="scorm-micro text-[9px] uppercase font-semibold text-[#667085]">Learning operations</div>
             <h3 className="text-[19px] mt-1">Learner progress</h3>
+            <p className="text-[11px] text-[#667085] mt-1">Select any learner to review course status, attempt history and captured quiz answers.</p>
           </div>
           <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#667085]">
             <span className={`w-2 h-2 rounded-full ${live ? 'bg-[#12B76A]' : 'bg-[#98A2B3]'}`} />
@@ -417,50 +422,98 @@ export default function ScormCourseDetail() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1230px] text-sm">
+          <table className="w-full min-w-[1080px] text-sm">
             <thead>
               <tr className="text-left scorm-micro text-[9px] uppercase font-semibold text-[#475467] border-b border-black bg-[#F2F4F7]">
-                <th className="p-4">Learner</th>
+                <th className="p-4 min-w-[230px]">Learner</th>
                 <th className="p-4">Attempts</th>
-                <th className="p-4 min-w-[220px]">Completion</th>
-                <th className="p-4">Last location</th>
+                <th className="p-4 min-w-[190px]">Completion</th>
+                <th className="p-4 min-w-[150px]">Last location</th>
                 <th className="p-4">Lesson status</th>
                 <th className="p-4">Score</th>
                 <th className="p-4">Time</th>
-                <th className="p-4">Last activity</th>
-                <th className="p-4"></th>
+                <th className="p-4 min-w-[135px]">Last activity</th>
+                <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {regs.length === 0 && <tr><td colSpan={9} className="p-10 text-center text-[#667085]">No learners have started this course yet.</td></tr>}
-              {regs.map((r) => (
-                <tr key={r.id} className="border-b border-[#E4E7EC] bg-white hover:bg-[#F7F8FF]">
-                  <td className="p-4">
-                    <div className="font-semibold text-[#101828]">{r.learnerName || 'Learner'}</div>
-                    <div className="text-[11px] text-[#667085] mt-0.5">{r.learnerEmail || 'No email'}</div>
-                  </td>
-                  <td className="p-4">
-                    <span className="inline-flex min-w-8 h-8 px-2 items-center justify-center rounded-full border border-black bg-[#F4F3FF] text-xs font-black text-[#101828]">
-                      {Math.max(1, Number(r.attemptCount || 1))}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex justify-between gap-3 mb-2">
-                      <span className="font-semibold text-[11px] text-[#101828]">{r.progressAvailable ? `${Number(r.progressPercent).toFixed(0)}%` : '—'}</span>
-                      <span className="scorm-micro text-[8px] uppercase font-semibold text-[#667085]">{progressLabel(r)}</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-[#EAECF0] overflow-hidden">
-                      {r.progressAvailable && <div className="h-full bg-[#635BFF]" style={{ width: `${Math.max(0, Math.min(100, r.progressPercent || 0))}%` }} />}
-                    </div>
-                  </td>
-                  <td className="p-4 text-[11px] font-medium text-[#475467] max-w-[250px]">{r.lastLocation || 'Not started'}</td>
-                  <td className="p-4 text-[11px] font-mono text-[#475467]">{r.lastLessonStatus || '—'}</td>
-                  <td className="p-4 font-semibold text-[#101828]">{r.lastScoreRaw != null ? r.lastScoreRaw : '—'}</td>
-                  <td className="p-4 font-mono text-[11px] text-[#475467]">{r.lastTotalTime || '—'}</td>
-                  <td className="p-4 text-[11px] text-[#475467]">{r.lastCommitAt ? new Date(r.lastCommitAt).toLocaleString() : r.updatedAt ? new Date(r.updatedAt).toLocaleString() : '—'}</td>
-                  <td className="p-4">{r.status !== 'revoked' && <button onClick={() => revoke(r.id)} className="px-3 py-1.5 rounded-lg border border-[#FDA29B] bg-white text-[10px] font-semibold text-[#B42318] hover:bg-[#FEF3F2]">Revoke</button>}</td>
-                </tr>
-              ))}
+              {regs.map((r) => {
+                const isExpanded = expandedRegId === r.id;
+                return (
+                  <React.Fragment key={r.id}>
+                    <tr
+                      onClick={() => setExpandedRegId(isExpanded ? null : r.id)}
+                      className={`border-b border-[#E4E7EC] bg-white hover:bg-[#F7F8FF] cursor-pointer ${isExpanded ? 'bg-[#F7F8FF]' : ''}`}
+                    >
+                      <td className="p-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl border border-[#D0D5DD] bg-[#EEF4FF] text-[#3538CD] grid place-items-center font-black text-xs shrink-0">
+                            {learnerInitials(r.learnerName, r.learnerEmail)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[8px] uppercase tracking-[0.1em] font-semibold text-[#98A2B3]">Learner name</div>
+                            <div className="font-semibold text-[#101828] truncate">{r.learnerName || 'Learner'}</div>
+                            <div className="text-[10px] text-[#667085] mt-0.5 truncate max-w-[190px]">{r.learnerEmail || 'No email'}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <span className="inline-flex items-center gap-2 rounded-lg border border-[#D0D5DD] bg-[#F8FAFC] px-2.5 py-1.5 text-[#344054]">
+                          <span className="text-[9px] uppercase tracking-[0.08em] font-semibold text-[#667085]">Attempts</span>
+                          <strong className="text-xs text-[#101828]">{Math.max(1, Number(r.attemptCount || 1))}</strong>
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex justify-between items-center gap-3 mb-2">
+                          <span className="font-semibold text-[12px] text-[#101828]">{r.progressAvailable ? `${Number(r.progressPercent).toFixed(0)}%` : '—'}</span>
+                          <span className="rounded-full border border-[#D0D5DD] bg-[#F8FAFC] px-2 py-1 text-[8px] uppercase tracking-[0.08em] font-semibold text-[#667085]">{progressLabel(r)}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-[#EAECF0] overflow-hidden">
+                          {r.progressAvailable && <div className="h-full bg-[#635BFF]" style={{ width: `${Math.max(0, Math.min(100, r.progressPercent || 0))}%` }} />}
+                        </div>
+                      </td>
+                      <td className="p-4 text-[11px] font-medium text-[#475467] max-w-[180px] break-words">{r.lastLocation || 'Not started'}</td>
+                      <td className="p-4 text-[11px] font-mono text-[#475467]">{r.lastLessonStatus || '—'}</td>
+                      <td className="p-4 font-semibold text-[#101828]">{r.lastScoreRaw != null ? r.lastScoreRaw : '—'}</td>
+                      <td className="p-4 font-mono text-[11px] text-[#475467]">{r.lastTotalTime || '—'}</td>
+                      <td className="p-4 text-[11px] leading-relaxed text-[#475467]">{r.lastCommitAt ? new Date(r.lastCommitAt).toLocaleString() : r.updatedAt ? new Date(r.updatedAt).toLocaleString() : '—'}</td>
+                      <td className="p-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={(event) => { event.stopPropagation(); setExpandedRegId(isExpanded ? null : r.id); }}
+                            className="px-2.5 py-1.5 rounded-lg border border-[#D0D5DD] bg-white text-[10px] font-semibold text-[#344054] hover:bg-[#F9FAFB] inline-flex items-center gap-1.5"
+                            aria-expanded={isExpanded}
+                          >
+                            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                            {isExpanded ? 'Hide' : 'Details'}
+                          </button>
+                          {r.status !== 'revoked' && (
+                            <button
+                              type="button"
+                              onClick={(event) => { event.stopPropagation(); revoke(r.id); }}
+                              className="px-3 py-1.5 rounded-lg border border-[#FDA29B] bg-white text-[10px] font-semibold text-[#B42318] hover:bg-[#FEF3F2]"
+                            >Revoke</button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="bg-[#050B14] border-b border-[#243751]">
+                        <td colSpan={9} className="p-3 md:p-4">
+                          <LearnerAuditDetail
+                            learnerName={r.learnerName}
+                            learnerEmail={r.learnerEmail}
+                            entries={[{ ...r, courseTitle: course.title, scormStandard: course.package?.standard || r.scormStandard }]}
+                            variant="workspace"
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
