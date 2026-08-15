@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const { Op } = require('sequelize');
 const User = require('../models/User');
 const {
@@ -20,6 +21,22 @@ const { OAuth2Client } = require('google-auth-library');
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1001652255296-695gf3vjul0fjh1oden4k2n6tvvdvncn.apps.googleusercontent.com';
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+const scormAuthLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => process.env.NODE_ENV === 'test',
+    message: {
+        message: 'Too many SCORM AI authentication attempts. Please wait a few minutes and try again.',
+        code: 'SCORM_AUTH_RATE_LIMITED'
+    }
+});
+
+// Protect Google login, password login and activation-code registration from
+// automated guessing without changing Quizmoto host authentication behavior.
+router.use('/scorm', scormAuthLimiter);
 
 function issueToken(user, scope = 'quizmoto', extraClaims = {}) {
     return jwt.sign({ userId: user.id, scope, ...extraClaims }, JWT_SECRET, { expiresIn: '30d' });
