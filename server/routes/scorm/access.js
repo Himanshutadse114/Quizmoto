@@ -6,7 +6,6 @@ const {
     SUPER_ADMIN_EMAIL,
     listGrants,
     listAccessRequests,
-    addGrant,
     approveAccessRequest,
     removeGrant
 } = require('../../services/scorm/ScormAccessService');
@@ -74,25 +73,6 @@ router.get('/', auth, requireSuperAdmin, async (req, res) => {
     } catch (err) {
         console.error('[scorm-access] list failed', err);
         res.status(500).json({ message: 'Could not load SCORM AI access control data.' });
-    }
-});
-
-// Proactive approval by exact email. Useful when the Super Admin wants to allow
-// an account before the person registers or tries Google Sign-In.
-router.post('/', auth, requireSuperAdmin, async (req, res) => {
-    try {
-        const result = await addGrant({
-            email: req.body?.email,
-            addedByUserId: req.userId,
-            addedByEmail: req.scormEmail
-        });
-        res.status(201).json({ grant: serializeGrant(result.grant) });
-    } catch (err) {
-        if (err.code === 'INVALID_EMAIL') {
-            return res.status(400).json({ message: err.message });
-        }
-        console.error('[scorm-access] add failed', err);
-        res.status(500).json({ message: 'Could not add SCORM AI access.' });
     }
 });
 
