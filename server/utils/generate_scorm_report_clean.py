@@ -143,6 +143,11 @@ class CleanScormReport(base.ScormReport):
         ])
 
 
+def has_answer_details(data):
+    registrations = data.get('registrations') or []
+    return any(isinstance(row.get('interactions'), list) and row.get('interactions') for row in registrations if isinstance(row, dict))
+
+
 def main():
     if len(sys.argv) != 4:
         print('Usage: generate_scorm_report_clean.py <input.json> <output> <pdf|excel>', file=sys.stderr)
@@ -151,6 +156,14 @@ def main():
     input_path, output_path, kind = sys.argv[1], sys.argv[2], sys.argv[3].lower()
     with open(input_path, 'r', encoding='utf-8') as handle:
         data = json.load(handle)
+
+    # The Node renderer contains the answer-level PDF/Excel layouts. Returning a
+    # non-zero status here intentionally activates ScormReportService's existing
+    # Node fallback whenever interaction evidence is present, while keeping the
+    # polished Python renderer for older aggregate-only reports.
+    if has_answer_details(data):
+        print('Answer-level evidence detected; using answer-aware Node report renderer.', file=sys.stderr)
+        return 3
 
     if kind == 'pdf':
         CleanScormReport(output_path, data).build()
