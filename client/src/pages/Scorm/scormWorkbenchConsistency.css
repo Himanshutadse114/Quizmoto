@@ -84,6 +84,15 @@
   color: #c4a77f !important;
 }
 
+/* Course workspace notices should feel like part of the Workbench, not like a
+ * light-theme banner pasted on top of the dark surface. */
+.scorm-editorial.scorm-workbench main [class*="bg-[#EEF4FF]"][class*="border-[#B2CCFF]"] {
+  background: linear-gradient(90deg, rgba(255,138,31,.10), rgba(22,18,14,.96)) !important;
+  border-color: #6a4d31 !important;
+  color: var(--wb-cream) !important;
+  box-shadow: inset 3px 0 0 var(--wb-orange), 0 8px 24px rgba(0,0,0,.18) !important;
+}
+
 .scorm-editorial.scorm-workbench .scorm-author-dropzone {
   background:
     repeating-linear-gradient(0deg, rgba(255,255,255,.008) 0, rgba(255,255,255,.008) 1px, transparent 1px, transparent 4px),
