@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -14,7 +14,8 @@ import {
   ChevronRight,
   Plus,
   Upload,
-  Layers3
+  Layers3,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './scormEditorialTheme.css';
@@ -44,10 +45,22 @@ const NAV_GROUPS = [
   }
 ];
 
-function Navigation({ onNavigate }) {
+function Navigation({ onNavigate, isSuperAdmin }) {
+  const groups = isSuperAdmin
+    ? [
+        ...NAV_GROUPS,
+        {
+          label: 'Administration',
+          items: [
+            { to: '/scorm/access', label: 'Access control', icon: ShieldCheck }
+          ]
+        }
+      ]
+    : NAV_GROUPS;
+
   return (
     <nav className="scorm-nav flex-1 px-3 py-5 overflow-y-auto">
-      {NAV_GROUPS.map((group, groupIndex) => (
+      {groups.map((group, groupIndex) => (
         <div key={group.label} className={groupIndex ? 'mt-6' : ''}>
           <div className="scorm-nav-section px-3 pb-2.5 text-[10px] uppercase font-semibold">{group.label}</div>
           <div className="space-y-1">
@@ -100,7 +113,23 @@ function MobileTabBar() {
 export default function ScormPlatformShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
-  const { scormAccess, leaveScorm } = useAuth();
+  const {
+    scormAccess,
+    user,
+    refreshScormAccess,
+    leaveScorm
+  } = useAuth();
+
+  useEffect(() => {
+    if (!scormAccess) return;
+    refreshScormAccess().catch((err) => {
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) {
+        leaveScorm();
+        navigate('/scorm/login', { replace: true });
+      }
+    });
+  }, [scormAccess]);
 
   if (!scormAccess) return <Navigate to="/scorm/login" replace />;
 
@@ -109,23 +138,32 @@ export default function ScormPlatformShell() {
     navigate(restored ? '/host' : '/');
   };
 
+  const isSuperAdmin = Boolean(user?.isSuperAdmin || user?.role === 'super_admin');
+
   return (
     <div className="scorm-editorial scorm-workbench min-h-screen relative z-20">
       <aside className="scorm-sidebar fixed inset-y-0 left-0 z-40 hidden lg:flex w-[268px] flex-col border-r">
         <div className="scorm-brand-wrap h-[76px] px-5 flex items-center border-b"><Brand /></div>
-        <Navigation />
+        <Navigation isSuperAdmin={isSuperAdmin} />
         <div className="scorm-sidebar-footer p-3 border-t space-y-2.5">
+          {isSuperAdmin && (
+            <div className="rounded-xl px-3.5 py-3 border border-[#78502d] bg-[#2b1b10]">
+              <div className="flex items-center gap-2 text-[10px] font-semibold text-[#ffc45c]"><ShieldCheck size={13} /> Super Admin</div>
+              <div className="mt-1.5 text-[9px] leading-relaxed text-[#b78c60] break-all">{user?.email}</div>
+            </div>
+          )}
           <div className="scorm-status-card rounded-xl px-3.5 py-3"><div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />Learning tracking online</div><div className="mt-1.5 text-[10px] leading-relaxed">SCORM progress, score and resume state are being captured.</div></div>
           <button type="button" onClick={backToQuizmoto} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><ArrowLeft size={14} /> Quizmoto</span><ChevronRight size={13} /></button>
         </div>
       </aside>
 
-      {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><button aria-label="Close navigation" className="absolute inset-0 bg-[#11100e]/70 backdrop-blur-sm" onClick={() => setMobileOpen(false)} /><div className="scorm-mobile-drawer absolute inset-y-0 left-0 w-[304px] max-w-[88vw] border-r flex flex-col"><div className="h-[72px] px-4 flex items-center justify-between border-b"><Brand /><button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="scorm-drawer-close w-9 h-9 grid place-items-center"><X size={17} /></button></div><Navigation onNavigate={() => setMobileOpen(false)} /><div className="p-3 border-t"><button type="button" onClick={backToQuizmoto} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><ArrowLeft size={14} /> Quizmoto</span><ChevronRight size={13} /></button></div></div></div>}
+      {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><button aria-label="Close navigation" className="absolute inset-0 bg-[#11100e]/70 backdrop-blur-sm" onClick={() => setMobileOpen(false)} /><div className="scorm-mobile-drawer absolute inset-y-0 left-0 w-[304px] max-w-[88vw] border-r flex flex-col"><div className="h-[72px] px-4 flex items-center justify-between border-b"><Brand /><button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="scorm-drawer-close w-9 h-9 grid place-items-center"><X size={17} /></button></div><Navigation isSuperAdmin={isSuperAdmin} onNavigate={() => setMobileOpen(false)} /><div className="p-3 border-t"><button type="button" onClick={backToQuizmoto} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><ArrowLeft size={14} /> Quizmoto</span><ChevronRight size={13} /></button></div></div></div>}
 
       <div className="lg:pl-[268px] min-h-screen">
         <header className="scorm-topbar sticky top-0 z-30 min-h-[64px] border-b px-4 md:px-7 py-2.5 flex items-center gap-3 md:gap-4">
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open SCORM AI navigation" className="scorm-topbar-icon lg:hidden w-10 h-10 grid place-items-center shrink-0"><Menu size={18} /></button>
           <div className="ml-auto flex items-center gap-2">
+            {isSuperAdmin && <Link to="/scorm/access" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><ShieldCheck size={14} /> Access</Link>}
             <button type="button" onClick={backToQuizmoto} className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><ArrowLeft size={14} /><span>Quizmoto</span></button>
             <Link to="/scorm/library?upload=1" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Upload size={14} /> Upload</Link>
             <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold"><Plus size={14} /><span className="hidden sm:inline">Create course</span><span className="sm:hidden">Create</span></Link>
