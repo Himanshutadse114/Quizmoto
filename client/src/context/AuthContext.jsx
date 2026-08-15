@@ -80,24 +80,32 @@ export const AuthProvider = ({ children }) => {
         return data;
     };
 
+    const resolveScormAuthResponse = (data) => {
+        if (data?.pendingApproval || !data?.token) {
+            localStorage.removeItem(SCORM_ACCESS_KEY);
+            setScormAccess(false);
+            return data;
+        }
+        return enterScormSession(data);
+    };
+
     const loginScorm = async ({ identifier, password }) => {
         const res = await axios.post(`${API_URL}/scorm/login`, { identifier, password });
-        return enterScormSession(res.data);
+        return resolveScormAuthResponse(res.data);
     };
 
     const loginScormWithGoogle = async (credential) => {
         const res = await axios.post(`${API_URL}/scorm/google`, { credential });
-        return enterScormSession(res.data);
+        return resolveScormAuthResponse(res.data);
     };
 
-    const registerScorm = async ({ username, email, password, activationCode }) => {
+    const registerScorm = async ({ username, email, password }) => {
         const res = await axios.post(`${API_URL}/scorm/register`, {
             username,
             email,
-            password,
-            activationCode
+            password
         });
-        return enterScormSession(res.data);
+        return resolveScormAuthResponse(res.data);
     };
 
     const refreshScormAccess = async () => {
