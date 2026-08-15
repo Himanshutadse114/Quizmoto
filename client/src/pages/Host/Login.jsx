@@ -30,7 +30,7 @@ const Login = () => {
                 className="lq-login-card"
             >
                 <div className="lq-login-mark"><Layers3 size={23} strokeWidth={2.1} /></div>
-                <div className="lq-login-kicker">// QUIZMOTO · SECURE ACCESS</div>
+                <div className="lq-login-kicker">QUIZMOTO · SECURE ACCESS</div>
                 <h1 className="lq-login-title">SCORM <span>WORLD</span></h1>
                 <p className="lq-login-copy">
                     Sign in to your learning workbench to create SCORM courses, track learner activity and launch Live Quiz sessions.
