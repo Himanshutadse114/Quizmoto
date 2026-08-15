@@ -22,14 +22,6 @@ const ScormAccessGrant = sequelize.define('ScormAccessGrant', {
     addedByEmail: {
         type: DataTypes.STRING(320),
         allowNull: true
-    },
-    registrationCodeHash: {
-        type: DataTypes.STRING(64),
-        allowNull: true
-    },
-    registrationCodeUsedAt: {
-        type: DataTypes.DATE,
-        allowNull: true
     }
 }, {
     tableName: 'scorm_access_grants',
