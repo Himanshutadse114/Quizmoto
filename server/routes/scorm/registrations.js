@@ -38,10 +38,15 @@ async function joinInvite(req, res) {
             playUrl: `/api/scorm/play/${registrationId}`
         });
     } catch (err) {
-        const code = err.code === 'NOT_FOUND' ? 404 : err.code === 'PACKAGE_NOT_READY' ? 409 : 500;
+        const code = err.code === 'NOT_FOUND'
+            ? 404
+            : ['PACKAGE_NOT_READY', 'PACKAGE_LAUNCH_MISSING'].includes(err.code)
+                ? 409
+                : 500;
         console.error('[scorm-invite] join failed', {
             inviteCode: req.body?.inviteCode || null,
             error: err?.message || String(err),
+            code: err?.code || null,
             dbCode: err?.original?.code || err?.parent?.code || null
         });
         res.status(code).json({ message: err.message, code: err.code });
