@@ -1,5 +1,7 @@
 const fs = require('fs');
 const path = require('path');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../config/database');
 const { ScormRegistration, ScormCourse, ScormPackage } = require('../../models/scorm');
@@ -7,6 +9,8 @@ const LearningState = require('./ScormLearningStateService');
 const { serializeRegistration } = require('./ScormProgressService');
 const { extractInteractions, answerSummary } = require('./ScormInteractionReportService');
 const { generateScormLearnerReport } = require('../../utils/scormLearnerReportGenerator');
+
+const execFileAsync = promisify(execFile);
 
 function operatorForTextSearch() {
     return sequelize.getDialect() === 'postgres' ? Op.iLike : Op.like;
@@ -22,6 +26,13 @@ function artifactsDir() {
     const dir = process.env.REPORT_ARTIFACTS_DIR || path.join(__dirname, '../../data/artifacts');
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     return dir;
+}
+
+function safeUnlink(filePath) {
+    if (!filePath) return;
+    try {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch (_) {}
 }
 
 function isCompletedStatus(value) {
@@ -194,25 +205,117 @@ async function buildLearnerReport({ hostId, email }) {
     };
 }
 
+async function tryPythonLearnerReport({ report, jsonPath, outputPath, format, dir }) {
+    const scriptPath = path.join(__dirname, '../../utils/generate_scorm_learner_report_clean.py');
+    if (!fs.existsSync(scriptPath)) throw new Error(`SCORM learner Python report script missing: ${scriptPath}`);
+
+    fs.writeFileSync(jsonPath, JSON.stringify(report));
+    const candidates = [process.env.REPORT_PYTHON_CMD, '/usr/bin/python3', 'python3', 'python'].filter(Boolean);
+    const timeoutMs = Number(process.env.REPORT_GEN_TIMEOUT_MS) || 60000;
+    const env = {
+        ...process.env,
+        MPLCONFIGDIR: process.env.MPLCONFIGDIR || path.join(dir, '.mplconfig'),
+        PYTHONUNBUFFERED: '1',
+        HOME: process.env.HOME || dir,
+        REPORT_CHART_DIR: process.env.REPORT_CHART_DIR || '/tmp/report_charts'
+    };
+
+    try {
+        if (!fs.existsSync(env.MPLCONFIGDIR)) fs.mkdirSync(env.MPLCONFIGDIR, { recursive: true });
+        if (!fs.existsSync(env.REPORT_CHART_DIR)) fs.mkdirSync(env.REPORT_CHART_DIR, { recursive: true });
+    } catch (_) {}
+
+    let lastErr = null;
+    for (const pyCmd of candidates) {
+        try {
+            const { stdout, stderr } = await execFileAsync(pyCmd, [scriptPath, jsonPath, outputPath, format], {
+                timeout: timeoutMs,
+                windowsHide: true,
+                killSignal: 'SIGTERM',
+                env,
+                maxBuffer: 8 * 1024 * 1024
+            });
+            if (stderr && String(stderr).trim()) console.error('[scorm-learner-report] python stderr:', String(stderr).slice(0, 3000));
+            if (stdout && String(stdout).trim()) console.log('[scorm-learner-report] python stdout:', String(stdout).slice(0, 500));
+            if (!fs.existsSync(outputPath)) throw new Error('SCORM learner Python generator did not create output file');
+            return;
+        } catch (err) {
+            lastErr = err;
+            safeUnlink(outputPath);
+            console.error('[scorm-learner-report] python attempt failed', {
+                pyCmd,
+                message: err?.message,
+                code: err?.code,
+                stderr: err?.stderr ? String(err.stderr).slice(0, 2000) : null
+            });
+            if (err && err.code === 'ENOENT') continue;
+            break;
+        }
+    }
+    throw lastErr || new Error('SCORM learner Python report generation failed');
+}
+
 async function generateLearnerReportFile({ hostId, email, format = 'pdf' }) {
     if (!['pdf', 'excel'].includes(format)) {
         const err = new Error('Invalid format');
         err.code = 'INVALID_FORMAT';
         throw err;
     }
+
     const report = await buildLearnerReport({ hostId, email });
     const dir = artifactsDir();
     const timestamp = Date.now();
     const safeEmail = String(report.learnerEmail || 'learner').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 70);
     const ext = format === 'pdf' ? '.pdf' : '.xlsx';
     const outputPath = path.join(dir, `scorm_learner_${safeEmail}_${timestamp}${ext}`);
-    await generateScormLearnerReport(report, outputPath, format);
+    const jsonPath = path.join(dir, `scorm_learner_${safeEmail}_${timestamp}.json`);
+
+    const forceNode = ['1', 'true', 'yes', 'on'].includes(String(process.env.REPORT_FORCE_NODE || '').toLowerCase());
+    const skipPython = forceNode || ['1', 'true', 'yes', 'on'].includes(String(process.env.REPORT_SKIP_PYTHON || '').toLowerCase());
+    let engine = null;
+    let lastErr = null;
+
+    if (!skipPython) {
+        try {
+            await tryPythonLearnerReport({ report, jsonPath, outputPath, format, dir });
+            engine = 'python';
+            console.log('[scorm-learner-report] used branded Python report', { email: safeEmail, format });
+        } catch (err) {
+            lastErr = err;
+            safeUnlink(outputPath);
+            console.error('[scorm-learner-report] Python failed, falling back to Node', {
+                email: safeEmail,
+                format,
+                message: err?.message
+            });
+        }
+    }
+
+    if (!engine) {
+        try {
+            await generateScormLearnerReport(report, outputPath, format);
+            if (!fs.existsSync(outputPath)) throw new Error('Learner Node fallback did not create output file');
+            engine = 'node';
+            console.log('[scorm-learner-report] used Node fallback report', { email: safeEmail, format });
+        } catch (err) {
+            lastErr = err;
+        }
+    }
+
+    safeUnlink(jsonPath);
+    if (!engine || !fs.existsSync(outputPath)) {
+        const err = new Error('Learner report generation failed');
+        err.code = 'REPORT_GEN_FAILED';
+        err.cause = lastErr;
+        throw err;
+    }
+
     return {
         outputPath,
         format,
         contentType: contentTypeFor(format),
         downloadName: `SCORM_AI_Learner_${safeEmail}${ext}`,
-        engine: 'node'
+        engine
     };
 }
 
@@ -220,5 +323,7 @@ module.exports = {
     searchLearners,
     loadLearnerRegistrations,
     buildLearnerReport,
-    generateLearnerReportFile
+    tryPythonLearnerReport,
+    generateLearnerReportFile,
+    safeUnlink
 };
