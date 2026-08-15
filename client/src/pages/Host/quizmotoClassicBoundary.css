@@ -23,8 +23,6 @@
 }
 
 /* Restore the pre-Electric-Arena live stage exactly at the application boundary. */
-.quizMOTO-unused-selector { display: none; }
-
 .quizmoto-classic-live-stage {
   color: #ffffff !important;
   background: #25076b !important;
