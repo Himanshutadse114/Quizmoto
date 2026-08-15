@@ -90,8 +90,13 @@ export const AuthProvider = ({ children }) => {
         return enterScormSession(res.data);
     };
 
-    const registerScorm = async ({ username, email, password }) => {
-        const res = await axios.post(`${API_URL}/scorm/register`, { username, email, password });
+    const registerScorm = async ({ username, email, password, activationCode }) => {
+        const res = await axios.post(`${API_URL}/scorm/register`, {
+            username,
+            email,
+            password,
+            activationCode
+        });
         return enterScormSession(res.data);
     };
 
