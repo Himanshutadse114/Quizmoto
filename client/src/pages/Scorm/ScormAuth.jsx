@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Layers3, LockKeyhole, Mail, ShieldCheck, UserRound } from 'lucide-react';
+import { ArrowLeft, KeyRound, Layers3, LockKeyhole, Mail, ShieldCheck, UserRound } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -19,6 +19,7 @@ export default function ScormAuth() {
   const [username, setUsername] = useState('');
   const [identifier, setIdentifier] = useState('');
   const [email, setEmail] = useState('');
+  const [activationCode, setActivationCode] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -40,7 +41,12 @@ export default function ScormAuth() {
       if (mode === 'login') {
         await loginScorm({ identifier: identifier.trim(), password });
       } else {
-        await registerScorm({ username: username.trim(), email: email.trim(), password });
+        await registerScorm({
+          username: username.trim(),
+          email: email.trim(),
+          password,
+          activationCode: activationCode.trim()
+        });
       }
       navigate('/scorm');
     } catch (err) {
@@ -96,7 +102,7 @@ export default function ScormAuth() {
             <div className="sa-points" aria-label="SCORM AI workspace highlights">
               <div className="sa-point"><span className="sa-point-dot" /> Google or password authentication</div>
               <div className="sa-point"><span className="sa-point-dot" /> Administrator-approved accounts only</div>
-              <div className="sa-point"><span className="sa-point-dot" /> Learner tracking and course management</div>
+              <div className="sa-point"><span className="sa-point-dot" /> Password registration uses one-time activation</div>
             </div>
           </section>
 
@@ -106,7 +112,7 @@ export default function ScormAuth() {
             <p className="sa-form-sub">
               {isLogin
                 ? 'Sign in with an administrator-approved account.'
-                : 'Your email must be approved by the SCORM AI administrator before you can register.'}
+                : 'Use the approved email and one-time activation code supplied by the SCORM AI administrator.'}
             </p>
 
             <div className="sa-tabs" role="tablist" aria-label="SCORM AI authentication mode">
@@ -169,7 +175,7 @@ export default function ScormAuth() {
               )}
 
               <label>
-                <span className="sa-label">{isLogin ? 'Email or username' : 'Email'}</span>
+                <span className="sa-label">{isLogin ? 'Email or username' : 'Approved email'}</span>
                 <div className="sa-input-wrap">
                   <Mail size={15} />
                   <input
@@ -183,6 +189,23 @@ export default function ScormAuth() {
                   />
                 </div>
               </label>
+
+              {!isLogin && (
+                <label>
+                  <span className="sa-label">One-time activation code</span>
+                  <div className="sa-input-wrap">
+                    <KeyRound size={15} />
+                    <input
+                      value={activationCode}
+                      onChange={(event) => setActivationCode(event.target.value.toUpperCase())}
+                      required
+                      placeholder="XXXX-XXXX-XXXX"
+                      className="sa-input sa-code-input"
+                      autoComplete="one-time-code"
+                    />
+                  </div>
+                </label>
+              )}
 
               <label>
                 <span className="sa-label">Password</span>
