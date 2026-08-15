@@ -106,12 +106,11 @@ function AppRoutes() {
 
 function AppSurface() {
   const { pathname } = useLocation();
-  const isLiveQuiz = pathname.startsWith('/scorm/live-quiz') || pathname === '/join' || pathname.startsWith('/player/');
-  const isLogin = pathname === '/login';
+  const showQuizBackdrop = pathname.startsWith('/scorm/live-quiz') || pathname === '/join' || pathname.startsWith('/player/');
 
   return (
-    <div className={`min-h-screen bg-quizmoto-darkPurple text-white relative ${isLiveQuiz ? 'live-quiz-stage' : ''}`}>
-      {!isLogin && (
+    <div className={`min-h-screen text-white relative ${showQuizBackdrop ? 'bg-quizmoto-darkPurple live-quiz-stage' : 'bg-[#11100e]'}`}>
+      {showQuizBackdrop && (
         <>
           <div className="bg-shape shape-1 w-64 h-64 border-[32px] border-white rounded-full" />
           <div className="bg-shape shape-2 w-48 h-48 border-[24px] border-quizmoto-yellow rotate-45" />
