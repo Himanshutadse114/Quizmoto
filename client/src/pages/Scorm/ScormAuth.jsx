@@ -13,7 +13,7 @@ export default function ScormAuth() {
     loginScormWithGoogle,
     registerScorm,
     prepareScormLogin,
-    token
+    leaveScorm
   } = useAuth();
   const [mode, setMode] = useState('login');
   const [username, setUsername] = useState('');
@@ -73,7 +73,10 @@ export default function ScormAuth() {
     }
   };
 
-  const goBackToQuizmoto = () => navigate(token ? '/host' : '/login');
+  const goBackToQuizmoto = () => {
+    const restored = leaveScorm();
+    navigate(restored ? '/host' : '/login');
+  };
   const isLogin = mode === 'login';
 
   return (
