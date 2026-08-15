@@ -1,5 +1,8 @@
-import React from 'react';
-import { BookOpenCheck, CheckCircle2, Clock3, Mail, MapPin, Trophy, UserRound } from 'lucide-react';
+import React, { useState } from 'react';
+import axios from 'axios';
+import { BookOpenCheck, CheckCircle2, Clock3, Mail, MapPin, Trophy, Trash2, UserRound } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { apiUrl } from '../../config';
 
 function formatDate(value) {
   if (!value) return '—';
@@ -46,6 +49,9 @@ const Metric = ({ icon: Icon, label, value, palette }) => (
 );
 
 export default function LearnerAuditDetail({ learnerName, learnerEmail, entries = [], variant = 'workspace', showIdentity = true }) {
+  const { token } = useAuth();
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
   const rows = entries.map(normalizeEntry);
   const palette = variant === 'warm'
     ? {
@@ -74,6 +80,32 @@ export default function LearnerAuditDetail({ learnerName, learnerEmail, entries 
   const completion = latest.progressPercent != null ? `${Number(latest.progressPercent).toFixed(0)}%` : '—';
   const score = latest.lastScoreRaw ?? latest.score ?? '—';
   const time = latest.lastTotalTime || latest.totalTime || '—';
+
+  const deleteLearner = async (entry) => {
+    if (variant !== 'workspace' || !token || deletingId) return;
+    const registrationId = entry.registrationId || entry.id;
+    if (!registrationId) return;
+    const courseTitle = entry.courseTitle || 'this course';
+    const identity = learnerEmail || learnerName || 'this learner';
+    const confirmed = window.confirm(
+      `Permanently delete ${identity} from ${courseTitle}?\n\nThis removes the learner registration, attempts, progress, quiz answers and SCORM tracking data for this course. This cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setDeletingId(registrationId);
+    setDeleteError(null);
+    try {
+      await axios.delete(apiUrl(`/api/scorm/registrations/${registrationId}`), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Reload so every host view (metrics, roster, reports and tracking) is
+      // immediately rebuilt from the authoritative backend state.
+      window.location.reload();
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || err.message || 'Unable to delete learner');
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className={`rounded-2xl border overflow-hidden ${palette.shell}`}>
@@ -104,6 +136,12 @@ export default function LearnerAuditDetail({ learnerName, learnerEmail, entries 
       )}
 
       <div className="p-4 md:p-5">
+        {deleteError && (
+          <div className="mb-4 rounded-xl border border-[#7F1D1D] bg-[#2A1113] px-3.5 py-3 text-xs text-[#FECACA]">
+            {deleteError}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 mb-5">
           <Metric icon={BookOpenCheck} label="Courses" value={rows.length || 0} palette={palette} />
           <Metric icon={UserRound} label="Attempts" value={totalAttempts || 0} palette={palette} />
@@ -119,8 +157,9 @@ export default function LearnerAuditDetail({ learnerName, learnerEmail, entries 
             {rows.map((entry, entryIndex) => {
               const result = entry.result || entry.lastLessonStatus || entry.lessonStatus || entry.status || 'Recorded';
               const interactions = entry.interactions || [];
+              const registrationId = entry.registrationId || entry.id;
               return (
-                <section key={entry.registrationId || entry.id || `${entry.courseId || 'course'}-${entryIndex}`} className={`rounded-xl border overflow-hidden ${palette.card}`}>
+                <section key={registrationId || `${entry.courseId || 'course'}-${entryIndex}`} className={`rounded-xl border overflow-hidden ${palette.card}`}>
                   <div className={`p-4 border-b ${palette.line}`}>
                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
                       <div className="min-w-0">
@@ -128,7 +167,20 @@ export default function LearnerAuditDetail({ learnerName, learnerEmail, entries 
                         <h4 className={`mt-1.5 text-sm md:text-base font-semibold break-words ${palette.text}`}>{entry.courseTitle || 'Course'}</h4>
                         <div className={`mt-1 text-[10px] ${palette.muted}`}>{entry.scormStandard || entry.standard || 'SCORM'} · {entry.attemptCount} attempt{entry.attemptCount === 1 ? '' : 's'}</div>
                       </div>
-                      <span className={`text-[10px] uppercase tracking-[0.1em] font-bold ${resultTone(result)}`}>{String(result).replace(/_/g, ' ')}</span>
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <span className={`text-[10px] uppercase tracking-[0.1em] font-bold ${resultTone(result)}`}>{String(result).replace(/_/g, ' ')}</span>
+                        {variant === 'workspace' && registrationId && (
+                          <button
+                            type="button"
+                            onClick={() => deleteLearner(entry)}
+                            disabled={!!deletingId}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-[#7F1D1D] bg-[#2A1113] px-2.5 py-1.5 text-[10px] font-bold text-[#FCA5A5] hover:bg-[#3A1518] hover:border-[#B91C1C] disabled:opacity-50 disabled:cursor-wait"
+                          >
+                            <Trash2 size={12} />
+                            {deletingId === registrationId ? 'Deleting…' : 'Delete learner'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
