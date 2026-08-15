@@ -123,4 +123,46 @@ describe('SCORM access middleware', () => {
         expect(res.statusCode).to.equal(401);
         expect(res.body.code).to.equal('SCORM_AUTH_REQUIRED');
     });
+
+    it('rejects a pending platform token from every protected SCORM AI API', async () => {
+        process.env.NODE_ENV = 'production';
+        const middleware = buildMiddleware({
+            decoded: { userId: 14, scope: 'platform', scormRole: 'pending' },
+            user: { id: 14, email: 'pending@example.com' },
+            role: null
+        });
+        const req = {
+            header: () => 'Bearer pending-platform-token',
+            originalUrl: '/api/scorm/author/generate'
+        };
+        const res = makeResponse();
+        let nextCalled = false;
+
+        await middleware(req, res, () => { nextCalled = true; });
+
+        expect(nextCalled).to.equal(false);
+        expect(res.statusCode).to.equal(401);
+        expect(res.body.code).to.equal('SCORM_AUTH_REQUIRED');
+    });
+
+    it('allows the same pending platform token to use non-SCORM APIs such as Quizmoto', async () => {
+        process.env.NODE_ENV = 'production';
+        const middleware = buildMiddleware({
+            decoded: { userId: 15, scope: 'platform', scormRole: 'pending' },
+            user: { id: 15, email: 'pending.quiz@example.com' },
+            role: null
+        });
+        const req = {
+            header: () => 'Bearer pending-platform-token',
+            originalUrl: '/api/quizzes'
+        };
+        const res = makeResponse();
+        let nextCalled = false;
+
+        await middleware(req, res, () => { nextCalled = true; });
+
+        expect(nextCalled).to.equal(true);
+        expect(req.userId).to.equal(15);
+        expect(req.authScope).to.equal('platform');
+    });
 });
