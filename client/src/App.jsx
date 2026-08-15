@@ -10,6 +10,7 @@ import './pages/Host/quizmotoEditWorkbench.css';
 import './pages/Host/quizmotoCreateWorkbench.css';
 import './pages/Host/quizmotoElectricArena.css';
 import './pages/Host/quizmotoArenaPolish.css';
+import './pages/Host/quizmotoClassicBoundary.css';
 import './pages/Scorm/scormVisualStudioFixes.css';
 
 const Login = lazy(() => import('./pages/Host/Login'));
