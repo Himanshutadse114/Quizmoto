@@ -49,7 +49,7 @@ function manifestEntryHref(xml) {
     };
 
     for (const tag of resources) {
-        if (/adlcp:scormtype\s*=\s*(["'])sco\1/i.test(tag) || /adlcp:scormType\s*=\s*(["'])sco\1/i.test(tag)) {
+        if (/adlcp:scormtype\s*=\s*(["'])sco\1/i.test(tag)) {
             const href = hrefFromTag(tag);
             if (href) return href;
         }
@@ -61,6 +61,15 @@ function manifestEntryHref(xml) {
     return null;
 }
 
+function isObjectMissing(err) {
+    return Boolean(err && (
+        err.code === 'OBJECT_NOT_FOUND' ||
+        err.name === 'NotFound' ||
+        err.name === 'NoSuchKey' ||
+        err.$metadata?.httpStatusCode === 404
+    ));
+}
+
 async function objectJson(storage, key) {
     try {
         if (!(await storage.exists(key))) return null;
@@ -68,8 +77,8 @@ async function objectJson(storage, key) {
         const parsed = JSON.parse(Buffer.from(buf).toString('utf8'));
         return parsed && typeof parsed === 'object' ? parsed : null;
     } catch (err) {
-        if (err && (err.code === 'OBJECT_NOT_FOUND' || err.name === 'NotFound')) return null;
-        return null;
+        if (isObjectMissing(err) || err instanceof SyntaxError) return null;
+        throw err;
     }
 }
 
@@ -79,19 +88,15 @@ async function objectText(storage, key) {
         const buf = await storage.getObjectBuffer(key);
         return Buffer.from(buf).toString('utf8');
     } catch (err) {
-        if (err && (err.code === 'OBJECT_NOT_FOUND' || err.name === 'NotFound')) return null;
-        return null;
+        if (isObjectMissing(err)) return null;
+        throw err;
     }
 }
 
 async function existingEntry(storage, packageId, candidate) {
     const href = normalizeEntryHref(candidate);
     if (!href) return null;
-    try {
-        return await storage.exists(packageContentKey(packageId, href)) ? href : null;
-    } catch (_) {
-        return null;
-    }
+    return await storage.exists(packageContentKey(packageId, href)) ? href : null;
 }
 
 async function recoverEntryHref(pkg, { storage = getObjectStorage() } = {}) {
