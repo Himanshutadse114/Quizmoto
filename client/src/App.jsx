@@ -32,6 +32,7 @@ const ScormPlayerShell = lazy(() => import('./pages/Scorm/PlayerShell'));
 const ScormAuthor = lazy(() => import('./pages/Scorm/AuthorVisual'));
 const ScormReports = lazy(() => import('./pages/Scorm/Reports'));
 const ScormVisualStudio = lazy(() => import('./pages/Scorm/VisualStudio'));
+const ScormAccessAdmin = lazy(() => import('./pages/Scorm/AccessAdmin'));
 
 function RouteFallback() {
   return (
@@ -87,6 +88,7 @@ function AppRoutes() {
           <Route path="author" element={<ScormAuthor />} />
           <Route path="visual-studio" element={<ScormVisualStudio />} />
           <Route path="reports" element={<ScormReports />} />
+          <Route path="access" element={<ScormAccessAdmin />} />
         </Route>
 
         <Route path="/scorm/live-quiz" element={<LegacyQuizRedirect kind="dashboard" />} />
