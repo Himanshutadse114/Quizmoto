@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
 import './pages/Host/liveQuizTheme.css';
+import './pages/Host/classicQuizmoto.css';
 import './pages/Scorm/scormVisualStudioFixes.css';
 
 const Landing = lazy(() => import('./pages/Public/Landing'));
@@ -114,10 +115,17 @@ function AppRoutes() {
 
 function AppSurface() {
   const { pathname } = useLocation();
-  const showQuizBackdrop = pathname === '/' || pathname === '/login' || pathname.startsWith('/host') || pathname === '/join' || pathname.startsWith('/player/');
+  const isClassicHost = pathname === '/login' || pathname === '/host' || pathname.startsWith('/host/create') || pathname.startsWith('/host/edit') || pathname.startsWith('/host/reports');
+  const isQuizGameStage = pathname.startsWith('/host/lobby') || pathname.startsWith('/host/game') || pathname === '/join' || pathname.startsWith('/player/');
+  const showQuizBackdrop = pathname === '/' || isClassicHost || isQuizGameStage;
+  const surfaceClass = !showQuizBackdrop
+    ? 'bg-[#11100e]'
+    : isQuizGameStage
+      ? 'bg-quizmoto-darkPurple live-quiz-stage'
+      : 'bg-quizmoto-darkPurple classic-quizmoto-host';
 
   return (
-    <div className={`min-h-screen text-white relative ${showQuizBackdrop ? 'bg-quizmoto-darkPurple live-quiz-stage' : 'bg-[#11100e]'}`}>
+    <div className={`min-h-screen text-white relative ${surfaceClass}`}>
       {showQuizBackdrop && pathname !== '/' && (
         <>
           <div className="bg-shape shape-1 w-64 h-64 border-[32px] border-white rounded-full" />
