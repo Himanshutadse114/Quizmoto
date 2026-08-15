@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { Check, ChevronLeft, ChevronRight, FileText, Palette, Sparkles, UploadCloud } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, FileText, Palette, Sparkles } from 'lucide-react';
 import { apiUrl } from '../../config';
+import AuthorQuizEditor from './AuthorQuizEditor';
 import {
   BACKGROUND_STYLES,
   COURSE_LAYOUTS,
@@ -34,6 +35,20 @@ function toBase64(file) {
   });
 }
 
+function normalizeQuizQuestion(value) {
+  const item = value && typeof value === 'object' ? value : {};
+  const options = Array.isArray(item.options) ? [...item.options].slice(0, 4) : [];
+  while (options.length < 4) options.push('');
+  const correct = Number(item.correctAnswer);
+  return {
+    ...item,
+    question: String(item.question || ''),
+    options,
+    correctAnswer: Number.isInteger(correct) && correct >= 0 && correct < 4 ? correct : 0,
+    explanation: String(item.explanation || '')
+  };
+}
+
 function normalizeAnalysis(value) {
   const analysis = value && typeof value === 'object' ? value : {};
   return {
@@ -41,7 +56,7 @@ function normalizeAnalysis(value) {
     title: analysis.title || 'Learning experience',
     summary: analysis.summary || '',
     slides: (analysis.slides || []).map(normalizeCourseSlide),
-    quiz: Array.isArray(analysis.quiz) ? analysis.quiz : []
+    quiz: Array.isArray(analysis.quiz) ? analysis.quiz.map(normalizeQuizQuestion) : []
   };
 }
 
@@ -49,8 +64,29 @@ function cleanForGenerate(analysis) {
   if (!analysis) return null;
   return {
     ...analysis,
-    slides: (analysis.slides || []).map(({ visualAsset, mobileVisualAsset, ...slide }) => slide)
+    slides: (analysis.slides || []).map(({ visualAsset, mobileVisualAsset, ...slide }) => slide),
+    quiz: (analysis.quiz || []).map((question) => ({
+      ...question,
+      question: String(question.question || '').trim(),
+      options: (question.options || []).map((option) => String(option || '').trim()).slice(0, 4),
+      correctAnswer: Number(question.correctAnswer),
+      explanation: String(question.explanation || '').trim()
+    }))
   };
+}
+
+function validateQuiz(quiz) {
+  const questions = Array.isArray(quiz) ? quiz : [];
+  for (let index = 0; index < questions.length; index += 1) {
+    const item = questions[index] || {};
+    const options = Array.isArray(item.options) ? item.options : [];
+    if (!String(item.question || '').trim()) return `Knowledge check ${index + 1} needs a question.`;
+    if (options.length !== 4 || options.some((option) => !String(option || '').trim())) return `Knowledge check ${index + 1} needs four answer options.`;
+    const correct = Number(item.correctAnswer);
+    if (!Number.isInteger(correct) || correct < 0 || correct >= options.length) return `Knowledge check ${index + 1} needs a valid correct answer.`;
+    if (!String(item.explanation || '').trim()) return `Knowledge check ${index + 1} needs an explanation.`;
+  }
+  return '';
 }
 
 function ThemeCard({ theme, selected, onClick }) {
@@ -118,7 +154,7 @@ export default function AuthorVisual() {
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
-    if (!token) { navigate('/login'); return; }
+    if (!token) { navigate('/'); return; }
     if (editId) return;
     try {
       const stored = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
@@ -165,7 +201,7 @@ export default function AuthorVisual() {
       }, { headers, timeout: 180000 });
       setAnalysis(normalizeAnalysis(res.data.analysis));
       setSelected(0);
-      setNotice('Learning blueprint created. Review the experience before generating the package.');
+      setNotice('Learning blueprint created. Review the screens and knowledge checks before generating the package.');
     } catch (err) {
       setError(err.response?.data?.message || err.message);
     } finally { setBusy(false); }
@@ -180,8 +216,15 @@ export default function AuthorVisual() {
     });
   };
 
+  const updateQuiz = (quiz) => setAnalysis((prev) => prev ? { ...prev, quiz } : prev);
+
   const generate = async () => {
     if (!analysis) return;
+    const quizError = validateQuiz(analysis.quiz);
+    if (quizError) {
+      setError(quizError);
+      return;
+    }
     setBusy(true); setError(''); setNotice('');
     try {
       const res = await axios.post(apiUrl('/api/scorm/author/generate'), {
@@ -205,9 +248,9 @@ export default function AuthorVisual() {
     <div className="min-h-screen max-w-[1500px] mx-auto p-4 md:p-7 pb-24 relative z-10">
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">SCORM World · Course Experience V5</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">SCORM AI · Course Experience V5</div>
           <h1 className="text-3xl md:text-[38px] font-semibold tracking-[-.05em] mt-1">AI Course Author</h1>
-          <p className="text-sm text-slate-400 mt-2 max-w-2xl">Create a course from a topic and description, a source document, or both. Choose the learner colour theme before generation and refine the experience before publishing.</p>
+          <p className="text-sm text-slate-400 mt-2 max-w-2xl">Create a course from a topic and description, a source document, or both. Refine learning screens and edit every generated knowledge-check question before publishing.</p>
         </div>
         <div className="flex gap-2"><Link to="/scorm/visual-studio" className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold">Visual Studio</Link>{analysis && <button type="button" onClick={generate} disabled={busy} className="scorm-button-primary px-5 py-2.5 text-xs font-semibold inline-flex items-center gap-2 disabled:opacity-50"><Sparkles size={15} />{busy ? 'Building…' : editId ? 'Rebuild course' : 'Generate SCORM'}</button>}</div>
       </div>
@@ -291,6 +334,8 @@ export default function AuthorVisual() {
               <div><label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Interaction prompt</label><textarea rows={3} value={slide.interaction?.prompt || ''} onChange={(e) => updateSlide({ interaction: { ...(slide.interaction || {}), prompt: e.target.value } })} className="w-full p-2.5 text-sm" /></div>
             </aside>
           </div>
+
+          <AuthorQuizEditor quiz={analysis.quiz || []} onChange={updateQuiz} />
         </div>
       )}
     </div>
