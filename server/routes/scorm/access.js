@@ -6,6 +6,7 @@ const {
     SUPER_ADMIN_EMAIL,
     listGrants,
     addGrant,
+    rotateRegistrationCode,
     removeGrant
 } = require('../../services/scorm/ScormAccessService');
 
@@ -27,7 +28,9 @@ function serializeGrant(grant) {
         addedByEmail: grant.addedByEmail || null,
         createdAt: grant.createdAt,
         updatedAt: grant.updatedAt,
-        protected: grant.role === 'super_admin' || grant.email === SUPER_ADMIN_EMAIL
+        protected: grant.role === 'super_admin' || grant.email === SUPER_ADMIN_EMAIL,
+        activationCodeAvailable: Boolean(grant.registrationCodeHash && !grant.registrationCodeUsedAt),
+        activationCodeUsedAt: grant.registrationCodeUsedAt || null
     };
 }
 
@@ -56,18 +59,40 @@ router.get('/', auth, requireSuperAdmin, async (req, res) => {
 
 router.post('/', auth, requireSuperAdmin, async (req, res) => {
     try {
-        const grant = await addGrant({
+        const result = await addGrant({
             email: req.body?.email,
             addedByUserId: req.userId,
             addedByEmail: req.scormEmail
         });
-        res.status(201).json({ grant: serializeGrant(grant) });
+        res.status(201).json({
+            grant: serializeGrant(result.grant),
+            activationCode: result.activationCode || null
+        });
     } catch (err) {
         if (err.code === 'INVALID_EMAIL') {
             return res.status(400).json({ message: err.message });
         }
         console.error('[scorm-access] add failed', err);
         res.status(500).json({ message: 'Could not add SCORM AI access.' });
+    }
+});
+
+router.post('/:id/activation-code', auth, requireSuperAdmin, async (req, res) => {
+    try {
+        const result = await rotateRegistrationCode(req.params.id);
+        if (!result.ok && result.reason === 'not_found') {
+            return res.status(404).json({ message: 'Access grant not found.' });
+        }
+        if (!result.ok && result.reason === 'super_admin') {
+            return res.status(400).json({ message: 'The super administrator uses Google Sign-In and does not use an activation code.' });
+        }
+        res.json({
+            grant: serializeGrant(result.grant),
+            activationCode: result.activationCode
+        });
+    } catch (err) {
+        console.error('[scorm-access] activation code rotation failed', err);
+        res.status(500).json({ message: 'Could not generate a new SCORM AI activation code.' });
     }
 });
 
