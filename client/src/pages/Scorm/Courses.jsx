@@ -4,6 +4,7 @@ import axios from 'axios';
 import { BookOpen, Search, Users, CheckCircle2, Clock3, ChevronRight, Plus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import './scormCoursesWorkbench.css';
 
 const Metric = ({ label, value, icon: Icon }) => (
   <div className="scorm-course-metric rounded-xl border p-4 md:p-5">
