@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const { Op } = require('sequelize');
 const User = require('../models/User');
+const auth = require('./middleware');
 const {
     ADMIN_CONTACT_EMAIL,
     normalizeEmail,
@@ -37,11 +38,6 @@ const scormAuthLimiter = rateLimit({
     }
 });
 
-// Protect SCORM Google/password authentication without changing Quizmoto host auth.
-// The limiter key is account-based so reverse-proxy deployments do not place
-// every user behind the same IP-based authentication bucket.
-router.use('/scorm', scormAuthLimiter);
-
 function issueToken(user, scope = 'quizmoto', extraClaims = {}) {
     return jwt.sign({ userId: user.id, scope, ...extraClaims }, JWT_SECRET, { expiresIn: '30d' });
 }
@@ -63,20 +59,53 @@ async function scormAuthResponse(user, role) {
         role,
         isSuperAdmin: role === 'super_admin',
         adminContact: ADMIN_CONTACT_EMAIL,
-        product: 'scorm-ai'
+        product: 'scorm-ai',
+        platformAccess: true,
+        scormAccess: true,
+        pendingApproval: false
     });
 }
 
 function pendingResponse(user, captured = true) {
+    const token = user ? issueToken(user, 'platform', { scormRole: 'pending' }) : null;
     return {
         ...pendingApprovalPayload({ captured }),
+        token,
         email: user?.email || null,
         username: user?.username || null,
-        product: 'scorm-ai'
+        role: 'pending',
+        isSuperAdmin: false,
+        product: 'scorm-ai',
+        platformAccess: Boolean(token),
+        scormAccess: false
     };
 }
 
-// Google Sign-In for Quizmoto host access.
+// A pending platform token can call this endpoint because it is intentionally
+// outside /api/scorm/*. Once the Super Admin grants access, the same signed-in
+// account receives a full SCORM token without needing to register again.
+router.get('/scorm/status', auth, async (req, res) => {
+    try {
+        const user = await User.findByPk(req.userId);
+        if (!user) {
+            return res.status(401).json({ message: 'Platform account no longer exists.', code: 'PLATFORM_AUTH_REQUIRED' });
+        }
+
+        const role = await getAccessRole(user.email);
+        if (!role) return res.json(pendingResponse(user, false));
+        return res.json(await scormAuthResponse(user, role));
+    } catch (err) {
+        console.error('SCORM AI access status error:', err);
+        return res.status(500).json({ message: 'Could not refresh SCORM AI access status.' });
+    }
+});
+
+// Protect authentication attempts without rate-limiting the signed-in status
+// refresh endpoint above.
+router.use('/scorm', scormAuthLimiter);
+
+// Google Sign-In for legacy Quizmoto host access. Kept for rolling-deploy
+// compatibility; the main product entry now uses SCORM AI platform auth.
 router.post('/google', async (req, res) => {
     try {
         const { credential } = req.body;
@@ -122,9 +151,9 @@ router.post('/google', async (req, res) => {
     }
 });
 
-// Google Sign-In for SCORM AI. Google proves ownership of the email. The user
-// identity is captured even when access has not yet been approved so the Super
-// Admin can see and approve that request from Access Control.
+// Google Sign-In for the SCORM AI platform. Unapproved identities receive a
+// limited platform session: Quizmoto works, while /api/scorm/* stays locked by
+// the shared auth middleware until a live access grant exists.
 router.post('/scorm/google', async (req, res) => {
     try {
         const credential = String(req.body?.credential || '');
@@ -193,9 +222,9 @@ router.post('/scorm/google', async (req, res) => {
     }
 });
 
-// SCORM AI account registration always captures the account first. Access is
-// still controlled independently by the Super Admin. A pending user keeps the
-// same credentials and can use them after approval without registering again.
+// SCORM AI account registration captures the account first. Pending users can
+// enter the platform immediately with Quizmoto unlocked, but protected SCORM AI
+// capabilities remain unavailable until the Super Admin approves the email.
 router.post('/scorm/register', async (req, res) => {
     try {
         const username = String(req.body?.username || '').trim();
@@ -233,7 +262,7 @@ router.post('/scorm/register', async (req, res) => {
             if (!role) {
                 return res.status(409).json({
                     ...pendingResponse(user, false),
-                    message: `This SCORM AI account is already registered and is still waiting for administrator approval. Please contact ${ADMIN_CONTACT_EMAIL}. After approval, sign in with the same credentials you already registered.`,
+                    message: `This SCORM AI account is already registered and is still waiting for administrator approval. Please contact ${ADMIN_CONTACT_EMAIL}. Sign in with the same credentials to use Quizmoto while approval is pending.`,
                     code: 'SCORM_ACCOUNT_EXISTS_PENDING'
                 });
             }
@@ -309,7 +338,7 @@ router.post('/scorm/login', async (req, res) => {
                 username: user.username,
                 authMethod: user.googleId ? 'mixed' : 'password'
             });
-            return res.status(403).json(pendingResponse(user, false));
+            return res.json(pendingResponse(user, false));
         }
 
         res.json(await scormAuthResponse(user, role));
