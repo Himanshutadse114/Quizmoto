@@ -1,10 +1,9 @@
 /*
- * Final SCORM World Workbench consistency pass.
- * Removes legacy blue/cyan UI leakage while preserving the actual learner-course
- * colour previews shown by Course Experience V5.
+ * SCORM World Workbench consistency layer.
+ * Keeps the authoring workspace warm and neutral while preserving the actual
+ * learner-course colours inside course theme previews.
  */
 
-/* Dashboard operational icons should share one Workbench action colour. */
 .scorm-editorial.scorm-workbench .scorm-metric-violet .scorm-metric-icon,
 .scorm-editorial.scorm-workbench .scorm-metric-cyan .scorm-metric-icon,
 .scorm-editorial.scorm-workbench .scorm-metric-green .scorm-metric-icon,
@@ -30,7 +29,6 @@
   stroke: currentColor !important;
 }
 
-/* Catch Tailwind colour families that were not part of the first dark-theme pass. */
 .scorm-editorial.scorm-workbench main [class*="text-cyan-"],
 .scorm-editorial.scorm-workbench main [class*="text-sky-"],
 .scorm-editorial.scorm-workbench main [class*="text-indigo-"],
@@ -52,7 +50,6 @@
   border-color: rgba(255, 138, 31, .30) !important;
 }
 
-/* Course Author: replace the older blue authoring surfaces with warm Workbench surfaces. */
 .scorm-editorial.scorm-workbench main [class*="bg-[#08111c]"],
 .scorm-editorial.scorm-workbench main [class*="bg-[#0a131f]"],
 .scorm-editorial.scorm-workbench main [class*="bg-[#0d1928]"] {
@@ -72,8 +69,7 @@
   border-color: #4a3e32 !important;
 }
 
-/* Source document drop zone. */
-.scorm-editorial.scorm-workbench label[class*="border-[#36516f]"] {
+.scorm-editorial.scorm-workbench .scorm-author-dropzone {
   background:
     repeating-linear-gradient(0deg, rgba(255,255,255,.008) 0, rgba(255,255,255,.008) 1px, transparent 1px, transparent 4px),
     #14120f !important;
@@ -83,35 +79,35 @@
   box-shadow: inset 0 0 0 1px rgba(243, 234, 213, .018) !important;
 }
 
-.scorm-editorial.scorm-workbench label[class*="border-[#36516f]"]:hover {
+.scorm-editorial.scorm-workbench .scorm-author-dropzone:hover {
   background: #1a1713 !important;
   border-color: var(--wb-orange) !important;
 }
 
-.scorm-editorial.scorm-workbench label[class*="border-[#36516f]"] svg {
+.scorm-editorial.scorm-workbench .scorm-author-dropzone svg {
   color: var(--wb-orange) !important;
 }
 
-/* Course depth selector: clear warm selected state instead of blue. */
-.scorm-editorial.scorm-workbench button[class*="border-[#26374d]"][class*="bg-[#0a131f]"] {
+.scorm-editorial.scorm-workbench .scorm-author-depth {
   background: #151310 !important;
   border-color: #463a2f !important;
   color: var(--wb-cream-soft) !important;
+  border-radius: var(--wb-radius) !important;
+  min-height: 68px;
 }
 
-.scorm-editorial.scorm-workbench button[class*="border-[#26374d]"][class*="bg-[#0a131f]"]:hover {
+.scorm-editorial.scorm-workbench .scorm-author-depth:hover {
   background: #1d1915 !important;
   border-color: #755b41 !important;
 }
 
-.scorm-editorial.scorm-workbench button[class*="border-[#477bc4]"][class*="bg-[#102747]"] {
+.scorm-editorial.scorm-workbench .scorm-author-depth.is-selected {
   background: linear-gradient(180deg, rgba(255,138,31,.145), rgba(255,138,31,.075)) !important;
   border-color: var(--wb-orange) !important;
   color: var(--wb-cream) !important;
   box-shadow: inset 3px 0 0 var(--wb-orange), inset 0 1px 0 rgba(255,255,255,.035) !important;
 }
 
-/* Screen navigator selected/hover states in AI Course Author. */
 .scorm-editorial.scorm-workbench button[class*="bg-[#122541]"][class*="border-[#315a8b]"] {
   background: linear-gradient(90deg, rgba(255,138,31,.14), rgba(255,138,31,.045)) !important;
   border-color: rgba(255,138,31,.52) !important;
@@ -124,11 +120,6 @@
   border-color: #4a3e32 !important;
 }
 
-/*
- * Course Experience V5 theme cards.
- * The palette preview remains the true learner-course colour; the framing belongs
- * to SCORM World and therefore uses the warm Workbench system.
- */
 .scorm-editorial.scorm-workbench button[class*="p-3"][class*="text-left"][style*="linear-gradient(145deg"] {
   border: 1px solid #5a4938 !important;
   border-radius: var(--wb-radius) !important;
@@ -178,7 +169,6 @@
   line-height: 1.45;
 }
 
-/* Selected course-theme check belongs to the admin frame, not the learner palette. */
 .scorm-editorial.scorm-workbench button[class*="ring-2"][style*="linear-gradient(145deg"] > div[class*="absolute"][class*="top-2.5"] {
   background: var(--wb-orange) !important;
   color: #17110b !important;
@@ -186,7 +176,6 @@
   box-shadow: 0 0 0 2px rgba(17,16,14,.70);
 }
 
-/* Compact theme switcher shown after analysis. */
 .scorm-editorial.scorm-workbench button[class*="w-9"][class*="h-9"][style*="linear-gradient(145deg"] {
   border-color: #574939 !important;
   border-radius: 5px !important;
@@ -205,12 +194,10 @@
     0 0 0 4px rgba(255,138,31,.46) !important;
 }
 
-/* Make ordinary authoring metadata warm rather than cool slate. */
 .scorm-editorial.scorm-workbench main [class*="text-slate-300"] { color: var(--wb-cream-soft) !important; }
 .scorm-editorial.scorm-workbench main [class*="text-slate-400"] { color: #c0aa88 !important; }
 .scorm-editorial.scorm-workbench main [class*="text-slate-500"] { color: var(--wb-muted) !important; }
 
-/* Mobile drawer backdrop should be warm-black, not the previous navy overlay. */
 .scorm-editorial.scorm-workbench button[class*="bg-[#090D18]"] {
   background: rgba(11, 10, 8, .74) !important;
 }
@@ -218,5 +205,9 @@
 @media (max-width: 767px) {
   .scorm-editorial.scorm-workbench button[class*="p-3"][class*="text-left"][style*="linear-gradient(145deg"] {
     min-height: 138px;
+  }
+  .scorm-editorial.scorm-workbench .scorm-author-depth {
+    min-height: 62px;
+    padding-inline: 9px !important;
   }
 }
