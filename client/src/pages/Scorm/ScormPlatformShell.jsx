@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   BookOpen,
@@ -42,17 +42,6 @@ const NAV_GROUPS = [
     ]
   }
 ];
-
-const NAV = NAV_GROUPS.flatMap((group) => group.items);
-
-function pageLabel(pathname) {
-  if (pathname.startsWith('/scorm/courses/')) return 'Course workspace';
-  const exact = NAV.find((item) => item.end && item.to === pathname);
-  if (exact) return exact.label;
-  const match = NAV.find((item) => !item.end && pathname.startsWith(item.to));
-  if (match) return match.label;
-  return 'SCORM World';
-}
 
 function Navigation({ onNavigate }) {
   return (
@@ -130,9 +119,7 @@ function MobileTabBar() {
 
 export default function ScormPlatformShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const location = useLocation();
   const navigate = useNavigate();
-  const label = pageLabel(location.pathname);
 
   return (
     <div className="scorm-editorial scorm-workbench min-h-screen relative z-20">
@@ -166,7 +153,7 @@ export default function ScormPlatformShell() {
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
             aria-label="Close navigation"
-            className="absolute inset-0 bg-[#090D18]/55 backdrop-blur-sm"
+            className="absolute inset-0 bg-[#11100e]/70 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
           <div className="scorm-mobile-drawer absolute inset-y-0 left-0 w-[304px] max-w-[88vw] border-r flex flex-col">
@@ -197,7 +184,7 @@ export default function ScormPlatformShell() {
       )}
 
       <div className="lg:pl-[268px] min-h-screen">
-        <header className="scorm-topbar sticky top-0 z-30 min-h-[72px] border-b px-4 md:px-7 py-3 flex items-center gap-3 md:gap-4">
+        <header className="scorm-topbar sticky top-0 z-30 min-h-[64px] border-b px-4 md:px-7 py-2.5 flex items-center gap-3 md:gap-4">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
@@ -207,16 +194,11 @@ export default function ScormPlatformShell() {
             <Menu size={18} />
           </button>
 
-          <div className="min-w-0">
-            <div className="scorm-breadcrumb text-[10px] font-medium">SCORM WORLD <span>·</span> WORKBENCH</div>
-            <h1 className="scorm-page-title text-[18px] md:text-[20px] truncate mt-0.5">{label}</h1>
-          </div>
-
           <div className="ml-auto flex items-center gap-2">
             <button
               type="button"
               onClick={() => navigate('/scorm/live-quiz')}
-              aria-label="Return to Live Quiz"
+              aria-label="Open Live Quiz"
               className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"
             >
               <ArrowLeft size={14} />
@@ -239,7 +221,7 @@ export default function ScormPlatformShell() {
           </div>
         </header>
 
-        <main className="scorm-main min-h-[calc(100vh-72px)] pb-24 lg:pb-0">
+        <main className="scorm-main min-h-[calc(100vh-64px)] pb-24 lg:pb-0">
           <Outlet />
         </main>
       </div>
