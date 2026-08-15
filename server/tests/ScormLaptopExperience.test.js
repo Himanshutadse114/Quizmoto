@@ -1,27 +1,27 @@
 const { expect } = require('chai');
 const {
-    injectExperienceCss,
-    experienceScript
-} = require('../services/scorm/ScormExperiencePackageBuilder');
+    injectAnswerTracking,
+    LAPTOP_EXPERIENCE_CSS,
+    LAPTOP_EXPERIENCE_SCRIPT
+} = require('../services/scorm/ScormAnswerTrackingPackageFinalizer');
 
 describe('SCORM Course Experience V5 laptop UX', () => {
-    it('adds a dedicated laptop-height layout that compacts the learner stage', () => {
-        const html = injectExperienceCss('<html><head></head><body></body></html>');
-        expect(html).to.include('max-height:920px');
-        expect(html).to.include('qmx-laptop');
-        expect(html).to.include('min-height:360px');
+    it('injects a dedicated laptop-height layout that compacts the learner stage', () => {
+        const html = injectAnswerTracking('<html><head></head><body></body></html>');
+        expect(html).to.include('scorm-ai-laptop-experience-v1');
+        expect(LAPTOP_EXPERIENCE_CSS).to.include('max-height:920px');
+        expect(LAPTOP_EXPERIENCE_CSS).to.include('min-height:360px');
+        expect(LAPTOP_EXPERIENCE_CSS).to.include('justify-content:flex-start');
     });
 
-    it('keeps revealed learning detail discoverable without forcing blind manual scrolling', () => {
-        const script = experienceScript();
-        expect(script).to.include('revealIntoView');
-        expect(script).to.include('scrollIntoView');
-        expect(script).to.include('qmx-reveal-attention');
+    it('keeps revealed learning detail discoverable without blind manual scrolling', () => {
+        expect(LAPTOP_EXPERIENCE_SCRIPT).to.include('revealIntoView');
+        expect(LAPTOP_EXPERIENCE_SCRIPT).to.include('scrollIntoView');
+        expect(LAPTOP_EXPERIENCE_CSS).to.include('qmx-reveal-attention');
     });
 
     it('resets the active slide scroll position when learner navigation changes slides', () => {
-        const script = experienceScript();
-        expect(script).to.include('resetActiveSlideScroll');
-        expect(script).to.include('MutationObserver');
+        expect(LAPTOP_EXPERIENCE_SCRIPT).to.include('resetActiveSlideScroll');
+        expect(LAPTOP_EXPERIENCE_SCRIPT).to.include('MutationObserver');
     });
 });
