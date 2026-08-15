@@ -7,7 +7,6 @@ import './pages/Host/liveQuizTheme.css';
 import './pages/Host/classicQuizmoto.css';
 import './pages/Scorm/scormVisualStudioFixes.css';
 
-const Landing = lazy(() => import('./pages/Public/Landing'));
 const Login = lazy(() => import('./pages/Host/Login'));
 const Dashboard = lazy(() => import('./pages/Host/Dashboard'));
 const CreateQuiz = lazy(() => import('./pages/Host/CreateQuiz'));
@@ -62,7 +61,8 @@ function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
-        <Route path="/" element={<Landing />} />
+        {/* Classic Quizmoto entry: normal visitors go straight to host login. */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
 
         <Route path="/player/login" element={<PlayerLogin />} />
@@ -107,7 +107,7 @@ function AppRoutes() {
         <Route path="/scorm/learn/:inviteCode" element={<ScormLearnLanding />} />
         <Route path="/scorm/player/:registrationId" element={<ScormPlayerShell />} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Suspense>
   );
@@ -115,9 +115,9 @@ function AppRoutes() {
 
 function AppSurface() {
   const { pathname } = useLocation();
-  const isClassicHost = pathname === '/login' || pathname === '/host' || pathname.startsWith('/host/create') || pathname.startsWith('/host/edit') || pathname.startsWith('/host/reports');
+  const isClassicHost = pathname === '/' || pathname === '/login' || pathname === '/host' || pathname.startsWith('/host/create') || pathname.startsWith('/host/edit') || pathname.startsWith('/host/reports');
   const isQuizGameStage = pathname.startsWith('/host/lobby') || pathname.startsWith('/host/game') || pathname === '/join' || pathname.startsWith('/player/');
-  const showQuizBackdrop = pathname === '/' || isClassicHost || isQuizGameStage;
+  const showQuizBackdrop = isClassicHost || isQuizGameStage;
   const surfaceClass = !showQuizBackdrop
     ? 'bg-[#11100e]'
     : isQuizGameStage
