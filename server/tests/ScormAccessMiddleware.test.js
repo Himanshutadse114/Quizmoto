@@ -42,8 +42,9 @@ describe('SCORM access middleware', () => {
             },
             accessDeniedPayload() {
                 return {
-                    message: 'Your account does not have access to SCORM AI. Please contact the administrator at tadsehimanshu@gmail.com.',
-                    code: 'SCORM_ACCESS_DENIED',
+                    message: 'Your SCORM AI account is registered but not authorised yet. Please contact the administrator at tadsehimanshu@gmail.com to unlock access.',
+                    code: 'SCORM_APPROVAL_PENDING',
+                    pendingApproval: true,
                     adminContact: 'tadsehimanshu@gmail.com'
                 };
             }
@@ -97,7 +98,8 @@ describe('SCORM access middleware', () => {
 
         expect(nextCalled).to.equal(false);
         expect(res.statusCode).to.equal(403);
-        expect(res.body.code).to.equal('SCORM_ACCESS_DENIED');
+        expect(res.body.code).to.equal('SCORM_APPROVAL_PENDING');
+        expect(res.body.pendingApproval).to.equal(true);
         expect(res.body.adminContact).to.equal('tadsehimanshu@gmail.com');
     });
 
