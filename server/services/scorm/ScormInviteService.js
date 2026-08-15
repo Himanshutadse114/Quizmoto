@@ -8,6 +8,7 @@ const {
     ScormAttempt,
     ScormPackage
 } = require('../../models/scorm');
+const { ensurePackageLaunchMetadata } = require('./ScormLaunchMetadataService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
@@ -115,6 +116,12 @@ async function acceptInvite({ inviteCode, learnerName, learnerEmail }) {
             err.code = 'PACKAGE_NOT_READY';
             throw err;
         }
+
+        // Do not create a learner registration or attempt until the package can
+        // actually launch. Older packages may be ready but have a null entryHref;
+        // this recovers the launch file from stored metadata/manifest/content and
+        // persists it atomically with the invite transaction.
+        await ensurePackageLaunchMetadata(pkg, { transaction });
         course.setDataValue('package', pkg);
 
         let reg = null;
