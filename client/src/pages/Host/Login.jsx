@@ -55,8 +55,22 @@ const Login = () => {
                     />
                 </div>
 
-                <p className="mt-8 text-center font-bold text-sm md:text-base text-white opacity-60">
-                    Secure authentication via Google
+                <div className="w-full flex items-center gap-3 my-5" aria-hidden="true">
+                    <div className="h-px flex-1 bg-white/15" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">or</span>
+                    <div className="h-px flex-1 bg-white/15" />
+                </div>
+
+                <button
+                    type="button"
+                    onClick={() => navigate('/join')}
+                    className="w-full bg-quizmoto-green text-white font-black py-3.5 px-5 rounded-xl uppercase tracking-widest text-sm shadow-[0_5px_0_0_#1a5e08] hover:shadow-none hover:translate-y-1 transition-all"
+                >
+                    Join Game
+                </button>
+
+                <p className="mt-7 text-center font-bold text-sm md:text-base text-white opacity-60">
+                    Secure authentication via Google for hosts
                 </p>
             </motion.div>
         </div>
