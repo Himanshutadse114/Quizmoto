@@ -1,4 +1,19 @@
 /* Create Quiz additions layered on top of the shared Edit Quiz Workbench theme. */
+
+/* Create Quiz should always expose a clear escape route back to the host dashboard. */
+.quizmoto-edit-workbench .qe-topbar .qe-back {
+  width: auto;
+  min-width: 42px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 9px/1 'IBM Plex Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.quizmoto-edit-workbench .qe-topbar .qe-back::after { content: 'Back to dashboard'; white-space: nowrap; }
+
 .qc-header-actions { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; justify-content: flex-end; }
 .qc-ai-button {
   min-height: 44px;
@@ -113,6 +128,8 @@
 .qc-generate:disabled { border-color: #684a30; background: #3a281b; color: #8e7151; box-shadow: none; cursor: not-allowed; }
 
 @media (max-width: 700px) {
+  .quizmoto-edit-workbench .qe-topbar .qe-back { width: 42px; padding: 0; justify-content: center; }
+  .quizmoto-edit-workbench .qe-topbar .qe-back::after { display: none; }
   .qc-header-actions { width: auto; flex-wrap: nowrap; }
   .qc-ai-button { width: 44px; padding: 0; }
   .qc-ai-button span { display: none; }
