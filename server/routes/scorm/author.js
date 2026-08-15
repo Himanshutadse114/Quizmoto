@@ -1,6 +1,6 @@
 /**
- * AI author: policy/PDF/PPT -> SCORM 1.2 package into host library.
- * Behind SCORM_LMS + SCORM_AI_AUTHOR flags.
+ * AI author: source brief / policy / PDF / PPT -> SCORM 1.2 package.
+ * Gemini API keys remain server-side.
  */
 const express = require('express');
 const router = express.Router();
@@ -15,6 +15,7 @@ const { ensureCourseForPackage } = require('../../services/scorm/ScormCourseWork
 const { getObjectStorage } = require('../../storage/ObjectStorage');
 const { packageZipKey } = require('../../services/scorm/storageKeys');
 const { unpackPackage } = require('../../services/scorm/ScormUnpackService');
+const { generateQuiz } = require('../../services/QuizAiGenerationService');
 const logger = require('../../utils/logger');
 
 router.use((req, res, next) => {
@@ -47,24 +48,64 @@ router.get('/themes', auth, (_req, res) => {
     });
 });
 
+router.post('/quiz-generate', auth, async (req, res) => {
+    try {
+        const body = req.body || {};
+        const quiz = await generateQuiz({
+            topic: body.topic || body.prompt || '',
+            description: body.description || '',
+            fileBase64: body.fileBase64 || '',
+            mimeType: body.mimeType || '',
+            fileName: body.fileName || ''
+        });
+        res.json(quiz);
+    } catch (err) {
+        const code = err.code || 'QUIZ_AI_ERROR';
+        const status = code === 'QUIZ_AI_SOURCE_REQUIRED'
+            ? 400
+            : code === 'QUIZ_AI_FILE_TOO_LARGE'
+                ? 413
+                : code === 'GEMINI_KEY_MISSING'
+                    ? 503
+                    : code === 'GEMINI_QUOTA'
+                        ? 429
+                        : 500;
+        logger.error('live_quiz_ai_generate_failed', { module: 'quiz', error: err.message, code });
+        res.status(status).json({ message: err.message || 'AI failed to generate quiz. Please try again.', code });
+    }
+});
+
 router.post('/analyze', auth, async (req, res) => {
     try {
-        const { fileBase64, mimeType, detailLevel, titleHint, templateId, themeId } = req.body || {};
-        if (!fileBase64) return res.status(400).json({ message: 'fileBase64 required' });
-        const raw = String(fileBase64).replace(/^data:[^;]+;base64,/, '');
-        const approxBytes = Math.floor((raw.length * 3) / 4);
+        const { fileBase64, mimeType, detailLevel, titleHint, templateId, themeId, topic, description } = req.body || {};
+        const cleanTopic = String(topic || '').trim();
+        const cleanDescription = String(description || '').trim();
+        const brief = [
+            cleanTopic ? `Topic: ${cleanTopic}` : '',
+            cleanDescription ? `Description and learning context:\n${cleanDescription}` : ''
+        ].filter(Boolean).join('\n\n');
+
+        if (!fileBase64 && !brief) {
+            return res.status(400).json({ message: 'Add a topic and description or upload a source document.' });
+        }
+
+        const sourceBase64 = fileBase64
+            ? String(fileBase64).replace(/^data:[^;]+;base64,/, '')
+            : Buffer.from(brief, 'utf8').toString('base64');
+        const sourceMimeType = fileBase64 ? (mimeType || 'application/pdf') : 'text/plain';
+        const approxBytes = Math.floor((sourceBase64.length * 3) / 4);
         const max = scormMaxUploadMb() * 1024 * 1024;
         if (approxBytes > max) return res.status(413).json({ message: `Max upload ${scormMaxUploadMb()} MB` });
 
         const selectedThemeId = normalizeThemeId(themeId || templateId || 1);
         const selectedTheme = getTheme(selectedThemeId);
         let analysis = await analyzePolicy({
-            fileBase64: raw,
-            mimeType: mimeType || 'application/pdf',
+            fileBase64: sourceBase64,
+            mimeType: sourceMimeType,
             detailLevel: detailLevel || 'detailed'
         });
         analysis = planExperienceV5(analysis);
-        if (titleHint && !analysis.title) analysis.title = titleHint;
+        if ((titleHint || cleanTopic) && !analysis.title) analysis.title = titleHint || cleanTopic;
         analysis.themeId = selectedThemeId;
         analysis.themeName = selectedTheme.name;
         analysis.experienceVersion = 5;
@@ -79,14 +120,19 @@ router.post('/analyze', auth, async (req, res) => {
 router.post('/generate', auth, async (req, res) => {
     try {
         let analysis = req.body?.analysis;
-        const { fileBase64, mimeType, detailLevel, templateId, themeId, logoDataUrl, title } = req.body || {};
+        const { fileBase64, mimeType, detailLevel, templateId, themeId, logoDataUrl, title, topic, description } = req.body || {};
         const selectedThemeId = normalizeThemeId(themeId || templateId || analysis?.themeId || 1);
         const selectedTheme = getTheme(selectedThemeId);
 
         if (!analysis) {
-            if (!fileBase64) return res.status(400).json({ message: 'analysis or fileBase64 required' });
-            const raw = String(fileBase64).replace(/^data:[^;]+;base64,/, '');
-            analysis = await analyzePolicy({ fileBase64: raw, mimeType: mimeType || 'application/pdf', detailLevel: detailLevel || 'detailed' });
+            const cleanTopic = String(topic || '').trim();
+            const cleanDescription = String(description || '').trim();
+            const brief = [cleanTopic ? `Topic: ${cleanTopic}` : '', cleanDescription ? `Description and learning context:\n${cleanDescription}` : ''].filter(Boolean).join('\n\n');
+            if (!fileBase64 && !brief) return res.status(400).json({ message: 'analysis, source document, or topic/description required' });
+            const raw = fileBase64
+                ? String(fileBase64).replace(/^data:[^;]+;base64,/, '')
+                : Buffer.from(brief, 'utf8').toString('base64');
+            analysis = await analyzePolicy({ fileBase64: raw, mimeType: fileBase64 ? (mimeType || 'application/pdf') : 'text/plain', detailLevel: detailLevel || 'detailed' });
         }
         analysis = planExperienceV5(analysis);
         analysis = {
