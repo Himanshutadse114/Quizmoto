@@ -5,6 +5,7 @@ const ScormAttempt = require('./ScormAttempt');
 const ScormCmiState = require('./ScormCmiState');
 const ScormRuntimeSnapshot = require('./ScormRuntimeSnapshot');
 const ScormXapiStatement = require('./ScormXapiStatement');
+const ScormAccessGrant = require('../ScormAccessGrant');
 
 ScormPackage.hasMany(ScormCourse, { foreignKey: 'packageId', as: 'courses' });
 ScormCourse.belongsTo(ScormPackage, { foreignKey: 'packageId', as: 'package' });
@@ -31,5 +32,6 @@ module.exports = {
     ScormAttempt,
     ScormCmiState,
     ScormRuntimeSnapshot,
-    ScormXapiStatement
+    ScormXapiStatement,
+    ScormAccessGrant
 };
