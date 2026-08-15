@@ -4,7 +4,9 @@ import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
 import './pages/Host/liveQuizTheme.css';
+import './pages/Scorm/scormVisualStudioFixes.css';
 
+const Landing = lazy(() => import('./pages/Public/Landing'));
 const Login = lazy(() => import('./pages/Host/Login'));
 const LiveQuizShell = lazy(() => import('./pages/Host/LiveQuizShell'));
 const Dashboard = lazy(() => import('./pages/Host/Dashboard'));
@@ -19,6 +21,7 @@ const PlayerGame = lazy(() => import('./pages/Player/PlayerGame'));
 const PlayerLogin = lazy(() => import('./pages/Player/PlayerLogin'));
 const PlayerDashboard = lazy(() => import('./pages/Player/PlayerDashboard'));
 
+const ScormAuth = lazy(() => import('./pages/Scorm/ScormAuth'));
 const ScormPlatformShell = lazy(() => import('./pages/Scorm/ScormPlatformShell'));
 const ScormHome = lazy(() => import('./pages/Scorm/Home'));
 const ScormCourses = lazy(() => import('./pages/Scorm/Courses'));
@@ -45,21 +48,21 @@ function RouteFallback() {
 function LegacyQuizRedirect({ kind }) {
   const { id, pin } = useParams();
   const targets = {
-    dashboard: '/scorm/live-quiz',
-    create: '/scorm/live-quiz/create',
-    reports: '/scorm/live-quiz/reports',
-    edit: `/scorm/live-quiz/edit/${id || ''}`,
-    lobby: `/scorm/live-quiz/lobby/${pin || ''}`,
-    game: `/scorm/live-quiz/game/${pin || ''}`
+    dashboard: '/host',
+    create: '/host/create',
+    reports: '/host/reports',
+    edit: `/host/edit/${id || ''}`,
+    lobby: `/host/lobby/${pin || ''}`,
+    game: `/host/game/${pin || ''}`
   };
-  return <Navigate to={targets[kind] || '/scorm/live-quiz'} replace />;
+  return <Navigate to={targets[kind] || '/host'} replace />;
 }
 
 function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
-        <Route path="/" element={<Navigate to="/scorm" replace />} />
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
 
         <Route path="/player/login" element={<PlayerLogin />} />
@@ -68,15 +71,16 @@ function AppRoutes() {
         <Route path="/player/lobby" element={<PlayerLobby />} />
         <Route path="/player/game" element={<PlayerGame />} />
 
-        <Route path="/scorm/live-quiz" element={<LiveQuizShell />}>
+        <Route path="/host" element={<LiveQuizShell />}>
           <Route index element={<Dashboard />} />
           <Route path="create" element={<CreateQuiz />} />
           <Route path="edit/:id" element={<EditQuiz />} />
           <Route path="reports" element={<Reports />} />
         </Route>
-        <Route path="/scorm/live-quiz/lobby/:pin" element={<Lobby />} />
-        <Route path="/scorm/live-quiz/game/:pin" element={<GameView />} />
+        <Route path="/host/lobby/:pin" element={<Lobby />} />
+        <Route path="/host/game/:pin" element={<GameView />} />
 
+        <Route path="/scorm/login" element={<ScormAuth />} />
         <Route path="/scorm" element={<ScormPlatformShell />}>
           <Route index element={<ScormHome />} />
           <Route path="courses" element={<ScormCourses />} />
@@ -88,17 +92,24 @@ function AppRoutes() {
           <Route path="reports" element={<ScormReports />} />
         </Route>
 
+        <Route path="/scorm/live-quiz" element={<LegacyQuizRedirect kind="dashboard" />} />
+        <Route path="/scorm/live-quiz/create" element={<LegacyQuizRedirect kind="create" />} />
+        <Route path="/scorm/live-quiz/edit/:id" element={<LegacyQuizRedirect kind="edit" />} />
+        <Route path="/scorm/live-quiz/reports" element={<LegacyQuizRedirect kind="reports" />} />
+        <Route path="/scorm/live-quiz/lobby/:pin" element={<LegacyQuizRedirect kind="lobby" />} />
+        <Route path="/scorm/live-quiz/game/:pin" element={<LegacyQuizRedirect kind="game" />} />
+
         <Route path="/dashboard" element={<LegacyQuizRedirect kind="dashboard" />} />
         <Route path="/create-quiz" element={<LegacyQuizRedirect kind="create" />} />
         <Route path="/edit-quiz/:id" element={<LegacyQuizRedirect kind="edit" />} />
         <Route path="/reports" element={<LegacyQuizRedirect kind="reports" />} />
-        <Route path="/host/lobby/:pin" element={<LegacyQuizRedirect kind="lobby" />} />
-        <Route path="/host/game/:pin" element={<LegacyQuizRedirect kind="game" />} />
+        <Route path="/host/lobby-old/:pin" element={<LegacyQuizRedirect kind="lobby" />} />
+        <Route path="/host/game-old/:pin" element={<LegacyQuizRedirect kind="game" />} />
 
         <Route path="/scorm/learn/:inviteCode" element={<ScormLearnLanding />} />
         <Route path="/scorm/player/:registrationId" element={<ScormPlayerShell />} />
 
-        <Route path="*" element={<Navigate to="/scorm" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
   );
@@ -106,11 +117,11 @@ function AppRoutes() {
 
 function AppSurface() {
   const { pathname } = useLocation();
-  const showQuizBackdrop = pathname.startsWith('/scorm/live-quiz') || pathname === '/join' || pathname.startsWith('/player/');
+  const showQuizBackdrop = pathname === '/' || pathname === '/login' || pathname.startsWith('/host') || pathname === '/join' || pathname.startsWith('/player/');
 
   return (
     <div className={`min-h-screen text-white relative ${showQuizBackdrop ? 'bg-quizmoto-darkPurple live-quiz-stage' : 'bg-[#11100e]'}`}>
-      {showQuizBackdrop && (
+      {showQuizBackdrop && pathname !== '/' && (
         <>
           <div className="bg-shape shape-1 w-64 h-64 border-[32px] border-white rounded-full" />
           <div className="bg-shape shape-2 w-48 h-48 border-[24px] border-quizmoto-yellow rotate-45" />
