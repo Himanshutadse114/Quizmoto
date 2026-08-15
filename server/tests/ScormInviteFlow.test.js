@@ -22,10 +22,12 @@ describe('SCORM learner invite flow', () => {
         expect(landing).to.include('const registrationToken = token || playToken ||');
     });
 
-    it('launches the learner directly into the backend player in the same tab', () => {
-        expect(landing).to.include('window.location.assign(apiUrl(`/api/scorm/play/${registrationId}?${q.toString()}`))');
+    it('launches the learner directly into the canonical backend player in the same tab', () => {
+        expect(landing).to.include('playUrl');
+        expect(landing).to.include('const canonicalPlayUrl = playUrl || `/api/scorm/play/${registrationId}`;');
+        expect(landing).to.include('window.location.assign(apiUrl(`${canonicalPlayUrl}?${q.toString()}`));');
         expect(landing).to.include('entryHref,');
-        expect(landing).to.include('packageId: packageId ||');
+        expect(landing).to.include("packageId: packageId || ''");
         expect(landing).to.not.include('useNavigate');
         expect(landing).to.not.include('window.open');
     });
