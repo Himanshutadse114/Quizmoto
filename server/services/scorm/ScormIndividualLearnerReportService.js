@@ -206,7 +206,7 @@ async function buildLearnerReport({ hostId, email }) {
 }
 
 async function tryPythonLearnerReport({ report, jsonPath, outputPath, format, dir }) {
-    const scriptPath = path.join(__dirname, '../../utils/generate_scorm_learner_report_clean.py');
+    const scriptPath = path.join(__dirname, '../../utils/generate_scorm_learner_report_v2.py');
     if (!fs.existsSync(scriptPath)) throw new Error(`SCORM learner Python report script missing: ${scriptPath}`);
 
     fs.writeFileSync(jsonPath, JSON.stringify(report));
