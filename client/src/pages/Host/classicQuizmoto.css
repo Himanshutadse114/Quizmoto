@@ -1,0 +1,21 @@
+.classic-quizmoto-host {
+  font-family: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* The classic dashboard predates the SCORM AI rename. Keep its original visual
+   layout while showing the current product name. */
+.classic-quizmoto-host button[title="Courses, SCORM packages, invites & tracking"] {
+  font-size: 0 !important;
+}
+.classic-quizmoto-host button[title="Courses, SCORM packages, invites & tracking"]::after {
+  content: "SCORM AI";
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 900;
+}
+
+@media (max-width: 767px) {
+  .classic-quizmoto-host {
+    overflow-x: hidden;
+  }
+}
