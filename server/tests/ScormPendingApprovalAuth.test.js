@@ -31,6 +31,9 @@ function buildApp({ role = null, existingUser = null, googlePayload = null } = {
             if (existingUser) return existingUser;
             return null;
         },
+        async findByPk(id) {
+            return existingUser && Number(existingUser.id) === Number(id) ? existingUser : null;
+        },
         async create(values) {
             created.push(values);
             return makeUser({
@@ -85,6 +88,11 @@ function buildApp({ role = null, existingUser = null, googlePayload = null } = {
     const authRouter = proxyquire('../routes/auth', {
         '../models/User': User,
         '../services/scorm/ScormAccessService': access,
+        './middleware': (req, _res, next) => {
+            req.userId = existingUser?.id || 50;
+            req.authScope = 'platform';
+            next();
+        },
         'express-rate-limit': () => (req, res, next) => next(),
         jsonwebtoken: { sign: () => 'signed-scorm-token' },
         'google-auth-library': { OAuth2Client }
@@ -97,7 +105,7 @@ function buildApp({ role = null, existingUser = null, googlePayload = null } = {
 }
 
 describe('SCORM pending approval authentication', () => {
-    it('stores a normal registration and returns pending approval without a SCORM token', async () => {
+    it('stores a normal registration and returns a limited platform session while SCORM access is pending', async () => {
         const { app, captured, created } = buildApp({ role: null });
 
         const res = await request(app)
@@ -112,9 +120,11 @@ describe('SCORM pending approval authentication', () => {
         expect(res.body.pendingApproval).to.equal(true);
         expect(res.body.registrationCaptured).to.equal(true);
         expect(res.body.code).to.equal('SCORM_APPROVAL_PENDING');
-        expect(res.body.token).to.equal(undefined);
+        expect(res.body.token).to.equal('signed-scorm-token');
+        expect(res.body.platformAccess).to.equal(true);
+        expect(res.body.scormAccess).to.equal(false);
+        expect(res.body.role).to.equal('pending');
         expect(res.body.message).to.include('registration has been captured');
-        expect(res.body.message).to.include('same credentials');
         expect(res.body.message).to.include(ADMIN);
         expect(created).to.have.length(1);
         expect(created[0].email).to.equal('pending@example.com');
@@ -123,7 +133,7 @@ describe('SCORM pending approval authentication', () => {
         expect(captured[0].authMethod).to.equal('password');
     });
 
-    it('captures an unapproved Google identity as pending instead of granting SCORM access', async () => {
+    it('captures an unapproved Google identity and gives it limited platform access', async () => {
         const googlePayload = {
             sub: 'google-user-1',
             email: 'google.pending@example.com',
@@ -140,7 +150,9 @@ describe('SCORM pending approval authentication', () => {
         expect(res.status).to.equal(202);
         expect(res.body.pendingApproval).to.equal(true);
         expect(res.body.registrationCaptured).to.equal(true);
-        expect(res.body.token).to.equal(undefined);
+        expect(res.body.token).to.equal('signed-scorm-token');
+        expect(res.body.platformAccess).to.equal(true);
+        expect(res.body.scormAccess).to.equal(false);
         expect(created).to.have.length(1);
         expect(created[0].email).to.equal('google.pending@example.com');
         expect(created[0].googleId).to.equal('google-user-1');
@@ -164,10 +176,12 @@ describe('SCORM pending approval authentication', () => {
         expect(res.body.token).to.equal('signed-scorm-token');
         expect(res.body.role).to.equal('user');
         expect(res.body.isSuperAdmin).to.equal(false);
+        expect(res.body.platformAccess).to.equal(true);
+        expect(res.body.scormAccess).to.equal(true);
         expect(captured).to.have.length(1);
     });
 
-    it('keeps a registered user blocked at login until approval', async () => {
+    it('lets a registered pending user enter the platform while SCORM features remain locked', async () => {
         const existingUser = makeUser();
         const { app, captured } = buildApp({ role: null, existingUser });
 
@@ -175,12 +189,47 @@ describe('SCORM pending approval authentication', () => {
             .post('/scorm/login')
             .send({ identifier: existingUser.email, password: 'Password123!' });
 
-        expect(res.status).to.equal(403);
+        expect(res.status).to.equal(200);
         expect(res.body.pendingApproval).to.equal(true);
         expect(res.body.registrationCaptured).to.equal(false);
-        expect(res.body.message).to.include('same registered credentials');
+        expect(res.body.token).to.equal('signed-scorm-token');
+        expect(res.body.platformAccess).to.equal(true);
+        expect(res.body.scormAccess).to.equal(false);
+        expect(res.body.role).to.equal('pending');
         expect(captured).to.have.length(1);
         expect(captured[0].userId).to.equal(existingUser.id);
+    });
+
+    it('upgrades a signed-in pending account when the access grant is approved', async () => {
+        const existingUser = makeUser();
+        const { app } = buildApp({ role: 'user', existingUser });
+
+        const res = await request(app)
+            .get('/scorm/status')
+            .set('Authorization', 'Bearer platform-token');
+
+        expect(res.status).to.equal(200);
+        expect(res.body.token).to.equal('signed-scorm-token');
+        expect(res.body.pendingApproval).to.equal(false);
+        expect(res.body.platformAccess).to.equal(true);
+        expect(res.body.scormAccess).to.equal(true);
+        expect(res.body.role).to.equal('user');
+    });
+
+    it('keeps a signed-in pending account limited when approval has not been granted yet', async () => {
+        const existingUser = makeUser();
+        const { app } = buildApp({ role: null, existingUser });
+
+        const res = await request(app)
+            .get('/scorm/status')
+            .set('Authorization', 'Bearer platform-token');
+
+        expect(res.status).to.equal(200);
+        expect(res.body.token).to.equal('signed-scorm-token');
+        expect(res.body.pendingApproval).to.equal(true);
+        expect(res.body.platformAccess).to.equal(true);
+        expect(res.body.scormAccess).to.equal(false);
+        expect(res.body.role).to.equal('pending');
     });
 
     it('accepts the exact same registered password after approval', async () => {
@@ -195,6 +244,7 @@ describe('SCORM pending approval authentication', () => {
         expect(res.body.token).to.equal('signed-scorm-token');
         expect(res.body.email).to.equal(existingUser.email);
         expect(res.body.username).to.equal(existingUser.username);
+        expect(res.body.scormAccess).to.equal(true);
         expect(captured).to.have.length(0);
     });
 });
