@@ -19,28 +19,18 @@ const JobQueueService = require('../jobs/JobQueueService');
 const { JOB_TYPES } = require('../jobs/jobTypes');
 const { registerReportHandlers } = require('../jobs/handlers/reportHandlers');
 const { sequelize } = require('../config/database');
+const { generateQuiz } = require('../services/QuizAiGenerationService');
 
 registerReportHandlers();
 
 const Joi = require('joi');
 
-let GoogleGenerativeAI;
-try {
-    GoogleGenerativeAI = require('@google/generative-ai').GoogleGenerativeAI;
-} catch (err) {
-    GoogleGenerativeAI = null;
-}
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const genAI = GEMINI_API_KEY && GoogleGenerativeAI ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 const quizSchema = Joi.object({
     title: Joi.string().required().min(3).max(100),
     questions: Joi.array()
         .items(
             Joi.object({
                 questionText: Joi.string().required(),
-                // Live Quiz renders a four-colour answer grid. Keep the API in
-                // lockstep with Create/Edit Quiz and the socket answer contract.
                 options: Joi.array().items(Joi.string()).min(2).max(4).required(),
                 correctIndex: Joi.number().integer().min(0).max(3).required(),
                 timer: Joi.number().integer().min(5).max(300).required(),
@@ -54,43 +44,28 @@ const quizSchema = Joi.object({
 
 router.post('/generate-ai', auth, async (req, res) => {
     try {
-        if (!genAI) {
-            return res.status(500).json({ message: 'Gemini AI is not configured on this server.' });
-        }
-
-        const { prompt } = req.body;
-        if (!prompt) return res.status(400).json({ message: 'Prompt is required' });
-
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
-
-        const systemPrompt = `You are a professional Quiz Generator. 
-Create a quiz based on the user's topic: "${prompt}".
-Respond ONLY with a JSON object in this format:
-{
-  "title": "A catchy title for the quiz",
-  "questions": [
-    {
-      "questionText": "The question string",
-      "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
-      "correctIndex": 0,
-      "timer": 20,
-      "explanation": "A short, fun fact or explanation about the correct answer (max 2 sentences)"
-    }
-  ]
-}
-Each quiz must have 5-10 questions. Ensure options are distinct and one index is correct.`;
-
-        const result = await model.generateContent(systemPrompt);
-        const response = await result.response;
-        let text = response.text();
-
-        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
-        const quizData = JSON.parse(text);
-        res.json(quizData);
+        const body = req.body || {};
+        const quiz = await generateQuiz({
+            topic: body.topic || body.prompt || '',
+            description: body.description || '',
+            fileBase64: body.fileBase64 || '',
+            mimeType: body.mimeType || '',
+            fileName: body.fileName || ''
+        });
+        res.json(quiz);
     } catch (err) {
+        const code = err.code || 'QUIZ_AI_ERROR';
+        const status = code === 'QUIZ_AI_SOURCE_REQUIRED'
+            ? 400
+            : code === 'QUIZ_AI_FILE_TOO_LARGE'
+                ? 413
+                : code === 'GEMINI_KEY_MISSING'
+                    ? 503
+                    : code === 'GEMINI_QUOTA'
+                        ? 429
+                        : 500;
         console.error('AI Generation Error:', err);
-        res.status(500).json({ message: 'AI failed to generate quiz. Please try again.' });
+        res.status(status).json({ message: err.message || 'AI failed to generate quiz. Please try again.', code });
     }
 });
 
@@ -140,7 +115,6 @@ router.post('/', auth, async (req, res) => {
     }
 });
 
-// Static paths BEFORE /:id
 router.get('/active-sessions', auth, async (req, res) => {
     try {
         const { Op } = require('sequelize');
@@ -282,10 +256,6 @@ router.put('/:id', auth, async (req, res) => {
     }
 });
 
-/**
- * Delete quiz + questions + any game sessions (and related rows).
- * FK constraints previously caused silent failures when sessions existed.
- */
 router.delete('/:id', auth, async (req, res) => {
     const t = await sequelize.transaction();
     try {
