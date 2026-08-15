@@ -21,9 +21,12 @@ import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import './quizmotoHostWorkbench.css';
 
+const TERMINAL_SESSION_STATES = new Set(['FINISHED', 'CANCELLED']);
+
 const Dashboard = () => {
     const [quizzes, setQuizzes] = useState([]);
     const [activeSessions, setActiveSessions] = useState([]);
+    const [activeSessionsReady, setActiveSessionsReady] = useState(false);
     const [actionMsg, setActionMsg] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState('newest');
@@ -38,8 +41,26 @@ const Dashboard = () => {
             navigate('/login');
             return;
         }
+
         fetchQuizzes();
-        fetchActiveSessions();
+        setActiveSessionsReady(false);
+
+        // End Session is persisted asynchronously by the socket handler. Give the
+        // terminal transaction a short settle window before exposing Rejoin on a
+        // freshly-mounted dashboard, then verify once more shortly afterwards.
+        let verificationTimer = null;
+        const initialTimer = setTimeout(async () => {
+            const sessions = await fetchActiveSessions();
+            setActiveSessionsReady(true);
+            if (sessions.length > 0) {
+                verificationTimer = setTimeout(() => fetchActiveSessions(), 800);
+            }
+        }, 450);
+
+        return () => {
+            clearTimeout(initialTimer);
+            if (verificationTimer) clearTimeout(verificationTimer);
+        };
     }, [token, navigate, API_BASE_URL]);
 
     const fetchQuizzes = async () => {
@@ -59,9 +80,17 @@ const Dashboard = () => {
             const res = await axios.get(`${API_BASE_URL}/active-sessions`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setActiveSessions(res.data || []);
+            const sessions = (res.data || []).filter((session) => {
+                const status = String(session?.status || '').toLowerCase();
+                const state = String(session?.state || '').toUpperCase();
+                return status !== 'finished' && !TERMINAL_SESSION_STATES.has(state);
+            });
+            setActiveSessions(sessions);
+            return sessions;
         } catch (err) {
             console.error(err);
+            setActiveSessions([]);
+            return [];
         }
     };
 
@@ -211,12 +240,12 @@ const Dashboard = () => {
                             <div className="qh-metric-icon"><BookOpenCheck size={16} /></div>
                         </div>
                         <div className="qh-metric">
-                            <div><div className="qh-metric-value">{activeSessions.length}</div><div className="qh-metric-label">Live sessions</div></div>
+                            <div><div className="qh-metric-value">{activeSessionsReady ? activeSessions.length : '—'}</div><div className="qh-metric-label">Live sessions</div></div>
                             <div className="qh-metric-icon"><Radio size={16} /></div>
                         </div>
                     </section>
 
-                    {activeSessions.length > 0 && (
+                    {activeSessionsReady && activeSessions.length > 0 && (
                         <section className="qh-section">
                             <div className="qh-section-head">
                                 <div>
