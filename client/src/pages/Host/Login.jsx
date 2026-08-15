@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
 import { GoogleLogin } from '@react-oauth/google';
+import { Radio, ShieldCheck, Users, Zap } from 'lucide-react';
 
 const Login = () => {
     const [error, setError] = useState('');
@@ -11,6 +12,7 @@ const Login = () => {
 
     const handleGoogleSuccess = async (credentialResponse) => {
         try {
+            setError('');
             await loginWithGoogle(credentialResponse.credential);
             navigate('/host');
         } catch (err) {
@@ -19,60 +21,65 @@ const Login = () => {
     };
 
     const handleGoogleError = () => {
-        setError('Google Sign-In failed');
+        setError('Google Sign-In failed. Please try again.');
     };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-6 relative z-10">
-            <motion.div
-                initial={{ y: 30, opacity: 0 }}
+        <div className="quizmoto-login-arena">
+            <motion.main
+                initial={{ y: 18, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                className="bg-white/10 backdrop-blur-md border border-white/20 p-6 md:p-10 rounded-3xl shadow-2xl w-full max-w-md mx-auto flex flex-col items-center"
+                transition={{ duration: 0.28, ease: 'easeOut' }}
+                className="ql-shell"
             >
-                <div className="text-center mb-8">
-                    <h2 className="text-3xl font-black italic mb-1 text-white uppercase tracking-tight">Host Login</h2>
-                    <p className="font-black opacity-40 uppercase tracking-[0.2em] text-[11px] text-white">Access Quizmoto</p>
-                </div>
+                <section className="ql-brand-panel">
+                    <div>
+                        <div className="ql-logo">Quizmoto<span>!</span></div>
+                        <div className="ql-eyebrow">Real-time learning arena</div>
+                        <h1 className="ql-headline">Launch quizzes that feel <em>alive.</em></h1>
+                        <p className="ql-copy">
+                            Host fast, interactive knowledge challenges with live players, instant scoring, reactions, analytics and AI-assisted quiz creation.
+                        </p>
+                    </div>
 
-                {error && (
-                    <motion.p
-                        initial={{ scale: 0.9 }}
-                        animate={{ scale: 1 }}
-                        className="bg-quizmoto-red/20 text-white border border-quizmoto-red/30 p-3 md:p-4 rounded-xl mb-6 text-center font-bold text-sm w-full"
-                    >
-                        {error}
-                    </motion.p>
-                )}
+                    <div className="ql-live-strip" aria-label="Quizmoto capabilities">
+                        <div className="ql-chip"><span className="ql-chip-dot" /> Live sessions</div>
+                        <div className="ql-chip"><Zap size={12} /> Instant scoring</div>
+                        <div className="ql-chip"><Users size={12} /> Audience play</div>
+                    </div>
+                </section>
 
-                <div className="w-full flex justify-center py-4 bg-white/5 rounded-2xl border border-white/10">
-                    <GoogleLogin
-                        onSuccess={handleGoogleSuccess}
-                        onError={handleGoogleError}
-                        theme="outline"
-                        size="large"
-                        shape="pill"
-                        text="continue_with"
-                    />
-                </div>
+                <section className="ql-form-panel">
+                    <div className="ql-mini-label">Host control</div>
+                    <h2 className="ql-title">Enter Quizmoto</h2>
+                    <p className="ql-sub">Sign in securely to create, host and review your live quiz sessions.</p>
 
-                <div className="w-full flex items-center gap-3 my-5" aria-hidden="true">
-                    <div className="h-px flex-1 bg-white/15" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">or</span>
-                    <div className="h-px flex-1 bg-white/15" />
-                </div>
+                    {error && <div className="ql-error">{error}</div>}
 
-                <button
-                    type="button"
-                    onClick={() => navigate('/join')}
-                    className="w-full bg-quizmoto-green text-white font-black py-3.5 px-5 rounded-xl uppercase tracking-widest text-sm shadow-[0_5px_0_0_#1a5e08] hover:shadow-none hover:translate-y-1 transition-all"
-                >
-                    Join Game
-                </button>
+                    <div className="ql-google-wrap">
+                        <GoogleLogin
+                            onSuccess={handleGoogleSuccess}
+                            onError={handleGoogleError}
+                            theme="outline"
+                            size="large"
+                            shape="rectangular"
+                            text="continue_with"
+                            width="320"
+                        />
+                    </div>
 
-                <p className="mt-7 text-center font-bold text-sm md:text-base text-white opacity-60">
-                    Secure authentication via Google for hosts
-                </p>
-            </motion.div>
+                    <div className="ql-divider"><span>or join as a player</span></div>
+
+                    <button type="button" onClick={() => navigate('/join')} className="ql-join">
+                        Join a live game
+                    </button>
+
+                    <div className="ql-foot">
+                        <ShieldCheck size={13} style={{ display: 'inline', marginRight: 6, verticalAlign: '-2px' }} />
+                        Google authentication for hosts · Game PIN access for players
+                    </div>
+                </section>
+            </motion.main>
         </div>
     );
 };
