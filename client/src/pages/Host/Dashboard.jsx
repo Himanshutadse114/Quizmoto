@@ -103,7 +103,7 @@ const Dashboard = () => {
         <div className="p-4 md:p-7 max-w-7xl mx-auto relative z-10 pb-24">
             <header className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5 mb-6 md:mb-8">
                 <div>
-                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-white/40 mb-2">// LIVE QUIZ · HOST STUDIO</div>
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-white/40 mb-2">LIVE QUIZ · HOST STUDIO</div>
                     <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-none">QUIZ LIBRARY</h1>
                     <p className="text-white/50 text-sm mt-2">Welcome back, {user?.username || user?.name || 'Host'}. Create, launch and review interactive quiz sessions.</p>
                 </div>
