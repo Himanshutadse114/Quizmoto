@@ -21,6 +21,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import LearnerAuditDetail from './LearnerAuditDetail';
 
 function statusTextClass(result) {
   const key = String(result || '').toLowerCase();
@@ -187,6 +188,24 @@ export default function ScormReports() {
       .slice(0, 8);
   }, [learners, learnerQuery]);
 
+  const selectedLearnerEntries = useMemo(() => {
+    if (!selectedLearner?.email) return [];
+    const email = selectedLearner.email.trim().toLowerCase();
+    return (reports || []).flatMap((course) => (course.learners || [])
+      .filter((learner) => String(learner.learnerEmail || '').trim().toLowerCase() === email)
+      .map((learner) => ({
+        ...learner,
+        courseId: course.id,
+        courseTitle: course.title || 'Course',
+        scormStandard: course.scormStandard || learner.scormStandard,
+        attemptCount: Math.max(1, Number(learner.attemptCount || 1)),
+        lastScoreRaw: learner.score,
+        lastTotalTime: learner.totalTime,
+        lastLessonStatus: learner.lessonStatus,
+        lastCommitAt: learner.lastActivity
+      })));
+  }, [reports, selectedLearner]);
+
   const downloadCourseReport = async (course, format) => {
     if (!course?.id || downloadingKey) return;
     const key = `course-${course.id}-${format}`;
@@ -282,7 +301,7 @@ export default function ScormReports() {
             <div className="w-11 h-11 rounded-lg border border-[#70512d] bg-[#2a2015] text-[#ff8a1f] grid place-items-center shrink-0"><UserRound size={20} /></div>
             <div>
               <h2 className="scorm-display text-xl md:text-2xl text-[#f2e8d3]">INDIVIDUAL LEARNER REPORT</h2>
-              <p className="mt-1 text-xs leading-relaxed text-[#9d8568] max-w-2xl">Search a learner by email or name, then export one report containing that learner’s SCORM AI course results and every captured question response.</p>
+              <p className="mt-1 text-xs leading-relaxed text-[#9d8568] max-w-2xl">Search a learner by email or name to inspect all course results and captured question responses on screen, then export the same learner evidence to PDF or Excel.</p>
             </div>
           </div>
           <div className="text-[10px] uppercase tracking-wider text-[#77644f]">{learners.length} reportable learners</div>
@@ -331,7 +350,7 @@ export default function ScormReports() {
                       <span className="block text-sm font-semibold text-[#eee4cf] truncate">{learner.email}</span>
                       <span className="block mt-0.5 text-[11px] text-[#8f785e] truncate">{learner.name || 'Learner'} · {learner.courseCount} course{learner.courseCount === 1 ? '' : 's'}</span>
                     </span>
-                    <span className="text-[9px] uppercase tracking-wider text-[#705f4c] shrink-0">Select</span>
+                    <span className="text-[9px] uppercase tracking-wider text-[#705f4c] shrink-0">View details</span>
                   </button>
                 )) : (
                   <div className="px-4 py-5 text-center text-xs text-[#806c56]">No learner matches this search.</div>
@@ -361,12 +380,24 @@ export default function ScormReports() {
         </div>
 
         {selectedLearner && (
-          <div className="mx-5 md:mx-6 mb-5 md:mb-6 rounded-lg border border-[#5b4937] bg-[#12100e] px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div>
-              <div className="text-sm font-semibold text-[#f1e7d2]">{selectedLearner.name || 'Learner'}</div>
-              <div className="mt-0.5 text-xs text-[#b39774]">{selectedLearner.email}</div>
+          <div className="mx-5 md:mx-6 mb-5 md:mb-6">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.13em] font-bold text-[#a98f6c]">Individual learner detail</div>
+                <div className="mt-1 text-xs text-[#77634e]">{selectedLearner.courseCount} course{selectedLearner.courseCount === 1 ? '' : 's'} · latest {formatDate(selectedLearner.latestActivity)}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setSelectedLearner(null); setLearnerQuery(''); }}
+                className="rounded-lg border border-[#4b3f33] bg-[#17140f] px-3 py-1.5 text-[10px] font-semibold text-[#a98f6c] hover:text-[#f1e7d2]"
+              >Close detail</button>
             </div>
-            <div className="text-[10px] uppercase tracking-wider text-[#77634e]">{selectedLearner.courseCount} course{selectedLearner.courseCount === 1 ? '' : 's'} · latest {formatDate(selectedLearner.latestActivity)}</div>
+            <LearnerAuditDetail
+              learnerName={selectedLearner.name}
+              learnerEmail={selectedLearner.email}
+              entries={selectedLearnerEntries}
+              variant="warm"
+            />
           </div>
         )}
       </section>
