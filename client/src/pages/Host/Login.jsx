@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
 import { GoogleLogin } from '@react-oauth/google';
-import { ArrowLeft, Gamepad2, ShieldCheck } from 'lucide-react';
 
 const Login = () => {
     const [error, setError] = useState('');
@@ -19,45 +18,47 @@ const Login = () => {
         }
     };
 
-    const handleGoogleError = () => setError('Google Sign-In failed');
+    const handleGoogleError = () => {
+        setError('Google Sign-In failed');
+    };
 
     return (
-        <div className="min-h-screen bg-quizmoto-purple relative z-30 flex items-center justify-center p-5 overflow-hidden">
-            <motion.section
-                initial={{ y: 20, opacity: 0 }}
+        <div className="flex flex-col items-center justify-center min-h-screen p-6 relative z-10">
+            <motion.div
+                initial={{ y: 30, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.28 }}
-                className="w-full max-w-md bg-white text-[#3c3c3c] rounded-[30px] border-b-[7px] border-[#d8d8d8] p-7 sm:p-9 shadow-2xl relative z-10"
+                className="bg-white/10 backdrop-blur-md border border-white/20 p-6 md:p-10 rounded-3xl shadow-2xl w-full max-w-md mx-auto flex flex-col items-center"
             >
-                <button type="button" onClick={() => navigate('/')} className="inline-flex items-center gap-1.5 text-xs font-black text-gray-400 hover:text-quizmoto-purple mb-6">
-                    <ArrowLeft size={15} /> BACK
-                </button>
+                <div className="text-center mb-8">
+                    <h2 className="text-3xl font-black italic mb-1 text-white uppercase tracking-tight">Host Login</h2>
+                    <p className="font-black opacity-40 uppercase tracking-[0.2em] text-[11px] text-white">Access Quizmoto</p>
+                </div>
 
-                <div className="w-14 h-14 rounded-2xl bg-quizmoto-blue text-white grid place-items-center shadow-[0_5px_0_0_#0e4b94]"><Gamepad2 size={27} /></div>
-                <h1 className="mt-6 text-5xl font-black tracking-[-.055em] leading-none text-quizmoto-purple">Quizmoto<span className="text-quizmoto-yellow">!</span></h1>
-                <p className="mt-4 text-sm font-bold text-gray-500 leading-relaxed">
-                    Sign in as a host to create quizzes, launch live sessions and review game reports.
-                </p>
+                {error && (
+                    <motion.p
+                        initial={{ scale: 0.9 }}
+                        animate={{ scale: 1 }}
+                        className="bg-quizmoto-red/20 text-white border border-quizmoto-red/30 p-3 md:p-4 rounded-xl mb-6 text-center font-bold text-sm w-full"
+                    >
+                        {error}
+                    </motion.p>
+                )}
 
-                {error && <div className="mt-5 bg-red-50 border-2 border-red-100 rounded-2xl p-3 text-red-500 text-xs font-bold">{error}</div>}
-
-                <div className="mt-7 p-4 rounded-2xl bg-gray-50 border-2 border-gray-100 flex justify-center overflow-hidden">
+                <div className="w-full flex justify-center py-4 bg-white/5 rounded-2xl border border-white/10">
                     <GoogleLogin
                         onSuccess={handleGoogleSuccess}
                         onError={handleGoogleError}
                         theme="outline"
                         size="large"
-                        shape="rectangular"
+                        shape="pill"
                         text="continue_with"
-                        width="320"
                     />
                 </div>
 
-                <div className="mt-5 text-center text-[10px] font-black uppercase tracking-wider text-gray-400">
-                    <ShieldCheck size={13} className="inline-block mr-1.5 -mt-0.5 text-quizmoto-green" />
-                    Secure host access
-                </div>
-            </motion.section>
+                <p className="mt-8 text-center font-bold text-sm md:text-base text-white opacity-60">
+                    Secure authentication via Google
+                </p>
+            </motion.div>
         </div>
     );
 };
