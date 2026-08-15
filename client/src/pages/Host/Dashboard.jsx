@@ -1,20 +1,35 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
-import { Plus, Play, Trash2, Edit, FileText, Download } from 'lucide-react';
-import { motion } from 'framer-motion';
+import {
+    BarChart3,
+    BookOpenCheck,
+    Download,
+    Edit3,
+    FileText,
+    LayoutDashboard,
+    LogOut,
+    Menu,
+    Plus,
+    Play,
+    Radio,
+    Search,
+    Trash2,
+    X
+} from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import './quizmotoHostWorkbench.css';
 
 const Dashboard = () => {
     const [quizzes, setQuizzes] = useState([]);
     const [activeSessions, setActiveSessions] = useState([]);
     const [actionMsg, setActionMsg] = useState(null);
-    const { token, user, logout } = useAuth();
-    const navigate = useNavigate();
-
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState('newest');
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const { token, user, logout } = useAuth();
+    const navigate = useNavigate();
 
     const API_BASE_URL = apiUrl('/api/quizzes');
 
@@ -23,7 +38,6 @@ const Dashboard = () => {
             navigate('/login');
             return;
         }
-
         fetchQuizzes();
         fetchActiveSessions();
     }, [token, navigate, API_BASE_URL]);
@@ -33,7 +47,7 @@ const Dashboard = () => {
             const res = await axios.get(API_BASE_URL, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setQuizzes(res.data);
+            setQuizzes(res.data || []);
         } catch (err) {
             console.error(err);
             setActionMsg(err.response?.data?.message || 'Failed to load quizzes');
@@ -45,7 +59,7 @@ const Dashboard = () => {
             const res = await axios.get(`${API_BASE_URL}/active-sessions`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setActiveSessions(res.data);
+            setActiveSessions(res.data || []);
         } catch (err) {
             console.error(err);
         }
@@ -53,13 +67,9 @@ const Dashboard = () => {
 
     const handleStartGame = async (quizId) => {
         try {
-            const res = await axios.post(
-                `${API_BASE_URL}/${quizId}/start`,
-                {},
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+            const res = await axios.post(`${API_BASE_URL}/${quizId}/start`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             navigate(`/host/lobby/${res.data.pin}`);
         } catch (err) {
             console.error(err);
@@ -68,9 +78,7 @@ const Dashboard = () => {
     };
 
     const handleDelete = async (quizId) => {
-        if (!window.confirm('Delete this quiz and all its game history? This cannot be undone.')) {
-            return;
-        }
+        if (!window.confirm('Delete this quiz and all its game history? This cannot be undone.')) return;
         try {
             await axios.delete(`${API_BASE_URL}/${quizId}`, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -80,299 +88,235 @@ const Dashboard = () => {
             fetchActiveSessions();
         } catch (err) {
             console.error(err);
-            setActionMsg(
-                err.response?.data?.message ||
-                    'Could not delete quiz. Try again after ending any active games.'
-            );
+            setActionMsg(err.response?.data?.message || 'Could not delete quiz. Try again after ending any active games.');
         }
     };
 
     const handleImportDefaults = async () => {
         try {
-            await axios.post(
-                `${API_BASE_URL}/import-defaults`,
-                {},
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
-            fetchQuizzes();
+            await axios.post(`${API_BASE_URL}/import-defaults`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            await fetchQuizzes();
             setActionMsg('Cybersecurity quizzes imported successfully');
         } catch (err) {
             console.error(err);
-            setActionMsg('Failed to import defaults');
+            setActionMsg(err.response?.data?.message || 'Failed to import defaults');
         }
     };
 
-    const stats = {
-        totalQuizzes: quizzes.length,
-        totalQuestions: quizzes.reduce((acc, q) => acc + (q.questions?.length || 0), 0),
-        activePlayers: 0
+    const totalQuestions = useMemo(
+        () => quizzes.reduce((sum, quiz) => sum + (quiz.questions?.length || 0), 0),
+        [quizzes]
+    );
+
+    const sortedQuizzes = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        return [...quizzes]
+            .filter((quiz) => !query || String(quiz.title || '').toLowerCase().includes(query))
+            .sort((a, b) => {
+                if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+                if (sortBy === 'az') return String(a.title || '').localeCompare(String(b.title || ''));
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            });
+    }, [quizzes, searchQuery, sortBy]);
+
+    const go = (path) => {
+        setMobileMenuOpen(false);
+        navigate(path);
     };
 
-    const sortedQuizzes = [...quizzes]
-        .filter((q) => q.title.toLowerCase().includes(searchQuery.toLowerCase()))
-        .sort((a, b) => {
-            if (sortBy === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
-            if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
-            if (sortBy === 'az') return a.title.localeCompare(b.title);
-            return 0;
-        });
+    const menuItems = [
+        { label: 'Dashboard', icon: LayoutDashboard, active: true, action: () => setMobileMenuOpen(false) },
+        { label: 'Create quiz', icon: Plus, action: () => go('/create-quiz') },
+        { label: 'Reports', icon: FileText, action: () => go('/reports') },
+        { label: 'SCORM AI', icon: BookOpenCheck, action: () => go('/scorm') },
+        { label: 'Import defaults', icon: Download, action: handleImportDefaults }
+    ];
+
+    const navigation = (
+        <>
+            <div className="qh-nav-label">Host workspace</div>
+            {menuItems.map(({ label, icon: Icon, active, action }) => (
+                <button key={label} type="button" onClick={action} className={`qh-nav-button ${active ? 'is-active' : ''}`}>
+                    <Icon size={16} /> {label}
+                </button>
+            ))}
+        </>
+    );
 
     return (
-        <div className="p-4 md:p-6 max-w-7xl mx-auto relative z-10">
-            <header className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <div>
-                    <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter mb-1">
-                        Quizmoto Dashboard
-                    </h1>
-                    <p className="font-bold opacity-60 uppercase tracking-widest text-xs">
-                        Welcome back, {user?.username}
-                    </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                    <button
-                        onClick={handleImportDefaults}
-                        className="bg-white/5 hover:bg-white/10 text-white/70 px-3 py-2 rounded-xl font-bold transition-all border border-white/10 flex items-center gap-2 text-[10px]"
-                    >
-                        <Download size={14} /> IMPORT DEFAULTS
-                    </button>
-                    <button
-                        onClick={() => navigate('/scorm')}
-                        className="bg-quizmoto-yellow text-quizmoto-darkPurple px-4 py-2 rounded-xl font-black text-xs shadow-[0_3px_0_0_#c48a00] hover:shadow-none hover:translate-y-1 transition-all flex items-center gap-2"
-                        title="Courses, SCORM packages, invites & tracking"
-                    >
-                        SCORM WORLD
-                    </button>
-                    <button
-                        onClick={() => navigate('/reports')}
-                        className="bg-quizmoto-purple text-white px-4 py-2 rounded-xl font-black text-xs shadow-[0_3px_0_0_#6a2d9c] hover:shadow-none hover:translate-y-1 transition-all flex items-center gap-2"
-                    >
-                        <FileText size={16} /> REPORTS
-                    </button>
-                    <button
-                        onClick={() => navigate('/create-quiz')}
-                        className="bg-quizmoto-blue text-white px-5 py-2 rounded-xl font-black text-sm shadow-[0_4px_0_0_#0e4b94] hover:shadow-none hover:translate-y-1 transition-all flex items-center gap-2"
-                    >
-                        <Plus size={18} /> CREATE
-                    </button>
-                    <button
-                        onClick={logout}
-                        className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl font-black transition-colors border border-white/10 text-xs"
-                    >
-                        LOGOUT
-                    </button>
-                </div>
-            </header>
-
-            {actionMsg && (
-                <div className="mb-4 p-3 rounded-xl bg-white/10 border border-white/10 text-sm flex justify-between gap-3">
-                    <span>{actionMsg}</span>
-                    <button className="text-white/50 hover:text-white text-xs" onClick={() => setActionMsg(null)}>
-                        Dismiss
-                    </button>
-                </div>
-            )}
-
-            {activeSessions.length > 0 && (
-                <div className="mb-8 flex flex-col gap-3">
-                    {activeSessions.map((session) => (
-                        <motion.div
-                            key={session.id}
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="bg-quizmoto-purple/20 border border-quizmoto-yellow/50 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_15px_rgba(242,169,0,0.1)]"
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className="bg-quizmoto-yellow/20 p-3 rounded-full animate-pulse">
-                                    <Play size={24} className="text-quizmoto-yellow" />
-                                </div>
-                                <div>
-                                    <h3 className="text-white font-black text-lg">
-                                        Active Game: {session.Quiz?.title || 'Unknown Quiz'}
-                                    </h3>
-                                    <p className="text-white/60 font-bold text-xs uppercase tracking-widest">
-                                        PIN: {session.pin} • Status: {session.status}
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() =>
-                                    navigate(
-                                        session.status === 'lobby'
-                                            ? `/host/lobby/${session.pin}`
-                                            : `/host/game/${session.pin}`
-                                    )
-                                }
-                                className="w-full md:w-auto bg-quizmoto-yellow text-quizmoto-darkPurple font-black px-6 py-3 rounded-xl uppercase tracking-widest text-sm hover:shadow-[0_0_20px_rgba(242,169,0,0.4)] transition-all hover:-translate-y-1"
-                            >
-                                Rejoin Game
-                            </button>
-                        </motion.div>
-                    ))}
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                {[
-                    { label: 'Total Quizzes', value: stats.totalQuizzes, color: 'blue' },
-                    { label: 'Total Questions', value: stats.totalQuestions, color: 'purple' },
-                    { label: 'Active Players', value: stats.activePlayers, color: 'green' }
-                ].map((stat, i) => (
-                    <motion.div
-                        key={i}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                        className="bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10 flex flex-col items-center justify-center text-center group hover:bg-white/10 transition-all cursor-default"
-                    >
-                        <span className="text-3xl font-black mb-1 text-white">{stat.value}</span>
-                        <span
-                            className={`text-[10px] font-black uppercase tracking-[0.2em] text-quizmoto-${stat.color} opacity-60`}
-                        >
-                            {stat.label}
-                        </span>
-                    </motion.div>
-                ))}
-            </div>
-
-            <div className="mb-6 flex flex-col md:flex-row gap-3 items-center justify-between">
-                <div className="relative w-full md:max-w-md">
-                    <input
-                        type="text"
-                        placeholder="Search quizzes by title..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-white/10 border border-white/10 rounded-xl py-3 px-5 font-bold text-white placeholder:text-white/30 focus:outline-none focus:ring-4 focus:ring-quizmoto-blue/20 transition-all text-sm"
-                    />
-                </div>
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                    <span className="text-[10px] font-black uppercase tracking-widest opacity-40 whitespace-nowrap">
-                        Sort By:
-                    </span>
-                    <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="bg-white/10 border border-white/10 rounded-xl py-2 px-4 font-bold text-xs focus:outline-none appearance-none cursor-pointer hover:bg-white/20 transition-colors"
-                    >
-                        <option value="newest">Newest First</option>
-                        <option value="oldest">Oldest First</option>
-                        <option value="az">A-Z Title</option>
-                    </select>
-                </div>
-            </div>
-
-            {quizzes.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
-                    <motion.div
-                        whileHover={{ scale: 1.02, translateY: -3 }}
-                        onClick={() => navigate('/create-quiz')}
-                        className="border-2 border-dashed border-white/20 rounded-[24px] flex flex-col items-center justify-center p-6 cursor-pointer hover:border-white/40 hover:bg-white/5 transition-all text-white/50 hover:text-white group h-full min-h-[220px]"
-                    >
-                        <div className="bg-white/10 p-3 rounded-full mb-3 group-hover:scale-110 transition-transform">
-                            <Plus size={24} />
-                        </div>
-                        <span className="text-lg font-black uppercase tracking-tight">Create New Quiz</span>
-                    </motion.div>
-
-                    {sortedQuizzes.map((quiz, idx) => {
-                        const date = new Date(quiz.createdAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                        });
-
-                        return (
-                            <motion.div
-                                key={quiz.id}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: idx * 0.05 }}
-                                className="bg-white rounded-[24px] overflow-hidden shadow-2xl group relative border-b-4 border-gray-200"
-                            >
-                                <div
-                                    className={`h-1.5 bg-quizmoto-${['blue', 'red', 'yellow', 'green', 'purple'][idx % 5]}`}
-                                />
-                                <div className="p-5">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400">
-                                            {date}
-                                        </span>
-                                        <span className="bg-quizmoto-green/10 text-quizmoto-green text-[8px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest">
-                                            Ready
-                                        </span>
-                                    </div>
-
-                                    <h3 className="text-lg font-black text-gray-800 mb-3 group-hover:text-quizmoto-purple transition-colors line-clamp-2 min-h-[3rem]">
-                                        {quiz.title}
-                                    </h3>
-
-                                    <div className="flex items-center gap-2 mb-8">
-                                        <div className="bg-gray-100 flex items-center gap-2 px-3 py-1.5 rounded-xl">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-quizmoto-purple" />
-                                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                                                {quiz.questions?.length || 0} Questions
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => handleStartGame(quiz.id)}
-                                            className="flex-[2] bg-quizmoto-green text-white font-black py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-[0_4px_0_0_#1a5e08] hover:shadow-none hover:translate-y-1 transition-all text-xs"
-                                        >
-                                            <Play size={14} fill="currentColor" /> START
-                                        </button>
-                                        <button
-                                            onClick={() => navigate(`/edit-quiz/${quiz.id}`)}
-                                            className="flex-1 bg-gray-50 text-gray-500 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-all border border-gray-100"
-                                        >
-                                            <Edit size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(quiz.id)}
-                                            className="w-10 bg-gray-50 text-red-300 rounded-xl flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all border border-gray-100"
-                                            title="Delete quiz"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        );
-                    })}
-                </div>
-            ) : (
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-center py-16 bg-white/5 rounded-[40px] border-2 border-dashed border-white/10 flex flex-col items-center justify-center"
-                >
-                    <div className="bg-white/10 p-8 rounded-full mb-6 relative">
-                        <Plus size={48} className="text-white/20" />
+        <div className="quizmoto-host-workbench">
+            <div className="qh-shell">
+                <aside className="qh-sidebar">
+                    <div className="qh-brand">
+                        <div className="qh-brand-title">Quizmoto<span>!</span></div>
+                        <div className="qh-brand-sub">Live quiz control desk</div>
                     </div>
-                    <h2 className="text-3xl font-black text-white mb-4 italic tracking-tighter">
-                        No Quizzes Yet!
-                    </h2>
-                    <p className="text-white/40 font-bold mb-8 max-w-sm mx-auto text-sm leading-relaxed">
-                        Create your first Quizmoto quiz to start engaging your audience.
-                    </p>
-                    <button
-                        onClick={() => navigate('/create-quiz')}
-                        className="bg-quizmoto-blue text-white px-8 py-4 rounded-xl font-black text-lg shadow-[0_6px_0_0_#0e4b94] hover:shadow-none hover:translate-y-1 transition-all"
-                    >
-                        GET STARTED NOW
-                    </button>
-                </motion.div>
-            )}
+                    <nav className="qh-nav">{navigation}</nav>
+                    <div className="qh-sidebar-footer">
+                        <div className="qh-host">
+                            <div className="qh-host-name">{user?.username || user?.email || 'Host'}</div>
+                            <div className="qh-host-label">Signed in as host</div>
+                        </div>
+                        <button type="button" onClick={logout} className="qh-nav-button" style={{ marginTop: 8 }}>
+                            <LogOut size={16} /> Log out
+                        </button>
+                    </div>
+                </aside>
 
-            {quizzes.length > 0 && sortedQuizzes.length === 0 && searchQuery !== '' && (
-                <div className="text-center py-16 bg-white/5 rounded-[30px] border-2 border-dashed border-white/10">
-                    <p className="text-xl font-black italic opacity-40">
-                        No quizzes found matching "{searchQuery}"
-                    </p>
+                <div className="qh-mobilebar">
+                    <div className="qh-mobile-brand">Quizmoto<span>!</span></div>
+                    <button type="button" className="qh-mobile-menu-button" onClick={() => setMobileMenuOpen((open) => !open)} aria-label="Toggle host menu">
+                        {mobileMenuOpen ? <X size={19} /> : <Menu size={19} />}
+                    </button>
                 </div>
-            )}
+                {mobileMenuOpen && (
+                    <div className="qh-mobile-drawer">
+                        <nav className="qh-nav" style={{ paddingTop: 0 }}>{navigation}</nav>
+                        <button type="button" onClick={logout} className="qh-nav-button" style={{ marginTop: 8 }}>
+                            <LogOut size={16} /> Log out
+                        </button>
+                    </div>
+                )}
+
+                <main className="qh-main">
+                    <section className="qh-hero">
+                        <div>
+                            <div className="qh-kicker">Live learning operations</div>
+                            <h1 className="qh-title">Quizmoto Host</h1>
+                            <p className="qh-subtitle">
+                                Build quizzes, launch live sessions and move between Quizmoto and SCORM AI from one focused host workspace.
+                            </p>
+                        </div>
+                        <button type="button" className="qh-primary" onClick={() => navigate('/create-quiz')}>
+                            <Plus size={16} /> Create quiz
+                        </button>
+                    </section>
+
+                    {actionMsg && (
+                        <div className="qh-message">
+                            <span>{actionMsg}</span>
+                            <button type="button" onClick={() => setActionMsg(null)}>Dismiss</button>
+                        </div>
+                    )}
+
+                    <section className="qh-metrics" aria-label="Quizmoto overview">
+                        <div className="qh-metric">
+                            <div><div className="qh-metric-value">{quizzes.length}</div><div className="qh-metric-label">Total quizzes</div></div>
+                            <div className="qh-metric-icon"><BarChart3 size={16} /></div>
+                        </div>
+                        <div className="qh-metric">
+                            <div><div className="qh-metric-value">{totalQuestions}</div><div className="qh-metric-label">Questions ready</div></div>
+                            <div className="qh-metric-icon"><BookOpenCheck size={16} /></div>
+                        </div>
+                        <div className="qh-metric">
+                            <div><div className="qh-metric-value">{activeSessions.length}</div><div className="qh-metric-label">Live sessions</div></div>
+                            <div className="qh-metric-icon"><Radio size={16} /></div>
+                        </div>
+                    </section>
+
+                    {activeSessions.length > 0 && (
+                        <section className="qh-section">
+                            <div className="qh-section-head">
+                                <div>
+                                    <div className="qh-section-kicker">Session operations</div>
+                                    <div className="qh-section-title">Active sessions</div>
+                                </div>
+                                <span className="qh-live-dot" aria-label="Live" />
+                            </div>
+                            <div className="qh-session-list">
+                                {activeSessions.map((session) => (
+                                    <div className="qh-session" key={session.id}>
+                                        <div>
+                                            <div className="qh-session-title">{session.Quiz?.title || 'Live quiz'}</div>
+                                            <div className="qh-meta" style={{ marginTop: 6 }}>Keep the host session open or rejoin after navigation.</div>
+                                        </div>
+                                        <div><div className="qh-row-label">Game PIN</div><div className="qh-row-value">{session.pin}</div></div>
+                                        <div><div className="qh-row-label">Status</div><div className="qh-row-value">{session.status || 'live'}</div></div>
+                                        <button
+                                            type="button"
+                                            className="qh-secondary"
+                                            onClick={() => navigate(session.status === 'lobby' ? `/host/lobby/${session.pin}` : `/host/game/${session.pin}`)}
+                                        >
+                                            <Play size={13} /> Rejoin
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    <section className="qh-section">
+                        <div className="qh-section-head">
+                            <div>
+                                <div className="qh-section-kicker">Quiz management</div>
+                                <div className="qh-section-title">Quiz library</div>
+                            </div>
+                            <div className="qh-meta">{sortedQuizzes.length} shown</div>
+                        </div>
+                        <div className="qh-toolbar">
+                            <div className="qh-search-wrap">
+                                <Search size={15} />
+                                <input
+                                    className="qh-search"
+                                    value={searchQuery}
+                                    onChange={(event) => setSearchQuery(event.target.value)}
+                                    placeholder="Search quizzes by title"
+                                />
+                            </div>
+                            <select className="qh-select" value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+                                <option value="newest">Newest first</option>
+                                <option value="oldest">Oldest first</option>
+                                <option value="az">A–Z title</option>
+                            </select>
+                        </div>
+
+                        {sortedQuizzes.length > 0 ? (
+                            <div className="qh-quiz-list">
+                                {sortedQuizzes.map((quiz) => {
+                                    const date = quiz.createdAt ? new Date(quiz.createdAt).toLocaleDateString() : '—';
+                                    return (
+                                        <article className="qh-quiz-row" key={quiz.id}>
+                                            <div>
+                                                <div className="qh-quiz-title">{quiz.title}</div>
+                                                <div className="qh-status">Ready to host</div>
+                                                <div className="qh-meta" style={{ marginTop: 8 }}>Created {date}</div>
+                                            </div>
+                                            <div><div className="qh-row-label">Questions</div><div className="qh-row-value">{quiz.questions?.length || 0}</div></div>
+                                            <div><div className="qh-row-label">Mode</div><div className="qh-row-value">Live</div></div>
+                                            <div className="qh-actions">
+                                                <button type="button" className="qh-start" onClick={() => handleStartGame(quiz.id)}>
+                                                    <Play size={12} fill="currentColor" /> Start
+                                                </button>
+                                                <button type="button" className="qh-icon-btn" onClick={() => navigate(`/edit-quiz/${quiz.id}`)} title="Edit quiz" aria-label={`Edit ${quiz.title}`}>
+                                                    <Edit3 size={15} />
+                                                </button>
+                                                <button type="button" className="qh-icon-btn danger" onClick={() => handleDelete(quiz.id)} title="Delete quiz" aria-label={`Delete ${quiz.title}`}>
+                                                    <Trash2 size={15} />
+                                                </button>
+                                            </div>
+                                        </article>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="qh-empty">
+                                <BookOpenCheck size={26} />
+                                <div className="qh-empty-title">{quizzes.length ? 'No matching quizzes' : 'No quizzes yet'}</div>
+                                <div className="qh-meta" style={{ marginTop: 10 }}>
+                                    {quizzes.length ? 'Try another search.' : 'Create a quiz or import the starter cybersecurity set.'}
+                                </div>
+                                {!quizzes.length && (
+                                    <button type="button" className="qh-primary" style={{ marginTop: 22 }} onClick={() => navigate('/create-quiz')}>
+                                        <Plus size={15} /> Create first quiz
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </section>
+                </main>
+            </div>
         </div>
     );
 };
