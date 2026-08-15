@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Layers3, LockKeyhole, Mail, ShieldCheck, UserRound } from 'lucide-react';
+import { Layers3, LockKeyhole, Mail, ShieldCheck, UserRound, Zap } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -12,8 +12,7 @@ export default function ScormAuth() {
     loginScorm,
     loginScormWithGoogle,
     registerScorm,
-    prepareScormLogin,
-    leaveScorm
+    prepareScormLogin
   } = useAuth();
   const [mode, setMode] = useState('login');
   const [username, setUsername] = useState('');
@@ -22,7 +21,6 @@ export default function ScormAuth() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     prepareScormLogin();
@@ -31,51 +29,33 @@ export default function ScormAuth() {
   const switchMode = (nextMode) => {
     setMode(nextMode);
     setError('');
-    setNotice('');
   };
 
-  const handlePending = (result, fallbackEmail = '') => {
-    setError('');
-    setNotice(result?.message || 'Your SCORM AI registration is pending administrator approval.');
-    if (fallbackEmail) {
-      setMode('login');
-      setIdentifier(fallbackEmail);
-      setPassword('');
+  const finishPlatformLogin = (result) => {
+    if (!result?.token) {
+      setError(result?.message || 'A platform session could not be created.');
+      return;
     }
+    navigate('/scorm', { replace: true });
   };
 
   const submit = async (event) => {
     event.preventDefault();
     setBusy(true);
     setError('');
-    setNotice('');
     try {
       if (mode === 'login') {
-        const result = await loginScorm({ identifier: identifier.trim(), password });
-        if (result?.pendingApproval) {
-          handlePending(result);
-          return;
-        }
+        finishPlatformLogin(await loginScorm({ identifier: identifier.trim(), password }));
       } else {
-        const registeredEmail = email.trim().toLowerCase();
-        const result = await registerScorm({
+        finishPlatformLogin(await registerScorm({
           username: username.trim(),
-          email: registeredEmail,
+          email: email.trim().toLowerCase(),
           password
-        });
-        if (result?.pendingApproval) {
-          handlePending(result, registeredEmail);
-          return;
-        }
+        }));
       }
-      navigate('/scorm');
     } catch (err) {
       const data = err.response?.data;
-      if (data?.pendingApproval || data?.code === 'SCORM_APPROVAL_PENDING') {
-        handlePending(data);
-      } else {
-        setError(data?.message || err.message || 'Authentication failed.');
-      }
+      setError(data?.message || err.message || 'Authentication failed.');
     } finally {
       setBusy(false);
     }
@@ -88,40 +68,24 @@ export default function ScormAuth() {
     }
     setBusy(true);
     setError('');
-    setNotice('');
     try {
-      const result = await loginScormWithGoogle(credentialResponse.credential);
-      if (result?.pendingApproval) {
-        handlePending(result);
-        return;
-      }
-      navigate('/scorm');
+      finishPlatformLogin(await loginScormWithGoogle(credentialResponse.credential));
     } catch (err) {
       const data = err.response?.data;
-      if (data?.pendingApproval || data?.code === 'SCORM_APPROVAL_PENDING') {
-        handlePending(data);
-      } else {
-        setError(data?.message || err.message || 'Google Sign-In failed.');
-      }
+      setError(data?.message || err.message || 'Google Sign-In failed.');
     } finally {
       setBusy(false);
     }
   };
 
-  const goBackToQuizmoto = () => {
-    const restored = leaveScorm();
-    navigate(restored ? '/host' : '/login');
-  };
   const isLogin = mode === 'login';
 
   return (
     <div className="scorm-auth-workbench">
       <div className="sa-shell">
         <div className="sa-topbar">
-          <button type="button" onClick={goBackToQuizmoto} className="sa-back">
-            <ArrowLeft size={15} /> <span>Back to Quizmoto</span>
-          </button>
-          <div className="sa-top-note">Administrator-approved SCORM AI access</div>
+          <div className="sa-top-note">SCORM AI Platform · Quizmoto included</div>
+          <div className="sa-top-note">SCORM capabilities unlock after administrator approval</div>
         </div>
 
         <motion.main
@@ -132,25 +96,29 @@ export default function ScormAuth() {
         >
           <section className="sa-brand-panel">
             <div className="sa-mark"><Layers3 size={22} /></div>
-            <div className="sa-kicker">AI course creation workspace</div>
+            <div className="sa-kicker">AI learning creation & live engagement</div>
             <h1 className="sa-title">SCORM <span>AI</span></h1>
             <p className="sa-copy">
-              Create, publish and track AI-assisted SCORM learning experiences from a dedicated workspace protected separately from Quizmoto.
+              One workspace for AI-assisted course creation, SCORM delivery, learner intelligence and Quizmoto live engagement.
             </p>
-            <div className="sa-points" aria-label="SCORM AI workspace highlights">
-              <div className="sa-point"><span className="sa-point-dot" /> Register first with your own credentials</div>
-              <div className="sa-point"><span className="sa-point-dot" /> Super Admin unlocks SCORM AI access</div>
-              <div className="sa-point"><span className="sa-point-dot" /> Use the same credentials after approval</div>
+            <div className="sa-points" aria-label="SCORM AI platform highlights">
+              <div className="sa-point"><span className="sa-point-dot" /> Quizmoto is available immediately after registration</div>
+              <div className="sa-point"><span className="sa-point-dot" /> SCORM AI capabilities stay visible while approval is pending</div>
+              <div className="sa-point"><span className="sa-point-dot" /> Approval unlocks authoring, courses, tracking and reports</div>
+            </div>
+            <div className="sa-notice" style={{ marginTop: 24 }}>
+              <div className="sa-notice-title"><Zap size={14} style={{ display: 'inline', marginRight: 7 }} />Start before approval</div>
+              <div>Register, enter the platform and use Quizmoto straight away. Locked SCORM AI modules explain exactly what becomes available after approval.</div>
             </div>
           </section>
 
           <section className="sa-form-panel">
-            <div className="sa-form-kicker">Secure access</div>
-            <h2 className="sa-form-title">{isLogin ? 'Sign in to SCORM AI' : 'Register for SCORM AI'}</h2>
+            <div className="sa-form-kicker">Platform access</div>
+            <h2 className="sa-form-title">{isLogin ? 'Sign in to SCORM AI' : 'Create your platform account'}</h2>
             <p className="sa-form-sub">
               {isLogin
-                ? 'Only accounts approved by the SCORM AI Super Admin can enter the workspace.'
-                : 'Register normally. Your details will be saved immediately, then the Super Admin must approve your account before you can sign in.'}
+                ? 'Sign in with your SCORM AI account. Pending users can still access Quizmoto and preview locked SCORM AI capabilities.'
+                : 'Registration gives you immediate platform access with Quizmoto unlocked. The Super Admin separately approves the SCORM AI feature set.'}
             </p>
 
             <div className="sa-tabs" role="tablist" aria-label="SCORM AI authentication mode">
@@ -174,12 +142,6 @@ export default function ScormAuth() {
               </button>
             </div>
 
-            {notice && (
-              <div className="sa-notice" role="status">
-                <div className="sa-notice-title">Registration captured — approval pending</div>
-                <div>{notice}</div>
-              </div>
-            )}
             {error && <div className="sa-error">{error}</div>}
 
             <div className="sa-google-block">
@@ -195,10 +157,10 @@ export default function ScormAuth() {
                   width="320"
                 />
               </div>
-              <div className="sa-google-hint">If your Google email is not approved yet, the request is captured for Super Admin approval.</div>
+              <div className="sa-google-hint">A new Google identity is captured for approval and receives immediate limited platform access.</div>
             </div>
 
-            <div className="sa-divider" aria-hidden="true"><span>or use SCORM AI credentials</span></div>
+            <div className="sa-divider" aria-hidden="true"><span>or use platform credentials</span></div>
 
             <form onSubmit={submit} className="sa-form">
               {!isLogin && (
@@ -253,7 +215,7 @@ export default function ScormAuth() {
               </label>
 
               <button type="submit" disabled={busy} className="sa-submit">
-                {busy ? 'Please wait…' : isLogin ? 'Log in to SCORM AI' : 'Register account'}
+                {busy ? 'Please wait…' : isLogin ? 'Enter platform' : 'Create account & enter'}
               </button>
             </form>
           </section>
