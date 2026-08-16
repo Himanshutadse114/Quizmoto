@@ -1,15 +1,16 @@
 const { expect } = require('chai');
 const { generateVisualAssets } = require('../services/scorm/ScormVisualAssetService');
-const { getTheme } = require('../services/scorm/ScormThemeCatalog');
 
-describe('SCORM responsive vector engine V5', function () {
+describe('SCORM Smart SVG visual engine', function () {
     this.timeout(15000);
 
-    it('generates separate themed desktop and portrait-mobile SVG assets', async () => {
-        const theme = getTheme(2);
+    it('generates high-definition desktop and portrait-mobile Smart SVG assets', async () => {
         const assets = await generateVisualAssets({
             title: 'Phishing Awareness',
-            visualTheme: theme,
+            visualTheme: {
+                primary: '#4FC9BF',
+                primaryDark: '#177E78'
+            },
             slides: [{
                 title: 'How phishing captures credentials',
                 content: 'A phishing message creates urgency and sends the learner to a fake sign-in page.',
@@ -24,25 +25,28 @@ describe('SCORM responsive vector engine V5', function () {
 
         expect(assets).to.have.length(1);
         const asset = assets[0];
-        expect(asset.desktopZipPath).to.match(/visual-001-process\.svg$/);
-        expect(asset.mobileZipPath).to.match(/visual-001-process-mobile\.svg$/);
+        expect(asset.visualEngine).to.equal('gemini-smart-svg');
+        expect(asset.desktopZipPath).to.match(/smart-visual-001\.svg$/);
+        expect(asset.mobileZipPath).to.match(/smart-visual-001-mobile\.svg$/);
+        expect(asset.sceneSpec.scene).to.equal('email-threat');
 
         const desktop = asset.desktopBody.toString('utf8');
         const mobile = asset.mobileBody.toString('utf8');
-        expect(desktop).to.include('viewBox="0 0 960 560"');
-        expect(mobile).to.include('viewBox="0 0 390 620"');
-        expect(desktop).to.include(theme.visualBg);
-        expect(mobile).to.include(theme.visualBg);
-        expect(desktop).to.include('LEARNING VISUAL');
-        expect(mobile).to.include('STEP 1');
-        expect(desktop).to.include('data-qm-icon-kind="mail"');
+        expect(desktop).to.include('viewBox="0 0 1600 1000"');
+        expect(mobile).to.include('viewBox="0 0 900 1200"');
+        expect(desktop).to.include('data-scorm-smart-svg="1"');
+        expect(mobile).to.include('data-scorm-smart-svg="1"');
+        expect(desktop).to.include('data-scene="email-threat"');
+        expect(desktop).to.include('#4FC9BF');
+        expect(desktop).to.include('filter="url(#softShadow)"');
+        expect(desktop).to.not.match(/<script\b/i);
+        expect(desktop).to.not.match(/<foreignObject\b/i);
+        expect(desktop).to.not.match(/https?:\/\//i);
     });
 
     it('honours an explicit QR metaphor even when the learning text also says phishing', async () => {
-        const theme = getTheme(6);
         const assets = await generateVisualAssets({
             title: 'QR Phishing Awareness',
-            visualTheme: theme,
             slides: [{
                 title: 'QR phishing warning',
                 content: 'A phishing QR code can move the learner from a physical prompt to a malicious website.',
@@ -56,10 +60,11 @@ describe('SCORM responsive vector engine V5', function () {
         });
 
         expect(assets).to.have.length(1);
+        expect(assets[0].sceneSpec.scene).to.equal('qr-phishing');
         const desktop = assets[0].desktopBody.toString('utf8');
         const mobile = assets[0].mobileBody.toString('utf8');
-        expect(desktop).to.include('data-qm-icon-kind="qr"');
-        expect(mobile).to.include('data-qm-icon-kind="qr"');
-        expect(desktop).to.not.include('data-qm-icon-kind="mail"');
+        expect(desktop).to.include('data-scene="qr-phishing"');
+        expect(mobile).to.include('data-scene="qr-phishing"');
+        expect(desktop).to.include('data-smart-svg-scene="qr-phishing"');
     });
 });
