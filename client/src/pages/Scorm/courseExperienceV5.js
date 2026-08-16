@@ -1,12 +1,5 @@
 export const COURSE_THEMES = [
-  { id: 1, slug: 'gamma-editorial', name: 'Gamma Editorial', description: 'Warm paper · charcoal · editorial', primary: '#282824', dark: '#171715', accent: '#CBC5B8', bg: '#E7E7E4', bg2: '#E5DFD2', surface: '#E7E7E4', visual: '#282824' },
-  { id: 2, slug: 'violet-future', name: 'Violet Future', description: 'Deep violet · purple · lilac', primary: '#8B5CF6', dark: '#6D28D9', accent: '#C084FC', bg: '#090517', bg2: '#160A2B', surface: '#160E27', visual: '#29154A' },
-  { id: 4, slug: 'emerald-atlas', name: 'Emerald Atlas', description: 'Forest · emerald · mint', primary: '#10B981', dark: '#047857', accent: '#5EEAD4', bg: '#03100D', bg2: '#071E18', surface: '#092019', visual: '#0D382C' },
-  { id: 6, slug: 'arctic-cyan', name: 'Arctic Cyan', description: 'Slate · cyan · ice', primary: '#06B6D4', dark: '#0E7490', accent: '#67E8F9', bg: '#020B12', bg2: '#061B27', surface: '#08202B', visual: '#0A3848' },
-  { id: 8, slug: 'indigo-aurora', name: 'Indigo Aurora', description: 'Indigo · teal · violet', primary: '#6366F1', dark: '#4338CA', accent: '#2DD4BF', bg: '#050617', bg2: '#0A1230', surface: '#0C1230', visual: '#14205A' },
-  { id: 3, slug: 'amber-signal', name: 'Amber Signal', description: 'Charcoal · amber · gold', primary: '#F59E0B', dark: '#B45309', accent: '#FCD34D', bg: '#0C0905', bg2: '#1B1207', surface: '#191208', visual: '#34200A' },
-  { id: 5, slug: 'modern-rose', name: 'Modern Rose', description: 'Aubergine · rose · coral', primary: '#EC4899', dark: '#BE185D', accent: '#FB7185', bg: '#12050C', bg2: '#270918', surface: '#240D19', visual: '#451126' },
-  { id: 7, slug: 'crimson-guard', name: 'Crimson Guard', description: 'Burgundy · crimson · coral', primary: '#EF4444', dark: '#B91C1C', accent: '#FB7185', bg: '#100405', bg2: '#250708', surface: '#210B0D', visual: '#451015' }
+  { id: 1, slug: 'gamma-editorial', name: 'Gamma Editorial', description: 'Warm paper · charcoal · editorial', primary: '#282824', dark: '#171715', accent: '#CBC5B8', bg: '#E7E7E4', bg2: '#E5DFD2', surface: '#E7E7E4', visual: '#282824' }
 ];
 
 export const COURSE_LAYOUTS = [
@@ -65,8 +58,8 @@ export const POINT_WORD_LIMITS = {
   spotlight: 12
 };
 
-export function courseTheme(id) {
-  return COURSE_THEMES.find((theme) => theme.id === Number(id)) || COURSE_THEMES[0];
+export function courseTheme() {
+  return COURSE_THEMES[0];
 }
 
 export function wordCount(value) {
@@ -97,8 +90,14 @@ export function normalizeCourseSlide(slide, index) {
 export function visualFitIssues(slide) {
   if (!slide) return [];
   const issues = [];
+  const title = String(slide.title || '').trim();
+  const titleWords = wordCount(title);
   const limit = POINT_WORD_LIMITS[slide.layout] || 11;
   const longPoints = (slide.keyPoints || []).filter((point) => wordCount(point) > limit).length;
+
+  if (title.length > 58 || titleWords > 8) {
+    issues.push('Screen title is too long for the editorial heading area. Aim for 3–8 words and about 52 characters.');
+  }
   if (longPoints) issues.push(`${longPoints} visual ${longPoints === 1 ? 'label is' : 'labels are'} longer than the recommended ${limit} words.`);
   if (wordCount(slide.visualTitle) > 5) issues.push('Visual title is longer than five words.');
   if (wordCount(slide.introText || slide.content) > 45) issues.push('The initial on-screen explanation is dense. Keep the first reveal concise.');
