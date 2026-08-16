@@ -47,14 +47,25 @@ test.describe('Golden Flow', () => {
         expect(token).toBeTruthy();
 
         await hostPage.goto('/');
-        await hostPage.evaluate((t) => localStorage.setItem('token', t), token);
+        await hostPage.evaluate(({ token: authToken, login }) => {
+            localStorage.setItem('token', authToken);
+            localStorage.setItem('scormPlatformAccess', '1');
+            localStorage.setItem('user', JSON.stringify({
+                username: login.username || 'Test Host',
+                email: login.email || 'test@example.com',
+                product: 'scorm-ai',
+                role: 'pending',
+                platformAccess: true,
+                scormAccess: false
+            }));
+        }, { token, login: loginData });
 
-        await hostPage.goto('/dashboard');
+        await hostPage.goto('/scorm/quizmoto');
         await hostPage.getByText('Deterministic Test Quiz').waitFor({
             state: 'visible',
             timeout: 30000
         });
-        await hostPage.getByRole('button', { name: 'START', exact: true }).first().click();
+        await hostPage.getByRole('button', { name: 'Start', exact: true }).first().click();
 
         await hostPage.waitForURL(/\/host\/lobby\/\w+/);
         sessionPin = hostPage.url().split('/').pop();
@@ -115,8 +126,8 @@ test.describe('Golden Flow', () => {
         await expect(playerAPage.getByText('Final Leaderboard')).toBeVisible({ timeout: 10000 });
 
         await hostPage.getByRole('button', { name: /Dashboard/i }).click();
-        await hostPage.waitForURL(/\/dashboard/);
-        await hostPage.getByRole('button', { name: /Reports/i }).click();
+        await hostPage.waitForURL(/\/scorm\/quizmoto/);
+        await hostPage.getByRole('link', { name: /Reports/i }).first().click();
         const quizHeading = hostPage.locator('h3').filter({ hasText: 'Deterministic Test Quiz' }).first();
         await quizHeading.waitFor({ state: 'attached', timeout: 20000 });
         await expect(quizHeading).toBeAttached();
