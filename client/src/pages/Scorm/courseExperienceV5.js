@@ -1,5 +1,5 @@
 export const COURSE_THEMES = [
-  { id: 1, slug: 'midnight-blue', name: 'Midnight Blue', description: 'Deep navy · electric blue · cyan', primary: '#3B82F6', dark: '#1D4ED8', accent: '#22D3EE', bg: '#030712', bg2: '#071426', surface: '#0A1322', visual: '#0B2340' },
+  { id: 1, slug: 'gamma-editorial', name: 'Gamma Editorial', description: 'Warm paper · charcoal · editorial', primary: '#282824', dark: '#171715', accent: '#CBC5B8', bg: '#E7E7E4', bg2: '#E5DFD2', surface: '#E7E7E4', visual: '#282824' },
   { id: 2, slug: 'violet-future', name: 'Violet Future', description: 'Deep violet · purple · lilac', primary: '#8B5CF6', dark: '#6D28D9', accent: '#C084FC', bg: '#090517', bg2: '#160A2B', surface: '#160E27', visual: '#29154A' },
   { id: 4, slug: 'emerald-atlas', name: 'Emerald Atlas', description: 'Forest · emerald · mint', primary: '#10B981', dark: '#047857', accent: '#5EEAD4', bg: '#03100D', bg2: '#071E18', surface: '#092019', visual: '#0D382C' },
   { id: 6, slug: 'arctic-cyan', name: 'Arctic Cyan', description: 'Slate · cyan · ice', primary: '#06B6D4', dark: '#0E7490', accent: '#67E8F9', bg: '#020B12', bg2: '#061B27', surface: '#08202B', visual: '#0A3848' },
