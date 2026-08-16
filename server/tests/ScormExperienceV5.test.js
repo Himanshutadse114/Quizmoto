@@ -3,17 +3,17 @@ const { THEMES, getTheme, listThemes, normalizeThemeId } = require('../services/
 const { planExperienceV5, splitCopy, metaphorFor } = require('../services/scorm/ScormExperiencePlanner');
 
 describe('Course Experience V5', () => {
-    it('provides eight stable selectable course themes', () => {
+    it('keeps the legacy server theme catalog stable while Gamma Editorial is theme one', () => {
         expect(Object.keys(THEMES)).to.have.length(8);
         expect(listThemes()).to.have.length(8);
-        expect(getTheme(1).name).to.equal('Midnight Blue');
+        expect(getTheme(1).name).to.equal('Gamma Editorial');
         expect(getTheme(3).name).to.equal('Amber Signal');
         expect(getTheme(4).name).to.equal('Emerald Atlas');
         expect(getTheme(5).name).to.equal('Modern Rose');
         expect(normalizeThemeId(999)).to.equal(1);
     });
 
-    it('gives every theme a complete integrated visual palette', () => {
+    it('gives every legacy server theme a complete integrated visual palette', () => {
         listThemes().forEach((theme) => {
             ['primary', 'primaryDark', 'accent', 'bg', 'bg2', 'surface', 'visualBg', 'visualBg2', 'visualCard', 'visualText'].forEach((key) => {
                 expect(theme[key], `${theme.name}.${key}`).to.match(/^#[0-9a-f]{6}$/i);
