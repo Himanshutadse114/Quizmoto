@@ -11,6 +11,7 @@ describe('SCORM AI Gamma-inspired redesign', () => {
   const platformTheme = read('../client/src/pages/Scorm/scormReferenceTheme.css');
   const platformPolish = read('../client/src/pages/Scorm/scormReferencePolish.css');
   const courseThemes = read('../client/src/pages/Scorm/courseExperienceV5.js');
+  const serverThemes = read('services/scorm/ScormThemeCatalog.js');
   const gammaFinalizer = read('services/scorm/ScormGammaEditorialFinalizer.js');
   const answerFinalizer = read('services/scorm/ScormAnswerTrackingPackageFinalizer.js');
 
@@ -35,12 +36,16 @@ describe('SCORM AI Gamma-inspired redesign', () => {
     expect(platformPolish).to.include('scorm-author-dropzone');
   });
 
-  it('makes Gamma Editorial the default authoring theme using the PPT palette', () => {
+  it('makes Gamma Editorial the default authoring theme using the PPT palette on client and server', () => {
     expect(courseThemes).to.include("slug: 'gamma-editorial'");
     expect(courseThemes).to.include("primary: '#282824'");
     expect(courseThemes).to.include("bg: '#E7E7E4'");
     expect(courseThemes).to.include("bg2: '#E5DFD2'");
     expect(courseThemes).to.include("accent: '#CBC5B8'");
+    expect(serverThemes).to.include("slug: 'gamma-editorial'");
+    expect(serverThemes).to.include("name: 'Gamma Editorial'");
+    expect(serverThemes).to.include("bg: '#E7E7E4'");
+    expect(serverThemes).to.include("text: '#282824'");
   });
 
   it('injects the Gamma editorial learner layer before answer tracking is finalized', () => {
