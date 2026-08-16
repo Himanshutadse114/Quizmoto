@@ -1,5 +1,5 @@
 const JSZip = require('jszip');
-const { buildScormPackageZip: buildTrackedPackage } = require('./ScormTrackingPackageFinalizer');
+const { buildScormPackageZip: buildTrackedPackage } = require('./ScormGammaEditorialFinalizer');
 
 const ANSWER_TRACKING_SCRIPT = `
 <script id="scorm-ai-answer-reporting-v1">
