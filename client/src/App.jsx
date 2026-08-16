@@ -13,6 +13,7 @@ import './pages/Host/quizmotoArenaPolish.css';
 import './pages/Host/quizmotoClassicBoundary.css';
 import './pages/Scorm/scormVisualStudioFixes.css';
 import './pages/Scorm/scormReferenceTheme.css';
+import './pages/Scorm/scormReferencePolish.css';
 
 const CreateQuiz = lazy(() => import('./pages/Host/CreateQuiz'));
 const EditQuiz = lazy(() => import('./pages/Host/EditQuiz'));
