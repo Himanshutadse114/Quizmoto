@@ -20,6 +20,7 @@ router.use('/content', require('./content'));
 router.use('/play', require('./play'));
 router.use('/xapi', require('./xapi'));
 router.use('/author', require('./author'));
+router.use('/visual-studio', require('./visualStudio'));
 router.use('/access', require('./access'));
 
 router.get('/features', (req, res) => {
