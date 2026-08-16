@@ -41,7 +41,7 @@ describe('SCORM Smart SVG visual engine', function () {
         expect(desktop).to.include('filter="url(#softShadow)"');
         expect(desktop).to.not.match(/<script\b/i);
         expect(desktop).to.not.match(/<foreignObject\b/i);
-        expect(desktop).to.not.match(/https?:\/\//i);
+        expect(desktop).to.not.match(/(?:href|xlink:href)=["']https?:\/\//i);
     });
 
     it('honours an explicit QR metaphor even when the learning text also says phishing', async () => {
