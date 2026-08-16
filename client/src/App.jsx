@@ -12,6 +12,7 @@ import './pages/Host/quizmotoElectricArena.css';
 import './pages/Host/quizmotoArenaPolish.css';
 import './pages/Host/quizmotoClassicBoundary.css';
 import './pages/Scorm/scormVisualStudioFixes.css';
+import './pages/Scorm/scormReferenceTheme.css';
 
 const CreateQuiz = lazy(() => import('./pages/Host/CreateQuiz'));
 const EditQuiz = lazy(() => import('./pages/Host/EditQuiz'));
@@ -162,7 +163,7 @@ function AppSurface() {
   const isQuizGameStage = pathname.startsWith('/host/lobby') || pathname.startsWith('/host/game') || pathname === '/join' || pathname.startsWith('/player/');
   const surfaceClass = isQuizGameStage
     ? 'bg-quizmoto-darkPurple live-quiz-stage quizmoto-classic-live-stage'
-    : 'bg-[#11100e]';
+    : 'bg-[#0A0F0E]';
 
   return (
     <div className={`min-h-screen text-white relative ${surfaceClass}`}>
