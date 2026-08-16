@@ -1,0 +1,463 @@
+/*
+ * SCORM AI Reference Theme
+ * Product UI follows the uploaded SCORM AI redesign reference:
+ * dark teal surfaces, restrained cards, thin borders, clean system typography.
+ * The live Quizmoto lobby/game/player experience is intentionally excluded.
+ */
+
+:root {
+  --sai-paper: #0A0F0E;
+  --sai-surface: #121A19;
+  --sai-surface-2: #17201F;
+  --sai-surface-3: #1C2725;
+  --sai-line: rgba(255,255,255,.10);
+  --sai-line-soft: rgba(255,255,255,.06);
+  --sai-ink: #EDF4F2;
+  --sai-ink-soft: #A9BAB6;
+  --sai-ink-faint: #6E7D79;
+  --sai-brand: #4FC9BF;
+  --sai-brand-strong: #7BDCD3;
+  --sai-brand-soft: rgba(79,201,191,.14);
+  --sai-on-brand: #06201E;
+  --sai-pending: #E7B24E;
+  --sai-pending-soft: rgba(231,178,78,.12);
+  --sai-pending-line: rgba(231,178,78,.35);
+  --sai-unlocked: #3FCB8C;
+  --sai-unlocked-soft: rgba(63,203,140,.12);
+  --sai-danger: #F07C72;
+  --sai-danger-soft: rgba(240,124,114,.11);
+  --sai-shadow: 0 1px 2px rgba(0,0,0,.28), 0 12px 28px rgba(0,0,0,.24);
+  --sai-focus: 0 0 0 3px rgba(79,201,191,.28);
+  --sai-radius: 14px;
+  --sai-radius-sm: 10px;
+  --sai-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --sai-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+/* ---------- SCORM AI shell ---------- */
+body .scorm-editorial.scorm-workbench {
+  --wb-canvas: var(--sai-paper) !important;
+  --wb-canvas-deep: #070B0A !important;
+  --wb-surface: var(--sai-surface) !important;
+  --wb-surface-2: var(--sai-surface-2) !important;
+  --wb-surface-3: var(--sai-surface-3) !important;
+  --wb-line: var(--sai-line) !important;
+  --wb-line-soft: var(--sai-line-soft) !important;
+  --wb-cream: var(--sai-ink) !important;
+  --wb-cream-soft: var(--sai-ink-soft) !important;
+  --wb-tan: var(--sai-ink-soft) !important;
+  --wb-muted: var(--sai-ink-faint) !important;
+  --wb-orange: var(--sai-brand) !important;
+  --wb-orange-strong: var(--sai-brand-strong) !important;
+  --wb-orange-dark: #278F87 !important;
+  --wb-green: var(--sai-unlocked) !important;
+  --wb-red: var(--sai-danger) !important;
+  --wb-yellow: var(--sai-pending) !important;
+  --wb-radius: var(--sai-radius-sm) !important;
+  --wb-radius-sm: 8px !important;
+  --wb-shadow: var(--sai-shadow) !important;
+  --scorm-accent: var(--sai-brand) !important;
+  --scorm-accent-strong: var(--sai-brand-strong) !important;
+  --scorm-accent-soft: var(--sai-brand-soft) !important;
+  --scorm-green: var(--sai-unlocked) !important;
+  --scorm-amber: var(--sai-pending) !important;
+  --scorm-red: var(--sai-danger) !important;
+  min-height: 100vh !important;
+  color: var(--sai-ink) !important;
+  font-family: var(--sai-font) !important;
+  background: var(--sai-paper) !important;
+}
+
+body .scorm-editorial.scorm-workbench,
+body .scorm-editorial.scorm-workbench * {
+  font-family: var(--sai-font) !important;
+  scrollbar-color: #31423F #0C1211 !important;
+}
+
+body .scorm-editorial.scorm-workbench .scorm-display,
+body .scorm-editorial.scorm-workbench .scorm-page-title,
+body .scorm-editorial.scorm-workbench h1,
+body .scorm-editorial.scorm-workbench h2,
+body .scorm-editorial.scorm-workbench h3,
+body .scorm-editorial.scorm-workbench h4,
+body .scorm-editorial.scorm-workbench .scorm-brand-name {
+  font-family: var(--sai-font) !important;
+  color: var(--sai-ink) !important;
+  text-transform: none !important;
+  letter-spacing: -.015em !important;
+  font-style: normal !important;
+}
+body .scorm-editorial.scorm-workbench h1,
+body .scorm-editorial.scorm-workbench h2 { font-weight: 700 !important; }
+body .scorm-editorial.scorm-workbench h3,
+body .scorm-editorial.scorm-workbench h4,
+body .scorm-editorial.scorm-workbench .scorm-page-title,
+body .scorm-editorial.scorm-workbench .scorm-brand-name { font-weight: 650 !important; }
+body .scorm-editorial.scorm-workbench main h2 { font-size: clamp(1.18rem, 2.3vw, 1.62rem) !important; line-height: 1.15 !important; }
+body .scorm-editorial.scorm-workbench .scorm-display { font-size: clamp(1.7rem, 3.4vw, 2.45rem) !important; line-height: 1.06 !important; }
+body .scorm-editorial.scorm-workbench .wb-accent,
+body .scorm-editorial.scorm-workbench .scorm-display .wb-accent,
+body .scorm-editorial.scorm-workbench .scorm-brand-name .wb-accent { color: var(--sai-brand) !important; }
+
+body .scorm-editorial.scorm-workbench p { color: var(--sai-ink-soft) !important; }
+body .scorm-editorial.scorm-workbench .scorm-breadcrumb,
+body .scorm-editorial.scorm-workbench .scorm-eyebrow,
+body .scorm-editorial.scorm-workbench .scorm-nav-section,
+body .scorm-editorial.scorm-workbench .scorm-meta,
+body .scorm-editorial.scorm-workbench .scorm-micro,
+body .scorm-editorial.scorm-workbench label,
+body .scorm-editorial.scorm-workbench [class*="tracking-widest"],
+body .scorm-editorial.scorm-workbench [class*="uppercase"] {
+  font-family: var(--sai-font) !important;
+  letter-spacing: .055em !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-eyebrow,
+body .scorm-editorial.scorm-workbench .scorm-breadcrumb,
+body .scorm-editorial.scorm-workbench .scorm-nav-section,
+body .scorm-editorial.scorm-workbench .scorm-meta,
+body .scorm-editorial.scorm-workbench .scorm-micro { color: var(--sai-ink-faint) !important; text-transform: uppercase !important; }
+body .scorm-editorial.scorm-workbench .scorm-breadcrumb::before { content: none !important; }
+
+body .scorm-editorial.scorm-workbench .scorm-main,
+body .scorm-editorial.scorm-workbench main { background: var(--sai-paper) !important; }
+body .scorm-editorial.scorm-workbench .scorm-page-hero { padding-top: 20px !important; padding-bottom: 20px !important; border-color: var(--sai-line) !important; }
+
+/* Sidebar / navigation */
+body .scorm-editorial.scorm-workbench .scorm-sidebar,
+body .scorm-editorial.scorm-workbench .scorm-mobile-drawer {
+  background: #0D1413 !important;
+  border-color: var(--sai-line) !important;
+  box-shadow: none !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-brand-wrap,
+body .scorm-editorial.scorm-workbench .scorm-sidebar-footer,
+body .scorm-editorial.scorm-workbench .scorm-mobile-drawer > div { border-color: var(--sai-line) !important; }
+body .scorm-editorial.scorm-workbench .scorm-brand-mark {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 10px !important;
+  color: var(--sai-on-brand) !important;
+  background: var(--sai-brand) !important;
+  border: 1px solid rgba(255,255,255,.06) !important;
+  box-shadow: none !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-brand-name { font-size: 16px !important; letter-spacing: -.01em !important; }
+body .scorm-editorial.scorm-workbench .scorm-brand-subtitle { color: var(--sai-ink-faint) !important; font-size: 10px !important; }
+body .scorm-editorial.scorm-workbench .scorm-nav-section { font-size: 10px !important; font-weight: 700 !important; color: var(--sai-ink-faint) !important; }
+body .scorm-editorial.scorm-workbench .scorm-nav-item {
+  min-height: 42px !important;
+  border-radius: 9px !important;
+  color: var(--sai-ink-soft) !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-nav-item:hover { background: rgba(255,255,255,.035) !important; color: var(--sai-ink) !important; }
+body .scorm-editorial.scorm-workbench .scorm-nav-item.scorm-nav-active {
+  background: var(--sai-brand-soft) !important;
+  color: var(--sai-brand-strong) !important;
+  border-color: rgba(79,201,191,.22) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-nav-item.is-locked { color: var(--sai-ink-faint) !important; }
+body .scorm-editorial.scorm-workbench .scorm-nav-icon { background: transparent !important; border: 0 !important; color: currentColor !important; }
+body .scorm-editorial.scorm-workbench .scorm-nav-active .scorm-nav-icon { background: rgba(79,201,191,.08) !important; }
+body .scorm-editorial.scorm-workbench .scorm-nav-chevron { color: var(--sai-brand) !important; }
+
+body .scorm-editorial.scorm-workbench .scorm-status-card {
+  background: var(--sai-unlocked-soft) !important;
+  border: 1px solid rgba(63,203,140,.25) !important;
+  color: #8CE4BA !important;
+  box-shadow: none !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-status-dot { background: var(--sai-unlocked) !important; box-shadow: none !important; }
+body .scorm-editorial.scorm-workbench .scorm-sidebar-switch {
+  border: 0 !important;
+  border-radius: 9px !important;
+  color: var(--sai-ink-soft) !important;
+  background: transparent !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-sidebar-switch:hover { background: rgba(255,255,255,.04) !important; color: var(--sai-ink) !important; }
+
+/* Top bar */
+body .scorm-editorial.scorm-workbench .scorm-topbar {
+  background: rgba(10,15,14,.92) !important;
+  border-color: var(--sai-line) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(18px) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-topbar::after { display: none !important; }
+body .scorm-editorial.scorm-workbench .scorm-topbar-icon,
+body .scorm-editorial.scorm-workbench .scorm-drawer-close {
+  border: 1px solid var(--sai-line) !important;
+  background: var(--sai-surface) !important;
+  color: var(--sai-ink-soft) !important;
+  border-radius: 10px !important;
+}
+
+/* Buttons */
+body .scorm-editorial.scorm-workbench .scorm-button-primary,
+body .scorm-editorial.scorm-workbench button.scorm-button-primary,
+body .scorm-editorial.scorm-workbench a.scorm-button-primary {
+  background: var(--sai-brand) !important;
+  color: var(--sai-on-brand) !important;
+  border: 1px solid var(--sai-brand) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  font-weight: 650 !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-button-primary:hover { background: var(--sai-brand-strong) !important; border-color: var(--sai-brand-strong) !important; transform: none !important; filter: none !important; }
+body .scorm-editorial.scorm-workbench .scorm-button-secondary,
+body .scorm-editorial.scorm-workbench button.scorm-button-secondary,
+body .scorm-editorial.scorm-workbench a.scorm-button-secondary {
+  background: var(--sai-surface) !important;
+  color: var(--sai-ink) !important;
+  border: 1px solid var(--sai-line) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-button-secondary:hover { background: var(--sai-surface-2) !important; border-color: rgba(79,201,191,.28) !important; color: var(--sai-brand-strong) !important; }
+
+/* Panels / cards / lists */
+body .scorm-editorial.scorm-workbench .scorm-panel,
+body .scorm-editorial.scorm-workbench .scorm-metric-card,
+body .scorm-editorial.scorm-workbench .scorm-course-row,
+body .scorm-editorial.scorm-workbench .scorm-card,
+body .scorm-editorial.scorm-workbench .scorm-stat-card {
+  background: var(--sai-surface) !important;
+  border: 1px solid var(--sai-line) !important;
+  color: var(--sai-ink) !important;
+  border-radius: var(--sai-radius) !important;
+  box-shadow: none !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-panel-header {
+  background: transparent !important;
+  border-color: var(--sai-line) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-list > * + * { border-color: var(--sai-line-soft) !important; }
+body .scorm-editorial.scorm-workbench .scorm-course-row:hover { background: var(--sai-surface-2) !important; }
+body .scorm-editorial.scorm-workbench .scorm-metric-value { color: var(--sai-ink) !important; font-weight: 700 !important; }
+body .scorm-editorial.scorm-workbench .scorm-metric-label { color: var(--sai-ink-faint) !important; }
+body .scorm-editorial.scorm-workbench .scorm-metric-icon { background: var(--sai-brand-soft) !important; color: var(--sai-brand) !important; border: 0 !important; border-radius: 9px !important; }
+
+/* Normalize old hard-coded Workbench browns inside SCORM pages. */
+body .scorm-editorial.scorm-workbench [class*="bg-[#1"],
+body .scorm-editorial.scorm-workbench [class*="bg-[#2"],
+body .scorm-editorial.scorm-workbench [class*="bg-[#3"] { background-color: var(--sai-surface) !important; }
+body .scorm-editorial.scorm-workbench [class*="border-[#4"],
+body .scorm-editorial.scorm-workbench [class*="border-[#5"],
+body .scorm-editorial.scorm-workbench [class*="border-[#6"],
+body .scorm-editorial.scorm-workbench [class*="border-[#7"],
+body .scorm-editorial.scorm-workbench [class*="border-[#8"] { border-color: var(--sai-line) !important; }
+body .scorm-editorial.scorm-workbench [class*="text-[#f"],
+body .scorm-editorial.scorm-workbench [class*="text-[#e"] { color: var(--sai-ink) !important; }
+body .scorm-editorial.scorm-workbench [class*="text-[#a"],
+body .scorm-editorial.scorm-workbench [class*="text-[#9"],
+body .scorm-editorial.scorm-workbench [class*="text-[#8"] { color: var(--sai-ink-soft) !important; }
+
+/* Inputs / controls */
+body .scorm-editorial.scorm-workbench input,
+body .scorm-editorial.scorm-workbench textarea,
+body .scorm-editorial.scorm-workbench select {
+  background: #0E1514 !important;
+  border: 1px solid var(--sai-line) !important;
+  color: var(--sai-ink) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+body .scorm-editorial.scorm-workbench input::placeholder,
+body .scorm-editorial.scorm-workbench textarea::placeholder { color: var(--sai-ink-faint) !important; }
+body .scorm-editorial.scorm-workbench input:focus,
+body .scorm-editorial.scorm-workbench textarea:focus,
+body .scorm-editorial.scorm-workbench select:focus {
+  border-color: var(--sai-brand) !important;
+  box-shadow: var(--sai-focus) !important;
+  outline: none !important;
+}
+
+/* Tables */
+body .scorm-editorial.scorm-workbench table { background: var(--sai-surface) !important; color: var(--sai-ink) !important; border-color: var(--sai-line) !important; }
+body .scorm-editorial.scorm-workbench thead,
+body .scorm-editorial.scorm-workbench th { background: #0E1514 !important; color: var(--sai-ink-faint) !important; border-color: var(--sai-line) !important; }
+body .scorm-editorial.scorm-workbench td { border-color: var(--sai-line-soft) !important; color: var(--sai-ink-soft) !important; }
+body .scorm-editorial.scorm-workbench tr:hover td { background: rgba(255,255,255,.025) !important; }
+
+/* State chips */
+body .scorm-editorial.scorm-workbench [class*="amber"],
+body .scorm-editorial.scorm-workbench [class*="yellow"] { --tw-text-opacity: 1; }
+body .scorm-editorial.scorm-workbench .sai-pending,
+body .scorm-editorial.scorm-workbench [class*="text-[#ffc"],
+body .scorm-editorial.scorm-workbench [class*="text-[#ffd"] { color: var(--sai-pending) !important; }
+body .scorm-editorial.scorm-workbench [class*="bg-emerald"],
+body .scorm-editorial.scorm-workbench [class*="text-emerald"] { color: var(--sai-unlocked) !important; }
+
+/* ---------- Quizmoto management inside SCORM AI ---------- */
+body .scorm-editorial.scorm-workbench .quizmoto-host-workbench,
+body .scorm-editorial.scorm-workbench .quizmoto-create-workbench,
+body .scorm-editorial.scorm-workbench .quizmoto-edit-workbench {
+  min-height: auto !important;
+  background: transparent !important;
+  color: var(--sai-ink) !important;
+  font-family: var(--sai-font) !important;
+}
+body .scorm-editorial.scorm-workbench .quizmoto-host-workbench *,
+body .scorm-editorial.scorm-workbench .quizmoto-create-workbench *,
+body .scorm-editorial.scorm-workbench .quizmoto-edit-workbench * { font-family: var(--sai-font) !important; }
+
+body .scorm-editorial.scorm-workbench .quizmoto-create-workbench,
+body .scorm-editorial.scorm-workbench .quizmoto-edit-workbench { padding: 0 !important; }
+body .scorm-editorial.scorm-workbench .qc-shell,
+body .scorm-editorial.scorm-workbench .qe-shell { width: min(1120px, 100%) !important; margin: 0 auto !important; padding: 22px 24px 40px !important; }
+body .scorm-editorial.scorm-workbench .qc-topbar,
+body .scorm-editorial.scorm-workbench .qe-topbar,
+body .scorm-editorial.scorm-workbench .qc-overview,
+body .scorm-editorial.scorm-workbench .qe-overview,
+body .scorm-editorial.scorm-workbench .qc-question-card,
+body .scorm-editorial.scorm-workbench .qe-question-card,
+body .scorm-editorial.scorm-workbench .qc-ai-modal,
+body .scorm-editorial.scorm-workbench .qc-title-panel,
+body .scorm-editorial.scorm-workbench .qe-title-panel,
+body .scorm-editorial.scorm-workbench .qc-summary-card,
+body .scorm-editorial.scorm-workbench .qe-summary-card {
+  background: var(--sai-surface) !important;
+  border-color: var(--sai-line) !important;
+  box-shadow: none !important;
+  color: var(--sai-ink) !important;
+}
+body .scorm-editorial.scorm-workbench .qc-topbar,
+body .scorm-editorial.scorm-workbench .qe-topbar { border-radius: 0 !important; border-width: 0 0 1px !important; padding-left: 0 !important; padding-right: 0 !important; background: transparent !important; }
+body .scorm-editorial.scorm-workbench .qc-heading,
+body .scorm-editorial.scorm-workbench .qe-heading,
+body .scorm-editorial.scorm-workbench .qc-title-input,
+body .scorm-editorial.scorm-workbench .qe-title-input { color: var(--sai-ink) !important; }
+body .scorm-editorial.scorm-workbench .qc-kicker,
+body .scorm-editorial.scorm-workbench .qe-kicker,
+body .scorm-editorial.scorm-workbench .qc-label,
+body .scorm-editorial.scorm-workbench .qe-label { color: var(--sai-ink-faint) !important; }
+body .scorm-editorial.scorm-workbench .qc-save,
+body .scorm-editorial.scorm-workbench .qe-save,
+body .scorm-editorial.scorm-workbench .qc-add,
+body .scorm-editorial.scorm-workbench .qe-add,
+body .scorm-editorial.scorm-workbench .qc-ai-button {
+  background: var(--sai-brand) !important;
+  color: var(--sai-on-brand) !important;
+  border: 1px solid var(--sai-brand) !important;
+  box-shadow: none !important;
+  border-radius: 10px !important;
+}
+body .scorm-editorial.scorm-workbench .qc-back,
+body .scorm-editorial.scorm-workbench .qe-back,
+body .scorm-editorial.scorm-workbench .qc-image-button,
+body .scorm-editorial.scorm-workbench .qe-image-button {
+  background: var(--sai-surface) !important;
+  color: var(--sai-ink) !important;
+  border: 1px solid var(--sai-line) !important;
+  box-shadow: none !important;
+}
+body .scorm-editorial.scorm-workbench .qc-option,
+body .scorm-editorial.scorm-workbench .qe-option { background: #0E1514 !important; border-color: var(--sai-line) !important; }
+body .scorm-editorial.scorm-workbench .qc-option.is-correct,
+body .scorm-editorial.scorm-workbench .qe-option.is-correct { background: var(--sai-brand-soft) !important; border-color: rgba(79,201,191,.4) !important; }
+body .scorm-editorial.scorm-workbench .qc-option-letter,
+body .scorm-editorial.scorm-workbench .qe-option-letter { background: var(--sai-surface-2) !important; color: var(--sai-ink-soft) !important; }
+body .scorm-editorial.scorm-workbench .qc-option.is-correct .qc-option-letter,
+body .scorm-editorial.scorm-workbench .qe-option.is-correct .qe-option-letter { background: var(--sai-brand) !important; color: var(--sai-on-brand) !important; }
+
+/* Quizmoto Reports uses Tailwind utilities rather than a page stylesheet. */
+body .scorm-editorial.scorm-workbench main .bg-white\/5,
+body .scorm-editorial.scorm-workbench main [class*="bg-white/5"],
+body .scorm-editorial.scorm-workbench main [class*="bg-white/8"] { background: var(--sai-surface) !important; }
+body .scorm-editorial.scorm-workbench main [class*="border-white/10"],
+body .scorm-editorial.scorm-workbench main [class*="border-white/20"] { border-color: var(--sai-line) !important; }
+body .scorm-editorial.scorm-workbench main [class*="text-white/40"],
+body .scorm-editorial.scorm-workbench main [class*="text-white/50"] { color: var(--sai-ink-faint) !important; }
+body .scorm-editorial.scorm-workbench main [class*="text-white"] { color: var(--sai-ink) !important; }
+
+/* ---------- Root SCORM AI login ---------- */
+body .scorm-auth-workbench {
+  --sa-bg: var(--sai-paper) !important;
+  --sa-panel: var(--sai-surface) !important;
+  --sa-panel-2: var(--sai-surface-2) !important;
+  --sa-panel-3: #0E1514 !important;
+  --sa-border: var(--sai-line) !important;
+  --sa-border-soft: var(--sai-line) !important;
+  --sa-cream: var(--sai-ink) !important;
+  --sa-soft: var(--sai-ink-soft) !important;
+  --sa-muted: var(--sai-ink-faint) !important;
+  --sa-orange: var(--sai-brand) !important;
+  --sa-yellow: var(--sai-pending) !important;
+  --sa-red: var(--sai-danger) !important;
+  color: var(--sai-ink) !important;
+  font-family: var(--sai-font) !important;
+  background: var(--sai-paper) !important;
+}
+body .scorm-auth-workbench * { font-family: var(--sai-font) !important; }
+body .scorm-auth-workbench .sa-shell { width: min(920px, calc(100% - 32px)) !important; }
+body .scorm-auth-workbench .sa-card {
+  grid-template-columns: 1fr 1fr !important;
+  border: 1px solid var(--sai-line) !important;
+  border-top: 1px solid var(--sai-line) !important;
+  border-radius: 16px !important;
+  background: var(--sai-surface) !important;
+  box-shadow: var(--sai-shadow) !important;
+}
+body .scorm-auth-workbench .sa-brand-panel {
+  border-color: var(--sai-line) !important;
+  background: #0D1413 !important;
+}
+body .scorm-auth-workbench .sa-brand-panel::after { display: none !important; }
+body .scorm-auth-workbench .sa-mark {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 10px !important;
+  background: var(--sai-brand) !important;
+  color: var(--sai-on-brand) !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  box-shadow: none !important;
+}
+body .scorm-auth-workbench .sa-kicker,
+body .scorm-auth-workbench .sa-form-kicker { color: var(--sai-brand) !important; letter-spacing: .07em !important; }
+body .scorm-auth-workbench .sa-title {
+  color: var(--sai-ink) !important;
+  font-family: var(--sai-font) !important;
+  font-size: clamp(42px, 5vw, 58px) !important;
+  line-height: 1 !important;
+  text-transform: none !important;
+  letter-spacing: -.045em !important;
+}
+body .scorm-auth-workbench .sa-title span { color: var(--sai-brand) !important; }
+body .scorm-auth-workbench .sa-copy,
+body .scorm-auth-workbench .sa-point { color: var(--sai-ink-soft) !important; text-transform: none !important; letter-spacing: 0 !important; font-size: 13px !important; }
+body .scorm-auth-workbench .sa-point-dot { background: var(--sai-brand) !important; box-shadow: none !important; }
+body .scorm-auth-workbench .sa-form-panel { background: var(--sai-surface) !important; }
+body .scorm-auth-workbench .sa-form-title { color: var(--sai-ink) !important; font-family: var(--sai-font) !important; text-transform: none !important; font-size: 24px !important; letter-spacing: -.02em !important; }
+body .scorm-auth-workbench .sa-form-sub { color: var(--sai-ink-soft) !important; }
+body .scorm-auth-workbench .sa-tabs { background: #0E1514 !important; border-color: var(--sai-line) !important; }
+body .scorm-auth-workbench .sa-tab { color: var(--sai-ink-soft) !important; }
+body .scorm-auth-workbench .sa-tab.is-active { background: var(--sai-brand-soft) !important; color: var(--sai-brand-strong) !important; border-color: rgba(79,201,191,.28) !important; }
+body .scorm-auth-workbench .sa-google-button,
+body .scorm-auth-workbench .sa-input { background: #0E1514 !important; border-color: var(--sai-line) !important; color: var(--sai-ink) !important; }
+body .scorm-auth-workbench .sa-input:focus { border-color: var(--sai-brand) !important; box-shadow: var(--sai-focus) !important; }
+body .scorm-auth-workbench .sa-submit { background: var(--sai-brand) !important; color: var(--sai-on-brand) !important; border-color: var(--sai-brand) !important; box-shadow: none !important; border-radius: 10px !important; }
+body .scorm-auth-workbench .sa-submit:hover { background: var(--sai-brand-strong) !important; transform: none !important; }
+body .scorm-auth-workbench .sa-notice { background: var(--sai-pending-soft) !important; color: var(--sai-ink-soft) !important; border-color: var(--sai-pending-line) !important; }
+body .scorm-auth-workbench .sa-notice-title { color: var(--sai-pending) !important; }
+body .scorm-auth-workbench .sa-error { background: var(--sai-danger-soft) !important; border-color: rgba(240,124,114,.32) !important; color: #FFC3BD !important; }
+body .scorm-auth-workbench .sa-divider { color: var(--sai-ink-faint) !important; }
+body .scorm-auth-workbench .sa-divider::before,
+body .scorm-auth-workbench .sa-divider::after { background: var(--sai-line) !important; }
+body .scorm-auth-workbench .sa-label,
+body .scorm-auth-workbench .sa-google-label { color: var(--sai-ink-soft) !important; }
+body .scorm-auth-workbench .sa-google-hint { color: var(--sai-ink-faint) !important; }
+
+/* Preserve the original full-screen Quizmoto live-game visual system. */
+body .quizmoto-classic-live-stage,
+body .quizmoto-classic-live-stage * { font-family: inherit; }
+
+@media (max-width: 800px) {
+  body .scorm-auth-workbench .sa-card { grid-template-columns: 1fr !important; }
+  body .scorm-auth-workbench .sa-brand-panel { border-right: 0 !important; border-bottom: 1px solid var(--sai-line) !important; }
+  body .scorm-editorial.scorm-workbench .qc-shell,
+  body .scorm-editorial.scorm-workbench .qe-shell { padding: 16px 14px 32px !important; }
+}
