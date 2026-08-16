@@ -9,7 +9,7 @@ const { featureFlags, scormMaxUploadMb } = require('../../config/featureFlags');
 const { analyzePolicy } = require('../../services/scorm/PolicyAnalysisService');
 const { planExperienceV5 } = require('../../services/scorm/ScormExperiencePlanner');
 const { buildScormPackageZip } = require('../../services/scorm/ScormAnswerTrackingPackageFinalizer');
-const { getTheme, listThemes, normalizeThemeId } = require('../../services/scorm/ScormThemeCatalog');
+const { getTheme } = require('../../services/scorm/ScormThemeCatalog');
 const { ScormPackage } = require('../../models/scorm');
 const { ensureCourseForPackage } = require('../../services/scorm/ScormCourseWorkspaceService');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
@@ -17,6 +17,12 @@ const { packageZipKey } = require('../../services/scorm/storageKeys');
 const { unpackPackage } = require('../../services/scorm/ScormUnpackService');
 const { generateQuiz } = require('../../services/QuizAiGenerationService');
 const logger = require('../../utils/logger');
+
+const AUTHOR_THEME_ID = 1;
+
+function authorTheme() {
+    return getTheme(AUTHOR_THEME_ID);
+}
 
 router.use((req, res, next) => {
     if (!featureFlags.scormAiAuthor) {
@@ -28,10 +34,12 @@ router.use((req, res, next) => {
 });
 
 router.get('/themes', auth, (_req, res) => {
+    const theme = authorTheme();
     res.json({
         ok: true,
         version: 5,
-        themes: listThemes().map((theme) => ({
+        singleTemplate: true,
+        themes: [{
             id: theme.id,
             slug: theme.slug,
             name: theme.name,
@@ -44,7 +52,7 @@ router.get('/themes', auth, (_req, res) => {
             surface: theme.surface,
             visualBg: theme.visualBg,
             visualBg2: theme.visualBg2
-        }))
+        }]
     });
 });
 
@@ -77,7 +85,7 @@ router.post('/quiz-generate', auth, async (req, res) => {
 
 router.post('/analyze', auth, async (req, res) => {
     try {
-        const { fileBase64, mimeType, detailLevel, titleHint, templateId, themeId, topic, description } = req.body || {};
+        const { fileBase64, mimeType, detailLevel, titleHint, topic, description } = req.body || {};
         const cleanTopic = String(topic || '').trim();
         const cleanDescription = String(description || '').trim();
         const brief = [
@@ -97,8 +105,7 @@ router.post('/analyze', auth, async (req, res) => {
         const max = scormMaxUploadMb() * 1024 * 1024;
         if (approxBytes > max) return res.status(413).json({ message: `Max upload ${scormMaxUploadMb()} MB` });
 
-        const selectedThemeId = normalizeThemeId(themeId || templateId || 1);
-        const selectedTheme = getTheme(selectedThemeId);
+        const selectedTheme = authorTheme();
         let analysis = await analyzePolicy({
             fileBase64: sourceBase64,
             mimeType: sourceMimeType,
@@ -106,10 +113,10 @@ router.post('/analyze', auth, async (req, res) => {
         });
         analysis = planExperienceV5(analysis);
         if ((titleHint || cleanTopic) && !analysis.title) analysis.title = titleHint || cleanTopic;
-        analysis.themeId = selectedThemeId;
+        analysis.themeId = AUTHOR_THEME_ID;
         analysis.themeName = selectedTheme.name;
         analysis.experienceVersion = 5;
-        res.json({ ok: true, analysis, templateId: selectedThemeId, theme: { id: selectedThemeId, name: selectedTheme.name, slug: selectedTheme.slug } });
+        res.json({ ok: true, analysis, templateId: AUTHOR_THEME_ID, theme: { id: AUTHOR_THEME_ID, name: selectedTheme.name, slug: selectedTheme.slug } });
     } catch (err) {
         logger.error('scorm_ai_analyze_failed', { module: 'scorm', error: err.message, code: err.code });
         const status = err.code === 'GEMINI_KEY_MISSING' ? 503 : 500;
@@ -120,9 +127,8 @@ router.post('/analyze', auth, async (req, res) => {
 router.post('/generate', auth, async (req, res) => {
     try {
         let analysis = req.body?.analysis;
-        const { fileBase64, mimeType, detailLevel, templateId, themeId, logoDataUrl, title, topic, description } = req.body || {};
-        const selectedThemeId = normalizeThemeId(themeId || templateId || analysis?.themeId || 1);
-        const selectedTheme = getTheme(selectedThemeId);
+        const { fileBase64, mimeType, detailLevel, logoDataUrl, title, topic, description } = req.body || {};
+        const selectedTheme = authorTheme();
 
         if (!analysis) {
             const cleanTopic = String(topic || '').trim();
@@ -137,14 +143,14 @@ router.post('/generate', auth, async (req, res) => {
         analysis = planExperienceV5(analysis);
         analysis = {
             ...(analysis || {}),
-            themeId: selectedThemeId,
+            themeId: AUTHOR_THEME_ID,
             themeName: selectedTheme.name,
             experienceVersion: 5
         };
         if (title) analysis.title = title;
 
         const zipBuf = await buildScormPackageZip(analysis, {
-            templateId: selectedThemeId,
+            templateId: AUTHOR_THEME_ID,
             logoDataUrl: logoDataUrl || null
         });
         const replaceId = req.body?.replacePackageId || req.body?.packageId || null;
@@ -161,7 +167,7 @@ router.post('/generate', auth, async (req, res) => {
                 source: 'ai_author',
                 standard: 'scorm_1_2',
                 byteSize: zipBuf.length,
-                templateId: selectedThemeId,
+                templateId: AUTHOR_THEME_ID,
                 analysisJson: JSON.stringify(analysis)
             });
         } else {
@@ -170,7 +176,7 @@ router.post('/generate', auth, async (req, res) => {
             pkg.source = 'ai_author';
             pkg.standard = 'scorm_1_2';
             pkg.byteSize = zipBuf.length;
-            pkg.templateId = selectedThemeId;
+            pkg.templateId = AUTHOR_THEME_ID;
             pkg.analysisJson = JSON.stringify(analysis);
             pkg.errorMessage = null;
             await pkg.save();
@@ -206,8 +212,8 @@ router.post('/generate', auth, async (req, res) => {
             entryHref: pkg.entryHref,
             standard: pkg.standard,
             title: pkg.title,
-            templateId: selectedThemeId,
-            theme: { id: selectedThemeId, name: selectedTheme.name, slug: selectedTheme.slug },
+            templateId: AUTHOR_THEME_ID,
+            theme: { id: AUTHOR_THEME_ID, name: selectedTheme.name, slug: selectedTheme.slug },
             errorMessage: pkg.errorMessage
         });
     } catch (err) {
