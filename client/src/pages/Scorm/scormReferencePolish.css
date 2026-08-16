@@ -1,0 +1,87 @@
+/* Final cleanup layer for page-local Tailwind/custom styles. */
+
+body .scorm-editorial.scorm-workbench [class*="rounded-3xl"],
+body .scorm-editorial.scorm-workbench [class*="rounded-[24px]"],
+body .scorm-editorial.scorm-workbench [class*="rounded-[28px]"] { border-radius: 14px !important; }
+body .scorm-editorial.scorm-workbench [class*="rounded-2xl"] { border-radius: 12px !important; }
+
+body .scorm-editorial.scorm-workbench [class*="bg-[radial-gradient"],
+body .scorm-editorial.scorm-workbench [class*="bg-[linear-gradient"] {
+  background: var(--sai-surface) !important;
+  border-color: var(--sai-line) !important;
+  box-shadow: none !important;
+}
+
+body .scorm-editorial.scorm-workbench [class*="border-[#9a"],
+body .scorm-editorial.scorm-workbench [class*="border-[#89"],
+body .scorm-editorial.scorm-workbench [class*="border-[#78"] { border-color: var(--sai-line) !important; }
+
+body .scorm-editorial.scorm-workbench [class*="text-[#fff"],
+body .scorm-editorial.scorm-workbench [class*="text-[#f4"],
+body .scorm-editorial.scorm-workbench [class*="text-[#f2"] { color: var(--sai-ink) !important; }
+body .scorm-editorial.scorm-workbench [class*="text-[#e7"],
+body .scorm-editorial.scorm-workbench [class*="text-[#e5"],
+body .scorm-editorial.scorm-workbench [class*="text-[#d4"],
+body .scorm-editorial.scorm-workbench [class*="text-[#c9"],
+body .scorm-editorial.scorm-workbench [class*="text-[#b9"] { color: var(--sai-ink-soft) !important; }
+
+/* Pending / locked state cards keep the amber semantic signal from the reference. */
+body .scorm-editorial.scorm-workbench [class*="bg-[#2b1b10]"],
+body .scorm-editorial.scorm-workbench [class*="bg-[#3b240f]"] {
+  background: var(--sai-pending-soft) !important;
+  border-color: var(--sai-pending-line) !important;
+}
+body .scorm-editorial.scorm-workbench [class*="text-[#ffc45c]"],
+body .scorm-editorial.scorm-workbench [class*="text-[#ffd27b]"] { color: var(--sai-pending) !important; }
+
+/* Authoring panels */
+body .scorm-editorial.scorm-workbench .scorm-author-dropzone {
+  background: #0E1514 !important;
+  border: 1px dashed rgba(79,201,191,.28) !important;
+  color: var(--sai-ink-soft) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-author-dropzone:hover { background: var(--sai-brand-soft) !important; }
+body .scorm-editorial.scorm-workbench .scorm-author-depth {
+  background: var(--sai-surface) !important;
+  border-color: var(--sai-line) !important;
+  color: var(--sai-ink-soft) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-author-depth.is-selected {
+  background: var(--sai-brand-soft) !important;
+  border-color: rgba(79,201,191,.38) !important;
+  color: var(--sai-brand-strong) !important;
+}
+
+/* Knowledge-check editor */
+body .scorm-editorial.scorm-workbench article[class*="bg-[#1c130d]"] {
+  background: var(--sai-surface) !important;
+  border-color: var(--sai-line) !important;
+}
+body .scorm-editorial.scorm-workbench article[class*="bg-[#1c130d]"] > div:first-child {
+  background: #0E1514 !important;
+  border-color: var(--sai-line) !important;
+}
+
+/* Quizmoto integrated module */
+body .scorm-editorial.scorm-workbench a[href="/scorm/quizmoto"],
+body .scorm-editorial.scorm-workbench a[href="/scorm/quizmoto/create"] { text-decoration: none !important; }
+
+/* Quizmoto report utility classes. */
+body .scorm-editorial.scorm-workbench main [class*="bg-quizmoto-purple"],
+body .scorm-editorial.scorm-workbench main [class*="bg-purple"],
+body .scorm-editorial.scorm-workbench main [class*="bg-blue"] { background: var(--sai-brand-soft) !important; }
+body .scorm-editorial.scorm-workbench main [class*="text-quizmoto-yellow"],
+body .scorm-editorial.scorm-workbench main [class*="text-yellow"] { color: var(--sai-pending) !important; }
+body .scorm-editorial.scorm-workbench main [class*="text-green"] { color: var(--sai-unlocked) !important; }
+body .scorm-editorial.scorm-workbench main [class*="bg-green"] { background: var(--sai-unlocked-soft) !important; }
+body .scorm-editorial.scorm-workbench main [class*="text-red"] { color: var(--sai-danger) !important; }
+body .scorm-editorial.scorm-workbench main [class*="bg-red"] { background: var(--sai-danger-soft) !important; }
+
+/* Keep interactive cards calm: Gamma-like information hierarchy, not gaming chrome. */
+body .scorm-editorial.scorm-workbench main [class*="hover:-translate"],
+body .scorm-editorial.scorm-workbench main [class*="hover:scale"] { transform: none !important; }
+
+@media (max-width: 760px) {
+  body .scorm-editorial.scorm-workbench .scorm-page-hero { padding-top: 16px !important; padding-bottom: 16px !important; }
+  body .scorm-editorial.scorm-workbench main { font-size: 14px !important; }
+}
