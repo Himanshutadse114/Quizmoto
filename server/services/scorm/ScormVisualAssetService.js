@@ -3,6 +3,12 @@ const path = require('path');
 const crypto = require('crypto');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
+const logger = require('../../utils/logger');
+const { planSvgScenes } = require('./ScormSvgScenePlanner');
+const {
+    paletteFromAnalysis,
+    renderSmartSvg
+} = require('./ScormSmartSvgRenderer');
 
 const execFileAsync = promisify(execFile);
 
@@ -69,7 +75,7 @@ function readAsset(outputDir, file) {
     };
 }
 
-async function generateVisualAssets(analysis) {
+async function generateLegacyVisualAssets(analysis) {
     const root = process.env.SCORM_VISUAL_TMP_DIR || path.join(__dirname, '../../data/tmp');
     ensureDir(root);
     const jobId = crypto.randomBytes(8).toString('hex');
@@ -104,7 +110,8 @@ async function generateVisualAssets(analysis) {
                 desktopBody: desktop.body,
                 mobileFile: mobile ? mobile.file : null,
                 mobileZipPath: mobile ? mobile.zipPath : null,
-                mobileBody: mobile ? mobile.body : null
+                mobileBody: mobile ? mobile.body : null,
+                visualEngine: 'legacy-python'
             };
         }).filter(Boolean);
     } finally {
@@ -112,7 +119,75 @@ async function generateVisualAssets(analysis) {
     }
 }
 
+function smartSvgFilename(index, mobile = false) {
+    const number = String(index + 1).padStart(3, '0');
+    return `smart-visual-${number}${mobile ? '-mobile' : ''}.svg`;
+}
+
+async function generateSmartSvgAssets(analysis = {}) {
+    const slides = Array.isArray(analysis.slides) ? analysis.slides : [];
+    if (!slides.length) return [];
+
+    const planned = await planSvgScenes(analysis);
+    const palette = paletteFromAnalysis(analysis);
+
+    return slides.map((slide, index) => {
+        const spec = planned[index];
+        const desktopFile = smartSvgFilename(index, false);
+        const mobileFile = smartSvgFilename(index, true);
+        const desktopSvg = renderSmartSvg(spec, slide, { palette, mobile: false });
+        const mobileSvg = renderSmartSvg(spec, slide, { palette, mobile: true });
+        const desktopBody = Buffer.from(desktopSvg, 'utf8');
+        const mobileBody = Buffer.from(mobileSvg, 'utf8');
+
+        return {
+            index,
+            layout: String(slide?.layout || 'cards'),
+            screenType: String(slide?.screenType || ''),
+            file: desktopFile,
+            zipPath: `assets/visuals/${desktopFile}`,
+            body: desktopBody,
+            desktopFile,
+            desktopZipPath: `assets/visuals/${desktopFile}`,
+            desktopBody,
+            mobileFile,
+            mobileZipPath: `assets/visuals/${mobileFile}`,
+            mobileBody,
+            visualEngine: 'gemini-smart-svg',
+            sceneSpec: spec
+        };
+    });
+}
+
+function useLegacyEngine() {
+    const engine = String(process.env.SCORM_VISUAL_ENGINE || '').trim().toLowerCase();
+    if (engine === 'legacy-python' || engine === 'python') return true;
+    return String(process.env.SCORM_SMART_SVG_ENABLED || 'true').trim().toLowerCase() === 'false';
+}
+
+async function generateVisualAssets(analysis) {
+    if (useLegacyEngine()) {
+        logger.info('scorm_visual_engine_selected', { module: 'scorm', engine: 'legacy-python' });
+        return generateLegacyVisualAssets(analysis);
+    }
+
+    logger.info('scorm_visual_engine_selected', { module: 'scorm', engine: 'gemini-smart-svg' });
+    try {
+        return await generateSmartSvgAssets(analysis);
+    } catch (err) {
+        // Smart SVG itself has a local planner fallback. Reaching this catch means
+        // rendering failed unexpectedly, so fail closed instead of silently
+        // returning to the low-fidelity vector engine the product is replacing.
+        logger.error('scorm_smart_svg_generation_failed', { module: 'scorm', error: err.message });
+        throw err;
+    }
+}
+
 module.exports = {
     generateVisualAssets,
+    generateSmartSvgAssets,
+    generateLegacyVisualAssets,
+    smartSvgFilename,
+    useLegacyEngine,
     runVisualGenerator
 };
