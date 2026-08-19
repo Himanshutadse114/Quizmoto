@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { Check, ChevronLeft, ChevronRight, FileText, Palette, Sparkles } from 'lucide-react';
+import {
+  Check, ChevronLeft, ChevronRight, FileUp, Loader2, Palette, Play, Sparkles, Wand2
+} from 'lucide-react';
 import { apiUrl } from '../../config';
 import AuthorQuizEditor from './AuthorQuizEditor';
 import {
@@ -12,16 +14,11 @@ import {
   SCREEN_TYPES,
   courseTheme,
   normalizeCourseSlide,
-  wordCount
+  visualFitIssues
 } from './courseExperienceV5';
 
-const DETAILS = [
-  ['detailed', 'Detailed', '8–12 experiences'],
-  ['condensed', 'Condensed', '5–7 experiences'],
-  ['summary', 'Summary', '3–4 experiences']
-];
-
-const DRAFT_KEY = 'quizmoto_scorm_course_experience_v5';
+const DRAFT_KEY = 'quizmoto_scorm_author_visual_draft_v2';
+const GAMMA_THEME_ID = 1;
 
 function toBase64(file) {
   return new Promise((resolve, reject) => {
@@ -64,6 +61,8 @@ function cleanForGenerate(analysis) {
   if (!analysis) return null;
   return {
     ...analysis,
+    themeId: GAMMA_THEME_ID,
+    themeName: 'Gamma Editorial',
     slides: (analysis.slides || []).map(({ visualAsset, mobileVisualAsset, ...slide }) => slide),
     quiz: (analysis.quiz || []).map((question) => ({
       ...question,
@@ -89,49 +88,150 @@ function validateQuiz(quiz) {
   return '';
 }
 
-function ThemeCard({ theme, selected, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`relative overflow-hidden rounded-2xl border p-3 text-left transition-all ${selected ? 'border-white/50 ring-2 ring-white/15 translate-y-[-1px]' : 'border-white/10 hover:border-white/25'}`}
-      style={{ background: `linear-gradient(145deg,${theme.bg},${theme.bg2})` }}
-    >
-      {selected && <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full flex items-center justify-center text-white" style={{ background: theme.primary }}><Check size={13} /></div>}
-      <div className="h-16 rounded-xl border border-white/10 relative overflow-hidden mb-3" style={{ background: `radial-gradient(circle at 72% 20%,${theme.accent}38,transparent 50%),linear-gradient(135deg,${theme.surface},${theme.visual})` }}>
-        <div className="absolute left-3 bottom-3 flex gap-1.5"><span className="w-5 h-5 rounded-md" style={{ background: theme.primary }} /><span className="w-5 h-5 rounded-md" style={{ background: theme.accent }} /><span className="w-5 h-5 rounded-md border border-white/20" style={{ background: theme.visual }} /></div>
-      </div>
-      <div className="text-[12px] font-semibold text-white">{theme.name}</div>
-      <div className="text-[10px] text-white/50 mt-1">{theme.description}</div>
-    </button>
-  );
-}
+function LivePptCanvas({ slide, index, total, courseTitle, onChange }) {
+  const theme = courseTheme(GAMMA_THEME_ID);
+  const points = Array.isArray(slide?.keyPoints) ? slide.keyPoints : [];
+  const issues = visualFitIssues(slide);
 
-function MiniExperiencePreview({ analysis, themeId, selected }) {
-  const theme = courseTheme(themeId);
-  const slide = analysis?.slides?.[selected];
-  if (!slide) return null;
   return (
-    <div className="rounded-[24px] border border-white/10 overflow-hidden shadow-2xl" style={{ background: `linear-gradient(160deg,${theme.bg2},${theme.bg})` }}>
-      <div className="h-12 px-4 flex items-center gap-3 border-b border-white/10">
-        <div className="w-8 h-8 rounded-xl text-white text-xs font-bold flex items-center justify-center" style={{ background: `linear-gradient(145deg,${theme.primary},${theme.dark})` }}>Q</div>
-        <div className="min-w-0"><div className="text-xs font-semibold text-white truncate">{analysis.title}</div><div className="text-[9px] text-white/40">Course Experience V5 · {theme.name}</div></div>
-        <div className="ml-auto w-24 h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full" style={{ width: `${Math.max(8, ((selected + 1) / Math.max(1, analysis.slides.length)) * 100)}%`, background: `linear-gradient(90deg,${theme.primary},${theme.accent})` }} /></div>
-      </div>
-      <div className="p-4 md:p-5 grid lg:grid-cols-[.74fr_1.26fr] gap-4 min-h-[360px]">
-        <div className="rounded-2xl border border-white/10 p-5 flex flex-col justify-center" style={{ background: theme.surface }}>
-          <div className="text-[9px] uppercase tracking-[.14em] font-bold mb-2" style={{ color: theme.accent }}>{slide.screenType} · {slide.layout}</div>
-          <h3 className="text-[25px] leading-[1.03] tracking-[-.04em] text-white font-semibold">{slide.title}</h3>
-          <p className="text-[13px] leading-relaxed text-white/65 mt-3">{slide.introText || slide.content}</p>
-          <div className="mt-4 flex flex-wrap gap-1.5">{(slide.keyPoints || []).slice(0, 4).map((_, i) => <span key={i} className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[9px] text-white/60" style={{ background: `${theme.primary}18` }}>Explore {i + 1}</span>)}</div>
-        </div>
-        <div className="rounded-2xl border border-white/10 relative overflow-hidden min-h-[300px] flex items-center justify-center" style={{ background: `radial-gradient(circle at 70% 20%,${theme.accent}24,transparent 42%),linear-gradient(145deg,${theme.visual},${theme.bg2})` }}>
-          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: `linear-gradient(${theme.accent}22 1px,transparent 1px),linear-gradient(90deg,${theme.accent}22 1px,transparent 1px)`, backgroundSize: '28px 28px' }} />
-          <div className="relative w-44 h-44 rounded-full flex items-center justify-center text-center p-6 text-white font-semibold shadow-2xl" style={{ background: `radial-gradient(circle at 30% 20%,${theme.accent},transparent 46%),linear-gradient(145deg,${theme.primary},${theme.dark})` }}>
-            <div><div className="text-[10px] uppercase tracking-[.12em] opacity-65 mb-2">{slide.visualMetaphor}</div><div className="text-lg leading-tight">{slide.visualTitle}</div></div>
+    <div className="w-full">
+      <div
+        className="relative mx-auto rounded-[18px] overflow-hidden shadow-[0_20px_60px_rgba(40,40,36,.12)] border"
+        style={{
+          background: theme.bg,
+          borderColor: theme.accent,
+          maxWidth: 980,
+          minHeight: 520
+        }}
+      >
+        <div className="h-12 px-5 flex items-center gap-3 border-b" style={{ borderColor: theme.accent, background: 'rgba(231,231,228,.96)' }}>
+          <div className="w-7 h-7 rounded-md text-white text-[11px] font-black flex items-center justify-center" style={{ background: theme.primary }}>Q</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[12px] font-semibold truncate" style={{ color: theme.primary }}>{courseTitle}</div>
+          </div>
+          <div className="text-[10px] font-bold uppercase tracking-wider" style={{ color: theme.body }}>
+            Part {index + 1} of {total}
+          </div>
+          <div className="w-28 h-1.5 rounded-full overflow-hidden" style={{ background: theme.accent }}>
+            <div className="h-full rounded-full" style={{ width: `${Math.max(8, ((index + 1) / Math.max(1, total)) * 100)}%`, background: theme.primary }} />
           </div>
         </div>
+
+        <div className="grid md:grid-cols-[1.15fr_.85fr] gap-0 min-h-[440px]">
+          <div className="p-7 md:p-9 flex flex-col justify-center">
+            <div className="text-[10px] font-black uppercase tracking-[.12em] mb-2" style={{ color: theme.body }}>
+              Section {index + 1} · {slide.layout || 'concept'}
+            </div>
+            <input
+              value={slide.title || ''}
+              onChange={(e) => onChange({ title: e.target.value, visualTitle: e.target.value })}
+              className="w-full bg-transparent border-0 outline-none font-black leading-[1.05] tracking-tight mb-4"
+              style={{ color: theme.primary, fontSize: 'clamp(28px, 3.2vw, 42px)' }}
+              placeholder="Slide title — click to edit"
+            />
+            <textarea
+              value={slide.introText || slide.content || ''}
+              onChange={(e) => onChange({ introText: e.target.value, content: e.target.value })}
+              rows={4}
+              className="w-full bg-transparent border-0 outline-none resize-none leading-relaxed text-[15px]"
+              style={{ color: theme.body }}
+              placeholder="Learner-facing explanation — edit directly on the slide"
+            />
+
+            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {points.map((point, i) => (
+                <div
+                  key={i}
+                  className="rounded-lg px-3 py-2.5 border"
+                  style={{ background: 'rgba(255,255,255,.35)', borderColor: theme.accent }}
+                >
+                  <div className="text-[9px] font-black uppercase tracking-wider mb-1" style={{ color: theme.body }}>
+                    {String(i + 1).padStart(2, '0')}
+                  </div>
+                  <input
+                    value={point}
+                    onChange={(e) => {
+                      const next = [...points];
+                      next[i] = e.target.value;
+                      onChange({ keyPoints: next });
+                    }}
+                    className="w-full bg-transparent border-0 outline-none text-[13px] font-semibold"
+                    style={{ color: theme.primary }}
+                    placeholder={`Point ${i + 1}`}
+                  />
+                </div>
+              ))}
+              {points.length < 6 && (
+                <button
+                  type="button"
+                  onClick={() => onChange({ keyPoints: [...points, ''] })}
+                  className="rounded-lg px-3 py-2.5 border border-dashed text-[12px] font-semibold"
+                  style={{ borderColor: theme.accent, color: theme.body }}
+                >
+                  + Add point
+                </button>
+              )}
+            </div>
+
+            {issues.length > 0 && (
+              <div className="mt-4 text-[11px] leading-relaxed" style={{ color: '#8B4C3E' }}>
+                {issues[0]}
+              </div>
+            )}
+          </div>
+
+          <div
+            className="relative min-h-[280px] md:min-h-full flex flex-col items-center justify-center p-6"
+            style={{ background: theme.primary }}
+          >
+            <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at 70% 20%,${theme.accent},transparent 55%)` }} />
+            <div className="relative z-10 text-center">
+              <div className="w-28 h-28 mx-auto rounded-2xl border-2 border-white/20 flex items-center justify-center mb-4" style={{ background: 'rgba(255,255,255,.08)' }}>
+                <span className="text-white/90 text-3xl font-black">{(slide.visualMetaphor || 'shield').slice(0, 1).toUpperCase()}</span>
+              </div>
+              <input
+                value={slide.visualTitle || ''}
+                onChange={(e) => onChange({ visualTitle: e.target.value })}
+                className="w-full max-w-[220px] mx-auto bg-transparent border-0 outline-none text-center text-white font-bold text-sm"
+                placeholder="Visual title"
+              />
+              <div className="text-[10px] text-white/50 mt-2 uppercase tracking-wider">{slide.visualMetaphor || 'shield'} · {slide.layout}</div>
+            </div>
+            <div className="absolute bottom-4 left-4 right-4 flex gap-2 justify-center flex-wrap">
+              <select
+                value={slide.layout || 'cards'}
+                onChange={(e) => onChange({ layout: e.target.value })}
+                className="text-[10px] rounded-md px-2 py-1 bg-white/10 text-white border border-white/20"
+              >
+                {COURSE_LAYOUTS.map(([id, label]) => <option key={id} value={id} className="text-black">{label}</option>)}
+              </select>
+              <select
+                value={slide.visualMetaphor || 'shield'}
+                onChange={(e) => onChange({ visualMetaphor: e.target.value })}
+                className="text-[10px] rounded-md px-2 py-1 bg-white/10 text-white border border-white/20"
+              >
+                {METAPHORS.map(([id, label]) => <option key={id} value={id} className="text-black">{label}</option>)}
+              </select>
+              <select
+                value={slide.screenType || 'concept'}
+                onChange={(e) => onChange({ screenType: e.target.value })}
+                className="text-[10px] rounded-md px-2 py-1 bg-white/10 text-white border border-white/20"
+              >
+                {SCREEN_TYPES.map(([id, label]) => <option key={id} value={id} className="text-black">{label}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-12 px-5 flex items-center justify-between border-t" style={{ borderColor: theme.accent, background: 'rgba(231,231,228,.96)' }}>
+          <span className="text-[11px] font-semibold" style={{ color: theme.body }}>Previous</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: theme.body }}>Gamma Editorial</span>
+          <span className="text-[11px] font-semibold px-3 py-1 rounded-md text-white" style={{ background: theme.primary }}>Next</span>
+        </div>
       </div>
+      <p className="text-center text-[11px] text-slate-500 mt-3">
+        Edit title, body and points directly on the slide — this is how learners see the course.
+      </p>
     </div>
   );
 }
@@ -146,7 +246,7 @@ export default function AuthorVisual() {
   const [topic, setTopic] = useState('');
   const [description, setDescription] = useState('');
   const [detailLevel, setDetailLevel] = useState('detailed');
-  const [themeId, setThemeId] = useState(1);
+  const [themeId] = useState(GAMMA_THEME_ID);
   const [analysis, setAnalysis] = useState(null);
   const [selected, setSelected] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -160,7 +260,6 @@ export default function AuthorVisual() {
       const stored = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
       if (stored?.analysis) {
         setAnalysis(normalizeAnalysis(stored.analysis));
-        setThemeId(Number(stored.themeId) || 1);
         setDetailLevel(stored.detailLevel || 'detailed');
       }
     } catch (_) {}
@@ -172,7 +271,6 @@ export default function AuthorVisual() {
     axios.get(apiUrl(`/api/scorm/packages/${editId}/analysis`), { headers })
       .then((res) => {
         setAnalysis(normalizeAnalysis(res.data.analysis || {}));
-        setThemeId(Number(res.data.templateId) || Number(res.data.analysis?.themeId) || 1);
         setSelected(0);
       })
       .catch((err) => setError(err.response?.data?.message || err.message))
@@ -181,8 +279,8 @@ export default function AuthorVisual() {
 
   useEffect(() => {
     if (!analysis || editId) return;
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ analysis, themeId, detailLevel })); } catch (_) {}
-  }, [analysis, themeId, detailLevel, editId]);
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ analysis, themeId: GAMMA_THEME_ID, detailLevel })); } catch (_) {}
+  }, [analysis, detailLevel, editId]);
 
   const hasSource = Boolean(file || topic.trim() || description.trim());
 
@@ -197,11 +295,11 @@ export default function AuthorVisual() {
         fileBase64,
         mimeType: file?.type || '',
         detailLevel,
-        templateId: themeId
+        templateId: GAMMA_THEME_ID
       }, { headers, timeout: 180000 });
       setAnalysis(normalizeAnalysis(res.data.analysis));
       setSelected(0);
-      setNotice('Learning blueprint created. Review the screens and knowledge checks before generating the package.');
+      setNotice('Learning blueprint ready. Edit slides on the live canvas, then generate the package.');
     } catch (err) {
       setError(err.response?.data?.message || err.message);
     } finally { setBusy(false); }
@@ -228,8 +326,8 @@ export default function AuthorVisual() {
     setBusy(true); setError(''); setNotice('');
     try {
       const res = await axios.post(apiUrl('/api/scorm/author/generate'), {
-        analysis: cleanForGenerate({ ...analysis, themeId, themeName: courseTheme(themeId).name }),
-        templateId: themeId,
+        analysis: cleanForGenerate(analysis),
+        templateId: GAMMA_THEME_ID,
         ...(editId ? { replacePackageId: editId } : {})
       }, { headers, timeout: 180000 });
       try { localStorage.removeItem(DRAFT_KEY); } catch (_) {}
@@ -242,100 +340,122 @@ export default function AuthorVisual() {
   };
 
   const slide = analysis?.slides?.[selected];
-  const theme = courseTheme(themeId);
+  const theme = courseTheme(GAMMA_THEME_ID);
 
   return (
     <div className="min-h-screen max-w-[1500px] mx-auto p-4 md:p-7 pb-24 relative z-10">
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">SCORM AI · Course Experience V5</div>
-          <h1 className="text-3xl md:text-[38px] font-semibold tracking-[-.05em] mt-1">AI Course Author</h1>
-          <p className="text-sm text-slate-400 mt-2 max-w-2xl">Create a course from a topic and description, a source document, or both. Refine learning screens and edit every generated knowledge-check question before publishing.</p>
+          <h1 className="text-2xl md:text-3xl font-semibold text-white mt-1">{editId ? 'Edit course' : 'Create visual course'}</h1>
+          <p className="text-sm text-slate-400 mt-1 max-w-xl">Edit slides on the live Gamma canvas — same look learners see. Knowledge checks stay below.</p>
         </div>
-        <div className="flex gap-2"><Link to="/scorm/visual-studio" className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold">Visual Studio</Link>{analysis && <button type="button" onClick={generate} disabled={busy} className="scorm-button-primary px-5 py-2.5 text-xs font-semibold inline-flex items-center gap-2 disabled:opacity-50"><Sparkles size={15} />{busy ? 'Building…' : editId ? 'Rebuild course' : 'Generate SCORM'}</button>}</div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+            <Palette size={14} className="text-white/60" />
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-white/40 font-bold">Theme</div>
+              <div className="text-xs font-semibold text-white">Gamma Editorial</div>
+            </div>
+            <span className="w-6 h-6 rounded-md border border-white/20" style={{ background: `linear-gradient(145deg,${theme.bg},${theme.primary})` }} />
+          </div>
+          {analysis && (
+            <button type="button" onClick={generate} disabled={busy} className="scorm-button-primary inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold disabled:opacity-50">
+              {busy ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+              {editId ? 'Rebuild package' : 'Generate package'}
+            </button>
+          )}
+        </div>
       </div>
 
-      {error && <div className="scorm-alert-danger rounded-xl border p-3 text-sm mb-5">{error}</div>}
-      {notice && <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/25 p-3 text-sm text-emerald-100 mb-5 inline-flex items-center gap-2"><Check size={15} />{notice}</div>}
+      {error && <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div>}
+      {notice && <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">{notice}</div>}
 
-      {!analysis && !editId && (
-        <div className="grid xl:grid-cols-[.9fr_1.1fr] gap-5 items-start">
-          <section className="scorm-panel rounded-3xl border p-5 md:p-6 space-y-5">
-            <div>
-              <div className="flex items-center gap-2 text-sm font-semibold"><Sparkles size={18} />Create from a brief</div>
-              <div className="grid gap-3 mt-3">
-                <div><label className="block text-[10px] uppercase tracking-[.12em] text-slate-500 font-semibold mb-2">Topic</label><input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. Phishing awareness for employees" className="w-full p-3 text-sm" /></div>
-                <div><label className="block text-[10px] uppercase tracking-[.12em] text-slate-500 font-semibold mb-2">Description / learning context</label><textarea rows={5} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the audience, learning goal, key points, scenarios or behaviours the course should cover." className="w-full p-3 text-sm leading-relaxed resize-y" /></div>
-              </div>
+      {!analysis && (
+        <section className="scorm-panel rounded-3xl border p-6 max-w-2xl">
+          <div className="text-sm font-semibold text-white mb-4">Source material</div>
+          <div className="space-y-3">
+            <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Course topic" className="w-full p-3 text-sm rounded-xl" />
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="Brief description or learning goals" className="w-full p-3 text-sm rounded-xl" />
+            <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
+              <FileUp size={16} />
+              <span>{file ? file.name : 'Upload policy / source (optional)'}</span>
+              <input type="file" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+            </label>
+            <div className="flex gap-2">
+              {['concise', 'detailed', 'comprehensive'].map((level) => (
+                <button key={level} type="button" onClick={() => setDetailLevel(level)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${detailLevel === level ? 'bg-white text-black border-white' : 'border-white/15 text-white/60'}`}>{level}</button>
+              ))}
             </div>
-
-            <div className="flex items-center gap-3 text-[10px] uppercase tracking-[.12em] text-slate-600"><span className="h-px flex-1 bg-current opacity-40" /><span>Optional source document</span><span className="h-px flex-1 bg-current opacity-40" /></div>
-
-            <div>
-              <label className="rounded-2xl border border-dashed min-h-[130px] flex flex-col items-center justify-center text-center cursor-pointer transition-colors px-5 scorm-author-dropzone">
-                <FileText size={25} className="text-slate-500" />
-                <div className="text-sm font-semibold mt-3">{file ? file.name : 'Choose PDF or PowerPoint'}</div>
-                <div className="text-[11px] text-slate-500 mt-1">Add a document when the course needs to stay grounded in existing source material.</div>
-                <input type="file" className="hidden" accept=".pdf,.ppt,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-              </label>
-              {file && <button type="button" onClick={() => setFile(null)} className="mt-2 text-xs text-red-300 hover:text-red-200 font-semibold">Remove document</button>}
-            </div>
-
-            <div>
-              <div className="text-[10px] uppercase tracking-[.12em] text-slate-500 font-semibold mb-2">Course depth</div>
-              <div className="grid grid-cols-3 gap-2">{DETAILS.map(([id, label, hint]) => <button key={id} type="button" onClick={() => setDetailLevel(id)} className={`rounded-xl border px-3 py-3 text-left scorm-author-depth ${detailLevel === id ? 'is-selected' : ''}`}><div className="text-xs font-semibold">{label}</div><div className="text-[9px] text-slate-500 mt-1">{hint}</div></button>)}</div>
-            </div>
-
-            <button type="button" onClick={analyze} disabled={!hasSource || busy} className="scorm-button-primary w-full py-3.5 text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-40"><Sparkles size={17} />{busy ? 'Designing learning experience…' : 'Analyse & design course'}</button>
-          </section>
-
-          <section className="scorm-panel rounded-3xl border p-5 md:p-6">
-            <div className="flex items-center gap-2"><Palette size={18} /><div><div className="text-sm font-semibold">Choose course colour theme</div><div className="text-[11px] text-slate-500 mt-0.5">This controls the learner shell, backgrounds, illustrations, controls and vector artwork.</div></div></div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4 gap-3 mt-4">{COURSE_THEMES.map((item) => <ThemeCard key={item.id} theme={item} selected={themeId === item.id} onClick={() => setThemeId(item.id)} />)}</div>
-          </section>
-        </div>
+            <button type="button" onClick={analyze} disabled={busy || !hasSource} className="scorm-button-primary inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold disabled:opacity-50">
+              {busy ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
+              Build learning blueprint
+            </button>
+          </div>
+        </section>
       )}
 
-      {editId && busy && !analysis && <div className="scorm-panel rounded-3xl border p-10 text-center text-slate-400">Loading editable course blueprint…</div>}
-
       {analysis && slide && (
-        <div className="space-y-5">
-          <section className="scorm-panel rounded-3xl border p-4 md:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <div><div className="text-[10px] uppercase tracking-[.12em] text-slate-500 font-semibold">Course theme</div><div className="text-sm font-semibold mt-1">{theme.name}</div></div>
-              <div className="flex flex-wrap gap-2">{COURSE_THEMES.map((item) => <button key={item.id} type="button" title={item.name} onClick={() => setThemeId(item.id)} className={`w-9 h-9 rounded-xl border-2 transition-transform ${themeId === item.id ? 'border-white scale-110' : 'border-white/10'}`} style={{ background: `linear-gradient(145deg,${item.primary},${item.accent})` }} />)}</div>
-            </div>
-            <MiniExperiencePreview analysis={analysis} themeId={themeId} selected={selected} />
-          </section>
-
-          <div className="grid xl:grid-cols-[230px_minmax(0,1fr)_360px] gap-4 items-start">
-            <aside className="scorm-panel rounded-3xl border p-3 xl:sticky xl:top-24 max-h-[74vh] overflow-auto">
-              <div className="text-[10px] uppercase tracking-[.12em] text-slate-500 font-semibold px-2 py-2">Learning experiences</div>
-              {analysis.slides.map((item, i) => <button key={i} type="button" onClick={() => setSelected(i)} className={`w-full text-left rounded-xl px-3 py-3 mb-1 border ${selected === i ? 'bg-[#122541] border-[#315a8b]' : 'border-transparent hover:bg-[#0d1928]'}`}><div className="text-[9px] uppercase tracking-[.1em] text-slate-500">{String(i + 1).padStart(2, '0')} · {item.screenType || item.layout}</div><div className="text-xs font-semibold truncate mt-1">{item.title}</div></button>)}
+        <div className="space-y-6">
+          <div className="grid xl:grid-cols-[200px_minmax(0,1fr)] gap-4 items-start">
+            <aside className="scorm-panel rounded-2xl border p-2 xl:sticky xl:top-24 max-h-[70vh] overflow-auto">
+              <div className="text-[10px] uppercase tracking-[.12em] text-slate-500 font-semibold px-2 py-2">Slides</div>
+              {analysis.slides.map((item, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setSelected(i)}
+                  className={`w-full text-left rounded-xl px-3 py-2.5 mb-1 border ${selected === i ? 'bg-[#122541] border-[#315a8b]' : 'border-transparent hover:bg-[#0d1928]'}`}
+                >
+                  <div className="text-[9px] uppercase tracking-[.1em] text-slate-500">{String(i + 1).padStart(2, '0')} · {item.layout}</div>
+                  <div className="text-xs font-semibold truncate mt-0.5">{item.title}</div>
+                </button>
+              ))}
             </aside>
 
-            <main className="scorm-panel rounded-3xl border p-5 min-w-0">
-              <div className="flex items-center justify-between gap-3 mb-4"><div><div className="text-[10px] uppercase tracking-[.12em] text-slate-500 font-semibold">Screen {selected + 1}</div><h2 className="text-xl font-semibold mt-1">{slide.title}</h2></div><div className="flex gap-2"><button type="button" disabled={selected === 0} onClick={() => setSelected((v) => Math.max(0, v - 1))} className="scorm-button-secondary p-2.5 disabled:opacity-30"><ChevronLeft size={16} /></button><button type="button" disabled={selected >= analysis.slides.length - 1} onClick={() => setSelected((v) => Math.min(analysis.slides.length - 1, v + 1))} className="scorm-button-secondary p-2.5 disabled:opacity-30"><ChevronRight size={16} /></button></div></div>
-              <div className="rounded-2xl border border-[#26374d] bg-[#08111c] p-4">
-                <div className="text-[10px] uppercase tracking-[.12em] text-slate-500 font-semibold">Initial learner context</div><div className="text-sm text-slate-300 leading-relaxed mt-2">{slide.introText || slide.content}</div>
-                {!!slide.revealText && <><div className="text-[10px] uppercase tracking-[.12em] text-slate-500 font-semibold mt-5">Progressive reveal</div><div className="text-sm text-slate-400 leading-relaxed mt-2">{slide.revealText}</div></>}
-                <div className="mt-5 grid sm:grid-cols-2 gap-2">{(slide.keyPoints || []).map((point, i) => <div key={i} className="rounded-xl border border-[#26374d] bg-[#0d1928] px-3 py-3 text-xs text-slate-300"><span className="font-bold mr-2" style={{ color: theme.accent }}>{i + 1}</span>{point}</div>)}</div>
+            <div className="min-w-0 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <input
+                  value={analysis.title || ''}
+                  onChange={(e) => setAnalysis((prev) => prev ? { ...prev, title: e.target.value } : prev)}
+                  className="flex-1 bg-transparent border-0 outline-none text-lg font-semibold text-white"
+                  placeholder="Course title"
+                />
+                <div className="flex gap-2">
+                  <button type="button" disabled={selected === 0} onClick={() => setSelected((v) => Math.max(0, v - 1))} className="scorm-button-secondary p-2.5 disabled:opacity-30"><ChevronLeft size={16} /></button>
+                  <button type="button" disabled={selected >= analysis.slides.length - 1} onClick={() => setSelected((v) => Math.min(analysis.slides.length - 1, v + 1))} className="scorm-button-secondary p-2.5 disabled:opacity-30"><ChevronRight size={16} /></button>
+                </div>
               </div>
-            </main>
 
-            <aside className="scorm-panel rounded-3xl border p-4 space-y-4 xl:sticky xl:top-24 max-h-[74vh] overflow-auto">
-              <div><label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Screen title</label><input value={slide.title || ''} onChange={(e) => updateSlide({ title: e.target.value })} className="w-full p-2.5 text-sm" /></div>
-              <div><label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Screen type</label><select value={slide.screenType || 'concept'} onChange={(e) => updateSlide({ screenType: e.target.value })} className="w-full p-2.5 text-sm">{SCREEN_TYPES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></div>
-              <div><label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Initial context</label><textarea rows={4} value={slide.introText || ''} onChange={(e) => updateSlide({ introText: e.target.value })} className="w-full p-2.5 text-sm leading-relaxed" /><div className="text-[10px] text-slate-500 mt-1">{wordCount(slide.introText)} words · keep this concise</div></div>
-              <div><label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Progressive reveal</label><textarea rows={5} value={slide.revealText || ''} onChange={(e) => updateSlide({ revealText: e.target.value })} className="w-full p-2.5 text-sm leading-relaxed" placeholder="Detail revealed after learner interaction" /></div>
-              <div><label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Visual labels</label><textarea rows={5} value={(slide.keyPoints || []).join('\n')} onChange={(e) => updateSlide({ keyPoints: e.target.value.split('\n').map((value) => value.trim()).filter(Boolean) })} className="w-full p-2.5 text-sm" placeholder="One short label per line" /></div>
-              <div className="grid grid-cols-2 gap-2"><div><label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Layout</label><select value={slide.layout} onChange={(e) => updateSlide({ layout: e.target.value })} className="w-full p-2.5 text-xs">{COURSE_LAYOUTS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></div><div><label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Background</label><select value={slide.backgroundStyle || 'mesh'} onChange={(e) => updateSlide({ backgroundStyle: e.target.value })} className="w-full p-2.5 text-xs">{BACKGROUND_STYLES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></div></div>
-              <div className="grid grid-cols-2 gap-2"><div><label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Visual metaphor</label><select value={slide.visualMetaphor || 'shield'} onChange={(e) => updateSlide({ visualMetaphor: e.target.value })} className="w-full p-2.5 text-xs">{METAPHORS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></div><div><label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Visual title</label><input value={slide.visualTitle || ''} onChange={(e) => updateSlide({ visualTitle: e.target.value })} className="w-full p-2.5 text-xs" /></div></div>
-              <div><label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Interaction prompt</label><textarea rows={3} value={slide.interaction?.prompt || ''} onChange={(e) => updateSlide({ interaction: { ...(slide.interaction || {}), prompt: e.target.value } })} className="w-full p-2.5 text-sm" /></div>
-            </aside>
+              <LivePptCanvas
+                slide={slide}
+                index={selected}
+                total={analysis.slides.length}
+                courseTitle={analysis.title}
+                onChange={updateSlide}
+              />
+
+              <div className="scorm-panel rounded-2xl border p-4">
+                <div className="text-[10px] uppercase tracking-[.12em] text-slate-500 font-semibold mb-2">Reveal text (after interaction)</div>
+                <textarea
+                  rows={2}
+                  value={slide.revealText || ''}
+                  onChange={(e) => updateSlide({ revealText: e.target.value })}
+                  className="w-full p-2.5 text-sm rounded-xl"
+                  placeholder="Optional detail shown after the learner explores the slide"
+                />
+              </div>
+            </div>
           </div>
 
-          <AuthorQuizEditor quiz={analysis.quiz || []} onChange={updateQuiz} />
+          <section className="scorm-panel rounded-3xl border p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles size={16} className="text-white/70" />
+              <h2 className="text-sm font-semibold text-white">Knowledge checks</h2>
+              <span className="text-[11px] text-slate-500">Edit questions below — they appear after the learning slides</span>
+            </div>
+            <AuthorQuizEditor quiz={analysis.quiz || []} onChange={updateQuiz} />
+          </section>
         </div>
       )}
     </div>
