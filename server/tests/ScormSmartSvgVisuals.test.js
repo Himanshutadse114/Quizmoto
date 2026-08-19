@@ -83,7 +83,7 @@ describe('SCORM Gemini Smart SVG visuals', function () {
             visualMetaphor: 'browser'
         }, 0);
         const svg = renderSmartSvg(spec, { title: 'Suspicious sign-in' });
-        expect(svg).to.include('viewBox="0 0 1600 1000"');
+        expect(svg).to.include('viewBox="0 0 1200 1000"');
         expect(svg).to.include('data-scorm-smart-svg="1"');
         expect(svg).to.include('data-smart-svg-scene="browser-phishing"');
         expect((svg.match(/<rect\b/g) || []).length).to.be.greaterThan(12);
@@ -120,7 +120,7 @@ describe('SCORM Gemini Smart SVG visuals', function () {
         expect(Buffer.isBuffer(assets[0].desktopBody)).to.equal(true);
         expect(Buffer.isBuffer(assets[0].mobileBody)).to.equal(true);
         expect(assets[0].desktopBody.toString()).to.include('data-scene="smartphone-scam"');
-        expect(assets[0].mobileBody.toString()).to.include('viewBox="0 0 900 1200"');
+        expect(assets[0].mobileBody.toString()).to.include('viewBox="0 0 900 1100"');
     });
 
     it('keeps the old Python renderer behind an explicit opt-in only', () => {
