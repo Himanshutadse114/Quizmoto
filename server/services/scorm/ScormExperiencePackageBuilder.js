@@ -84,20 +84,29 @@ function splitLearningCopy(content, explicitReveal) {
     const full = cleanText(content);
     const reveal = cleanText(explicitReveal);
     if (!full) return { introText: '', revealText: reveal };
-    if (reveal) {
-        const first = full.match(/^.*?[.!?](?:\s|$)/)?.[0]?.trim();
-        return { introText: first && first.length < 230 ? first : full.split(/\s+/).slice(0, 32).join(' ') + (full.split(/\s+/).length > 32 ? '…' : ''), revealText: reveal };
-    }
+
+    // Learners must see real explanation on the slide itself — not a one-line teaser.
+    // Prefer 2–3 sentences / ~55–90 words in introText; keep a short remainder for progressive reveal.
     const sentences = full.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [full];
-    const intro = cleanText(sentences[0]);
-    const remainder = cleanText(sentences.slice(1).join(' '));
-    if (remainder) return { introText: intro, revealText: remainder };
-    const list = full.split(/\s+/);
-    if (list.length > 42) {
-        return {
-            introText: list.slice(0, 28).join(' ') + '…',
-            revealText: list.slice(28).join(' ')
-        };
+    const words = full.split(/\s+/).filter(Boolean);
+
+    if (reveal) {
+        if (words.length <= 70) return { introText: full, revealText: reveal };
+        const intro = sentences.slice(0, Math.min(3, sentences.length)).map(cleanText).filter(Boolean).join(' ');
+        return { introText: intro || full, revealText: reveal };
+    }
+
+    if (words.length <= 55 || sentences.length <= 2) {
+        return { introText: full, revealText: '' };
+    }
+
+    let take = 2;
+    let introWords = sentences.slice(0, take).join(' ').split(/\s+/).filter(Boolean).length;
+    if (introWords < 55 && sentences.length >= 3) take = 3;
+    const intro = cleanText(sentences.slice(0, take).join(' '));
+    const remainder = cleanText(sentences.slice(take).join(' '));
+    if (remainder && intro.split(/\s+/).filter(Boolean).length >= 40) {
+        return { introText: intro, revealText: remainder };
     }
     return { introText: full, revealText: '' };
 }
@@ -176,7 +185,7 @@ function injectExperienceCss(html) {
 .qmx-kicker{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;margin-bottom:10px}
 .qmx-copy h2{font-size:clamp(30px,3vw,46px);line-height:1.01;letter-spacing:-.05em;margin:0 0 14px;text-wrap:balance}
 .qmx-copy p{font-size:16px;line-height:1.62;margin:0;max-width:62ch}
-.qmx-visual{grid-area:visual;position:relative;border-radius:28px;width:100%;aspect-ratio:8/5;height:auto;padding:0;overflow:hidden;display:flex;align-items:stretch;justify-content:stretch}
+.qmx-visual{grid-area:visual;position:relative;border-radius:28px;width:100%;aspect-ratio:6/5;height:auto;padding:0;overflow:hidden;display:flex;align-items:stretch;justify-content:stretch}
 .qmx-visual picture{display:block;width:100%;height:100%}.qmx-visual img{display:block;width:100%;height:100%;object-fit:cover;margin:0}
 .qmx-visual-label{position:absolute;left:16px;bottom:14px;display:flex;gap:6px;align-items:center;padding:7px 10px;border-radius:999px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;backdrop-filter:blur(12px)}
 .qmx-interaction{grid-area:interaction;align-self:start;padding:0 4px 8px}
@@ -198,9 +207,8 @@ function injectExperienceCss(html) {
   .qmx-copy{padding:20px}.qmx-copy h2{font-size:clamp(27px,6vw,37px)}.qmx-copy p{font-size:15px}
   .qmx-interaction{padding:0}.qmx-points{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
-/* Below 680px the picture element swaps to the portrait (3:4) mobile SVG - match the container to it. */
 @media(max-width:680px){
-  .qmx-visual{aspect-ratio:3/4}
+  .qmx-visual{aspect-ratio:9/11}
 }
 @media(max-width:560px){
   .qmx-screen:before{inset:-12px;border-radius:25px}.qmx-frame{gap:11px}.qmx-copy{padding:17px;border-radius:19px!important}.qmx-kicker{font-size:10px}.qmx-copy h2{font-size:clamp(25px,7vw,32px);margin-bottom:10px}.qmx-copy p{font-size:14.5px;line-height:1.58}
@@ -216,7 +224,7 @@ function experienceScript() {
     return `
 <script id="quizmoto-experience-v5-script">
 (function(){
-  function esc(s){var M={'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'};return String(s||'').replace(/[<>&"']/g,function(c){return M[c]||c})}
+  function esc(s){var M={'<':'<','>':'>','&':'&','"':'"',"'":'&#39;'};return String(s||'').replace(/[<>&"']/g,function(c){return M[c]||c})}
   function pointLabel(s,n){var t=String(s.screenType||'');var l=String(s.layout||'');if(t==='scenario')return 'Option '+(n+1);if(l==='process')return 'Step '+(n+1);if(l==='timeline')return 'Stage '+(n+1);if(l==='cycle')return 'Phase '+(n+1);if(l==='comparison')return n===0?'Recommended':n===1?'Watch out':'Signal '+(n+1);return 'Explore '+(n+1)}
   function buildPicture(s){
     var desktop=s.visualAsset||'',mobile=s.mobileVisualAsset||'';
@@ -229,7 +237,7 @@ function experienceScript() {
       var node=slides[i+1];if(!node)return;var stage=node.querySelector('.stage');if(!stage)return;
       var list=Array.isArray(s.keyPoints)?s.keyPoints.filter(Boolean).slice(0,6):[];
       var type=String(s.screenType||'concept'),bg=String(s.backgroundStyle||'mesh');
-      var buttons=list.map(function(p,n){return '<button type="button" class="qmx-point" data-index="'+n+'" aria-label="'+esc(pointLabel(s,n))+': '+esc(p)+'"><span class="qmx-point-index">'+(n+1)+'</span>'+esc(pointLabel(s,n))+'</button>'}).join('');
+      var buttons=list.map(function(p,n){return '<button type="button" class="qmx-point" data-index="'+n+'" aria-label="'+esc(pointLabel(s,n))+': '+esc(p)+'"><span class="qmx-point-index">'+(n+1)+'</span>'+esc(p)+'</button>'}).join('');
       if(!buttons&&(s.revealText||s.content))buttons='<button type="button" class="qmx-point qmx-single-reveal" data-index="0"><span class="qmx-point-index">+</span>Reveal insight</button>';
       var frame=document.createElement('div');frame.className='qmx-stage qmx-screen qmx-type-'+type+' qmx-bg-'+bg+' qmx-enter';
       frame.innerHTML='<div class="qmx-frame"><section class="qmx-copy"><div class="qmx-kicker">Section '+(i+1)+' · '+esc(type)+'</div><h2>'+esc(s.title)+'</h2><p>'+esc(s.introText||s.content||'')+'</p></section><section class="qmx-visual" tabindex="0" role="group" aria-label="'+esc(s.visualTitle||s.title)+'">'+buildPicture(s)+'<div class="qmx-visual-label">Interactive learning visual</div></section><section class="qmx-interaction"><p class="qmx-prompt">'+esc((s.interaction&&s.interaction.prompt)||'Explore the visual to continue learning.')+'</p><div class="qmx-points" role="group" aria-label="Learning interaction">'+buttons+'</div><div class="qmx-count" data-count aria-live="polite">'+(list.length?'0 / '+list.length+' explored':'Reveal the insight')+'</div><div class="qmx-reveal" data-reveal role="status" aria-live="polite" hidden><span class="qmx-reveal-label">Learning detail</span><span data-reveal-text></span></div></section></div>';
@@ -238,7 +246,7 @@ function experienceScript() {
       function activate(idx,focus){
         if(idx<0||idx>=all.length)return;explored[idx]=true;
         all.forEach(function(b,n){b.classList.toggle('active',n===idx);b.setAttribute('aria-pressed',n===idx?'true':'false')});all[idx].classList.add('explored');
-        var detail=list[idx]||s.revealText||s.content||'';
+        var point=list[idx]||'';var support=s.revealText||s.content||'';var detail=point?(support?point+'. '+support:point):(support||'');
         if(revealText)revealText.textContent=String(detail);if(reveal)reveal.hidden=false;
         var done=Object.keys(explored).length;if(count)count.textContent=list.length?done+' / '+list.length+' explored':'Insight revealed';if(focus)all[idx].focus();
       }
