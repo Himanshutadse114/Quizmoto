@@ -53,7 +53,7 @@ describe('SCORM AI Gamma-inspired redesign', () => {
     expect(gammaFinalizer).to.include("font-family:'Lato'");
     expect(gammaFinalizer).to.include('--gamma-paper:#E7E7E4');
     expect(gammaFinalizer).to.include('--gamma-ink:#282824');
-    expect(gammaFinalizer).to.include("grid-template-columns:minmax(0,1.62fr) minmax(300px,.98fr)");
+    expect(gammaFinalizer).to.include("grid-template-columns:minmax(330px,1fr) minmax(420px,1fr)");
     expect(answerFinalizer).to.include("require('./ScormGammaEditorialFinalizer')");
   });
 });

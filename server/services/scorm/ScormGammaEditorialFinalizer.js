@@ -92,7 +92,7 @@ header h1{
 .qmx-screen:before{display:none!important}
 .qmx-frame{
   display:grid!important;
-  grid-template-columns:minmax(0,1.62fr) minmax(300px,.98fr)!important;
+  grid-template-columns:minmax(330px,1fr) minmax(420px,1fr)!important;
   grid-template-areas:'copy visual' 'interaction visual'!important;
   gap:22px 34px!important;
   min-height:min(610px,calc(100dvh - 180px))!important;
@@ -133,18 +133,9 @@ header h1{
   font-size:9px!important;letter-spacing:.06em!important
 }
 
-/* Alternate Gamma layouts by learning intent. */
-.qmx-type-scenario .qmx-frame,
-.qmx-type-comparison .qmx-frame{
-  grid-template-columns:minmax(290px,.78fr) minmax(520px,1.42fr)!important;
-}
+/* All slide types share one visual container size (copy/interaction layout may still vary). */
 .qmx-type-scenario .qmx-copy,
 .qmx-type-comparison .qmx-copy{padding-right:18px!important}
-.qmx-type-scenario .qmx-visual,
-.qmx-type-comparison .qmx-visual{min-height:550px!important}
-.qmx-type-hotspot .qmx-frame,
-.qmx-type-reveal .qmx-frame{grid-template-columns:minmax(330px,1fr) minmax(420px,1fr)!important}
-.qmx-type-takeaway .qmx-frame{grid-template-columns:minmax(0,1.7fr) minmax(280px,.8fr)!important}
 .qmx-type-takeaway .qmx-copy h2{max-width:15ch!important}
 
 .qmx-prompt{color:var(--gamma-ink-soft)!important;font-size:12px!important;line-height:1.45!important;font-weight:700!important;margin:0 0 10px!important}
