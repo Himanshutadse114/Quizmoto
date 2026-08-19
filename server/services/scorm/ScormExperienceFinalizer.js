@@ -98,6 +98,7 @@ function interactionTrackingScript() {
     return `
 <script id="quizmoto-scorm-interaction-tracking">
 (function(){
+  var enhancing=false;
   function assessmentType(question){
     var q=String(question||'').toLowerCase();
     if(/you receive|you notice|you are|your colleague|your customer|a message arrives|a caller|imagine|scenario/.test(q))return 'scenario';
@@ -112,99 +113,159 @@ function interactionTrackingScript() {
     return 'Knowledge check';
   }
   function installPresentation(data){
-    (data.quiz||[]).forEach(function(q,qi){
-      var container=document.getElementById('opts-'+qi);if(!container)return;
-      var card=container.closest?container.closest('.quiz-card'):null;
-      var type=String(q.questionType||assessmentType(q.question));
-      if(card){
-        card.classList.add('qmx-quiz-'+type);
-        if(!card.querySelector('.qmx-quiz-label')){
-          var label=document.createElement('div');
-          label.className='qmx-quiz-label';
-          label.textContent=assessmentLabel(type);
-          card.insertBefore(label,card.firstChild);
+    try{
+      (data.quiz||[]).forEach(function(q,qi){
+        var container=document.getElementById('opts-'+qi);if(!container)return;
+        var card=container.closest?container.closest('.quiz-card'):null;
+        var type=String(q.questionType||assessmentType(q.question));
+        if(card){
+          card.classList.add('qmx-quiz-'+type);
+          if(!card.querySelector('.qmx-quiz-label')){
+            var label=document.createElement('div');
+            label.className='qmx-quiz-label';
+            label.textContent=assessmentLabel(type);
+            card.insertBefore(label,card.firstChild);
+          }
         }
-      }
-      container.querySelectorAll('.qmx-option-letter').forEach(function(el){el.remove()});
-    });
+        container.querySelectorAll('.qmx-option-letter').forEach(function(el){el.remove()});
+      });
+    }catch(e){}
   }
   function enhanceContentInteractions(){
-    document.querySelectorAll('.cards-grid .concept-card').forEach(function(card,i){
-      if(card.getAttribute('data-qmx-interactive'))return;
-      card.setAttribute('data-qmx-interactive','1');
-      var text=(card.querySelector('p')&&card.querySelector('p').textContent)||card.textContent||'';
-      var numEl=card.querySelector('.concept-number');
-      var num=numEl?numEl.textContent:String(i+1);
-      card.className='qmx-flip-card concept-card reveal';
-      card.innerHTML='<div class="qmx-flip-inner">'+
-        '<div class="qmx-flip-face qmx-flip-front"><div class="qmx-flip-title">'+num+'. Tap to explore</div><div class="qmx-flip-hint">Click to reveal</div></div>'+
-        '<div class="qmx-flip-face qmx-flip-back"><div class="qmx-flip-title"></div></div>'+
-      '</div>';
-      card.querySelector('.qmx-flip-back .qmx-flip-title').textContent=text;
-      card.addEventListener('click',function(){card.classList.toggle('is-flipped')});
-    });
-    document.querySelectorAll('.hub-list .hub-item').forEach(function(item){
-      if(item.getAttribute('data-qmx-interactive'))return;
-      item.setAttribute('data-qmx-interactive','1');
-      item.classList.add('qmx-interactive','qmx-reveal-card');
-      var parts=[];
-      item.childNodes.forEach(function(n){
-        if(n.nodeType===3&&String(n.textContent||'').trim())parts.push(String(n.textContent).trim());
+    if(enhancing)return;
+    enhancing=true;
+    try{
+      document.querySelectorAll('.cards-grid .concept-card').forEach(function(card,i){
+        if(card.getAttribute('data-qmx-interactive'))return;
+        card.setAttribute('data-qmx-interactive','1');
+        var text=(card.querySelector('p')&&card.querySelector('p').textContent)||'';
+        var numEl=card.querySelector('.concept-number');
+        var num=numEl?numEl.textContent:String(i+1);
+        card.classList.add('qmx-flip-card','concept-card','reveal');
+        while(card.firstChild)card.removeChild(card.firstChild);
+        var inner=document.createElement('div');
+        inner.className='qmx-flip-inner';
+        var front=document.createElement('div');
+        front.className='qmx-flip-face qmx-flip-front';
+        var frontTitle=document.createElement('div');
+        frontTitle.className='qmx-flip-title';
+        frontTitle.textContent=num+'. Tap to explore';
+        var hint=document.createElement('div');
+        hint.className='qmx-flip-hint';
+        hint.textContent='Click to reveal';
+        front.appendChild(frontTitle);
+        front.appendChild(hint);
+        var back=document.createElement('div');
+        back.className='qmx-flip-face qmx-flip-back';
+        var backTitle=document.createElement('div');
+        backTitle.className='qmx-flip-title';
+        backTitle.textContent=text;
+        back.appendChild(backTitle);
+        inner.appendChild(front);
+        inner.appendChild(back);
+        card.appendChild(inner);
+        card.addEventListener('click',function(ev){
+          ev.stopPropagation();
+          card.classList.toggle('is-flipped');
+        });
       });
-      var toggle=document.createElement('div');
-      toggle.className='qmx-reveal-toggle';
-      toggle.textContent='Click to focus';
-      if(parts.length){
-        var body=document.createElement('div');
-        body.className='qmx-reveal-body';
-        body.textContent=parts.join(' ');
-        item.childNodes.forEach(function(n){if(n.nodeType===3)n.textContent=''});
-        item.appendChild(toggle);
-        item.appendChild(body);
-      } else {
-        item.appendChild(toggle);
-      }
-      item.addEventListener('click',function(){item.classList.toggle('is-open')});
-    });
-    document.querySelectorAll('.process .step').forEach(function(step,idx){
-      if(step.getAttribute('data-qmx-interactive'))return;
-      step.setAttribute('data-qmx-interactive','1');
-      step.classList.add('qmx-interactive','qmx-reveal-card');
-      var p=step.querySelector('p');
-      if(p){
-        p.classList.add('qmx-reveal-body');
-        if(idx===0)step.classList.add('is-open');
-      }
-      var toggle=document.createElement('div');
-      toggle.className='qmx-reveal-toggle';
-      toggle.textContent=idx===0?'Key detail':'Click to reveal';
-      step.appendChild(toggle);
-      step.addEventListener('click',function(){
-        step.classList.toggle('is-open');
-        toggle.textContent=step.classList.contains('is-open')?'Key detail':'Click to reveal';
+
+      document.querySelectorAll('.hub-list .hub-item').forEach(function(item){
+        if(item.getAttribute('data-qmx-interactive'))return;
+        item.setAttribute('data-qmx-interactive','1');
+        item.classList.add('qmx-interactive','qmx-reveal-card');
+        var parts=[];
+        item.childNodes.forEach(function(n){
+          if(n.nodeType===3&&String(n.textContent||'').trim())parts.push(String(n.textContent).trim());
+        });
+        var toggle=document.createElement('div');
+        toggle.className='qmx-reveal-toggle';
+        toggle.textContent='Click to focus';
+        if(parts.length){
+          var body=document.createElement('div');
+          body.className='qmx-reveal-body';
+          body.textContent=parts.join(' ');
+          item.childNodes.forEach(function(n){if(n.nodeType===3)n.textContent=''});
+          item.appendChild(toggle);
+          item.appendChild(body);
+        } else {
+          item.appendChild(toggle);
+        }
+        item.addEventListener('click',function(ev){
+          ev.stopPropagation();
+          item.classList.toggle('is-open');
+        });
       });
-    });
-    document.querySelectorAll('.cards-grid,.process,.hub-list,.timeline').forEach(function(g){
-      g.classList.add('qmx-stagger');
-    });
+
+      document.querySelectorAll('.process').forEach(function(process){
+        var steps=process.querySelectorAll('.step');
+        steps.forEach(function(step,idx){
+          if(step.getAttribute('data-qmx-interactive'))return;
+          step.setAttribute('data-qmx-interactive','1');
+          step.classList.add('qmx-interactive','qmx-reveal-card');
+          var p=step.querySelector('p');
+          if(p){
+            p.classList.add('qmx-reveal-body');
+            if(idx===0)step.classList.add('is-open');
+          }
+          var toggle=document.createElement('div');
+          toggle.className='qmx-reveal-toggle';
+          toggle.textContent=idx===0?'Key detail':'Click to reveal';
+          step.appendChild(toggle);
+          step.addEventListener('click',function(ev){
+            ev.stopPropagation();
+            step.classList.toggle('is-open');
+            toggle.textContent=step.classList.contains('is-open')?'Key detail':'Click to reveal';
+          });
+        });
+      });
+
+      document.querySelectorAll('.cards-grid,.process,.hub-list,.timeline').forEach(function(g){
+        g.classList.add('qmx-stagger');
+      });
+    }catch(e){}
+    enhancing=false;
   }
   function install(){
     var data=window.__quizmotoData||{};
-    installPresentation(data);
-    enhanceContentInteractions();
-    var observer=new MutationObserver(function(){
+    try{
       installPresentation(data);
       enhanceContentInteractions();
-    });
+    }catch(e){}
+
+    /* Do NOT observe class changes — Next toggles .active and that used to
+       re-enter enhance on every navigation, freezing the player. Only watch
+       for new nodes (rare) and debounce hard. */
+    var timer=null;
     var area=document.getElementById('content-area');
-    if(area)observer.observe(area,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+    if(area&&typeof MutationObserver==='function'){
+      var observer=new MutationObserver(function(mutations){
+        var hasNew=false;
+        for(var i=0;i<mutations.length;i++){
+          if(mutations[i].addedNodes&&mutations[i].addedNodes.length){hasNew=true;break}
+        }
+        if(!hasNew)return;
+        if(timer)clearTimeout(timer);
+        timer=setTimeout(function(){
+          try{
+            installPresentation(data);
+            enhanceContentInteractions();
+          }catch(e){}
+        },120);
+      });
+      observer.observe(area,{childList:true,subtree:true});
+    }
+
     var answered=Object.create(null),hits=0,totalQuestions=Math.max(1,(data.quiz||[]).length);
     document.querySelectorAll('.quiz-option').forEach(function(btn){
+      if(btn.getAttribute('data-qmx-quiz-bound'))return;
+      btn.setAttribute('data-qmx-quiz-bound','1');
       btn.addEventListener('click',function(){
         var qi=Number(btn.getAttribute('data-qi'));
         var oi=Number(btn.getAttribute('data-oi'));
         var q=(data.quiz||[])[qi]||{};
         var correct=Number(q.correctAnswer);
+
         setTimeout(function(){
           try{
             if(typeof doLMSSetValue==='function'){
@@ -222,6 +283,7 @@ function interactionTrackingScript() {
             }
           }catch(e){}
         },0);
+
         if(q.explanation){
           setTimeout(function(){
             var fb=document.getElementById('fb-'+qi);
