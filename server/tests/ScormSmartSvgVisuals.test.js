@@ -71,9 +71,9 @@ describe('SCORM Gemini Smart SVG visuals', function () {
         };
         const plans = await planSvgScenes(analysis);
         expect(plans).to.have.length(4);
-        expect(new Set(plans.map((p) => p.scene)).size).to.equal(1); // all four keyword-match to the same scene on purpose
+        expect(new Set(plans.map((p) => p.scene)).size).to.equal(1);
         const signatures = plans.map(specSignature);
-        expect(new Set(signatures).size).to.equal(signatures.length); // yet no two slides render identically
+        expect(new Set(signatures).size).to.equal(signatures.length);
     });
 
     it('renders rich resolution-independent SVG scenes without external dependencies', () => {
