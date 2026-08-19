@@ -140,7 +140,7 @@ export default function VisualStudio() {
   const packageId = searchParams.get('edit') || '';
   const [packages, setPackages] = useState([]);
   const [analysis, setAnalysis] = useState(null);
-  const [themeId, setThemeId] = useState(1);
+  const [themeId] = useState(1);
   const [selected, setSelected] = useState(0);
   const [device, setDevice] = useState('desktop');
   const [busy, setBusy] = useState(false);
@@ -159,7 +159,6 @@ export default function VisualStudio() {
       .then((res) => {
         const data = res.data.analysis || {};
         setAnalysis({ ...data, slides: (data.slides || []).map(normalizeCourseSlide) });
-        setThemeId(Number(res.data.templateId) || Number(data.themeId) || 1);
         setSelected(0);
       })
       .catch((err) => setError(err.response?.data?.message || err.message))
@@ -226,7 +225,7 @@ export default function VisualStudio() {
           <aside className="scorm-panel rounded-3xl border p-4 space-y-4 xl:sticky xl:top-20 max-h-[82vh] overflow-auto">
             {issues.length > 0 && <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5"><div className="flex items-center gap-2 text-amber-200 text-xs font-semibold"><AlertTriangle size={15} />Experience fit</div><ul className="mt-2 space-y-1.5 text-[11px] text-amber-100/75 list-disc pl-4">{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul></div>}
 
-            <div><label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Course theme</label><div className="grid grid-cols-4 gap-2">{COURSE_THEMES.map((theme) => <button key={theme.id} type="button" onClick={() => { setThemeId(theme.id); setSaved('Unsaved changes'); }} title={theme.name} className={`h-11 rounded-xl border-2 ${themeId === theme.id ? 'border-white' : 'border-white/10'}`} style={{ background: `linear-gradient(145deg,${theme.primary},${theme.accent})` }} />)}</div><div className="text-[10px] text-slate-500 mt-1.5">{courseTheme(themeId).name}</div></div>
+            <div><label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Course theme</label><div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5"><span className="w-10 h-10 rounded-lg border border-white/20" style={{ background: 'linear-gradient(145deg,#E7E7E4,#282824)' }} /><div><div className="text-xs font-semibold text-white">Gamma Editorial</div><div className="text-[10px] text-slate-500">Warm paper · charcoal · editorial</div></div></div></div>
             <div><label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Screen title</label><input value={slide.title || ''} onChange={(e) => updateSlide({ title: e.target.value })} className="w-full p-2.5 text-sm" /></div>
             <div><label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Screen type</label><select value={slide.screenType || 'concept'} onChange={(e) => updateSlide({ screenType: e.target.value })} className="w-full p-2.5 text-sm">{SCREEN_TYPES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></div>
             <div><label className="block text-[10px] font-semibold uppercase tracking-[.11em] text-slate-500 mb-2">Initial context</label><textarea rows={4} value={slide.introText || ''} onChange={(e) => updateSlide({ introText: e.target.value })} className="w-full p-2.5 text-sm leading-relaxed" /><div className="mt-1 text-[10px] text-slate-500">{wordCount(slide.introText)} words</div></div>
