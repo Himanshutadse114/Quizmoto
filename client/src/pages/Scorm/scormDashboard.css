@@ -123,7 +123,7 @@
 .scorm-editorial .scorm-metric-green .scorm-metric-icon { background: var(--scorm-green-soft); color: #039855 !important; border-color: #ABEFC6; }
 .scorm-editorial .scorm-metric-amber { color: var(--scorm-amber); }
 .scorm-editorial .scorm-metric-amber .scorm-metric-icon { background: var(--scorm-amber-soft); color: #DC6803 !important; border-color: #FEDF89; }
-.scorm-editorial .scorm-metric-neutral { color: #667085; }
+.scorm-editorial .scorm-metric-neutral { color: var(--scorm-muted); }
 
 .scorm-editorial .scorm-panel {
   background: var(--scorm-surface) !important;
@@ -226,11 +226,11 @@
 }
 
 .scorm-editorial .scorm-progress-icon {
-  width: 39px;
-  height: 39px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
-  border-radius: 11px;
+  border-radius: 10px;
   background: rgba(255,255,255,.09) !important;
   border: 1px solid rgba(255,255,255,.10) !important;
   color: #C9C5FF !important;
@@ -272,11 +272,11 @@
 }
 
 .scorm-editorial .scorm-empty-icon {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--scorm-surface-muted) !important;
   color: var(--scorm-muted) !important;
 }
@@ -316,8 +316,8 @@
 .scorm-editorial .scorm-action-green { color: var(--scorm-green) !important; }
 
 .scorm-editorial .scorm-action-icon {
-  width: 37px;
-  height: 37px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
   border-radius: 10px;

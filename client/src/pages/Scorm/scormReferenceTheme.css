@@ -56,12 +56,37 @@ body .scorm-editorial.scorm-workbench {
   --wb-radius: var(--sai-radius-sm) !important;
   --wb-radius-sm: 8px !important;
   --wb-shadow: var(--sai-shadow) !important;
+  --scorm-canvas: var(--sai-paper) !important;
+  --scorm-surface: var(--sai-surface) !important;
+  --scorm-surface-soft: var(--sai-surface-2) !important;
+  --scorm-surface-muted: var(--sai-surface-3) !important;
+  --scorm-ink: var(--sai-ink) !important;
+  --scorm-ink-soft: var(--sai-ink-soft) !important;
+  --scorm-muted: var(--sai-ink-faint) !important;
+  --scorm-subtle: var(--sai-ink-faint) !important;
+  --scorm-line: var(--sai-line) !important;
+  --scorm-line-strong: var(--sai-line) !important;
+  --scorm-sidebar: #0D1413 !important;
+  --scorm-sidebar-soft: var(--sai-surface) !important;
+  --scorm-sidebar-line: var(--sai-line) !important;
+  --scorm-sidebar-text: var(--sai-ink-soft) !important;
+  --scorm-sidebar-muted: var(--sai-ink-faint) !important;
   --scorm-accent: var(--sai-brand) !important;
   --scorm-accent-strong: var(--sai-brand-strong) !important;
   --scorm-accent-soft: var(--sai-brand-soft) !important;
+  --scorm-cyan: #22D3EE !important;
+  --scorm-cyan-soft: rgba(34,211,238,.14) !important;
   --scorm-green: var(--sai-unlocked) !important;
+  --scorm-green-soft: var(--sai-unlocked-soft) !important;
   --scorm-amber: var(--sai-pending) !important;
+  --scorm-amber-soft: var(--sai-pending-soft) !important;
   --scorm-red: var(--sai-danger) !important;
+  --scorm-red-soft: var(--sai-danger-soft) !important;
+  --scorm-pink-soft: rgba(240,124,114,.10) !important;
+  --scorm-purple-soft: rgba(139,124,255,.10) !important;
+  --scorm-shadow-xs: 0 1px 2px rgba(0,0,0,.24) !important;
+  --scorm-shadow-sm: var(--sai-shadow) !important;
+  --scorm-shadow-md: 0 18px 40px rgba(0,0,0,.30) !important;
   min-height: 100vh !important;
   color: var(--sai-ink) !important;
   font-family: var(--sai-font) !important;
@@ -133,8 +158,6 @@ body .scorm-editorial.scorm-workbench .scorm-brand-wrap,
 body .scorm-editorial.scorm-workbench .scorm-sidebar-footer,
 body .scorm-editorial.scorm-workbench .scorm-mobile-drawer > div { border-color: var(--sai-line) !important; }
 body .scorm-editorial.scorm-workbench .scorm-brand-mark {
-  width: 34px !important;
-  height: 34px !important;
   border-radius: 10px !important;
   color: var(--sai-on-brand) !important;
   background: var(--sai-brand) !important;
@@ -239,7 +262,139 @@ body .scorm-editorial.scorm-workbench .scorm-list > * + * { border-color: var(--
 body .scorm-editorial.scorm-workbench .scorm-course-row:hover { background: var(--sai-surface-2) !important; }
 body .scorm-editorial.scorm-workbench .scorm-metric-value { color: var(--sai-ink) !important; font-weight: 700 !important; }
 body .scorm-editorial.scorm-workbench .scorm-metric-label { color: var(--sai-ink-faint) !important; }
-body .scorm-editorial.scorm-workbench .scorm-metric-icon { background: var(--sai-brand-soft) !important; color: var(--sai-brand) !important; border: 0 !important; border-radius: 9px !important; }
+/* Icon badges: base + semantic tones (kept distinct from the brand accent on purpose). */
+body .scorm-editorial.scorm-workbench .scorm-metric-icon,
+body .scorm-editorial.scorm-workbench .scorm-action-icon,
+body .scorm-editorial.scorm-workbench .scorm-progress-icon,
+body .scorm-editorial.scorm-workbench .scorm-empty-icon,
+body .scorm-editorial.scorm-workbench .scorm-action-arrow {
+  background: var(--sai-brand-soft) !important;
+  color: var(--sai-brand) !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-metric-violet .scorm-metric-icon,
+body .scorm-editorial.scorm-workbench .scorm-action-violet .scorm-action-icon {
+  background: var(--sai-brand-soft) !important;
+  color: var(--sai-brand) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-metric-cyan .scorm-metric-icon,
+body .scorm-editorial.scorm-workbench .scorm-action-cyan .scorm-action-icon {
+  background: var(--scorm-cyan-soft) !important;
+  color: var(--scorm-cyan) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-metric-green .scorm-metric-icon,
+body .scorm-editorial.scorm-workbench .scorm-action-green .scorm-action-icon {
+  background: var(--sai-unlocked-soft) !important;
+  color: var(--sai-unlocked) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-metric-amber .scorm-metric-icon {
+  background: var(--sai-pending-soft) !important;
+  color: var(--sai-pending) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-metric-neutral .scorm-metric-icon {
+  background: var(--sai-surface-2) !important;
+  color: var(--sai-ink-faint) !important;
+}
+
+/* Course-portfolio progress bar (used both in the hero and inline on course rows). */
+body .scorm-editorial.scorm-workbench .scorm-progress-track {
+  background: rgba(255,255,255,.08) !important;
+  border: 0 !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-progress-track.is-dark { background: rgba(255,255,255,.10) !important; }
+body .scorm-editorial.scorm-workbench .scorm-progress-fill { background: linear-gradient(90deg, var(--sai-brand), var(--sai-brand-strong)) !important; }
+body .scorm-editorial.scorm-workbench .scorm-progress-fill.is-light { background: linear-gradient(90deg, var(--sai-brand-strong), #A9EDE6) !important; }
+
+/* "Overall progress" hero card. */
+body .scorm-editorial.scorm-workbench .scorm-progress-hero {
+  background:
+    radial-gradient(circle at 90% 15%, rgba(79,201,191,.20), transparent 36%),
+    linear-gradient(145deg, #0D1413 0%, #0A0F0E 100%) !important;
+  border: 1px solid var(--sai-line) !important;
+  color: var(--sai-ink) !important;
+  box-shadow: var(--sai-shadow) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-progress-hero h3,
+body .scorm-editorial.scorm-workbench .scorm-progress-hero div,
+body .scorm-editorial.scorm-workbench .scorm-progress-hero span { color: inherit !important; }
+body .scorm-editorial.scorm-workbench .scorm-progress-kicker { color: var(--sai-brand-strong) !important; }
+body .scorm-editorial.scorm-workbench .scorm-progress-number { color: var(--sai-ink) !important; }
+
+/* Bottom call-to-action cards: AI Author / Visual Studio / Reports. */
+body .scorm-editorial.scorm-workbench .scorm-action-card {
+  background: var(--sai-surface) !important;
+  border: 1px solid var(--sai-line) !important;
+  color: var(--sai-ink) !important;
+  border-radius: var(--sai-radius) !important;
+  box-shadow: none !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-action-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(79,201,191,.35) !important;
+  box-shadow: var(--sai-shadow) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-action-violet { color: var(--sai-brand) !important; }
+body .scorm-editorial.scorm-workbench .scorm-action-cyan { color: var(--scorm-cyan) !important; }
+body .scorm-editorial.scorm-workbench .scorm-action-green { color: var(--sai-unlocked) !important; }
+body .scorm-editorial.scorm-workbench .scorm-action-card > div.text-xs { color: var(--sai-ink-soft) !important; }
+
+/* Status / health pills and alert banners. */
+body .scorm-editorial.scorm-workbench .scorm-status-pill {
+  background: var(--sai-surface-2) !important;
+  border-color: var(--sai-line) !important;
+  color: var(--sai-ink-soft) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-status-pill.is-published {
+  background: var(--sai-unlocked-soft) !important;
+  border-color: rgba(63,203,140,.30) !important;
+  color: var(--sai-unlocked) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-status-pill.is-draft {
+  background: var(--sai-surface-2) !important;
+  color: var(--sai-ink-faint) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-health-pill {
+  background: var(--sai-surface) !important;
+  border-color: var(--sai-line) !important;
+  color: var(--sai-ink-soft) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-health-pill.is-online {
+  background: var(--sai-unlocked-soft) !important;
+  border-color: rgba(63,203,140,.30) !important;
+  color: var(--sai-unlocked) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-health-dot { background: var(--sai-ink-faint) !important; }
+body .scorm-editorial.scorm-workbench .scorm-health-pill.is-online .scorm-health-dot {
+  background: var(--sai-unlocked) !important;
+  box-shadow: 0 0 0 3px rgba(63,203,140,.14) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-alert { border-color: var(--sai-line) !important; }
+body .scorm-editorial.scorm-workbench .scorm-alert-info {
+  background: var(--sai-brand-soft) !important;
+  border-color: rgba(79,201,191,.30) !important;
+  color: var(--sai-brand-strong) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-alert-danger {
+  background: var(--sai-danger-soft) !important;
+  border-color: rgba(240,124,114,.30) !important;
+  color: #FFC3BD !important;
+}
+
+/* Learner activity list and quick links. */
+body .scorm-editorial.scorm-workbench .scorm-activity-row { background: var(--sai-surface) !important; }
+body .scorm-editorial.scorm-workbench .scorm-activity-row:hover { background: var(--sai-surface-2) !important; }
+body .scorm-editorial.scorm-workbench .scorm-activity-progress {
+  background: var(--sai-brand-soft) !important;
+  color: var(--sai-brand-strong) !important;
+}
+body .scorm-editorial.scorm-workbench .scorm-text-link { color: var(--sai-brand) !important; }
+body .scorm-editorial.scorm-workbench .scorm-text-link:hover { color: var(--sai-brand-strong) !important; }
+
+/* Sidebar icon badges: keep the size the component markup declares (32px / 34px),
+   instead of the smaller sizes a legacy theme layer forces via !important. */
+body .scorm-editorial.scorm-workbench .scorm-nav-icon { width: 32px !important; height: 32px !important; }
+body .scorm-editorial.scorm-workbench .scorm-brand-mark { width: 40px !important; height: 40px !important; }
 
 /* Normalize old hard-coded Workbench browns inside SCORM pages. */
 body .scorm-editorial.scorm-workbench [class*="bg-[#1"],
