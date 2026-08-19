@@ -2,7 +2,8 @@ const { expect } = require('chai');
 const {
     inferScene,
     fallbackSpec,
-    planSvgScenes
+    planSvgScenes,
+    specSignature
 } = require('../services/scorm/ScormSvgScenePlanner');
 const {
     sanitizeSvg,
@@ -56,6 +57,23 @@ describe('SCORM Gemini Smart SVG visuals', function () {
         expect(plans[0].secondaryObjects.length).to.be.greaterThan(1);
         expect(plans[1].scene).to.equal('password-mfa');
         expect(fallbackSpec(analysis.slides[1], 1).focalObject).to.equal('lock');
+    });
+
+    it('gives every slide in a course a visually distinct illustration even when several land on the same scene', async () => {
+        const analysis = {
+            title: 'Phishing awareness',
+            slides: [
+                { title: 'A phishing email asks you to reset your password', content: 'Check the sender before you click.' },
+                { title: 'Another phishing email pretends to be IT support', content: 'Verify the sender through another channel.' },
+                { title: 'A third phishing email demands urgent action', content: 'Do not click the link in the message.' },
+                { title: 'A fourth suspicious email requests your login', content: 'Report anything unexpected to security.' }
+            ]
+        };
+        const plans = await planSvgScenes(analysis);
+        expect(plans).to.have.length(4);
+        expect(new Set(plans.map((p) => p.scene)).size).to.equal(1); // all four keyword-match to the same scene on purpose
+        const signatures = plans.map(specSignature);
+        expect(new Set(signatures).size).to.equal(signatures.length); // yet no two slides render identically
     });
 
     it('renders rich resolution-independent SVG scenes without external dependencies', () => {

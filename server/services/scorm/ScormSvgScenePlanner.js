@@ -298,6 +298,49 @@ async function callGeminiPlanner(analysis) {
     return null;
 }
 
+function specSignature(spec) {
+    return [spec.scene, spec.composition, spec.focalObject, ...spec.secondaryObjects].join('|');
+}
+
+// Guarantee every slide in a course renders visibly differently. The planner
+// (or its rule-based fallback) can land two slides on the same scene, and even
+// a matching composition + cast, which would otherwise draw the identical
+// picture twice. When that happens, rotate this slide's composition and
+// supporting cast until its artwork no longer matches an earlier slide in the
+// same course.
+function diversifyCourse(specs) {
+    const seen = new Set();
+    return specs.map((spec) => {
+        let signature = specSignature(spec);
+        if (!seen.has(signature)) {
+            seen.add(signature);
+            return spec;
+        }
+
+        const defaults = sceneDefaults(spec.scene);
+        let attempt = spec;
+        let guard = 0;
+        while (seen.has(signature) && guard < COMPOSITIONS.length * Math.max(defaults.length, 1)) {
+            const compIndex = (COMPOSITIONS.indexOf(attempt.composition) + 1 + guard) % COMPOSITIONS.length;
+            const rotation = guard % Math.max(defaults.length, 1);
+            const rotatedCast = defaults.length > 1
+                ? [...defaults.slice(rotation), ...defaults.slice(0, rotation)]
+                : defaults;
+            const focalObject = rotatedCast[0] || attempt.focalObject;
+            attempt = {
+                ...attempt,
+                composition: COMPOSITIONS[compIndex],
+                focalObject,
+                secondaryObjects: rotatedCast.filter((item) => item !== focalObject).slice(0, 4)
+            };
+            signature = specSignature(attempt);
+            guard += 1;
+        }
+        seen.add(signature);
+        return attempt;
+    });
+}
+
 async function planSvgScenes(analysis = {}) {
     const slides = Array.isArray(analysis.slides) ? analysis.slides : [];
     if (!slides.length) return [];
@@ -315,7 +358,8 @@ async function planSvgScenes(analysis = {}) {
         }
     }
 
-    return slides.map((slide, index) => normalizeSpec(byIndex.get(index), slide, index));
+    const specs = slides.map((slide, index) => normalizeSpec(byIndex.get(index), slide, index));
+    return diversifyCourse(specs);
 }
 
 module.exports = {
@@ -327,6 +371,8 @@ module.exports = {
     inferScene,
     fallbackSpec,
     normalizeSpec,
+    specSignature,
+    diversifyCourse,
     planSvgScenes,
     callGeminiPlanner
 };

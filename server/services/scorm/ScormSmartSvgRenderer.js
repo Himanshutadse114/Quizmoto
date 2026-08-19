@@ -220,6 +220,16 @@ function networkNodes(x, y, w, h, p, leak = false) {
     </g>`;
 }
 
+// Reads the actual per-slide cast the planner chose (or the rule-based fallback
+// assigned) instead of a hardcoded role, so two slides sharing a scene type can
+// still show a different supporting character.
+function roleFor(spec, fallback) {
+    const cast = [spec.focalObject, ...(Array.isArray(spec.secondaryObjects) ? spec.secondaryObjects : [])];
+    if (cast.includes('attacker')) return 'attacker';
+    if (cast.includes('user')) return 'user';
+    return fallback;
+}
+
 function objectChip(label, x, y, p, tone = 'teal') {
     const fill = tone === 'red' ? p.red : tone === 'yellow' ? p.yellow : p.teal;
     return `<g transform="translate(${x} ${y})" filter="url(#smallShadow)">
@@ -239,17 +249,19 @@ function browserScene(spec, p, mobile) {
 }
 
 function emailScene(spec, p, mobile) {
+    const role = roleFor(spec, 'attacker');
     if (mobile) {
         return `${emailClient(70, 245, 760, 620, p)}${alertTriangle(606, 112, 150, p)}${objectChip('sender-risk', 64, 102, p, 'red')}`;
     }
-    return `${emailClient(295, 150, 1120, 710, p)}${alertTriangle(1170, 90, 180, p)}${personBust(55, 500, .9, p, 'attacker')}${objectChip('suspicious-link', 80, 220, p, 'yellow')}`;
+    return `${emailClient(295, 150, 1120, 710, p)}${alertTriangle(1170, 90, 180, p)}${personBust(55, 500, .9, p, role)}${objectChip('suspicious-link', 80, 220, p, 'yellow')}`;
 }
 
 function phoneScene(spec, p, mobile, kind = 'message') {
+    const role = roleFor(spec, 'user');
     if (mobile) {
         return `${phoneDevice(245, 150, 1.02, p, kind)}${alertTriangle(90, 170, 150, p)}${objectChip(kind, 84, 390, p, kind === 'apps' ? 'red' : 'yellow')}`;
     }
-    return `${phoneDevice(565, 100, 1.02, p, kind)}${personBust(120, 470, 1.18, p, 'user')}${alertTriangle(1075, 155, 170, p)}${objectChip(kind, 1120, 500, p, kind === 'apps' ? 'red' : 'yellow')}<ellipse cx="770" cy="875" rx="420" ry="55" fill="${p.ink}" opacity=".08"/>`;
+    return `${phoneDevice(565, 100, 1.02, p, kind)}${personBust(120, 470, 1.18, p, role)}${alertTriangle(1075, 155, 170, p)}${objectChip(kind, 1120, 500, p, kind === 'apps' ? 'red' : 'yellow')}<ellipse cx="770" cy="875" rx="420" ry="55" fill="${p.ink}" opacity=".08"/>`;
 }
 
 function passwordScene(spec, p, mobile) {
