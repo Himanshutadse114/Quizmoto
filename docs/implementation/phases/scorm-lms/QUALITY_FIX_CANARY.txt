@@ -1,0 +1,3 @@
+scorm-quality-fix canary 2026-08-19T13:44:00Z
+This file confirms GitHub push works.
+Safe to delete after the quality fix lands.
