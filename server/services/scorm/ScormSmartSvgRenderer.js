@@ -345,6 +345,28 @@ function supportingDetails(spec, p, mobile) {
     }).join('');
 }
 
+function compositionTransform(rawComposition, width, height) {
+    const cx = width / 2;
+    const cy = height / 2;
+    switch (rawComposition) {
+        case 'editorial-left':
+            // Mirror the whole scene so the same scene type reads as a distinct composition.
+            return `translate(${width} 0) scale(-1 1)`;
+        case 'center-stage':
+            // Pull back slightly and center, giving the subject more surrounding air.
+            return `translate(${cx} ${cy}) scale(.88) translate(${-cx} ${-cy})`;
+        case 'wide-scene':
+            // Stretch wide and settle a touch higher, like a establishing shot.
+            return `translate(${cx} ${cy * .94}) scale(1.1 .95) translate(${-cx} ${-cy * .94})`;
+        case 'full-bleed':
+            // Push in close so the focal object fills more of the frame.
+            return `translate(${cx} ${cy}) scale(1.16) translate(${-cx} ${-cy})`;
+        case 'editorial-right':
+        default:
+            return '';
+    }
+}
+
 function sanitizeSvg(svg) {
     let output = String(svg || '');
     output = output.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '');
@@ -366,13 +388,15 @@ function renderSmartSvg(spec = {}, slide = {}, options = {}) {
     const scene = escapeXml(spec.scene || 'abstract-security');
     const title = escapeXml(spec.visualTitle || slide.visualTitle || slide.title || 'Learning visual');
     const direction = escapeXml(spec.artDirection || 'Editorial cybersecurity illustration');
-    const composition = escapeXml(spec.composition || 'editorial-right');
+    const rawComposition = spec.composition || 'editorial-right';
+    const composition = escapeXml(rawComposition);
+    const sceneTransform = compositionTransform(rawComposition, width, height);
 
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${title}" data-scorm-smart-svg="1" data-scene="${scene}" data-composition="${composition}">
       <title>${title}</title><desc>${direction}</desc>
       ${shadowDefs(p)}
       ${background(p, width, height, spec.mood)}
-      <g data-smart-svg-scene="${scene}">${sceneArtwork(spec, p, mobile)}</g>
+      <g data-smart-svg-scene="${scene}"${sceneTransform ? ` transform="${sceneTransform}"` : ''}>${sceneArtwork(spec, p, mobile)}</g>
       <g data-smart-svg-details="1">${supportingDetails(spec, p, mobile)}</g>
       <rect x="${mobile ? 34 : 42}" y="${mobile ? 34 : 38}" width="${mobile ? width - 68 : width - 84}" height="${mobile ? height - 68 : height - 76}" rx="${mobile ? 44 : 52}" fill="none" stroke="${p.ink}" stroke-opacity=".10" stroke-width="2"/>
     </svg>`;

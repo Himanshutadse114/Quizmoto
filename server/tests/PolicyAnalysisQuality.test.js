@@ -13,12 +13,22 @@ describe('PolicyAnalysisService content quality', () => {
     }));
 
     it('accepts substantial screens with concise diagram labels', () => {
+        const pointSets = [
+            ['Check the sender', 'Review the request', 'Verify another way', 'Report suspicious activity'],
+            ['Look for urgency cues', 'Confirm the domain', 'Avoid unexpected links', 'Ask before you click'],
+            ['Compare the tone to normal', 'Hover before you trust a link', 'Call the real number', 'Flag it to security'],
+            ['Check for spelling errors', 'Question surprise attachments', 'Use the approved channel', 'Note the sender address'],
+            ['Slow down under pressure', 'Cross-check the request', 'Keep records secure', 'Loop in your manager'],
+            ['Trust your instinct', 'Separate urgency from legitimacy', 'Confirm identity independently', 'Escalate anything unclear'],
+            ['Inspect the display name', 'Match it to past contact', 'Avoid replying directly', 'Forward to the security inbox'],
+            ['Recognise repeat patterns', 'Document what you saw', 'Warn nearby colleagues', 'Close the loop with a report']
+        ];
         const analysis = {
             slides: Array.from({ length: 8 }, (_, index) => ({
                 title: `Recognise the warning signal ${index + 1}`,
                 content: 'A suspicious request can look familiar while still containing warning signs. Check the sender, context and requested action before responding. If the request is unexpected or asks for sensitive information, verify it through an approved channel and report anything suspicious to the organisation. This pause helps separate a genuine business request from a social-engineering attempt before sensitive information is exposed.',
                 layout: 'process',
-                keyPoints: ['Check the sender', 'Review the request', 'Verify another way', 'Report suspicious activity']
+                keyPoints: pointSets[index]
             })),
             quiz: goodQuiz
         };

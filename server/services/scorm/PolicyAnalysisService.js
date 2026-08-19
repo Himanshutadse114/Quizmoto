@@ -183,11 +183,18 @@ function qualityIssues(analysis, detailLevel) {
     let overlongPoints = 0;
     let genericTitles = 0;
     let duplicatePoints = 0;
+    let hardSentences = 0;
     const seenTitles = new Set();
     let duplicateTitles = 0;
+    // Tracked across the whole course, not reset per slide, so a point repeated
+    // on a later screen (not just twice on the same screen) is caught too.
+    const seenPointsAcrossCourse = new Set();
 
     for (const slide of slides) {
         if (wordCount(slide?.content) < minWords) thin += 1;
+
+        const sentences = String(slide?.content || '').split(/(?<=[.!?])\s+/).filter(Boolean);
+        if (sentences.some((sentence) => wordCount(sentence) > 28)) hardSentences += 1;
 
         const title = normalizedText(slide?.title);
         if (GENERIC_TITLES.has(title)) genericTitles += 1;
@@ -203,12 +210,11 @@ function qualityIssues(analysis, detailLevel) {
 
         const layout = String(slide?.layout || '').toLowerCase();
         const pointLimit = VISUAL_POINT_WORD_LIMITS[layout] || 11;
-        const seenPoints = new Set();
         for (const point of points) {
             if (wordCount(point) > pointLimit) overlongPoints += 1;
             const key = normalizedText(point);
-            if (key && seenPoints.has(key)) duplicatePoints += 1;
-            if (key) seenPoints.add(key);
+            if (key && seenPointsAcrossCourse.has(key)) duplicatePoints += 1;
+            if (key) seenPointsAcrossCourse.add(key);
         }
     }
 
@@ -217,8 +223,9 @@ function qualityIssues(analysis, detailLevel) {
     if (weakPoints > allowance) issues.push(`${weakPoints} screens have fewer than three useful visual points.`);
     if (overlongPoints > allowance) issues.push(`${overlongPoints} visual points are too long to display cleanly in diagrams.`);
     if (genericTitles > allowance) issues.push(`${genericTitles} screen titles are generic rather than message-led.`);
-    if (duplicatePoints > 0) issues.push('At least one screen repeats the same supporting point.');
+    if (duplicatePoints > 0) issues.push(`${duplicatePoints} supporting points repeat wording already used on another screen.`);
     if (duplicateTitles > 0) issues.push('At least one screen title is duplicated.');
+    if (hardSentences > allowance) issues.push(`${hardSentences} screens contain sentences that are too long and dense for an easy reading level.`);
 
     const quiz = Array.isArray(analysis?.quiz) ? analysis.quiz : [];
     if (quiz.length) {
@@ -400,14 +407,17 @@ Create a learning arc:
    - "imageQuery": a short 2–3 word keyword for compatibility.
 
 2. WRITING QUALITY:
-   - Write for an intelligent busy learner. Use clear professional language and sentence case.
-   - Prefer concrete verbs such as verify, report, protect, confirm, review, stop, compare and escalate.
+   - Write in plain, everyday language for a general workforce learner, not a specialist. Target roughly an 8th-grade reading level.
+   - One idea per sentence. Keep sentences short — most under 20 words, none over 28. Break up any sentence that has more than one comma clause.
+   - Prefer short, common words over formal or technical ones (e.g. "check" not "verify", "tell" not "escalate", "use" not "utilise"). If a technical term is unavoidable (e.g. "MFA", "phishing"), define it in plain words the first time it appears.
+   - Prefer concrete verbs such as check, report, protect, confirm, review, stop, compare and tell.
    - Use the paragraph for explanation and the visual points for scanning. They should complement, not mirror, one another.
    - When the source supports it, turn abstract guidance into a short realistic situation: what the learner notices, what decision they face, and what the safe action is.
    - Aim for at least one source-grounded example, micro-scenario or consequence across every three learning screens when the source has enough detail.
    - Avoid generic AI phrases such as "In today's digital landscape", "It is important to note", "In conclusion" and "This section will discuss".
    - Never use empty titles such as "Introduction", "Overview", "Key Points", "Summary" or "Conclusion" unless the source explicitly requires that wording.
    - Never repeat a sentence from content inside keyPoints.
+   - Every keyPoint must be wording you have not already used on an earlier screen in this course, even if the idea is related. Rephrase or drop it rather than reusing the same phrase twice across the deck.
    - Do not invent statistics, dates, penalties, controls, examples or policy requirements.
 
 3. VISUAL STORYTELLING:

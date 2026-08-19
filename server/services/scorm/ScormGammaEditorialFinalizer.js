@@ -112,18 +112,18 @@ header h1{
   grid-area:visual!important;
   min-height:560px!important;
   height:100%!important;
-  padding:0!important;
+  padding:32px!important;
   overflow:hidden!important;
   border:0!important;
   border-radius:0!important;
   background:var(--gamma-ink)!important;
   box-shadow:none!important;
-  display:flex!important;align-items:stretch!important;justify-content:stretch!important
+  display:flex!important;align-items:center!important;justify-content:center!important
 }
-.qmx-visual picture{display:block!important;width:100%!important;height:100%!important}
+.qmx-visual picture{display:block!important;width:100%!important;height:100%!important;display:flex!important;align-items:center!important;justify-content:center!important}
 .qmx-visual img{
-  display:block!important;width:100%!important;height:100%!important;
-  max-width:none!important;max-height:none!important;object-fit:cover!important;margin:0!important;
+  display:block!important;width:auto!important;height:auto!important;
+  max-width:100%!important;max-height:100%!important;object-fit:contain!important;margin:auto!important;
   border-radius:0!important;filter:none!important
 }
 .qmx-visual-label{
