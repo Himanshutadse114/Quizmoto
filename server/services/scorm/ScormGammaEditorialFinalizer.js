@@ -57,7 +57,6 @@ header h1{
 }
 .stage,.qmx-stage{width:min(1180px,100%)!important;margin:auto!important}
 
-/* Gamma-style editorial hierarchy */
 .eyebrow,.qmx-kicker,.step-no,.hub-item b{
   color:var(--gamma-ink-soft)!important;
   font-family:'Lato','Helvetica Neue',Arial,sans-serif!important;
@@ -78,7 +77,6 @@ header h1{
 }
 .lead,.qmx-copy p{font-size:16.5px!important}
 
-/* Remove the previous neon/glass language. */
 .glass,.qmx-copy,.concept-card,.step,.milestone p,.compare-col,.hub-item,.quiz-card,.quiz-option,.final-card{
   background:transparent!important;
   color:var(--gamma-ink)!important;
@@ -88,7 +86,6 @@ header h1{
 }
 .glass,.qmx-copy,.quiz-card,.final-card{border-radius:0!important}
 
-/* Main slide composition follows the uploaded Gamma deck: editorial copy + accent image. */
 .qmx-screen:before{display:none!important}
 .qmx-frame{
   display:grid!important;
@@ -110,7 +107,7 @@ header h1{
 
 .qmx-visual{
   grid-area:visual!important;
-  aspect-ratio:8/5!important;
+  aspect-ratio:6/5!important;
   height:auto!important;
   min-height:0!important;
   max-height:none!important;
@@ -135,7 +132,6 @@ header h1{
   font-size:9px!important;letter-spacing:.06em!important
 }
 
-/* All slide types share one visual container size (copy/interaction layout may still vary). */
 .qmx-type-scenario .qmx-copy,
 .qmx-type-comparison .qmx-copy{padding-right:18px!important}
 .qmx-type-takeaway .qmx-copy h2{max-width:15ch!important}
@@ -168,7 +164,6 @@ header h1{
 .qmx-reveal-label{color:var(--gamma-ink)!important;font-size:9px!important;font-weight:900!important}
 .qmx-type-scenario .qmx-copy{border-left:0!important}
 
-/* Existing non-QMX layouts get the same editorial treatment. */
 .hero{grid-template-columns:minmax(0,1.6fr) minmax(290px,.9fr)!important;gap:34px!important;padding:0!important}
 .hero-art,.spot-visual{
   min-height:520px!important;height:100%!important;border-radius:0!important;
@@ -190,7 +185,6 @@ header h1{
 .compare-col.warn{background:#EFE1DC!important;border-top:3px solid #8B4C3E!important}
 .compare-col.good .compare-title{color:#405A47!important}.compare-col.warn .compare-title{color:#7A3F33!important}
 
-/* Assessments: clean card, bold question, no game-show neon. */
 .quiz-wrap{max-width:900px!important}
 .quiz-card{
   padding:38px 40px!important;background:rgba(255,255,255,.42)!important;
@@ -218,7 +212,6 @@ header h1{
 .score-ring{background:conic-gradient(var(--gamma-ink) 0deg,var(--gamma-ink) 270deg,var(--gamma-paper-3) 270deg)!important}
 .score-ring:before{background:var(--gamma-paper)!important}.score-ring span{color:var(--gamma-ink)!important;font-weight:900!important}
 
-/* Navigation is simple and solid, matching the reference deck. */
 .nav-btn{
   min-height:42px!important;border-radius:8px!important;padding:9px 16px!important;
   font-family:'Lato','Helvetica Neue',Arial,sans-serif!important;font-weight:700!important;
@@ -230,7 +223,6 @@ header h1{
 .nav-btn.secondary:hover{background:var(--gamma-paper-2)!important;border-color:#A9A398!important;color:var(--gamma-ink)!important}
 button:focus-visible,.nav-btn:focus-visible,.quiz-option:focus-visible,.qmx-point:focus-visible,.qmx-visual:focus-visible{outline:3px solid rgba(40,40,36,.22)!important;outline-offset:3px!important}
 
-/* Laptop: keep the editorial balance without crowding. */
 @media(max-height:760px) and (min-width:901px){
   .slide{padding-top:18px!important;padding-bottom:18px!important}
   .qmx-frame{min-height:min(520px,calc(100dvh - 156px))!important;gap:18px 28px!important}
@@ -239,7 +231,6 @@ button:focus-visible,.nav-btn:focus-visible,.quiz-option:focus-visible,.qmx-poin
   .lead,.qmx-copy p{font-size:15px!important;line-height:1.5!important}
 }
 
-/* Tablet / mobile: Gamma cards stack cleanly and preserve one idea per screen. */
 @media(max-width:900px){
   .slide{padding:18px!important}
   .qmx-frame,
@@ -258,9 +249,8 @@ button:focus-visible,.nav-btn:focus-visible,.quiz-option:focus-visible,.qmx-poin
   .qmx-interaction{padding:0 2px 12px!important}
   .hero{grid-template-columns:1fr!important}.hero-art,.spot-visual{min-height:300px!important}
 }
-/* Below 680px the picture element swaps to the portrait (3:4) mobile SVG - match the container to it. */
 @media(max-width:680px){
-  .qmx-visual{aspect-ratio:3/4!important}
+  .qmx-visual{aspect-ratio:9/11!important}
 }
 @media(max-width:560px){
   header{height:56px!important;padding:0 14px!important}footer{height:62px!important;padding:0 14px!important}
