@@ -110,20 +110,22 @@ header h1{
 
 .qmx-visual{
   grid-area:visual!important;
-  min-height:560px!important;
-  height:100%!important;
-  padding:32px!important;
+  aspect-ratio:8/5!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  padding:0!important;
   overflow:hidden!important;
   border:0!important;
   border-radius:0!important;
   background:var(--gamma-ink)!important;
   box-shadow:none!important;
-  display:flex!important;align-items:center!important;justify-content:center!important
+  display:flex!important;align-items:stretch!important;justify-content:stretch!important
 }
-.qmx-visual picture{display:block!important;width:100%!important;height:100%!important;display:flex!important;align-items:center!important;justify-content:center!important}
+.qmx-visual picture{display:block!important;width:100%!important;height:100%!important}
 .qmx-visual img{
-  display:block!important;width:auto!important;height:auto!important;
-  max-width:100%!important;max-height:100%!important;object-fit:contain!important;margin:auto!important;
+  display:block!important;width:100%!important;height:100%!important;
+  max-width:none!important;max-height:none!important;object-fit:cover!important;margin:0!important;
   border-radius:0!important;filter:none!important
 }
 .qmx-visual-label{
@@ -232,7 +234,6 @@ button:focus-visible,.nav-btn:focus-visible,.quiz-option:focus-visible,.qmx-poin
 @media(max-height:760px) and (min-width:901px){
   .slide{padding-top:18px!important;padding-bottom:18px!important}
   .qmx-frame{min-height:min(520px,calc(100dvh - 156px))!important;gap:18px 28px!important}
-  .qmx-visual{min-height:480px!important}
   .qmx-copy{padding-top:22px!important}
   .qmx-copy h2{font-size:clamp(32px,3.5vw,46px)!important;margin-bottom:15px!important}
   .lead,.qmx-copy p{font-size:15px!important;line-height:1.5!important}
@@ -254,16 +255,18 @@ button:focus-visible,.nav-btn:focus-visible,.quiz-option:focus-visible,.qmx-poin
   .qmx-copy{padding:16px 2px 4px!important}
   .qmx-copy h2{font-size:clamp(30px,7vw,42px)!important;max-width:16ch!important;margin-bottom:14px!important}
   .qmx-copy p{font-size:15px!important}
-  .qmx-visual,.qmx-type-scenario .qmx-visual,.qmx-type-comparison .qmx-visual{min-height:320px!important;height:320px!important}
   .qmx-interaction{padding:0 2px 12px!important}
   .hero{grid-template-columns:1fr!important}.hero-art,.spot-visual{min-height:300px!important}
+}
+/* Below 680px the picture element swaps to the portrait (3:4) mobile SVG - match the container to it. */
+@media(max-width:680px){
+  .qmx-visual{aspect-ratio:3/4!important}
 }
 @media(max-width:560px){
   header{height:56px!important;padding:0 14px!important}footer{height:62px!important;padding:0 14px!important}
   .slide{padding:14px 12px!important}
   .qmx-copy h2{font-size:clamp(27px,8.4vw,36px)!important}
   .qmx-copy p{font-size:14.5px!important}
-  .qmx-visual{min-height:270px!important;height:270px!important}
   .qmx-points{grid-template-columns:1fr!important}
   .quiz-card,.final-card{padding:22px 18px!important}
   .quiz-options{grid-template-columns:1fr!important}

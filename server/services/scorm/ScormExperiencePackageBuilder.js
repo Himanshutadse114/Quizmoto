@@ -176,8 +176,8 @@ function injectExperienceCss(html) {
 .qmx-kicker{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;margin-bottom:10px}
 .qmx-copy h2{font-size:clamp(30px,3vw,46px);line-height:1.01;letter-spacing:-.05em;margin:0 0 14px;text-wrap:balance}
 .qmx-copy p{font-size:16px;line-height:1.62;margin:0;max-width:62ch}
-.qmx-visual{grid-area:visual;position:relative;border-radius:28px;width:100%;height:520px;min-height:520px;max-height:520px;padding:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.qmx-visual picture{display:block;width:100%;height:100%}.qmx-visual img{display:block;width:100%;height:auto;max-width:100%;max-height:100%;object-fit:contain;margin:auto}
+.qmx-visual{grid-area:visual;position:relative;border-radius:28px;width:100%;aspect-ratio:8/5;height:auto;padding:0;overflow:hidden;display:flex;align-items:stretch;justify-content:stretch}
+.qmx-visual picture{display:block;width:100%;height:100%}.qmx-visual img{display:block;width:100%;height:100%;object-fit:cover;margin:0}
 .qmx-visual-label{position:absolute;left:16px;bottom:14px;display:flex;gap:6px;align-items:center;padding:7px 10px;border-radius:999px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;backdrop-filter:blur(12px)}
 .qmx-interaction{grid-area:interaction;align-self:start;padding:0 4px 8px}
 .qmx-prompt{font-size:12px;line-height:1.45;font-weight:650;margin:0 0 10px}
@@ -192,16 +192,19 @@ function injectExperienceCss(html) {
 .qmx-type-scenario .qmx-copy{border-left:3px solid var(--accent)}
 .qmx-enter{animation:qmxIn .46s cubic-bezier(.16,1,.3,1) both}
 @keyframes qmxIn{from{opacity:0;transform:translateY(9px) scale(.995)}to{opacity:1;transform:none}}
-@media(max-width:1040px){.qmx-frame{grid-template-columns:minmax(270px,.82fr) minmax(430px,1.18fr);gap:16px}.qmx-copy{padding:22px}.qmx-visual{height:430px;min-height:430px;max-height:430px}}
+@media(max-width:1040px){.qmx-frame{grid-template-columns:minmax(270px,.82fr) minmax(430px,1.18fr);gap:16px}.qmx-copy{padding:22px}}
 @media(max-width:820px){
   .qmx-frame{grid-template-columns:1fr;grid-template-areas:"copy" "visual" "interaction";gap:13px}
   .qmx-copy{padding:20px}.qmx-copy h2{font-size:clamp(27px,6vw,37px)}.qmx-copy p{font-size:15px}
-  .qmx-visual{height:360px;min-height:360px;max-height:360px}
   .qmx-interaction{padding:0}.qmx-points{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+/* Below 680px the picture element swaps to the portrait (3:4) mobile SVG - match the container to it. */
+@media(max-width:680px){
+  .qmx-visual{aspect-ratio:3/4}
 }
 @media(max-width:560px){
   .qmx-screen:before{inset:-12px;border-radius:25px}.qmx-frame{gap:11px}.qmx-copy{padding:17px;border-radius:19px!important}.qmx-kicker{font-size:10px}.qmx-copy h2{font-size:clamp(25px,7vw,32px);margin-bottom:10px}.qmx-copy p{font-size:14.5px;line-height:1.58}
-  .qmx-visual{height:auto!important;min-height:0!important;max-height:none!important;border-radius:20px!important}.qmx-visual picture{height:auto}.qmx-visual img{width:100%!important;height:auto!important;max-height:none!important;object-fit:contain!important}
+  .qmx-visual{border-radius:20px!important}
   .qmx-visual-label{left:10px;bottom:9px;font-size:8.5px;padding:6px 8px}.qmx-points{grid-template-columns:1fr 1fr;gap:7px}.qmx-point{min-height:46px;font-size:12px;padding:9px}.qmx-prompt{font-size:11.5px}.qmx-reveal{font-size:13px;padding:12px 13px}
 }
 @media(prefers-reduced-motion:reduce){.qmx-enter{animation:none!important}.qmx-point,.qmx-reveal{transition:none!important}}
@@ -235,8 +238,8 @@ function experienceScript() {
       function activate(idx,focus){
         if(idx<0||idx>=all.length)return;explored[idx]=true;
         all.forEach(function(b,n){b.classList.toggle('active',n===idx);b.setAttribute('aria-pressed',n===idx?'true':'false')});all[idx].classList.add('explored');
-        var detail=list[idx]||s.revealText||s.content||'';var suffix=s.revealText&&list[idx]?(' '+String(s.revealText)) : '';
-        if(revealText)revealText.textContent=String(detail)+suffix;if(reveal)reveal.hidden=false;
+        var detail=list[idx]||s.revealText||s.content||'';
+        if(revealText)revealText.textContent=String(detail);if(reveal)reveal.hidden=false;
         var done=Object.keys(explored).length;if(count)count.textContent=list.length?done+' / '+list.length+' explored':'Insight revealed';if(focus)all[idx].focus();
       }
       all.forEach(function(btn,n){btn.setAttribute('aria-pressed','false');btn.addEventListener('click',function(){activate(n,false)});btn.addEventListener('keydown',function(e){if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft')return;e.preventDefault();var next=e.key==='ArrowRight'?(n+1)%all.length:(n-1+all.length)%all.length;activate(next,true)})});
@@ -349,6 +352,7 @@ module.exports = {
     inferMetaphor,
     dedupePoints,
     cleanText,
+    experienceScript,
     SCREEN_TYPES,
     BACKGROUNDS
 };

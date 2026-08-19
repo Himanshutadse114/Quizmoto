@@ -5,7 +5,8 @@ const {
     inferScreenType,
     inferBackground,
     inferMetaphor,
-    dedupePoints
+    dedupePoints,
+    experienceScript
 } = require('../services/scorm/ScormExperiencePackageBuilder');
 
 describe('ScormExperiencePackageBuilder V5', () => {
@@ -110,5 +111,17 @@ describe('ScormExperiencePackageBuilder V5', () => {
         expect(result.quiz[0].options[0]).to.equal('Report it');
         expect(result.quiz[0].correctAnswer).to.equal(0);
         expect(result.quiz[0].explanation).to.equal('Reporting allows the organisation to investigate.');
+    });
+
+    it('reveals each hotspot point using only its own keyPoint text, never the shared slide-level revealText', () => {
+        // Regression guard: activate() used to append the slide's single, shared
+        // revealText to every point's reveal, so all "Explore N" buttons on a
+        // hotspot slide displayed the same trailing paragraph and only differed
+        // by a short prefix - reading as "every point has the same data".
+        const script = experienceScript();
+        expect(script).to.include('var detail=list[idx]||s.revealText||s.content||\'\';');
+        expect(script).to.not.match(/var suffix=s\.revealText/);
+        expect(script).to.not.match(/revealText\.textContent=String\(detail\)\+suffix/);
+        expect(script).to.include('revealText.textContent=String(detail);');
     });
 });
