@@ -90,128 +90,34 @@ function validateQuiz(quiz) {
   return '';
 }
 
-function PreviewArtwork({ slide }) {
-  const points = (slide?.keyPoints || []).filter(Boolean).slice(0, 6);
-  const layout = slide?.layout || 'cards';
-  const title = slide?.visualTitle || slide?.title || 'Learning visual';
-
-  if (layout === 'comparison') {
-    const half = Math.max(1, Math.ceil(points.length / 2));
-    return (
-      <div className="grid sm:grid-cols-2 gap-3 w-full">
-        <div className="rounded-xl border border-[#667765] bg-[#E4E7DF] p-4">
-          <div className="text-[10px] uppercase tracking-[.1em] font-bold text-[#405A47] mb-3">Recommended</div>
-          {points.slice(0, half).map((point, index) => <div key={index} className="text-sm text-[#282824] mb-2">✓ {point}</div>)}
-        </div>
-        <div className="rounded-xl border border-[#A56E62] bg-[#EFE1DC] p-4">
-          <div className="text-[10px] uppercase tracking-[.1em] font-bold text-[#7A3F33] mb-3">Watch out</div>
-          {(points.slice(half).length ? points.slice(half) : ['Pause and verify']).map((point, index) => <div key={index} className="text-sm text-[#282824] mb-2">! {point}</div>)}
-        </div>
-      </div>
-    );
-  }
-
-  if (layout === 'process' || layout === 'timeline' || layout === 'cycle') {
-    return (
-      <div className="w-full space-y-2.5">
-        {points.slice(0, 5).map((point, index) => (
-          <div key={index} className="flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 p-3">
-            <span className="w-8 h-8 shrink-0 rounded-full border border-white/25 grid place-items-center text-xs font-bold text-white">{index + 1}</span>
-            <span className="text-sm text-white/85">{point}</span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (layout === 'matrix') {
-    return (
-      <div className="grid grid-cols-2 gap-3 w-full">
-        {['Lower', 'Watch', 'Watch', 'Higher'].map((label, index) => (
-          <div key={label + index} className="rounded-xl border border-white/20 bg-white/10 p-4 min-h-[100px]">
-            <div className="text-[9px] uppercase tracking-[.12em] text-white/50 font-bold">{label}</div>
-            <div className="text-sm text-white/85 mt-2">{points[index] || 'Risk signal'}</div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (layout === 'spotlight') {
-    return (
-      <div className="min-h-[260px] flex flex-col items-center justify-center text-center px-6">
-        <div className="w-24 h-24 rounded-full border border-white/20 bg-white/10 grid place-items-center text-4xl text-white">!</div>
-        <div className="text-xl font-bold text-white mt-5">{title}</div>
-        <div className="text-sm text-white/60 mt-2 max-w-sm">{points[0] || 'Key learning point'}</div>
-      </div>
-    );
-  }
-
-  if (layout === 'hub') {
-    return (
-      <div className="w-full flex flex-col items-center gap-4">
-        <div className="w-28 h-28 rounded-full border border-white/20 bg-white/10 grid place-items-center text-center p-3">
-          <div className="text-sm font-bold text-white leading-tight">{title}</div>
-        </div>
-        <div className="grid grid-cols-2 gap-2.5 w-full">
-          {points.slice(0, 4).map((point, index) => <div key={index} className="rounded-xl border border-white/20 bg-white/10 p-3 text-sm text-white/80">{point}</div>)}
-        </div>
-      </div>
-    );
-  }
-
+function ExactSlidePreviewModal({ src, index, total, stale, onClose }) {
+  if (!src) return null;
   return (
-    <div className="grid grid-cols-2 gap-3 w-full">
-      {points.slice(0, 6).map((point, index) => (
-        <div key={index} className="rounded-xl border border-white/20 bg-white/10 p-3 min-h-[74px] flex gap-2.5 items-start">
-          <span className="w-6 h-6 shrink-0 rounded-md bg-white/15 grid place-items-center text-[10px] font-bold text-white">{index + 1}</span>
-          <span className="text-sm text-white/80 leading-snug">{point}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function SlidePreviewModal({ slide, courseTitle, index, total, onClose }) {
-  if (!slide) return null;
-  return (
-    <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm p-3 md:p-8 overflow-auto" role="dialog" aria-modal="true" aria-label="Slide preview">
-      <div className="max-w-[1120px] mx-auto">
+    <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm p-3 md:p-6 overflow-auto" role="dialog" aria-modal="true" aria-label="Exact generated slide preview">
+      <div className="max-w-[1320px] mx-auto">
         <div className="flex items-center justify-between gap-3 mb-3 text-white">
           <div>
-            <div className="text-[10px] uppercase tracking-[.12em] text-white/45 font-bold">Read-only slide preview</div>
+            <div className="text-[10px] uppercase tracking-[.12em] text-white/45 font-bold">Exact generated course renderer</div>
             <div className="text-sm font-semibold mt-1">Slide {index + 1} of {total}</div>
           </div>
           <button type="button" onClick={onClose} className="scorm-button-secondary w-10 h-10 grid place-items-center" aria-label="Close preview"><X size={17} /></button>
         </div>
 
-        <div className="rounded-[18px] overflow-hidden border border-[#CBC5B8] shadow-2xl bg-[#E7E7E4]">
-          <div className="h-12 px-5 flex items-center gap-3 border-b border-[#CBC5B8] bg-[#F4F2EC]">
-            <div className="w-7 h-7 rounded-md bg-[#282824] text-white text-[11px] font-black grid place-items-center">Q</div>
-            <div className="min-w-0 flex-1 text-[12px] font-semibold text-[#282824] truncate">{courseTitle}</div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[#4A4A45]">Part {index + 1} of {total}</div>
+        {stale && (
+          <div className="mb-3 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs text-amber-100">
+            This preview shows the last generated course. Use Save & rebuild course to apply your current text changes to the exact learner output.
           </div>
+        )}
 
-          <div className="grid md:grid-cols-[1.08fr_.92fr] min-h-[500px]">
-            <section className="p-7 md:p-10 flex flex-col justify-center bg-[#E7E7E4]">
-              <div className="text-[10px] uppercase tracking-[.12em] font-bold text-[#6B675F] mb-3">Section {index + 1}</div>
-              <h2 className="text-[34px] md:text-[44px] leading-[1.05] tracking-[-.035em] font-black text-[#282824]">{slide.title || 'Untitled slide'}</h2>
-              <p className="text-[15px] leading-relaxed text-[#4A4A45] mt-5">{slide.introText || slide.content || ''}</p>
-              {!!slide.interaction?.prompt && <div className="mt-6 text-xs font-semibold text-[#6B675F]">{slide.interaction.prompt}</div>}
-              {!!slide.revealText && <div className="mt-4 rounded-xl border border-[#CBC5B8] bg-[#F4F2EC] p-4 text-sm leading-relaxed text-[#4A4A45]">{slide.revealText}</div>}
-            </section>
-            <section className="p-5 md:p-7 flex items-center justify-center bg-[linear-gradient(160deg,#2c2c28,#1a1a18)]">
-              <PreviewArtwork slide={slide} />
-            </section>
-          </div>
-
-          <div className="h-12 px-5 flex items-center justify-between border-t border-[#CBC5B8] bg-[#F4F2EC] text-[11px] font-semibold text-[#4A4A45]">
-            <span>Previous</span>
-            <span>Preview only</span>
-            <span className="px-3 py-1.5 rounded-md bg-[#282824] text-white">Next</span>
-          </div>
+        <div className="rounded-[18px] overflow-hidden border border-white/15 shadow-2xl bg-[#05070d] h-[78vh] min-h-[520px] max-h-[860px]">
+          <iframe
+            src={src}
+            title={`Generated slide ${index + 1} preview`}
+            className="w-full h-full border-0 block bg-[#05070d]"
+            allow="autoplay; fullscreen"
+          />
         </div>
-        <p className="text-center text-[11px] text-white/45 mt-3">This preview is for checking one slide. Full learner QA preview is available from the course workspace after generation.</p>
+        <p className="text-center text-[11px] text-white/45 mt-3">This uses the same generated SCORM HTML, CSS and visual assets as the learner course. Navigation is locked to the selected slide.</p>
       </div>
     </div>
   );
@@ -230,6 +136,9 @@ export default function AuthorVisual() {
   const [analysis, setAnalysis] = useState(null);
   const [selected, setSelected] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -254,6 +163,7 @@ export default function AuthorVisual() {
       .then((res) => {
         setAnalysis(normalizeAnalysis(res.data.analysis || {}));
         setSelected(0);
+        setDirty(false);
       })
       .catch((err) => setError(err.response?.data?.message || err.message))
       .finally(() => setBusy(false));
@@ -287,7 +197,8 @@ export default function AuthorVisual() {
       }, { headers, timeout: 180000 });
       setAnalysis(normalizeAnalysis(res.data.analysis));
       setSelected(0);
-      setNotice('Learning content is ready. Review and edit the written text, preview individual slides when needed, then generate the course.');
+      setDirty(true);
+      setNotice('Learning content is ready. Review and edit the written text, then generate the course. Exact visual preview becomes available after generation.');
     } catch (err) {
       setError(err.response?.data?.message || err.message);
     } finally {
@@ -296,6 +207,7 @@ export default function AuthorVisual() {
   };
 
   const updateSlide = (patch) => {
+    setDirty(true);
     setAnalysis((prev) => {
       if (!prev) return prev;
       const slides = [...prev.slides];
@@ -310,7 +222,42 @@ export default function AuthorVisual() {
     updateSlide({ keyPoints: points });
   };
 
-  const updateQuiz = (quiz) => setAnalysis((prev) => prev ? { ...prev, quiz } : prev);
+  const updateQuiz = (quiz) => {
+    setDirty(true);
+    setAnalysis((prev) => prev ? { ...prev, quiz } : prev);
+  };
+
+  const updateCourseTitle = (value) => {
+    setDirty(true);
+    setAnalysis((prev) => prev ? { ...prev, title: value } : prev);
+  };
+
+  const openExactPreview = async () => {
+    if (!editId) {
+      setNotice('Exact slide preview is available after the course is generated because it uses the final SCORM HTML, CSS and generated visual assets.');
+      return;
+    }
+    setPreviewBusy(true);
+    setError('');
+    try {
+      const res = await axios.post(apiUrl(`/api/scorm/courses/${editId}/preview`), {}, { headers });
+      const registrationId = res.data?.registrationId;
+      const previewToken = res.data?.token;
+      if (!registrationId || !previewToken) throw new Error('Preview session could not be created.');
+      const query = new URLSearchParams({ token: previewToken, slide: String(selected) });
+      setPreviewUrl(apiUrl(`/api/scorm/slide-preview/${registrationId}?${query.toString()}`));
+      setPreviewOpen(true);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message);
+    } finally {
+      setPreviewBusy(false);
+    }
+  };
+
+  const closePreview = () => {
+    setPreviewOpen(false);
+    setPreviewUrl('');
+  };
 
   const generate = async () => {
     if (!analysis) return;
@@ -335,6 +282,7 @@ export default function AuthorVisual() {
       }
 
       try { localStorage.removeItem(DRAFT_KEY); } catch (_) {}
+      setDirty(false);
       const id = res.data?.courseId || null;
       setNotice(editId ? 'Course content rebuilt successfully.' : 'Course generated successfully.');
       if (id) navigate(`/scorm/courses/${id}`);
@@ -356,7 +304,16 @@ export default function AuthorVisual() {
         </div>
         {analysis && (
           <div className="flex items-center gap-2 flex-wrap">
-            {slide && <button type="button" onClick={() => setPreviewOpen(true)} className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold"><Eye size={16} /> Preview slide</button>}
+            {slide && editId && (
+              <button type="button" onClick={openExactPreview} disabled={previewBusy} className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold disabled:opacity-50">
+                {previewBusy ? <Loader2 size={16} className="animate-spin" /> : <Eye size={16} />} Preview slide
+              </button>
+            )}
+            {slide && !editId && (
+              <button type="button" disabled title="Generate the course first to use the exact learner renderer" className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold opacity-45 cursor-not-allowed">
+                <Eye size={16} /> Preview after generation
+              </button>
+            )}
             <button type="button" onClick={generate} disabled={busy} className="scorm-button-primary inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold disabled:opacity-50">
               {busy ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
               {editId ? 'Save & rebuild course' : 'Generate course'}
@@ -408,14 +365,20 @@ export default function AuthorVisual() {
             <main className="min-w-0 space-y-4">
               <section className="scorm-panel rounded-3xl border overflow-hidden">
                 <div className="p-4 md:p-5 border-b border-white/10 flex flex-wrap items-center justify-between gap-3">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <div className="text-[10px] uppercase tracking-[.12em] text-slate-500 font-semibold">Course title</div>
-                    <input value={analysis.title || ''} onChange={(e) => setAnalysis((prev) => prev ? { ...prev, title: e.target.value } : prev)} className="mt-1 w-full bg-transparent border-0 outline-none text-xl font-semibold text-white p-0" placeholder="Course title" />
+                    <input value={analysis.title || ''} onChange={(e) => updateCourseTitle(e.target.value)} className="mt-1 w-full bg-transparent border-0 outline-none text-xl font-semibold text-white p-0" placeholder="Course title" />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <button type="button" disabled={selected === 0} onClick={() => setSelected((value) => Math.max(0, value - 1))} className="scorm-button-secondary p-2.5 disabled:opacity-30" aria-label="Previous slide"><ChevronLeft size={16} /></button>
                     <button type="button" disabled={selected >= analysis.slides.length - 1} onClick={() => setSelected((value) => Math.min(analysis.slides.length - 1, value + 1))} className="scorm-button-secondary p-2.5 disabled:opacity-30" aria-label="Next slide"><ChevronRight size={16} /></button>
-                    <button type="button" onClick={() => setPreviewOpen(true)} className="scorm-button-secondary inline-flex items-center gap-2 px-3 py-2.5 text-xs font-semibold"><Eye size={14} /> Preview slide</button>
+                    {editId ? (
+                      <button type="button" onClick={openExactPreview} disabled={previewBusy} className="scorm-button-secondary inline-flex items-center gap-2 px-3 py-2.5 text-xs font-semibold disabled:opacity-50">
+                        {previewBusy ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />} Preview slide
+                      </button>
+                    ) : (
+                      <button type="button" disabled title="Generate the course first to use the exact learner renderer" className="scorm-button-secondary inline-flex items-center gap-2 px-3 py-2.5 text-xs font-semibold opacity-45 cursor-not-allowed"><Eye size={14} /> Preview after generation</button>
+                    )}
                   </div>
                 </div>
 
@@ -474,8 +437,14 @@ export default function AuthorVisual() {
         </div>
       )}
 
-      {previewOpen && slide && (
-        <SlidePreviewModal slide={slide} courseTitle={analysis?.title || 'Course'} index={selected} total={analysis?.slides?.length || 1} onClose={() => setPreviewOpen(false)} />
+      {previewOpen && previewUrl && (
+        <ExactSlidePreviewModal
+          src={previewUrl}
+          index={selected}
+          total={analysis?.slides?.length || 1}
+          stale={dirty}
+          onClose={closePreview}
+        />
       )}
     </div>
   );
