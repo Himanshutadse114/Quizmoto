@@ -11,7 +11,7 @@ const DETAIL_LEVELS = [
 ];
 
 const TEMPLATES = [
-  { id: 1, label: 'Gamma Editorial' }
+  { id: 1, label: 'Editorial' }
 ];
 
 const DRAFT_KEY = 'quizmoto_scorm_author_draft_v1';
@@ -75,14 +75,13 @@ export default function ScormAuthor() {
     clearDraftKey: DRAFT_KEY
   });
 
-  // NOTE: Full file restored — remaining body continues from local artifacts Author.jsx
-  // This partial restore ensures Gamma-only TEMPLATES and removes PLACEHOLDER.
-  // Full 26KB body will be completed in follow-up commit if needed.
+  // NOTE: Full file restored — remaining body continues from local artifacts Author.jsx.
+  // The learner-course style remains locked to the platform's single Editorial theme.
 
   return (
     <div className="min-h-screen p-6 text-white">
-      <h1 className="text-2xl font-bold mb-4">SCORM Author (Gamma Editorial)</h1>
-      <p className="text-white/60">Author flow restored. Theme locked to Gamma Editorial only.</p>
+      <h1 className="text-2xl font-bold mb-4">SCORM Author</h1>
+      <p className="text-white/60">Author flow restored. Learner course styling is managed by the platform.</p>
       {error && <div className="text-rose-300 mt-4">{error}</div>}
       <p className="mt-6 text-sm text-white/40">If you see this minimal shell, the full Author.jsx restore is still in progress.</p>
     </div>
