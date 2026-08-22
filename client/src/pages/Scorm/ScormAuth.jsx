@@ -5,6 +5,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import './scormAuthWorkbench.css';
+import './scormAuthTealRestore.css';
 
 export default function ScormAuth() {
   const navigate = useNavigate();
