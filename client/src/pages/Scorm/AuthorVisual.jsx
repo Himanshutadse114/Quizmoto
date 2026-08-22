@@ -17,7 +17,7 @@ import AuthorQuizEditor from './AuthorQuizEditor';
 import { normalizeCourseSlide } from './courseExperienceV5';
 
 const DRAFT_KEY = 'quizmoto_scorm_author_content_draft_v3';
-const GAMMA_THEME_ID = 1;
+const EDITORIAL_THEME_ID = 1;
 
 function toBase64(file) {
   return new Promise((resolve, reject) => {
@@ -56,13 +56,22 @@ function normalizeAnalysis(value) {
   };
 }
 
+function visiblePointLimit(slide) {
+  const layout = String(slide?.layout || '').trim().toLowerCase();
+  if (['process', 'timeline', 'cycle', 'spotlight'].includes(layout)) return 4;
+  return 6;
+}
+
 function cleanForGenerate(analysis) {
   if (!analysis) return null;
   return {
     ...analysis,
-    themeId: GAMMA_THEME_ID,
-    themeName: 'Gamma Editorial',
-    slides: (analysis.slides || []).map(({ visualAsset, mobileVisualAsset, ...slide }) => slide),
+    themeId: EDITORIAL_THEME_ID,
+    themeName: 'Editorial',
+    slides: (analysis.slides || []).map(({ visualAsset, mobileVisualAsset, ...slide }) => ({
+      ...slide,
+      keyPoints: (Array.isArray(slide.keyPoints) ? slide.keyPoints : []).slice(0, visiblePointLimit(slide))
+    })),
     quiz: (analysis.quiz || []).map((question) => ({
       ...question,
       question: String(question.question || '').trim(),
@@ -180,6 +189,8 @@ export default function AuthorVisual() {
 
   const hasSource = Boolean(file || topic.trim() || description.trim());
   const slide = analysis?.slides?.[selected];
+  const pointLimit = visiblePointLimit(slide);
+  const visiblePoints = (slide?.keyPoints || []).slice(0, pointLimit);
 
   const analyze = async () => {
     if (!hasSource) {
@@ -197,12 +208,12 @@ export default function AuthorVisual() {
         fileBase64,
         mimeType: file?.type || '',
         detailLevel,
-        templateId: GAMMA_THEME_ID
+        templateId: EDITORIAL_THEME_ID
       }, { headers, timeout: 180000 });
       setAnalysis(normalizeAnalysis(res.data.analysis));
       setSelected(0);
       setDirty(true);
-      setNotice('Learning content is ready. Review and edit the written text, then generate the course. Exact visual preview becomes available after generation.');
+      setNotice('Learning content is ready. Review and edit the learner-visible text, then generate the course. Exact visual preview becomes available after generation.');
     } catch (err) {
       setError(err.response?.data?.message || err.message);
     } finally {
@@ -276,7 +287,7 @@ export default function AuthorVisual() {
     try {
       const res = await axios.post(apiUrl('/api/scorm/author/generate'), {
         analysis: cleanForGenerate(analysis),
-        templateId: GAMMA_THEME_ID,
+        templateId: EDITORIAL_THEME_ID,
         ...(editId ? { replacePackageId: editId } : {})
       }, { headers, timeout: 180000 });
 
@@ -304,7 +315,7 @@ export default function AuthorVisual() {
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">SCORM AI · Content Editor</div>
           <h1 className="text-2xl md:text-3xl font-semibold text-white mt-1">{editId ? 'Edit course content' : 'Create AI course'}</h1>
-          <p className="text-sm text-slate-400 mt-1 max-w-2xl">Edit only the learner-facing written content. Visual layout, artwork and course styling remain managed by the course generator.</p>
+          <p className="text-sm text-slate-400 mt-1 max-w-2xl">Only learner-visible text is editable here. Visual layout, artwork and course styling remain managed by the course generator.</p>
         </div>
         {analysis && (
           <div className="flex items-center gap-2 flex-wrap">
@@ -371,7 +382,7 @@ export default function AuthorVisual() {
                 <div className="p-4 md:p-5 border-b border-white/10 flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="text-[10px] uppercase tracking-[.12em] text-slate-500 font-semibold">Course title</div>
-                    <input value={analysis.title || ''} onChange={(e) => updateCourseTitle(e.target.value)} className="mt-1 w-full bg-transparent border-0 outline-none text-xl font-semibold text-white p-0" placeholder="Course title" />
+                    <input value={analysis.title || ''} onChange={(e) => updateCourseTitle(e.target.value)} className="mt-1 w-full bg-transparent border-0 outline-none text-xl font-semibold text-white px-3 py-2.5 min-h-[46px]" placeholder="Course title" />
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     <button type="button" disabled={selected === 0} onClick={() => setSelected((value) => Math.max(0, value - 1))} className="scorm-button-secondary p-2.5 disabled:opacity-30" aria-label="Previous slide"><ChevronLeft size={16} /></button>
@@ -393,38 +404,28 @@ export default function AuthorVisual() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Initial learner text</label>
-                    <textarea rows={5} value={slide.introText || ''} onChange={(e) => updateSlide({ introText: e.target.value })} className="w-full p-3 text-sm leading-relaxed" placeholder="Text shown when the slide opens" />
+                    <label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Learner text</label>
+                    <textarea rows={5} value={slide.introText || ''} onChange={(e) => updateSlide({ introText: e.target.value })} className="w-full p-3 text-sm leading-relaxed" placeholder="Main text shown on this learner slide" />
                   </div>
 
-                  {!!(slide.keyPoints || []).length && (
+                  {!!visiblePoints.length && (
                     <div>
-                      <label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Visual labels / key points</label>
+                      <label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Visible key points</label>
                       <div className="grid md:grid-cols-2 gap-2.5">
-                        {(slide.keyPoints || []).map((point, index) => (
+                        {visiblePoints.map((point, index) => (
                           <div key={index} className="rounded-xl border border-white/10 bg-white/[.03] p-3">
                             <div className="text-[9px] uppercase tracking-[.1em] text-slate-600 font-bold mb-1.5">Point {index + 1}</div>
                             <textarea rows={2} value={point || ''} onChange={(e) => updatePoint(index, e.target.value)} className="w-full p-2.5 text-sm leading-snug" placeholder={`Point ${index + 1}`} />
                           </div>
                         ))}
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-2">Only the wording can be changed here. The number, layout and position of visual elements remain controlled by the generator.</div>
+                      <div className="text-[10px] text-slate-500 mt-2">This layout renders up to {pointLimit} key points in the learner course. Only those visible points are editable here.</div>
                     </div>
                   )}
 
                   <div>
                     <label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Visual title</label>
                     <input value={slide.visualTitle || ''} onChange={(e) => updateSlide({ visualTitle: e.target.value })} className="w-full p-3 text-sm" placeholder="Short text shown inside the visual" />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Interaction instruction</label>
-                    <textarea rows={2} value={slide.interaction?.prompt || ''} onChange={(e) => updateSlide({ interaction: { ...(slide.interaction || {}), prompt: e.target.value } })} className="w-full p-3 text-sm leading-relaxed" placeholder="Instruction shown to the learner" />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Reveal text</label>
-                    <textarea rows={4} value={slide.revealText || ''} onChange={(e) => updateSlide({ revealText: e.target.value })} className="w-full p-3 text-sm leading-relaxed" placeholder="Additional text revealed after the learner interacts" />
                   </div>
                 </div>
               </section>
