@@ -18,14 +18,19 @@ import {
   LockKeyhole,
   Gamepad2,
   LogOut,
-  RefreshCw
+  RefreshCw,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { readScormPlatformTheme, saveScormPlatformTheme } from './platformTheme';
 import './scormEditorialTheme.css';
 import './scormDashboard.css';
 import './scormContrastPolish.css';
 import './scormModernDark.css';
 import './scormPlatformBluePolish.css';
+import './scormButtonTealOverride.css';
+import './scormLightTheme.css';
 
 const NAV_GROUPS = [
   {
@@ -107,6 +112,25 @@ function Brand() {
   );
 }
 
+function ThemeToggle({ theme, onToggle, auth = false }) {
+  const light = theme === 'light';
+  const Icon = light ? Moon : Sun;
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={auth ? 'sa-theme-toggle' : 'scorm-theme-toggle'}
+      aria-label={light ? 'Switch to dark theme' : 'Switch to light theme'}
+      aria-pressed={light}
+      title={light ? 'Switch to dark theme' : 'Switch to light theme'}
+    >
+      <Icon size={15} strokeWidth={2} />
+      <span className="scorm-theme-toggle-label">{light ? 'Dark' : 'Light'}</span>
+      <span className="scorm-theme-toggle-track" aria-hidden="true"><span className="scorm-theme-toggle-knob" /></span>
+    </button>
+  );
+}
+
 function MobileTabBar({ scormAccess }) {
   const items = [
     { to: '/scorm', end: true, label: 'Home', icon: LayoutDashboard },
@@ -120,6 +144,7 @@ function MobileTabBar({ scormAccess }) {
 export default function ScormPlatformShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(false);
+  const [theme, setTheme] = useState(readScormPlatformTheme);
   const navigate = useNavigate();
   const {
     platformAccess,
@@ -128,6 +153,10 @@ export default function ScormPlatformShell() {
     refreshScormAccess,
     logout
   } = useAuth();
+
+  useEffect(() => {
+    saveScormPlatformTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     if (!platformAccess) return;
@@ -156,10 +185,11 @@ export default function ScormPlatformShell() {
     navigate('/', { replace: true });
   };
 
+  const toggleTheme = () => setTheme((current) => current === 'light' ? 'dark' : 'light');
   const isSuperAdmin = Boolean(scormAccess && (user?.isSuperAdmin || user?.role === 'super_admin'));
 
   return (
-    <div className="scorm-editorial min-h-screen relative z-20">
+    <div className={`scorm-editorial scorm-theme-${theme} min-h-screen relative z-20`}>
       <aside className="scorm-sidebar fixed inset-y-0 left-0 z-40 hidden lg:flex w-[268px] flex-col border-r">
         <div className="scorm-brand-wrap h-[76px] px-5 flex items-center border-b"><Brand /></div>
         <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} />
@@ -190,6 +220,7 @@ export default function ScormPlatformShell() {
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open SCORM AI navigation" className="scorm-topbar-icon lg:hidden w-10 h-10 grid place-items-center shrink-0"><Menu size={18} /></button>
           {!scormAccess && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> SCORM AI approval pending · Quizmoto available</div>}
           <div className="ml-auto flex items-center gap-2">
+            <ThemeToggle theme={theme} onToggle={toggleTheme} />
             <Link to="/scorm/quizmoto" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
             {isSuperAdmin && <Link to="/scorm/access" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><ShieldCheck size={14} /> Access</Link>}
             <Link to="/scorm/library?upload=1" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Upload size={14} /> {scormAccess ? 'Upload' : 'Library'}</Link>
