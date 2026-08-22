@@ -1,0 +1,109 @@
+.scorm-auth-workbench {
+  --sa-bg: #0A0F0E !important;
+  --sa-bg-deep: #070B0A !important;
+  --sa-panel: #121A19 !important;
+  --sa-panel-2: #17201F !important;
+  --sa-panel-3: #1C2725 !important;
+  --sa-border: rgba(255,255,255,.10) !important;
+  --sa-border-strong: rgba(79,201,191,.30) !important;
+  --sa-border-soft: rgba(255,255,255,.06) !important;
+  --sa-cream: #EDF4F2 !important;
+  --sa-cream-soft: #C7D5D1 !important;
+  --sa-soft: #A9BAB6 !important;
+  --sa-muted: #6E7D79 !important;
+  --sa-muted-deep: #586864 !important;
+  --sa-orange: #4FC9BF !important;
+  --sa-orange-strong: #7BDCD3 !important;
+  --sa-yellow: #7BDCD3 !important;
+  background:
+    radial-gradient(circle at 18% -8%, rgba(79,201,191,.10), transparent 25rem),
+    radial-gradient(circle at 88% 100%, rgba(63,203,140,.04), transparent 26rem),
+    linear-gradient(180deg, #0D1413 0%, #0A0F0E 56%, #070B0A 100%) !important;
+}
+
+.scorm-auth-workbench .sa-back {
+  background: #121A19 !important;
+  border-color: rgba(255,255,255,.10) !important;
+}
+
+.scorm-auth-workbench .sa-back:hover {
+  border-color: #4FC9BF !important;
+  background: #17201F !important;
+}
+
+.scorm-auth-workbench .sa-card {
+  border-color: rgba(255,255,255,.10) !important;
+  border-top-color: #4FC9BF !important;
+  background: #121A19 !important;
+}
+
+.scorm-auth-workbench .sa-brand-panel {
+  border-color: rgba(255,255,255,.10) !important;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(79,201,191,.09), transparent 18rem),
+    linear-gradient(180deg, #121A19 0%, #0A0F0E 100%) !important;
+}
+
+.scorm-auth-workbench .sa-brand-panel::after {
+  border-color: rgba(79,201,191,.15) !important;
+}
+
+.scorm-auth-workbench .sa-mark {
+  border-color: rgba(123,220,211,.42) !important;
+  background: linear-gradient(145deg, #7BDCD3, #4FC9BF) !important;
+  color: #06201E !important;
+  box-shadow: 0 10px 24px rgba(79,201,191,.14) !important;
+}
+
+.scorm-auth-workbench .sa-point-dot {
+  background: #4FC9BF !important;
+  box-shadow: 0 0 0 3px rgba(79,201,191,.10) !important;
+}
+
+.scorm-auth-workbench .sa-form-panel {
+  background: linear-gradient(180deg, #17201F 0%, #121A19 100%) !important;
+}
+
+.scorm-auth-workbench .sa-tabs,
+.scorm-auth-workbench .sa-google-button,
+.scorm-auth-workbench .sa-input {
+  background: #0D1413 !important;
+  border-color: rgba(255,255,255,.10) !important;
+}
+
+.scorm-auth-workbench .sa-tab:hover {
+  background: #17201F !important;
+}
+
+.scorm-auth-workbench .sa-tab.is-active {
+  border-color: #7BDCD3 !important;
+  color: #06201E !important;
+  background: #4FC9BF !important;
+}
+
+.scorm-auth-workbench .sa-notice {
+  border-color: rgba(79,201,191,.22) !important;
+  color: #C7D5D1 !important;
+  background: rgba(79,201,191,.08) !important;
+}
+
+.scorm-auth-workbench .sa-input::placeholder {
+  color: #6E7D79 !important;
+}
+
+.scorm-auth-workbench .sa-input:focus {
+  border-color: #4FC9BF !important;
+  box-shadow: 0 0 0 3px rgba(79,201,191,.16) !important;
+  background: #121A19 !important;
+}
+
+.scorm-auth-workbench .sa-submit {
+  border-color: #7BDCD3 !important;
+  background: linear-gradient(180deg, #7BDCD3 0%, #4FC9BF 100%) !important;
+  color: #06201E !important;
+  box-shadow: 0 8px 20px rgba(79,201,191,.14) !important;
+}
+
+.scorm-auth-workbench .sa-submit:hover {
+  background: linear-gradient(180deg, #9BE8E1 0%, #7BDCD3 100%) !important;
+}
