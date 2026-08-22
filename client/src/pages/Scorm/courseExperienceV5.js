@@ -1,9 +1,9 @@
 export const COURSE_THEMES = [
   {
     id: 1,
-    slug: 'gamma-editorial',
-    name: 'Gamma Editorial',
-    description: 'Warm paper · charcoal · editorial',
+    slug: 'editorial',
+    name: 'Editorial',
+    description: 'Neutral paper · charcoal · editorial',
     primary: '#282824',
     dark: '#171715',
     accent: '#CBC5B8',
@@ -71,7 +71,7 @@ export const POINT_WORD_LIMITS = {
 };
 
 export function courseTheme(id) {
-  // Platform is Gamma-only; always resolve to Gamma Editorial.
+  // Platform exposes one learner-course theme.
   return COURSE_THEMES[0];
 }
 
