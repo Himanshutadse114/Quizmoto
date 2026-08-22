@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -91,9 +92,10 @@ function validateQuiz(quiz) {
 }
 
 function ExactSlidePreviewModal({ src, index, total, stale, onClose }) {
-  if (!src) return null;
-  return (
-    <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm p-3 md:p-6 overflow-auto" role="dialog" aria-modal="true" aria-label="Exact generated slide preview">
+  if (!src || typeof document === 'undefined') return null;
+
+  const modal = (
+    <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-sm p-3 md:p-6 overflow-auto" role="dialog" aria-modal="true" aria-label="Exact generated slide preview">
       <div className="max-w-[1320px] mx-auto">
         <div className="flex items-center justify-between gap-3 mb-3 text-white">
           <div>
@@ -121,6 +123,8 @@ function ExactSlidePreviewModal({ src, index, total, stale, onClose }) {
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }
 
 export default function AuthorVisual() {
@@ -295,7 +299,7 @@ export default function AuthorVisual() {
   };
 
   return (
-    <div className="min-h-screen max-w-[1450px] mx-auto p-4 md:p-7 pb-24 relative z-10">
+    <div className="min-h-screen max-w-[1450px] mx-auto p-4 md:p-7 pb-24 relative">
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">SCORM AI · Content Editor</div>
