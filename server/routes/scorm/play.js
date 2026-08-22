@@ -50,9 +50,10 @@ router.get('/:regId', async (req, res) => {
         const pkg = reg.course.package;
         if (pkg.status !== 'ready') return res.status(409).send('Package not ready');
 
+        const embeddedPreview = Boolean(reg.isPreview) && String(req.query.previewEmbed || '') === '1';
         const entryHref = String(req.query.entryHref || pkg.entryHref || 'index.html').replace(/^\/+/, '');
         const tokEnc = encodeURIComponent(token);
-        const contentSrc = '/api/scorm/content/t/' + tokEnc + '/' + entryHref.split('/').map(encodeURIComponent).join('/');
+        const contentSrc = '/api/scorm/content/t/' + tokEnc + '/' + entryHref.split('/').map(encodeURIComponent).join('/') + (embeddedPreview ? '?previewEmbed=1' : '');
         const sessionEndpoint = '/api/scorm/session/' + reg.id;
         const xapiEndpoint = '/api/scorm/xapi/statements';
         const learnerName = reg.learnerName || 'Learner';
@@ -228,7 +229,7 @@ document.getElementById("btnExit").onclick=function(){persistAndFinish();closePl
 
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');
-        res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
+        res.setHeader('Content-Security-Policy', embeddedPreview ? "frame-ancestors 'self' https: http:" : "frame-ancestors 'self'");
         res.send(html);
     } catch (err) {
         console.error('[scorm-player-v2] launch failed', {
