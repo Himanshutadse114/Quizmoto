@@ -1,0 +1,146 @@
+/*
+ * Final SCORM platform action-colour guard.
+ * This stylesheet is loaded by the React platform only. Generated learner
+ * SCORM packages are served separately and do not receive these rules.
+ */
+
+:root {
+  --scorm-platform-button-teal: #4FC9BF;
+  --scorm-platform-button-teal-strong: #7BDCD3;
+  --scorm-platform-button-teal-dark: #06201E;
+  --scorm-platform-button-teal-soft: rgba(79, 201, 191, .14);
+  --scorm-platform-button-teal-line: rgba(79, 201, 191, .38);
+}
+
+/* Shared SCORM buttons also appear in body-level portals, so do not scope
+ * these two classes only to .scorm-editorial. */
+.scorm-button-primary {
+  background: var(--scorm-platform-button-teal) !important;
+  background-image: none !important;
+  border-color: var(--scorm-platform-button-teal-strong) !important;
+  color: var(--scorm-platform-button-teal-dark) !important;
+  box-shadow: 0 8px 20px rgba(79, 201, 191, .12) !important;
+}
+
+.scorm-button-primary:hover:not(:disabled) {
+  background: var(--scorm-platform-button-teal-strong) !important;
+  background-image: none !important;
+  border-color: var(--scorm-platform-button-teal-strong) !important;
+  color: var(--scorm-platform-button-teal-dark) !important;
+}
+
+.scorm-button-secondary {
+  background: var(--scorm-platform-button-teal-soft) !important;
+  background-image: none !important;
+  border-color: var(--scorm-platform-button-teal-line) !important;
+  color: var(--scorm-platform-button-teal-strong) !important;
+}
+
+.scorm-button-secondary:hover:not(:disabled) {
+  background: rgba(79, 201, 191, .22) !important;
+  background-image: none !important;
+  border-color: var(--scorm-platform-button-teal-strong) !important;
+  color: #D9F5F1 !important;
+}
+
+/* Convert page-local outlined blue/cyan controls to teal. */
+.scorm-editorial button[class*="border-blue-"],
+.scorm-editorial button[class*="border-cyan-"],
+.scorm-editorial button[class*="text-blue-"],
+.scorm-editorial button[class*="text-cyan-"],
+.scorm-editorial a[class*="border-blue-"],
+.scorm-editorial a[class*="border-cyan-"],
+.scorm-editorial a[class*="text-blue-"],
+.scorm-editorial a[class*="text-cyan-"],
+.scorm-editorial [role="button"][class*="border-blue-"],
+.scorm-editorial [role="button"][class*="border-cyan-"],
+.scorm-editorial [role="button"][class*="text-blue-"],
+.scorm-editorial [role="button"][class*="text-cyan-"] {
+  background-color: var(--scorm-platform-button-teal-soft) !important;
+  border-color: var(--scorm-platform-button-teal-line) !important;
+  color: var(--scorm-platform-button-teal-strong) !important;
+}
+
+/* Convert filled blue/cyan Tailwind buttons, arbitrary hex buttons and
+ * blue gradient actions. These rules intentionally target interactive
+ * elements only so blue informational content is not recoloured globally. */
+.scorm-editorial button[class*="bg-blue-"],
+.scorm-editorial button[class*="bg-cyan-"],
+.scorm-editorial button[class*="from-blue-"],
+.scorm-editorial button[class*="to-blue-"],
+.scorm-editorial button[class*="via-blue-"],
+.scorm-editorial button[class*="#2563eb"],
+.scorm-editorial button[class*="#3b82f6"],
+.scorm-editorial button[class*="#60a5fa"],
+.scorm-editorial button[class*="#1d4ed8"],
+.scorm-editorial button[class*="#1368ce"],
+.scorm-editorial button[class*="#0ea5e9"],
+.scorm-editorial button[class*="#06b6d4"],
+.scorm-editorial a[class*="bg-blue-"],
+.scorm-editorial a[class*="bg-cyan-"],
+.scorm-editorial a[class*="from-blue-"],
+.scorm-editorial a[class*="to-blue-"],
+.scorm-editorial a[class*="via-blue-"],
+.scorm-editorial a[class*="#2563eb"],
+.scorm-editorial a[class*="#3b82f6"],
+.scorm-editorial a[class*="#60a5fa"],
+.scorm-editorial a[class*="#1d4ed8"],
+.scorm-editorial a[class*="#1368ce"],
+.scorm-editorial a[class*="#0ea5e9"],
+.scorm-editorial a[class*="#06b6d4"],
+.scorm-editorial [role="button"][class*="bg-blue-"],
+.scorm-editorial [role="button"][class*="bg-cyan-"],
+.scorm-editorial [role="button"][class*="from-blue-"],
+.scorm-editorial [role="button"][class*="to-blue-"],
+.scorm-editorial [role="button"][class*="#2563eb"],
+.scorm-editorial [role="button"][class*="#3b82f6"],
+.scorm-editorial [role="button"][class*="#1368ce"] {
+  background: var(--scorm-platform-button-teal) !important;
+  background-image: none !important;
+  border-color: var(--scorm-platform-button-teal-strong) !important;
+  color: var(--scorm-platform-button-teal-dark) !important;
+  box-shadow: 0 8px 20px rgba(79, 201, 191, .10) !important;
+}
+
+/* Catch the same legacy blues when a component uses an inline style. */
+.scorm-editorial button[style*="#2563eb"],
+.scorm-editorial button[style*="#3b82f6"],
+.scorm-editorial button[style*="#60a5fa"],
+.scorm-editorial button[style*="#1368ce"],
+.scorm-editorial a[style*="#2563eb"],
+.scorm-editorial a[style*="#3b82f6"],
+.scorm-editorial a[style*="#60a5fa"],
+.scorm-editorial a[style*="#1368ce"] {
+  background: var(--scorm-platform-button-teal) !important;
+  background-image: none !important;
+  border-color: var(--scorm-platform-button-teal-strong) !important;
+  color: var(--scorm-platform-button-teal-dark) !important;
+}
+
+.scorm-editorial button[class*="bg-blue-"]:hover:not(:disabled),
+.scorm-editorial button[class*="bg-cyan-"]:hover:not(:disabled),
+.scorm-editorial button[class*="from-blue-"]:hover:not(:disabled),
+.scorm-editorial button[class*="#2563eb"]:hover:not(:disabled),
+.scorm-editorial button[class*="#3b82f6"]:hover:not(:disabled),
+.scorm-editorial button[class*="#1368ce"]:hover:not(:disabled),
+.scorm-editorial a[class*="bg-blue-"]:hover,
+.scorm-editorial a[class*="bg-cyan-"]:hover,
+.scorm-editorial a[class*="from-blue-"]:hover,
+.scorm-editorial a[class*="#2563eb"]:hover,
+.scorm-editorial a[class*="#3b82f6"]:hover,
+.scorm-editorial a[class*="#1368ce"]:hover {
+  background: var(--scorm-platform-button-teal-strong) !important;
+  background-image: none !important;
+  border-color: var(--scorm-platform-button-teal-strong) !important;
+  color: var(--scorm-platform-button-teal-dark) !important;
+}
+
+/* Teal focus treatment for platform actions. */
+.scorm-editorial button:focus-visible,
+.scorm-editorial a:focus-visible,
+.scorm-button-primary:focus-visible,
+.scorm-button-secondary:focus-visible {
+  outline: 2px solid var(--scorm-platform-button-teal-strong) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 3px rgba(79, 201, 191, .18) !important;
+}
