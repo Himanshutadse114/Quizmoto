@@ -55,9 +55,9 @@ export default function ScormFeatureLocked({ featureId }) {
           </div>
           <div className="p-5 md:p-6 space-y-3">
             {feature.capabilities.map((capability) => (
-              <div key={capability} className="rounded-2xl border border-[#5a3b22] bg-[#24160d] px-4 py-4 flex items-start gap-3">
-                <span className="mt-0.5 w-7 h-7 rounded-lg grid place-items-center shrink-0 bg-[#3b240f] border border-[#7d5427] text-[#ffc45c]"><CheckCircle2 size={15} /></span>
-                <div className="text-sm leading-relaxed text-[#ead5b8]">{capability}</div>
+              <div key={capability} className="rounded-2xl border border-[#29405f] bg-[#081321] px-4 py-4 flex items-start gap-3">
+                <span className="mt-0.5 w-7 h-7 rounded-lg grid place-items-center shrink-0 bg-[#0b1e34] border border-[#315a8b] text-[#93c5fd]"><CheckCircle2 size={15} /></span>
+                <div className="text-sm leading-relaxed text-[#d1dbea]">{capability}</div>
               </div>
             ))}
           </div>
@@ -65,24 +65,24 @@ export default function ScormFeatureLocked({ featureId }) {
 
         <aside className="space-y-4">
           <section className="scorm-panel p-5 md:p-6">
-            <div className="w-11 h-11 rounded-xl grid place-items-center bg-[#3b240f] border border-[#7d5427] text-[#ffc45c]"><ShieldCheck size={19} /></div>
+            <div className="w-11 h-11 rounded-xl grid place-items-center bg-[#0b1e34] border border-[#315a8b] text-[#93c5fd]"><ShieldCheck size={19} /></div>
             <div className="scorm-eyebrow mt-5">Your access state</div>
             <h3 className="text-lg mt-1">SCORM AI approval pending</h3>
-            <p className="mt-3 text-xs leading-relaxed text-[#b99670]">
+            <p className="mt-3 text-xs leading-relaxed text-[#9fb0c5]">
               Your platform account is active. SCORM AI authoring, course operations, tracking and reporting remain locked until the administrator approves your account.
             </p>
-            <div className="mt-4 rounded-xl border border-[#5a3b22] bg-[#1b120c] px-3.5 py-3">
-              <div className="text-[10px] uppercase tracking-[.12em] font-semibold text-[#a98259]">Administrator</div>
-              <div className="mt-1 text-xs font-mono break-all text-[#f2d8b2]">{user?.adminContact || 'tadsehimanshu@gmail.com'}</div>
+            <div className="mt-4 rounded-xl border border-[#29405f] bg-[#07111f] px-3.5 py-3">
+              <div className="text-[10px] uppercase tracking-[.12em] font-semibold text-[#8295ae]">Administrator</div>
+              <div className="mt-1 text-xs font-mono break-all text-[#dce7f5]">{user?.adminContact || 'tadsehimanshu@gmail.com'}</div>
             </div>
-            {notice && <div className="mt-3 text-xs leading-relaxed text-[#ffc45c]">{notice}</div>}
+            {notice && <div className="mt-3 text-xs leading-relaxed text-[#93c5fd]">{notice}</div>}
           </section>
 
-          <section className="rounded-2xl border border-[#895817] bg-[linear-gradient(145deg,#4b270d,#2b1a0e)] p-5">
-            <div className="flex items-center gap-2 text-[#ffd27b] text-xs font-semibold"><Sparkles size={15} /> Available now</div>
-            <h3 className="text-lg mt-3 text-[#fff1d5]">Quizmoto Live Quiz</h3>
-            <p className="mt-2 text-xs leading-relaxed text-[#e5bd84]">Create quizzes, generate questions with AI, launch live sessions and review Quizmoto reports while your SCORM AI approval is pending.</p>
-            <Link to="/scorm/quizmoto" className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-[#ffd27b]">Open Quizmoto →</Link>
+          <section className="rounded-2xl border border-[#315a8b] bg-[linear-gradient(145deg,#0b213c,#071426)] p-5">
+            <div className="flex items-center gap-2 text-[#93c5fd] text-xs font-semibold"><Sparkles size={15} /> Available now</div>
+            <h3 className="text-lg mt-3 text-[#f8fafc]">Quizmoto Live Quiz</h3>
+            <p className="mt-2 text-xs leading-relaxed text-[#b8c7da]">Create quizzes, generate questions with AI, launch live sessions and review Quizmoto reports while your SCORM AI approval is pending.</p>
+            <Link to="/scorm/quizmoto" className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-[#60a5fa]">Open Quizmoto →</Link>
           </section>
         </aside>
       </div>
