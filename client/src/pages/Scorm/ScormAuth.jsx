@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layers3, LockKeyhole, Mail, ShieldCheck, UserRound, Zap } from 'lucide-react';
+import { Layers3, LockKeyhole, Mail, ShieldCheck, UserRound, Zap, Sun, Moon } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
+import { readScormPlatformTheme, saveScormPlatformTheme } from './platformTheme';
 import './scormAuthWorkbench.css';
 import './scormAuthTealRestore.css';
+import './scormLightTheme.css';
 
 export default function ScormAuth() {
   const navigate = useNavigate();
@@ -22,10 +24,15 @@ export default function ScormAuth() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [theme, setTheme] = useState(readScormPlatformTheme);
 
   useEffect(() => {
     prepareScormLogin();
   }, []);
+
+  useEffect(() => {
+    saveScormPlatformTheme(theme);
+  }, [theme]);
 
   const switchMode = (nextMode) => {
     setMode(nextMode);
@@ -80,13 +87,29 @@ export default function ScormAuth() {
   };
 
   const isLogin = mode === 'login';
+  const isLight = theme === 'light';
+  const ThemeIcon = isLight ? Moon : Sun;
 
   return (
-    <div className="scorm-auth-workbench">
+    <div className={`scorm-auth-workbench scorm-theme-${theme}`}>
       <div className="sa-shell">
         <div className="sa-topbar">
           <div className="sa-top-note">SCORM AI Platform · Quizmoto included</div>
-          <div className="sa-top-note">SCORM capabilities unlock after administrator approval</div>
+          <div className="flex items-center gap-3">
+            <div className="sa-top-note">SCORM capabilities unlock after administrator approval</div>
+            <button
+              type="button"
+              className="sa-theme-toggle"
+              onClick={() => setTheme((current) => current === 'light' ? 'dark' : 'light')}
+              aria-label={isLight ? 'Switch to dark theme' : 'Switch to light theme'}
+              aria-pressed={isLight}
+              title={isLight ? 'Switch to dark theme' : 'Switch to light theme'}
+            >
+              <ThemeIcon size={15} strokeWidth={2} />
+              <span className="scorm-theme-toggle-label">{isLight ? 'Dark' : 'Light'}</span>
+              <span className="scorm-theme-toggle-track" aria-hidden="true"><span className="scorm-theme-toggle-knob" /></span>
+            </button>
+          </div>
         </div>
 
         <motion.main
