@@ -1,146 +1,369 @@
 /*
- * Final SCORM platform action-colour guard.
- * This stylesheet is loaded by the React platform only. Generated learner
- * SCORM packages are served separately and do not receive these rules.
+ * Final SCORM platform teal guard.
+ *
+ * This file is imported by the React application only. Generated learner
+ * SCORM packages are served separately, so none of these rules change the
+ * learner-course design.
+ *
+ * The extra `body .scorm-editorial` specificity is intentional: several
+ * legacy dark-theme files still contain blue `!important` declarations.
+ * These rules must remain authoritative even if route CSS is lazy-loaded.
  */
 
 :root {
-  --scorm-platform-button-teal: #4FC9BF;
-  --scorm-platform-button-teal-strong: #7BDCD3;
-  --scorm-platform-button-teal-dark: #06201E;
-  --scorm-platform-button-teal-soft: rgba(79, 201, 191, .14);
-  --scorm-platform-button-teal-line: rgba(79, 201, 191, .38);
+  --scorm-platform-teal: #4FC9BF;
+  --scorm-platform-teal-strong: #7BDCD3;
+  --scorm-platform-teal-hover: #9BE8E1;
+  --scorm-platform-teal-dark: #06201E;
+  --scorm-platform-teal-soft: rgba(79, 201, 191, .14);
+  --scorm-platform-teal-soft-strong: rgba(79, 201, 191, .22);
+  --scorm-platform-teal-line: rgba(79, 201, 191, .38);
+  --scorm-platform-teal-line-soft: rgba(79, 201, 191, .22);
+  --scorm-platform-teal-surface: #0D1715;
+  --scorm-platform-teal-surface-2: #12201E;
+  --scorm-platform-teal-surface-3: #172725;
+  --scorm-platform-teal-text: #D9F5F1;
+  --scorm-platform-teal-muted: #8FBAB4;
 }
 
-/* Shared SCORM buttons also appear in body-level portals, so do not scope
- * these two classes only to .scorm-editorial. */
+/* Shared buttons can render in body-level portals, outside .scorm-editorial. */
 .scorm-button-primary {
-  background: var(--scorm-platform-button-teal) !important;
+  background: var(--scorm-platform-teal) !important;
   background-image: none !important;
-  border-color: var(--scorm-platform-button-teal-strong) !important;
-  color: var(--scorm-platform-button-teal-dark) !important;
-  box-shadow: 0 8px 20px rgba(79, 201, 191, .12) !important;
+  border-color: var(--scorm-platform-teal-strong) !important;
+  color: var(--scorm-platform-teal-dark) !important;
+  box-shadow: 0 8px 20px rgba(79, 201, 191, .14) !important;
 }
 
 .scorm-button-primary:hover:not(:disabled) {
-  background: var(--scorm-platform-button-teal-strong) !important;
+  background: var(--scorm-platform-teal-strong) !important;
   background-image: none !important;
-  border-color: var(--scorm-platform-button-teal-strong) !important;
-  color: var(--scorm-platform-button-teal-dark) !important;
+  border-color: var(--scorm-platform-teal-hover) !important;
+  color: var(--scorm-platform-teal-dark) !important;
 }
 
 .scorm-button-secondary {
-  background: var(--scorm-platform-button-teal-soft) !important;
+  background: var(--scorm-platform-teal-soft) !important;
   background-image: none !important;
-  border-color: var(--scorm-platform-button-teal-line) !important;
-  color: var(--scorm-platform-button-teal-strong) !important;
+  border-color: var(--scorm-platform-teal-line) !important;
+  color: var(--scorm-platform-teal-strong) !important;
 }
 
 .scorm-button-secondary:hover:not(:disabled) {
-  background: rgba(79, 201, 191, .22) !important;
+  background: var(--scorm-platform-teal-soft-strong) !important;
   background-image: none !important;
-  border-color: var(--scorm-platform-button-teal-strong) !important;
-  color: #D9F5F1 !important;
+  border-color: var(--scorm-platform-teal-strong) !important;
+  color: var(--scorm-platform-teal-text) !important;
 }
 
-/* Convert page-local outlined blue/cyan controls to teal. */
-.scorm-editorial button[class*="border-blue-"],
-.scorm-editorial button[class*="border-cyan-"],
-.scorm-editorial button[class*="text-blue-"],
-.scorm-editorial button[class*="text-cyan-"],
-.scorm-editorial a[class*="border-blue-"],
-.scorm-editorial a[class*="border-cyan-"],
-.scorm-editorial a[class*="text-blue-"],
-.scorm-editorial a[class*="text-cyan-"],
-.scorm-editorial [role="button"][class*="border-blue-"],
-.scorm-editorial [role="button"][class*="border-cyan-"],
-.scorm-editorial [role="button"][class*="text-blue-"],
-.scorm-editorial [role="button"][class*="text-cyan-"] {
-  background-color: var(--scorm-platform-button-teal-soft) !important;
-  border-color: var(--scorm-platform-button-teal-line) !important;
-  color: var(--scorm-platform-button-teal-strong) !important;
-}
-
-/* Convert filled blue/cyan Tailwind buttons, arbitrary hex buttons and
- * blue gradient actions. These rules intentionally target interactive
- * elements only so blue informational content is not recoloured globally. */
-.scorm-editorial button[class*="bg-blue-"],
-.scorm-editorial button[class*="bg-cyan-"],
-.scorm-editorial button[class*="from-blue-"],
-.scorm-editorial button[class*="to-blue-"],
-.scorm-editorial button[class*="via-blue-"],
-.scorm-editorial button[class*="#2563eb"],
-.scorm-editorial button[class*="#3b82f6"],
-.scorm-editorial button[class*="#60a5fa"],
-.scorm-editorial button[class*="#1d4ed8"],
-.scorm-editorial button[class*="#1368ce"],
-.scorm-editorial button[class*="#0ea5e9"],
-.scorm-editorial button[class*="#06b6d4"],
-.scorm-editorial a[class*="bg-blue-"],
-.scorm-editorial a[class*="bg-cyan-"],
-.scorm-editorial a[class*="from-blue-"],
-.scorm-editorial a[class*="to-blue-"],
-.scorm-editorial a[class*="via-blue-"],
-.scorm-editorial a[class*="#2563eb"],
-.scorm-editorial a[class*="#3b82f6"],
-.scorm-editorial a[class*="#60a5fa"],
-.scorm-editorial a[class*="#1d4ed8"],
-.scorm-editorial a[class*="#1368ce"],
-.scorm-editorial a[class*="#0ea5e9"],
-.scorm-editorial a[class*="#06b6d4"],
-.scorm-editorial [role="button"][class*="bg-blue-"],
-.scorm-editorial [role="button"][class*="bg-cyan-"],
-.scorm-editorial [role="button"][class*="from-blue-"],
-.scorm-editorial [role="button"][class*="to-blue-"],
-.scorm-editorial [role="button"][class*="#2563eb"],
-.scorm-editorial [role="button"][class*="#3b82f6"],
-.scorm-editorial [role="button"][class*="#1368ce"] {
-  background: var(--scorm-platform-button-teal) !important;
+/* Primary and secondary platform actions. */
+body .scorm-editorial .scorm-button-primary,
+body .scorm-editorial button[class*="bg-quizmoto-blue"],
+body .scorm-editorial button[class*="bg-quizmoto-purple"],
+body .scorm-editorial button[class*="bg-quizmoto-green"],
+body .scorm-editorial button[class*="bg-quizmoto-yellow"],
+body .scorm-editorial a[class*="bg-quizmoto-blue"],
+body .scorm-editorial a[class*="bg-quizmoto-purple"],
+body .scorm-editorial a[class*="bg-quizmoto-green"],
+body .scorm-editorial a[class*="bg-quizmoto-yellow"] {
+  background: var(--scorm-platform-teal) !important;
   background-image: none !important;
-  border-color: var(--scorm-platform-button-teal-strong) !important;
-  color: var(--scorm-platform-button-teal-dark) !important;
-  box-shadow: 0 8px 20px rgba(79, 201, 191, .10) !important;
+  border-color: var(--scorm-platform-teal-strong) !important;
+  color: var(--scorm-platform-teal-dark) !important;
+  box-shadow: 0 8px 20px rgba(79, 201, 191, .14) !important;
 }
 
-/* Catch the same legacy blues when a component uses an inline style. */
-.scorm-editorial button[style*="#2563eb"],
-.scorm-editorial button[style*="#3b82f6"],
-.scorm-editorial button[style*="#60a5fa"],
-.scorm-editorial button[style*="#1368ce"],
-.scorm-editorial a[style*="#2563eb"],
-.scorm-editorial a[style*="#3b82f6"],
-.scorm-editorial a[style*="#60a5fa"],
-.scorm-editorial a[style*="#1368ce"] {
-  background: var(--scorm-platform-button-teal) !important;
+body .scorm-editorial .scorm-button-primary:hover:not(:disabled),
+body .scorm-editorial button[class*="bg-quizmoto"]:hover:not(:disabled),
+body .scorm-editorial a[class*="bg-quizmoto"]:hover {
+  background: var(--scorm-platform-teal-strong) !important;
   background-image: none !important;
-  border-color: var(--scorm-platform-button-teal-strong) !important;
-  color: var(--scorm-platform-button-teal-dark) !important;
+  border-color: var(--scorm-platform-teal-hover) !important;
+  color: var(--scorm-platform-teal-dark) !important;
+  box-shadow: 0 10px 24px rgba(79, 201, 191, .18) !important;
 }
 
-.scorm-editorial button[class*="bg-blue-"]:hover:not(:disabled),
-.scorm-editorial button[class*="bg-cyan-"]:hover:not(:disabled),
-.scorm-editorial button[class*="from-blue-"]:hover:not(:disabled),
-.scorm-editorial button[class*="#2563eb"]:hover:not(:disabled),
-.scorm-editorial button[class*="#3b82f6"]:hover:not(:disabled),
-.scorm-editorial button[class*="#1368ce"]:hover:not(:disabled),
-.scorm-editorial a[class*="bg-blue-"]:hover,
-.scorm-editorial a[class*="bg-cyan-"]:hover,
-.scorm-editorial a[class*="from-blue-"]:hover,
-.scorm-editorial a[class*="#2563eb"]:hover,
-.scorm-editorial a[class*="#3b82f6"]:hover,
-.scorm-editorial a[class*="#1368ce"]:hover {
-  background: var(--scorm-platform-button-teal-strong) !important;
+body .scorm-editorial .scorm-button-secondary,
+body .scorm-editorial main button[class*="bg-white/"],
+body .scorm-editorial main button[class*="border-white"],
+body .scorm-editorial main button[class*="bg-black/"] {
+  background: var(--scorm-platform-teal-soft) !important;
   background-image: none !important;
-  border-color: var(--scorm-platform-button-teal-strong) !important;
-  color: var(--scorm-platform-button-teal-dark) !important;
+  border-color: var(--scorm-platform-teal-line) !important;
+  color: var(--scorm-platform-teal-strong) !important;
+  box-shadow: none !important;
 }
 
-/* Teal focus treatment for platform actions. */
-.scorm-editorial button:focus-visible,
-.scorm-editorial a:focus-visible,
+body .scorm-editorial .scorm-button-secondary:hover:not(:disabled),
+body .scorm-editorial main button[class*="bg-white/"]:hover:not(:disabled),
+body .scorm-editorial main button[class*="border-white"]:hover:not(:disabled),
+body .scorm-editorial main button[class*="bg-black/"]:hover:not(:disabled) {
+  background: var(--scorm-platform-teal-soft-strong) !important;
+  border-color: var(--scorm-platform-teal-strong) !important;
+  color: var(--scorm-platform-teal-text) !important;
+}
+
+/* Catch Tailwind/arbitrary blue, cyan, violet and purple action classes. */
+body .scorm-editorial button[class*="bg-blue-"],
+body .scorm-editorial button[class*="bg-cyan-"],
+body .scorm-editorial button[class*="bg-violet-"],
+body .scorm-editorial button[class*="bg-purple-"],
+body .scorm-editorial button[class*="from-blue-"],
+body .scorm-editorial button[class*="from-cyan-"],
+body .scorm-editorial button[class*="from-violet-"],
+body .scorm-editorial button[class*="from-purple-"],
+body .scorm-editorial button[class*="#1d4ed8"],
+body .scorm-editorial button[class*="#2563eb"],
+body .scorm-editorial button[class*="#3b82f6"],
+body .scorm-editorial button[class*="#60a5fa"],
+body .scorm-editorial button[class*="#1368ce"],
+body .scorm-editorial button[class*="#0ea5e9"],
+body .scorm-editorial button[class*="#06b6d4"],
+body .scorm-editorial a[class*="bg-blue-"],
+body .scorm-editorial a[class*="bg-cyan-"],
+body .scorm-editorial a[class*="bg-violet-"],
+body .scorm-editorial a[class*="bg-purple-"],
+body .scorm-editorial a[class*="from-blue-"],
+body .scorm-editorial a[class*="from-cyan-"],
+body .scorm-editorial a[class*="from-violet-"],
+body .scorm-editorial a[class*="from-purple-"],
+body .scorm-editorial a[class*="#1d4ed8"],
+body .scorm-editorial a[class*="#2563eb"],
+body .scorm-editorial a[class*="#3b82f6"],
+body .scorm-editorial a[class*="#60a5fa"],
+body .scorm-editorial a[class*="#1368ce"],
+body .scorm-editorial [role="button"][class*="bg-blue-"],
+body .scorm-editorial [role="button"][class*="bg-cyan-"],
+body .scorm-editorial [role="button"][class*="bg-violet-"],
+body .scorm-editorial [role="button"][class*="bg-purple-"] {
+  background: var(--scorm-platform-teal) !important;
+  background-image: none !important;
+  border-color: var(--scorm-platform-teal-strong) !important;
+  color: var(--scorm-platform-teal-dark) !important;
+  box-shadow: 0 8px 20px rgba(79, 201, 191, .12) !important;
+}
+
+body .scorm-editorial button[class*="bg-blue-"]:hover:not(:disabled),
+body .scorm-editorial button[class*="bg-cyan-"]:hover:not(:disabled),
+body .scorm-editorial button[class*="bg-violet-"]:hover:not(:disabled),
+body .scorm-editorial button[class*="bg-purple-"]:hover:not(:disabled),
+body .scorm-editorial button[class*="from-blue-"]:hover:not(:disabled),
+body .scorm-editorial button[class*="from-cyan-"]:hover:not(:disabled),
+body .scorm-editorial a[class*="bg-blue-"]:hover,
+body .scorm-editorial a[class*="bg-cyan-"]:hover,
+body .scorm-editorial a[class*="bg-violet-"]:hover,
+body .scorm-editorial a[class*="bg-purple-"]:hover {
+  background: var(--scorm-platform-teal-strong) !important;
+  background-image: none !important;
+  border-color: var(--scorm-platform-teal-hover) !important;
+  color: var(--scorm-platform-teal-dark) !important;
+}
+
+/* Outlined/text-only blue actions become teal as well. */
+body .scorm-editorial button[class*="border-blue-"],
+body .scorm-editorial button[class*="border-cyan-"],
+body .scorm-editorial button[class*="border-violet-"],
+body .scorm-editorial button[class*="border-purple-"],
+body .scorm-editorial button[class*="text-blue-"],
+body .scorm-editorial button[class*="text-cyan-"],
+body .scorm-editorial button[class*="text-violet-"],
+body .scorm-editorial button[class*="text-purple-"],
+body .scorm-editorial a[class*="border-blue-"],
+body .scorm-editorial a[class*="border-cyan-"],
+body .scorm-editorial a[class*="border-violet-"],
+body .scorm-editorial a[class*="border-purple-"],
+body .scorm-editorial a[class*="text-blue-"],
+body .scorm-editorial a[class*="text-cyan-"],
+body .scorm-editorial a[class*="text-violet-"],
+body .scorm-editorial a[class*="text-purple-"] {
+  border-color: var(--scorm-platform-teal-line) !important;
+  color: var(--scorm-platform-teal-strong) !important;
+}
+
+/* Active navigation and mobile tabs. */
+body .scorm-editorial .scorm-nav-item.scorm-nav-active,
+body .scorm-editorial .scorm-nav-active {
+  background: linear-gradient(90deg, rgba(79, 201, 191, .20), rgba(79, 201, 191, .07)) !important;
+  border-color: var(--scorm-platform-teal-line) !important;
+  color: var(--scorm-platform-teal-text) !important;
+  box-shadow: inset 3px 0 0 var(--scorm-platform-teal), 0 8px 24px rgba(0, 0, 0, .14) !important;
+}
+
+body .scorm-editorial .scorm-nav-item.scorm-nav-active .scorm-nav-icon,
+body .scorm-editorial .scorm-nav-active .scorm-nav-icon {
+  background: var(--scorm-platform-teal-soft) !important;
+  border-color: var(--scorm-platform-teal-line-soft) !important;
+  color: var(--scorm-platform-teal-strong) !important;
+}
+
+body .scorm-editorial .scorm-nav-chevron,
+body .scorm-editorial .scorm-mobile-tab.is-active,
+body .scorm-editorial .scorm-mobile-tab.is-active svg {
+  color: var(--scorm-platform-teal-strong) !important;
+}
+
+body .scorm-editorial .scorm-nav-item:hover {
+  border-color: var(--scorm-platform-teal-line-soft) !important;
+}
+
+body .scorm-editorial .scorm-nav-item:hover .scorm-nav-icon {
+  color: var(--scorm-platform-teal-strong) !important;
+  border-color: var(--scorm-platform-teal-line-soft) !important;
+}
+
+/* All non-semantic blue/cyan/violet/purple accents inside the admin shell. */
+body .scorm-editorial main [class*="text-blue-"],
+body .scorm-editorial main [class*="text-cyan-"],
+body .scorm-editorial main [class*="text-violet-"],
+body .scorm-editorial main [class*="text-purple-"],
+body .scorm-editorial main [class*="text-quizmoto-blue"],
+body .scorm-editorial main [class*="text-[#60a5fa]"],
+body .scorm-editorial main [class*="text-[#93c5fd]"],
+body .scorm-editorial main [class*="text-[#bfdbfe]"],
+body .scorm-editorial main [class*="text-[#7dd3fc]"] {
+  color: var(--scorm-platform-teal-strong) !important;
+}
+
+body .scorm-editorial main [class*="bg-blue-"],
+body .scorm-editorial main [class*="bg-cyan-"],
+body .scorm-editorial main [class*="bg-violet-"],
+body .scorm-editorial main [class*="bg-purple-"],
+body .scorm-editorial main [class*="bg-[#082a3b]"],
+body .scorm-editorial main [class*="bg-[#141f3f]"] {
+  background: var(--scorm-platform-teal-soft) !important;
+  background-image: none !important;
+}
+
+body .scorm-editorial main [class*="border-blue-"],
+body .scorm-editorial main [class*="border-cyan-"],
+body .scorm-editorial main [class*="border-violet-"],
+body .scorm-editorial main [class*="border-purple-"] {
+  border-color: var(--scorm-platform-teal-line-soft) !important;
+}
+
+/* Dashboard icon tiles and action cards. */
+body .scorm-editorial .scorm-metric-icon,
+body .scorm-editorial .scorm-metric-violet .scorm-metric-icon,
+body .scorm-editorial .scorm-metric-cyan .scorm-metric-icon,
+body .scorm-editorial .scorm-metric-green .scorm-metric-icon,
+body .scorm-editorial .scorm-metric-amber .scorm-metric-icon,
+body .scorm-editorial .scorm-action-icon,
+body .scorm-editorial .scorm-action-arrow,
+body .scorm-editorial .scorm-empty-icon,
+body .scorm-editorial .scorm-course-metric-icon,
+body .scorm-editorial .scorm-preview-icon,
+body .scorm-editorial .scorm-progress-icon {
+  background: var(--scorm-platform-teal-soft) !important;
+  background-image: none !important;
+  border-color: var(--scorm-platform-teal-line-soft) !important;
+  color: var(--scorm-platform-teal-strong) !important;
+}
+
+body .scorm-editorial .scorm-action-card:hover {
+  border-color: var(--scorm-platform-teal-line) !important;
+  box-shadow: 0 18px 40px rgba(0,0,0,.30), 0 0 0 1px rgba(79,201,191,.08) !important;
+}
+
+/* Progress is teal everywhere in the admin platform. */
+body .scorm-editorial .scorm-progress-fill,
+body .scorm-editorial .scorm-progress-fill.is-light,
+body .scorm-editorial .scorm-preview-progress-fill,
+body .scorm-editorial main [class*="bg-[#635BFF]"] {
+  background: linear-gradient(90deg, var(--scorm-platform-teal), var(--scorm-platform-teal-strong)) !important;
+  background-image: linear-gradient(90deg, var(--scorm-platform-teal), var(--scorm-platform-teal-strong)) !important;
+}
+
+body .scorm-editorial .scorm-progress-track,
+body .scorm-editorial .scorm-preview-progress-track {
+  border-color: var(--scorm-platform-teal-line-soft) !important;
+}
+
+body .scorm-editorial .scorm-progress-hero,
+body .scorm-editorial .scorm-preview-panel {
+  background:
+    radial-gradient(circle at 86% 8%, rgba(79, 201, 191, .14), transparent 34%),
+    linear-gradient(135deg, #08110F 0%, #0B1916 58%, #0D231F 100%) !important;
+  border-color: var(--scorm-platform-teal-line-soft) !important;
+  box-shadow: 0 20px 48px rgba(0,0,0,.30), inset 0 1px 0 rgba(123,220,211,.03) !important;
+}
+
+body .scorm-editorial .scorm-progress-kicker,
+body .scorm-editorial .scorm-preview-kicker,
+body .scorm-editorial .scorm-text-link,
+body .scorm-editorial .scorm-activity-progress {
+  color: var(--scorm-platform-teal-strong) !important;
+}
+
+body .scorm-editorial .scorm-text-link:hover {
+  color: var(--scorm-platform-teal-hover) !important;
+}
+
+body .scorm-editorial .scorm-activity-progress {
+  background: var(--scorm-platform-teal-soft) !important;
+  border-color: var(--scorm-platform-teal-line-soft) !important;
+}
+
+body .scorm-editorial .scorm-preview-badge,
+body .scorm-editorial .scorm-alert-info {
+  background: var(--scorm-platform-teal-soft) !important;
+  border-color: var(--scorm-platform-teal-line-soft) !important;
+  color: var(--scorm-platform-teal-text) !important;
+}
+
+body .scorm-editorial .scorm-preview-refresh {
+  background: var(--scorm-platform-teal-surface-2) !important;
+  border-color: var(--scorm-platform-teal-line) !important;
+  color: var(--scorm-platform-teal-text) !important;
+}
+
+/* Filter chips and selected states. */
+body .scorm-editorial .scorm-course-filter.is-active,
+body .scorm-editorial main button[class*="bg-black"][class*="text-white"] {
+  background: var(--scorm-platform-teal) !important;
+  background-image: none !important;
+  border-color: var(--scorm-platform-teal-strong) !important;
+  color: var(--scorm-platform-teal-dark) !important;
+}
+
+/* File controls and focus rings. */
+body .scorm-editorial input:focus,
+body .scorm-editorial textarea:focus,
+body .scorm-editorial select:focus {
+  border-color: var(--scorm-platform-teal) !important;
+  box-shadow: 0 0 0 3px rgba(79, 201, 191, .18) !important;
+}
+
+body .scorm-editorial input[type="file"]::file-selector-button {
+  background: var(--scorm-platform-teal-soft) !important;
+  color: var(--scorm-platform-teal-strong) !important;
+  border-color: var(--scorm-platform-teal-line) !important;
+}
+
+body .scorm-editorial button:focus-visible,
+body .scorm-editorial a:focus-visible,
 .scorm-button-primary:focus-visible,
 .scorm-button-secondary:focus-visible {
-  outline: 2px solid var(--scorm-platform-button-teal-strong) !important;
+  outline: 2px solid var(--scorm-platform-teal-strong) !important;
   outline-offset: 2px !important;
   box-shadow: 0 0 0 3px rgba(79, 201, 191, .18) !important;
 }
+
+/* Hard-coded blue inline styles used by a few older platform actions. */
+body .scorm-editorial button[style*="#1d4ed8"],
+body .scorm-editorial button[style*="#2563eb"],
+body .scorm-editorial button[style*="#3b82f6"],
+body .scorm-editorial button[style*="#60a5fa"],
+body .scorm-editorial button[style*="#1368ce"],
+body .scorm-editorial a[style*="#1d4ed8"],
+body .scorm-editorial a[style*="#2563eb"],
+body .scorm-editorial a[style*="#3b82f6"],
+body .scorm-editorial a[style*="#60a5fa"],
+body .scorm-editorial a[style*="#1368ce"] {
+  background: var(--scorm-platform-teal) !important;
+  background-image: none !important;
+  border-color: var(--scorm-platform-teal-strong) !important;
+  color: var(--scorm-platform-teal-dark) !important;
+}
+
+/* Keep destructive danger actions red for safety; status colours may remain
+ * green/amber/red. The platform's normal interactive accent is teal only. */
