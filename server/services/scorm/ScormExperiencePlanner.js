@@ -130,22 +130,27 @@ function planExperienceV5(rawAnalysis) {
 
     const planned = slides.map((rawSlide, index) => {
         const slide = rawSlide && typeof rawSlide === 'object' ? rawSlide : {};
-        const explicitType = clean(slide.screenType).toLowerCase();
+        const hasEditableIntro = Object.prototype.hasOwnProperty.call(slide, 'introText');
+        const hasEditableReveal = Object.prototype.hasOwnProperty.call(slide, 'revealText');
+        const canonicalContent = hasEditableIntro ? clean(slide.introText) : clean(slide.content);
+        const planningSlide = { ...slide, content: canonicalContent };
+        const explicitType = clean(planningSlide.screenType).toLowerCase();
         const hasExplicitType = SCREEN_TYPES.includes(explicitType);
-        let type = preferredType(slide, index);
-        if (!hasExplicitType && type === previousType) type = alternateType(type, slide, index);
-        const copy = splitCopy(slide.content);
-        const explicitBackground = clean(slide.backgroundStyle).toLowerCase();
+        let type = preferredType(planningSlide, index);
+        if (!hasExplicitType && type === previousType) type = alternateType(type, planningSlide, index);
+        const copy = splitCopy(canonicalContent);
+        const explicitBackground = clean(planningSlide.backgroundStyle).toLowerCase();
         const background = explicitBackground || backgroundFor(type, index, previousBackground);
         const result = {
-            ...slide,
+            ...planningSlide,
+            content: canonicalContent,
             screenType: type,
             backgroundStyle: BACKGROUNDS.includes(background) ? background : backgroundFor(type, index, previousBackground),
-            visualMetaphor: metaphorFor(slide),
-            introText: clean(slide.introText) || copy.introText,
-            revealText: clean(slide.revealText) || copy.revealText,
+            visualMetaphor: metaphorFor(planningSlide),
+            introText: hasEditableIntro ? clean(slide.introText) : copy.introText,
+            revealText: hasEditableReveal ? clean(slide.revealText) : copy.revealText,
             keyPoints: concisePoints(slide.keyPoints),
-            interaction: interactionFor(type, slide.layout, slide.interaction)
+            interaction: interactionFor(type, planningSlide.layout, planningSlide.interaction)
         };
         previousType = result.screenType;
         previousBackground = result.backgroundStyle;
