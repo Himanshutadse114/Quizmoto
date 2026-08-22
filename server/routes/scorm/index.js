@@ -13,6 +13,7 @@ router.use('/packages', require('./packages'));
 router.use('/courses', require('./courses'));
 router.use('/tracking', require('./tracking'));
 router.use('/preview', require('./preview'));
+router.use('/slide-preview', require('./slidePreview'));
 router.use('/registrations', require('./registrations'));
 router.use('/session', require('./session'));
 router.use('/runtime', require('./runtime'));
