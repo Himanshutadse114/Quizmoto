@@ -87,86 +87,86 @@ export default function AccessAdmin() {
 
   return (
     <div className="px-4 py-6 md:px-8 md:py-8 max-w-[1180px] mx-auto">
-      <section className="border border-[#6d4a29] rounded-xl overflow-hidden bg-[#2c1b0e] shadow-[0_24px_60px_rgba(12,7,3,.18)]">
-        <div className="px-5 py-5 md:px-7 md:py-6 border-b border-[#604024] bg-[linear-gradient(135deg,#472b16,#332012)] flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+      <section className="rounded-3xl overflow-hidden border border-[#263950] bg-[#050a12] shadow-[0_24px_60px_rgba(0,0,0,.28)]">
+        <div className="px-5 py-5 md:px-7 md:py-6 border-b border-[#263950] bg-[radial-gradient(circle_at_92%_0%,rgba(59,130,246,.14),transparent_35%),linear-gradient(135deg,#0b1728,#07111f)] flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
           <div>
-            <div className="text-[#ffc45c] font-mono text-[9px] uppercase tracking-[.16em]">Super administrator</div>
-            <h1 className="mt-2 font-black text-[#f8edd4] text-4xl md:text-5xl leading-none tracking-[-.025em]">SCORM AI Access Control</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[#d0ad80]">
-              Users must register first. Their account details are stored, but access stays pending until you approve that captured registration. Once approved, they sign in with the same password or Google account they originally used—no activation code and no second registration.
+            <div className="text-[#60a5fa] text-[9px] uppercase tracking-[.16em] font-semibold">Super administrator</div>
+            <h1 className="mt-2 font-bold text-[#f8fafc] text-3xl md:text-4xl leading-none tracking-[-.035em]">SCORM AI Access Control</h1>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[#aebed1]">
+              Users register first and remain pending until you approve their captured identity. Once approved, they sign in with the same password or Google account they originally used—no activation code and no second registration.
             </p>
           </div>
-          <button type="button" onClick={loadAccess} disabled={loading} className="min-h-10 px-3.5 rounded-lg border border-[#765033] bg-[#2a1a10] text-[#efcf9e] font-mono text-[10px] font-semibold inline-flex items-center justify-center gap-2 hover:border-[#ff941f] disabled:opacity-50">
+          <button type="button" onClick={loadAccess} disabled={loading} className="scorm-button-secondary min-h-10 px-3.5 text-[10px] font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50">
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>
         </div>
 
         <div className="p-5 md:p-7 grid gap-5">
           <div className="grid md:grid-cols-3 gap-3">
-            <div className="border border-[#714b2c] rounded-lg bg-[#24170e] p-4">
-              <div className="w-9 h-9 rounded-lg bg-[#ff941f] text-[#241307] grid place-items-center"><ShieldCheck size={17} /></div>
-              <div className="mt-3 text-[#ffc45c] font-mono text-[8px] uppercase tracking-[.12em]">Protected super admin</div>
-              <div className="mt-1 text-[#f8edd4] text-sm font-bold break-all">{superAdminEmail}</div>
-              <div className="mt-1 text-[#99724e] font-mono text-[7px] uppercase tracking-[.08em]">Google Sign-In only</div>
+            <div className="border border-[#263950] rounded-2xl bg-[#07111f] p-4">
+              <div className="w-9 h-9 rounded-xl bg-[#2563eb] text-white grid place-items-center"><ShieldCheck size={17} /></div>
+              <div className="mt-3 text-[#60a5fa] text-[8px] uppercase tracking-[.12em] font-semibold">Protected super admin</div>
+              <div className="mt-1 text-[#f1f5f9] text-sm font-semibold break-all">{superAdminEmail}</div>
+              <div className="mt-1 text-[#71839c] text-[8px] uppercase tracking-[.08em]">Google Sign-In only</div>
             </div>
-            <div className="border border-[#714b2c] rounded-lg bg-[#24170e] p-4">
-              <div className="w-9 h-9 rounded-lg border border-[#c57b31] text-[#ffc45c] grid place-items-center"><Clock3 size={17} /></div>
-              <div className="mt-3 text-[#b98e60] font-mono text-[8px] uppercase tracking-[.12em]">Pending registrations</div>
-              <div className="mt-1 text-[#f8edd4] text-3xl font-black">{pendingRequests.length}</div>
+            <div className="border border-[#263950] rounded-2xl bg-[#07111f] p-4">
+              <div className="w-9 h-9 rounded-xl border border-[#315a8b] text-[#93c5fd] grid place-items-center"><Clock3 size={17} /></div>
+              <div className="mt-3 text-[#8295ae] text-[8px] uppercase tracking-[.12em] font-semibold">Pending registrations</div>
+              <div className="mt-1 text-[#f8fafc] text-3xl font-bold">{pendingRequests.length}</div>
             </div>
-            <div className="border border-[#714b2c] rounded-lg bg-[#24170e] p-4">
-              <div className="w-9 h-9 rounded-lg border border-[#8d6036] text-[#ffc45c] grid place-items-center"><UserCheck size={17} /></div>
-              <div className="mt-3 text-[#b98e60] font-mono text-[8px] uppercase tracking-[.12em]">Authorised accounts</div>
-              <div className="mt-1 text-[#f8edd4] text-3xl font-black">{grants.length}</div>
+            <div className="border border-[#263950] rounded-2xl bg-[#07111f] p-4">
+              <div className="w-9 h-9 rounded-xl border border-[#315a8b] text-[#93c5fd] grid place-items-center"><UserCheck size={17} /></div>
+              <div className="mt-3 text-[#8295ae] text-[8px] uppercase tracking-[.12em] font-semibold">Authorised accounts</div>
+              <div className="mt-1 text-[#f8fafc] text-3xl font-bold">{grants.length}</div>
             </div>
           </div>
 
-          {message && <div className="border border-[#59c97d]/35 bg-[#59c97d]/10 text-[#bfe9c9] rounded-lg px-4 py-3 text-xs">{message}</div>}
-          {error && <div className="border border-[#ff8071]/40 bg-[#ff8071]/10 text-[#ffd0c7] rounded-lg px-4 py-3 text-xs">{error}</div>}
+          {message && <div className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 rounded-xl px-4 py-3 text-xs">{message}</div>}
+          {error && <div className="border border-rose-500/30 bg-rose-500/10 text-rose-200 rounded-xl px-4 py-3 text-xs">{error}</div>}
 
-          <section className="border border-[#8b5a2d] rounded-xl overflow-hidden bg-[#2a1a10]">
-            <div className="px-4 py-4 md:px-5 border-b border-[#6b4728] bg-[linear-gradient(135deg,#3b2514,#2e1c10)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <section className="border border-[#29405f] rounded-2xl overflow-hidden bg-[#07111f]">
+            <div className="px-4 py-4 md:px-5 border-b border-[#29405f] bg-[#0a1626] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <div className="text-[#ffc45c] font-mono text-[8px] uppercase tracking-[.13em]">Waiting for your approval</div>
-                <div className="mt-1 text-[#f8edd4] text-xl font-black">Pending Registrations</div>
-                <div className="mt-1 text-[#ae8459] text-xs">Only accounts that have actually registered or attempted Google Sign-In appear here. Approving one unlocks that existing identity.</div>
+                <div className="text-[#60a5fa] text-[8px] uppercase tracking-[.13em] font-semibold">Waiting for your approval</div>
+                <div className="mt-1 text-[#f8fafc] text-xl font-semibold">Pending Registrations</div>
+                <div className="mt-1 text-[#8295ae] text-xs">Only accounts that have actually registered or attempted Google Sign-In appear here. Approving one unlocks that existing identity.</div>
               </div>
-              <div className="px-2.5 py-1.5 rounded-md border border-[#7e552f] bg-[#25170d] text-[#d4ae7c] font-mono text-[9px]">{pendingRequests.length} pending</div>
+              <div className="px-2.5 py-1.5 rounded-lg border border-[#315a8b] bg-[#08182b] text-[#b8c7da] text-[9px] font-semibold">{pendingRequests.length} pending</div>
             </div>
 
             {loading ? (
-              <div className="p-10 text-center text-[#b58b5e] text-sm">Loading registrations…</div>
+              <div className="p-10 text-center text-[#8295ae] text-sm">Loading registrations…</div>
             ) : pendingRequests.length === 0 ? (
               <div className="p-9 text-center">
-                <CheckCircle2 size={26} className="mx-auto text-[#69ca85]" />
-                <div className="mt-3 text-[#e5c69b] font-semibold">No registrations are waiting for approval.</div>
-                <div className="mt-1 text-[#8f6b48] text-xs">New registration attempts will appear here automatically.</div>
+                <CheckCircle2 size={26} className="mx-auto text-emerald-400" />
+                <div className="mt-3 text-[#dce7f5] font-semibold">No registrations are waiting for approval.</div>
+                <div className="mt-1 text-[#71839c] text-xs">New registration attempts will appear here automatically.</div>
               </div>
             ) : (
-              <div className="divide-y divide-[#5a3b23]">
+              <div className="divide-y divide-[#22324a]">
                 {pendingRequests.map((request) => (
-                  <div key={request.id} className="px-4 py-4 md:px-5 grid xl:grid-cols-[minmax(0,1.25fr)_170px_190px_auto] gap-3 xl:items-center hover:bg-[#332013] transition-colors">
+                  <div key={request.id} className="px-4 py-4 md:px-5 grid xl:grid-cols-[minmax(0,1.25fr)_170px_190px_auto] gap-3 xl:items-center hover:bg-[#0b1728] transition-colors">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[#f8edd4] font-semibold text-sm">{request.username || 'SCORM AI user'}</span>
-                        <span className="px-2 py-1 rounded border border-[#d08a3f]/45 bg-[#ff941f]/10 text-[#ffc45c] font-mono text-[7px] uppercase tracking-[.1em]">Pending</span>
+                        <span className="text-[#f1f5f9] font-semibold text-sm">{request.username || 'SCORM AI user'}</span>
+                        <span className="px-2 py-1 rounded-md border border-blue-400/30 bg-blue-500/10 text-blue-300 text-[8px] uppercase tracking-[.1em] font-semibold">Pending</span>
                       </div>
-                      <div className="mt-1 text-[#d4b080] text-xs break-all">{request.email}</div>
+                      <div className="mt-1 text-[#b8c7da] text-xs break-all">{request.email}</div>
                     </div>
                     <div>
-                      <div className="text-[#92704d] font-mono text-[7px] uppercase tracking-[.1em]">Registered with</div>
-                      <div className="mt-1 text-[#e5c69b] text-xs font-semibold inline-flex items-center gap-1.5"><LogIn size={12} /> {authMethodLabel(request.authMethod)}</div>
+                      <div className="text-[#71839c] text-[8px] uppercase tracking-[.1em]">Registered with</div>
+                      <div className="mt-1 text-[#dce7f5] text-xs font-semibold inline-flex items-center gap-1.5"><LogIn size={12} /> {authMethodLabel(request.authMethod)}</div>
                     </div>
                     <div>
-                      <div className="text-[#92704d] font-mono text-[7px] uppercase tracking-[.1em]">Last request</div>
-                      <div className="mt-1 text-[#e5c69b] text-xs">{request.requestedAt ? new Date(request.requestedAt).toLocaleString() : '—'}</div>
+                      <div className="text-[#71839c] text-[8px] uppercase tracking-[.1em]">Last request</div>
+                      <div className="mt-1 text-[#dce7f5] text-xs">{request.requestedAt ? new Date(request.requestedAt).toLocaleString() : '—'}</div>
                     </div>
                     <div className="flex xl:justify-end">
                       <button
                         type="button"
                         onClick={() => approveRequest(request)}
                         disabled={approvingId === request.id}
-                        className="min-h-10 px-4 rounded-lg border border-[#ffb15f] bg-[linear-gradient(180deg,#ffb145,#ff941f)] text-[#241307] font-mono text-[9px] font-bold inline-flex items-center justify-center gap-2 shadow-[0_3px_0_#9c4b08] hover:translate-y-[2px] hover:shadow-[0_1px_0_#9c4b08] disabled:opacity-50"
+                        className="scorm-button-primary min-h-10 px-4 text-[10px] font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50"
                       >
                         <UserPlus size={14} /> {approvingId === request.id ? 'Approving…' : 'Approve access'}
                       </button>
@@ -177,47 +177,47 @@ export default function AccessAdmin() {
             )}
           </section>
 
-          <section className="border border-[#68472a] rounded-xl overflow-hidden bg-[#25180f]">
-            <div className="px-4 py-3.5 border-b border-[#5d3d23] flex items-center justify-between gap-3 bg-[#2f1e12]">
+          <section className="border border-[#29405f] rounded-2xl overflow-hidden bg-[#07111f]">
+            <div className="px-4 py-3.5 border-b border-[#29405f] flex items-center justify-between gap-3 bg-[#0a1626]">
               <div>
-                <div className="text-[#ffc45c] font-mono text-[8px] uppercase tracking-[.13em]">Approved identities</div>
-                <div className="mt-1 text-[#f8edd4] font-bold">SCORM AI allowlist</div>
+                <div className="text-[#60a5fa] text-[8px] uppercase tracking-[.13em] font-semibold">Approved identities</div>
+                <div className="mt-1 text-[#f8fafc] font-semibold">SCORM AI allowlist</div>
               </div>
-              <div className="text-[#9e7952] font-mono text-[9px]">{loading ? 'Loading…' : `${grants.length} account${grants.length === 1 ? '' : 's'}`}</div>
+              <div className="text-[#8295ae] text-[9px]">{loading ? 'Loading…' : `${grants.length} account${grants.length === 1 ? '' : 's'}`}</div>
             </div>
 
             {loading ? (
-              <div className="p-10 text-center text-[#b58b5e] text-sm">Loading authorised accounts…</div>
+              <div className="p-10 text-center text-[#8295ae] text-sm">Loading authorised accounts…</div>
             ) : grants.length === 0 ? (
-              <div className="p-10 text-center text-[#b58b5e] text-sm">No access grants found.</div>
+              <div className="p-10 text-center text-[#8295ae] text-sm">No access grants found.</div>
             ) : (
-              <div className="divide-y divide-[#52361f]">
+              <div className="divide-y divide-[#22324a]">
                 {grants.map((grant) => (
-                  <div key={grant.id} className="px-4 py-4 grid lg:grid-cols-[minmax(0,1fr)_150px_190px_auto] gap-3 lg:items-center hover:bg-[#2d1d12] transition-colors">
+                  <div key={grant.id} className="px-4 py-4 grid lg:grid-cols-[minmax(0,1fr)_150px_190px_auto] gap-3 lg:items-center hover:bg-[#0b1728] transition-colors">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[#f8edd4] font-semibold text-sm break-all">{grant.email}</span>
-                        {grant.protected && <span className="px-2 py-1 rounded border border-[#ff9e32]/45 bg-[#ff941f]/10 text-[#ffc45c] font-mono text-[7px] uppercase tracking-[.1em]">Protected</span>}
+                        <span className="text-[#f1f5f9] font-semibold text-sm break-all">{grant.email}</span>
+                        {grant.protected && <span className="px-2 py-1 rounded-md border border-blue-400/30 bg-blue-500/10 text-blue-300 text-[8px] uppercase tracking-[.1em] font-semibold">Protected</span>}
                       </div>
-                      <div className="mt-1 text-[#8f6b48] font-mono text-[8px] uppercase tracking-[.08em]">Approved by {grant.addedByEmail || 'system'}</div>
+                      <div className="mt-1 text-[#71839c] text-[8px] uppercase tracking-[.08em]">Approved by {grant.addedByEmail || 'system'}</div>
                     </div>
                     <div>
-                      <div className="text-[#92704d] font-mono text-[7px] uppercase tracking-[.1em]">Role</div>
-                      <div className="mt-1 text-[#e5c69b] text-xs font-semibold">{grant.role === 'super_admin' ? 'Super Admin' : 'User'}</div>
+                      <div className="text-[#71839c] text-[8px] uppercase tracking-[.1em]">Role</div>
+                      <div className="mt-1 text-[#dce7f5] text-xs font-semibold">{grant.role === 'super_admin' ? 'Super Admin' : 'User'}</div>
                     </div>
                     <div>
-                      <div className="text-[#92704d] font-mono text-[7px] uppercase tracking-[.1em]">Approved</div>
-                      <div className="mt-1 text-[#e5c69b] text-xs">{grant.createdAt ? new Date(grant.createdAt).toLocaleString() : '—'}</div>
+                      <div className="text-[#71839c] text-[8px] uppercase tracking-[.1em]">Approved</div>
+                      <div className="mt-1 text-[#dce7f5] text-xs">{grant.createdAt ? new Date(grant.createdAt).toLocaleString() : '—'}</div>
                     </div>
                     <div className="flex lg:justify-end">
                       {grant.protected ? (
-                        <span className="text-[#9d7954] font-mono text-[8px] uppercase tracking-[.08em]">Cannot remove</span>
+                        <span className="text-[#71839c] text-[8px] uppercase tracking-[.08em]">Cannot remove</span>
                       ) : (
                         <button
                           type="button"
                           onClick={() => removeAccess(grant)}
                           disabled={removingId === grant.id}
-                          className="min-h-9 px-3 rounded-lg border border-[#7d4437] bg-[#3a2018] text-[#f0ae9e] font-mono text-[9px] font-semibold inline-flex items-center gap-2 hover:border-[#ff8071] hover:text-[#ffd0c7] disabled:opacity-50"
+                          className="min-h-9 px-3 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-[9px] font-semibold inline-flex items-center gap-2 hover:border-rose-400/50 hover:text-rose-200 disabled:opacity-50"
                         >
                           <Trash2 size={13} /> {removingId === grant.id ? 'Removing…' : 'Remove access'}
                         </button>
@@ -229,8 +229,8 @@ export default function AccessAdmin() {
             )}
           </section>
 
-          <div className="border border-[#604126] rounded-lg bg-[#24170e] px-4 py-3 text-[#a77f55] text-xs leading-relaxed">
-            Signed in as <span className="text-[#e9c89b]">{user?.email || superAdminEmail}</span>. Pending users are told that their registration is captured and to contact <span className="text-[#ffc45c]">{adminContact}</span>. After you approve them, they use the same credentials they registered originally.
+          <div className="border border-[#29405f] rounded-xl bg-[#07111f] px-4 py-3 text-[#8295ae] text-xs leading-relaxed">
+            Signed in as <span className="text-[#dce7f5]">{user?.email || superAdminEmail}</span>. Pending users are told that their registration is captured and to contact <span className="text-[#60a5fa]">{adminContact}</span>. After approval, they use the same credentials they registered originally.
           </div>
         </div>
       </section>
