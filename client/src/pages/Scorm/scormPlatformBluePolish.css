@@ -1,103 +1,281 @@
 /*
- * Final platform-only consistency layer.
- * Keep this file scoped to the SCORM administration UI. It must never be
+ * Final platform-only teal consistency layer.
+ * This file is loaded only by the SCORM administration shell and is never
  * injected into generated learner packages.
  */
 
-.scorm-editorial .wb-accent {
-  color: #60a5fa !important;
+.scorm-editorial {
+  --platform-teal-bg: #0A0F0E;
+  --platform-teal-bg-deep: #070B0A;
+  --platform-teal-surface: #121A19;
+  --platform-teal-surface-2: #17201F;
+  --platform-teal-surface-3: #1C2725;
+  --platform-teal-line: rgba(255, 255, 255, .10);
+  --platform-teal-line-soft: rgba(255, 255, 255, .06);
+  --platform-teal-text: #EDF4F2;
+  --platform-teal-body: #A9BAB6;
+  --platform-teal-muted: #6E7D79;
+  --platform-teal: #4FC9BF;
+  --platform-teal-strong: #7BDCD3;
+  --platform-teal-soft: rgba(79, 201, 191, .14);
+
+  --modern-bg: var(--platform-teal-bg);
+  --modern-bg-soft: var(--platform-teal-bg-deep);
+  --modern-surface: var(--platform-teal-surface);
+  --modern-surface-2: var(--platform-teal-surface-2);
+  --modern-surface-3: var(--platform-teal-surface-3);
+  --modern-border: var(--platform-teal-line);
+  --modern-border-strong: rgba(79, 201, 191, .28);
+  --modern-text: var(--platform-teal-text);
+  --modern-body: var(--platform-teal-body);
+  --modern-muted: var(--platform-teal-muted);
+  --modern-blue: var(--platform-teal);
+  --modern-blue-strong: #278F87;
+  --modern-blue-soft: var(--platform-teal-soft);
+
+  --scorm-canvas: var(--platform-teal-bg) !important;
+  --scorm-surface: var(--platform-teal-surface) !important;
+  --scorm-surface-soft: var(--platform-teal-surface-2) !important;
+  --scorm-surface-muted: var(--platform-teal-surface-3) !important;
+  --scorm-ink: var(--platform-teal-text) !important;
+  --scorm-ink-soft: var(--platform-teal-body) !important;
+  --scorm-muted: var(--platform-teal-muted) !important;
+  --scorm-subtle: var(--platform-teal-muted) !important;
+  --scorm-line: var(--platform-teal-line) !important;
+  --scorm-line-strong: rgba(79, 201, 191, .28) !important;
+  --scorm-sidebar: #0D1413 !important;
+  --scorm-sidebar-soft: var(--platform-teal-surface) !important;
+  --scorm-sidebar-line: var(--platform-teal-line) !important;
+  --scorm-sidebar-text: var(--platform-teal-body) !important;
+  --scorm-sidebar-muted: var(--platform-teal-muted) !important;
+  --scorm-accent: var(--platform-teal) !important;
+  --scorm-accent-strong: var(--platform-teal-strong) !important;
+  --scorm-accent-soft: var(--platform-teal-soft) !important;
+
+  color: var(--platform-teal-text) !important;
+  background: var(--platform-teal-bg) !important;
 }
 
-/* My Courses custom classes previously depended on the retired warm Workbench CSS. */
-.scorm-editorial .scorm-course-metric,
-.scorm-editorial .scorm-course-list-shell {
-  background: #050914 !important;
-  border-color: rgba(148, 163, 184, .12) !important;
-  color: #f8fafc !important;
-  box-shadow: 0 14px 38px rgba(0, 0, 0, .24), inset 0 1px 0 rgba(255,255,255,.018) !important;
+.scorm-editorial .scorm-main,
+.scorm-editorial main {
+  background:
+    radial-gradient(circle at 84% -8%, rgba(79, 201, 191, .075), transparent 28rem),
+    linear-gradient(180deg, #0D1413 0%, #0A0F0E 54%, #070B0A 100%) !important;
+  color: var(--platform-teal-text) !important;
 }
 
-.scorm-editorial .scorm-course-metric .scorm-micro {
-  color: #8295ae !important;
+.scorm-editorial .scorm-topbar {
+  background: rgba(10, 15, 14, .92) !important;
+  border-color: var(--platform-teal-line) !important;
+  box-shadow: 0 1px 0 rgba(79, 201, 191, .05), 0 12px 32px rgba(0, 0, 0, .22) !important;
 }
 
-.scorm-editorial .scorm-course-metric-icon {
-  background: rgba(37, 99, 235, .095) !important;
-  border-color: rgba(96, 165, 250, .16) !important;
-  color: #93c5fd !important;
+.scorm-editorial .scorm-sidebar,
+.scorm-editorial .scorm-mobile-drawer {
+  background:
+    radial-gradient(circle at 22% 0%, rgba(79, 201, 191, .06), transparent 16rem),
+    linear-gradient(180deg, #0D1413 0%, #0A0F0E 100%) !important;
+  border-color: var(--platform-teal-line) !important;
+  box-shadow: 16px 0 42px rgba(0, 0, 0, .24) !important;
 }
 
-.scorm-editorial .scorm-course-toolbar {
-  background: #080e1b !important;
-  border-color: rgba(148, 163, 184, .10) !important;
+.scorm-editorial .scorm-brand-wrap,
+.scorm-editorial .scorm-sidebar-footer,
+.scorm-editorial .scorm-mobile-drawer > div {
+  border-color: var(--platform-teal-line) !important;
 }
 
-.scorm-editorial .scorm-course-search {
-  background: #030711 !important;
-  border: 1px solid rgba(148, 163, 184, .15) !important;
-  color: #f8fafc !important;
+.scorm-editorial .scorm-brand-mark {
+  color: #06201E !important;
+  background: var(--platform-teal) !important;
+  border-color: rgba(123, 220, 211, .36) !important;
+  box-shadow: 0 10px 24px rgba(79, 201, 191, .10) !important;
 }
 
-.scorm-editorial .scorm-course-search::placeholder {
-  color: #58677d !important;
+.scorm-editorial .wb-accent,
+.scorm-editorial .scorm-brand-name [class*="text-blue-"],
+.scorm-editorial [class*="text-[#60a5fa]"],
+.scorm-editorial [class*="text-[#93c5fd]"],
+.scorm-editorial [class*="text-blue-300"],
+.scorm-editorial [class*="text-blue-400"] {
+  color: var(--platform-teal-strong) !important;
 }
 
+.scorm-editorial .scorm-nav-item {
+  color: var(--platform-teal-body) !important;
+}
+
+.scorm-editorial .scorm-nav-item:hover {
+  background: rgba(255, 255, 255, .035) !important;
+  border-color: var(--platform-teal-line-soft) !important;
+  color: var(--platform-teal-text) !important;
+}
+
+.scorm-editorial .scorm-nav-icon {
+  color: var(--platform-teal-muted) !important;
+  border-color: var(--platform-teal-line-soft) !important;
+}
+
+.scorm-editorial .scorm-nav-active {
+  background: var(--platform-teal-soft) !important;
+  border-color: rgba(79, 201, 191, .24) !important;
+  color: var(--platform-teal-strong) !important;
+  box-shadow: inset 2px 0 0 var(--platform-teal), 0 8px 24px rgba(0, 0, 0, .12) !important;
+}
+
+.scorm-editorial .scorm-nav-active .scorm-nav-icon {
+  background: rgba(79, 201, 191, .08) !important;
+  border-color: rgba(79, 201, 191, .18) !important;
+  color: var(--platform-teal-strong) !important;
+}
+
+.scorm-editorial .scorm-nav-chevron {
+  color: var(--platform-teal) !important;
+}
+
+.scorm-editorial .scorm-button-primary {
+  background: var(--platform-teal) !important;
+  border-color: var(--platform-teal-strong) !important;
+  color: #06201E !important;
+  box-shadow: 0 8px 20px rgba(79, 201, 191, .10) !important;
+}
+
+.scorm-editorial .scorm-button-primary:hover {
+  background: var(--platform-teal-strong) !important;
+  border-color: var(--platform-teal-strong) !important;
+  color: #06201E !important;
+}
+
+.scorm-editorial .scorm-button-secondary,
+.scorm-editorial .scorm-sidebar-switch,
+.scorm-editorial .scorm-topbar-icon,
+.scorm-editorial .scorm-drawer-close {
+  background: var(--platform-teal-surface) !important;
+  border-color: var(--platform-teal-line) !important;
+  color: var(--platform-teal-body) !important;
+}
+
+.scorm-editorial .scorm-button-secondary:hover,
+.scorm-editorial .scorm-sidebar-switch:hover,
+.scorm-editorial .scorm-topbar-icon:hover,
+.scorm-editorial .scorm-drawer-close:hover {
+  background: var(--platform-teal-surface-2) !important;
+  border-color: rgba(79, 201, 191, .24) !important;
+  color: var(--platform-teal-text) !important;
+}
+
+.scorm-editorial input:focus,
+.scorm-editorial textarea:focus,
+.scorm-editorial select:focus,
 .scorm-editorial .scorm-course-search:focus {
-  border-color: rgba(96, 165, 250, .72) !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, .13) !important;
+  border-color: rgba(79, 201, 191, .72) !important;
+  box-shadow: 0 0 0 3px rgba(79, 201, 191, .14) !important;
+  outline: none !important;
 }
 
+.scorm-editorial .scorm-panel,
+.scorm-editorial .scorm-metric-card,
+.scorm-editorial .scorm-action-card,
+.scorm-editorial .scorm-soft-card,
+.scorm-editorial .scorm-course-metric,
+.scorm-editorial .scorm-course-list-shell,
+.scorm-editorial main [class*="rounded-2xl"].border,
+.scorm-editorial main [class*="rounded-[22px]"].border,
+.scorm-editorial main [class*="rounded-[18px]"].border {
+  background: var(--platform-teal-surface) !important;
+  border-color: var(--platform-teal-line) !important;
+  color: var(--platform-teal-text) !important;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, .20), inset 0 1px 0 rgba(255, 255, 255, .015) !important;
+}
+
+.scorm-editorial .scorm-panel-header,
+.scorm-editorial .scorm-course-toolbar {
+  background: var(--platform-teal-surface-2) !important;
+  border-color: var(--platform-teal-line) !important;
+}
+
+.scorm-editorial .scorm-action-card:hover {
+  background: var(--platform-teal-surface-2) !important;
+  border-color: rgba(79, 201, 191, .22) !important;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, .24) !important;
+}
+
+.scorm-editorial .scorm-metric-icon,
+.scorm-editorial .scorm-action-icon,
+.scorm-editorial .scorm-action-arrow,
+.scorm-editorial .scorm-empty-icon,
+.scorm-editorial .scorm-course-metric-icon {
+  background: var(--platform-teal-soft) !important;
+  border-color: rgba(79, 201, 191, .18) !important;
+  color: var(--platform-teal-strong) !important;
+}
+
+.scorm-editorial .scorm-course-search,
 .scorm-editorial .scorm-course-filters {
-  background: #030711 !important;
-  border-color: rgba(148, 163, 184, .13) !important;
+  background: #0D1413 !important;
+  border-color: var(--platform-teal-line) !important;
+  color: var(--platform-teal-text) !important;
 }
 
 .scorm-editorial .scorm-course-filter {
-  background: transparent !important;
-  border-color: transparent !important;
-  color: #8fa2ba !important;
+  color: var(--platform-teal-body) !important;
 }
 
 .scorm-editorial .scorm-course-filter:hover {
-  background: #0a1220 !important;
-  border-color: rgba(96, 165, 250, .16) !important;
-  color: #f8fafc !important;
+  background: var(--platform-teal-surface-2) !important;
+  border-color: rgba(79, 201, 191, .18) !important;
+  color: var(--platform-teal-text) !important;
 }
 
 .scorm-editorial .scorm-course-filter.is-active {
-  background: #2563eb !important;
-  border-color: #3b82f6 !important;
-  color: #fff !important;
-  box-shadow: none !important;
-}
-
-.scorm-editorial .scorm-course-rows {
-  border-color: rgba(148, 163, 184, .09) !important;
-}
-
-.scorm-editorial .scorm-course-status {
-  background: #080e19 !important;
-  border-color: rgba(148, 163, 184, .13) !important;
-  color: #aebccd !important;
-}
-
-.scorm-editorial .scorm-course-status.is-published {
-  background: rgba(16, 185, 129, .08) !important;
-  border-color: rgba(52, 211, 153, .20) !important;
-  color: #9ee7ca !important;
+  background: var(--platform-teal) !important;
+  border-color: var(--platform-teal-strong) !important;
+  color: #06201E !important;
 }
 
 .scorm-editorial .scorm-course-status.is-draft {
-  background: rgba(37, 99, 235, .08) !important;
-  border-color: rgba(96, 165, 250, .18) !important;
-  color: #bfdbfe !important;
+  background: var(--platform-teal-soft) !important;
+  border-color: rgba(79, 201, 191, .22) !important;
+  color: var(--platform-teal-strong) !important;
 }
 
-/* Keep disabled and pending states neutral/blue rather than tan or brown. */
+/* Convert hard-coded navy/blue platform surfaces introduced by the previous cleanup. */
+.scorm-editorial [class*="bg-[#050a12]"],
+.scorm-editorial [class*="bg-[#07111f]"],
+.scorm-editorial [class*="bg-[#081321]"],
+.scorm-editorial [class*="bg-[#08182b]"],
+.scorm-editorial [class*="bg-[#0a1626]"],
+.scorm-editorial [class*="bg-[#0b1728]"] {
+  background: var(--platform-teal-surface) !important;
+}
+
+.scorm-editorial [class*="border-[#263950]"],
+.scorm-editorial [class*="border-[#29405f]"],
+.scorm-editorial [class*="border-[#315a8b]"],
+.scorm-editorial [class*="border-blue-"] {
+  border-color: rgba(79, 201, 191, .22) !important;
+}
+
+.scorm-editorial [class*="bg-[#2563eb]"],
+.scorm-editorial [class*="bg-blue-500"] {
+  background: var(--platform-teal) !important;
+  color: #06201E !important;
+}
+
+.scorm-editorial [class*="bg-blue-500/10"] {
+  background: var(--platform-teal-soft) !important;
+}
+
+.scorm-editorial [class*="text-[#8295ae]"],
+.scorm-editorial [class*="text-[#71839c]"] {
+  color: var(--platform-teal-muted) !important;
+}
+
+/* Keep disabled states neutral rather than blue or brown. */
 .scorm-editorial .is-locked {
-  color: #71839c !important;
+  color: var(--platform-teal-muted) !important;
 }
 
 .scorm-editorial .is-locked:hover {
-  color: #93a4bb !important;
+  color: var(--platform-teal-body) !important;
 }
