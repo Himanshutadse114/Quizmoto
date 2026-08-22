@@ -101,7 +101,7 @@ export default function QuizmotoModule() {
         <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5">
           <div className="max-w-3xl">
             <div className="scorm-eyebrow inline-flex items-center gap-2"><Gamepad2 size={13} /> Live engagement · Unlocked</div>
-            <h1 className="scorm-display mt-2"><span>Quizmoto</span> <span className="wb-accent">Live Quiz</span></h1>
+            <h1 className="scorm-display mt-2"><span>Quizmoto</span> <span className="text-blue-400">Live Quiz</span></h1>
             <p className="mt-3 text-sm md:text-[15px] max-w-2xl">Create quizzes, generate questions with AI, run real-time sessions and review engagement from inside the SCORM AI platform.</p>
           </div>
           <div className="flex flex-wrap gap-2.5">
@@ -112,7 +112,7 @@ export default function QuizmotoModule() {
         </div>
       </section>
 
-      {message && <div className="rounded-xl border border-[#71502e] bg-[#2a1b11] px-4 py-3 mb-5 text-xs text-[#f0cf9e] flex items-center justify-between gap-3"><span>{message}</span><button type="button" onClick={() => setMessage('')} className="font-semibold text-[#ffc45c]">Dismiss</button></div>}
+      {message && <div className="rounded-xl border border-[#29405f] bg-[#081321] px-4 py-3 mb-5 text-xs text-[#cbd5e1] flex items-center justify-between gap-3"><span>{message}</span><button type="button" onClick={() => setMessage('')} className="font-semibold text-[#60a5fa]">Dismiss</button></div>}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <div className="scorm-metric-card"><div className="flex items-start justify-between"><div><div className="scorm-metric-value">{quizzes.length}</div><div className="scorm-metric-label">Quizzes</div></div><div className="scorm-metric-icon"><BookOpenCheck size={17} /></div></div></div>
@@ -140,13 +140,13 @@ export default function QuizmotoModule() {
         <div className="scorm-panel-header flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div><div className="scorm-eyebrow">Quiz management</div><h2 className="text-[18px] mt-1">Quiz library</h2></div>
           <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
-            <label className="rounded-xl border border-[#4e3522] bg-[#1c130d] px-3 flex items-center gap-2 min-w-[260px]"><Search size={14} className="text-[#a98259]" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search quizzes" className="w-full bg-transparent border-0 p-2 text-xs outline-none" /></label>
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="rounded-xl border border-[#4e3522] bg-[#1c130d] px-3 py-2.5 text-xs"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="az">A–Z title</option></select>
+            <label className="rounded-xl border border-[#263950] bg-[#07111f] px-3 flex items-center gap-2 min-w-[260px]"><Search size={14} className="text-[#8295ae]" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search quizzes" className="w-full bg-transparent border-0 p-2 text-xs outline-none" /></label>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="rounded-xl border border-[#263950] bg-[#07111f] px-3 py-2.5 text-xs"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="az">A–Z title</option></select>
           </div>
         </div>
 
         <div className="scorm-list">
-          {shownQuizzes.length === 0 && <div className="p-10 text-center text-xs text-[#a98259]">{quizzes.length ? 'No quizzes match your search.' : 'No quizzes yet. Create one or import the starter set.'}</div>}
+          {shownQuizzes.length === 0 && <div className="p-10 text-center text-xs text-[#8295ae]">{quizzes.length ? 'No quizzes match your search.' : 'No quizzes yet. Create one or import the starter set.'}</div>}
           {shownQuizzes.map((quiz) => (
             <article key={quiz.id} className="scorm-course-row grid md:grid-cols-[1fr_100px_110px_auto] gap-4 items-center">
               <div className="min-w-0"><div className="font-semibold text-sm truncate">{quiz.title}</div><div className="scorm-meta mt-1">Created {quiz.createdAt ? new Date(quiz.createdAt).toLocaleDateString() : '—'}</div></div>
@@ -155,7 +155,7 @@ export default function QuizmotoModule() {
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => startGame(quiz.id)} className="scorm-button-primary inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold"><Play size={12} /> Start</button>
                 <Link to={`/scorm/quizmoto/edit/${quiz.id}`} className="scorm-button-secondary grid place-items-center w-9 h-9" title="Edit quiz"><Edit3 size={14} /></Link>
-                <button type="button" onClick={() => deleteQuiz(quiz.id)} className="scorm-button-secondary grid place-items-center w-9 h-9 text-[#f5a08f]" title="Delete quiz"><Trash2 size={14} /></button>
+                <button type="button" onClick={() => deleteQuiz(quiz.id)} className="scorm-button-secondary grid place-items-center w-9 h-9 text-[#fb7185]" title="Delete quiz"><Trash2 size={14} /></button>
               </div>
             </article>
           ))}
