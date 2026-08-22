@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./pages/Scorm/scormButtonTealOverride.css";
+@import "./pages/Scorm/scormLightQuizmoto.css";
 
 @theme {
   --color-quizmoto-red: #eb1736;
