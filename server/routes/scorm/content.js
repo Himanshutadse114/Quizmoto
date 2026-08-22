@@ -26,13 +26,17 @@ async function resolvePackageAccess(accessToken, packageIdHint) {
             include: [{ model: ScormCourse, as: 'course' }]
         });
         if (!reg || reg.status === 'revoked' || !reg.course) return null;
-        return { packageId: reg.course.packageId, registrationId: reg.id };
+        return {
+            packageId: reg.course.packageId,
+            registrationId: reg.id,
+            isPreview: Boolean(reg.isPreview)
+        };
     }
 
     if (decoded.userId && packageIdHint) {
         const pkg = await ScormPackage.findOne({ where: { id: packageIdHint, hostId: decoded.userId } });
         if (!pkg) return null;
-        return { packageId: pkg.id, registrationId: null };
+        return { packageId: pkg.id, registrationId: null, isPreview: false };
     }
 
     return null;
@@ -324,7 +328,7 @@ async function patchHtmlIfNeeded(packageId, rel, buf) {
     return { buffer: Buffer.from(patched, 'utf8'), patched: true };
 }
 
-async function sendContent(res, packageId, rel) {
+async function sendContent(res, packageId, rel, { allowPreviewEmbed = false } = {}) {
     const key = packageContentKey(packageId, rel);
     const storage = getObjectStorage();
     const buf = await storage.getObjectBuffer(key);
@@ -333,7 +337,7 @@ async function sendContent(res, packageId, rel) {
     res.setHeader('Content-Type', guessContentType(rel));
     res.setHeader('Cache-Control', served.patched ? 'private, no-store' : 'private, max-age=300');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
+    res.setHeader('Content-Security-Policy', allowPreviewEmbed ? "frame-ancestors 'self' https: http:" : "frame-ancestors 'self'");
     res.send(served.buffer);
 }
 
@@ -349,7 +353,8 @@ router.get('/t/:accessToken/*path', async (req, res) => {
         const rel = normalizeRel(req.params.path);
         const access = await resolvePackageAccess(accessToken, null);
         if (!access) return res.status(401).json({ message: 'Unauthorized' });
-        await sendContent(res, access.packageId, rel);
+        const allowPreviewEmbed = access.isPreview && String(req.query.previewEmbed || '') === '1';
+        await sendContent(res, access.packageId, rel, { allowPreviewEmbed });
     } catch (err) {
         res.status(404).json({ message: 'Content not found' });
     }
@@ -364,7 +369,8 @@ router.get('/:packageId/*path', async (req, res) => {
         const token = auth || req.query.token;
         const access = await resolvePackageAccess(token, packageId);
         if (!access || access.packageId !== packageId) return res.status(401).json({ message: 'Unauthorized' });
-        await sendContent(res, packageId, rel);
+        const allowPreviewEmbed = access.isPreview && String(req.query.previewEmbed || '') === '1';
+        await sendContent(res, packageId, rel, { allowPreviewEmbed });
     } catch (err) {
         res.status(404).json({ message: 'Content not found' });
     }

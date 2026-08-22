@@ -226,6 +226,15 @@
   background: rgba(11, 10, 8, .74) !important;
 }
 
+/* Content Editor course-title field needs its own inset because the JSX keeps a
+ * p-0 utility so the shared input skin can control the surrounding block. */
+.scorm-editorial.scorm-workbench main input[placeholder="Course title"] {
+  box-sizing: border-box;
+  min-height: 46px;
+  padding: 10px 14px !important;
+  line-height: 1.35 !important;
+}
+
 @media (max-width: 767px) {
   .scorm-editorial.scorm-workbench button[class*="p-3"][class*="text-left"][style*="linear-gradient(145deg"] {
     min-height: 138px;
