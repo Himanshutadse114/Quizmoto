@@ -1,0 +1,91 @@
+/* Remaining route-level light-mode holdouts found during the SCORM platform audit. */
+
+/* Learner Tracking: expanded audit row was hard-coded navy. */
+html body .scorm-editorial.scorm-theme-light main tr[class*="bg-[#050B14]"],
+html body .scorm-editorial.scorm-theme-light main tr[class*="bg-[#050b14]"] {
+  background: #F7FBFA !important;
+  color: #13211E !important;
+  border-color: #D7E4E1 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main [class*="border-[#243751]"] {
+  border-color: #D7E4E1 !important;
+}
+
+/* Access Control: remove the last dark gradient/card surfaces in light mode. */
+html body .scorm-editorial.scorm-theme-light main section[class*="bg-[#050a12]"] {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  border-color: #D7E4E1 !important;
+  color: #13211E !important;
+  box-shadow: 0 8px 24px rgba(29, 78, 70, .07) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main section[class*="bg-[#050a12]"] > div[class*="bg-[radial-gradient"] {
+  background: linear-gradient(135deg, #F8FBFA 0%, #EEF7F5 100%) !important;
+  background-image: linear-gradient(135deg, #F8FBFA 0%, #EEF7F5 100%) !important;
+  border-color: #D7E4E1 !important;
+  color: #13211E !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#07111f]"],
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#0a1626]"],
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#08182b]"] {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  border-color: #D7E4E1 !important;
+  color: #13211E !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main [class*="hover:bg-[#0b1728]"]:hover {
+  background: #F1F8F6 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main [class*="divide-[#22324a]"] {
+  --tw-divide-opacity: 1 !important;
+  border-color: #E0EAE8 !important;
+}
+
+/* Legacy Library cards used translucent dark-mode surfaces. */
+html body .scorm-editorial.scorm-theme-light main [class*="bg-white/5"],
+html body .scorm-editorial.scorm-theme-light main [class*="bg-white/10"] {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  color: #13211E !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main [class*="border-white/10"],
+html body .scorm-editorial.scorm-theme-light main [class*="border-white/15"] {
+  border-color: #D7E4E1 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main [class*="text-white/40"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-white/50"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-white/60"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-white/70"] {
+  color: #536762 !important;
+}
+
+/* Older blue action/icon colors are dark teal in light mode. */
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#635BFF]"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#5145CD]"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#3538CD]"] {
+  color: #0B6259 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#EEF4FF]"],
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#F7F8FF]"],
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#FAFAFF]"] {
+  background: #EEF7F5 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#635BFF]"] {
+  background: #4FC9BF !important;
+}
+
+/* Light mode keeps destructive controls semantic, but normal blue badges become teal. */
+html body .scorm-editorial.scorm-theme-light main [class*="bg-blue-500/10"] {
+  background: #E4F7F4 !important;
+  border-color: #BDE5DF !important;
+  color: #0B6259 !important;
+}
