@@ -41,7 +41,7 @@ const NAV_GROUPS = [
     items: [
       { to: '/scorm/author', label: 'AI Course Author', icon: Sparkles, requiresScorm: true },
       { to: '/scorm/courses', label: 'My Courses', icon: BookOpen, requiresScorm: true },
-      { to: '/scorm/visual-studio', label: 'Visual Studio', icon: Palette, requiresScorm: true },
+      { to: '/scorm/visual-studio', label: 'Content Editor', icon: Palette, requiresScorm: true },
       { to: '/scorm/library', label: 'SCORM Library', icon: Library, requiresScorm: true },
       { to: '/scorm/tracking', label: 'Learner Tracking', icon: Activity, requiresScorm: true },
       { to: '/scorm/reports', label: 'Reports & Insights', icon: BarChart3, requiresScorm: true }
