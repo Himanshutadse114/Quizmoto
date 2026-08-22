@@ -25,8 +25,6 @@ import './scormEditorialTheme.css';
 import './scormDashboard.css';
 import './scormContrastPolish.css';
 import './scormModernDark.css';
-import './scormWorkbenchTheme.css';
-import './scormWorkbenchConsistency.css';
 
 const NAV_GROUPS = [
   {
@@ -82,8 +80,8 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess }) {
                     <>
                       <span className="scorm-nav-icon w-8 h-8 rounded-lg grid place-items-center shrink-0"><Icon size={16} strokeWidth={isActive ? 2.2 : 1.9} /></span>
                       <span className="flex-1 truncate">{label}</span>
-                      {unlocked && !scormAccess && <span className="text-[8px] uppercase tracking-[.08em] font-bold text-[#ffc45c]">Open</span>}
-                      {locked ? <LockKeyhole size={12} className="text-[#b78c60]" /> : isActive ? <ChevronRight size={14} className="scorm-nav-chevron" /> : null}
+                      {unlocked && !scormAccess && <span className="text-[8px] uppercase tracking-[.08em] font-bold text-[#60a5fa]">Open</span>}
+                      {locked ? <LockKeyhole size={12} className="text-[#71839c]" /> : isActive ? <ChevronRight size={14} className="scorm-nav-chevron" /> : null}
                     </>
                   )}
                 </NavLink>
@@ -101,7 +99,7 @@ function Brand() {
     <Link to="/scorm" className="scorm-brand flex items-center gap-3 min-w-0">
       <div className="scorm-brand-mark w-10 h-10 grid place-items-center shrink-0"><Layers3 size={19} strokeWidth={2.2} /></div>
       <div className="min-w-0">
-        <div className="scorm-display scorm-brand-name text-[16px] leading-none truncate"><span>SCORM</span> <span className="wb-accent">AI</span></div>
+        <div className="scorm-display scorm-brand-name text-[16px] leading-none truncate"><span>SCORM</span> <span className="text-blue-400">AI</span></div>
         <div className="scorm-brand-subtitle mt-1 text-[10px] truncate">Learning intelligence platform</div>
       </div>
     </Link>
@@ -160,36 +158,36 @@ export default function ScormPlatformShell() {
   const isSuperAdmin = Boolean(scormAccess && (user?.isSuperAdmin || user?.role === 'super_admin'));
 
   return (
-    <div className="scorm-editorial scorm-workbench min-h-screen relative z-20">
+    <div className="scorm-editorial min-h-screen relative z-20">
       <aside className="scorm-sidebar fixed inset-y-0 left-0 z-40 hidden lg:flex w-[268px] flex-col border-r">
         <div className="scorm-brand-wrap h-[76px] px-5 flex items-center border-b"><Brand /></div>
         <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} />
         <div className="scorm-sidebar-footer p-3 border-t space-y-2.5">
           {isSuperAdmin && (
-            <div className="rounded-xl px-3.5 py-3 border border-[#78502d] bg-[#2b1b10]">
-              <div className="flex items-center gap-2 text-[10px] font-semibold text-[#ffc45c]"><ShieldCheck size={13} /> Super Admin</div>
-              <div className="mt-1.5 text-[9px] leading-relaxed text-[#b78c60] break-all">{user?.email}</div>
+            <div className="rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
+              <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><ShieldCheck size={13} /> Super Admin</div>
+              <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae] break-all">{user?.email}</div>
             </div>
           )}
           {scormAccess ? (
             <div className="scorm-status-card rounded-xl px-3.5 py-3"><div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />SCORM AI unlocked</div><div className="mt-1.5 text-[10px] leading-relaxed">Authoring, learner tracking, reporting and SCORM operations are active.</div></div>
           ) : (
-            <div className="rounded-xl px-3.5 py-3 border border-[#78502d] bg-[#2b1b10]">
-              <div className="flex items-center gap-2 text-[10px] font-semibold text-[#ffc45c]"><LockKeyhole size={13} /> Approval pending</div>
-              <div className="mt-1.5 text-[9px] leading-relaxed text-[#b78c60]">Quizmoto is unlocked. SCORM AI features unlock after administrator approval.</div>
-              <button type="button" onClick={refreshApproval} disabled={checkingAccess} className="mt-2 inline-flex items-center gap-1.5 text-[9px] font-semibold text-[#ffd27b] disabled:opacity-50"><RefreshCw size={11} className={checkingAccess ? 'animate-spin' : ''} /> Refresh access</button>
+            <div className="rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
+              <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={13} /> Approval pending</div>
+              <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae]">Quizmoto is unlocked. SCORM AI features unlock after administrator approval.</div>
+              <button type="button" onClick={refreshApproval} disabled={checkingAccess} className="mt-2 inline-flex items-center gap-1.5 text-[9px] font-semibold text-[#60a5fa] disabled:opacity-50"><RefreshCw size={11} className={checkingAccess ? 'animate-spin' : ''} /> Refresh access</button>
             </div>
           )}
           <button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><LogOut size={14} /> Sign out</span><ChevronRight size={13} /></button>
         </div>
       </aside>
 
-      {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><button aria-label="Close navigation" className="absolute inset-0 bg-[#11100e]/70 backdrop-blur-sm" onClick={() => setMobileOpen(false)} /><div className="scorm-mobile-drawer absolute inset-y-0 left-0 w-[304px] max-w-[88vw] border-r flex flex-col"><div className="h-[72px] px-4 flex items-center justify-between border-b"><Brand /><button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="scorm-drawer-close w-9 h-9 grid place-items-center"><X size={17} /></button></div><Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} onNavigate={() => setMobileOpen(false)} /><div className="p-3 border-t"><button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><LogOut size={14} /> Sign out</span><ChevronRight size={13} /></button></div></div></div>}
+      {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><button aria-label="Close navigation" className="absolute inset-0 bg-[#02050b]/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)} /><div className="scorm-mobile-drawer absolute inset-y-0 left-0 w-[304px] max-w-[88vw] border-r flex flex-col"><div className="h-[72px] px-4 flex items-center justify-between border-b"><Brand /><button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="scorm-drawer-close w-9 h-9 grid place-items-center"><X size={17} /></button></div><Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} onNavigate={() => setMobileOpen(false)} /><div className="p-3 border-t"><button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><LogOut size={14} /> Sign out</span><ChevronRight size={13} /></button></div></div></div>}
 
       <div className="lg:pl-[268px] min-h-screen">
         <header className="scorm-topbar sticky top-0 z-30 min-h-[64px] border-b px-4 md:px-7 py-2.5 flex items-center gap-3 md:gap-4">
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open SCORM AI navigation" className="scorm-topbar-icon lg:hidden w-10 h-10 grid place-items-center shrink-0"><Menu size={18} /></button>
-          {!scormAccess && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#d4a86f]"><LockKeyhole size={12} /> SCORM AI approval pending · Quizmoto available</div>}
+          {!scormAccess && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> SCORM AI approval pending · Quizmoto available</div>}
           <div className="ml-auto flex items-center gap-2">
             <Link to="/scorm/quizmoto" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
             {isSuperAdmin && <Link to="/scorm/access" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><ShieldCheck size={14} /> Access</Link>}
