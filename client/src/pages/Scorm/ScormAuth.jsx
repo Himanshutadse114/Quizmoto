@@ -8,6 +8,7 @@ import { readScormPlatformTheme, saveScormPlatformTheme } from './platformTheme'
 import './scormAuthWorkbench.css';
 import './scormAuthTealRestore.css';
 import './scormLightTheme.css';
+import './scormLightContrastGuard.css';
 
 export default function ScormAuth() {
   const navigate = useNavigate();
