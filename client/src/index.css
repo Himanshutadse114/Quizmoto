@@ -2,6 +2,7 @@
 @import "./pages/Scorm/scormButtonTealOverride.css";
 @import "./pages/Scorm/scormLightQuizmoto.css";
 @import "./pages/Scorm/scormLightLegacyPolish.css";
+@import "./pages/Scorm/scormLightContentEditorPolish.css";
 
 @theme {
   --color-quizmoto-red: #eb1736;
