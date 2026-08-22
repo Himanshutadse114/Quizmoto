@@ -1,0 +1,797 @@
+/*
+ * SCORM AI platform light theme.
+ *
+ * This stylesheet only targets the React platform/auth surfaces. Generated
+ * learner SCORM packages are rendered in separate documents and are not
+ * affected by these rules.
+ */
+
+:root {
+  --scorm-light-bg: #F4F8F7;
+  --scorm-light-bg-soft: #EDF5F3;
+  --scorm-light-surface: #FFFFFF;
+  --scorm-light-surface-2: #F8FBFA;
+  --scorm-light-surface-3: #F0F6F4;
+  --scorm-light-border: #D9E6E3;
+  --scorm-light-border-strong: #B8D4CF;
+  --scorm-light-text: #14201E;
+  --scorm-light-body: #405653;
+  --scorm-light-muted: #6F817E;
+  --scorm-light-subtle: #8A9A97;
+  --scorm-light-teal: #32AFA4;
+  --scorm-light-teal-brand: #4FC9BF;
+  --scorm-light-teal-strong: #178C82;
+  --scorm-light-teal-soft: #E5F7F4;
+  --scorm-light-teal-soft-2: #D7F2EE;
+  --scorm-light-shadow: 0 12px 32px rgba(30, 72, 66, .08);
+  --scorm-light-shadow-sm: 0 4px 14px rgba(30, 72, 66, .06);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Theme toggle                                                               */
+/* -------------------------------------------------------------------------- */
+
+.scorm-theme-toggle,
+.sa-theme-toggle {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  border: 1px solid rgba(79, 201, 191, .30);
+  border-radius: 11px;
+  background: rgba(79, 201, 191, .09);
+  color: #A8E7E1;
+  font: 650 11px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.scorm-theme-toggle:hover,
+.sa-theme-toggle:hover {
+  background: rgba(79, 201, 191, .16);
+  border-color: rgba(123, 220, 211, .52);
+  color: #D9F5F1;
+}
+
+.scorm-theme-toggle:focus-visible,
+.sa-theme-toggle:focus-visible {
+  outline: 2px solid #7BDCD3;
+  outline-offset: 2px;
+}
+
+.scorm-theme-toggle-track {
+  width: 32px;
+  height: 18px;
+  position: relative;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(79, 201, 191, .20);
+  border: 1px solid rgba(123, 220, 211, .28);
+}
+
+.scorm-theme-toggle-knob {
+  width: 12px;
+  height: 12px;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  border-radius: 50%;
+  background: #7BDCD3;
+  box-shadow: 0 1px 4px rgba(0,0,0,.25);
+  transition: transform 180ms ease, background-color 180ms ease;
+}
+
+.scorm-theme-light .scorm-theme-toggle-track,
+.scorm-theme-light.sa-theme-toggle .scorm-theme-toggle-track,
+.scorm-auth-workbench.scorm-theme-light .scorm-theme-toggle-track {
+  background: #D8F2EE;
+  border-color: #9DDCD5;
+}
+
+.scorm-theme-light .scorm-theme-toggle-knob,
+.scorm-auth-workbench.scorm-theme-light .scorm-theme-toggle-knob {
+  transform: translateX(14px);
+  background: #178C82;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Logged-in platform                                                         */
+/* -------------------------------------------------------------------------- */
+
+body .scorm-editorial.scorm-theme-light {
+  color-scheme: light;
+  --scorm-canvas: var(--scorm-light-bg);
+  --scorm-surface: var(--scorm-light-surface);
+  --scorm-surface-soft: var(--scorm-light-surface-2);
+  --scorm-surface-muted: var(--scorm-light-surface-3);
+  --scorm-ink: var(--scorm-light-text);
+  --scorm-ink-soft: var(--scorm-light-body);
+  --scorm-muted: var(--scorm-light-muted);
+  --scorm-subtle: var(--scorm-light-subtle);
+  --scorm-line: var(--scorm-light-border);
+  --scorm-line-strong: var(--scorm-light-border-strong);
+  --scorm-sidebar: #FFFFFF;
+  --scorm-sidebar-soft: #F8FBFA;
+  --scorm-sidebar-line: var(--scorm-light-border);
+  --scorm-sidebar-text: var(--scorm-light-text);
+  --scorm-sidebar-muted: var(--scorm-light-muted);
+  --scorm-accent: var(--scorm-light-teal-brand);
+  --scorm-accent-strong: var(--scorm-light-teal-strong);
+  --scorm-accent-soft: var(--scorm-light-teal-soft);
+  background: var(--scorm-light-bg) !important;
+  color: var(--scorm-light-text) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-main,
+body .scorm-editorial.scorm-theme-light main {
+  background:
+    radial-gradient(circle at 88% -8%, rgba(79, 201, 191, .11), transparent 28rem),
+    linear-gradient(180deg, #F8FBFA 0%, #F4F8F7 55%, #EEF5F3 100%) !important;
+  color: var(--scorm-light-text) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-topbar {
+  background: rgba(255, 255, 255, .90) !important;
+  border-color: var(--scorm-light-border) !important;
+  box-shadow: 0 1px 0 rgba(24, 95, 86, .04), 0 8px 24px rgba(30, 72, 66, .045) !important;
+  backdrop-filter: blur(20px) saturate(135%);
+  -webkit-backdrop-filter: blur(20px) saturate(135%);
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-sidebar,
+body .scorm-editorial.scorm-theme-light .scorm-mobile-drawer {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(79, 201, 191, .09), transparent 15rem),
+    linear-gradient(180deg, #FFFFFF 0%, #FAFCFB 100%) !important;
+  border-color: var(--scorm-light-border) !important;
+  box-shadow: 12px 0 36px rgba(30, 72, 66, .055) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-brand-wrap,
+body .scorm-editorial.scorm-theme-light .scorm-sidebar-footer,
+body .scorm-editorial.scorm-theme-light .scorm-mobile-drawer > div {
+  border-color: var(--scorm-light-border) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-brand-mark {
+  background: linear-gradient(145deg, #E7F8F5, #F8FCFB) !important;
+  color: var(--scorm-light-teal-strong) !important;
+  border-color: #B8E5DF !important;
+  box-shadow: 0 7px 18px rgba(45, 139, 127, .09) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-brand-name,
+body .scorm-editorial.scorm-theme-light .scorm-brand-name span:first-child {
+  color: #13201E !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-brand-name span:last-child {
+  color: var(--scorm-light-teal-strong) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-brand-subtitle,
+body .scorm-editorial.scorm-theme-light .scorm-nav-section {
+  color: #70827F !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-nav-item {
+  color: #50625F !important;
+  border-color: transparent !important;
+  background: transparent !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-nav-item:hover {
+  color: #172522 !important;
+  background: #F0F8F6 !important;
+  border-color: #DEECE9 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-nav-icon {
+  color: #72837F !important;
+  background: #F5F9F8 !important;
+  border-color: #E5EEEC !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-nav-active {
+  color: #123A35 !important;
+  background: linear-gradient(90deg, #DDF5F1 0%, #F1FAF8 100%) !important;
+  border-color: #B9E5DF !important;
+  box-shadow: inset 3px 0 0 #32AFA4, 0 6px 16px rgba(45, 139, 127, .055) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-nav-active .scorm-nav-icon {
+  color: #147F76 !important;
+  background: #CFF0EB !important;
+  border-color: #A9DED7 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-nav-chevron {
+  color: #178C82 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-mobile-tabbar {
+  background: rgba(255,255,255,.94) !important;
+  border-color: #D5E5E2 !important;
+  box-shadow: 0 12px 30px rgba(30,72,66,.13) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-mobile-tab {
+  color: #6F817E !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-mobile-tab.is-active {
+  color: #137F76 !important;
+  background: #E1F5F2 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-theme-toggle {
+  background: #F3F9F7 !important;
+  border-color: #C9E3DE !important;
+  color: #315B55 !important;
+  box-shadow: none !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-theme-toggle:hover {
+  background: #E5F5F2 !important;
+  border-color: #9ED7D0 !important;
+  color: #136F67 !important;
+}
+
+/* Sidebar utility/status cards. */
+body .scorm-editorial.scorm-theme-light .scorm-sidebar-footer > div,
+body .scorm-editorial.scorm-theme-light .scorm-status-card {
+  background: #F5FAF9 !important;
+  border-color: #D7E8E5 !important;
+  color: #3E5954 !important;
+  box-shadow: none !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-sidebar-footer > div div,
+body .scorm-editorial.scorm-theme-light .scorm-sidebar-footer > div span {
+  color: inherit !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-status-card {
+  background: #EDF9F5 !important;
+  border-color: #C9E9DE !important;
+  color: #2E6255 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-sidebar-switch,
+body .scorm-editorial.scorm-theme-light .scorm-topbar-icon,
+body .scorm-editorial.scorm-theme-light .scorm-drawer-close {
+  background: #FFFFFF !important;
+  border-color: #D5E3E0 !important;
+  color: #425753 !important;
+  box-shadow: none !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-sidebar-switch:hover,
+body .scorm-editorial.scorm-theme-light .scorm-topbar-icon:hover,
+body .scorm-editorial.scorm-theme-light .scorm-drawer-close:hover {
+  background: #ECF7F5 !important;
+  border-color: #B5DDD7 !important;
+  color: #176F67 !important;
+}
+
+/* Typography. */
+body .scorm-editorial.scorm-theme-light h1,
+body .scorm-editorial.scorm-theme-light h2,
+body .scorm-editorial.scorm-theme-light h3,
+body .scorm-editorial.scorm-theme-light h4,
+body .scorm-editorial.scorm-theme-light .scorm-display,
+body .scorm-editorial.scorm-theme-light .scorm-page-title,
+body .scorm-editorial.scorm-theme-light main [class~="text-white"],
+body .scorm-editorial.scorm-theme-light main [class~="text-black"] {
+  color: var(--scorm-light-text) !important;
+}
+
+body .scorm-editorial.scorm-theme-light p,
+body .scorm-editorial.scorm-theme-light .scorm-meta,
+body .scorm-editorial.scorm-theme-light main [class*="text-white/"],
+body .scorm-editorial.scorm-theme-light main [class*="text-gray-"],
+body .scorm-editorial.scorm-theme-light main [class*="text-slate-"],
+body .scorm-editorial.scorm-theme-light main [class*="text-zinc-"] {
+  color: var(--scorm-light-body) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-eyebrow,
+body .scorm-editorial.scorm-theme-light .scorm-breadcrumb,
+body .scorm-editorial.scorm-theme-light .scorm-micro {
+  color: var(--scorm-light-muted) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .wb-accent,
+body .scorm-editorial.scorm-theme-light .scorm-text-link,
+body .scorm-editorial.scorm-theme-light main [class*="text-blue-"],
+body .scorm-editorial.scorm-theme-light main [class*="text-cyan-"],
+body .scorm-editorial.scorm-theme-light main [class*="text-violet-"],
+body .scorm-editorial.scorm-theme-light main [class*="text-purple-"] {
+  color: var(--scorm-light-teal-strong) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-text-link:hover {
+  color: #0C6E66 !important;
+}
+
+/* Core surfaces. */
+body .scorm-editorial.scorm-theme-light .scorm-panel,
+body .scorm-editorial.scorm-theme-light .scorm-metric-card,
+body .scorm-editorial.scorm-theme-light .scorm-action-card,
+body .scorm-editorial.scorm-theme-light .scorm-soft-card,
+body .scorm-editorial.scorm-theme-light main [class~="bg-white"],
+body .scorm-editorial.scorm-theme-light main [class*="bg-white/"],
+body .scorm-editorial.scorm-theme-light main [class*="bg-slate-950"],
+body .scorm-editorial.scorm-theme-light main [class*="bg-slate-900"],
+body .scorm-editorial.scorm-theme-light main [class*="bg-zinc-950"],
+body .scorm-editorial.scorm-theme-light main [class*="bg-gray-950"],
+body .scorm-editorial.scorm-theme-light main [class*="bg-[#0"] {
+  background: var(--scorm-light-surface) !important;
+  color: var(--scorm-light-text) !important;
+  border-color: var(--scorm-light-border) !important;
+  box-shadow: var(--scorm-light-shadow-sm) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-panel-header {
+  background: #FAFCFB !important;
+  border-color: var(--scorm-light-border) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-course-row,
+body .scorm-editorial.scorm-theme-light .scorm-activity-row,
+body .scorm-editorial.scorm-theme-light table tbody tr {
+  background: #FFFFFF !important;
+  color: var(--scorm-light-text) !important;
+  border-color: #E1EAE8 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-course-row:hover,
+body .scorm-editorial.scorm-theme-light .scorm-activity-row:hover,
+body .scorm-editorial.scorm-theme-light table tbody tr:hover {
+  background: #F3F9F7 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-action-card:hover {
+  background: #FFFFFF !important;
+  border-color: #A9DAD4 !important;
+  box-shadow: 0 16px 34px rgba(30, 72, 66, .10) !important;
+}
+
+/* Inputs, editors and controls. */
+body .scorm-editorial.scorm-theme-light input,
+body .scorm-editorial.scorm-theme-light textarea,
+body .scorm-editorial.scorm-theme-light select {
+  background: #FFFFFF !important;
+  border-color: #CADAD7 !important;
+  color: #172522 !important;
+  box-shadow: 0 1px 2px rgba(30,72,66,.035) !important;
+}
+
+body .scorm-editorial.scorm-theme-light input::placeholder,
+body .scorm-editorial.scorm-theme-light textarea::placeholder {
+  color: #93A29F !important;
+}
+
+body .scorm-editorial.scorm-theme-light input:hover,
+body .scorm-editorial.scorm-theme-light textarea:hover,
+body .scorm-editorial.scorm-theme-light select:hover {
+  border-color: #A8CFC9 !important;
+}
+
+body .scorm-editorial.scorm-theme-light input:focus,
+body .scorm-editorial.scorm-theme-light textarea:focus,
+body .scorm-editorial.scorm-theme-light select:focus {
+  border-color: #4FC9BF !important;
+  box-shadow: 0 0 0 3px rgba(79,201,191,.16) !important;
+  outline: none !important;
+}
+
+body .scorm-editorial.scorm-theme-light select option {
+  background: #FFFFFF !important;
+  color: #172522 !important;
+}
+
+body .scorm-editorial.scorm-theme-light input[type="file"]::file-selector-button {
+  background: #E3F5F2 !important;
+  color: #176F67 !important;
+  border-color: #B5DED8 !important;
+}
+
+/* Primary actions stay teal in both themes. */
+body .scorm-editorial.scorm-theme-light .scorm-button-primary,
+body .scorm-editorial.scorm-theme-light button[class*="bg-quizmoto"],
+body .scorm-editorial.scorm-theme-light a[class*="bg-quizmoto"],
+body .scorm-editorial.scorm-theme-light button[class*="bg-blue-"],
+body .scorm-editorial.scorm-theme-light button[class*="bg-cyan-"],
+body .scorm-editorial.scorm-theme-light button[class*="bg-violet-"],
+body .scorm-editorial.scorm-theme-light button[class*="bg-purple-"],
+body .scorm-editorial.scorm-theme-light a[class*="bg-blue-"],
+body .scorm-editorial.scorm-theme-light a[class*="bg-cyan-"],
+body .scorm-editorial.scorm-theme-light a[class*="bg-violet-"],
+body .scorm-editorial.scorm-theme-light a[class*="bg-purple-"] {
+  background: #4FC9BF !important;
+  background-image: none !important;
+  border-color: #35B6AB !important;
+  color: #083C37 !important;
+  box-shadow: 0 7px 18px rgba(41, 151, 139, .15) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-button-primary:hover:not(:disabled),
+body .scorm-editorial.scorm-theme-light button[class*="bg-blue-"]:hover:not(:disabled),
+body .scorm-editorial.scorm-theme-light button[class*="bg-cyan-"]:hover:not(:disabled),
+body .scorm-editorial.scorm-theme-light a[class*="bg-blue-"]:hover,
+body .scorm-editorial.scorm-theme-light a[class*="bg-cyan-"]:hover {
+  background: #74D9D0 !important;
+  border-color: #4FC9BF !important;
+  color: #083C37 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-button-secondary,
+body .scorm-editorial.scorm-theme-light main button[class*="bg-white/"],
+body .scorm-editorial.scorm-theme-light main button[class*="border-white"],
+body .scorm-editorial.scorm-theme-light main button[class*="bg-black/"] {
+  background: #FFFFFF !important;
+  border-color: #C9DCD8 !important;
+  color: #31534E !important;
+  box-shadow: 0 1px 2px rgba(30,72,66,.035) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-button-secondary:hover:not(:disabled),
+body .scorm-editorial.scorm-theme-light main button[class*="bg-white/"]:hover:not(:disabled),
+body .scorm-editorial.scorm-theme-light main button[class*="border-white"]:hover:not(:disabled),
+body .scorm-editorial.scorm-theme-light main button[class*="bg-black/"]:hover:not(:disabled) {
+  background: #EAF7F5 !important;
+  border-color: #9DD6CF !important;
+  color: #176F67 !important;
+}
+
+body .scorm-editorial.scorm-theme-light button:focus-visible,
+body .scorm-editorial.scorm-theme-light a:focus-visible {
+  outline: 2px solid #4FC9BF !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 3px rgba(79,201,191,.15) !important;
+}
+
+/* Dashboard metrics and progress. */
+body .scorm-editorial.scorm-theme-light .scorm-metric-value {
+  color: #14201E !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-metric-label {
+  color: #70817E !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-metric-icon,
+body .scorm-editorial.scorm-theme-light .scorm-action-icon,
+body .scorm-editorial.scorm-theme-light .scorm-action-arrow,
+body .scorm-editorial.scorm-theme-light .scorm-empty-icon {
+  background: #E9F7F4 !important;
+  border-color: #C8E7E1 !important;
+  color: #178C82 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-progress-track,
+body .scorm-editorial.scorm-theme-light main [class*="bg-[#EAECF0]"] {
+  background: #E5EEEC !important;
+  border-color: #D4E1DE !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-progress-fill,
+body .scorm-editorial.scorm-theme-light .scorm-preview-progress-fill,
+body .scorm-editorial.scorm-theme-light main [class*="bg-[#635BFF]"] {
+  background: linear-gradient(90deg, #32AFA4, #72D6CD) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-progress-hero,
+body .scorm-editorial.scorm-theme-light .scorm-preview-panel {
+  background:
+    radial-gradient(circle at 88% 6%, rgba(79,201,191,.16), transparent 32%),
+    linear-gradient(145deg, #FFFFFF 0%, #F3FAF8 58%, #EAF7F4 100%) !important;
+  border-color: #C9E2DE !important;
+  color: #14201E !important;
+  box-shadow: var(--scorm-light-shadow) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-progress-hero h3,
+body .scorm-editorial.scorm-theme-light .scorm-progress-hero div,
+body .scorm-editorial.scorm-theme-light .scorm-progress-hero span,
+body .scorm-editorial.scorm-theme-light .scorm-preview-panel h3,
+body .scorm-editorial.scorm-theme-light .scorm-preview-panel div,
+body .scorm-editorial.scorm-theme-light .scorm-preview-panel span {
+  color: inherit !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-progress-hero p,
+body .scorm-editorial.scorm-theme-light .scorm-preview-panel p,
+body .scorm-editorial.scorm-theme-light .scorm-preview-muted {
+  color: #536A66 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-progress-kicker,
+body .scorm-editorial.scorm-theme-light .scorm-preview-kicker {
+  color: #178C82 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-progress-number {
+  color: #14201E !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-progress-icon,
+body .scorm-editorial.scorm-theme-light .scorm-preview-icon,
+body .scorm-editorial.scorm-theme-light .scorm-preview-stat,
+body .scorm-editorial.scorm-theme-light .scorm-preview-location {
+  background: rgba(255,255,255,.82) !important;
+  border-color: #CDE3DF !important;
+  color: #178C82 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-activity-progress {
+  background: #E2F5F2 !important;
+  border-color: #BDE4DE !important;
+  color: #16766D !important;
+}
+
+/* Tables. */
+body .scorm-editorial.scorm-theme-light table {
+  color: #253632 !important;
+  background: #FFFFFF !important;
+}
+
+body .scorm-editorial.scorm-theme-light table thead,
+body .scorm-editorial.scorm-theme-light table thead tr {
+  background: #F4F8F7 !important;
+  color: #61736F !important;
+}
+
+body .scorm-editorial.scorm-theme-light table th {
+  color: #61736F !important;
+  border-color: #DDE8E5 !important;
+}
+
+body .scorm-editorial.scorm-theme-light table td {
+  color: #334A46 !important;
+  border-color: #E2EBE9 !important;
+}
+
+/* Status pills, filters and alerts. */
+body .scorm-editorial.scorm-theme-light .scorm-status-pill {
+  background: #F1F5F4 !important;
+  border-color: #D7E2DF !important;
+  color: #596A67 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-status-pill.is-published,
+body .scorm-editorial.scorm-theme-light main [class*="bg-green-"],
+body .scorm-editorial.scorm-theme-light main [class*="bg-emerald-"] {
+  background: #EAF8F2 !important;
+  border-color: #B8E2D2 !important;
+  color: #1B725A !important;
+}
+
+body .scorm-editorial.scorm-theme-light main [class*="bg-amber-"],
+body .scorm-editorial.scorm-theme-light main [class*="bg-yellow-"],
+body .scorm-editorial.scorm-theme-light main [class*="bg-orange-"] {
+  background: #FFF8E7 !important;
+  border-color: #F0D99D !important;
+  color: #8A6413 !important;
+}
+
+body .scorm-editorial.scorm-theme-light main [class*="bg-red-"],
+body .scorm-editorial.scorm-theme-light .scorm-alert-danger {
+  background: #FFF0F2 !important;
+  border-color: #F1C6CE !important;
+  color: #A43C50 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-alert-info {
+  background: #EAF7F5 !important;
+  border-color: #BFE2DC !important;
+  color: #286C63 !important;
+}
+
+body .scorm-editorial.scorm-theme-light main button[class*="bg-black"][class*="text-white"] {
+  background: #DDF3EF !important;
+  border-color: #AADBD4 !important;
+  color: #146F66 !important;
+}
+
+/* Generic dark utility cleanup for legacy SCORM admin pages. */
+body .scorm-editorial.scorm-theme-light main [class*="border-white"],
+body .scorm-editorial.scorm-theme-light main [class*="border-slate"],
+body .scorm-editorial.scorm-theme-light main [class*="border-gray"],
+body .scorm-editorial.scorm-theme-light main [class*="border-zinc"],
+body .scorm-editorial.scorm-theme-light main [class*="border-[#2"],
+body .scorm-editorial.scorm-theme-light main [class*="border-[#3"] {
+  border-color: var(--scorm-light-border) !important;
+}
+
+body .scorm-editorial.scorm-theme-light main [class*="divide-"] > * + * {
+  border-color: #E2EBE9 !important;
+}
+
+body .scorm-editorial.scorm-theme-light main [class*="shadow-black"],
+body .scorm-editorial.scorm-theme-light main [class*="shadow-2xl"],
+body .scorm-editorial.scorm-theme-light main [class*="shadow-xl"] {
+  --tw-shadow-color: rgba(30,72,66,.10) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Authentication light theme                                                */
+/* -------------------------------------------------------------------------- */
+
+body .scorm-auth-workbench.scorm-theme-light {
+  color-scheme: light;
+  --sa-bg: #F4F8F7 !important;
+  --sa-bg-deep: #EDF5F3 !important;
+  --sa-panel: #FFFFFF !important;
+  --sa-panel-2: #F8FBFA !important;
+  --sa-panel-3: #F0F6F4 !important;
+  --sa-border: #D8E5E2 !important;
+  --sa-border-strong: #AED9D3 !important;
+  --sa-border-soft: #E5EEEC !important;
+  --sa-cream: #14201E !important;
+  --sa-cream-soft: #425854 !important;
+  --sa-soft: #5F726E !important;
+  --sa-muted: #788986 !important;
+  --sa-muted-deep: #94A39F !important;
+  --sa-orange: #32AFA4 !important;
+  --sa-orange-strong: #178C82 !important;
+  --sa-yellow: #178C82 !important;
+  background:
+    radial-gradient(circle at 18% -8%, rgba(79,201,191,.14), transparent 25rem),
+    radial-gradient(circle at 88% 100%, rgba(79,201,191,.06), transparent 26rem),
+    linear-gradient(180deg, #F8FBFA 0%, #F4F8F7 56%, #EDF5F3 100%) !important;
+  color: #14201E !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-card {
+  background: #FFFFFF !important;
+  border-color: #D8E5E2 !important;
+  border-top-color: #4FC9BF !important;
+  box-shadow: 0 22px 55px rgba(30,72,66,.10) !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-brand-panel {
+  background:
+    radial-gradient(circle at 15% 15%, rgba(79,201,191,.15), transparent 18rem),
+    linear-gradient(180deg, #F5FBF9 0%, #EAF6F3 100%) !important;
+  border-color: #D7E7E4 !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-brand-panel::after {
+  border-color: rgba(50,175,164,.18) !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-form-panel {
+  background: linear-gradient(180deg, #FFFFFF 0%, #FAFCFB 100%) !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-title,
+body .scorm-auth-workbench.scorm-theme-light .sa-form-title {
+  color: #14201E !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-title span,
+body .scorm-auth-workbench.scorm-theme-light .sa-kicker,
+body .scorm-auth-workbench.scorm-theme-light .sa-form-kicker {
+  color: #178C82 !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-copy,
+body .scorm-auth-workbench.scorm-theme-light .sa-form-sub,
+body .scorm-auth-workbench.scorm-theme-light .sa-point,
+body .scorm-auth-workbench.scorm-theme-light .sa-google-label,
+body .scorm-auth-workbench.scorm-theme-light .sa-google-hint,
+body .scorm-auth-workbench.scorm-theme-light .sa-label,
+body .scorm-auth-workbench.scorm-theme-light .sa-top-note {
+  color: #5F726E !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-tabs,
+body .scorm-auth-workbench.scorm-theme-light .sa-google-button,
+body .scorm-auth-workbench.scorm-theme-light .sa-input {
+  background: #FFFFFF !important;
+  border-color: #CCDCD8 !important;
+  color: #14201E !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-tab {
+  color: #637570 !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-tab:hover {
+  color: #253D38 !important;
+  background: #EEF7F5 !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-tab.is-active {
+  background: #DDF3EF !important;
+  border-color: #9FD9D2 !important;
+  color: #146F66 !important;
+  box-shadow: 0 1px 4px rgba(30,72,66,.05) !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-input::placeholder {
+  color: #95A49F !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-input:focus {
+  background: #FFFFFF !important;
+  border-color: #4FC9BF !important;
+  box-shadow: 0 0 0 3px rgba(79,201,191,.16) !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-input-wrap svg {
+  color: #7E918D !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-notice {
+  background: #EAF7F5 !important;
+  border-color: #BFE2DC !important;
+  color: #41635D !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-notice-title {
+  color: #16766D !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-divider {
+  color: #8C9B97 !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-divider::before,
+body .scorm-auth-workbench.scorm-theme-light .sa-divider::after {
+  background: #D9E5E2 !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-submit {
+  background: linear-gradient(180deg, #69D5CC 0%, #4FC9BF 100%) !important;
+  border-color: #35B6AB !important;
+  color: #083C37 !important;
+  box-shadow: 0 8px 20px rgba(41,151,139,.15) !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-submit:hover {
+  background: linear-gradient(180deg, #83DED6 0%, #62D0C7 100%) !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-theme-toggle {
+  background: rgba(255,255,255,.82) !important;
+  border-color: #C8DEDA !important;
+  color: #315B55 !important;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-theme-toggle:hover {
+  background: #FFFFFF !important;
+  border-color: #9ED7D0 !important;
+  color: #146F66 !important;
+}
+
+/* Exact generated course preview: only the platform chrome changes. The iframe
+ * keeps the generated learner-course design exactly as built. */
+body.scorm-platform-light .scorm-exact-preview-modal {
+  background: rgba(232, 240, 238, .90) !important;
+}
+
+body.scorm-platform-light .scorm-exact-preview-modal .scorm-preview-modal-header {
+  color: #14201E !important;
+}
+
+body.scorm-platform-light .scorm-exact-preview-modal .scorm-preview-modal-header [class*="text-white/"],
+body.scorm-platform-light .scorm-exact-preview-modal .scorm-preview-modal-caption {
+  color: #657773 !important;
+}
+
+@media (max-width: 640px) {
+  .scorm-theme-toggle,
+  .sa-theme-toggle {
+    width: 40px;
+    padding-inline: 0;
+    justify-content: center;
+  }
+
+  .scorm-theme-toggle-label,
+  .scorm-theme-toggle-track {
+    display: none;
+  }
+}
