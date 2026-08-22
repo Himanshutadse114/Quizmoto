@@ -8,7 +8,7 @@ function escapeHtml(value) {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
+        .replace(/\"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
 
@@ -45,7 +45,12 @@ router.get('/:regId', async (req, res) => {
 
         const requestedSlide = Number.parseInt(String(req.query.slide || '0'), 10);
         const targetSlide = Number.isFinite(requestedSlide) && requestedSlide >= 0 ? requestedSlide : 0;
-        const playUrl = `/api/scorm/play/${encodeURIComponent(String(registration.id))}?token=${encodeURIComponent(token)}&previewEmbed=1`;
+        const entryHref = String(registration.course.package.entryHref || 'index.html').replace(/^\/+/, '');
+        const contentUrl = '/api/scorm/content/t/'
+            + encodeURIComponent(token)
+            + '/'
+            + entryHref.split('/').map(encodeURIComponent).join('/')
+            + '?previewEmbed=1';
         const title = escapeHtml(registration.course.title || registration.course.package.title || 'Course slide preview');
 
         const html = `<!doctype html>
@@ -56,38 +61,60 @@ router.get('/:regId', async (req, res) => {
 <title>${title}</title>
 <style>
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070d}
-#player{position:absolute;inset:0;width:100%;height:100%;border:0;background:#05070d}
+#course{position:absolute;inset:0;width:100%;height:100%;border:0;background:#05070d}
 #loading{position:absolute;inset:0;z-index:3;display:grid;place-items:center;background:#05070d;color:#dce6f2;font:600 13px/1.4 system-ui,sans-serif;letter-spacing:.01em}
 #loading.hidden{display:none}
 </style>
+<script>
+(function(){
+  var values=Object.create(null);
+  values['cmi.core.student_id']='admin-preview';
+  values['cmi.core.student_name']='Admin Preview';
+  values['cmi.core.lesson_mode']='browse';
+  values['cmi.mode']='browse';
+  values['cmi.core.entry']='';
+  values['cmi.entry']='';
+  values['cmi.core.lesson_status']='not attempted';
+  values['cmi.completion_status']='unknown';
+  values['cmi.success_status']='unknown';
+
+  var api12={
+    LMSInitialize:function(){return 'true';},
+    LMSFinish:function(){return 'true';},
+    LMSGetValue:function(key){return Object.prototype.hasOwnProperty.call(values,key)?String(values[key]):'';},
+    LMSSetValue:function(key,value){values[String(key||'')]=value==null?'':String(value);return 'true';},
+    LMSCommit:function(){return 'true';},
+    LMSGetLastError:function(){return '0';},
+    LMSGetErrorString:function(){return 'No error';},
+    LMSGetDiagnostic:function(){return '';}
+  };
+  var api2004={
+    Initialize:function(){return 'true';},
+    Terminate:function(){return 'true';},
+    GetValue:function(key){return api12.LMSGetValue(key);},
+    SetValue:function(key,value){return api12.LMSSetValue(key,value);},
+    Commit:function(){return 'true';},
+    GetLastError:function(){return '0';},
+    GetErrorString:function(){return 'No error';},
+    GetDiagnostic:function(){return '';}
+  };
+
+  window.API=api12;
+  window.API_1484_11=api2004;
+  window.ADL={XAPIWrapper:{config:{},sendStatement:function(_statement,callback){if(callback)callback({status:204});return true;}}};
+})();
+</script>
 </head>
 <body>
 <div id="loading">Loading exact generated slide…</div>
-<iframe id="player" title="Exact generated course slide" src="${playUrl}" allow="autoplay; fullscreen" allowfullscreen></iframe>
+<iframe id="course" title="Exact generated course slide" src="${contentUrl}" allowfullscreen></iframe>
 <script>
 (function(){
   var TARGET=${JSON.stringify(targetSlide)};
-  var player=document.getElementById('player');
+  var course=document.getElementById('course');
   var loading=document.getElementById('loading');
   var attempts=0;
   var locked=false;
-
-  function hidePlayerChrome(doc){
-    try{
-      doc.documentElement.style.height='100%';
-      doc.body.style.height='100%';
-      doc.body.style.overflow='hidden';
-      var bar=doc.getElementById('bar');
-      if(bar)bar.style.display='none';
-      var frame=doc.getElementById('frame');
-      if(frame){
-        frame.style.position='absolute';
-        frame.style.inset='0';
-        frame.style.width='100%';
-        frame.style.height='100%';
-      }
-    }catch(e){}
-  }
 
   function lockNavigation(doc){
     if(locked)return;
@@ -121,13 +148,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070d}
     }
 
     try{
-      var playerDoc=player.contentDocument;
-      if(!playerDoc){setTimeout(tune,80);return;}
-      hidePlayerChrome(playerDoc);
-
-      var courseFrame=playerDoc.getElementById('frame');
-      if(!courseFrame){setTimeout(tune,80);return;}
-      var courseDoc=courseFrame.contentDocument;
+      var courseDoc=course.contentDocument;
       if(!courseDoc){setTimeout(tune,80);return;}
 
       var slides=Array.prototype.slice.call(courseDoc.querySelectorAll('.slide'));
@@ -154,7 +175,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070d}
     }
   }
 
-  player.addEventListener('load',function(){attempts=0;setTimeout(tune,80);});
+  course.addEventListener('load',function(){attempts=0;setTimeout(tune,80);});
   setTimeout(tune,120);
 })();
 </script>
