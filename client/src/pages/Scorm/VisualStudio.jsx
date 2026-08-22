@@ -39,7 +39,7 @@ export default function VisualStudio() {
       <div className="mb-7">
         <div className="text-[10px] font-semibold uppercase tracking-[.13em] text-slate-500">SCORM AI</div>
         <h1 className="text-3xl md:text-[38px] font-semibold tracking-[-.04em] mt-1">Course Content Editor</h1>
-        <p className="text-sm mt-2 max-w-2xl text-slate-400">Edit the written content of an AI-generated course without exposing visual layout controls. Full visual QA stays in the course workspace through Preview course.</p>
+        <p className="text-sm mt-2 max-w-2xl text-slate-400">Edit only text that appears in the learner course. Visual layout and artwork remain generator-managed, with exact visual QA available through Preview course.</p>
       </div>
 
       {error && <div className="mb-5 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</div>}
@@ -62,7 +62,7 @@ export default function VisualStudio() {
             <div className="rounded-2xl border border-dashed border-white/15 bg-white/[.025] p-8 text-center">
               <FileText size={24} className="mx-auto text-white/35" />
               <div className="text-sm font-semibold text-white mt-3">No AI-generated courses yet</div>
-              <div className="text-xs text-slate-500 mt-1">Create a course first, then return here to edit its written content.</div>
+              <div className="text-xs text-slate-500 mt-1">Create a course first, then return here to edit its learner-visible text.</div>
               <button type="button" onClick={() => navigate('/scorm/author')} className="scorm-button-primary mt-4 px-4 py-2.5 text-xs font-semibold">Create AI course</button>
             </div>
           ) : (
@@ -74,7 +74,7 @@ export default function VisualStudio() {
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold text-white truncate">{item.title || 'Untitled course'}</div>
                       <div className="text-[10px] text-slate-500 mt-1 uppercase tracking-[.08em]">{item.standard || 'SCORM 1.2'} · {item.status || 'ready'}</div>
-                      <div className="text-xs text-slate-400 mt-3">Edit slide text, labels, reveal copy and knowledge checks</div>
+                      <div className="text-xs text-slate-400 mt-3">Edit slide titles, learner text, visible key points, visual titles and knowledge checks</div>
                     </div>
                   </div>
                 </button>
