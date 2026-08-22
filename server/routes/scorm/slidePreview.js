@@ -45,7 +45,7 @@ router.get('/:regId', async (req, res) => {
 
         const requestedSlide = Number.parseInt(String(req.query.slide || '0'), 10);
         const targetSlide = Number.isFinite(requestedSlide) && requestedSlide >= 0 ? requestedSlide : 0;
-        const playUrl = `/api/scorm/play/${encodeURIComponent(String(registration.id))}?token=${encodeURIComponent(token)}`;
+        const playUrl = `/api/scorm/play/${encodeURIComponent(String(registration.id))}?token=${encodeURIComponent(token)}&previewEmbed=1`;
         const title = escapeHtml(registration.course.title || registration.course.package.title || 'Course slide preview');
 
         const html = `<!doctype html>
@@ -115,7 +115,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070d}
 
   function tune(){
     attempts+=1;
-    if(attempts>180){
+    if(attempts>360){
       if(loading)loading.textContent='Unable to load the generated slide preview.';
       return;
     }
