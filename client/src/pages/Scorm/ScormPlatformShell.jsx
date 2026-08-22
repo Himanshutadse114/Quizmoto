@@ -31,6 +31,7 @@ import './scormModernDark.css';
 import './scormPlatformBluePolish.css';
 import './scormButtonTealOverride.css';
 import './scormLightTheme.css';
+import './scormLightContrastGuard.css';
 
 const NAV_GROUPS = [
   {

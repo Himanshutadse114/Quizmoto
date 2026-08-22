@@ -1,0 +1,231 @@
+/*
+ * Final light-mode contrast guard for the SCORM AI platform.
+ *
+ * This file is intentionally imported after the dark/teal compatibility
+ * layers. Some of those older layers use !important, so the extra theme
+ * specificity below prevents dark-theme pale text from leaking into the
+ * light theme. Generated learner SCORM packages do not load this stylesheet.
+ */
+
+:root {
+  --scorm-light-contrast-text: #14201E;
+  --scorm-light-contrast-body: #35514C;
+  --scorm-light-contrast-muted: #536562;
+  --scorm-light-contrast-subtle: #5F716E;
+  --scorm-light-contrast-teal: #0B6259;
+  --scorm-light-contrast-teal-hover: #084F48;
+  --scorm-light-contrast-active: #123A35;
+}
+
+/* Stronger light-theme text tokens. */
+html body .scorm-editorial.scorm-theme-light {
+  --scorm-light-text: var(--scorm-light-contrast-text);
+  --scorm-light-body: var(--scorm-light-contrast-body);
+  --scorm-light-muted: var(--scorm-light-contrast-muted);
+  --scorm-light-subtle: var(--scorm-light-contrast-subtle);
+  --scorm-light-teal-strong: var(--scorm-light-contrast-teal);
+  --scorm-ink: var(--scorm-light-contrast-text);
+  --scorm-ink-soft: var(--scorm-light-contrast-body);
+  --scorm-muted: var(--scorm-light-contrast-muted);
+  --scorm-subtle: var(--scorm-light-contrast-subtle);
+  --scorm-accent-strong: var(--scorm-light-contrast-teal);
+  color: var(--scorm-light-contrast-text) !important;
+}
+
+/* Sidebar hierarchy. */
+html body .scorm-editorial.scorm-theme-light .scorm-brand-subtitle,
+html body .scorm-editorial.scorm-theme-light .scorm-nav-section {
+  color: var(--scorm-light-contrast-muted) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-nav-item {
+  color: #2F4743 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-nav-item:hover {
+  color: #172522 !important;
+}
+
+/* This selector is deliberately more specific than the dark teal guard. */
+html body .scorm-editorial.scorm-theme-light .scorm-nav-item.scorm-nav-active,
+html body .scorm-editorial.scorm-theme-light .scorm-nav-item.scorm-nav-active > span,
+html body .scorm-editorial.scorm-theme-light .scorm-nav-active > span.flex-1 {
+  color: var(--scorm-light-contrast-active) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-nav-item.scorm-nav-active .scorm-nav-icon,
+html body .scorm-editorial.scorm-theme-light .scorm-nav-item.scorm-nav-active .scorm-nav-chevron {
+  color: var(--scorm-light-contrast-teal) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-mobile-tab {
+  color: var(--scorm-light-contrast-muted) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-mobile-tab.is-active,
+html body .scorm-editorial.scorm-theme-light .scorm-mobile-tab.is-active span,
+html body .scorm-editorial.scorm-theme-light .scorm-mobile-tab.is-active svg {
+  color: var(--scorm-light-contrast-teal) !important;
+}
+
+/* Dashboard/status copy. */
+html body .scorm-editorial.scorm-theme-light .scorm-eyebrow,
+html body .scorm-editorial.scorm-theme-light .scorm-breadcrumb,
+html body .scorm-editorial.scorm-theme-light .scorm-micro,
+html body .scorm-editorial.scorm-theme-light .scorm-metric-label,
+html body .scorm-editorial.scorm-theme-light .scorm-meta {
+  color: var(--scorm-light-contrast-muted) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-health-pill {
+  color: var(--scorm-light-contrast-muted) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-health-pill.is-online {
+  background: #E8F7F1 !important;
+  border-color: #B9E2D2 !important;
+  color: #0A644B !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-health-pill.is-online .scorm-health-dot {
+  background: #12805F !important;
+  box-shadow: 0 0 0 3px rgba(18,128,95,.10) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-sidebar-footer > div,
+html body .scorm-editorial.scorm-theme-light .scorm-sidebar-footer > div div,
+html body .scorm-editorial.scorm-theme-light .scorm-sidebar-footer > div span {
+  color: #35514C !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-status-card,
+html body .scorm-editorial.scorm-theme-light .scorm-status-card div,
+html body .scorm-editorial.scorm-theme-light .scorm-status-card span {
+  color: #28594D !important;
+}
+
+/* Main text hierarchy. */
+html body .scorm-editorial.scorm-theme-light main h1,
+html body .scorm-editorial.scorm-theme-light main h2,
+html body .scorm-editorial.scorm-theme-light main h3,
+html body .scorm-editorial.scorm-theme-light main h4,
+html body .scorm-editorial.scorm-theme-light main .scorm-display,
+html body .scorm-editorial.scorm-theme-light main .scorm-page-title,
+html body .scorm-editorial.scorm-theme-light main .scorm-metric-value,
+html body .scorm-editorial.scorm-theme-light main .scorm-progress-number {
+  color: var(--scorm-light-contrast-text) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main p,
+html body .scorm-editorial.scorm-theme-light main [class*="text-white/"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-gray-"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-slate-"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-zinc-"] {
+  color: var(--scorm-light-contrast-body) !important;
+}
+
+/* Common hard-coded dark-theme muted values still present in older screens. */
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#667085]"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#71839c]"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#8295ae]"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#8f"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#93c5fd]"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#98A2B3]"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#9"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#a"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#b"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#cbd5e1]"] {
+  color: var(--scorm-light-contrast-muted) !important;
+}
+
+/* Small teal text must be dark enough on white and pale-teal surfaces. */
+html body .scorm-editorial.scorm-theme-light .wb-accent,
+html body .scorm-editorial.scorm-theme-light .scorm-text-link,
+html body .scorm-editorial.scorm-theme-light .scorm-progress-kicker,
+html body .scorm-editorial.scorm-theme-light .scorm-preview-kicker,
+html body .scorm-editorial.scorm-theme-light .scorm-activity-progress,
+html body .scorm-editorial.scorm-theme-light main [class*="text-blue-"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-cyan-"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-violet-"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-purple-"] {
+  color: var(--scorm-light-contrast-teal) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-text-link:hover {
+  color: var(--scorm-light-contrast-teal-hover) !important;
+}
+
+/* Cards/lists should inherit dark readable copy instead of old pale text. */
+html body .scorm-editorial.scorm-theme-light .scorm-panel,
+html body .scorm-editorial.scorm-theme-light .scorm-panel-header,
+html body .scorm-editorial.scorm-theme-light .scorm-metric-card,
+html body .scorm-editorial.scorm-theme-light .scorm-action-card,
+html body .scorm-editorial.scorm-theme-light .scorm-course-row,
+html body .scorm-editorial.scorm-theme-light .scorm-activity-row,
+html body .scorm-editorial.scorm-theme-light .scorm-progress-hero {
+  color: var(--scorm-light-contrast-text) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-progress-hero p,
+html body .scorm-editorial.scorm-theme-light .scorm-preview-panel p,
+html body .scorm-editorial.scorm-theme-light .scorm-preview-muted {
+  color: var(--scorm-light-contrast-body) !important;
+}
+
+/* Secondary controls need dark copy on white surfaces. */
+html body .scorm-editorial.scorm-theme-light .scorm-button-secondary,
+html body .scorm-editorial.scorm-theme-light .scorm-theme-toggle,
+html body .scorm-editorial.scorm-theme-light .scorm-sidebar-switch,
+html body .scorm-editorial.scorm-theme-light .scorm-topbar-icon,
+html body .scorm-editorial.scorm-theme-light .scorm-drawer-close {
+  color: #264E49 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-button-primary {
+  color: #073B36 !important;
+}
+
+/* Draft/neutral status text is intentionally stronger than the old muted gray. */
+html body .scorm-editorial.scorm-theme-light .scorm-status-pill:not(.is-published) {
+  color: #4B5F5B !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Authentication page contrast                                               */
+/* -------------------------------------------------------------------------- */
+
+html body .scorm-auth-workbench.scorm-theme-light {
+  color: var(--scorm-light-contrast-text) !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-title,
+html body .scorm-auth-workbench.scorm-theme-light .sa-form-title,
+html body .scorm-auth-workbench.scorm-theme-light .sa-upload-title {
+  color: var(--scorm-light-contrast-text) !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-copy,
+html body .scorm-auth-workbench.scorm-theme-light .sa-form-sub,
+html body .scorm-auth-workbench.scorm-theme-light .sa-notice,
+html body .scorm-auth-workbench.scorm-theme-light .sa-input {
+  color: var(--scorm-light-contrast-body) !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-top-note,
+html body .scorm-auth-workbench.scorm-theme-light .sa-point,
+html body .scorm-auth-workbench.scorm-theme-light .sa-google-label,
+html body .scorm-auth-workbench.scorm-theme-light .sa-google-hint,
+html body .scorm-auth-workbench.scorm-theme-light .sa-divider,
+html body .scorm-auth-workbench.scorm-theme-light .sa-label {
+  color: var(--scorm-light-contrast-muted) !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-kicker,
+html body .scorm-auth-workbench.scorm-theme-light .sa-form-kicker,
+html body .scorm-auth-workbench.scorm-theme-light .sa-notice-title {
+  color: var(--scorm-light-contrast-teal) !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-theme-toggle {
+  color: #264E49 !important;
+}
