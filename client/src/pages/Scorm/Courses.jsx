@@ -4,7 +4,6 @@ import axios from 'axios';
 import { BookOpen, Search, Users, CheckCircle2, Clock3, ChevronRight, Plus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
-import './scormCoursesWorkbench.css';
 
 const Metric = ({ label, value, icon: Icon }) => (
   <div className="scorm-course-metric rounded-xl border p-4 md:p-5">
@@ -58,92 +57,59 @@ export default function ScormCourses() {
   }, [courses, query, status]);
 
   return (
-    <div className="p-4 md:p-7 lg:p-9 max-w-7xl mx-auto">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7 pb-7 border-b border-black">
-        <div className="max-w-3xl">
-          <div className="scorm-micro text-[10px] uppercase font-semibold text-[#667085]">Course management</div>
-          <h2 className="scorm-display text-[42px] md:text-[56px] mt-2">Courses</h2>
-          <p className="text-sm mt-3 leading-relaxed max-w-2xl">Publish, monitor and manage every learning experience from one place.</p>
+    <div className="min-h-screen p-4 md:p-7 max-w-[1400px] mx-auto relative z-10 pb-24">
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-7">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[.13em] text-slate-500">SCORM AI</div>
+          <h1 className="text-3xl md:text-[38px] font-semibold tracking-[-.04em] mt-1">My Courses</h1>
+          <p className="text-sm mt-2 max-w-xl text-slate-400">Manage generated and uploaded learning experiences, launch previews and review learner participation.</p>
         </div>
-        <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold">
-          <Plus size={15} /> Create course
-        </Link>
+        <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold"><Plus size={14} /> Create course</Link>
       </div>
 
-      {error && <div className="mb-5 p-4 rounded-xl border border-[#704239] bg-[#211311] text-[#F7D6CD] text-sm">{error}</div>}
+      {error && <div className="mb-5 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</div>}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid sm:grid-cols-3 gap-3 mb-5">
         <Metric label="Total courses" value={courses.length} icon={BookOpen} />
-        <Metric label="Published" value={courses.filter((c) => c.status === 'published').length} icon={CheckCircle2} />
-        <Metric label="Draft" value={courses.filter((c) => c.status === 'draft').length} icon={Clock3} />
-        <Metric label="Learners" value={tracking.courses?.reduce((sum, c) => sum + Number(c.learners || 0), 0) || 0} icon={Users} />
+        <Metric label="Learners" value={(tracking.courses || []).reduce((sum, row) => sum + Number(row.learners || 0), 0)} icon={Users} />
+        <Metric label="Completed" value={(tracking.courses || []).reduce((sum, row) => sum + Number(row.completed || 0), 0)} icon={CheckCircle2} />
       </div>
 
-      <div className="scorm-course-list-shell rounded-xl overflow-hidden border">
-        <div className="scorm-course-toolbar p-4 md:p-5 border-b flex flex-col md:flex-row gap-3 md:items-center justify-between">
-          <div className="relative flex-1 max-w-xl">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A48867]" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search courses or invite code"
-              className="scorm-course-search w-full pl-9 pr-3 py-2.5 text-sm"
-            />
-          </div>
-          <div className="scorm-course-filters flex gap-1 rounded-lg p-1 border">
-            {['all', 'published', 'draft'].map((item) => (
-              <button
-                key={item}
-                onClick={() => setStatus(item)}
-                className={`scorm-course-filter px-3 py-2 rounded-md text-[11px] font-semibold capitalize border ${status === item ? 'is-active' : ''}`}
-              >
-                {item}
-              </button>
+      <section className="scorm-course-list-shell scorm-panel rounded-3xl border overflow-hidden">
+        <div className="scorm-course-toolbar p-4 md:p-5 border-b border-white/10 flex flex-col md:flex-row md:items-center gap-3">
+          <label className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search courses" className="scorm-course-search w-full pl-9 pr-3 py-2.5 text-sm rounded-xl" />
+          </label>
+          <div className="scorm-course-filters flex items-center gap-1 rounded-xl border border-white/10 p-1">
+            {['all', 'draft', 'published'].map((value) => (
+              <button key={value} type="button" onClick={() => setStatus(value)} className={`scorm-course-filter px-3 py-2 text-xs font-semibold rounded-lg border ${status === value ? 'is-active' : ''}`}>{value[0].toUpperCase() + value.slice(1)}</button>
             ))}
           </div>
         </div>
 
-        <div className="scorm-course-rows divide-y">
-          {filtered.length === 0 && (
-            <div className="p-10 text-center">
-              <BookOpen size={23} className="mx-auto text-[#A48867] mb-3" />
-              <div className="text-sm font-semibold text-[#F3EAD5]">No courses match this view</div>
-              <div className="text-xs text-[#A48867] mt-1">Try a different search or filter.</div>
-            </div>
-          )}
-          {filtered.map((course) => {
-            const stats = trackingById.get(String(course.id)) || {};
+        <div className="scorm-course-rows divide-y divide-white/10">
+          {filtered.length === 0 ? (
+            <div className="p-10 text-center text-sm text-slate-500">No courses match your current filters.</div>
+          ) : filtered.map((course) => {
+            const summary = trackingById.get(String(course.id)) || {};
+            const completed = Number(summary.completed || 0);
+            const learners = Number(summary.learners || 0);
             return (
-              <Link
-                key={course.id}
-                to={`/scorm/courses/${course.id}`}
-                className="scorm-course-row grid grid-cols-1 lg:grid-cols-[1.5fr_.65fr_.65fr_.75fr_auto] gap-4 items-center px-5 md:px-6 py-5 transition-colors"
-              >
+              <Link key={course.id} to={`/scorm/courses/${course.id}`} className="scorm-course-row grid lg:grid-cols-[minmax(0,1fr)_120px_120px_120px_auto] gap-4 items-center px-4 md:px-5 py-4 transition-colors">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <h3 className="font-semibold text-[14px] truncate text-[#F3EAD5]">{course.title}</h3>
-                    <span className={`scorm-course-status scorm-micro shrink-0 px-2 py-1 rounded-md text-[8px] uppercase font-semibold border ${course.status === 'published' ? 'is-published' : 'is-draft'}`}>{course.status}</span>
-                  </div>
-                  <div className="scorm-micro text-[9px] text-[#A48867] mt-1">{course.inviteCode || 'No invite code'} · {course.package?.standard || 'SCORM'}</div>
+                  <div className="font-semibold text-sm text-white truncate">{course.title || 'Untitled course'}</div>
+                  <div className="text-[10px] text-slate-500 mt-1 truncate">{course.description || 'No description'}</div>
                 </div>
-                <div>
-                  <div className="text-sm font-semibold text-[#F3EAD5]">{stats.learners || 0}</div>
-                  <div className="scorm-micro text-[8px] uppercase text-[#A48867] mt-1">Learners</div>
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-[#43D17A]">{stats.completed || 0}</div>
-                  <div className="scorm-micro text-[8px] uppercase text-[#A48867] mt-1">Completed</div>
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-[#F3EAD5]">{Number(stats.averageProgress || 0).toFixed(0)}%</div>
-                  <div className="scorm-micro text-[8px] uppercase text-[#A48867] mt-1">Avg progress</div>
-                </div>
-                <ChevronRight size={17} className="text-[#C79865]" />
+                <div><div className="text-[9px] uppercase tracking-[.1em] text-slate-600">Learners</div><div className="text-sm font-semibold mt-1">{learners}</div></div>
+                <div><div className="text-[9px] uppercase tracking-[.1em] text-slate-600">Completed</div><div className="text-sm font-semibold mt-1">{completed}</div></div>
+                <div><div className="text-[9px] uppercase tracking-[.1em] text-slate-600">Status</div><span className={`scorm-course-status mt-1 inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[9px] font-semibold ${course.status === 'published' ? 'is-published' : 'is-draft'}`}>{course.status === 'published' ? <CheckCircle2 size={10} /> : <Clock3 size={10} />}{course.status || 'draft'}</span></div>
+                <ChevronRight size={16} className="text-slate-600" />
               </Link>
             );
           })}
         </div>
-      </div>
+      </section>
     </div>
   );
 }
