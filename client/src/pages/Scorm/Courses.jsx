@@ -4,7 +4,6 @@ import axios from 'axios';
 import { BookOpen, Search, Users, CheckCircle2, Clock3, ChevronRight, Plus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
-import './scormCoursesWorkbench.css';
 
 const Metric = ({ label, value, icon: Icon }) => (
   <div className="scorm-course-metric rounded-xl border p-4 md:p-5">
@@ -59,9 +58,9 @@ export default function ScormCourses() {
 
   return (
     <div className="p-4 md:p-7 lg:p-9 max-w-7xl mx-auto">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7 pb-7 border-b border-black">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7 pb-7 border-b border-white/10">
         <div className="max-w-3xl">
-          <div className="scorm-micro text-[10px] uppercase font-semibold text-[#667085]">Course management</div>
+          <div className="scorm-micro text-[10px] uppercase font-semibold text-slate-500">Course management</div>
           <h2 className="scorm-display text-[42px] md:text-[56px] mt-2">Courses</h2>
           <p className="text-sm mt-3 leading-relaxed max-w-2xl">Publish, monitor and manage every learning experience from one place.</p>
         </div>
@@ -70,7 +69,7 @@ export default function ScormCourses() {
         </Link>
       </div>
 
-      {error && <div className="mb-5 p-4 rounded-xl border border-[#704239] bg-[#211311] text-[#F7D6CD] text-sm">{error}</div>}
+      {error && <div className="mb-5 p-4 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-200 text-sm">{error}</div>}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Metric label="Total courses" value={courses.length} icon={BookOpen} />
@@ -82,7 +81,7 @@ export default function ScormCourses() {
       <div className="scorm-course-list-shell rounded-xl overflow-hidden border">
         <div className="scorm-course-toolbar p-4 md:p-5 border-b flex flex-col md:flex-row gap-3 md:items-center justify-between">
           <div className="relative flex-1 max-w-xl">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A48867]" />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8295ae]" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -106,9 +105,9 @@ export default function ScormCourses() {
         <div className="scorm-course-rows divide-y">
           {filtered.length === 0 && (
             <div className="p-10 text-center">
-              <BookOpen size={23} className="mx-auto text-[#A48867] mb-3" />
-              <div className="text-sm font-semibold text-[#F3EAD5]">No courses match this view</div>
-              <div className="text-xs text-[#A48867] mt-1">Try a different search or filter.</div>
+              <BookOpen size={23} className="mx-auto text-[#8295ae] mb-3" />
+              <div className="text-sm font-semibold text-[#f1f5f9]">No courses match this view</div>
+              <div className="text-xs text-[#8295ae] mt-1">Try a different search or filter.</div>
             </div>
           )}
           {filtered.map((course) => {
@@ -121,24 +120,24 @@ export default function ScormCourses() {
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
-                    <h3 className="font-semibold text-[14px] truncate text-[#F3EAD5]">{course.title}</h3>
+                    <h3 className="font-semibold text-[14px] truncate text-[#f1f5f9]">{course.title}</h3>
                     <span className={`scorm-course-status scorm-micro shrink-0 px-2 py-1 rounded-md text-[8px] uppercase font-semibold border ${course.status === 'published' ? 'is-published' : 'is-draft'}`}>{course.status}</span>
                   </div>
-                  <div className="scorm-micro text-[9px] text-[#A48867] mt-1">{course.inviteCode || 'No invite code'} · {course.package?.standard || 'SCORM'}</div>
+                  <div className="scorm-micro text-[9px] text-[#8295ae] mt-1">{course.inviteCode || 'No invite code'} · {course.package?.standard || 'SCORM'}</div>
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-[#F3EAD5]">{stats.learners || 0}</div>
-                  <div className="scorm-micro text-[8px] uppercase text-[#A48867] mt-1">Learners</div>
+                  <div className="text-sm font-semibold text-[#f1f5f9]">{stats.learners || 0}</div>
+                  <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Learners</div>
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-[#43D17A]">{stats.completed || 0}</div>
-                  <div className="scorm-micro text-[8px] uppercase text-[#A48867] mt-1">Completed</div>
+                  <div className="text-sm font-semibold text-emerald-300">{stats.completed || 0}</div>
+                  <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Completed</div>
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-[#F3EAD5]">{Number(stats.averageProgress || 0).toFixed(0)}%</div>
-                  <div className="scorm-micro text-[8px] uppercase text-[#A48867] mt-1">Avg progress</div>
+                  <div className="text-sm font-semibold text-[#f1f5f9]">{Number(stats.averageProgress || 0).toFixed(0)}%</div>
+                  <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Avg progress</div>
                 </div>
-                <ChevronRight size={17} className="text-[#C79865]" />
+                <ChevronRight size={17} className="text-[#60a5fa]" />
               </Link>
             );
           })}

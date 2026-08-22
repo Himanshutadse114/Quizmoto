@@ -1,9 +1,9 @@
 const THEMES = {
     1: {
         id: 1,
-        slug: 'gamma-editorial',
-        name: 'Gamma Editorial',
-        description: 'Warm paper, charcoal typography and restrained editorial highlights.',
+        slug: 'editorial',
+        name: 'Editorial',
+        description: 'Neutral paper, charcoal typography and restrained editorial highlights.',
         primary: '#282824',
         primaryDark: '#171715',
         accent: '#CBC5B8',
@@ -29,7 +29,7 @@ const THEMES = {
 };
 
 function normalizeThemeId(value) {
-    // Platform is Gamma-only.
+    // Platform uses one learner-course theme.
     return 1;
 }
 
