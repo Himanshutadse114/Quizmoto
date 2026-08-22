@@ -43,8 +43,13 @@ router.get('/:regId', async (req, res) => {
             return res.status(409).send('Generated course is not ready');
         }
 
+        // The Content Editor indexes only authored learning slides from zero,
+        // while the generated SCORM runtime inserts its course-intro slide at
+        // runtime index 0. Offset by one so editor Slide 1 previews runtime Part 2,
+        // which is the first actual authored learning slide.
         const requestedSlide = Number.parseInt(String(req.query.slide || '0'), 10);
-        const targetSlide = Number.isFinite(requestedSlide) && requestedSlide >= 0 ? requestedSlide : 0;
+        const authoredSlide = Number.isFinite(requestedSlide) && requestedSlide >= 0 ? requestedSlide : 0;
+        const targetSlide = authoredSlide + 1;
         const entryHref = String(registration.course.package.entryHref || 'index.html').replace(/^\/+/, '');
         const contentUrl = '/api/scorm/content/t/'
             + encodeURIComponent(token)
