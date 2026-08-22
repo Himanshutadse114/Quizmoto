@@ -4,6 +4,7 @@
 @import "./pages/Scorm/scormLightLegacyPolish.css";
 @import "./pages/Scorm/scormLightContentEditorPolish.css";
 @import "./pages/Scorm/scormLightAuditExtras.css";
+@import "./pages/Scorm/scormNestedHeadingScale.css";
 
 @theme {
   --color-quizmoto-red: #eb1736;
