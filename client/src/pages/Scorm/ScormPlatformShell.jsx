@@ -32,6 +32,7 @@ import './scormPlatformBluePolish.css';
 import './scormButtonTealOverride.css';
 import './scormLightTheme.css';
 import './scormLightContrastGuard.css';
+import './scormLightRoutePolish.css';
 
 const NAV_GROUPS = [
   {

@@ -1,0 +1,73 @@
+/* Content Editor-specific light mode polish. High specificity is intentional
+   because the editor still carries a few dark-theme utility classes in JSX. */
+
+html body .scorm-editorial.scorm-theme-light main aside.scorm-panel {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  border-color: #D7E4E1 !important;
+  color: #13211E !important;
+  box-shadow: 0 8px 24px rgba(29, 78, 70, .07) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main aside.scorm-panel > div:first-child {
+  color: #61736F !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main aside.scorm-panel > button {
+  background: #FFFFFF !important;
+  border-color: #DDE8E5 !important;
+  color: #13211E !important;
+  box-shadow: none !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main aside.scorm-panel > button:hover {
+  background: #F2F9F7 !important;
+  border-color: #C7E2DD !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main aside.scorm-panel > button[class*="bg-[#122541]"] {
+  background: linear-gradient(90deg, #DFF5F1 0%, #F2FAF8 100%) !important;
+  border-color: #9DDCD5 !important;
+  color: #113B35 !important;
+  box-shadow: inset 3px 0 0 #4FC9BF, 0 4px 12px rgba(29, 78, 70, .06) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main aside.scorm-panel > button [class*="text-slate-500"] {
+  color: #60736F !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main aside.scorm-panel > button[class*="bg-[#122541]"] [class*="text-slate-500"] {
+  color: #0B6259 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main aside.scorm-panel > button .font-semibold {
+  color: #13211E !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main .scorm-panel > div.border-b {
+  background: #FFFFFF !important;
+  border-color: #D7E4E1 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main .scorm-panel [class*="bg-white/[.03]"] {
+  background: #F8FBFA !important;
+  border-color: #DCE8E5 !important;
+  color: #13211E !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main .scorm-panel [class*="bg-white/[.03]"] > div:first-child {
+  color: #61736F !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main aside.scorm-panel {
+  scrollbar-color: #A9CEC8 #F0F6F4;
+}
+
+html body .scorm-editorial.scorm-theme-light main aside.scorm-panel::-webkit-scrollbar-thumb {
+  background: #A9CEC8;
+  border-radius: 999px;
+}
+
+html body .scorm-editorial.scorm-theme-light main aside.scorm-panel::-webkit-scrollbar-track {
+  background: #F0F6F4;
+}

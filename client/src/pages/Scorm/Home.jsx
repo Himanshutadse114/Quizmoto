@@ -211,8 +211,8 @@ export default function ScormHome() {
         </Link>
         <Link to="/scorm/visual-studio" className="scorm-action-card scorm-action-cyan">
           <div className="scorm-action-icon"><Palette size={17} /></div>
-          <div className="font-semibold text-[15px] mt-5">Visual studio</div>
-          <div className="text-xs text-[#667085] mt-1.5 leading-relaxed">Refine hierarchy, presentation and course visuals before publishing.</div>
+          <div className="font-semibold text-[15px] mt-5">Content Editor</div>
+          <div className="text-xs text-[#667085] mt-1.5 leading-relaxed">Review and refine learner-visible course content before rebuilding and publishing.</div>
           <div className="scorm-action-arrow"><ArrowUpRight size={15} /></div>
         </Link>
         <Link to="/scorm/reports" className="scorm-action-card scorm-action-green">

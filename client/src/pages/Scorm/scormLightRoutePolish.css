@@ -1,0 +1,380 @@
+/*
+ * Final route-level light-mode polish for the SCORM admin platform.
+ *
+ * This file is intentionally imported last by ScormPlatformShell. It fixes
+ * route/component styles that still carry dark-theme values. Generated
+ * learner SCORM packages are separate documents and do not load this file.
+ */
+
+:root {
+  --slp-bg: #F4F8F7;
+  --slp-surface: #FFFFFF;
+  --slp-surface-soft: #F7FBFA;
+  --slp-surface-muted: #EEF6F4;
+  --slp-line: #D7E4E1;
+  --slp-line-strong: #B9D7D2;
+  --slp-text: #13211E;
+  --slp-body: #405A55;
+  --slp-muted: #61736F;
+  --slp-teal: #4FC9BF;
+  --slp-teal-dark: #0B6259;
+  --slp-teal-soft: #E4F7F4;
+  --slp-shadow: 0 8px 24px rgba(29, 78, 70, .07);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Shared route surfaces                                                      */
+/* -------------------------------------------------------------------------- */
+
+html body .scorm-editorial.scorm-theme-light .scorm-panel,
+html body .scorm-editorial.scorm-theme-light .scorm-soft-card,
+html body .scorm-editorial.scorm-theme-light .scorm-course-metric,
+html body .scorm-editorial.scorm-theme-light .scorm-course-list-shell,
+html body .scorm-editorial.scorm-theme-light .scorm-action-card {
+  background: var(--slp-surface) !important;
+  background-image: none !important;
+  border-color: var(--slp-line) !important;
+  color: var(--slp-text) !important;
+  box-shadow: var(--slp-shadow) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-panel-header,
+html body .scorm-editorial.scorm-theme-light .scorm-course-toolbar {
+  background: var(--slp-surface-soft) !important;
+  background-image: none !important;
+  border-color: var(--slp-line) !important;
+  color: var(--slp-text) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main [class*="border-white/"] {
+  border-color: var(--slp-line) !important;
+}
+
+/* Known legacy dark surfaces used by older SCORM admin routes. */
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#050a12]"],
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#050914]"],
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#07111f]"],
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#081321]"],
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#08182b]"],
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#0a1626]"],
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#0b1728]"],
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#0d1413]"],
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#0d1928]"],
+html body .scorm-editorial.scorm-theme-light main [class*="bg-[#122541]"] {
+  background: var(--slp-surface) !important;
+  background-image: none !important;
+  color: var(--slp-text) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main [class*="border-[#263950]"],
+html body .scorm-editorial.scorm-theme-light main [class*="border-[#29405f]"],
+html body .scorm-editorial.scorm-theme-light main [class*="border-[#315a8b]"] {
+  border-color: var(--slp-line) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#f1f5f9]"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#f8fafc]"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#e2e8f0]"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-white"] {
+  color: var(--slp-text) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#cbd5e1]"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#8295ae]"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#71839c]"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#667085]"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-[#98A2B3]"] {
+  color: var(--slp-muted) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Dashboard action cards                                                     */
+/* -------------------------------------------------------------------------- */
+
+html body .scorm-editorial.scorm-theme-light .scorm-action-card {
+  position: relative;
+  overflow: hidden;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-action-card:hover {
+  background: #FFFFFF !important;
+  border-color: #A8D9D3 !important;
+  box-shadow: 0 14px 32px rgba(29, 78, 70, .10) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-action-card .font-semibold,
+html body .scorm-editorial.scorm-theme-light .scorm-action-card [class*="font-semibold"] {
+  color: var(--slp-text) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-action-card [class*="text-[#667085]"],
+html body .scorm-editorial.scorm-theme-light .scorm-action-card p {
+  color: var(--slp-body) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-action-icon,
+html body .scorm-editorial.scorm-theme-light .scorm-action-arrow {
+  background: var(--slp-teal-soft) !important;
+  border-color: #BDE5DF !important;
+  color: var(--slp-teal-dark) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-action-card::after {
+  color: #56706B !important;
+  opacity: .06 !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* My Courses                                                                 */
+/* -------------------------------------------------------------------------- */
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-metric {
+  min-height: 104px;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-metric .scorm-display,
+html body .scorm-editorial.scorm-theme-light .scorm-course-metric .scorm-metric-value {
+  color: var(--slp-text) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-metric-icon {
+  background: var(--slp-teal-soft) !important;
+  border-color: #BDE5DF !important;
+  color: var(--slp-teal-dark) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-list-shell {
+  overflow: hidden;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-toolbar {
+  background: #F8FBFA !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-search {
+  background: #FFFFFF !important;
+  border-color: #C9DAD6 !important;
+  color: var(--slp-text) !important;
+  box-shadow: 0 1px 2px rgba(29, 78, 70, .04) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-search::placeholder {
+  color: #83938F !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-filters {
+  background: #FFFFFF !important;
+  border-color: #D2E1DE !important;
+  color: var(--slp-body) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-filter {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: #425B56 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-filter:hover:not(.is-active) {
+  background: #EEF7F5 !important;
+  border-color: #D8E9E6 !important;
+  color: #173C37 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-filter.is-active {
+  background: var(--slp-teal) !important;
+  border-color: #35B6AB !important;
+  color: #063D38 !important;
+  box-shadow: 0 3px 8px rgba(31, 137, 124, .12) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-rows {
+  background: #FFFFFF !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-row {
+  background: #FFFFFF !important;
+  color: var(--slp-text) !important;
+  border-color: #E1EAE8 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-row:nth-child(even) {
+  background: #FBFDFC !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-row:hover {
+  background: #F0F8F6 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-row h3,
+html body .scorm-editorial.scorm-theme-light .scorm-course-row .font-semibold {
+  color: var(--slp-text) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-row .scorm-micro {
+  color: var(--slp-muted) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-row > svg {
+  color: var(--slp-teal-dark) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-status.is-draft {
+  background: #EDF5F3 !important;
+  border-color: #CDDEDA !important;
+  color: #4C625D !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-status.is-published {
+  background: #E8F7F1 !important;
+  border-color: #B9E2D2 !important;
+  color: #0A644B !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Content Editor                                                             */
+/* -------------------------------------------------------------------------- */
+
+html body .scorm-editorial.scorm-theme-light .scorm-editor-slide-rail {
+  background: #FFFFFF !important;
+  border-color: var(--slp-line) !important;
+  color: var(--slp-text) !important;
+  box-shadow: var(--slp-shadow) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-editor-slide-rail > div:first-child {
+  color: var(--slp-muted) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-editor-slide-item {
+  background: #FFFFFF !important;
+  border-color: #DDE8E5 !important;
+  color: var(--slp-text) !important;
+  box-shadow: none !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-editor-slide-item:hover {
+  background: #F2F9F7 !important;
+  border-color: #C7E2DD !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-editor-slide-item.is-active {
+  background: linear-gradient(90deg, #DFF5F1 0%, #F2FAF8 100%) !important;
+  border-color: #9DDCD5 !important;
+  color: #113B35 !important;
+  box-shadow: inset 3px 0 0 var(--slp-teal), 0 4px 12px rgba(29, 78, 70, .06) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-editor-slide-item .scorm-editor-slide-number {
+  color: #60736F !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-editor-slide-item.is-active .scorm-editor-slide-number {
+  color: var(--slp-teal-dark) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-editor-slide-item .scorm-editor-slide-title {
+  color: var(--slp-text) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-editor-course-header {
+  background: #FFFFFF !important;
+  border-color: var(--slp-line) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-editor-course-header input {
+  background: #FFFFFF !important;
+  border-color: #C9DAD6 !important;
+  color: var(--slp-text) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-editor-keypoint-card {
+  background: #F8FBFA !important;
+  border-color: #DCE8E5 !important;
+  color: var(--slp-text) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-editor-keypoint-card > div:first-child {
+  color: var(--slp-muted) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-editor-slide-rail {
+  scrollbar-color: #A9CEC8 #F0F6F4;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-editor-slide-rail::-webkit-scrollbar-thumb {
+  background: #A9CEC8;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-editor-slide-rail::-webkit-scrollbar-track {
+  background: #F0F6F4;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tables, reports, tracking, library and administration                      */
+/* -------------------------------------------------------------------------- */
+
+html body .scorm-editorial.scorm-theme-light main table,
+html body .scorm-editorial.scorm-theme-light main [role="table"] {
+  background: #FFFFFF !important;
+  color: var(--slp-text) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main table thead,
+html body .scorm-editorial.scorm-theme-light main table thead tr {
+  background: #F5F9F8 !important;
+  color: #516762 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main table tbody tr {
+  background: #FFFFFF !important;
+  border-color: #E1EAE8 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main table tbody tr:hover {
+  background: #F2F8F6 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main table th {
+  color: #516762 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main table td {
+  color: #273C38 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main input,
+html body .scorm-editorial.scorm-theme-light main textarea,
+html body .scorm-editorial.scorm-theme-light main select {
+  background: #FFFFFF !important;
+  border-color: #CADAD7 !important;
+  color: var(--slp-text) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main input::placeholder,
+html body .scorm-editorial.scorm-theme-light main textarea::placeholder {
+  color: #8B9B97 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main [class*="divide-white"],
+html body .scorm-editorial.scorm-theme-light main [class*="divide-[#"] {
+  --tw-divide-opacity: 1 !important;
+  border-color: #E1EAE8 !important;
+}
+
+/* Keep semantic statuses distinct. */
+html body .scorm-editorial.scorm-theme-light main [class*="text-emerald-"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-green-"] {
+  color: #137359 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main [class*="text-amber-"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-yellow-"] {
+  color: #7C5A12 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main [class*="text-rose-"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-red-"] {
+  color: #A43E50 !important;
+}
+
+/* Preview modal and learner course renderer are intentionally not targeted. */
