@@ -4,11 +4,12 @@ const crypto = require('crypto');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const logger = require('../../utils/logger');
-const { planSvgScenes } = require('./ScormSvgScenePlanner');
+const { planSvgScenes, fallbackSpec } = require('./ScormSvgScenePlanner');
 const {
     paletteFromAnalysis,
     renderSmartSvg
 } = require('./ScormSmartSvgRenderer');
+const { renderCourseCoverSvg } = require('./ScormCourseCoverRenderer');
 
 const execFileAsync = promisify(execFile);
 
@@ -124,6 +125,58 @@ function smartSvgFilename(index, mobile = false) {
     return `smart-visual-${number}${mobile ? '-mobile' : ''}.svg`;
 }
 
+function courseCoverSource(analysis = {}) {
+    const slides = Array.isArray(analysis.slides) ? analysis.slides : [];
+    const themeText = slides.slice(0, 6).map((slide) => {
+        const points = Array.isArray(slide?.keyPoints) ? slide.keyPoints.slice(0, 3).join(' ') : '';
+        return `${slide?.title || ''} ${slide?.content || ''} ${points}`;
+    }).join(' ');
+    return {
+        title: String(analysis.title || 'Learning experience'),
+        content: `${analysis.summary || ''} ${themeText}`.trim(),
+        keyPoints: slides.slice(0, 5).map((slide) => String(slide?.title || '')).filter(Boolean),
+        layout: 'spotlight',
+        screenType: 'takeaway',
+        visualTitle: String(analysis.title || 'Learning experience')
+    };
+}
+
+function generateCourseCoverAsset(analysis = {}) {
+    const palette = paletteFromAnalysis(analysis);
+    const source = courseCoverSource(analysis);
+    const baseSpec = fallbackSpec(source, 0);
+    const spec = {
+        ...baseSpec,
+        composition: 'center-stage',
+        visualTitle: source.visualTitle,
+        artDirection: 'Premium editorial course opener with a strong central learning journey, layered depth and restrained supporting symbols.'
+    };
+    const desktopFile = 'course-cover.svg';
+    const mobileFile = 'course-cover-mobile.svg';
+    const desktopSvg = renderCourseCoverSvg(spec, analysis, { palette, mobile: false });
+    const mobileSvg = renderCourseCoverSvg(spec, analysis, { palette, mobile: true });
+    const desktopBody = Buffer.from(desktopSvg, 'utf8');
+    const mobileBody = Buffer.from(mobileSvg, 'utf8');
+
+    return {
+        index: -1,
+        role: 'cover',
+        layout: 'cover',
+        screenType: 'cover',
+        file: desktopFile,
+        zipPath: `assets/visuals/${desktopFile}`,
+        body: desktopBody,
+        desktopFile,
+        desktopZipPath: `assets/visuals/${desktopFile}`,
+        desktopBody,
+        mobileFile,
+        mobileZipPath: `assets/visuals/${mobileFile}`,
+        mobileBody,
+        visualEngine: 'smart-svg-cover',
+        sceneSpec: spec
+    };
+}
+
 async function generateSmartSvgAssets(analysis = {}) {
     const slides = Array.isArray(analysis.slides) ? analysis.slides : [];
     if (!slides.length) return [];
@@ -186,8 +239,10 @@ async function generateVisualAssets(analysis) {
 module.exports = {
     generateVisualAssets,
     generateSmartSvgAssets,
+    generateCourseCoverAsset,
     generateLegacyVisualAssets,
     smartSvgFilename,
+    courseCoverSource,
     useLegacyEngine,
     runVisualGenerator
 };

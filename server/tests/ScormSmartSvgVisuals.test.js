@@ -11,6 +11,7 @@ const {
 } = require('../services/scorm/ScormSmartSvgRenderer');
 const {
     generateSmartSvgAssets,
+    generateCourseCoverAsset,
     useLegacyEngine
 } = require('../services/scorm/ScormVisualAssetService');
 
@@ -120,6 +121,41 @@ describe('SCORM Gemini Smart SVG visuals', function () {
         expect((svg.match(/<path\b/g) || []).length).to.be.greaterThan(5);
         expect(svg).to.include('linearGradient');
         expect(svg).to.include('softShadow');
+    });
+
+    it('creates a dedicated premium responsive cover instead of reusing slide one', () => {
+        const analysis = {
+            title: 'Deepfake Deception: Recognise, Verify, Respond',
+            summary: 'Learn how synthetic video and cloned voices can create believable impersonation attempts, how attackers build urgency and what independent verification steps reduce the risk of acting on manipulated media.',
+            slides: [
+                {
+                    title: 'Deepfakes imitate trusted people',
+                    content: 'Synthetic media can reproduce a familiar face or voice and place it into a false situation.',
+                    keyPoints: ['Synthetic voice can imitate identity', 'Video can be manipulated convincingly', 'Urgency can suppress normal verification']
+                },
+                {
+                    title: 'Verify through a second channel',
+                    content: 'Contact the person using a known number or approved channel before acting on an unusual request.',
+                    keyPoints: ['Use a known contact route', 'Do not rely on incoming details', 'Escalate unusual financial requests']
+                }
+            ]
+        };
+        const cover = generateCourseCoverAsset(analysis);
+        const desktop = cover.desktopBody.toString('utf8');
+        const mobile = cover.mobileBody.toString('utf8');
+
+        expect(cover.role).to.equal('cover');
+        expect(cover.index).to.equal(-1);
+        expect(cover.desktopZipPath).to.equal('assets/visuals/course-cover.svg');
+        expect(cover.mobileZipPath).to.equal('assets/visuals/course-cover-mobile.svg');
+        expect(desktop).to.include('data-scorm-course-cover="1"');
+        expect(desktop).to.include('data-cover-scene="deepfake"');
+        expect(desktop).to.include('coverDeepShadow');
+        expect(desktop).to.include('radialGradient');
+        expect((desktop.match(/<rect\b/g) || []).length).to.be.greaterThan(8);
+        expect((desktop.match(/<circle\b/g) || []).length).to.be.greaterThan(7);
+        expect(mobile).to.include('viewBox="0 0 900 1100"');
+        expect(mobile).to.include('data-scorm-course-cover="1"');
     });
 
     it('sanitises scriptable or externally loaded SVG content', () => {
