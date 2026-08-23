@@ -1,6 +1,5 @@
 const {
     DEFAULT_PALETTE,
-    DESKTOP_SVG,
     MOBILE_SVG,
     escapeXml,
     sanitizeSvg,
@@ -10,7 +9,7 @@ const {
 function coverDimensions(mobile) {
     return mobile
         ? { width: MOBILE_SVG.width, height: MOBILE_SVG.height }
-        : { width: DESKTOP_SVG.width, height: DESKTOP_SVG.height };
+        : { width: 1200, height: 720 };
 }
 
 function renderOrbitNodes(p, mobile) {
@@ -42,25 +41,25 @@ function renderOrbitNodes(p, mobile) {
 
     return `
       <g opacity=".98">
-        <path d="M238 790 C410 670 794 670 970 790" fill="none" stroke="${p.tealDark}" stroke-width="5" stroke-linecap="round" opacity=".24"/>
-        <g transform="translate(160 748)" filter="url(#coverShadow)">
-          <rect width="182" height="130" rx="30" fill="${p.white}" stroke="${p.structure}" stroke-width="3"/>
-          <circle cx="52" cy="50" r="23" fill="${p.teal}" opacity=".22"/>
-          <path d="M40 50 L49 59 L66 38" fill="none" stroke="${p.tealDark}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-          <rect x="31" y="92" width="116" height="9" rx="5" fill="${p.structure}" opacity=".48"/>
+        <path d="M215 598 C390 525 810 525 985 598" fill="none" stroke="${p.tealDark}" stroke-width="5" stroke-linecap="round" opacity=".24"/>
+        <g transform="translate(120 552)" filter="url(#coverShadow)">
+          <rect width="182" height="122" rx="30" fill="${p.white}" stroke="${p.structure}" stroke-width="3"/>
+          <circle cx="52" cy="47" r="23" fill="${p.teal}" opacity=".22"/>
+          <path d="M40 47 L49 56 L66 35" fill="none" stroke="${p.tealDark}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="31" y="88" width="116" height="9" rx="5" fill="${p.structure}" opacity=".48"/>
         </g>
-        <g transform="translate(509 805)" filter="url(#coverShadow)">
-          <rect width="182" height="130" rx="30" fill="${p.white}" stroke="${p.structure}" stroke-width="3"/>
-          <circle cx="91" cy="51" r="26" fill="${p.yellow}" opacity=".72"/>
-          <path d="M78 51 H104 M91 38 V64" stroke="${p.ink}" stroke-width="7" stroke-linecap="round"/>
-          <rect x="32" y="92" width="118" height="9" rx="5" fill="${p.structure}" opacity=".48"/>
+        <g transform="translate(509 570)" filter="url(#coverShadow)">
+          <rect width="182" height="122" rx="30" fill="${p.white}" stroke="${p.structure}" stroke-width="3"/>
+          <circle cx="91" cy="47" r="26" fill="${p.yellow}" opacity=".72"/>
+          <path d="M78 47 H104 M91 34 V60" stroke="${p.ink}" stroke-width="7" stroke-linecap="round"/>
+          <rect x="32" y="88" width="118" height="9" rx="5" fill="${p.structure}" opacity=".48"/>
         </g>
-        <g transform="translate(858 748)" filter="url(#coverShadow)">
-          <rect width="182" height="130" rx="30" fill="${p.white}" stroke="${p.structure}" stroke-width="3"/>
-          <circle cx="126" cy="42" r="11" fill="${p.teal}"/>
-          <circle cx="58" cy="54" r="21" fill="none" stroke="${p.tealDark}" stroke-width="7"/>
-          <path d="M73 70 L94 90" stroke="${p.tealDark}" stroke-width="7" stroke-linecap="round"/>
-          <rect x="32" y="92" width="118" height="9" rx="5" fill="${p.structure}" opacity=".48"/>
+        <g transform="translate(898 552)" filter="url(#coverShadow)">
+          <rect width="182" height="122" rx="30" fill="${p.white}" stroke="${p.structure}" stroke-width="3"/>
+          <circle cx="126" cy="38" r="11" fill="${p.teal}"/>
+          <circle cx="58" cy="50" r="21" fill="none" stroke="${p.tealDark}" stroke-width="7"/>
+          <path d="M73 66 L94 86" stroke="${p.tealDark}" stroke-width="7" stroke-linecap="round"/>
+          <rect x="32" y="88" width="118" height="9" rx="5" fill="${p.structure}" opacity=".48"/>
         </g>
       </g>`;
 }
@@ -75,12 +74,12 @@ function renderCourseCoverSvg(spec = {}, analysis = {}, options = {}) {
 
     const frame = mobile
         ? { x: 104, y: 118, w: 692, h: 650, r: 54 }
-        : { x: 188, y: 112, w: 824, h: 590, r: 54 };
+        : { x: 150, y: 64, w: 900, h: 470, r: 52 };
     const artTransform = mobile
-        ? `translate(${frame.x + 70} ${frame.y + 10}) scale(.61)`
-        : `translate(${frame.x + 76} ${frame.y + 54}) scale(.48)`;
+        ? `translate(${frame.x + 105} ${frame.y + 24}) scale(.53)`
+        : `translate(300 70) scale(.42)`;
 
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${label}" data-scorm-course-cover="1" data-cover-scene="${scene}" data-panel-ratio="${mobile ? '9/11' : '6/5'}">
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${label}" data-scorm-course-cover="1" data-cover-scene="${scene}" data-panel-ratio="${mobile ? '9/11' : '5/3'}">
       <title>${label}</title>
       <defs>
         <linearGradient id="coverPaper" x1="0" y1="0" x2="1" y2="1">
@@ -106,10 +105,10 @@ function renderCourseCoverSvg(spec = {}, analysis = {}, options = {}) {
       </defs>
 
       <rect width="${width}" height="${height}" fill="url(#coverPaper)"/>
-      <circle cx="${mobile ? 110 : 100}" cy="${mobile ? 130 : 120}" r="${mobile ? 180 : 210}" fill="${p.teal}" opacity=".10"/>
-      <circle cx="${mobile ? 820 : 1100}" cy="${mobile ? 250 : 190}" r="${mobile ? 155 : 170}" fill="${p.yellow}" opacity=".35"/>
-      <circle cx="${mobile ? 720 : 1060}" cy="${mobile ? 960 : 870}" r="${mobile ? 190 : 200}" fill="${p.structure}" opacity=".28"/>
-      <path d="M${mobile ? 60 : 76} ${mobile ? 260 : 210} C${mobile ? 240 : 280} ${mobile ? 80 : 30} ${mobile ? 640 : 900} ${mobile ? 70 : 50} ${mobile ? 838 : 1130} ${mobile ? 290 : 260}" fill="none" stroke="${p.tealDark}" stroke-width="3" opacity=".12"/>
+      <circle cx="${mobile ? 110 : 70}" cy="${mobile ? 130 : 100}" r="${mobile ? 180 : 170}" fill="${p.teal}" opacity=".10"/>
+      <circle cx="${mobile ? 820 : 1120}" cy="${mobile ? 250 : 140}" r="${mobile ? 155 : 140}" fill="${p.yellow}" opacity=".35"/>
+      <circle cx="${mobile ? 720 : 1080}" cy="${mobile ? 960 : 670}" r="${mobile ? 190 : 170}" fill="${p.structure}" opacity=".28"/>
+      <path d="M${mobile ? 60 : 50} ${mobile ? 260 : 190} C${mobile ? 240 : 280} ${mobile ? 80 : 10} ${mobile ? 640 : 900} ${mobile ? 70 : 20} ${mobile ? 838 : 1150} ${mobile ? 290 : 220}" fill="none" stroke="${p.tealDark}" stroke-width="3" opacity=".12"/>
 
       <g filter="url(#coverDeepShadow)">
         <rect x="${frame.x}" y="${frame.y}" width="${frame.w}" height="${frame.h}" rx="${frame.r}" fill="url(#coverFrame)"/>
@@ -122,14 +121,14 @@ function renderCourseCoverSvg(spec = {}, analysis = {}, options = {}) {
       </g>
 
       <g filter="url(#coverShadow)">
-        <circle cx="${mobile ? 170 : 238}" cy="${mobile ? 210 : 210}" r="${mobile ? 52 : 56}" fill="${p.teal}"/>
-        <path d="M${mobile ? 148 : 216} ${mobile ? 212 : 212} L${mobile ? 164 : 232} ${mobile ? 228 : 228} L${mobile ? 193 : 265} ${mobile ? 190 : 190}" fill="none" stroke="${p.ink}" stroke-width="${mobile ? 10 : 11}" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="${mobile ? 170 : 190}" cy="${mobile ? 210 : 125}" r="${mobile ? 52 : 52}" fill="${p.teal}"/>
+        <path d="M${mobile ? 148 : 169} ${mobile ? 212 : 127} L${mobile ? 164 : 184} ${mobile ? 228 : 142} L${mobile ? 193 : 216} ${mobile ? 190 : 106}" fill="none" stroke="${p.ink}" stroke-width="${mobile ? 10 : 10}" stroke-linecap="round" stroke-linejoin="round"/>
       </g>
 
       <g opacity=".9">
-        <circle cx="${mobile ? 735 : 932}" cy="${mobile ? 176 : 174}" r="9" fill="${p.teal}"/>
-        <circle cx="${mobile ? 766 : 972}" cy="${mobile ? 176 : 174}" r="9" fill="${p.yellow}"/>
-        <circle cx="${mobile ? 797 : 1012}" cy="${mobile ? 176 : 174}" r="9" fill="${p.structure}"/>
+        <circle cx="${mobile ? 735 : 930}" cy="${mobile ? 176 : 120}" r="9" fill="${p.teal}"/>
+        <circle cx="${mobile ? 766 : 970}" cy="${mobile ? 176 : 120}" r="9" fill="${p.yellow}"/>
+        <circle cx="${mobile ? 797 : 1010}" cy="${mobile ? 176 : 120}" r="9" fill="${p.structure}"/>
       </g>
 
       ${renderOrbitNodes(p, mobile)}
