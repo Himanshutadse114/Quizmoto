@@ -6,11 +6,32 @@ const JSZip = require('jszip');
 const logger = require('../../utils/logger');
 
 const DETAIL_CONFIG = {
-    // Body copy targets are intentionally rich: learners need real explanation,
-    // not one-line stubs. keyPoints stay short visual labels (see VISUAL_POINT_*).
-    detailed: { slides: '8-12', screenWords: '90-130', minWords: 72 },
-    condensed: { slides: '5-7', screenWords: '70-100', minWords: 55 },
-    summary: { slides: '3-4', screenWords: '55-80', minWords: 42 }
+    // Body copy targets are intentionally rich: learners need explanation,
+    // context, consequences and a concrete action — not summary stubs.
+    detailed: {
+        slides: '9-12',
+        screenWords: '105-145',
+        minWords: 90,
+        minPoints: 4,
+        summaryMinWords: 45,
+        quizExplanationMinWords: 18
+    },
+    condensed: {
+        slides: '6-8',
+        screenWords: '80-115',
+        minWords: 65,
+        minPoints: 3,
+        summaryMinWords: 35,
+        quizExplanationMinWords: 15
+    },
+    summary: {
+        slides: '4-5',
+        screenWords: '60-85',
+        minWords: 48,
+        minPoints: 3,
+        summaryMinWords: 28,
+        quizExplanationMinWords: 12
+    }
 };
 
 const VISUAL_POINT_WORD_LIMITS = {
@@ -178,8 +199,11 @@ function qualityIssues(analysis, detailLevel) {
     const slides = Array.isArray(analysis?.slides) ? analysis.slides : [];
     if (!slides.length) return ['No learning screens were generated.'];
 
-    const minWords = (DETAIL_CONFIG[detailLevel] || DETAIL_CONFIG.detailed).minWords;
-    const allowance = Math.max(1, Math.floor(slides.length * 0.15));
+    const level = DETAIL_CONFIG[detailLevel] || DETAIL_CONFIG.detailed;
+    const minWords = level.minWords;
+    // Detailed mode is the premium authoring path: every screen must meet the
+    // depth floor. Condensed/summary keep a small allowance for short closers.
+    const allowance = detailLevel === 'detailed' ? 0 : Math.max(1, Math.floor(slides.length * 0.15));
     let thin = 0;
     let weakPoints = 0;
     let overlongPoints = 0;
@@ -206,7 +230,7 @@ function qualityIssues(analysis, detailLevel) {
         const points = Array.isArray(slide?.keyPoints)
             ? slide.keyPoints.filter((x) => String(x || '').trim())
             : [];
-        if (points.length < 3) weakPoints += 1;
+        if (points.length < level.minPoints) weakPoints += 1;
 
         const layout = String(slide?.layout || '').toLowerCase();
         const pointLimit = VISUAL_POINT_WORD_LIMITS[layout] || 11;
@@ -227,8 +251,11 @@ function qualityIssues(analysis, detailLevel) {
     }
 
     const issues = [];
-    if (thin > allowance) issues.push(`${thin} screens have body copy that is too short — expand each screen to the target word count with real explanation, consequence and learner action.`);
-    if (weakPoints > allowance) issues.push(`${weakPoints} screens have weak visual points (need 3–5 points of 3–12 words each; never single-word stubs).`);
+    if (wordCount(analysis?.summary) < level.summaryMinWords) {
+        issues.push(`The course summary is too short — explain what the learner will understand, why it matters and what they should be able to do.`);
+    }
+    if (thin > allowance) issues.push(`${thin} screens have body copy that is too short — expand every thin screen with source-grounded explanation, mechanism or rationale, a concrete example or consequence, and the learner action.`);
+    if (weakPoints > allowance) issues.push(`${weakPoints} screens have weak visual points (need ${level.minPoints}–5 information-rich points of 3–12 words each; never single-word stubs).`);
     if (overlongPoints > allowance) issues.push(`${overlongPoints} visual points are too long to display cleanly in diagrams.`);
     if (genericTitles > allowance) issues.push(`${genericTitles} screen titles are generic rather than message-led.`);
     if (duplicatePoints > 0) issues.push(`${duplicatePoints} supporting points repeat wording already used on another screen.`);
@@ -241,24 +268,27 @@ function qualityIssues(analysis, detailLevel) {
         const seenQuestions = new Set();
         for (const item of quiz) {
             const options = Array.isArray(item?.options) ? item.options : [];
+            const optionKeys = options.map(normalizedText).filter(Boolean);
             const correct = Number(item?.correctAnswer);
             const questionKey = normalizedText(item?.question);
             const hasDuplicateQuestion = questionKey && seenQuestions.has(questionKey);
             if (questionKey) seenQuestions.add(questionKey);
             if (
                 !questionKey ||
+                wordCount(item?.question) < 6 ||
                 options.length !== 4 ||
+                new Set(optionKeys).size !== 4 ||
                 !Number.isInteger(correct) ||
                 correct < 0 ||
                 correct >= options.length ||
-                wordCount(item?.explanation) < 6 ||
+                wordCount(item?.explanation) < level.quizExplanationMinWords ||
                 hasDuplicateQuestion
             ) {
                 malformedQuiz += 1;
             }
         }
         if (quiz.length < 5 || quiz.length > 8) issues.push('The knowledge check should contain 5–8 questions.');
-        if (malformedQuiz) issues.push(`${malformedQuiz} quiz questions need stronger structure or explanations.`);
+        if (malformedQuiz) issues.push(`${malformedQuiz} quiz questions need stronger scenario wording, distinct options or fuller explanations.`);
     }
 
     return issues;
@@ -366,24 +396,48 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
         sourceParts.push({ inlineData: { data: fileBase64, mimeType: mimeType || 'application/pdf' } });
     }
 
-    const instruction = `You are a world-class instructional designer. Transform this source into a ${detailLevel} premium digital learning experience.
+    const instruction = `You are a world-class instructional designer creating a premium ${detailLevel} digital learning experience from the supplied source.
 
-QUALITY BAR: Every screen answers: What is this? Why does it matter? What should I notice, decide or do?
+NON-NEGOTIABLE GROUNDING:
+- Treat the source as authoritative. Preserve important names, roles, responsibilities, required actions, thresholds, timeframes, exceptions, escalation routes and ordered procedures whenever the source provides them.
+- Do not invent policy facts, statistics, contacts, deadlines or organisational rules.
+- Every screen must teach a distinct idea from the source. Do not paraphrase an earlier screen just to reach the requested screen count.
+- If the source is short, prefer fewer substantial screens over duplicated filler.
 
-1. LEARNING SCREENS (generate ${level.slides} screens):
-   - "title": concise, specific, message-led (never "Introduction" or "Overview").
-   - "content": approximately ${level.screenWords} words of clear adult prose. Cover: (1) what this idea is, (2) why it matters in a real situation, (3) a concrete example or consequence from the source, (4) what the learner should notice, decide or do. Write 3–5 complete sentences. No bullet lists in the body.
-   - "keyPoints": 3–5 concise visual labels (3–12 words each, never 1–2 word stubs). They must add information, not repeat the paragraph. Never reuse the same phrase on another screen.
-   - "layout": one of process, cards, timeline, comparison, hub, spotlight, matrix, cycle.
-   - "visualTitle": 2–5 words for the diagram centre.
-   - "interaction": { "type": one of step_explore|hotspot_explore|compare_reveal|focus_reveal, "prompt": short action text }.
-   - "imageQuery": 2–3 word keyword.
+QUALITY BAR: Every screen must answer four things: What is this? Why or how does it matter? What could happen in a realistic situation? What should the learner notice, decide or do?
 
-2. WRITING: Plain language, 8th-grade reading level. Short sentences (under 20 words). Concrete verbs. No filler like "In today's digital landscape".
+1. COURSE SUMMARY:
+   - Write a substantial learner-facing summary of at least ${level.summaryMinWords} words.
+   - Explain what the course covers, why the topic matters and what the learner should be able to recognise or do by the end.
 
-3. QUIZ: 5–8 questions, exactly 4 options each, correctAnswer 0-based index, explanation 15–40 words grounded in the source.
+2. LEARNING SCREENS (aim for ${level.slides} screens when the source supports them):
+   - "title": concise, specific and message-led. State the lesson, decision or risk. Never use "Introduction", "Overview", "Key Points" or "Summary".
+   - "content": approximately ${level.screenWords} words of clear adult prose, normally 5–7 complete sentences. Build real instructional depth without padding:
+       (1) define the idea, rule or situation in context;
+       (2) explain the mechanism, rationale, trigger-to-impact chain or practical significance;
+       (3) preserve source-specific details such as roles, steps, conditions, thresholds or exceptions;
+       (4) include a concrete source-grounded example or consequence. If the source has no example, a clearly generic workplace scenario is allowed, but it must not invent policy facts;
+       (5) end with a specific learner action, decision, verification step or escalation behaviour.
+     No bullet lists in the body. Do not repeat the title or keyPoints as filler.
+   - "keyPoints": ${level.minPoints}–5 concise, information-rich visual labels, usually 3–12 words each. They must add useful detail, not merely repeat the paragraph. Never reuse the same phrase on another screen.
+   - Choose "layout" semantically: process for ordered steps; timeline for time/sequence; comparison for meaningful contrasts; matrix for two-factor decisions; hub/cards for distinct categories; spotlight for a scenario or decisive takeaway; cycle for recurring activity.
+   - "visualTitle": 2–5 words that communicate the centre of the diagram.
+   - "interaction": { "type": one of step_explore|hotspot_explore|compare_reveal|focus_reveal, "prompt": short purposeful action text }.
+   - "imageQuery": 2–3 specific keywords reflecting the screen meaning.
 
-4. OUTPUT: valid JSON with keys title, summary, slides, quiz. Do not invent facts not in the source.`;
+3. WRITING QUALITY:
+   - Plain language at approximately an 8th-grade reading level, but never simplistic.
+   - Prefer concrete verbs and specific nouns. Keep most sentences under 20 words and none needlessly above 28 words.
+   - Avoid generic filler such as "In today's digital landscape", "It is important to note" or repeated reminders to "stay vigilant" without saying how.
+   - Build a narrative progression: recognise the issue -> understand how it works -> evaluate a situation -> take the correct action -> reinforce the behaviour.
+
+4. KNOWLEDGE CHECK:
+   - Generate 5–8 questions with exactly four distinct options each and a valid 0-based correctAnswer.
+   - Prefer realistic decision/scenario questions over recall-only questions.
+   - Distractors should be plausible but clearly distinguishable from the best action using the source.
+   - Each explanation should be about 20–50 words: explain why the correct answer is right and reinforce the practical rule. Stay grounded in the source.
+
+5. OUTPUT: Return only valid JSON with keys title, summary, slides, quiz. Do not invent facts not supported by the source.`;
 
     const baseParts = [...sourceParts, { text: instruction }];
     if (!fileBase64 && !sourceParts.length) {
@@ -433,7 +487,7 @@ QUALITY BAR: Every screen answers: What is this? Why does it matter? What should
 
             const initialIssues = qualityIssues(analysis, detailLevel);
             if (initialIssues.length) {
-                const refinementPrompt = `QUALITY REFINEMENT PASS:\nIssues: ${initialIssues.join(' ')}\n\nRevise the ENTIRE JSON. Expand thin screens to about ${level.screenWords} words. Replace 1–2 word keyPoints with 3–12 word labels. Remove repeated wording across screens. Keep titles message-led. Quiz: 5–8 questions, 4 options, valid correctAnswer, useful explanation. Do not invent facts. Return only improved JSON.\n\nDRAFT:\n${JSON.stringify(analysis)}`;
+                const refinementPrompt = `PREMIUM QUALITY REFINEMENT PASS:\nIssues: ${initialIssues.join(' ')}\n\nRevise the ENTIRE JSON, not just the failing field. Every thin learning screen must reach roughly ${level.screenWords} words through additional SOURCE-GROUNDED substance, never padding. Restore any omitted names, roles, required steps, conditions, thresholds, timeframes, exceptions and consequences that are present in the source. Each screen must contain a distinct explanation, mechanism/rationale, realistic consequence or example, and a clear learner action. Use ${level.minPoints}–5 concise visual points. Remove repeated wording across screens. Strengthen the course summary. Knowledge checks must use 5–8 realistic questions, four distinct options and explanations of at least ${level.quizExplanationMinWords} words. Do not invent facts. Return only improved JSON.\n\nDRAFT:\n${JSON.stringify(analysis)}`;
                 try {
                     const refined = await callGemini({ apiKey, model, parts: [...baseParts, { text: refinementPrompt }] });
                     if (refined.res.ok) {
