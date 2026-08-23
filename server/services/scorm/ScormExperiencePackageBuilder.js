@@ -1,6 +1,6 @@
 const JSZip = require('jszip');
 const { buildScormPackageZip: buildVisualPackage } = require('./ScormVisualPackageBuilder');
-const { generateVisualAssets } = require('./ScormVisualAssetService');
+const { generateVisualAssets, generateCourseCoverAsset } = require('./ScormVisualAssetService');
 
 const LAYOUTS = ['process', 'cards', 'timeline', 'comparison', 'hub', 'spotlight', 'matrix', 'cycle'];
 const SCREEN_TYPES = ['concept', 'hotspot', 'process', 'scenario', 'comparison', 'reveal', 'timeline', 'takeaway'];
@@ -234,10 +234,17 @@ function experienceScript() {
         '    targets.forEach(function(el){el.innerHTML=html;});',
         '  });',
         '  var intro=slides[0];',
-        '  if(intro&&data.slides[0]){',
+        '  if(intro){',
         '    var art=intro.querySelector(".hero-art,.hero-core");',
-        '    var html=pictureFor(data.slides[0]);',
+        '    var cover={visualAsset:data.coverVisualAsset,mobileVisualAsset:data.coverMobileVisualAsset,visualTitle:data.title,title:data.title};',
+        '    var html=pictureFor(cover)||(data.slides[0]?pictureFor(data.slides[0]):"");',
         '    if(art&&html)art.innerHTML=html;',
+        '    var chips=intro.querySelector(".kp-row");',
+        '    if(chips){',
+        '      var sectionCount=(data.slides||[]).length,checkCount=(data.quiz||[]).length;',
+        '      var labels=[sectionCount+" learning section"+(sectionCount===1?"":"s"),checkCount+" knowledge check"+(checkCount===1?"":"s"),"Tracked completion"];',
+        '      chips.innerHTML=labels.map(function(label){return "<span class=\"chip\">"+esc(label)+"</span>";}).join("");',
+        '    }',
         '  }',
         '  fixHubSvg();',
         '}',
@@ -267,10 +274,16 @@ function inject(html) {
 async function buildScormPackageZip(rawAnalysis, opts = {}) {
     const analysis = enrichAnalysis(rawAnalysis);
     let assets = [];
+    let coverAsset = null;
     try {
         assets = await generateVisualAssets(analysis, opts);
     } catch (err) {
         console.warn('[scorm-visual-v5] Smart SVG generation failed; continuing with HTML fallback', { message: err && err.message });
+    }
+    try {
+        coverAsset = generateCourseCoverAsset(analysis);
+    } catch (err) {
+        console.warn('[scorm-visual-v5] Course cover generation failed; falling back to first learning visual', { message: err && err.message });
     }
 
     const byIndex = new Map(assets.map((asset) => [asset.index, asset]));
@@ -285,21 +298,27 @@ async function buildScormPackageZip(rawAnalysis, opts = {}) {
             mobileVisualAsset: asset.mobileZipPath || null
         };
     });
+    if (coverAsset) {
+        analysis.coverVisualAsset = coverAsset.desktopZipPath || coverAsset.zipPath;
+        analysis.coverMobileVisualAsset = coverAsset.mobileZipPath || null;
+    }
 
+    const allAssets = coverAsset ? [coverAsset, ...assets] : assets;
     const baseBuffer = await buildVisualPackage(analysis, opts);
     const zip = await JSZip.loadAsync(baseBuffer);
 
-    assets.forEach((asset) => {
+    allAssets.forEach((asset) => {
         zip.file(asset.desktopZipPath || asset.zipPath, asset.desktopBody || asset.body);
         if (asset.mobileZipPath && asset.mobileBody) zip.file(asset.mobileZipPath, asset.mobileBody);
     });
 
-    if (assets.length) {
+    if (allAssets.length) {
         zip.file('assets/visuals/visual-manifest.json', JSON.stringify({
             generatedBy: 'quizmoto-smart-svg-v5',
             responsive: true,
-            visuals: assets.map((asset) => ({
+            visuals: allAssets.map((asset) => ({
                 index: asset.index,
+                role: asset.role || 'learning-slide',
                 layout: asset.layout,
                 screenType: asset.screenType,
                 desktop: asset.desktopZipPath || asset.zipPath,
@@ -322,15 +341,15 @@ async function buildScormPackageZip(rawAnalysis, opts = {}) {
         version: 5,
         experienceVersion: 5,
         screenTypes: SCREEN_TYPES,
-        visualEngine: assets.length ? 'gemini-smart-svg' : 'html-fallback',
-        responsiveVisuals: Boolean(assets.some((asset) => asset.mobileZipPath))
+        visualEngine: allAssets.length ? 'gemini-smart-svg' : 'html-fallback',
+        responsiveVisuals: Boolean(allAssets.some((asset) => asset.mobileZipPath))
     }, null, 2));
 
     const manifestFile = zip.file('imsmanifest.xml');
-    if (manifestFile && assets.length) {
+    if (manifestFile && allAssets.length) {
         let manifest = await manifestFile.async('string');
         const paths = [];
-        assets.forEach((asset) => {
+        allAssets.forEach((asset) => {
             paths.push(asset.desktopZipPath || asset.zipPath);
             if (asset.mobileZipPath) paths.push(asset.mobileZipPath);
         });
