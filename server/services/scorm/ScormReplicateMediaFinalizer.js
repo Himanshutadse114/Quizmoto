@@ -4,7 +4,7 @@ const { buildScormPackageZip: buildBasePackage } = require('./ScormAnswerTrackin
 const REPLICATE_MEDIA_CSS = `
 <style id="quizmoto-replicate-media-v1">
 /* This layer is intentionally after the SVG finalizer. Replicate media uses
-   ordinary packaged WebP/WAV assets so the front page never depends on SVG. */
+   packaged WebP assets so the front page never depends on SVG. */
 .slide.qmx-cover-slide .hero{
   min-height:640px!important;
   padding:42px 56px 36px!important;
@@ -45,30 +45,6 @@ const REPLICATE_MEDIA_CSS = `
 }
 .slide.qmx-cover-slide .qmx-cover-meta{margin-top:16px!important}
 .qmx-replicate-raster{display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;border-radius:inherit!important}
-.qmx-narration-control{
-  position:absolute!important;
-  z-index:30!important;
-  top:18px!important;
-  right:22px!important;
-  display:flex!important;
-  align-items:center!important;
-  gap:8px!important;
-}
-.qmx-narration-btn{
-  appearance:none!important;
-  border:1px solid rgba(23,126,120,.28)!important;
-  border-radius:999px!important;
-  background:rgba(255,255,255,.88)!important;
-  color:#176E69!important;
-  box-shadow:0 8px 24px rgba(40,40,36,.10)!important;
-  padding:8px 12px!important;
-  min-height:34px!important;
-  font:800 10.5px/1.1 Inter,Arial,sans-serif!important;
-  letter-spacing:.025em!important;
-  cursor:pointer!important;
-}
-.qmx-narration-btn:hover{background:#fff!important;border-color:rgba(23,126,120,.5)!important}
-.qmx-narration-btn.is-playing{background:#DDF5F1!important;color:#0E5E59!important}
 @media(max-width:980px){
   .slide.qmx-cover-slide .hero{min-height:600px!important;padding:38px 34px 32px!important}
   .slide.qmx-cover-slide .title{font-size:40px!important}
@@ -80,8 +56,6 @@ const REPLICATE_MEDIA_CSS = `
   .slide.qmx-cover-slide .title{font-size:31px!important;margin-bottom:14px!important}
   .slide.qmx-cover-slide .lead{font-size:14px!important;line-height:1.5!important}
   .qmx-cover-raster{height:185px!important;min-height:185px!important;border-radius:16px!important;margin-top:18px!important}
-  .qmx-narration-control{top:10px!important;right:10px!important}
-  .qmx-narration-btn{font-size:9.5px!important;padding:7px 10px!important}
 }
 </style>`;
 
@@ -102,7 +76,6 @@ function replicateMediaScript() {
   window.__quizmotoReplicateMediaV1=true;
   function esc(s){var M={'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'};return String(s||'').replace(/[<>&"']/g,function(c){return M[c]||c})}
   function cssUrl(path){return 'url("'+String(path||'').replace(/["\\]/g,'\\$&')+'")'}
-  function fmt(sec){sec=Math.max(0,Math.round(Number(sec)||0));var m=Math.floor(sec/60),s=sec%60;return m+':'+String(s).padStart(2,'0')}
   function installCover(intro,data){
     if(!intro||!data.coverImageAsset)return;
     var hero=intro.querySelector('.hero');if(!hero)return;
@@ -128,34 +101,11 @@ function replicateMediaScript() {
       target.setAttribute('data-qmx-replicate-raster',String(s.rasterVisualAsset));
     });
   }
-  function pauseOtherAudio(active){
-    document.querySelectorAll('.qmx-narration-control audio').forEach(function(audio){if(audio!==active&&!audio.paused)audio.pause()});
-  }
-  function installNarration(slides,data){
-    (data.slides||[]).forEach(function(s,i){
-      if(!s||!s.narrationAsset)return;
-      var node=slides[i+1];if(!node||node.querySelector('.qmx-narration-control'))return;
-      var wrap=document.createElement('div');wrap.className='qmx-narration-control';
-      var button=document.createElement('button');button.type='button';button.className='qmx-narration-btn';button.textContent='▶ Listen';
-      var audio=document.createElement('audio');audio.preload='metadata';audio.src=String(s.narrationAsset);
-      audio.addEventListener('loadedmetadata',function(){if(audio.duration&&audio.paused)button.textContent='▶ Listen · '+fmt(audio.duration)});
-      audio.addEventListener('play',function(){pauseOtherAudio(audio);button.classList.add('is-playing');button.textContent='❚❚ Pause'});
-      audio.addEventListener('pause',function(){button.classList.remove('is-playing');button.textContent='▶ Listen'+(audio.duration?' · '+fmt(audio.duration):'')});
-      audio.addEventListener('ended',function(){button.classList.remove('is-playing');button.textContent='▶ Listen'+(audio.duration?' · '+fmt(audio.duration):'')});
-      button.addEventListener('click',function(ev){ev.stopPropagation();if(audio.paused)audio.play().catch(function(){});else audio.pause()});
-      wrap.appendChild(button);wrap.appendChild(audio);node.appendChild(wrap);
-      if(typeof MutationObserver==='function'){
-        var observer=new MutationObserver(function(){if(!node.classList.contains('active')&&!audio.paused)audio.pause()});
-        observer.observe(node,{attributes:true,attributeFilter:['class']});
-      }
-    });
-  }
   function install(){
     var data=window.__quizmotoData||null;if(!data||!Array.isArray(data.slides))return false;
     var slides=Array.prototype.slice.call(document.querySelectorAll('.slide'));if(!slides.length)return false;
     installCover(slides[0],data);
     installRasterSlides(slides,data);
-    installNarration(slides,data);
     return true;
   }
   function run(){
