@@ -1,36 +1,105 @@
 /**
- * Server-side policy/PDF/PPT -> visual learning analysis.
+ * Server-side policy/PDF/PPT -> professional visual learning analysis.
  * Gemini API key stays on the server (GEMINI_API_KEY).
  */
 const JSZip = require('jszip');
 const logger = require('../../utils/logger');
 
+/**
+ * Course depth is intentionally expressed as an instructional-design contract,
+ * not just a slide count. The author UI exposes concise/detailed/comprehensive;
+ * condensed/summary remain supported for older callers.
+ */
 const DETAIL_CONFIG = {
-    // Body copy targets are intentionally rich: learners need explanation,
-    // context, consequences and a concrete action — not summary stubs.
+    comprehensive: {
+        slides: '14-18',
+        minSlides: 12,
+        screenWords: '160-210',
+        minWords: 145,
+        maxWords: 230,
+        minPoints: 5,
+        summaryMinWords: 80,
+        summaryMaxWords: 120,
+        quizExplanationMinWords: 30,
+        minSentences: 7,
+        hardSentenceWords: 23,
+        maxAverageSentenceWords: 19,
+        quizMin: 7,
+        quizMax: 8,
+        minScenarioRatio: 0.75,
+        refinementPasses: 2
+    },
     detailed: {
-        slides: '9-12',
-        screenWords: '105-145',
-        minWords: 90,
+        slides: '10-14',
+        minSlides: 9,
+        screenWords: '135-175',
+        minWords: 120,
+        maxWords: 195,
         minPoints: 4,
+        summaryMinWords: 70,
+        summaryMaxWords: 110,
+        quizExplanationMinWords: 28,
+        minSentences: 6,
+        hardSentenceWords: 23,
+        maxAverageSentenceWords: 19,
+        quizMin: 6,
+        quizMax: 8,
+        minScenarioRatio: 0.65,
+        refinementPasses: 2
+    },
+    concise: {
+        slides: '6-8',
+        minSlides: 5,
+        screenWords: '85-115',
+        minWords: 75,
+        maxWords: 135,
+        minPoints: 3,
         summaryMinWords: 45,
-        quizExplanationMinWords: 18
+        summaryMaxWords: 80,
+        quizExplanationMinWords: 20,
+        minSentences: 5,
+        hardSentenceWords: 24,
+        maxAverageSentenceWords: 20,
+        quizMin: 5,
+        quizMax: 7,
+        minScenarioRatio: 0.5,
+        refinementPasses: 1
     },
     condensed: {
         slides: '6-8',
-        screenWords: '80-115',
-        minWords: 65,
+        minSlides: 5,
+        screenWords: '85-115',
+        minWords: 75,
+        maxWords: 135,
         minPoints: 3,
-        summaryMinWords: 35,
-        quizExplanationMinWords: 15
+        summaryMinWords: 45,
+        summaryMaxWords: 80,
+        quizExplanationMinWords: 20,
+        minSentences: 5,
+        hardSentenceWords: 24,
+        maxAverageSentenceWords: 20,
+        quizMin: 5,
+        quizMax: 7,
+        minScenarioRatio: 0.5,
+        refinementPasses: 1
     },
     summary: {
         slides: '4-5',
-        screenWords: '60-85',
-        minWords: 48,
+        minSlides: 4,
+        screenWords: '65-90',
+        minWords: 55,
+        maxWords: 105,
         minPoints: 3,
-        summaryMinWords: 28,
-        quizExplanationMinWords: 12
+        summaryMinWords: 35,
+        summaryMaxWords: 65,
+        quizExplanationMinWords: 16,
+        minSentences: 4,
+        hardSentenceWords: 24,
+        maxAverageSentenceWords: 20,
+        quizMin: 4,
+        quizMax: 6,
+        minScenarioRatio: 0.4,
+        refinementPasses: 1
     }
 };
 
@@ -53,8 +122,26 @@ const GENERIC_TITLES = new Set([
     'summary',
     'conclusion',
     'important information',
-    'things to remember'
+    'things to remember',
+    'what you need to know',
+    'best practices'
 ]);
+
+const GENERIC_FILLER_PATTERNS = [
+    /in today'?s (?:digital|modern|fast[- ]paced) (?:world|landscape|environment)/i,
+    /it is important to (?:note|remember|understand)/i,
+    /it is crucial to/i,
+    /stay vigilant/i,
+    /remain vigilant/i,
+    /plays? a (?:vital|crucial|key) role/i,
+    /cannot be overstated/i,
+    /this slide (?:explains|covers|shows)/i
+];
+
+const APPLICATION_PATTERN = /\b(for example|for instance|imagine|consider|such as|scenario|if you|if a|when you|when a|you receive|you notice|you are asked|a colleague|a customer|a vendor|a manager)\b/i;
+const ACTION_PATTERN = /\b(verify|check|confirm|report|contact|stop|pause|do not|don['’]t|never|avoid|use|follow|escalate|review|validate|inspect|refuse|ask|notify|lock|protect|compare|open the official|navigate directly)\b/i;
+const RATIONALE_PATTERN = /\b(because|which means|so that|works by|happens when|can lead to|may lead to|results? in|allows? an attacker|creates? a risk|reduces? the risk|prevents?|protects?|impact|consequence|exposure)\b/i;
+const SCENARIO_QUESTION_PATTERN = /\b(you|your|colleague|employee|manager|customer|vendor|receive|notice|message|email|call|request|asked|prompt|link|attachment|what should|best action|first action|next step)\b/i;
 
 const DEFAULT_MODEL_CANDIDATES = [
     'gemini-3.6-flash',
@@ -147,6 +234,14 @@ function getApiKey() {
     return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
 }
 
+function normalizeDetailLevel(value) {
+    const requested = String(value || 'detailed').trim().toLowerCase();
+    if (DETAIL_CONFIG[requested]) return requested;
+    if (requested === 'short') return 'concise';
+    if (requested === 'full' || requested === 'deep') return 'comprehensive';
+    return 'detailed';
+}
+
 function modelCandidates() {
     const preferred = (process.env.GEMINI_MODEL || '').trim();
     return preferred
@@ -155,8 +250,8 @@ function modelCandidates() {
 }
 
 function thinkingLevel() {
-    const configured = String(process.env.GEMINI_SCORM_THINKING_LEVEL || 'low').trim().toLowerCase();
-    return GEMINI_3_THINKING_LEVELS.has(configured) ? configured : 'low';
+    const configured = String(process.env.GEMINI_SCORM_THINKING_LEVEL || 'medium').trim().toLowerCase();
+    return GEMINI_3_THINKING_LEVELS.has(configured) ? configured : 'medium';
 }
 
 function generationConfigForModel(model) {
@@ -164,7 +259,7 @@ function generationConfigForModel(model) {
         responseMimeType: 'application/json',
         responseJsonSchema: SCORM_ANALYSIS_SCHEMA,
         maxOutputTokens: 32768,
-        temperature: 0.35
+        temperature: 0.28
     };
     if (/^gemini-3(?:\.|-|$)/i.test(String(model || ''))) {
         config.thinkingConfig = { thinkingLevel: thinkingLevel() };
@@ -195,30 +290,98 @@ function normalizedText(value) {
         .trim();
 }
 
+function sentenceList(value) {
+    return String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .split(/(?<=[.!?])\s+/)
+        .map((x) => x.trim())
+        .filter(Boolean);
+}
+
+function averageSentenceWords(value) {
+    const sentences = sentenceList(value);
+    if (!sentences.length) return 0;
+    return sentences.reduce((sum, sentence) => sum + wordCount(sentence), 0) / sentences.length;
+}
+
+function hasGenericFiller(value) {
+    const text = String(value || '');
+    return GENERIC_FILLER_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function instructionalSignals(value) {
+    const text = String(value || '');
+    return {
+        application: APPLICATION_PATTERN.test(text),
+        action: ACTION_PATTERN.test(text),
+        rationale: RATIONALE_PATTERN.test(text)
+    };
+}
+
+function courseWordCount(analysis) {
+    return (Array.isArray(analysis?.slides) ? analysis.slides : [])
+        .reduce((sum, slide) => sum + wordCount(slide?.content), 0);
+}
+
+/**
+ * Mechanical checks are combined with instructional checks. A screen can no
+ * longer pass just because it has enough words: it needs readable teaching,
+ * application and a concrete learner behaviour.
+ */
 function qualityIssues(analysis, detailLevel) {
     const slides = Array.isArray(analysis?.slides) ? analysis.slides : [];
     if (!slides.length) return ['No learning screens were generated.'];
 
-    const level = DETAIL_CONFIG[detailLevel] || DETAIL_CONFIG.detailed;
-    const minWords = level.minWords;
-    // Detailed mode is the premium authoring path: every screen must meet the
-    // depth floor. Condensed/summary keep a small allowance for short closers.
-    const allowance = detailLevel === 'detailed' ? 0 : Math.max(1, Math.floor(slides.length * 0.15));
+    const normalizedLevel = normalizeDetailLevel(detailLevel);
+    const level = DETAIL_CONFIG[normalizedLevel];
+    const premium = normalizedLevel === 'detailed' || normalizedLevel === 'comprehensive';
+    const allowance = premium ? 0 : Math.max(1, Math.floor(slides.length * 0.15));
+
     let thin = 0;
+    let overfilled = 0;
+    let weakStructure = 0;
     let weakPoints = 0;
     let overlongPoints = 0;
     let genericTitles = 0;
     let duplicatePoints = 0;
     let hardSentences = 0;
-    const seenTitles = new Set();
+    let denseAverage = 0;
+    let fillerSlides = 0;
+    let missingApplication = 0;
+    let missingAction = 0;
+    let missingRationale = 0;
+    let complexPunctuation = 0;
     let duplicateTitles = 0;
+    let repeatedOpeners = 0;
+    const seenTitles = new Set();
     const seenPointsAcrossCourse = new Set();
+    const seenOpeners = new Set();
 
     for (const slide of slides) {
-        if (wordCount(slide?.content) < minWords) thin += 1;
+        const content = String(slide?.content || '').trim();
+        const wc = wordCount(content);
+        if (wc < level.minWords) thin += 1;
+        if (wc > level.maxWords) overfilled += 1;
 
-        const sentences = String(slide?.content || '').split(/(?<=[.!?])\s+/).filter(Boolean);
-        if (sentences.some((sentence) => wordCount(sentence) > 28)) hardSentences += 1;
+        const sentences = sentenceList(content);
+        if (sentences.length < level.minSentences) weakStructure += 1;
+        if (sentences.some((sentence) => wordCount(sentence) > level.hardSentenceWords)) hardSentences += 1;
+        if (averageSentenceWords(content) > level.maxAverageSentenceWords) denseAverage += 1;
+        if (/[;]{1,}|\([^)]{45,}\)/.test(content)) complexPunctuation += 1;
+        if (hasGenericFiller(content)) fillerSlides += 1;
+
+        const signals = instructionalSignals(content);
+        if (!signals.application) missingApplication += 1;
+        if (!signals.action) missingAction += 1;
+        if (!signals.rationale) missingRationale += 1;
+
+        const firstSentence = sentences[0] || '';
+        const opener = normalizedText(firstSentence).split(' ').slice(0, 6).join(' ');
+        if (opener && opener.split(' ').length >= 5) {
+            if (seenOpeners.has(opener)) repeatedOpeners += 1;
+            seenOpeners.add(opener);
+        }
 
         const title = normalizedText(slide?.title);
         if (GENERIC_TITLES.has(title)) genericTitles += 1;
@@ -235,36 +398,47 @@ function qualityIssues(analysis, detailLevel) {
         const layout = String(slide?.layout || '').toLowerCase();
         const pointLimit = VISUAL_POINT_WORD_LIMITS[layout] || 11;
         for (const point of points) {
-            const wc = wordCount(point);
-            if (wc > pointLimit) overlongPoints += 1;
-            if (wc > 0 && wc < 3) weakPoints += 1;
+            const pointWords = wordCount(point);
+            if (pointWords > pointLimit) overlongPoints += 1;
+            if (pointWords > 0 && pointWords < 3) weakPoints += 1;
             const key = normalizedText(point);
             if (key && seenPointsAcrossCourse.has(key)) duplicatePoints += 1;
             if (key) seenPointsAcrossCourse.add(key);
         }
-
-        const bodyKey = normalizedText(String(slide?.content || '').slice(0, 120));
-        if (bodyKey && bodyKey.length > 20) {
-            if (seenPointsAcrossCourse.has(`body:${bodyKey}`)) duplicatePoints += 1;
-            seenPointsAcrossCourse.add(`body:${bodyKey}`);
-        }
     }
 
     const issues = [];
-    if (wordCount(analysis?.summary) < level.summaryMinWords) {
-        issues.push(`The course summary is too short — explain what the learner will understand, why it matters and what they should be able to do.`);
+    const summaryWords = wordCount(analysis?.summary);
+    if (summaryWords < level.summaryMinWords) {
+        issues.push(`The course summary is too short. It must explain the purpose, learner outcomes and practical value in at least ${level.summaryMinWords} words.`);
     }
-    if (thin > allowance) issues.push(`${thin} screens have body copy that is too short — expand every thin screen with source-grounded explanation, mechanism or rationale, a concrete example or consequence, and the learner action.`);
-    if (weakPoints > allowance) issues.push(`${weakPoints} screens have weak visual points (need ${level.minPoints}–5 information-rich points of 3–12 words each; never single-word stubs).`);
-    if (overlongPoints > allowance) issues.push(`${overlongPoints} visual points are too long to display cleanly in diagrams.`);
+    if (summaryWords > level.summaryMaxWords) {
+        issues.push(`The course summary is too long. Keep it focused and learner-facing at about ${level.summaryMinWords}-${level.summaryMaxWords} words.`);
+    }
+    if (slides.length < level.minSlides && premium) {
+        issues.push(`The ${normalizedLevel} course has only ${slides.length} learning screens. Where the source supports it, separate distinct concepts and decisions to create at least ${level.minSlides} substantial screens without padding.`);
+    }
+    if (thin > allowance) issues.push(`${thin} screens are under-developed. Expand them with source-grounded explanation, application, consequence and learner action.`);
+    if (overfilled > allowance) issues.push(`${overfilled} screens are overloaded. Split ideas into shorter teaching sentences or separate distinct concepts into another screen.`);
+    if (weakStructure > allowance) issues.push(`${weakStructure} screens do not contain enough complete teaching sentences. Use at least ${level.minSentences} short sentences rather than one dense paragraph.`);
+    if (hardSentences > allowance) issues.push(`${hardSentences} screens contain sentences over ${level.hardSentenceWords} words. Rewrite them as shorter, clearer sentences.`);
+    if (denseAverage > allowance) issues.push(`${denseAverage} screens have an average sentence length that is too high. Aim for 12-18 words per sentence.`);
+    if (complexPunctuation > allowance) issues.push(`${complexPunctuation} screens use semicolon chains or long parenthetical clauses. Rewrite them as direct sentences.`);
+    if (fillerSlides > 0) issues.push(`${fillerSlides} screens contain generic AI-style filler. Replace it with topic-specific teaching.`);
+    if (premium && missingApplication > allowance) issues.push(`${missingApplication} screens lack a concrete workplace example, situation or application.`);
+    if (premium && missingAction > allowance) issues.push(`${missingAction} screens do not clearly tell the learner what to notice, verify, decide, report or do.`);
+    if (premium && missingRationale > allowance) issues.push(`${missingRationale} screens do not adequately explain why the lesson matters or how the risk/mechanism works.`);
+    if (weakPoints > allowance) issues.push(`${weakPoints} screens have weak visual points. Use ${level.minPoints}-5 concise, information-rich labels rather than stubs.`);
+    if (overlongPoints > allowance) issues.push(`${overlongPoints} visual points are too long for clean diagrams.`);
     if (genericTitles > allowance) issues.push(`${genericTitles} screen titles are generic rather than message-led.`);
-    if (duplicatePoints > 0) issues.push(`${duplicatePoints} supporting points repeat wording already used on another screen.`);
+    if (duplicatePoints > 0) issues.push(`${duplicatePoints} supporting points repeat wording already used elsewhere.`);
     if (duplicateTitles > 0) issues.push('At least one screen title is duplicated.');
-    if (hardSentences > allowance) issues.push(`${hardSentences} screens contain sentences that are too long and dense for an easy reading level.`);
+    if (repeatedOpeners > 0) issues.push(`${repeatedOpeners} screens begin with nearly identical sentence openings, which makes the course feel machine-written.`);
 
     const quiz = Array.isArray(analysis?.quiz) ? analysis.quiz : [];
     if (quiz.length) {
         let malformedQuiz = 0;
+        let scenarioQuestions = 0;
         const seenQuestions = new Set();
         for (const item of quiz) {
             const options = Array.isArray(item?.options) ? item.options : [];
@@ -273,9 +447,10 @@ function qualityIssues(analysis, detailLevel) {
             const questionKey = normalizedText(item?.question);
             const hasDuplicateQuestion = questionKey && seenQuestions.has(questionKey);
             if (questionKey) seenQuestions.add(questionKey);
+            if (SCENARIO_QUESTION_PATTERN.test(String(item?.question || ''))) scenarioQuestions += 1;
             if (
                 !questionKey ||
-                wordCount(item?.question) < 6 ||
+                wordCount(item?.question) < 8 ||
                 options.length !== 4 ||
                 new Set(optionKeys).size !== 4 ||
                 !Number.isInteger(correct) ||
@@ -287,7 +462,13 @@ function qualityIssues(analysis, detailLevel) {
                 malformedQuiz += 1;
             }
         }
-        if (quiz.length < 5 || quiz.length > 8) issues.push('The knowledge check should contain 5–8 questions.');
+        if (quiz.length < level.quizMin || quiz.length > level.quizMax) {
+            issues.push(`The ${normalizedLevel} knowledge check should contain ${level.quizMin}-${level.quizMax} questions.`);
+        }
+        const scenarioRatio = quiz.length ? scenarioQuestions / quiz.length : 0;
+        if (scenarioRatio < level.minScenarioRatio) {
+            issues.push('Too many knowledge-check questions are recall-only. Convert more of them into realistic workplace decisions or scenarios.');
+        }
         if (malformedQuiz) issues.push(`${malformedQuiz} quiz questions need stronger scenario wording, distinct options or fuller explanations.`);
     }
 
@@ -374,6 +555,94 @@ async function callGemini({ apiKey, model, parts }) {
     return { res, raw };
 }
 
+function professionalInstruction(detailLevel, level) {
+    return `You are a senior instructional designer, curriculum writer and adult-learning specialist. Create a polished ${detailLevel} digital course from the supplied source. The finished JSON must read like a course written by an experienced human learning designer, not an AI summary.
+
+BEFORE WRITING:
+- Silently build a coverage map of the source: core concepts, risks, mechanisms, warning signs, roles, required actions, decisions, procedures, exceptions and escalation/reporting routes.
+- Silently decide the best teaching sequence. Do not output the coverage map or planning notes.
+- Give each learning screen one primary teaching purpose. Never create several screens that merely restate the same definition.
+
+SOURCE GROUNDING — NON-NEGOTIABLE:
+- Treat the source as authoritative. Preserve names, responsibilities, required actions, ordered steps, thresholds, timeframes, exceptions and escalation routes when provided.
+- Do not invent organisational policy facts, statistics, contacts, deadlines, legal requirements or technical claims.
+- Generic workplace examples are allowed only to demonstrate an already-supported lesson. Clearly keep them generic and do not add policy facts.
+- Prioritise source-specific information over generic security advice.
+
+PROFESSIONAL COURSE FLOW:
+Build a coherent journey rather than a collection of unrelated slides. Adapt the sequence to the subject, but normally progress through:
+1) context and learner relevance;
+2) essential concepts and language;
+3) how the issue, process or threat actually works;
+4) important variants, warning signs or decision factors;
+5) realistic workplace application;
+6) the correct response, verification or prevention behaviour;
+7) reporting, escalation or follow-up where relevant;
+8) reinforcement of the most important behaviour.
+Do not create a weak recap-only slide just to increase the count.
+
+COURSE SUMMARY:
+- Write ${level.summaryMinWords}-${level.summaryMaxWords} words.
+- In one focused learner-facing paragraph, explain what the course covers, why it matters, and what the learner will be able to recognise, decide or do.
+- Do not repeat the full course title and do not use marketing language.
+
+LEARNING SCREENS — target ${level.slides} screens when the source supports them:
+- title: 4-10 words, specific and message-led. The title should communicate the lesson or decision, not a category label. Never use Introduction, Overview, Key Points, Summary, Conclusion or Best Practices.
+- content: approximately ${level.screenWords} words. Each screen should normally contain ${level.minSentences}-9 complete teaching sentences.
+- Use this instructional micro-structure naturally, not as labelled headings:
+  • establish the concept, rule or situation in context;
+  • explain how it works or why it creates value/risk;
+  • include source-specific details, conditions, roles or steps;
+  • apply the lesson to a realistic workplace situation or concrete example;
+  • explain the consequence of a poor decision when relevant;
+  • state exactly what the learner should notice, verify, decide, avoid, report or do.
+- Do not write a dictionary definition followed by generic advice. Teach the reasoning that helps the learner make a decision.
+- Do not use bullet lists inside content. The body must read as polished course prose.
+
+READABILITY — VERY IMPORTANT:
+- Write for a non-technical adult at about an 8th-grade reading level without sounding childish.
+- Prefer 12-18 words per sentence. Keep every sentence under ${level.hardSentenceWords} words whenever possible.
+- One main idea per sentence. If a sentence needs several commas, split it.
+- Avoid semicolons, long parenthetical clauses, stacked jargon and noun-heavy phrases.
+- Define an acronym the first time it appears unless the source clearly assumes it is already known.
+- Use active voice and concrete verbs.
+- Use "you" naturally for learner actions, but do not begin every sentence or slide the same way.
+- Avoid AI filler such as "In today's digital landscape", "It is important to note", "plays a crucial role", "cannot be overstated" and vague instructions to "stay vigilant".
+- Never say "this slide" or describe the course-writing process.
+
+VISUAL KEY POINTS:
+- Provide ${level.minPoints}-5 keyPoints per screen.
+- Each point should usually be 3-10 words and contain useful meaning on its own.
+- Key points should support the visual and add recall value. Do not simply copy a sentence from content.
+- Do not reuse the same key-point phrase on another screen.
+- Choose layout semantically: process=ordered steps; timeline=time/sequence; comparison=meaningful contrast; matrix=two-factor decisions; hub/cards=distinct categories; spotlight=one scenario or decisive lesson; cycle=recurring activity.
+- visualTitle: 2-5 words that communicate the centre of the visual.
+- interaction: choose one of step_explore|hotspot_explore|compare_reveal|focus_reveal and write a short purposeful prompt.
+- imageQuery: 2-3 specific keywords based on the actual screen meaning.
+
+KNOWLEDGE CHECK:
+- Generate ${level.quizMin}-${level.quizMax} questions with exactly four distinct options and a valid 0-based correctAnswer.
+- At least ${Math.round(level.minScenarioRatio * 100)}% should be realistic workplace decision/scenario questions, not definition recall.
+- The learner should need to apply the course lesson to choose the best action.
+- Wrong options should be believable mistakes, not obviously silly answers.
+- Explanations must be at least ${level.quizExplanationMinWords} words and normally 30-55 words. Explain why the correct choice is best, why the tempting alternative is risky where useful, and reinforce the behaviour.
+
+FINAL SELF-REVIEW BEFORE OUTPUT:
+- Check that every screen teaches something distinct and useful.
+- Check that every screen has enough substance, but no wall-of-text sentence chains.
+- Check that the course moves from understanding to recognition to application and action.
+- Check that source-specific details have not been lost.
+- Check that examples do not introduce unsupported policy facts.
+- Check that a learner could act differently after taking the course.
+
+OUTPUT:
+Return only valid JSON with keys title, summary, slides and quiz. Do not output planning notes, markdown or commentary.`;
+}
+
+function refinementInstruction(analysis, issues, detailLevel, level) {
+    return `SENIOR INSTRUCTIONAL EDITOR PASS:\nThe draft below is not yet publication quality. Fix the entire JSON as a professional course editor.\n\nQUALITY FINDINGS:\n- ${issues.join('\n- ')}\n\nEDITORIAL REQUIREMENTS:\n- Keep all source-grounded facts that are already correct. Do not invent facts.\n- Strengthen weak screens using additional explanation, reasoning, source details, application and learner action — never padding.\n- Aim for ${level.screenWords} words per screen, written as ${level.minSentences}-9 short sentences.\n- Keep sentences normally 12-18 words and below ${level.hardSentenceWords} words. Split dense clauses. Avoid semicolons.\n- Make the sequence feel like one coherent ${detailLevel} course, not independent AI summaries.\n- Each screen must teach one distinct lesson and include an application/example plus a clear behaviour when appropriate.\n- Use ${level.minPoints}-5 concise visual key points. Remove repeated wording.\n- Keep the summary within ${level.summaryMinWords}-${level.summaryMaxWords} words.\n- Use ${level.quizMin}-${level.quizMax} strong knowledge checks with mostly workplace scenarios and explanations of at least ${level.quizExplanationMinWords} words.\n- Return only the improved JSON.\n\nDRAFT:\n${JSON.stringify(analysis)}`;
+}
+
 async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' }) {
     const apiKey = getApiKey();
     if (!apiKey) {
@@ -382,7 +651,8 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
         throw e;
     }
 
-    const level = DETAIL_CONFIG[detailLevel] || DETAIL_CONFIG.detailed;
+    const normalizedLevel = normalizeDetailLevel(detailLevel);
+    const level = DETAIL_CONFIG[normalizedLevel];
     const sourceParts = [];
     const isPptx =
         (mimeType || '').includes('presentationml.presentation') ||
@@ -396,53 +666,10 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
         sourceParts.push({ inlineData: { data: fileBase64, mimeType: mimeType || 'application/pdf' } });
     }
 
-    const instruction = `You are a world-class instructional designer creating a premium ${detailLevel} digital learning experience from the supplied source.
-
-NON-NEGOTIABLE GROUNDING:
-- Treat the source as authoritative. Preserve important names, roles, responsibilities, required actions, thresholds, timeframes, exceptions, escalation routes and ordered procedures whenever the source provides them.
-- Do not invent policy facts, statistics, contacts, deadlines or organisational rules.
-- Every screen must teach a distinct idea from the source. Do not paraphrase an earlier screen just to reach the requested screen count.
-- If the source is short, prefer fewer substantial screens over duplicated filler.
-
-QUALITY BAR: Every screen must answer four things: What is this? Why or how does it matter? What could happen in a realistic situation? What should the learner notice, decide or do?
-
-1. COURSE SUMMARY:
-   - Write a substantial learner-facing summary of at least ${level.summaryMinWords} words.
-   - Explain what the course covers, why the topic matters and what the learner should be able to recognise or do by the end.
-
-2. LEARNING SCREENS (aim for ${level.slides} screens when the source supports them):
-   - "title": concise, specific and message-led. State the lesson, decision or risk. Never use "Introduction", "Overview", "Key Points" or "Summary".
-   - "content": approximately ${level.screenWords} words of clear adult prose, normally 5–7 complete sentences. Build real instructional depth without padding:
-       (1) define the idea, rule or situation in context;
-       (2) explain the mechanism, rationale, trigger-to-impact chain or practical significance;
-       (3) preserve source-specific details such as roles, steps, conditions, thresholds or exceptions;
-       (4) include a concrete source-grounded example or consequence. If the source has no example, a clearly generic workplace scenario is allowed, but it must not invent policy facts;
-       (5) end with a specific learner action, decision, verification step or escalation behaviour.
-     No bullet lists in the body. Do not repeat the title or keyPoints as filler.
-   - "keyPoints": ${level.minPoints}–5 concise, information-rich visual labels, usually 3–12 words each. They must add useful detail, not merely repeat the paragraph. Never reuse the same phrase on another screen.
-   - Choose "layout" semantically: process for ordered steps; timeline for time/sequence; comparison for meaningful contrasts; matrix for two-factor decisions; hub/cards for distinct categories; spotlight for a scenario or decisive takeaway; cycle for recurring activity.
-   - "visualTitle": 2–5 words that communicate the centre of the diagram.
-   - "interaction": { "type": one of step_explore|hotspot_explore|compare_reveal|focus_reveal, "prompt": short purposeful action text }.
-   - "imageQuery": 2–3 specific keywords reflecting the screen meaning.
-
-3. WRITING QUALITY:
-   - Plain language at approximately an 8th-grade reading level, but never simplistic.
-   - Prefer concrete verbs and specific nouns. Keep most sentences under 20 words and none needlessly above 28 words.
-   - Avoid generic filler such as "In today's digital landscape", "It is important to note" or repeated reminders to "stay vigilant" without saying how.
-   - Build a narrative progression: recognise the issue -> understand how it works -> evaluate a situation -> take the correct action -> reinforce the behaviour.
-
-4. KNOWLEDGE CHECK:
-   - Generate 5–8 questions with exactly four distinct options each and a valid 0-based correctAnswer.
-   - Prefer realistic decision/scenario questions over recall-only questions.
-   - Distractors should be plausible but clearly distinguishable from the best action using the source.
-   - Each explanation should be about 20–50 words: explain why the correct answer is right and reinforce the practical rule. Stay grounded in the source.
-
-5. OUTPUT: Return only valid JSON with keys title, summary, slides, quiz. Do not invent facts not supported by the source.`;
-
+    const instruction = professionalInstruction(normalizedLevel, level);
     const baseParts = [...sourceParts, { text: instruction }];
     if (!fileBase64 && !sourceParts.length) {
-        // Allow topic-only generation when no file is provided (brief mode)
-        baseParts.unshift({ text: 'SOURCE: Course brief will be provided by the caller context or prior messages. Generate from the instructional goals above.' });
+        baseParts.unshift({ text: 'SOURCE: Course brief will be provided by the caller context or prior messages.' });
     }
 
     const candidates = modelCandidates();
@@ -485,34 +712,46 @@ QUALITY BAR: Every screen must answer four things: What is this? Why or how does
                 throw parseErr;
             }
 
-            const initialIssues = qualityIssues(analysis, detailLevel);
-            if (initialIssues.length) {
-                const refinementPrompt = `PREMIUM QUALITY REFINEMENT PASS:\nIssues: ${initialIssues.join(' ')}\n\nRevise the ENTIRE JSON, not just the failing field. Every thin learning screen must reach roughly ${level.screenWords} words through additional SOURCE-GROUNDED substance, never padding. Restore any omitted names, roles, required steps, conditions, thresholds, timeframes, exceptions and consequences that are present in the source. Each screen must contain a distinct explanation, mechanism/rationale, realistic consequence or example, and a clear learner action. Use ${level.minPoints}–5 concise visual points. Remove repeated wording across screens. Strengthen the course summary. Knowledge checks must use 5–8 realistic questions, four distinct options and explanations of at least ${level.quizExplanationMinWords} words. Do not invent facts. Return only improved JSON.\n\nDRAFT:\n${JSON.stringify(analysis)}`;
+            let issues = qualityIssues(analysis, normalizedLevel);
+            for (let pass = 0; pass < level.refinementPasses && issues.length; pass += 1) {
+                const beforeIssueCount = issues.length;
+                const beforeWords = courseWordCount(analysis);
+                const refinementPrompt = refinementInstruction(analysis, issues, normalizedLevel, level);
                 try {
                     const refined = await callGemini({ apiKey, model, parts: [...baseParts, { text: refinementPrompt }] });
-                    if (refined.res.ok) {
-                        const refinedCandidate = geminiCandidate(refined.raw);
-                        const candidateAnalysis = parseAnalysis(refinedCandidate.text);
-                        if (qualityIssues(candidateAnalysis, detailLevel).length < initialIssues.length) {
-                            analysis = candidateAnalysis;
-                            logger.info('scorm_gemini_refined', {
-                                module: 'scorm',
-                                model,
-                                issuesBefore: initialIssues.length,
-                                issuesAfter: qualityIssues(analysis, detailLevel).length
-                            });
-                        }
-                    }
+                    if (!refined.res.ok) break;
+                    const refinedCandidate = geminiCandidate(refined.raw);
+                    const candidateAnalysis = parseAnalysis(refinedCandidate.text);
+                    const candidateIssues = qualityIssues(candidateAnalysis, normalizedLevel);
+                    const candidateWords = courseWordCount(candidateAnalysis);
+                    const improved =
+                        candidateIssues.length < beforeIssueCount ||
+                        (candidateIssues.length === beforeIssueCount && candidateWords > beforeWords);
+                    if (!improved) break;
+                    analysis = candidateAnalysis;
+                    issues = candidateIssues;
+                    logger.info('scorm_gemini_refined', {
+                        module: 'scorm',
+                        model,
+                        pass: pass + 1,
+                        issuesBefore: beforeIssueCount,
+                        issuesAfter: issues.length,
+                        wordsBefore: beforeWords,
+                        wordsAfter: candidateWords
+                    });
                 } catch (refineErr) {
-                    logger.warn('scorm_gemini_refinement_failed', { module: 'scorm', model, error: refineErr.message });
+                    logger.warn('scorm_gemini_refinement_failed', { module: 'scorm', model, pass: pass + 1, error: refineErr.message });
+                    break;
                 }
             }
 
             logger.info('scorm_gemini_ok', {
                 module: 'scorm',
                 model,
+                detailLevel: normalizedLevel,
                 slides: analysis.slides.length,
-                remainingQualityIssues: qualityIssues(analysis, detailLevel).length
+                courseWords: courseWordCount(analysis),
+                remainingQualityIssues: qualityIssues(analysis, normalizedLevel).length
             });
             return analysis;
         }
@@ -541,6 +780,7 @@ module.exports = {
     analyzePolicy,
     getApiKey,
     extractTextFromPptx,
+    normalizeDetailLevel,
     modelCandidates,
     thinkingLevel,
     generationConfigForModel,
@@ -551,6 +791,12 @@ module.exports = {
     analysisNeedsRefinement,
     qualityIssues,
     wordCount,
+    sentenceList,
+    averageSentenceWords,
+    instructionalSignals,
+    courseWordCount,
+    professionalInstruction,
+    refinementInstruction,
     jsonParseCandidates,
     parseAnalysis,
     geminiCandidate
