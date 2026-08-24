@@ -2,6 +2,7 @@ const { expect } = require('chai');
 const { guessContentType } = require('../services/scorm/ScormUnpackService');
 const {
     buildEmbeddedMediaMap,
+    injectReplicateMediaUi,
     replicateMediaScript,
     REPLICATE_MEDIA_CSS
 } = require('../services/scorm/ScormReplicateMediaFinalizer');
@@ -31,5 +32,27 @@ describe('Generated SCORM WebP rendering', () => {
         expect(script).to.include("target.classList.add('qmx-raster-frame')");
         expect(script).to.include("node.querySelector('.qmx-hub-art')||node.querySelector('.spot-visual')||node.querySelector('.hero-art')");
         expect(script).to.not.include("node.querySelector('.hero-core')");
+    });
+
+    it('injects the raster installer without String.replace corrupting its $& escape sequence', () => {
+        const html = injectReplicateMediaUi('<html><head></head><body></body></html>', {
+            'assets/media/slide-001.webp': 'data:image/webp;base64,AAAA'
+        });
+        expect(html).to.include("replace(/[\"\\\\]/g,'\\\\$&')");
+        expect(html).to.not.include('\\</body>');
+
+        const match = html.match(/<script id="quizmoto-replicate-media-script-v2">([\s\S]*?)<\/script>/);
+        expect(match).to.not.equal(null);
+        expect(() => new Function(match[1])).to.not.throw();
+    });
+
+    it('restores raster images if a legacy SVG finalizer replaces the image child later', () => {
+        const script = replicateMediaScript({});
+        expect(script).to.include("var targetRaster=target.querySelector('img.qmx-replicate-raster')");
+        expect(script).to.include('||!targetRaster');
+        expect(script).to.include("var panelRaster=panel.querySelector('img.qmx-replicate-raster')");
+        expect(script).to.include('||!panelRaster');
+        expect(script).to.include('new MutationObserver');
+        expect(script).to.include('watchForLegacyVisualOverrides');
     });
 });
