@@ -11,14 +11,20 @@ const REPLICATE_MEDIA_CSS = `
 .slide.qmx-cover-slide .title{font-size:50px!important;line-height:1.03!important;margin-bottom:18px!important}
 .slide.qmx-cover-slide .lead{max-width:820px!important;font-size:16.5px!important;line-height:1.55!important}
 .qmx-cover-raster{
-  position:relative!important;display:block!important;width:min(920px,100%)!important;height:250px!important;min-height:250px!important;
-  margin:24px auto 0!important;border-radius:22px!important;border:1px solid rgba(40,40,36,.16)!important;
-  background-position:center!important;background-repeat:no-repeat!important;background-size:cover!important;
-  box-shadow:0 18px 42px rgba(40,40,36,.13)!important;overflow:hidden!important
+  position:relative!important;display:block!important;width:min(760px,100%)!important;aspect-ratio:16/9!important;
+  height:auto!important;min-height:0!important;margin:24px auto 0!important;border-radius:22px!important;
+  border:1px solid rgba(40,40,36,.16)!important;background-position:center!important;background-repeat:no-repeat!important;
+  background-size:cover!important;box-shadow:0 18px 42px rgba(40,40,36,.13)!important;overflow:hidden!important
 }
 .qmx-cover-raster:after{content:""!important;position:absolute!important;inset:0!important;display:block!important;pointer-events:none!important;background:linear-gradient(180deg,rgba(8,18,17,.01),rgba(8,18,17,.13))!important}
 .slide.qmx-cover-slide .qmx-cover-meta{margin-top:16px!important}
 .qmx-replicate-raster{display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;border-radius:inherit!important}
+.qmx-raster-frame{
+  width:100%!important;aspect-ratio:16/9!important;height:auto!important;min-height:0!important;max-height:none!important;
+  overflow:hidden!important;border-radius:22px!important;position:relative!important
+}
+.qmx-raster-frame:before,.qmx-raster-frame:after{display:none!important}
+.qmx-raster-frame svg{display:none!important}
 .qmx-raster-stage{
   display:grid!important;grid-template-columns:minmax(0,1.12fr) minmax(300px,.88fr)!important;
   grid-template-areas:"head image" "body image"!important;column-gap:28px!important;row-gap:18px!important;align-items:start!important
@@ -26,8 +32,9 @@ const REPLICATE_MEDIA_CSS = `
 .qmx-raster-stage > .section-head{grid-area:head!important;margin-bottom:0!important}
 .qmx-raster-stage > .cards-grid,.qmx-raster-stage > .process,.qmx-raster-stage > .timeline,.qmx-raster-stage > .compare,.qmx-raster-stage > .hub-wrap{grid-area:body!important;min-width:0!important}
 .qmx-raster-panel{
-  grid-area:image!important;width:100%!important;height:420px!important;min-height:360px!important;border-radius:22px!important;overflow:hidden!important;
-  background:#D8D8D2!important;border:1px solid var(--gamma-paper-3,#CBC5B8)!important;box-shadow:0 16px 38px rgba(40,40,36,.10)!important;align-self:center!important
+  grid-area:image!important;width:100%!important;aspect-ratio:16/9!important;height:auto!important;min-height:0!important;max-height:none!important;
+  border-radius:22px!important;overflow:hidden!important;background:#D8D8D2!important;border:1px solid var(--gamma-paper-3,#CBC5B8)!important;
+  box-shadow:0 16px 38px rgba(40,40,36,.10)!important;align-self:center!important
 }
 .qmx-raster-stage > .process,.qmx-raster-stage > .timeline{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:11px!important;padding-top:0!important;align-items:stretch!important}
 .qmx-raster-stage > .timeline:before,.qmx-raster-stage > .process .step:after{display:none!important}
@@ -48,15 +55,14 @@ const REPLICATE_MEDIA_CSS = `
 @media(max-width:980px){
   .slide.qmx-cover-slide .hero{min-height:600px!important;padding:38px 34px 32px!important}
   .slide.qmx-cover-slide .title{font-size:40px!important}.slide.qmx-cover-slide .lead{font-size:15.5px!important}
-  .qmx-cover-raster{height:230px!important;min-height:230px!important;margin-top:20px!important}
+  .qmx-cover-raster{width:min(680px,100%)!important;margin-top:20px!important}
   .qmx-raster-stage{grid-template-columns:1fr!important;grid-template-areas:"head" "image" "body"!important;row-gap:18px!important}
-  .qmx-raster-panel{height:300px!important;min-height:260px!important}
 }
 @media(max-width:560px){
   .slide.qmx-cover-slide .hero{min-height:560px!important;padding:36px 18px 28px!important}
   .slide.qmx-cover-slide .title{font-size:31px!important;margin-bottom:14px!important}.slide.qmx-cover-slide .lead{font-size:14px!important;line-height:1.5!important}
-  .qmx-cover-raster{height:185px!important;min-height:185px!important;border-radius:16px!important;margin-top:18px!important}
-  .qmx-raster-panel{height:220px!important;min-height:200px!important;border-radius:16px!important}
+  .qmx-cover-raster,.qmx-raster-panel,.qmx-raster-frame{border-radius:16px!important}
+  .qmx-cover-raster{width:100%!important;margin-top:18px!important}
   .qmx-raster-stage > .process,.qmx-raster-stage > .timeline,.qmx-raster-stage > .cards-grid{grid-template-columns:1fr!important}
 }
 </style>`;
@@ -106,8 +112,9 @@ function replicateMediaScript(assetMap = {}) {
       if(!s||!s.rasterVisualAsset)return;
       var node=slides[i+1];if(!node)return;
       var path=String(s.rasterVisualAsset);
-      var target=node.querySelector('.qmx-hub-art')||node.querySelector('.spot-visual')||node.querySelector('.hero-art')||node.querySelector('.hero-core');
+      var target=node.querySelector('.qmx-hub-art')||node.querySelector('.spot-visual')||node.querySelector('.hero-art');
       if(target){
+        target.classList.add('qmx-raster-frame');
         if(target.getAttribute('data-qmx-replicate-raster')!==path){target.innerHTML=imageHtml(s);target.setAttribute('data-qmx-replicate-raster',path)}
         return;
       }
