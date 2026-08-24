@@ -12,6 +12,33 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+function configuredPreviewAncestors() {
+    const sources = new Set(["'self'"]);
+    String(process.env.CORS_ORIGIN || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .forEach((value) => {
+            if (value === '*') return;
+            try {
+                sources.add(new URL(value).origin);
+            } catch (_) {}
+        });
+    if (process.env.NODE_ENV !== 'production') {
+        sources.add('http://localhost:5173');
+        sources.add('http://localhost:3000');
+    }
+    return `frame-ancestors ${Array.from(sources).join(' ')}`;
+}
+
+function setPreviewFrameHeaders(res) {
+    // Admin preview is intentionally framed by the separately hosted frontend.
+    // X-Frame-Options cannot express this allowlist, so CSP frame-ancestors is
+    // the authoritative control for this preview-only response.
+    res.removeHeader('X-Frame-Options');
+    res.setHeader('Content-Security-Policy', configuredPreviewAncestors());
+}
+
 router.get('/:regId', async (req, res) => {
     try {
         const token = String(req.query.token || '');
@@ -189,7 +216,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070d}
 
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');
-        res.setHeader('Content-Security-Policy', "frame-ancestors 'self' https: http:");
+        setPreviewFrameHeaders(res);
         res.send(html);
     } catch (err) {
         console.error('[scorm-slide-preview] failed', err);
@@ -197,4 +224,6 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070d}
     }
 });
 
+router.configuredPreviewAncestors = configuredPreviewAncestors;
+router.setPreviewFrameHeaders = setPreviewFrameHeaders;
 module.exports = router;
