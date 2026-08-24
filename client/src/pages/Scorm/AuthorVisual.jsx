@@ -18,6 +18,7 @@ import { normalizeCourseSlide } from './courseExperienceV5';
 
 const DRAFT_KEY = 'quizmoto_scorm_author_content_draft_v3';
 const EDITORIAL_THEME_ID = 1;
+const ANALYSIS_ESTIMATES = { concise: 45, detailed: 65, comprehensive: 85 };
 
 function toBase64(file) {
   return new Promise((resolve, reject) => {
@@ -58,17 +59,30 @@ function normalizeAnalysis(value) {
 
 function visiblePointLimit(slide) {
   const layout = String(slide?.layout || '').trim().toLowerCase();
-  if (['process', 'timeline', 'cycle', 'spotlight'].includes(layout)) return 4;
+  if (['process', 'timeline', 'cycle', 'spotlight', 'cards', 'hub'].includes(layout)) return 4;
   return 6;
 }
 
 function cleanForGenerate(analysis) {
   if (!analysis) return null;
+  const {
+    coverImageAsset,
+    replicateMedia,
+    mediaProvider,
+    ...course
+  } = analysis;
   return {
-    ...analysis,
+    ...course,
     themeId: EDITORIAL_THEME_ID,
     themeName: 'Editorial',
-    slides: (analysis.slides || []).map(({ visualAsset, mobileVisualAsset, ...slide }) => ({
+    slides: (analysis.slides || []).map(({
+      visualAsset,
+      mobileVisualAsset,
+      rasterVisualAsset,
+      narrationAsset,
+      narrationText,
+      ...slide
+    }) => ({
       ...slide,
       keyPoints: (Array.isArray(slide.keyPoints) ? slide.keyPoints : []).slice(0, visiblePointLimit(slide))
     })),
@@ -98,6 +112,92 @@ function validateQuiz(quiz) {
     if (!String(item.explanation || '').trim()) return `Knowledge check ${index + 1} needs an explanation.`;
   }
   return '';
+}
+
+function formatDuration(seconds) {
+  const value = Math.max(0, Math.round(Number(seconds) || 0));
+  const minutes = Math.floor(value / 60);
+  const remainder = value % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
+}
+
+function generationEstimateSeconds(task, detailLevel, slideCount) {
+  if (task === 'analyze') return ANALYSIS_ESTIMATES[detailLevel] || ANALYSIS_ESTIMATES.detailed;
+  const slides = Math.max(1, Number(slideCount || 10));
+  return Math.min(150, 58 + (slides * 4));
+}
+
+function generationStage(task, fraction) {
+  if (task === 'analyze') {
+    if (fraction < 0.18) return 'Planning the learning journey';
+    if (fraction < 0.66) return 'Writing professional course content';
+    if (fraction < 0.84) return 'Creating knowledge checks';
+    return 'Quality-reviewing the course';
+  }
+  if (fraction < 0.16) return 'Preparing final course assets';
+  if (fraction < 0.43) return 'Generating the cover and course images';
+  if (fraction < 0.76) return 'Generating natural voice narration';
+  if (fraction < 0.92) return 'Building the SCORM package';
+  return 'Saving and finalising your course';
+}
+
+function GenerationProgressModal({ task, elapsed, detailLevel, slideCount }) {
+  if (!task || typeof document === 'undefined') return null;
+  const expected = generationEstimateSeconds(task, detailLevel, slideCount);
+  const rawFraction = expected > 0 ? elapsed / expected : 0;
+  const stageFraction = Math.min(1, rawFraction);
+  const percent = Math.min(95, Math.max(6, Math.round(6 + (rawFraction * 86))));
+  const remaining = Math.max(0, expected - elapsed);
+  const isAnalyze = task === 'analyze';
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9998] bg-[#050807]/80 backdrop-blur-md grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Course generation progress">
+      <div className="w-full max-w-xl rounded-[28px] border border-white/10 bg-[#0d1514] shadow-2xl overflow-hidden">
+        <div className="p-6 md:p-8">
+          <div className="flex items-start gap-4">
+            <div className="w-11 h-11 rounded-2xl grid place-items-center bg-[#4FC9BF]/10 border border-[#4FC9BF]/20 shrink-0">
+              <Loader2 size={20} className="animate-spin text-[#7BDCD3]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] uppercase tracking-[.14em] font-bold text-[#7BDCD3]">{isAnalyze ? 'Creating learning content' : 'Creating final SCORM course'}</div>
+              <h2 className="text-xl md:text-2xl font-semibold text-white mt-1">{generationStage(task, stageFraction)}</h2>
+              <p className="text-sm text-slate-400 mt-2">
+                {isAnalyze
+                  ? 'The AI is structuring the course, writing the lessons and checking instructional quality.'
+                  : 'The course generator is creating the front image, selected slide images, natural narration and the final learner package.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-7">
+            <div className="flex items-center justify-between text-xs mb-2">
+              <span className="font-semibold text-slate-300">{percent}%</span>
+              <span className="text-slate-500">Estimated progress</span>
+            </div>
+            <div className="h-2.5 rounded-full bg-white/[.07] overflow-hidden border border-white/[.05]">
+              <div className="h-full rounded-full bg-[#4FC9BF] transition-[width] duration-1000 ease-linear" style={{ width: `${percent}%` }} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mt-5">
+            <div className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4">
+              <div className="text-[9px] uppercase tracking-[.12em] text-slate-500 font-bold">Elapsed</div>
+              <div className="text-lg font-semibold text-white mt-1 tabular-nums">{formatDuration(elapsed)}</div>
+            </div>
+            <div className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4">
+              <div className="text-[9px] uppercase tracking-[.12em] text-slate-500 font-bold">Estimated remaining</div>
+              <div className="text-lg font-semibold text-white mt-1 tabular-nums">{remaining > 0 ? `~${formatDuration(remaining)}` : 'Finishing…'}</div>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl bg-[#4FC9BF]/[.06] border border-[#4FC9BF]/10 px-4 py-3 text-[11px] leading-relaxed text-slate-400">
+            Typical time is an estimate and can vary with Replicate model load. Please keep this page open while the course is being created.
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
 }
 
 function ExactSlidePreviewModal({ src, index, total, stale, onClose }) {
@@ -153,8 +253,33 @@ export default function AuthorVisual() {
   const [previewBusy, setPreviewBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [busyTask, setBusyTask] = useState('');
+  const [busyStartedAt, setBusyStartedAt] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+
+  const beginBusyTask = (task) => {
+    setBusy(true);
+    setBusyTask(task);
+    setBusyStartedAt(Date.now());
+    setElapsedSeconds(0);
+  };
+
+  const endBusyTask = () => {
+    setBusy(false);
+    setBusyTask('');
+    setBusyStartedAt(0);
+    setElapsedSeconds(0);
+  };
+
+  useEffect(() => {
+    if (!busyTask || !busyStartedAt) return undefined;
+    const tick = () => setElapsedSeconds(Math.max(0, Math.floor((Date.now() - busyStartedAt) / 1000)));
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [busyTask, busyStartedAt]);
 
   useEffect(() => {
     if (!token) { navigate('/'); return; }
@@ -197,7 +322,7 @@ export default function AuthorVisual() {
       setError('Add a topic and description or upload a source document.');
       return;
     }
-    setBusy(true);
+    beginBusyTask('analyze');
     setError('');
     setNotice('');
     try {
@@ -209,15 +334,16 @@ export default function AuthorVisual() {
         mimeType: file?.type || '',
         detailLevel,
         templateId: EDITORIAL_THEME_ID
-      }, { headers, timeout: 180000 });
+      }, { headers, timeout: 360000 });
       setAnalysis(normalizeAnalysis(res.data.analysis));
       setSelected(0);
       setDirty(true);
-      setNotice('Learning content is ready. Review and edit the learner-visible text, then generate the course. Exact visual preview becomes available after generation.');
+      const provider = res.data?.aiProvider === 'replicate' ? 'Replicate' : 'AI';
+      setNotice(`${provider} learning content is ready. Review and edit the learner-visible text, then generate the course. Images and natural voice are created during final generation.`);
     } catch (err) {
       setError(err.response?.data?.message || err.message);
     } finally {
-      setBusy(false);
+      endBusyTask();
     }
   };
 
@@ -281,7 +407,7 @@ export default function AuthorVisual() {
       setError(quizError);
       return;
     }
-    setBusy(true);
+    beginBusyTask(editId ? 'rebuild' : 'generate');
     setError('');
     setNotice('');
     try {
@@ -289,7 +415,7 @@ export default function AuthorVisual() {
         analysis: cleanForGenerate(analysis),
         templateId: EDITORIAL_THEME_ID,
         ...(editId ? { replacePackageId: editId } : {})
-      }, { headers, timeout: 180000 });
+      }, { headers, timeout: 360000 });
 
       if (res.data?.errorMessage || (res.data?.status && res.data.status !== 'ready')) {
         setError(res.data?.errorMessage || `Course rebuild finished with status: ${res.data.status}.`);
@@ -305,7 +431,7 @@ export default function AuthorVisual() {
     } catch (err) {
       setError(err.response?.data?.message || err.message);
     } finally {
-      setBusy(false);
+      endBusyTask();
     }
   };
 
@@ -315,7 +441,7 @@ export default function AuthorVisual() {
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">SCORM AI · Content Editor</div>
           <h1 className="text-2xl md:text-3xl font-semibold text-white mt-1">{editId ? 'Edit course content' : 'Create AI course'}</h1>
-          <p className="text-sm text-slate-400 mt-1 max-w-2xl">Only learner-visible text is editable here. Visual layout, artwork and course styling remain managed by the course generator.</p>
+          <p className="text-sm text-slate-400 mt-1 max-w-2xl">Only learner-visible text is editable here. Visual layout, raster artwork, natural narration and course styling are managed by the course generator.</p>
         </div>
         {analysis && (
           <div className="flex items-center gap-2 flex-wrap">
@@ -451,6 +577,13 @@ export default function AuthorVisual() {
           onClose={closePreview}
         />
       )}
+
+      <GenerationProgressModal
+        task={busyTask}
+        elapsed={elapsedSeconds}
+        detailLevel={detailLevel}
+        slideCount={analysis?.slides?.length || 0}
+      />
     </div>
   );
 }
