@@ -8,14 +8,6 @@ const DEFAULT_MODELS = [
     'gemini-flash-latest'
 ];
 
-const PROMPT_SCHEMA = {
-    type: 'object',
-    properties: {
-        prompt: { type: 'string' }
-    },
-    required: ['prompt']
-};
-
 function clean(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
 }
@@ -45,7 +37,8 @@ function sharedVisualRules() {
         'Do not introduce cybersecurity objects, locks, shields, warning signs, email envelopes, QR codes, malware symbols or devices unless the supplied lesson itself is genuinely about those concepts.',
         'Do not copy generic examples from unrelated domains. Choose objects, shapes, colours and relationships that directly express THIS lesson.',
         'Keep the composition uncluttered with one clear focal idea, 2 to 5 main visual elements, generous negative space, realistic or soft-3D styling and subtle premium corporate lighting.',
-        'The final prompt must explicitly say 16:9, non-human, no text, no logos and no watermark.'
+        'The final prompt must explicitly say 16:9, non-human, no text, no logos and no watermark.',
+        'Return only ONE concise image-generation prompt as plain text, approximately 80 to 180 words. Do not return JSON, Markdown, code fences, headings or commentary.'
     ].join(' ');
 }
 
@@ -77,6 +70,67 @@ function slideInstruction(slide, analysis, slideIndex) {
     ].filter(Boolean).join('\n\n');
 }
 
+function stripCodeFence(value) {
+    const text = String(value || '').trim();
+    if (!text.startsWith('```')) return text;
+    return text
+        .replace(/^```(?:json|text|plaintext)?\s*/i, '')
+        .replace(/\s*```\s*$/i, '')
+        .trim();
+}
+
+function recoverPromptFromBrokenJson(value) {
+    const text = String(value || '');
+    const match = text.match(/["']prompt["']\s*:\s*["']([\s\S]*)/i);
+    if (!match) return '';
+
+    let prompt = match[1]
+        .replace(/["']\s*}\s*$/s, '')
+        .replace(/\\n/g, ' ')
+        .replace(/\\r/g, ' ')
+        .replace(/\\t/g, ' ')
+        .replace(/\\"/g, '"')
+        .replace(/\\'/g, "'")
+        .replace(/\\\\/g, '\\');
+    return clean(prompt);
+}
+
+function normalizeVisualPrompt(value) {
+    let text = stripCodeFence(value);
+    if (!text) return '';
+
+    // Backward compatibility: older Gemini calls requested JSON. Accept a valid
+    // JSON wrapper, but never require JSON for the production path.
+    if (/^\s*\{/.test(text)) {
+        try {
+            const parsed = JSON.parse(text);
+            const prompt = clean(parsed?.prompt);
+            if (prompt) return prompt;
+        } catch (_) {
+            // A response cut off inside {"prompt":"... can still contain a
+            // perfectly usable image prompt. Recover the string rather than
+            // failing the entire course generation.
+            const recovered = recoverPromptFromBrokenJson(text);
+            if (recovered) return recovered;
+        }
+    }
+
+    text = text
+        .replace(/^\s*(?:prompt|image prompt)\s*:\s*/i, '')
+        .replace(/^['"]|['"]$/g, '');
+    return clean(text);
+}
+
+function visualPromptError(message, code = 'GEMINI_VISUAL_PROMPT_INVALID') {
+    const err = new Error(message);
+    err.code = code;
+    return err;
+}
+
+function isRetryableVisualOutputError(err) {
+    return ['GEMINI_VISUAL_PROMPT_EMPTY', 'GEMINI_VISUAL_PROMPT_INVALID', 'GEMINI_RESPONSE_INVALID'].includes(err?.code);
+}
+
 async function callGeminiForPrompt(instruction) {
     const key = apiKey();
     if (!key) {
@@ -87,56 +141,72 @@ async function callGeminiForPrompt(instruction) {
 
     let lastError = null;
     for (const model of modelCandidates()) {
-        try {
-            const body = {
-                contents: [{ parts: [{ text: instruction }] }],
-                generationConfig: {
-                    responseMimeType: 'application/json',
-                    responseJsonSchema: PROMPT_SCHEMA,
-                    temperature: 0.22,
-                    maxOutputTokens: 1200
+        // Retry malformed/empty model output once before falling through to the
+        // next configured Gemini model. This is cheap and prevents a single
+        // truncated response from causing zero course images.
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+            try {
+                const body = {
+                    contents: [{ parts: [{ text: instruction }] }],
+                    generationConfig: {
+                        temperature: 0.22,
+                        maxOutputTokens: 700
+                    }
+                };
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const text = await response.text();
+                if (!response.ok) {
+                    const err = new Error(`Gemini visual prompt request failed (${response.status})`);
+                    err.status = response.status;
+                    err.body = text;
+                    if (response.status === 404) {
+                        lastError = err;
+                        break;
+                    }
+                    if (response.status === 429) err.code = 'GEMINI_QUOTA';
+                    else if (response.status === 403) err.code = 'GEMINI_FORBIDDEN';
+                    else err.code = 'GEMINI_API_ERROR';
+                    throw err;
                 }
-            };
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            const text = await response.text();
-            if (!response.ok) {
-                const err = new Error(`Gemini visual prompt request failed (${response.status})`);
-                err.status = response.status;
-                err.body = text;
-                if (response.status === 404) {
-                    lastError = err;
+
+                let payload;
+                try {
+                    payload = JSON.parse(text);
+                } catch (_) {
+                    throw visualPromptError('Gemini returned an invalid API response.', 'GEMINI_RESPONSE_INVALID');
+                }
+
+                const candidate = payload?.candidates?.[0];
+                const candidateText = candidate?.content?.parts?.map((part) => part?.text || '').join('').trim();
+                if (!candidateText) {
+                    throw visualPromptError('Gemini returned an empty visual prompt.', 'GEMINI_VISUAL_PROMPT_EMPTY');
+                }
+
+                const prompt = normalizeVisualPrompt(candidateText);
+                if (!prompt || prompt.length < 80) {
+                    throw visualPromptError('Gemini returned an incomplete visual prompt.', 'GEMINI_VISUAL_PROMPT_INVALID');
+                }
+
+                return { prompt, model };
+            } catch (err) {
+                lastError = err;
+                if (err?.status === 404) break;
+                if (isRetryableVisualOutputError(err) && attempt === 0) {
+                    logger.warn('scorm_gemini_visual_prompt_retry', {
+                        module: 'scorm',
+                        model,
+                        reason: err.code || err.message
+                    });
                     continue;
                 }
-                if (response.status === 429) err.code = 'GEMINI_QUOTA';
-                else if (response.status === 403) err.code = 'GEMINI_FORBIDDEN';
-                else err.code = 'GEMINI_API_ERROR';
+                if (isRetryableVisualOutputError(err)) break;
                 throw err;
             }
-
-            const payload = JSON.parse(text);
-            const candidateText = payload?.candidates?.[0]?.content?.parts?.map((part) => part?.text || '').join('').trim();
-            if (!candidateText) {
-                const err = new Error('Gemini returned an empty visual prompt.');
-                err.code = 'GEMINI_VISUAL_PROMPT_EMPTY';
-                throw err;
-            }
-            const parsed = JSON.parse(candidateText);
-            const prompt = clean(parsed?.prompt);
-            if (!prompt || prompt.length < 80) {
-                const err = new Error('Gemini returned an incomplete visual prompt.');
-                err.code = 'GEMINI_VISUAL_PROMPT_EMPTY';
-                throw err;
-            }
-            return { prompt, model };
-        } catch (err) {
-            lastError = err;
-            if (err?.status === 404) continue;
-            throw err;
         }
     }
 
@@ -160,5 +230,7 @@ module.exports = {
     coverInstruction,
     slideInstruction,
     sharedVisualRules,
-    modelCandidates
+    modelCandidates,
+    normalizeVisualPrompt,
+    recoverPromptFromBrokenJson
 };
