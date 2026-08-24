@@ -10,6 +10,7 @@ const { featureFlags, scormMaxUploadMb } = require('../../config/featureFlags');
 const { analyzePolicy } = require('../../services/scorm/CourseAiService');
 const { prepareReplicateCourseMedia } = require('../../services/scorm/ReplicateCourseMediaService');
 const { planExperienceV5 } = require('../../services/scorm/ScormExperiencePlanner');
+const { repairQuizExplanations } = require('../../services/scorm/ScormQuizQualityService');
 const { buildScormPackageZip } = require('../../services/scorm/ScormReplicateMediaFinalizer');
 const { getTheme, listThemes, normalizeThemeId } = require('../../services/scorm/ScormThemeCatalog');
 const { ScormPackage } = require('../../models/scorm');
@@ -33,6 +34,7 @@ function aiErrorStatus(code) {
     if (code === 'GEMINI_QUOTA' || code === 'REPLICATE_RATE_LIMIT') return 429;
     if (code === 'REPLICATE_BILLING') return 402;
     if (code === 'REPLICATE_SOURCE_NEEDS_TEXT') return 422;
+    if (code === 'REPLICATE_IMAGES_REQUIRED' || code === 'REPLICATE_IMAGES_INCOMPLETE') return 502;
     return 500;
 }
 
@@ -139,12 +141,16 @@ router.post('/analyze', auth, async (req, res) => {
             detailLevel: detailLevel || 'detailed',
             onProgress: report
         });
-        report({ percent: 97, stage: 'Formatting learning content', detail: 'Applying the course layouts and learner interactions.' });
+
+        report({ percent: 96, stage: 'Checking knowledge checks', detail: 'Ensuring every question has a valid answer and a learner explanation.' });
+        analysis = repairQuizExplanations(analysis);
+        report({ percent: 97, stage: 'Formatting learning content', detail: 'Applying varied course layouts and learner interactions.' });
         analysis = planExperienceV5(analysis);
         if ((titleHint || cleanTopic) && !analysis.title) analysis.title = titleHint || cleanTopic;
         analysis.themeId = selectedThemeId;
         analysis.themeName = selectedTheme.name;
         analysis.experienceVersion = 5;
+
         if (progressId) {
             setProgress(progressId, req.userId, {
                 task: 'analyze',
@@ -208,7 +214,9 @@ router.post('/generate', auth, async (req, res) => {
             });
         }
 
-        report({ percent: 5, stage: 'Formatting course structure', detail: 'Applying the final learner layouts before creating images.' });
+        report({ percent: 4, stage: 'Checking knowledge checks', detail: 'Guaranteeing quiz explanations before packaging the course.' });
+        analysis = repairQuizExplanations(analysis);
+        report({ percent: 5, stage: 'Formatting course structure', detail: 'Balancing text, images and varied learner layouts before image generation.' });
         analysis = planExperienceV5(analysis);
         analysis = {
             ...(analysis || {}),
@@ -223,7 +231,7 @@ router.post('/generate', auth, async (req, res) => {
         const media = await prepareReplicateCourseMedia(analysis, { onProgress: report });
         analysis = media.analysis;
 
-        report({ percent: 80, stage: 'Building the SCORM package', detail: 'Combining course content, images, interactions and tracking into the learner package.' });
+        report({ percent: 80, stage: 'Building the SCORM package', detail: 'Combining course content, images, varied layouts, quiz explanations and tracking into the learner package.' });
         const zipBuf = await buildScormPackageZip(analysis, {
             templateId: selectedThemeId,
             logoDataUrl: logoDataUrl || null,
