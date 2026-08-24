@@ -1,15 +1,7 @@
 const logger = require('../../utils/logger');
 const GeminiPolicyAnalysisService = require('./PolicyAnalysisService');
+const { generateCourseVisualPrompts } = require('./GeminiSlideVisualPromptService');
 
-/**
- * SCORM authoring uses a deliberately hybrid provider strategy:
- * - Gemini writes and quality-refines all course content and knowledge checks.
- * - Replicate is reserved for raster image generation during final packaging.
- *
- * Keep this decision server-side so an old SCORM_AI_PROVIDER=replicate Render
- * variable cannot accidentally route long-form course writing back through a
- * slow/cold-starting Replicate text model.
- */
 function selectedProvider() {
     return 'gemini';
 }
@@ -31,24 +23,49 @@ async function analyzePolicy(args = {}) {
 
     emit(args.onProgress, {
         percent: 8,
-        stage: 'Creating course content with Gemini',
-        detail: 'Gemini is writing the lessons, slide structure and knowledge checks. Replicate is not used for course text.'
+        stage: 'Creating complete course plan with Gemini',
+        detail: 'Gemini is extracting the source, writing the course, knowledge checks and the complete visual plan before the editor opens.'
     });
 
-    const analysis = await GeminiPolicyAnalysisService.analyzePolicy(args);
+    let analysis = await GeminiPolicyAnalysisService.analyzePolicy(args);
     analysis.aiProvider = 'gemini';
 
     emit(args.onProgress, {
-        percent: 94,
-        stage: 'Gemini course content ready',
-        detail: 'The course draft and quiz are ready. Final raster images will be generated with Replicate only after you click Generate course.',
+        percent: 88,
+        stage: 'Planning all course images with Gemini',
+        detail: 'Gemini is creating the cover prompt and every slide image prompt together in one visual-planning request.'
+    });
+
+    const visualPlan = await generateCourseVisualPrompts(analysis);
+    analysis = {
+        ...analysis,
+        coverImagePrompt: visualPlan.coverPrompt,
+        coverImagePromptProvider: 'gemini',
+        coverImagePromptModel: visualPlan.model,
+        visualPromptProvider: 'gemini',
+        visualPromptModel: visualPlan.model,
+        visualPromptsReady: true,
+        slides: (Array.isArray(analysis.slides) ? analysis.slides : []).map((slide, index) => ({
+            ...(slide || {}),
+            imagePrompt: visualPlan.slidePrompts[index] || '',
+            imagePromptProvider: 'gemini',
+            imagePromptModel: visualPlan.model
+        }))
+    };
+
+    emit(args.onProgress, {
+        percent: 96,
+        stage: 'Course content and visual plan ready',
+        detail: 'Course text, quizzes and all slide-specific image prompts are ready. Generate course will only render the pre-planned images with FLUX Schnell and package the SCORM.',
         modelStatus: 'succeeded'
     });
 
-    logger.info('scorm_gemini_content_ready', {
+    logger.info('scorm_gemini_content_and_visual_plan_ready', {
         module: 'scorm',
         slides: Array.isArray(analysis.slides) ? analysis.slides.length : 0,
-        quiz: Array.isArray(analysis.quiz) ? analysis.quiz.length : 0
+        quiz: Array.isArray(analysis.quiz) ? analysis.quiz.length : 0,
+        visualPromptModel: visualPlan.model,
+        visualPrompts: visualPlan.slidePrompts.length + (visualPlan.coverPrompt ? 1 : 0)
     });
 
     return analysis;
