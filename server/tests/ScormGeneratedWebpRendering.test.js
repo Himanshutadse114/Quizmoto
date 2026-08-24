@@ -1,6 +1,10 @@
 const { expect } = require('chai');
 const { guessContentType } = require('../services/scorm/ScormUnpackService');
-const { buildEmbeddedMediaMap } = require('../services/scorm/ScormReplicateMediaFinalizer');
+const {
+    buildEmbeddedMediaMap,
+    replicateMediaScript,
+    REPLICATE_MEDIA_CSS
+} = require('../services/scorm/ScormReplicateMediaFinalizer');
 
 describe('Generated SCORM WebP rendering', () => {
     it('serves Replicate WebP assets with an image MIME type for nosniff browsers', () => {
@@ -15,5 +19,17 @@ describe('Generated SCORM WebP rendering', () => {
             contentType: 'image/webp'
         }]);
         expect(map['assets/media/slide-001.webp']).to.match(/^data:image\/webp;base64,/);
+    });
+
+    it('renders generated images in true responsive 16:9 frames instead of fixed-height crops', () => {
+        expect(REPLICATE_MEDIA_CSS).to.include('aspect-ratio:16/9!important');
+        expect(REPLICATE_MEDIA_CSS).to.include('.qmx-raster-frame');
+        expect(REPLICATE_MEDIA_CSS).to.not.include('height:420px!important');
+        expect(REPLICATE_MEDIA_CSS).to.not.include('height:250px!important');
+
+        const script = replicateMediaScript({});
+        expect(script).to.include("target.classList.add('qmx-raster-frame')");
+        expect(script).to.include("node.querySelector('.qmx-hub-art')||node.querySelector('.spot-visual')||node.querySelector('.hero-art')");
+        expect(script).to.not.include("node.querySelector('.hero-core')");
     });
 });
