@@ -80,45 +80,39 @@ const REPLICATE_MEDIA_CSS = `
   align-self:center!important;
 }
 
-/* Only intentionally interactive slides stay flip/reveal based. The old
-   interaction finalizer enhanced every cards/HUB/process block, which made an
-   entire course feel like the same interaction. */
+/* Only intentionally interactive slides stay flip/reveal based. */
 .qmx-static-card{cursor:default!important;perspective:none!important}
-.qmx-static-card .qmx-flip-inner{
-  transform:none!important;
-  min-height:94px!important;
-  transition:none!important;
-}
+.qmx-static-card .qmx-flip-inner{transform:none!important;min-height:94px!important;transition:none!important}
 .qmx-static-card .qmx-flip-front{display:none!important}
 .qmx-static-card .qmx-flip-back{
-  position:relative!important;
-  inset:auto!important;
-  transform:none!important;
-  min-height:94px!important;
-  background:rgba(255,255,255,.35)!important;
-  border-color:var(--gamma-paper-3,#CBC5B8)!important;
+  position:relative!important;inset:auto!important;transform:none!important;min-height:94px!important;
+  background:rgba(255,255,255,.35)!important;border-color:var(--gamma-paper-3,#CBC5B8)!important
 }
 .qmx-static-card .qmx-flip-hint{display:none!important}
 .qmx-static-reveal{cursor:default!important}
 .qmx-static-reveal .qmx-reveal-body{
-  max-height:none!important;
-  opacity:1!important;
-  overflow:visible!important;
-  margin-top:10px!important;
-  transition:none!important;
+  max-height:none!important;opacity:1!important;overflow:visible!important;margin-top:10px!important;transition:none!important
 }
 .qmx-static-reveal .qmx-reveal-toggle{display:none!important}
+
+/* Knowledge-check feedback is instructional, not just right/wrong status. */
+.feedback.qmx-feedback-with-explanation{
+  display:block!important;
+  text-align:left!important;
+  line-height:1.55!important;
+  font-size:13px!important;
+  font-weight:600!important;
+  padding:14px 16px!important;
+}
+.feedback .qmx-feedback-status{display:block!important;font-weight:900!important;margin-bottom:5px!important}
+.feedback .qmx-feedback-explanation{display:block!important;font-weight:600!important}
 
 @media(max-width:980px){
   .slide.qmx-cover-slide .hero{min-height:600px!important;padding:38px 34px 32px!important}
   .slide.qmx-cover-slide .title{font-size:40px!important}
   .slide.qmx-cover-slide .lead{font-size:15.5px!important}
   .qmx-cover-raster{height:230px!important;min-height:230px!important;margin-top:20px!important}
-  .qmx-raster-stage{
-    grid-template-columns:1fr!important;
-    grid-template-areas:"head" "image" "body"!important;
-    row-gap:18px!important;
-  }
+  .qmx-raster-stage{grid-template-columns:1fr!important;grid-template-areas:"head" "image" "body"!important;row-gap:18px!important}
   .qmx-raster-panel{height:300px!important;min-height:260px!important}
 }
 @media(max-width:560px){
@@ -173,14 +167,9 @@ function replicateMediaScript() {
         target.setAttribute('data-qmx-replicate-raster',String(s.rasterVisualAsset));
         return;
       }
-
       var stage=node.querySelector('.stage,.qmx-stage');if(!stage)return;
       var panel=stage.querySelector('.qmx-raster-panel');
-      if(!panel){
-        panel=document.createElement('div');
-        panel.className='qmx-raster-panel';
-        stage.appendChild(panel);
-      }
+      if(!panel){panel=document.createElement('div');panel.className='qmx-raster-panel';stage.appendChild(panel)}
       stage.classList.add('qmx-raster-stage');
       if(panel.getAttribute('data-qmx-replicate-raster')!==String(s.rasterVisualAsset)){
         panel.innerHTML=imageHtml(s);
@@ -198,20 +187,31 @@ function replicateMediaScript() {
       node.querySelectorAll('.qmx-reveal-card').forEach(function(card){card.classList.add('qmx-static-reveal')});
     });
   }
+  function installQuizExplanations(data){
+    if(document.documentElement.getAttribute('data-qmx-quiz-explanation-v1'))return;
+    document.documentElement.setAttribute('data-qmx-quiz-explanation-v1','1');
+    document.addEventListener('click',function(event){
+      var btn=event.target&&event.target.closest?event.target.closest('.quiz-option[data-qi][data-oi]'):null;if(!btn)return;
+      var qi=Number(btn.getAttribute('data-qi')),oi=Number(btn.getAttribute('data-oi'));
+      setTimeout(function(){
+        var q=(data.quiz||[])[qi]||{},fb=document.getElementById('fb-'+qi);if(!fb)return;
+        var explanation=String(q.explanation||'').trim();if(!explanation)return;
+        var correct=Number(q.correctAnswer),status=oi===correct?'Correct':'Not quite';
+        fb.classList.add('qmx-feedback-with-explanation');
+        fb.innerHTML='<span class="qmx-feedback-status">'+esc(status)+'</span><span class="qmx-feedback-explanation">'+esc(explanation)+'</span>';
+      },0);
+    },false);
+  }
   function install(){
     var data=window.__quizmotoData||null;if(!data||!Array.isArray(data.slides))return false;
     var slides=Array.prototype.slice.call(document.querySelectorAll('.slide'));if(!slides.length)return false;
     installCover(slides[0],data);
     installRasterSlides(slides,data);
     normaliseInteractionDensity(slides,data);
+    installQuizExplanations(data);
     return true;
   }
-  function run(){
-    install();
-    /* Earlier finalizers retry visual/interaction enhancement for a short time.
-       Re-apply the outermost raster/static presentation after those passes. */
-    [180,520,1100,1800].forEach(function(ms){setTimeout(install,ms)});
-  }
+  function run(){install();[180,520,1100,1800].forEach(function(ms){setTimeout(install,ms)})}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();
   window.addEventListener('load',function(){setTimeout(install,90)},{once:true});
 })();
