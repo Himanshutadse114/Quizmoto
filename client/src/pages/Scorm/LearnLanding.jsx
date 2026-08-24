@@ -89,49 +89,52 @@ export default function ScormLearnLanding() {
 
   return (
     <div className="scorm-editorial min-h-screen flex items-center justify-center p-4 md:p-8 relative z-20">
-      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1.05fr_.95fr] scorm-soft-card overflow-hidden">
-        <section className="scorm-tint-sage p-7 sm:p-9 md:p-11 lg:p-12 border-b lg:border-b-0 lg:border-r border-[#223a59] flex flex-col justify-between min-h-[330px]">
-          <div>
+      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] scorm-soft-card overflow-hidden">
+        <section className="min-w-0 scorm-tint-sage p-7 sm:p-9 md:p-11 lg:p-12 border-b lg:border-b-0 lg:border-r border-[#223a59] flex flex-col justify-between min-h-[330px]">
+          <div className="min-w-0">
             <div className="w-11 h-11 rounded-xl bg-[#0e2039] grid place-items-center text-[#bfdbfe] border border-[#2a4b74] mb-7">
               <BookOpen size={20} />
             </div>
             <div className="text-[11px] font-semibold text-[#93a4bb]">SCORM AI</div>
-            <h1 className="text-3xl sm:text-4xl md:text-[44px] font-semibold tracking-[-0.045em] leading-[1.02] break-words text-[#f8fafc]">
+            <h1
+              className="max-w-full text-3xl sm:text-4xl md:text-[44px] font-semibold tracking-[-0.045em] leading-[1.02] text-[#f8fafc]"
+              style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+            >
               {course?.title || 'Loading course…'}
             </h1>
             <p className="mt-4 text-sm md:text-[15px] leading-relaxed max-w-xl text-[#cbd5e1]">
               {course?.description || 'Enter your details to begin this learning experience.'}
             </p>
           </div>
-          <div className="mt-8 flex items-center gap-2 text-[10px] text-[#93a4bb]">
+          <div className="mt-8 flex flex-wrap items-center gap-2 text-[10px] text-[#93a4bb] min-w-0">
             <span className="font-semibold">Invite code</span>
-            <span className="font-mono bg-[#0e2039] border border-[#2a4b74] rounded-lg px-2 py-1 text-[#bfdbfe]">{inviteCode}</span>
+            <span className="max-w-full break-all font-mono bg-[#0e2039] border border-[#2a4b74] rounded-lg px-2 py-1 text-[#bfdbfe]">{inviteCode}</span>
           </div>
         </section>
 
-        <section className="bg-[#08111e] p-7 sm:p-9 md:p-10 lg:p-11 flex flex-col justify-center">
+        <section className="min-w-0 bg-[#08111e] p-7 sm:p-9 md:p-10 lg:p-11 flex flex-col justify-center">
           <div className="text-[11px] font-semibold text-[#93a4bb]">Learner details</div>
           <h2 className="text-2xl md:text-[30px] font-semibold tracking-[-0.035em] mt-1 mb-2">Ready when you are</h2>
           <p className="text-xs leading-relaxed mb-6">Your progress will be saved automatically while you learn.</p>
 
-          <form onSubmit={start} className="space-y-4">
-            <div>
+          <form onSubmit={start} className="space-y-4 min-w-0">
+            <div className="min-w-0">
               <label className="block text-[11px] font-semibold text-[#cbd5e1] mb-1.5">Your name</label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full py-3 px-3.5 text-sm font-medium"
+                className="w-full min-w-0 py-3 px-3.5 text-sm font-medium"
                 placeholder="Enter your name"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="block text-[11px] font-semibold text-[#cbd5e1] mb-1.5">Email <span className="font-normal text-[#71839c]">optional</span></label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full py-3 px-3.5 text-sm font-medium"
+                className="w-full min-w-0 py-3 px-3.5 text-sm font-medium"
                 placeholder="you@example.com"
               />
             </div>
