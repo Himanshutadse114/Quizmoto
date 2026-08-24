@@ -7,9 +7,6 @@ const {
 } = require('./ReplicateClient');
 
 const DEFAULT_IMAGE_MODEL = 'black-forest-labs/flux-schnell';
-const DEFAULT_TTS_MODEL = 'qwen/qwen3-tts';
-const DEFAULT_TTS_SPEAKER = 'Serena';
-const DEFAULT_TTS_STYLE = 'Warm, confident professional learning narrator. Natural conversational pacing, clear pronunciation, calm and engaging. Avoid a robotic or promotional announcer style. Use subtle emphasis on important learner actions.';
 
 function clean(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -25,14 +22,15 @@ function mediaConfig() {
     return {
         enabled: String(process.env.REPLICATE_SCORM_MEDIA || 'true').trim().toLowerCase() !== 'false',
         imageModel: String(process.env.REPLICATE_SCORM_IMAGE_MODEL || DEFAULT_IMAGE_MODEL).trim(),
-        ttsModel: String(process.env.REPLICATE_SCORM_TTS_MODEL || DEFAULT_TTS_MODEL).trim(),
-        speaker: String(process.env.REPLICATE_SCORM_TTS_SPEAKER || DEFAULT_TTS_SPEAKER).trim(),
-        ttsStyle: String(process.env.REPLICATE_SCORM_TTS_STYLE || DEFAULT_TTS_STYLE).trim(),
         maxImages: clampInt(process.env.REPLICATE_SCORM_MAX_IMAGES, 5, 1, 8),
-        narrationCharBudget: clampInt(process.env.REPLICATE_SCORM_TTS_CHAR_BUDGET, 3200, 600, 7000),
         imageMegapixels: String(process.env.REPLICATE_SCORM_IMAGE_MEGAPIXELS || '1').trim(),
         imageQuality: clampInt(process.env.REPLICATE_SCORM_IMAGE_QUALITY, 82, 50, 100)
     };
+}
+
+function emit(onProgress, patch) {
+    if (typeof onProgress !== 'function') return;
+    try { onProgress(patch); } catch (_) {}
 }
 
 function sentenceExcerpt(value, maxChars) {
@@ -94,7 +92,7 @@ function slideImagePrompt(slide, courseTitle) {
     ].filter(Boolean).join(' ');
 }
 
-async function generateImage(prompt, path, config) {
+async function generateImage(prompt, path, config, onStatus) {
     const output = await runReplicateModel(config.imageModel, {
         prompt,
         go_fast: true,
@@ -105,7 +103,10 @@ async function generateImage(prompt, path, config) {
         output_quality: config.imageQuality,
         num_inference_steps: 4,
         disable_safety_checker: false
-    }, { timeoutMs: Number(process.env.REPLICATE_SCORM_IMAGE_TIMEOUT_MS || 180000) });
+    }, {
+        timeoutMs: Number(process.env.REPLICATE_SCORM_IMAGE_TIMEOUT_MS || 180000),
+        onStatus
+    });
     const url = outputUrl(output);
     if (!url) {
         const err = new Error('Replicate image model returned no output URL.');
@@ -113,23 +114,6 @@ async function generateImage(prompt, path, config) {
         throw err;
     }
     return { path, body: await downloadReplicateAsset(url), contentType: 'image/webp' };
-}
-
-async function generateNarration(text, path, config) {
-    const output = await runReplicateModel(config.ttsModel, {
-        mode: 'custom_voice',
-        text,
-        speaker: config.speaker,
-        language: 'auto',
-        style_instruction: config.ttsStyle
-    }, { timeoutMs: Number(process.env.REPLICATE_SCORM_TTS_TIMEOUT_MS || 180000) });
-    const url = outputUrl(output);
-    if (!url) {
-        const err = new Error('Replicate TTS model returned no output URL.');
-        err.code = 'REPLICATE_TTS_EMPTY';
-        throw err;
-    }
-    return { path, body: await downloadReplicateAsset(url), contentType: 'audio/wav' };
 }
 
 async function mapLimit(items, limit, worker) {
@@ -147,28 +131,52 @@ async function mapLimit(items, limit, worker) {
     return results;
 }
 
-async function prepareReplicateCourseMedia(rawAnalysis) {
-    const analysis = rawAnalysis && typeof rawAnalysis === 'object' ? rawAnalysis : {};
-    const slides = Array.isArray(analysis.slides) ? analysis.slides.map((slide) => ({ ...(slide || {}) })) : [];
+async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
+    const onProgress = opts.onProgress;
+    const analysis = rawAnalysis && typeof rawAnalysis === 'object' ? { ...rawAnalysis } : {};
+    const slides = Array.isArray(analysis.slides)
+        ? analysis.slides.map((slide) => {
+            const next = { ...(slide || {}) };
+            // Audio was intentionally removed from generated courses. Strip any
+            // stale fields from courses produced by the earlier TTS experiment.
+            delete next.narrationAsset;
+            delete next.narrationText;
+            return next;
+        })
+        : [];
+    delete analysis.narrationAsset;
+    delete analysis.narrationText;
+
     const config = mediaConfig();
     if (!config.enabled || !hasReplicateToken()) {
-        return { analysis: { ...analysis, slides }, files: [], metadata: { enabled: false } };
+        emit(onProgress, { percent: 42, stage: 'Using built-in course visuals', detail: 'Replicate image generation is disabled; continuing with the formatted course layout.' });
+        return { analysis: { ...analysis, slides }, files: [], metadata: { enabled: false, audio: false } };
     }
 
     const files = [];
     const warnings = [];
     let coverGenerated = false;
     let slideImagesGenerated = 0;
-    let narrationChars = 0;
 
     // The cost guard counts the cover as one image. Remaining image slots are
-    // distributed across the course instead of generating an image per screen.
+    // distributed across the learning slides.
     const slideImageCount = Math.max(0, config.maxImages - 1);
     const selectedIndexes = imageSlideIndexes(slides, Math.min(slideImageCount, slides.length));
 
+    emit(onProgress, {
+        percent: 8,
+        stage: 'Creating course cover image',
+        detail: `Generating 1 cover image and up to ${selectedIndexes.length} learning-slide images. No audio is generated.`
+    });
+
     try {
         const coverPath = 'assets/media/course-cover.webp';
-        const coverFile = await generateImage(coverImagePrompt(analysis), coverPath, config);
+        const coverFile = await generateImage(coverImagePrompt(analysis), coverPath, config, (state) => {
+            const status = String(state?.status || '').toLowerCase();
+            if (status === 'starting') emit(onProgress, { percent: 10, stage: 'Waiting for Replicate image model', detail: 'Replicate accepted the cover request and is starting FLUX Schnell.', modelStatus: status, predictionId: state.predictionId || '' });
+            if (status === 'processing') emit(onProgress, { percent: 16, stage: 'Generating course cover image', detail: 'FLUX Schnell is actively creating the front-slide image.', modelStatus: status, predictionId: state.predictionId || '' });
+            if (status === 'succeeded') emit(onProgress, { percent: 24, stage: 'Course cover image ready', detail: 'The front-slide image has been generated.', modelStatus: status, predictionId: state.predictionId || '' });
+        });
         files.push(coverFile);
         analysis.coverImageAsset = coverPath;
         coverGenerated = true;
@@ -177,6 +185,8 @@ async function prepareReplicateCourseMedia(rawAnalysis) {
         logger.warn('scorm_replicate_cover_failed', { module: 'scorm', error: err.message, code: err.code });
     }
 
+    emit(onProgress, { percent: 30, stage: 'Generating learning-slide images', detail: `Creating up to ${selectedIndexes.length} topic-relevant slide images in parallel.` });
+    let completedJobs = 0;
     const imageResults = await mapLimit(selectedIndexes, 3, async (slideIndex) => {
         const path = `assets/media/slide-${String(slideIndex + 1).padStart(3, '0')}.webp`;
         try {
@@ -186,41 +196,21 @@ async function prepareReplicateCourseMedia(rawAnalysis) {
             warnings.push(`Slide ${slideIndex + 1} image: ${err.message}`);
             logger.warn('scorm_replicate_slide_image_failed', { module: 'scorm', slideIndex, error: err.message, code: err.code });
             return null;
+        } finally {
+            completedJobs += 1;
+            const fraction = selectedIndexes.length ? completedJobs / selectedIndexes.length : 1;
+            emit(onProgress, {
+                percent: 30 + Math.round(fraction * 42),
+                stage: 'Generating learning-slide images',
+                detail: `${completedJobs} of ${selectedIndexes.length} learning-slide image jobs completed.`
+            });
         }
     });
+
     for (const result of imageResults.filter(Boolean)) {
         files.push(result.file);
         slides[result.slideIndex].rasterVisualAsset = result.path;
         slideImagesGenerated += 1;
-    }
-
-    const perSlideBudget = slides.length ? Math.max(140, Math.floor(config.narrationCharBudget / slides.length)) : 0;
-    const narrationJobs = [];
-    let remainingChars = config.narrationCharBudget;
-    slides.forEach((slide, index) => {
-        if (remainingChars <= 0) return;
-        const allowed = Math.min(perSlideBudget, remainingChars);
-        const narration = sentenceExcerpt(slide.narrationText || slide.introText || slide.content, allowed);
-        if (narration.length < 40) return;
-        remainingChars -= narration.length;
-        narrationChars += narration.length;
-        slide.narrationText = narration;
-        narrationJobs.push({ index, narration, path: `assets/media/narration-${String(index + 1).padStart(3, '0')}.wav` });
-    });
-
-    const narrationResults = await mapLimit(narrationJobs, 3, async (job) => {
-        try {
-            const file = await generateNarration(job.narration, job.path, config);
-            return { ...job, file };
-        } catch (err) {
-            warnings.push(`Slide ${job.index + 1} narration: ${err.message}`);
-            logger.warn('scorm_replicate_tts_failed', { module: 'scorm', slideIndex: job.index, error: err.message, code: err.code });
-            return null;
-        }
-    });
-    for (const result of narrationResults.filter(Boolean)) {
-        files.push(result.file);
-        slides[result.index].narrationAsset = result.path;
     }
 
     const updated = {
@@ -229,24 +219,20 @@ async function prepareReplicateCourseMedia(rawAnalysis) {
         mediaProvider: 'replicate',
         replicateMedia: {
             imageModel: config.imageModel,
-            ttsModel: config.ttsModel,
-            ttsSpeaker: config.speaker,
             coverGenerated,
             slideImagesGenerated,
-            narrationSlidesGenerated: narrationResults.filter(Boolean).length,
-            narrationChars,
             maxImages: config.maxImages,
-            narrationCharBudget: config.narrationCharBudget,
+            audio: false,
             warnings
         }
     };
 
+    emit(onProgress, { percent: 76, stage: 'Images ready', detail: 'Raster images are ready. Formatting and packaging the SCORM course next.' });
     logger.info('scorm_replicate_media_ready', {
         module: 'scorm',
         coverGenerated,
         slideImagesGenerated,
-        narrationSlidesGenerated: narrationResults.filter(Boolean).length,
-        narrationChars,
+        audio: false,
         files: files.length,
         warnings: warnings.length
     });
@@ -261,8 +247,5 @@ module.exports = {
     sentenceExcerpt,
     coverImagePrompt,
     slideImagePrompt,
-    DEFAULT_IMAGE_MODEL,
-    DEFAULT_TTS_MODEL,
-    DEFAULT_TTS_SPEAKER,
-    DEFAULT_TTS_STYLE
+    DEFAULT_IMAGE_MODEL
 };
