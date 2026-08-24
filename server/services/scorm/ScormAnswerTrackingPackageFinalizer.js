@@ -45,58 +45,143 @@ const ANSWER_TRACKING_SCRIPT = `
 
 const FINAL_VISUAL_POLISH_CSS = `
 <style id="quizmoto-final-authored-visual-polish-v1">
-/* Final learner-course guard. This is injected after every theme layer so the
-   authored cover and generated SVGs have one predictable presentation. */
+/* Final learner-course guard. Generated SVGs remain available on learning
+   slides, but the course cover is deliberately text-only. */
 .qmx-runtime-picture{display:block!important;width:100%!important;height:100%!important;min-width:0!important}
 .qmx-runtime-picture img{display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;border-radius:inherit!important}
 .hero-art,.spot-visual{overflow:hidden!important}
 .qmx-hub-art{height:360px!important;min-height:320px!important;border-radius:24px!important;overflow:hidden!important;background:rgba(255,255,255,.26)!important;border:1px solid var(--gamma-paper-3,#CBC5B8)!important}
 .qmx-hub-art .qmx-runtime-picture,.qmx-hub-art img{width:100%!important;height:100%!important}
-/* If a Smart SVG is unavailable for a legacy package, do not draw connector
-   lines through the centre label. The numbered nodes + list remain readable. */
 .hub-svg line{display:none!important}
 
+/* Text-only first impression. No vector/image panel is rendered on the cover. */
 .slide.qmx-cover-slide .hero{
-  display:grid!important;
-  grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr)!important;
-  gap:38px!important;
+  position:relative!important;
+  display:flex!important;
+  flex-direction:column!important;
   align-items:center!important;
-  padding:32px 34px!important;
+  justify-content:center!important;
+  min-height:560px!important;
+  width:min(1120px,100%)!important;
+  margin:auto!important;
+  padding:64px 72px!important;
+  gap:0!important;
+  text-align:center!important;
+  overflow:hidden!important;
+  border:1px solid var(--gamma-paper-3,#CBC5B8)!important;
+  border-radius:18px!important;
+  background:
+    radial-gradient(circle at 50% 0%,rgba(79,201,191,.18),transparent 34%),
+    radial-gradient(circle at 8% 88%,rgba(79,201,191,.08),transparent 28%),
+    radial-gradient(circle at 92% 82%,rgba(252,242,181,.42),transparent 26%),
+    rgba(255,255,255,.20)!important;
+  box-shadow:0 18px 54px rgba(40,40,36,.06)!important;
+}
+.slide.qmx-cover-slide .hero:before,
+.slide.qmx-cover-slide .hero:after{
+  content:""!important;
+  position:absolute!important;
+  left:50%!important;
+  transform:translateX(-50%)!important;
+  width:118px!important;
+  height:3px!important;
+  border-radius:999px!important;
+  background:linear-gradient(90deg,transparent,#4FC9BF,transparent)!important;
+  opacity:.95!important;
+  display:block!important;
+}
+.slide.qmx-cover-slide .hero:before{top:34px!important}
+.slide.qmx-cover-slide .hero:after{bottom:34px!important}
+.slide.qmx-cover-slide .hero-art,
+.slide.qmx-cover-slide .hero-core,
+.slide.qmx-cover-slide picture,
+.slide.qmx-cover-slide svg,
+.slide.qmx-cover-slide img{
+  display:none!important;
+}
+.slide.qmx-cover-slide .hero > :not(.hero-art):not(.hero-core){
+  width:100%!important;
+  max-width:1040px!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+.slide.qmx-cover-slide .eyebrow{
+  display:inline-flex!important;
+  width:auto!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin:0 auto 18px!important;
+  padding:8px 13px!important;
+  border:1px solid rgba(23,126,120,.24)!important;
+  border-radius:999px!important;
+  color:#177E78!important;
+  background:rgba(79,201,191,.09)!important;
+  font-size:10px!important;
+  font-weight:900!important;
+  letter-spacing:.13em!important;
+  text-transform:uppercase!important;
 }
 .slide.qmx-cover-slide .title{
-  font-size:40px!important;
-  line-height:1.06!important;
-  letter-spacing:-.035em!important;
-  margin:9px 0 16px!important;
-  max-width:700px!important;
+  width:100%!important;
+  max-width:980px!important;
+  margin:0 auto 24px!important;
+  color:var(--gamma-ink,#282824)!important;
+  font-size:52px!important;
+  line-height:1.04!important;
+  letter-spacing:-.045em!important;
+  text-align:center!important;
+  text-wrap:balance!important;
 }
 .slide.qmx-cover-slide .lead{
-  font-size:15px!important;
-  line-height:1.58!important;
-  max-width:690px!important;
-  margin:0!important;
+  width:100%!important;
+  max-width:790px!important;
+  margin:0 auto!important;
+  color:var(--gamma-ink-soft,#4A4A45)!important;
+  font-size:18px!important;
+  line-height:1.62!important;
+  text-align:center!important;
+  text-wrap:pretty!important;
 }
-.slide.qmx-cover-slide .hero-art{
-  min-height:330px!important;
-  height:330px!important;
-  border-radius:24px!important;
-  background:#E5DFD2!important;
+.slide.qmx-cover-slide .kp-row{display:none!important}
+.qmx-cover-meta{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:9px!important;
+  margin:28px auto 0!important;
+  width:auto!important;
+  max-width:800px!important;
 }
-.slide.qmx-cover-slide .kp-row{margin-top:18px!important;gap:8px!important}
-.slide.qmx-cover-slide .chip{font-size:10.5px!important;padding:7px 10px!important}
+.qmx-cover-meta span{
+  display:inline-flex!important;
+  align-items:center!important;
+  min-height:31px!important;
+  padding:6px 11px!important;
+  border-radius:999px!important;
+  border:1px solid var(--gamma-paper-3,#CBC5B8)!important;
+  background:rgba(255,255,255,.32)!important;
+  color:var(--gamma-ink-soft,#4A4A45)!important;
+  font-size:10.5px!important;
+  font-weight:800!important;
+  letter-spacing:.035em!important;
+}
 
 @media(max-width:980px){
-  .slide.qmx-cover-slide .hero{grid-template-columns:1fr!important;gap:22px!important;padding:26px!important}
-  .slide.qmx-cover-slide .title{font-size:34px!important;max-width:none!important}
-  .slide.qmx-cover-slide .lead{font-size:14.5px!important;max-width:none!important}
-  .slide.qmx-cover-slide .hero-art{height:280px!important;min-height:280px!important}
+  .slide.qmx-cover-slide .hero{min-height:520px!important;padding:54px 42px!important}
+  .slide.qmx-cover-slide .title{font-size:42px!important;max-width:820px!important}
+  .slide.qmx-cover-slide .lead{font-size:17px!important;max-width:720px!important}
   .qmx-hub-art{height:300px!important;min-height:280px!important}
 }
 @media(max-width:560px){
-  .slide.qmx-cover-slide .hero{padding:18px!important;gap:18px!important}
-  .slide.qmx-cover-slide .title{font-size:29px!important;line-height:1.08!important;margin-bottom:12px!important}
-  .slide.qmx-cover-slide .lead{font-size:14px!important;line-height:1.5!important}
-  .slide.qmx-cover-slide .hero-art{height:240px!important;min-height:240px!important;border-radius:18px!important}
+  .slide.qmx-cover-slide .hero{min-height:470px!important;padding:48px 20px!important;border-radius:14px!important}
+  .slide.qmx-cover-slide .hero:before{top:24px!important}
+  .slide.qmx-cover-slide .hero:after{bottom:24px!important}
+  .slide.qmx-cover-slide .eyebrow{margin-bottom:14px!important;font-size:9px!important}
+  .slide.qmx-cover-slide .title{font-size:32px!important;line-height:1.07!important;margin-bottom:18px!important}
+  .slide.qmx-cover-slide .lead{font-size:15px!important;line-height:1.55!important}
+  .qmx-cover-meta{margin-top:22px!important;gap:7px!important}
+  .qmx-cover-meta span{font-size:9.5px!important;min-height:29px!important;padding:5px 9px!important}
   .qmx-hub-art{height:260px!important;min-height:240px!important;border-radius:18px!important}
 }
 </style>`;
@@ -156,6 +241,22 @@ function finalVisualPolishScript(visualMap = {}) {
     node.setAttribute('data-qmx-runtime-visual','1');
     return true;
   }
+  function addCoverMeta(intro,data){
+    if(!intro||intro.querySelector('.qmx-cover-meta'))return;
+    var host=intro.querySelector('.hero > div')||intro.querySelector('.hero');
+    if(!host)return;
+    var meta=document.createElement('div');meta.className='qmx-cover-meta';
+    var labels=['Self-paced learning',String((data.slides||[]).length)+' learning sections'];
+    if(Array.isArray(data.quiz)&&data.quiz.length)labels.push(String(data.quiz.length)+' knowledge checks');
+    labels.forEach(function(label){var item=document.createElement('span');item.textContent=label;meta.appendChild(item);});
+    host.appendChild(meta);
+  }
+  function removeCoverArtwork(intro){
+    if(!intro)return;
+    var artwork=Array.prototype.slice.call(intro.querySelectorAll('.hero-art,.hero-core'));
+    artwork.forEach(function(node){if(node&&node.parentNode)node.parentNode.removeChild(node);});
+    intro.querySelectorAll('picture,svg,img').forEach(function(node){if(node&&node.parentNode)node.parentNode.removeChild(node);});
+  }
   function enhance(){
     var data=window.__quizmotoData||null;
     if(!data||!Array.isArray(data.slides))return false;
@@ -166,11 +267,9 @@ function finalVisualPolishScript(visualMap = {}) {
     if(intro){
       intro.classList.add('qmx-cover-slide');
       var lead=intro.querySelector('.lead');
-      if(lead&&data.summary)lead.textContent=compactSummary(data.summary,72);
-      var cover=picture(data.coverVisualAsset,data.coverMobileVisualAsset,data.title||'Course cover');
-      if(!cover&&data.slides[0])cover=picture(data.slides[0].visualAsset,data.slides[0].mobileVisualAsset,data.title||'Course cover');
-      var coverTarget=intro.querySelector('.hero-art')||intro.querySelector('.hero-core');
-      replaceVisual(coverTarget,cover);
+      if(lead&&data.summary)lead.textContent=compactSummary(data.summary,58);
+      removeCoverArtwork(intro);
+      addCoverMeta(intro,data);
     }
 
     data.slides.forEach(function(s,i){
