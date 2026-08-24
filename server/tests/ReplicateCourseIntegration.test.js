@@ -39,15 +39,15 @@ describe('Replicate low-cost SCORM integration', () => {
         expect(cleanupModelText(raw)).to.equal('{"title":"Course"}');
     });
 
-    it('keeps five image slots and requires a minimum visible image count', () => {
+    it('uses an image-rich default budget with a minimum visual quality gate', () => {
         const previousMax = process.env.REPLICATE_SCORM_MAX_IMAGES;
         const previousMin = process.env.REPLICATE_SCORM_MIN_IMAGES;
         delete process.env.REPLICATE_SCORM_MAX_IMAGES;
         delete process.env.REPLICATE_SCORM_MIN_IMAGES;
         try {
-            expect(mediaConfig().maxImages).to.equal(5);
-            expect(mediaConfig().minImages).to.equal(3);
-            expect(imageSlideIndexes(new Array(10).fill({}), 4)).to.deep.equal([0, 3, 6, 9]);
+            expect(mediaConfig().maxImages).to.equal(8);
+            expect(mediaConfig().minImages).to.equal(6);
+            expect(imageSlideIndexes(new Array(10).fill({}), 7)).to.deep.equal([0, 2, 3, 5, 6, 8, 9]);
         } finally {
             if (previousMax == null) delete process.env.REPLICATE_SCORM_MAX_IMAGES;
             else process.env.REPLICATE_SCORM_MAX_IMAGES = previousMax;
