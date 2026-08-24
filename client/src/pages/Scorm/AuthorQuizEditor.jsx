@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ArrowDown, ArrowUp, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import './authorQuizEditor.css';
 
@@ -23,8 +23,37 @@ function normalizeQuestion(value) {
   };
 }
 
+const AUTO_EXPLANATION_PLACEHOLDER = 'Automatic explanation will be generated from the correct answer and course lesson during final course validation.';
+
 export default function AuthorQuizEditor({ quiz = [], onChange }) {
   const questions = (Array.isArray(quiz) ? quiz : []).map(normalizeQuestion);
+
+  // Courses/drafts generated before the quiz-integrity guard can contain a fully
+  // formed question with a blank explanation. Give those legacy questions a
+  // short placeholder so the existing editor validation does not block Generate.
+  // The server deliberately treats this short copy as incomplete and replaces it
+  // with a 20+ word course-grounded learner explanation before packaging.
+  useEffect(() => {
+    const source = Array.isArray(quiz) ? quiz : [];
+    let changed = false;
+    const repaired = source.map((raw) => {
+      const question = normalizeQuestion(raw);
+      const structurallyReady = Boolean(
+        question.question.trim() &&
+        question.options.length === 4 &&
+        question.options.every((option) => String(option || '').trim()) &&
+        Number.isInteger(question.correctAnswer) &&
+        question.correctAnswer >= 0 &&
+        question.correctAnswer < 4
+      );
+      if (structurallyReady && !question.explanation.trim()) {
+        changed = true;
+        return { ...question, explanation: AUTO_EXPLANATION_PLACEHOLDER };
+      }
+      return question;
+    });
+    if (changed && typeof onChange === 'function') onChange(repaired);
+  }, [quiz, onChange]);
 
   const replace = (index, nextQuestion) => {
     const next = [...questions];
@@ -129,7 +158,7 @@ export default function AuthorQuizEditor({ quiz = [], onChange }) {
         })}
 
         {!!questions.length && (
-          <div className="qmx-quiz-footnote text-[10px] px-1">Recommended: 5–8 well-structured knowledge-check questions. The selected correct-answer index and explanation are preserved in the generated SCORM package.</div>
+          <div className="qmx-quiz-footnote text-[10px] px-1">Recommended: 5–8 well-structured knowledge-check questions. Missing legacy explanations are repaired automatically; the final SCORM still receives a full course-grounded learner explanation.</div>
         )}
       </div>
     </section>
