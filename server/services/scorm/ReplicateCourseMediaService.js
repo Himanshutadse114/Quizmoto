@@ -6,7 +6,10 @@ const {
     downloadReplicateAsset
 } = require('./ReplicateClient');
 
-const DEFAULT_IMAGE_MODEL = 'black-forest-labs/flux-schnell';
+// Locked low-cost production model for SCORM artwork. At 1 MP this endpoint is
+// priced by output megapixel and is materially cheaper than the older image
+// endpoints while remaining warm and suitable for commercial course imagery.
+const DEFAULT_IMAGE_MODEL = 'black-forest-labs/flux-2-klein-4b';
 
 function clean(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -21,14 +24,13 @@ function clampInt(value, fallback, min, max) {
 function mediaConfig() {
     return {
         enabled: String(process.env.REPLICATE_SCORM_MEDIA || 'true').trim().toLowerCase() !== 'false',
-        imageModel: String(process.env.REPLICATE_SCORM_IMAGE_MODEL || DEFAULT_IMAGE_MODEL).trim(),
+        // Do not allow stale Render environment variables to silently switch the
+        // SCORM generator back to a more expensive model.
+        imageModel: DEFAULT_IMAGE_MODEL,
         maxImages: clampInt(process.env.REPLICATE_SCORM_MAX_IMAGES, 8, 1, 8),
         minImages: clampInt(process.env.REPLICATE_SCORM_MIN_IMAGES, 6, 1, 8),
-        imageMegapixels: String(process.env.REPLICATE_SCORM_IMAGE_MEGAPIXELS || '1').trim(),
+        imageMegapixels: '1',
         imageQuality: clampInt(process.env.REPLICATE_SCORM_IMAGE_QUALITY, 82, 50, 100),
-        // Image generation is intentionally conservative. A course image is cheap,
-        // while a failed multi-minute course build is expensive for the learner.
-        // Keep at least two retries even when an older Render env value is set to 1.
         imageRetries: clampInt(process.env.REPLICATE_SCORM_IMAGE_RETRIES, 2, 2, 4),
         imageConcurrency: clampInt(process.env.REPLICATE_SCORM_IMAGE_CONCURRENCY, 1, 1, 2),
         retryBaseMs: clampInt(process.env.REPLICATE_SCORM_IMAGE_RETRY_BASE_MS, 1400, 700, 5000)
@@ -145,14 +147,13 @@ async function generateImage(prompt, path, config, onStatus) {
                 onStatus({ status: 'retrying', attempt: attempt + 1, lastError });
             }
             const output = await runReplicateModel(config.imageModel, {
+                images: [],
                 prompt,
                 go_fast: true,
-                megapixels: config.imageMegapixels,
-                num_outputs: 1,
                 aspect_ratio: '16:9',
                 output_format: 'webp',
                 output_quality: config.imageQuality,
-                num_inference_steps: 4,
+                output_megapixels: config.imageMegapixels,
                 disable_safety_checker: false
             }, {
                 timeoutMs: Number(process.env.REPLICATE_SCORM_IMAGE_TIMEOUT_MS || 180000),
@@ -256,15 +257,15 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     emit(onProgress, {
         percent: 8,
         stage: 'Creating course cover image',
-        detail: `Generating the front image plus up to ${selectedIndexes.length} learning-slide images. No audio is generated.`
+        detail: `Generating the front image plus up to ${selectedIndexes.length} learning-slide images with low-cost FLUX.2 Klein. No audio is generated.`
     });
 
     try {
         const coverPath = 'assets/media/course-cover.webp';
         const coverFile = await generateImage(coverImagePrompt(analysis), coverPath, config, (state) => {
             const status = String(state?.status || '').toLowerCase();
-            if (status === 'starting') emit(onProgress, { percent: 10, stage: 'Waiting for Replicate image model', detail: 'Replicate accepted the cover request and is starting FLUX Schnell.', modelStatus: status, predictionId: state.predictionId || '' });
-            if (status === 'processing') emit(onProgress, { percent: 16, stage: 'Generating course cover image', detail: 'FLUX Schnell is actively creating the front-slide image.', modelStatus: status, predictionId: state.predictionId || '' });
+            if (status === 'starting') emit(onProgress, { percent: 10, stage: 'Waiting for Replicate image model', detail: 'Replicate accepted the cover request and is starting FLUX.2 Klein.', modelStatus: status, predictionId: state.predictionId || '' });
+            if (status === 'processing') emit(onProgress, { percent: 16, stage: 'Generating course cover image', detail: 'FLUX.2 Klein is actively creating the front-slide image.', modelStatus: status, predictionId: state.predictionId || '' });
             if (status === 'retrying') emit(onProgress, { percent: 12, stage: 'Retrying course cover image', detail: 'The cover request hit a temporary image-service issue. Retrying with backoff.' });
             if (status === 'succeeded') emit(onProgress, { percent: 24, stage: 'Course cover image ready', detail: 'The front-slide image has been generated.', modelStatus: status, predictionId: state.predictionId || '' });
         });
@@ -291,8 +292,7 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
                 path,
                 config,
                 (state) => {
-                    const status = String(state?.status || '').toLowerCase();
-                    if (status === 'retrying') {
+                    if (String(state?.status || '').toLowerCase() === 'retrying') {
                         emit(onProgress, {
                             percent: 30 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 34),
                             stage: `Retrying slide ${slideIndex + 1} image`,
@@ -324,10 +324,6 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
         slideImagesGenerated += 1;
     }
 
-    // Recovery pass: if primary jobs did not meet the visual-quality floor,
-    // retry missing slides sequentially with a simpler, neutral prompt. Also use
-    // previously unselected slides as replacement slots so one prompt-specific
-    // failure cannot block the entire course.
     if (coverGenerated && slideImagesGenerated < requiredSlideImages) {
         const recoveryCandidates = [
             ...selectedIndexes.filter((index) => !successfulSlideIndexes.has(index)),
@@ -339,8 +335,8 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
             detail: `Only ${1 + slideImagesGenerated} image(s) completed. Retrying missing visual slots sequentially.`
         });
 
-        for (let recoveryIndex = 0; recoveryIndex < recoveryCandidates.length && slideImagesGenerated < requiredSlideImages; recoveryIndex += 1) {
-            const slideIndex = recoveryCandidates[recoveryIndex];
+        for (const slideIndex of recoveryCandidates) {
+            if (slideImagesGenerated >= requiredSlideImages) break;
             const path = `assets/media/slide-${String(slideIndex + 1).padStart(3, '0')}.webp`;
             try {
                 const file = await generateImage(
@@ -352,7 +348,7 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
                             emit(onProgress, {
                                 percent: 66,
                                 stage: `Recovering slide ${slideIndex + 1} image`,
-                                detail: 'Waiting briefly before another FLUX attempt.'
+                                detail: 'Waiting briefly before another low-cost FLUX attempt.'
                             });
                         }
                     }
@@ -391,9 +387,12 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
         mediaProvider: 'replicate',
         replicateMedia: {
             imageModel: config.imageModel,
+            imageMegapixels: config.imageMegapixels,
+            estimatedImageUnitUsd: 0.001,
             coverGenerated,
             slideImagesGenerated,
             totalImagesGenerated,
+            estimatedImageCostUsd: Number((totalImagesGenerated * 0.001).toFixed(4)),
             maxImages: config.maxImages,
             minImages: requiredImages,
             selectedSlideIndexes: selectedIndexes,
@@ -407,9 +406,11 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     emit(onProgress, { percent: 76, stage: 'Images ready', detail: `${totalImagesGenerated} raster images are ready. Formatting and packaging the SCORM course next.` });
     logger.info('scorm_replicate_media_ready', {
         module: 'scorm',
+        imageModel: config.imageModel,
         coverGenerated,
         slideImagesGenerated,
         totalImagesGenerated,
+        estimatedImageCostUsd: updated.replicateMedia.estimatedImageCostUsd,
         requiredImages,
         imageConcurrency: config.imageConcurrency,
         audio: false,
