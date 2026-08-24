@@ -220,6 +220,7 @@ function guessContentType(path) {
     if (p.endsWith('.png')) return 'image/png';
     if (p.endsWith('.jpg') || p.endsWith('.jpeg')) return 'image/jpeg';
     if (p.endsWith('.gif')) return 'image/gif';
+    if (p.endsWith('.webp')) return 'image/webp';
     if (p.endsWith('.svg')) return 'image/svg+xml';
     if (p.endsWith('.woff2')) return 'font/woff2';
     if (p.endsWith('.woff')) return 'font/woff';
