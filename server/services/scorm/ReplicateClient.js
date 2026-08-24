@@ -44,6 +44,21 @@ function friendlyReplicateError(status, body, model) {
     return { code: 'REPLICATE_API_ERROR', message: `Replicate API error (${status})${detail ? `: ${detail}` : ''}` };
 }
 
+function notifyStatus(opts, prediction, model) {
+    if (typeof opts?.onStatus !== 'function') return;
+    try {
+        opts.onStatus({
+            model,
+            status: String(prediction?.status || 'unknown').toLowerCase(),
+            predictionId: String(prediction?.id || ''),
+            createdAt: prediction?.created_at || null,
+            startedAt: prediction?.started_at || null,
+            completedAt: prediction?.completed_at || null,
+            metrics: prediction?.metrics || null
+        });
+    } catch (_) {}
+}
+
 async function runReplicateModel(model, input, opts = {}) {
     const token = getReplicateToken();
     if (!token) {
@@ -52,7 +67,9 @@ async function runReplicateModel(model, input, opts = {}) {
         throw err;
     }
 
-    const waitSeconds = Math.max(1, Math.min(60, Number(opts.waitSeconds || 60)));
+    // Keep the synchronous wait short so callers can observe the real
+    // prediction state (starting/processing) instead of being blind for 60s.
+    const waitSeconds = Math.max(1, Math.min(10, Number(opts.waitSeconds || 1)));
     const timeoutMs = Math.max(15000, Number(opts.timeoutMs || 240000));
     const started = Date.now();
     const endpoint = modelEndpoint(model);
@@ -83,6 +100,8 @@ async function runReplicateModel(model, input, opts = {}) {
         throw err;
     }
 
+    notifyStatus(opts, prediction, model);
+
     while (prediction && ['starting', 'processing'].includes(String(prediction.status || '').toLowerCase())) {
         if (Date.now() - started > timeoutMs) {
             const err = new Error(`Replicate prediction timed out for ${model}.`);
@@ -108,6 +127,7 @@ async function runReplicateModel(model, input, opts = {}) {
             throw err;
         }
         prediction = polled;
+        notifyStatus(opts, prediction, model);
     }
 
     const status = String(prediction?.status || '').toLowerCase();
@@ -169,5 +189,6 @@ module.exports = {
     outputUrl,
     downloadReplicateAsset,
     modelEndpoint,
-    friendlyReplicateError
+    friendlyReplicateError,
+    notifyStatus
 };
