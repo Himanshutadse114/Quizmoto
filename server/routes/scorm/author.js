@@ -10,7 +10,7 @@ const { featureFlags, scormMaxUploadMb } = require('../../config/featureFlags');
 const { analyzePolicy } = require('../../services/scorm/CourseAiService');
 const { prepareReplicateCourseMedia } = require('../../services/scorm/ReplicateCourseMediaService');
 const { planExperienceV5 } = require('../../services/scorm/ScormExperiencePlanner');
-const { repairQuizExplanations } = require('../../services/scorm/ScormQuizQualityService');
+const { ensureQuizIntegrity } = require('../../services/scorm/ScormQuizQualityService');
 const { buildScormPackageZip } = require('../../services/scorm/ScormReplicateMediaFinalizer');
 const { getTheme, listThemes, normalizeThemeId } = require('../../services/scorm/ScormThemeCatalog');
 const { ScormPackage } = require('../../models/scorm');
@@ -33,7 +33,7 @@ function aiErrorStatus(code) {
     if (code === 'GEMINI_KEY_MISSING' || code === 'REPLICATE_KEY_MISSING') return 503;
     if (code === 'GEMINI_QUOTA' || code === 'REPLICATE_RATE_LIMIT') return 429;
     if (code === 'REPLICATE_BILLING') return 402;
-    if (code === 'REPLICATE_SOURCE_NEEDS_TEXT') return 422;
+    if (code === 'REPLICATE_SOURCE_NEEDS_TEXT' || code === 'SCORM_QUIZ_INCOMPLETE') return 422;
     if (code === 'REPLICATE_IMAGES_REQUIRED' || code === 'REPLICATE_IMAGES_INCOMPLETE') return 502;
     return 500;
 }
@@ -142,10 +142,10 @@ router.post('/analyze', auth, async (req, res) => {
             onProgress: report
         });
 
-        report({ percent: 96, stage: 'Checking knowledge checks', detail: 'Ensuring every question has a valid answer and a learner explanation.' });
-        analysis = repairQuizExplanations(analysis);
-        report({ percent: 97, stage: 'Formatting learning content', detail: 'Applying varied course layouts and learner interactions.' });
+        report({ percent: 96, stage: 'Formatting learning content', detail: 'Applying varied course layouts while keeping the full learner text visible.' });
         analysis = planExperienceV5(analysis);
+        report({ percent: 98, stage: 'Checking knowledge checks', detail: 'Ensuring every question has four answers, a valid correct answer and a learner explanation.' });
+        analysis = ensureQuizIntegrity(analysis);
         if ((titleHint || cleanTopic) && !analysis.title) analysis.title = titleHint || cleanTopic;
         analysis.themeId = selectedThemeId;
         analysis.themeName = selectedTheme.name;
@@ -214,10 +214,10 @@ router.post('/generate', auth, async (req, res) => {
             });
         }
 
-        report({ percent: 4, stage: 'Checking knowledge checks', detail: 'Guaranteeing quiz explanations before packaging the course.' });
-        analysis = repairQuizExplanations(analysis);
-        report({ percent: 5, stage: 'Formatting course structure', detail: 'Balancing text, images and varied learner layouts before image generation.' });
+        report({ percent: 4, stage: 'Formatting course structure', detail: 'Balancing text, images and varied learner layouts before image generation.' });
         analysis = planExperienceV5(analysis);
+        report({ percent: 5, stage: 'Checking knowledge checks', detail: 'Guaranteeing complete quiz questions and learner explanations before packaging.' });
+        analysis = ensureQuizIntegrity(analysis);
         analysis = {
             ...(analysis || {}),
             themeId: selectedThemeId,
