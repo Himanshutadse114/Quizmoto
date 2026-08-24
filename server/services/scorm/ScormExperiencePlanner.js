@@ -71,13 +71,17 @@ function metaphorFor(slide) {
 }
 
 function semanticLayout(slide) {
-    const text = `${slide?.title || ''} ${slide?.content || ''} ${(Array.isArray(slide?.keyPoints) ? slide.keyPoints.join(' ') : '')}`.toLowerCase();
     const title = String(slide?.title || '').toLowerCase();
+    const points = (Array.isArray(slide?.keyPoints) ? slide.keyPoints.join(' ') : '').toLowerCase();
+    const structureText = `${title} ${points}`;
 
-    if (/timeline|history|phase|sequence|journey|before.*after|from .* to /.test(text)) return 'timeline';
-    if (/step|process|workflow|how .* works|lifecycle|flow|reporting process|response process|verification process/.test(text)) return 'process';
-    if (/versus|\bvs\b|difference between|compare|comparison|safe .* unsafe|recommended .* avoid|do .* don.?t|smishing and vishing|vishing and smishing/.test(text)) return 'comparison';
-    if (/types of|categories|channels|pillars|components|warning signs|red flags|indicators|signals|checklist/.test(text)) return 'hub';
+    // Infer structure from the title and visual points rather than every word in
+    // the body. Professional prose often says "works by", which previously made
+    // unrelated lessons look like Process slides throughout the course.
+    if (/timeline|history|phase|sequence|journey|before.*after|from .* to /.test(structureText)) return 'timeline';
+    if (/step|process|workflow|how .* works|lifecycle|flow|reporting process|response process|verification process/.test(structureText)) return 'process';
+    if (/versus|\bvs\b|difference between|compare|comparison|safe .* unsafe|recommended .* avoid|do .* don.?t|smishing and vishing|vishing and smishing/.test(structureText)) return 'comparison';
+    if (/types of|categories|channels|pillars|components|warning signs|red flags|indicators|signals|checklist/.test(structureText)) return 'hub';
     if (/tips|rules|principles|things to|actions to|ways to|key behaviours|key behaviors/.test(title)) return 'cards';
 
     // A focused lesson, attack type, scenario or workplace example works best as
@@ -91,14 +95,15 @@ function chooseBalancedLayouts(slides) {
     const maxHubs = Math.max(1, Math.min(2, Math.ceil(total * 0.18)));
     const counts = Object.create(null);
     let previous = '';
+    let sameRun = 0;
 
-    return slides.map((slide, index) => {
+    return slides.map((slide) => {
         const explicit = clean(slide?.layout).toLowerCase();
         const semantic = semanticLayout(slide);
         let layout = semantic;
 
-        // Preserve an explicit renderer-supported structural layout only when it
-        // is not the generic cards/HUB choice that caused repetitive courses.
+        // Keep useful AI-selected structural layouts, but never blindly retain
+        // repeated generic Cards/HUB choices.
         if (RENDER_LAYOUTS.includes(explicit) && !['cards', 'hub'].includes(explicit)) {
             layout = explicit;
         }
@@ -106,14 +111,29 @@ function chooseBalancedLayouts(slides) {
         if (layout === 'cards' && (counts.cards || 0) >= maxCards) layout = 'spotlight';
         if (layout === 'hub' && (counts.hub || 0) >= maxHubs) layout = 'spotlight';
 
-        // Never allow a run of card-family screens. If the semantic choice is a
-        // second grid immediately after another grid, use a visual spotlight.
+        // Never place two card-family screens beside each other. This keeps the
+        // course from feeling like an endless set of flip/reveal tiles.
         if (['cards', 'hub'].includes(layout) && ['cards', 'hub'].includes(previous)) {
             layout = 'spotlight';
         }
 
+        const prospectiveRun = layout === previous ? sameRun + 1 : 1;
+        if (prospectiveRun > 2) {
+            if (layout !== 'spotlight') {
+                layout = 'spotlight';
+            } else if ((counts.cards || 0) < maxCards && previous !== 'cards') {
+                layout = 'cards';
+            } else if ((counts.hub || 0) < maxHubs && previous !== 'hub') {
+                layout = 'hub';
+            }
+        }
+
+        if (layout === previous) sameRun += 1;
+        else {
+            previous = layout;
+            sameRun = 1;
+        }
         counts[layout] = (counts[layout] || 0) + 1;
-        previous = layout;
         return layout;
     });
 }
@@ -216,7 +236,7 @@ function planExperienceV5(rawAnalysis) {
     return {
         ...analysis,
         experienceVersion: 5,
-        experiencePlanner: 'balanced-visual-v7',
+        experiencePlanner: 'balanced-visual-v8',
         slides: planned
     };
 }
