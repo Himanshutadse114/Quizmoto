@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const logger = require('../../utils/logger');
 
 const DEFAULT_MODELS = [
@@ -36,6 +37,20 @@ function visualRules() {
         'no unrelated cybersecurity objects unless the supplied lesson itself is about cybersecurity',
         '2 to 5 clear visual elements, one focal idea, clean negative space, polished realistic or soft-3D raster style'
     ].join('; ');
+}
+
+function promptSourceFingerprint(analysis) {
+    const source = {
+        title: clean(analysis?.title),
+        summary: clean(analysis?.summary),
+        slides: (Array.isArray(analysis?.slides) ? analysis.slides : []).map((slide) => ({
+            title: clean(slide?.title),
+            content: clean(slide?.content || slide?.introText || slide?.revealText),
+            keyPoints: (Array.isArray(slide?.keyPoints) ? slide.keyPoints : []).map(clean).filter(Boolean).slice(0, 5),
+            visualTitle: clean(slide?.visualTitle)
+        }))
+    };
+    return crypto.createHash('sha256').update(JSON.stringify(source)).digest('hex');
 }
 
 function fallbackPrompt({ title, content, keyPoints, courseTitle, role = 'slide' }) {
@@ -116,10 +131,7 @@ async function callGeminiBatch(instruction) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     contents: [{ parts: [{ text: instruction }] }],
-                    generationConfig: {
-                        temperature: 0.18,
-                        maxOutputTokens: 8192
-                    }
+                    generationConfig: { temperature: 0.18, maxOutputTokens: 8192 }
                 })
             });
             const bodyText = await response.text();
@@ -164,10 +176,15 @@ function hasCompletePromptPlan(analysis) {
     return Boolean(clean(analysis?.coverImagePrompt)) && slides.length > 0 && slides.every((slide) => clean(slide?.imagePrompt));
 }
 
+function promptPlanMatchesCourse(analysis) {
+    return hasCompletePromptPlan(analysis) && clean(analysis?.visualPromptPlan?.sourceFingerprint) === promptSourceFingerprint(analysis);
+}
+
 async function ensureCourseVisualPrompts(rawAnalysis, opts = {}) {
     const analysis = rawAnalysis && typeof rawAnalysis === 'object' ? { ...rawAnalysis } : {};
     analysis.slides = (Array.isArray(analysis.slides) ? analysis.slides : []).map((slide) => ({ ...(slide || {}) }));
-    if (!opts.force && hasCompletePromptPlan(analysis)) return analysis;
+    const sourceFingerprint = promptSourceFingerprint(analysis);
+    if (!opts.force && promptPlanMatchesCourse(analysis)) return analysis;
 
     const instruction = buildBatchInstruction(analysis);
     let model = null;
@@ -213,6 +230,7 @@ async function ensureCourseVisualPrompts(rawAnalysis, opts = {}) {
         model,
         mode: 'single_batch',
         promptRequests: model ? 1 : 0,
+        sourceFingerprint,
         coverPromptReady: Boolean(analysis.coverImagePrompt),
         slidePromptsReady: analysis.slides.filter((slide) => clean(slide.imagePrompt)).length,
         totalSlides: analysis.slides.length
@@ -228,5 +246,7 @@ module.exports = {
     fallbackPrompt,
     visualRules,
     modelCandidates,
-    hasCompletePromptPlan
+    hasCompletePromptPlan,
+    promptPlanMatchesCourse,
+    promptSourceFingerprint
 };
