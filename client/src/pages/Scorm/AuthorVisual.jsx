@@ -18,7 +18,6 @@ import { normalizeCourseSlide } from './courseExperienceV5';
 
 const DRAFT_KEY = 'quizmoto_scorm_author_content_draft_v3';
 const EDITORIAL_THEME_ID = 1;
-const ANALYSIS_ESTIMATES = { concise: 45, detailed: 65, comprehensive: 85 };
 
 function toBase64(file) {
   return new Promise((resolve, reject) => {
@@ -121,34 +120,38 @@ function formatDuration(seconds) {
   return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
 }
 
-function generationEstimateSeconds(task, detailLevel, slideCount) {
-  if (task === 'analyze') return ANALYSIS_ESTIMATES[detailLevel] || ANALYSIS_ESTIMATES.detailed;
-  const slides = Math.max(1, Number(slideCount || 10));
-  return Math.min(150, 58 + (slides * 4));
+function createProgressId(task) {
+  let random = '';
+  try {
+    random = globalThis.crypto?.randomUUID?.() || '';
+  } catch (_) {}
+  if (!random) random = `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+  return `scorm-${task}-${random}`.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 96);
 }
 
-function generationStage(task, fraction) {
+function progressTimeLabel(task, progress) {
+  const percent = Number(progress?.percent || 0);
+  const modelStatus = String(progress?.modelStatus || '').toLowerCase();
+  if (modelStatus === 'starting') return 'Waiting for model';
+  if (percent >= 96) return 'Almost ready';
   if (task === 'analyze') {
-    if (fraction < 0.18) return 'Planning the learning journey';
-    if (fraction < 0.66) return 'Writing professional course content';
-    if (fraction < 0.84) return 'Creating knowledge checks';
-    return 'Quality-reviewing the course';
+    if (modelStatus === 'processing') return 'Usually < 2 min';
+    return 'Typical: 1–3 min';
   }
-  if (fraction < 0.16) return 'Preparing final course assets';
-  if (fraction < 0.43) return 'Generating the cover and course images';
-  if (fraction < 0.76) return 'Generating natural voice narration';
-  if (fraction < 0.92) return 'Building the SCORM package';
-  return 'Saving and finalising your course';
+  if (percent >= 80) return 'Usually < 30 sec';
+  return 'Typical: 30–90 sec';
 }
 
-function GenerationProgressModal({ task, elapsed, detailLevel, slideCount }) {
+function GenerationProgressModal({ task, elapsed, progress }) {
   if (!task || typeof document === 'undefined') return null;
-  const expected = generationEstimateSeconds(task, detailLevel, slideCount);
-  const rawFraction = expected > 0 ? elapsed / expected : 0;
-  const stageFraction = Math.min(1, rawFraction);
-  const percent = Math.min(95, Math.max(6, Math.round(6 + (rawFraction * 86))));
-  const remaining = Math.max(0, expected - elapsed);
+  const numericPercent = Number(progress?.percent);
+  const percent = Number.isFinite(numericPercent) ? Math.max(1, Math.min(100, Math.round(numericPercent))) : 1;
   const isAnalyze = task === 'analyze';
+  const stage = progress?.stage || (isAnalyze ? 'Contacting the course-writing service' : 'Preparing final course');
+  const detail = progress?.detail || (isAnalyze
+    ? 'Waiting for the backend to report the current AI generation state.'
+    : 'Waiting for the backend to report the current image and packaging state.');
+  const modelStatus = String(progress?.modelStatus || '').trim().toLowerCase();
 
   return createPortal(
     <div className="fixed inset-0 z-[9998] bg-[#050807]/80 backdrop-blur-md grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Course generation progress">
@@ -160,22 +163,23 @@ function GenerationProgressModal({ task, elapsed, detailLevel, slideCount }) {
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[10px] uppercase tracking-[.14em] font-bold text-[#7BDCD3]">{isAnalyze ? 'Creating learning content' : 'Creating final SCORM course'}</div>
-              <h2 className="text-xl md:text-2xl font-semibold text-white mt-1">{generationStage(task, stageFraction)}</h2>
-              <p className="text-sm text-slate-400 mt-2">
-                {isAnalyze
-                  ? 'The AI is structuring the course, writing the lessons and checking instructional quality.'
-                  : 'The course generator is creating the front image, selected slide images, natural narration and the final learner package.'}
-              </p>
+              <h2 className="text-xl md:text-2xl font-semibold text-white mt-1">{stage}</h2>
+              <p className="text-sm text-slate-400 mt-2">{detail}</p>
+              {modelStatus && (
+                <div className="mt-3 inline-flex items-center rounded-full border border-white/10 bg-white/[.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[.08em] text-slate-400">
+                  Replicate: {modelStatus}
+                </div>
+              )}
             </div>
           </div>
 
           <div className="mt-7">
             <div className="flex items-center justify-between text-xs mb-2">
               <span className="font-semibold text-slate-300">{percent}%</span>
-              <span className="text-slate-500">Estimated progress</span>
+              <span className="text-slate-500">Live backend progress</span>
             </div>
             <div className="h-2.5 rounded-full bg-white/[.07] overflow-hidden border border-white/[.05]">
-              <div className="h-full rounded-full bg-[#4FC9BF] transition-[width] duration-1000 ease-linear" style={{ width: `${percent}%` }} />
+              <div className="h-full rounded-full bg-[#4FC9BF] transition-[width] duration-500 ease-out" style={{ width: `${percent}%` }} />
             </div>
           </div>
 
@@ -185,13 +189,13 @@ function GenerationProgressModal({ task, elapsed, detailLevel, slideCount }) {
               <div className="text-lg font-semibold text-white mt-1 tabular-nums">{formatDuration(elapsed)}</div>
             </div>
             <div className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4">
-              <div className="text-[9px] uppercase tracking-[.12em] text-slate-500 font-bold">Estimated remaining</div>
-              <div className="text-lg font-semibold text-white mt-1 tabular-nums">{remaining > 0 ? `~${formatDuration(remaining)}` : 'Finishing…'}</div>
+              <div className="text-[9px] uppercase tracking-[.12em] text-slate-500 font-bold">Time guidance</div>
+              <div className="text-lg font-semibold text-white mt-1">{progressTimeLabel(task, progress)}</div>
             </div>
           </div>
 
           <div className="mt-4 rounded-xl bg-[#4FC9BF]/[.06] border border-[#4FC9BF]/10 px-4 py-3 text-[11px] leading-relaxed text-slate-400">
-            Typical time is an estimate and can vary with Replicate model load. Please keep this page open while the course is being created.
+            The progress bar now follows backend and Replicate states rather than elapsed time. Cold starts can take longer, so it will stay at the current stage until the model actually moves forward.
           </div>
         </div>
       </div>
@@ -225,7 +229,7 @@ function ExactSlidePreviewModal({ src, index, total, stale, onClose }) {
             src={src}
             title={`Generated slide ${index + 1} preview`}
             className="w-full h-full border-0 block bg-[#05070d]"
-            allow="autoplay; fullscreen"
+            allow="fullscreen"
           />
         </div>
         <p className="text-center text-[11px] text-white/45 mt-3">This uses the same generated SCORM HTML, CSS and visual assets as the learner course. Navigation is locked to the selected slide.</p>
@@ -255,21 +259,34 @@ export default function AuthorVisual() {
   const [busy, setBusy] = useState(false);
   const [busyTask, setBusyTask] = useState('');
   const [busyStartedAt, setBusyStartedAt] = useState(0);
+  const [busyProgressId, setBusyProgressId] = useState('');
+  const [liveProgress, setLiveProgress] = useState(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
   const beginBusyTask = (task) => {
+    const progressId = createProgressId(task);
     setBusy(true);
     setBusyTask(task);
     setBusyStartedAt(Date.now());
+    setBusyProgressId(progressId);
+    setLiveProgress({
+      percent: 1,
+      stage: 'Contacting course service',
+      detail: 'Waiting for the backend to begin the generation request.',
+      modelStatus: ''
+    });
     setElapsedSeconds(0);
+    return progressId;
   };
 
   const endBusyTask = () => {
     setBusy(false);
     setBusyTask('');
     setBusyStartedAt(0);
+    setBusyProgressId('');
+    setLiveProgress(null);
     setElapsedSeconds(0);
   };
 
@@ -280,6 +297,39 @@ export default function AuthorVisual() {
     const timer = window.setInterval(tick, 1000);
     return () => window.clearInterval(timer);
   }, [busyTask, busyStartedAt]);
+
+  useEffect(() => {
+    if (!busyTask || !busyProgressId || !token) return undefined;
+    let cancelled = false;
+    let timer = null;
+
+    const poll = async () => {
+      try {
+        const res = await axios.get(apiUrl(`/api/scorm/author/progress/${encodeURIComponent(busyProgressId)}`), {
+          headers,
+          timeout: 10000
+        });
+        if (!cancelled && res.data?.progress) setLiveProgress(res.data.progress);
+      } catch (err) {
+        // 404 is normal during the first few milliseconds before the POST route
+        // has registered the progress id. Keep the initial state and retry.
+        if (!cancelled && err.response?.status && err.response.status !== 404) {
+          setLiveProgress((prev) => prev || {
+            percent: 1,
+            stage: 'Waiting for generation status',
+            detail: 'The course request is still running. Live status will resume when the backend responds.'
+          });
+        }
+      }
+    };
+
+    poll();
+    timer = window.setInterval(poll, 900);
+    return () => {
+      cancelled = true;
+      if (timer) window.clearInterval(timer);
+    };
+  }, [busyTask, busyProgressId, token, headers]);
 
   useEffect(() => {
     if (!token) { navigate('/'); return; }
@@ -322,12 +372,13 @@ export default function AuthorVisual() {
       setError('Add a topic and description or upload a source document.');
       return;
     }
-    beginBusyTask('analyze');
+    const progressId = beginBusyTask('analyze');
     setError('');
     setNotice('');
     try {
       const fileBase64 = file ? await toBase64(file) : '';
       const res = await axios.post(apiUrl('/api/scorm/author/analyze'), {
+        progressId,
         topic: topic.trim(),
         description: description.trim(),
         fileBase64,
@@ -339,7 +390,7 @@ export default function AuthorVisual() {
       setSelected(0);
       setDirty(true);
       const provider = res.data?.aiProvider === 'replicate' ? 'Replicate' : 'AI';
-      setNotice(`${provider} learning content is ready. Review and edit the learner-visible text, then generate the course. Images and natural voice are created during final generation.`);
+      setNotice(`${provider} learning content is ready. Review and edit the learner-visible text, then generate the course. Raster images are created during final generation.`);
     } catch (err) {
       setError(err.response?.data?.message || err.message);
     } finally {
@@ -407,11 +458,13 @@ export default function AuthorVisual() {
       setError(quizError);
       return;
     }
-    beginBusyTask(editId ? 'rebuild' : 'generate');
+    const task = editId ? 'rebuild' : 'generate';
+    const progressId = beginBusyTask(task);
     setError('');
     setNotice('');
     try {
       const res = await axios.post(apiUrl('/api/scorm/author/generate'), {
+        progressId,
         analysis: cleanForGenerate(analysis),
         templateId: EDITORIAL_THEME_ID,
         ...(editId ? { replacePackageId: editId } : {})
@@ -441,7 +494,7 @@ export default function AuthorVisual() {
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">SCORM AI · Content Editor</div>
           <h1 className="text-2xl md:text-3xl font-semibold text-white mt-1">{editId ? 'Edit course content' : 'Create AI course'}</h1>
-          <p className="text-sm text-slate-400 mt-1 max-w-2xl">Only learner-visible text is editable here. Visual layout, raster artwork, natural narration and course styling are managed by the course generator.</p>
+          <p className="text-sm text-slate-400 mt-1 max-w-2xl">Only learner-visible text is editable here. Visual layout, raster artwork and course styling are managed by the course generator. No audio is added.</p>
         </div>
         {analysis && (
           <div className="flex items-center gap-2 flex-wrap">
@@ -581,8 +634,7 @@ export default function AuthorVisual() {
       <GenerationProgressModal
         task={busyTask}
         elapsed={elapsedSeconds}
-        detailLevel={detailLevel}
-        slideCount={analysis?.slides?.length || 0}
+        progress={liveProgress}
       />
     </div>
   );

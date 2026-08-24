@@ -1,5 +1,6 @@
 const SCREEN_TYPES = ['concept', 'hotspot', 'process', 'scenario', 'comparison', 'reveal', 'timeline', 'takeaway'];
 const BACKGROUNDS = ['mesh', 'glow', 'grid', 'orbit', 'waves', 'focus'];
+const RENDER_LAYOUTS = ['process', 'cards', 'timeline', 'comparison', 'hub', 'spotlight'];
 
 function clean(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -14,14 +15,8 @@ function wordCount(value) {
 }
 
 /**
- * Detailed course copy must stay learner-visible.
- *
- * Older planner versions split a 120-170 word teaching passage into a one-line
- * intro plus a hidden revealText field. The base learner renderer displays
- * `content`, so a second planning pass could collapse a detailed slide down to
- * its first sentence. Keep the complete instructional passage in introText and
- * content instead; interactions are supplied by key points/cards, not by hiding
- * the lesson itself.
+ * Detailed course copy must stay learner-visible. Interactions may reinforce a
+ * lesson, but they must never hide the main teaching passage.
  */
 function splitCopy(content) {
     const full = clean(content);
@@ -29,14 +24,9 @@ function splitCopy(content) {
 }
 
 /**
- * Repair legacy planned slides when they are rebuilt. Old generated analyses
+ * Repair legacy planned slides when they are rebuilt. Older generated analyses
  * can contain only the first sentence in content/introText and the remaining
- * teaching copy in revealText. Merge those fields back into one canonical,
- * visible passage so Save & rebuild can repair an existing thin-looking course.
- *
- * In the new planner content and introText initially match. If the Content
- * Editor later changes introText, the mismatch is intentional learner editing,
- * so the edited visible text becomes canonical on rebuild.
+ * teaching copy in revealText. Merge those fields back into one visible passage.
  */
 function canonicalLearningCopy(slide) {
     const content = clean(slide?.content);
@@ -65,11 +55,6 @@ function canonicalLearningCopy(slide) {
 function metaphorFor(slide) {
     if (clean(slide.visualMetaphor)) return clean(slide.visualMetaphor).toLowerCase();
     const text = `${slide.title || ''} ${slide.content || ''} ${(Array.isArray(slide.keyPoints) ? slide.keyPoints.join(' ') : '')}`.toLowerCase();
-
-    // Prefer the attack/channel being taught before secondary words such as
-    // "credential" or "file". This prevents a phishing lesson from receiving
-    // a password/MFA illustration simply because the consequence mentions a
-    // stolen login.
     if (/qr|quick response|quishing/.test(text)) return 'qr';
     if (/deepfake|voice clone|audio clone|synthetic voice|synthetic video|artificial intelligence|\bai\b/.test(text)) return 'ai-wave';
     if (/smish|sms|text message|whatsapp|messaging app/.test(text)) return 'phone';
@@ -85,31 +70,86 @@ function metaphorFor(slide) {
     return 'shield';
 }
 
-function preferredType(slide, index) {
-    const explicit = clean(slide.screenType).toLowerCase();
-    if (SCREEN_TYPES.includes(explicit)) return explicit;
-    const layout = clean(slide.layout).toLowerCase();
-    const text = `${slide.title || ''} ${slide.content || ''}`.toLowerCase();
+function semanticLayout(slide) {
+    const title = String(slide?.title || '').toLowerCase();
+    const points = (Array.isArray(slide?.keyPoints) ? slide.keyPoints.join(' ') : '').toLowerCase();
+    const structureText = `${title} ${points}`;
 
-    if (/scenario|imagine|suppose|you receive|you notice|you are|if you|when you|example/.test(text) && index > 0) return 'scenario';
-    if (/remember|critical|key takeaway|most important|always|never/.test(text) || layout === 'spotlight') return 'takeaway';
-    if (layout === 'comparison' || layout === 'matrix') return 'comparison';
-    if (layout === 'timeline') return 'timeline';
-    if (layout === 'process' || layout === 'cycle') return 'process';
-    if (layout === 'hub') return 'hotspot';
-    if (layout === 'cards') return index % 2 ? 'reveal' : 'concept';
-    return index % 4 === 1 ? 'hotspot' : 'concept';
+    // Infer structure from the title and visual points rather than every word in
+    // the body. Professional prose often says "works by", which previously made
+    // unrelated lessons look like Process slides throughout the course.
+    if (/timeline|history|phase|sequence|journey|before.*after|from .* to /.test(structureText)) return 'timeline';
+    if (/step|process|workflow|how .* works|lifecycle|flow|reporting process|response process|verification process/.test(structureText)) return 'process';
+    if (/versus|\bvs\b|difference between|compare|comparison|safe .* unsafe|recommended .* avoid|do .* don.?t|smishing and vishing|vishing and smishing/.test(structureText)) return 'comparison';
+    if (/types of|categories|channels|pillars|components|warning signs|red flags|indicators|signals|checklist/.test(structureText)) return 'hub';
+    if (/tips|rules|principles|things to|actions to|ways to|key behaviours|key behaviors/.test(title)) return 'cards';
+
+    // A focused lesson, attack type, scenario or workplace example works best as
+    // a visual split/spotlight rather than another grid of cards.
+    return 'spotlight';
 }
 
-function alternateType(type, slide, index) {
-    const layout = clean(slide.layout).toLowerCase();
-    if (type === 'concept') return layout === 'cards' ? 'reveal' : 'hotspot';
-    if (type === 'hotspot') return 'reveal';
-    if (type === 'process') return index % 2 ? 'timeline' : 'concept';
-    if (type === 'timeline') return 'process';
-    if (type === 'comparison') return 'scenario';
-    if (type === 'scenario') return 'takeaway';
-    if (type === 'reveal') return 'concept';
+function chooseBalancedLayouts(slides) {
+    const total = slides.length;
+    const maxCards = Math.max(1, Math.min(2, Math.ceil(total * 0.18)));
+    const maxHubs = Math.max(1, Math.min(2, Math.ceil(total * 0.18)));
+    const counts = Object.create(null);
+    let previous = '';
+    let sameRun = 0;
+
+    return slides.map((slide) => {
+        const explicit = clean(slide?.layout).toLowerCase();
+        const semantic = semanticLayout(slide);
+        let layout = semantic;
+
+        // Keep useful AI-selected structural layouts, but never blindly retain
+        // repeated generic Cards/HUB choices.
+        if (RENDER_LAYOUTS.includes(explicit) && !['cards', 'hub'].includes(explicit)) {
+            layout = explicit;
+        }
+
+        if (layout === 'cards' && (counts.cards || 0) >= maxCards) layout = 'spotlight';
+        if (layout === 'hub' && (counts.hub || 0) >= maxHubs) layout = 'spotlight';
+
+        // Never place two card-family screens beside each other. This keeps the
+        // course from feeling like an endless set of flip/reveal tiles.
+        if (['cards', 'hub'].includes(layout) && ['cards', 'hub'].includes(previous)) {
+            layout = 'spotlight';
+        }
+
+        const prospectiveRun = layout === previous ? sameRun + 1 : 1;
+        if (prospectiveRun > 2) {
+            if (layout !== 'spotlight') {
+                layout = 'spotlight';
+            } else if ((counts.cards || 0) < maxCards && previous !== 'cards') {
+                layout = 'cards';
+            } else if ((counts.hub || 0) < maxHubs && previous !== 'hub') {
+                layout = 'hub';
+            }
+        }
+
+        if (layout === previous) sameRun += 1;
+        else {
+            previous = layout;
+            sameRun = 1;
+        }
+        counts[layout] = (counts[layout] || 0) + 1;
+        return layout;
+    });
+}
+
+function preferredType(slide, layout, index, interactiveUsed) {
+    const text = `${slide.title || ''} ${slide.content || ''}`.toLowerCase();
+    if (layout === 'comparison') return 'comparison';
+    if (layout === 'timeline') return 'timeline';
+    if (layout === 'process') return 'process';
+
+    // At most two learning screens per course become click/reveal experiences.
+    // Everything else remains immediately readable.
+    if (layout === 'cards' && interactiveUsed < 2) return 'reveal';
+    if (layout === 'hub' && interactiveUsed < 2) return 'hotspot';
+    if (/scenario|imagine|suppose|you receive|you notice|you are|if you|when you|example|case study/.test(text) && index > 0) return 'scenario';
+    if (/remember|critical|key takeaway|most important|always|never/.test(text)) return 'takeaway';
     return 'concept';
 }
 
@@ -129,25 +169,20 @@ function backgroundFor(type, index, previous) {
     return choice;
 }
 
-function interactionFor(type, layout, existing) {
-    const prompt = clean(existing?.prompt);
-    if (existing?.type && prompt) return { ...existing, prompt };
-    if (type === 'scenario') return { type: 'decision_explore', prompt: 'Consider the situation. Which signal or action would you examine first?' };
-    if (type === 'reveal') return { type: 'click_reveal', prompt: 'Open each point to reveal the practical detail.' };
-    if (type === 'hotspot') return { type: 'hotspot_explore', prompt: 'Explore the visual markers to uncover the important signals.' };
-    if (type === 'comparison') return { type: 'compare_reveal', prompt: 'Compare the two patterns and identify what changes the decision.' };
-    if (type === 'takeaway') return { type: 'focus_reveal', prompt: 'Reveal the key action you should remember.' };
-    if (type === 'timeline' || layout === 'timeline') return { type: 'step_explore', prompt: 'Explore each stage to understand how the situation develops.' };
-    if (type === 'process' || layout === 'process' || layout === 'cycle') return { type: 'step_explore', prompt: 'Explore each step to understand how the process works.' };
-    return { type: 'hotspot_explore', prompt: 'Explore the learning points before continuing.' };
+function interactionFor(type, layout) {
+    if (type === 'scenario') return { type: 'decision_explore', prompt: 'Consider the situation and identify the safest response.' };
+    if (type === 'reveal') return { type: 'click_reveal', prompt: 'Open each point to explore the practical detail.' };
+    if (type === 'hotspot') return { type: 'hotspot_explore', prompt: 'Explore the key signals and what they mean.' };
+    if (type === 'comparison') return { type: 'compare_reveal', prompt: 'Compare the patterns and identify what changes the decision.' };
+    if (type === 'timeline' || layout === 'timeline') return { type: 'step_explore', prompt: 'Follow the sequence to understand how the situation develops.' };
+    if (type === 'process' || layout === 'process') return { type: 'step_explore', prompt: 'Follow the steps to understand the process.' };
+    return { type: 'focus_reveal', prompt: 'Review the lesson and the action to remember.' };
 }
 
 function pointLimitFor(slide, type) {
     const layout = clean(slide?.layout).toLowerCase();
-    // Cards and HUB items become flip/reveal cards in the learner runtime.
-    // Four items fit as a 2x2 learning block without forcing page scrolling.
     if (layout === 'cards' || layout === 'hub' || type === 'reveal') return 4;
-    if (layout === 'process' || layout === 'timeline' || layout === 'cycle' || layout === 'spotlight') return 4;
+    if (layout === 'process' || layout === 'timeline' || layout === 'spotlight') return 4;
     return 6;
 }
 
@@ -167,34 +202,33 @@ function concisePoints(points, limit = 6) {
 
 function planExperienceV5(rawAnalysis) {
     const analysis = rawAnalysis && typeof rawAnalysis === 'object' ? rawAnalysis : {};
-    const slides = Array.isArray(analysis.slides) ? analysis.slides : [];
-    let previousType = '';
-    let previousBackground = '';
-
-    const planned = slides.map((rawSlide, index) => {
+    const rawSlides = Array.isArray(analysis.slides) ? analysis.slides : [];
+    const canonicalSlides = rawSlides.map((rawSlide) => {
         const slide = rawSlide && typeof rawSlide === 'object' ? rawSlide : {};
         const canonicalContent = canonicalLearningCopy(slide);
-        const planningSlide = { ...slide, content: canonicalContent };
-        const explicitType = clean(planningSlide.screenType).toLowerCase();
-        const hasExplicitType = SCREEN_TYPES.includes(explicitType);
-        let type = preferredType(planningSlide, index);
-        if (!hasExplicitType && type === previousType) type = alternateType(type, planningSlide, index);
-        const explicitBackground = clean(planningSlide.backgroundStyle).toLowerCase();
-        const background = explicitBackground || backgroundFor(type, index, previousBackground);
+        return { ...slide, content: canonicalContent };
+    });
+    const layouts = chooseBalancedLayouts(canonicalSlides);
+    let previousBackground = '';
+    let interactiveUsed = 0;
+
+    const planned = canonicalSlides.map((slide, index) => {
+        const layout = layouts[index] || 'spotlight';
+        const type = preferredType(slide, layout, index, interactiveUsed);
+        if (type === 'reveal' || type === 'hotspot') interactiveUsed += 1;
+        const background = backgroundFor(type, index, previousBackground);
         const result = {
-            ...planningSlide,
-            content: canonicalContent,
-            screenType: type,
-            backgroundStyle: BACKGROUNDS.includes(background) ? background : backgroundFor(type, index, previousBackground),
-            visualMetaphor: metaphorFor({ ...planningSlide, visualMetaphor: '' }),
-            // Keep the complete teaching passage visible. revealText is reserved
-            // for future per-card detail, never for hiding the main lesson.
-            introText: canonicalContent,
+            ...slide,
+            layout,
+            content: slide.content,
+            screenType: SCREEN_TYPES.includes(type) ? type : 'concept',
+            backgroundStyle: background,
+            visualMetaphor: metaphorFor({ ...slide, visualMetaphor: '' }),
+            introText: slide.content,
             revealText: '',
-            keyPoints: concisePoints(slide.keyPoints, pointLimitFor(planningSlide, type)),
-            interaction: interactionFor(type, planningSlide.layout, planningSlide.interaction)
+            keyPoints: concisePoints(slide.keyPoints, pointLimitFor({ ...slide, layout }, type)),
+            interaction: interactionFor(type, layout)
         };
-        previousType = result.screenType;
         previousBackground = result.backgroundStyle;
         return result;
     });
@@ -202,7 +236,7 @@ function planExperienceV5(rawAnalysis) {
     return {
         ...analysis,
         experienceVersion: 5,
-        experiencePlanner: 'content-visible-v6',
+        experiencePlanner: 'balanced-visual-v8',
         slides: planned
     };
 }
@@ -212,9 +246,11 @@ module.exports = {
     splitCopy,
     canonicalLearningCopy,
     metaphorFor,
-    preferredType,
+    semanticLayout,
+    chooseBalancedLayouts,
     backgroundFor,
     pointLimitFor,
     SCREEN_TYPES,
-    BACKGROUNDS
+    BACKGROUNDS,
+    RENDER_LAYOUTS
 };
