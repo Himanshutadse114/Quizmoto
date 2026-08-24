@@ -1,4 +1,5 @@
 const { expect } = require('chai');
+const JSZip = require('jszip');
 const {
     slideInstruction,
     coverInstruction
@@ -14,6 +15,7 @@ const {
     experienceScript,
     experienceCss
 } = require('../services/scorm/ScormExperiencePackageBuilder');
+const { buildScormPackageZip } = require('../services/scorm/ScormReplicateMediaFinalizer');
 
 describe('SCORM course generation pipeline V6', () => {
     it('asks Gemini for a prompt grounded only in the actual emotions slide', () => {
@@ -111,5 +113,58 @@ describe('SCORM course generation pipeline V6', () => {
         expect(script).to.include('s.visualAsset');
         expect(script).to.include('qmx-raster-native-panel');
         expect(script).to.include('qmx-native-cover-raster');
+    });
+
+    it('builds a full SCORM ZIP with WebPs and no generated SVG asset package in raster mode', async () => {
+        const analysis = {
+            title: 'Understanding Types of Emotions',
+            summary: 'Recognise emotional patterns and respond constructively in everyday situations.',
+            visualMode: 'raster',
+            coverImageAsset: 'assets/media/course-cover.webp',
+            coverVisualAsset: 'assets/media/course-cover.webp',
+            slides: [
+                {
+                    title: 'Recognising Emotional Patterns',
+                    content: 'Emotional patterns vary by intensity, context and personal interpretation. For example, frustration can be recognised through repeated reactions and can be managed by pausing before responding. Notice the context, identify the emotion and choose a constructive response because awareness improves communication.',
+                    keyPoints: ['Notice context', 'Identify emotion', 'Choose a constructive response'],
+                    layout: 'spotlight',
+                    rasterVisualAsset: 'assets/media/slide-001.webp',
+                    visualAsset: 'assets/media/slide-001.webp',
+                    mobileVisualAsset: 'assets/media/slide-001.webp',
+                    visualSource: 'ai_raster'
+                },
+                {
+                    title: 'Responding Constructively',
+                    content: 'A constructive response begins with recognising what you feel and why. For example, if a situation creates frustration, pause and choose language that keeps the conversation productive. This reduces avoidable conflict and supports better decisions.',
+                    keyPoints: ['Pause', 'Reflect', 'Respond constructively'],
+                    layout: 'cards'
+                }
+            ],
+            quiz: []
+        };
+
+        const files = [
+            { path: 'assets/media/course-cover.webp', body: Buffer.alloc(1024, 1), contentType: 'image/webp' },
+            { path: 'assets/media/slide-001.webp', body: Buffer.alloc(1024, 2), contentType: 'image/webp' }
+        ];
+
+        const buffer = await buildScormPackageZip(analysis, { replicateMediaFiles: files });
+        const zip = await JSZip.loadAsync(buffer);
+        const names = Object.keys(zip.files);
+        const generatedSvgs = names.filter((name) => /^assets\/visuals\/.*\.svg$/i.test(name));
+        expect(generatedSvgs).to.deep.equal([]);
+        expect(zip.file('assets/media/course-cover.webp')).to.not.equal(null);
+        expect(zip.file('assets/media/slide-001.webp')).to.not.equal(null);
+
+        const content = JSON.parse(await zip.file('content.json').async('string'));
+        expect(content.visualEngine).to.equal('gemini-prompted-flux-raster');
+        expect(content.canonicalRasterVisuals).to.equal(true);
+        expect(content.slides[0].visualAsset).to.equal('assets/media/slide-001.webp');
+        expect(content.slides[1].visualAsset).to.equal(undefined);
+        expect(JSON.stringify(content)).to.not.match(/assets\/visuals\/.*\.svg/i);
+
+        const html = await zip.file('index.html').async('string');
+        expect(html).to.include('assets/media/slide-001.webp');
+        expect(html).to.include('quizmoto-course-visual-v6');
     });
 });
