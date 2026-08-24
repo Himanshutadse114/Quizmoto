@@ -3,7 +3,9 @@ const {
     normalizeVisualPrompt,
     recoverPromptFromBrokenJson,
     sharedVisualRules,
-    slideInstruction
+    slideInstruction,
+    batchInstruction,
+    parseBatchPrompts
 } = require('../services/scorm/GeminiSlideVisualPromptService');
 
 describe('Gemini slide visual prompt service', () => {
@@ -46,5 +48,31 @@ describe('Gemini slide visual prompt service', () => {
         expect(instruction).to.include('empathy');
         expect(instruction).to.include('Do not introduce cybersecurity objects');
         expect(instruction).to.include('Do not return JSON');
+    });
+
+    it('plans cover and every slide prompt in one Gemini batch response', () => {
+        const course = {
+            title: 'Understanding Emotions',
+            summary: 'Learn emotional awareness and thoughtful responses.',
+            slides: [
+                { title: 'Why Emotions Matter', content: 'Emotions shape decisions and relationships.', keyPoints: ['Awareness', 'Empathy'] },
+                { title: 'Valence and Arousal', content: 'Emotions can be described by pleasantness and activation.', keyPoints: ['Valence', 'Arousal'] }
+            ]
+        };
+        const instruction = batchInstruction(course);
+        expect(instruction).to.include('Create the complete visual plan for the course in ONE response');
+        expect(instruction).to.include('COVER|||<cover prompt>');
+        expect(instruction).to.include('SLIDE 1|||<slide 1 prompt>');
+        expect(instruction).to.include('SLIDE 2|||<slide 2 prompt>');
+
+        const parsed = parseBatchPrompts([
+            'COVER|||Wide 16:9 non-human abstract illustration of layered coloured forms representing a broad emotional spectrum and self-awareness, premium soft lighting, no text, no logos and no watermark.',
+            'SLIDE 1|||Wide 16:9 non-human illustration of balanced interconnected shapes representing emotional awareness, empathy and thoughtful decision-making, clean corporate composition, no text, no logos and no watermark.',
+            'SLIDE 2|||Wide 16:9 non-human illustration using a calm two-axis composition of abstract objects representing pleasantness and activation without labels, clean premium lighting, no text, no logos and no watermark.'
+        ].join('\n'), 2);
+        expect(parsed.missing).to.deep.equal([]);
+        expect(parsed.coverPrompt).to.include('emotional spectrum');
+        expect(parsed.slidePrompts[0]).to.include('empathy');
+        expect(parsed.slidePrompts[1]).to.include('pleasantness');
     });
 });
