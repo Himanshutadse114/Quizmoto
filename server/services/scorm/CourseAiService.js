@@ -62,6 +62,22 @@ function cleanupModelText(text) {
     return value;
 }
 
+function replicateTextInput({ prompt, systemPrompt, temperature }) {
+    return {
+        prompt,
+        system_prompt: systemPrompt,
+        response_format: { type: 'json_object' },
+        max_completion_tokens: Number(process.env.REPLICATE_SCORM_MAX_COMPLETION_TOKENS || 12288),
+        min_tokens: 0,
+        temperature,
+        top_p: 0.9,
+        top_k: 40,
+        presence_penalty: 0.1,
+        frequency_penalty: 0.05,
+        stream: false
+    };
+}
+
 async function generateReplicateDraft({ sourceText, detailLevel }) {
     const normalizedLevel = GeminiPolicyAnalysisService.normalizeDetailLevel(detailLevel);
     const level = GeminiPolicyAnalysisService.DETAIL_CONFIG[normalizedLevel];
@@ -75,18 +91,11 @@ async function generateReplicateDraft({ sourceText, detailLevel }) {
         'STRICT OUTPUT REMINDER: Return one complete JSON object only. Do not wrap it in markdown fences.'
     ].join('\n');
 
-    const output = await runReplicateModel(configuredTextModel(), {
+    const output = await runReplicateModel(configuredTextModel(), replicateTextInput({
         prompt,
-        system_prompt: 'You are a senior instructional designer. Follow the requested JSON structure exactly and never output commentary outside the JSON.',
-        max_tokens: Number(process.env.REPLICATE_SCORM_MAX_TOKENS || 8192),
-        min_tokens: 0,
-        temperature: Number(process.env.REPLICATE_SCORM_TEMPERATURE || 0.25),
-        top_p: 0.9,
-        top_k: 40,
-        presence_penalty: 0.1,
-        frequency_penalty: 0.05,
-        stream: false
-    }, { timeoutMs: Number(process.env.REPLICATE_SCORM_TEXT_TIMEOUT_MS || 300000) });
+        systemPrompt: 'You are a senior instructional designer. Follow the requested JSON structure exactly and never output commentary outside the JSON.',
+        temperature: Number(process.env.REPLICATE_SCORM_TEMPERATURE || 0.25)
+    }), { timeoutMs: Number(process.env.REPLICATE_SCORM_TEXT_TIMEOUT_MS || 300000) });
 
     const text = cleanupModelText(outputText(output));
     return GeminiPolicyAnalysisService.parseAnalysis(text);
@@ -105,16 +114,11 @@ async function refineReplicateDraft({ sourceText, analysis, detailLevel, issues 
         'Return only the corrected complete JSON object.'
     ].join('\n');
 
-    const output = await runReplicateModel(configuredTextModel(), {
+    const output = await runReplicateModel(configuredTextModel(), replicateTextInput({
         prompt,
-        system_prompt: 'Act as a strict senior learning editor. Preserve supported facts and return valid JSON only.',
-        max_tokens: Number(process.env.REPLICATE_SCORM_MAX_TOKENS || 8192),
-        min_tokens: 0,
-        temperature: 0.2,
-        top_p: 0.9,
-        top_k: 40,
-        stream: false
-    }, { timeoutMs: Number(process.env.REPLICATE_SCORM_TEXT_TIMEOUT_MS || 300000) });
+        systemPrompt: 'Act as a strict senior learning editor. Preserve supported facts and return valid JSON only.',
+        temperature: 0.2
+    }), { timeoutMs: Number(process.env.REPLICATE_SCORM_TEXT_TIMEOUT_MS || 300000) });
     return GeminiPolicyAnalysisService.parseAnalysis(cleanupModelText(outputText(output)));
 }
 
@@ -182,6 +186,7 @@ module.exports = {
     analyzeWithReplicate,
     extractReplicateSource,
     cleanupModelText,
+    replicateTextInput,
     configuredTextModel,
     selectedProvider,
     DEFAULT_REPLICATE_TEXT_MODEL
