@@ -7,12 +7,10 @@ const {
     predictionRequestsPerMinute
 } = require('./ReplicateClient');
 const {
-    generateCoverVisualPrompt,
-    generateSlideVisualPrompt,
-    coverInstruction,
-    slideInstruction,
-    sharedVisualRules
-} = require('./GeminiSlideVisualPromptService');
+    ensureCourseVisualPrompts,
+    fallbackPrompt,
+    visualRules
+} = require('./GeminiCourseVisualPromptBatchService');
 
 const DEFAULT_IMAGE_MODEL = 'black-forest-labs/flux-schnell';
 const IMAGE_UNIT_USD = 0.003;
@@ -31,8 +29,10 @@ function mediaConfig() {
     return {
         enabled: String(process.env.REPLICATE_SCORM_MEDIA || 'true').trim().toLowerCase() !== 'false',
         imageModel: DEFAULT_IMAGE_MODEL,
-        maxImages: clampInt(process.env.REPLICATE_SCORM_MAX_IMAGES, 8, 1, 8),
-        minImages: clampInt(process.env.REPLICATE_SCORM_MIN_IMAGES, 6, 1, 8),
+        // Six images total is the production baseline: one cover + five learning slides.
+        // A stale Render value below six can no longer silently reduce visual coverage.
+        maxImages: clampInt(process.env.REPLICATE_SCORM_MAX_IMAGES, 6, 6, 8),
+        minImages: clampInt(process.env.REPLICATE_SCORM_MIN_IMAGES, 6, 6, 8),
         imageMegapixels: String(process.env.REPLICATE_SCORM_IMAGE_MEGAPIXELS || '1').trim(),
         imageQuality: clampInt(process.env.REPLICATE_SCORM_IMAGE_QUALITY, 82, 50, 100),
         imageRetries: clampInt(process.env.REPLICATE_SCORM_IMAGE_RETRIES, 2, 2, 4),
@@ -175,21 +175,47 @@ function clearLegacyVisuals(slide) {
     return next;
 }
 
-function assignRasterVisual(slide, path, promptInfo) {
+function assignRasterVisual(slide, path, promptInfo = {}) {
     slide.rasterVisualAsset = path;
     slide.visualAsset = path;
     slide.mobileVisualAsset = path;
     slide.visualSource = 'ai_raster';
     slide.visualAssetType = 'image/webp';
-    slide.imagePrompt = promptInfo.prompt;
-    slide.imagePromptProvider = 'gemini';
-    slide.imagePromptModel = promptInfo.model;
+    if (promptInfo.prompt) slide.imagePrompt = clean(promptInfo.prompt);
+    if (promptInfo.provider) slide.imagePromptProvider = promptInfo.provider;
+    if (promptInfo.model) slide.imagePromptModel = promptInfo.model;
     return slide;
+}
+
+function promptForSlide(slide, analysis) {
+    return clean(slide?.imagePrompt) || fallbackPrompt({
+        title: slide?.title,
+        content: slide?.content || slide?.introText || slide?.revealText,
+        keyPoints: slide?.keyPoints,
+        courseTitle: analysis?.title,
+        role: 'slide'
+    });
+}
+
+function promptInfoForSlide(slide, analysis) {
+    return {
+        prompt: promptForSlide(slide, analysis),
+        provider: clean(slide?.imagePromptProvider) || 'gemini',
+        model: clean(slide?.imagePromptModel) || clean(analysis?.visualPromptPlan?.model) || null
+    };
 }
 
 async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     const onProgress = opts.onProgress;
-    const analysis = rawAnalysis && typeof rawAnalysis === 'object' ? { ...rawAnalysis } : {};
+    let analysis = rawAnalysis && typeof rawAnalysis === 'object' ? { ...rawAnalysis } : {};
+
+    emit(onProgress, {
+        percent: 7,
+        stage: 'Loading preplanned course visuals',
+        detail: 'Using the single Gemini visual plan created for the cover and every slide. No per-slide Gemini requests are made here.'
+    });
+
+    analysis = await ensureCourseVisualPrompts(analysis);
     const slides = Array.isArray(analysis.slides) ? analysis.slides.map(clearLegacyVisuals) : [];
 
     delete analysis.narrationAsset;
@@ -198,15 +224,13 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     delete analysis.coverVisualAsset;
     delete analysis.coverMobileVisualAsset;
 
-    // This flag is consumed by the canonical course builder. It explicitly
-    // disables the legacy SVG generator so it cannot overwrite FLUX WebPs.
     analysis.visualMode = 'raster';
     analysis.visualProvider = 'replicate';
     analysis.visualPromptProvider = 'gemini';
 
     const config = mediaConfig();
     if (!config.enabled || !hasReplicateToken()) {
-        emit(onProgress, { percent: 42, stage: 'Image generation unavailable', detail: 'Replicate image generation is not configured.' });
+        emit(onProgress, { percent: 12, stage: 'Image generation unavailable', detail: 'Replicate image generation is not configured.' });
         const err = new Error('Replicate image generation is required. Configure REPLICATE_API_TOKEN and keep REPLICATE_SCORM_MEDIA enabled.');
         err.code = 'REPLICATE_IMAGES_REQUIRED';
         throw err;
@@ -217,7 +241,7 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     const successfulSlideIndexes = new Set();
     let coverGenerated = false;
     let slideImagesGenerated = 0;
-    let promptModel = null;
+    const promptModel = clean(analysis?.visualPromptPlan?.model) || clean(analysis?.coverImagePromptModel) || null;
 
     const selectedIndexes = imageSlideIndexes(slides, Math.min(Math.max(0, config.maxImages - 1), slides.length));
     const availableImageSlots = 1 + selectedIndexes.length;
@@ -225,25 +249,26 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     const requiredSlideImages = Math.max(0, requiredImages - 1);
 
     emit(onProgress, {
-        percent: 7,
-        stage: 'Planning course visuals with Gemini',
-        detail: `Gemini will create a dedicated visual prompt for the cover and each of ${selectedIndexes.length} selected learning slides. FLUX Schnell will render those prompts.`
+        percent: 10,
+        stage: 'Rendering planned course images',
+        detail: `FLUX Schnell will render one cover and ${selectedIndexes.length} selected slide images from the already-prepared Gemini prompt plan.`
     });
 
-    try {
-        emit(onProgress, { percent: 9, stage: 'Writing cover image prompt with Gemini', detail: 'Gemini is translating the overall course meaning into a non-human, no-text cover concept.' });
-        const coverPrompt = await generateCoverVisualPrompt({ ...analysis, slides });
-        promptModel = coverPrompt.model;
-        analysis.coverImagePrompt = coverPrompt.prompt;
-        analysis.coverImagePromptProvider = 'gemini';
-        analysis.coverImagePromptModel = coverPrompt.model;
+    const coverPrompt = clean(analysis.coverImagePrompt) || fallbackPrompt({
+        title: analysis.title,
+        content: analysis.summary,
+        courseTitle: analysis.title,
+        role: 'cover'
+    });
+    analysis.coverImagePrompt = coverPrompt;
 
+    try {
         const coverPath = 'assets/media/course-cover.webp';
-        const coverFile = await generateImage(coverPrompt.prompt, coverPath, config, (state) => {
+        const coverFile = await generateImage(coverPrompt, coverPath, config, (state) => {
             const status = String(state?.status || '').toLowerCase();
-            if (status === 'rate_limit_wait') emit(onProgress, { percent: 11, stage: 'Waiting for Replicate rate-limit slot', detail: rateLimitDetail(state), modelStatus: status });
-            if (status === 'starting') emit(onProgress, { percent: 12, stage: 'Starting cover image', detail: 'FLUX Schnell accepted Gemini’s cover prompt.', modelStatus: status, predictionId: state.predictionId || '' });
-            if (status === 'processing') emit(onProgress, { percent: 16, stage: 'Generating course cover image', detail: 'Rendering the Gemini-directed 16:9 cover image.', modelStatus: status, predictionId: state.predictionId || '' });
+            if (status === 'rate_limit_wait') emit(onProgress, { percent: 12, stage: 'Waiting for Replicate rate-limit slot', detail: rateLimitDetail(state), modelStatus: status });
+            if (status === 'starting') emit(onProgress, { percent: 14, stage: 'Starting cover image', detail: 'FLUX Schnell accepted the preplanned cover prompt.', modelStatus: status, predictionId: state.predictionId || '' });
+            if (status === 'processing') emit(onProgress, { percent: 17, stage: 'Generating course cover image', detail: 'Rendering the 16:9 cover image.', modelStatus: status, predictionId: state.predictionId || '' });
             if (status === 'retrying') emit(onProgress, { percent: 13, stage: 'Retrying course cover image', detail: 'Retrying the cover after a temporary image-service issue.' });
         });
         files.push(coverFile);
@@ -259,16 +284,9 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     let completedJobs = 0;
     for (const slideIndex of selectedIndexes) {
         const path = `assets/media/slide-${String(slideIndex + 1).padStart(3, '0')}.webp`;
+        const promptInfo = promptInfoForSlide(slides[slideIndex], analysis);
         try {
-            const basePercent = 22 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 40);
-            emit(onProgress, {
-                percent: basePercent,
-                stage: `Writing slide ${slideIndex + 1} image prompt with Gemini`,
-                detail: `Gemini is reading only slide ${slideIndex + 1}'s lesson, title and key points to design the correct visual.`
-            });
-            const promptInfo = await generateSlideVisualPrompt(slides[slideIndex], { ...analysis, slides }, slideIndex);
-            promptModel = promptModel || promptInfo.model;
-
+            const basePercent = 22 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 42);
             const file = await generateImage(promptInfo.prompt, path, config, (state) => {
                 const status = String(state?.status || '').toLowerCase();
                 if (status === 'rate_limit_wait') emit(onProgress, {
@@ -280,7 +298,7 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
                 if (status === 'starting' || status === 'processing') emit(onProgress, {
                     percent: Math.min(68, basePercent + 2),
                     stage: `Generating slide ${slideIndex + 1} image`,
-                    detail: 'FLUX Schnell is rendering the Gemini-generated slide-specific prompt.',
+                    detail: 'FLUX Schnell is rendering the preplanned slide-specific prompt.',
                     modelStatus: status,
                     predictionId: state.predictionId || ''
                 });
@@ -290,7 +308,6 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
                     detail: 'Retrying this image after a temporary Replicate failure.'
                 });
             });
-
             files.push(file);
             assignRasterVisual(slides[slideIndex], path, promptInfo);
             successfulSlideIndexes.add(slideIndex);
@@ -303,7 +320,7 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
             emit(onProgress, {
                 percent: 24 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 44),
                 stage: 'Generating learning-slide images',
-                detail: `${completedJobs} of ${selectedIndexes.length} slide image jobs completed.`
+                detail: `${completedJobs} of ${selectedIndexes.length} selected image jobs completed.`
             });
         }
     }
@@ -313,12 +330,12 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
             ...selectedIndexes.filter((index) => !successfulSlideIndexes.has(index)),
             ...slides.map((_, index) => index).filter((index) => !successfulSlideIndexes.has(index) && !selectedIndexes.includes(index))
         ];
-        emit(onProgress, { percent: 69, stage: 'Recovering missing course images', detail: 'Regenerating slide-specific Gemini prompts for any missing visual slots.' });
+        emit(onProgress, { percent: 69, stage: 'Recovering missing course images', detail: 'Using the already-generated Gemini prompts for alternate slides. No additional Gemini request is needed.' });
         for (const slideIndex of recoveryCandidates) {
             if (slideImagesGenerated >= requiredSlideImages) break;
             const path = `assets/media/slide-${String(slideIndex + 1).padStart(3, '0')}.webp`;
+            const promptInfo = promptInfoForSlide(slides[slideIndex], analysis);
             try {
-                const promptInfo = await generateSlideVisualPrompt(slides[slideIndex], { ...analysis, slides }, slideIndex);
                 const file = await generateImage(promptInfo.prompt, path, config, (state) => {
                     if (String(state?.status || '').toLowerCase() === 'rate_limit_wait') emit(onProgress, {
                         percent: 70,
@@ -360,6 +377,8 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
             imageModel: config.imageModel,
             visualPromptProvider: 'gemini',
             visualPromptModel: promptModel,
+            visualPromptMode: 'single_batch',
+            visualPromptRequests: Number(analysis?.visualPromptPlan?.promptRequests || 0),
             imageMegapixels: config.imageMegapixels,
             estimatedImageUnitUsd: IMAGE_UNIT_USD,
             coverGenerated,
@@ -371,7 +390,7 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
             predictionRequestsPerMinute: predictionRequestsPerMinute(),
             selectedSlideIndexes: selectedIndexes,
             successfulSlideIndexes: Array.from(successfulSlideIndexes).sort((a, b) => a - b),
-            imageStyle: 'gemini_directed_simple_non_human_no_text',
+            imageStyle: 'gemini_batch_directed_simple_non_human_no_text',
             canonicalVisualAssets: true,
             legacySvgFallback: false,
             audio: false,
@@ -382,33 +401,44 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     emit(onProgress, {
         percent: 76,
         stage: 'Canonical course images ready',
-        detail: `${totalImagesGenerated} Gemini-directed FLUX images are now attached directly to the course data. Legacy SVG generation is disabled for this course.`
+        detail: `${totalImagesGenerated} FLUX images are attached directly to the course data. Every generated image will be rendered by the canonical SCORM player.`
     });
     logger.info('scorm_raster_media_ready', {
         module: 'scorm', imageModel: config.imageModel, promptModel, coverGenerated, slideImagesGenerated,
         totalImagesGenerated, requiredImages, predictionRequestsPerMinute: predictionRequestsPerMinute(),
-        files: files.length, warnings: warnings.length
+        files: files.length, warnings: warnings.length, visualPromptMode: 'single_batch'
     });
 
     return { analysis: updated, files, metadata: updated.replicateMedia };
 }
 
-// Deprecated prompt helpers are retained only for tests/debugging. They now
-// expose the Gemini instructions, not a hard-coded FLUX prompt.
+// Compatibility/debug helpers. Production prompt generation uses the one-shot
+// GeminiCourseVisualPromptBatchService above, never one Gemini call per image.
 function coverImagePrompt(analysis) {
-    return coverInstruction(analysis);
+    return fallbackPrompt({
+        title: analysis?.title,
+        content: analysis?.summary,
+        courseTitle: analysis?.title,
+        role: 'cover'
+    });
 }
 
 function slideImagePrompt(slide, courseTitle) {
-    return slideInstruction(slide, { title: courseTitle }, 0);
+    return fallbackPrompt({
+        title: slide?.title,
+        content: slide?.content || slide?.introText || slide?.revealText,
+        keyPoints: slide?.keyPoints,
+        courseTitle,
+        role: 'slide'
+    });
 }
 
 function recoverySlideImagePrompt(slide, courseTitle) {
-    return slideInstruction(slide, { title: courseTitle }, 0);
+    return slideImagePrompt(slide, courseTitle);
 }
 
 function noHumanNoTextRules() {
-    return sharedVisualRules();
+    return visualRules();
 }
 
 module.exports = {
