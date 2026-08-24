@@ -144,9 +144,9 @@ function interactionFor(type, layout, existing) {
 
 function pointLimitFor(slide, type) {
     const layout = clean(slide?.layout).toLowerCase();
-    // Cards are converted to flip cards in the learner runtime. Four 2x2 cards
-    // fit a desktop/tablet learning screen without forcing vertical scrolling.
-    if (layout === 'cards' || type === 'reveal') return 4;
+    // Cards and HUB items become flip/reveal cards in the learner runtime.
+    // Four items fit as a 2x2 learning block without forcing page scrolling.
+    if (layout === 'cards' || layout === 'hub' || type === 'reveal') return 4;
     if (layout === 'process' || layout === 'timeline' || layout === 'cycle' || layout === 'spotlight') return 4;
     return 6;
 }
