@@ -7,10 +7,9 @@ const {
     predictionRequestsPerMinute
 } = require('./ReplicateClient');
 
-// Locked low-cost production model for SCORM artwork. At 1 MP this endpoint is
-// priced by output megapixel and is materially cheaper than the older image
-// endpoints while remaining warm and suitable for commercial course imagery.
-const DEFAULT_IMAGE_MODEL = 'black-forest-labs/flux-2-klein-4b';
+// User-selected production model: quick, simple course imagery.
+const DEFAULT_IMAGE_MODEL = 'black-forest-labs/flux-schnell';
+const IMAGE_UNIT_USD = 0.003;
 
 function clean(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -25,15 +24,13 @@ function clampInt(value, fallback, min, max) {
 function mediaConfig() {
     return {
         enabled: String(process.env.REPLICATE_SCORM_MEDIA || 'true').trim().toLowerCase() !== 'false',
-        // Do not allow stale Render environment variables to silently switch the
-        // SCORM generator back to a more expensive model.
         imageModel: DEFAULT_IMAGE_MODEL,
         maxImages: clampInt(process.env.REPLICATE_SCORM_MAX_IMAGES, 8, 1, 8),
         minImages: clampInt(process.env.REPLICATE_SCORM_MIN_IMAGES, 6, 1, 8),
-        imageMegapixels: '1',
+        imageMegapixels: String(process.env.REPLICATE_SCORM_IMAGE_MEGAPIXELS || '1').trim(),
         imageQuality: clampInt(process.env.REPLICATE_SCORM_IMAGE_QUALITY, 82, 50, 100),
         imageRetries: clampInt(process.env.REPLICATE_SCORM_IMAGE_RETRIES, 2, 2, 4),
-        imageConcurrency: clampInt(process.env.REPLICATE_SCORM_IMAGE_CONCURRENCY, 1, 1, 2),
+        imageConcurrency: 1,
         retryBaseMs: clampInt(process.env.REPLICATE_SCORM_IMAGE_RETRY_BASE_MS, 1400, 700, 5000)
     };
 }
@@ -57,64 +54,76 @@ function sentenceExcerpt(value, maxChars) {
         result = candidate;
     }
     if (result.length >= Math.min(120, maxChars * 0.45)) return result;
-    return text.slice(0, maxChars).replace(/\s+\S*$/, '').replace(/[,:;\-]+$/, '').trim() + '…';
+    return `${text.slice(0, maxChars).replace(/\s+\S*$/, '').replace(/[,:;\-]+$/, '').trim()}…`;
 }
 
 function imageSlideIndexes(slides, count) {
     const total = Array.isArray(slides) ? slides.length : 0;
     if (!total || count <= 0) return [];
     if (count >= total) return Array.from({ length: total }, (_, index) => index);
-
     const chosen = new Set();
     for (let slot = 0; slot < count; slot += 1) {
-        const index = count === 1
-            ? Math.floor(total / 2)
-            : Math.round((slot * (total - 1)) / (count - 1));
+        const index = count === 1 ? Math.floor(total / 2) : Math.round((slot * (total - 1)) / (count - 1));
         chosen.add(index);
     }
     for (let index = 0; chosen.size < count && index < total; index += 1) chosen.add(index);
     return Array.from(chosen).sort((a, b) => a - b);
 }
 
-function coverImagePrompt(analysis) {
-    const title = clean(analysis?.title) || 'professional workplace learning';
-    const summary = sentenceExcerpt(analysis?.summary, 300);
+function noHumanNoTextRules() {
     return [
-        'Wide 16:9 premium editorial training-course hero photograph.',
-        `Subject: ${title}.`,
-        summary ? `Context: ${summary}` : '',
-        'Create one clear believable workplace scene that communicates the subject immediately. Real people and realistic objects, modern corporate environment, natural lighting, sophisticated depth, subtle teal accents, premium learning-course photography, clean composition and useful negative space.',
-        'No words, no captions, no logos, no readable screens, no watermarks, no infographic, no vector art, no illustration, no UI mockup.'
+        'NON-HUMAN VISUAL ONLY: do not show people, faces, hands, bodies, silhouettes, portraits, avatars or human figures.',
+        'ABSOLUTELY NO TEXT IN THE IMAGE: no words, letters, numbers, captions, labels, logos, brand names, watermarks, readable screens, signs or typography.',
+        'Use only simple objects, devices, interface-like shapes without readable text, security symbols and environmental objects.',
+        'Keep the composition clean, uncluttered and easy to understand at course-slide size.'
+    ].join(' ');
+}
+
+function coverImagePrompt(analysis) {
+    const title = clean(analysis?.title) || 'professional digital security learning';
+    const summary = sentenceExcerpt(analysis?.summary, 260);
+    return [
+        'Wide 16:9 simple premium object-based training-course image.',
+        `Course subject: ${title}.`,
+        summary ? `Course context: ${summary}` : '',
+        'Create one clear symbolic scene that communicates the course subject using relevant objects only. Examples when appropriate: laptop, phone, envelope, lock, shield, browser window shapes, document, QR code shape, warning symbol, network nodes or office desk objects.',
+        'Modern minimal corporate style, realistic or soft 3D objects, subtle teal accents, dark-neutral background, strong focal point, generous negative space.',
+        noHumanNoTextRules()
     ].filter(Boolean).join(' ');
 }
 
 function slideImagePrompt(slide, courseTitle) {
-    const title = clean(slide?.title);
+    const title = clean(slide?.title) || 'learning concept';
+    const content = sentenceExcerpt(slide?.content || slide?.introText || slide?.revealText, 420);
     const visual = clean(slide?.visualTitle);
     const query = clean(slide?.imageQuery);
-    const points = (Array.isArray(slide?.keyPoints) ? slide.keyPoints : []).slice(0, 4).map(clean).filter(Boolean).join(', ');
+    const points = (Array.isArray(slide?.keyPoints) ? slide.keyPoints : []).slice(0, 4).map(clean).filter(Boolean).join('; ');
     return [
-        'Wide 16:9 realistic editorial photograph for a professional digital learning course.',
+        'Wide 16:9 simple non-human visual for a professional digital learning slide.',
         `Course: ${clean(courseTitle)}.`,
-        title ? `Lesson: ${title}.` : '',
-        visual ? `Visual focus: ${visual}.` : '',
-        query ? `Scene cues: ${query}.` : '',
-        points ? `Important ideas to represent visually: ${points}.` : '',
-        'Show one specific, believable workplace moment rather than a generic cyber background. Use natural human expressions, credible devices or office objects, premium corporate-training photography, subtle teal accents and a strong focal point.',
-        'No words, no captions, no logos, no readable screen text, no watermarks, no infographic, no vector art, no illustration.'
+        `Slide topic: ${title}.`,
+        content ? `What this slide teaches: ${content}` : '',
+        visual ? `Visual emphasis: ${visual}.` : '',
+        query ? `Useful scene cues: ${query}.` : '',
+        points ? `Key ideas to represent visually: ${points}.` : '',
+        'Choose 2 to 5 physical or digital objects that directly represent THIS slide, not a generic cybersecurity background. Use object relationships to show the idea clearly.',
+        'Examples: suspicious email -> envelope plus warning symbol; credential safety -> lock plus login-screen shape; QR phishing -> phone plus QR pattern plus warning symbol; reporting -> inbox/tray plus alert symbol; verification -> document plus check/shield; malware -> file icon plus lock/warning.',
+        'Simple realistic or soft 3D object composition, professional training aesthetic, subtle teal accents, clean background, no decorative clutter.',
+        noHumanNoTextRules()
     ].filter(Boolean).join(' ');
 }
 
 function recoverySlideImagePrompt(slide, courseTitle) {
-    const title = clean(slide?.title) || 'safe workplace decision making';
-    const visual = clean(slide?.visualTitle || slide?.imageQuery);
+    const title = clean(slide?.title) || 'safe digital behaviour';
+    const content = sentenceExcerpt(slide?.content || slide?.introText, 240);
     return [
-        'Wide 16:9 realistic corporate training photograph.',
-        `Training topic: ${clean(courseTitle)}.`,
-        `Lesson theme: ${title}.`,
-        visual ? `Visual idea: ${visual}.` : '',
-        'Show a neutral, believable modern workplace scene with one clear focal action. Emphasise careful communication, verification, attention and safe professional behaviour. Natural lighting, realistic people and devices, subtle teal accents, premium editorial photography.',
-        'No text, no logos, no readable screens, no watermarks, no violence, no threatening imagery, no infographic, no vector art, no illustration.'
+        'Wide 16:9 simple non-human corporate training visual.',
+        `Course: ${clean(courseTitle)}.`,
+        `Slide topic: ${title}.`,
+        content ? `Lesson meaning: ${content}` : '',
+        'Represent the lesson with only a few relevant objects such as a laptop, phone, envelope, document, lock, shield, warning symbol, browser panel or network nodes. Use the objects that best match the slide topic.',
+        'Minimal realistic or soft 3D style, strong focal point, clean neutral background, subtle teal accent.',
+        noHumanNoTextRules()
     ].filter(Boolean).join(' ');
 }
 
@@ -138,14 +147,13 @@ function retryDelayMs(err, attempt, config) {
     const base = rateLimited ? Math.max(3000, config.retryBaseMs * 2) : config.retryBaseMs;
     const exponential = Math.min(30000, base * Math.pow(2, Math.max(0, attempt)));
     const serverWait = Math.max(0, Number(err?.retryAfterMs || 0));
-    // If Replicate tells us its reset time, respect it and add a small guard.
     return Math.min(60000, Math.max(exponential, serverWait > 0 ? serverWait + 500 : 0));
 }
 
 function rateLimitDetail(state) {
     const seconds = Math.max(1, Math.ceil(Number(state?.waitMs || 0) / 1000));
     const rpm = Number(state?.rateLimitPerMinute || predictionRequestsPerMinute());
-    return `Replicate allows ${rpm} new prediction request(s) per minute on this account. The next image request will start in about ${seconds}s.`;
+    return `Replicate allows ${rpm} new prediction request(s) per minute. The next image request will start in about ${seconds}s.`;
 }
 
 async function generateImage(prompt, path, config, onStatus) {
@@ -153,17 +161,16 @@ async function generateImage(prompt, path, config, onStatus) {
     const attempts = 1 + config.imageRetries;
     for (let attempt = 0; attempt < attempts; attempt += 1) {
         try {
-            if (attempt > 0 && typeof onStatus === 'function') {
-                onStatus({ status: 'retrying', attempt: attempt + 1, lastError });
-            }
+            if (attempt > 0 && typeof onStatus === 'function') onStatus({ status: 'retrying', attempt: attempt + 1, lastError });
             const output = await runReplicateModel(config.imageModel, {
-                images: [],
                 prompt,
                 go_fast: true,
+                megapixels: config.imageMegapixels,
+                num_outputs: 1,
                 aspect_ratio: '16:9',
                 output_format: 'webp',
                 output_quality: config.imageQuality,
-                output_megapixels: config.imageMegapixels,
+                num_inference_steps: 4,
                 disable_safety_checker: false
             }, {
                 timeoutMs: Number(process.env.REPLICATE_SCORM_IMAGE_TIMEOUT_MS || 180000),
@@ -186,36 +193,11 @@ async function generateImage(prompt, path, config, onStatus) {
             lastError = err;
             if (attempt >= attempts - 1 || !isRetryableImageError(err)) break;
             const delayMs = retryDelayMs(err, attempt, config);
-            logger.warn('scorm_replicate_image_retry', {
-                module: 'scorm',
-                path,
-                attempt: attempt + 1,
-                nextAttempt: attempt + 2,
-                delayMs,
-                code: err.code,
-                status: err.status || null,
-                retryAfterMs: err.retryAfterMs || 0,
-                error: err.message
-            });
+            logger.warn('scorm_replicate_image_retry', { module: 'scorm', path, attempt: attempt + 1, nextAttempt: attempt + 2, delayMs, code: err.code, status: err.status || null, error: err.message });
             await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
     }
     throw lastError || new Error('Replicate image generation failed.');
-}
-
-async function mapLimit(items, limit, worker) {
-    const list = Array.from(items || []);
-    const results = new Array(list.length);
-    let cursor = 0;
-    const runners = Array.from({ length: Math.max(1, Math.min(limit, list.length || 1)) }, async () => {
-        while (cursor < list.length) {
-            const index = cursor;
-            cursor += 1;
-            results[index] = await worker(list[index], index);
-        }
-    });
-    await Promise.all(runners);
-    return results;
 }
 
 function warningSummary(warnings, max = 3) {
@@ -248,7 +230,7 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     const config = mediaConfig();
     if (!config.enabled || !hasReplicateToken()) {
         emit(onProgress, { percent: 42, stage: 'Image generation unavailable', detail: 'Replicate image generation is not configured.' });
-        const err = new Error('Replicate image generation is required for AI-authored courses. Configure REPLICATE_API_TOKEN and keep REPLICATE_SCORM_MEDIA enabled.');
+        const err = new Error('Replicate image generation is required. Configure REPLICATE_API_TOKEN and keep REPLICATE_SCORM_MEDIA enabled.');
         err.code = 'REPLICATE_IMAGES_REQUIRED';
         throw err;
     }
@@ -259,8 +241,7 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     let coverGenerated = false;
     let slideImagesGenerated = 0;
 
-    const slideImageCount = Math.max(0, config.maxImages - 1);
-    const selectedIndexes = imageSlideIndexes(slides, Math.min(slideImageCount, slides.length));
+    const selectedIndexes = imageSlideIndexes(slides, Math.min(Math.max(0, config.maxImages - 1), slides.length));
     const availableImageSlots = 1 + selectedIndexes.length;
     const requiredImages = Math.min(availableImageSlots, config.maxImages, config.minImages);
     const requiredSlideImages = Math.max(0, requiredImages - 1);
@@ -268,7 +249,7 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     emit(onProgress, {
         percent: 8,
         stage: 'Creating course cover image',
-        detail: `Generating the front image plus up to ${selectedIndexes.length} learning-slide images with low-cost FLUX.2 Klein. Replicate requests are automatically paced to ${predictionRequestsPerMinute()} per minute. No audio is generated.`
+        detail: `Generating the cover plus up to ${selectedIndexes.length} simple non-human slide visuals with FLUX Schnell. Requests are paced to ${predictionRequestsPerMinute()} per minute.`
     });
 
     try {
@@ -276,10 +257,9 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
         const coverFile = await generateImage(coverImagePrompt(analysis), coverPath, config, (state) => {
             const status = String(state?.status || '').toLowerCase();
             if (status === 'rate_limit_wait') emit(onProgress, { percent: 9, stage: 'Waiting for Replicate rate-limit slot', detail: rateLimitDetail(state), modelStatus: status });
-            if (status === 'starting') emit(onProgress, { percent: 10, stage: 'Waiting for Replicate image model', detail: 'Replicate accepted the cover request and is starting FLUX.2 Klein.', modelStatus: status, predictionId: state.predictionId || '' });
-            if (status === 'processing') emit(onProgress, { percent: 16, stage: 'Generating course cover image', detail: 'FLUX.2 Klein is actively creating the front-slide image.', modelStatus: status, predictionId: state.predictionId || '' });
-            if (status === 'retrying') emit(onProgress, { percent: 12, stage: 'Retrying course cover image', detail: 'The cover request hit a temporary image-service issue. Retrying with backoff.' });
-            if (status === 'succeeded') emit(onProgress, { percent: 24, stage: 'Course cover image ready', detail: 'The front-slide image has been generated.', modelStatus: status, predictionId: state.predictionId || '' });
+            if (status === 'starting') emit(onProgress, { percent: 10, stage: 'Starting cover image', detail: 'FLUX Schnell accepted the cover request.', modelStatus: status, predictionId: state.predictionId || '' });
+            if (status === 'processing') emit(onProgress, { percent: 16, stage: 'Generating course cover image', detail: 'Creating a simple object-only cover image with no text.', modelStatus: status, predictionId: state.predictionId || '' });
+            if (status === 'retrying') emit(onProgress, { percent: 12, stage: 'Retrying course cover image', detail: 'Retrying the cover request after a temporary image-service issue.' });
         });
         files.push(coverFile);
         analysis.coverImageAsset = coverPath;
@@ -289,109 +269,58 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
         logger.warn('scorm_replicate_cover_failed', { module: 'scorm', error: err.message, code: err.code, status: err.status || null });
     }
 
-    emit(onProgress, {
-        percent: 30,
-        stage: 'Generating learning-slide images',
-        detail: `Creating up to ${selectedIndexes.length} topic-relevant slide images sequentially and within Replicate's ${predictionRequestsPerMinute()}/minute prediction limit.`
-    });
-
     let completedJobs = 0;
-    const imageResults = await mapLimit(selectedIndexes, config.imageConcurrency, async (slideIndex) => {
+    for (const slideIndex of selectedIndexes) {
         const path = `assets/media/slide-${String(slideIndex + 1).padStart(3, '0')}.webp`;
         try {
-            const file = await generateImage(
-                slideImagePrompt(slides[slideIndex], analysis.title),
-                path,
-                config,
-                (state) => {
-                    const status = String(state?.status || '').toLowerCase();
-                    if (status === 'rate_limit_wait') {
-                        emit(onProgress, {
-                            percent: 30 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 34),
-                            stage: `Waiting to generate slide ${slideIndex + 1} image`,
-                            detail: rateLimitDetail(state),
-                            modelStatus: status
-                        });
-                    }
-                    if (status === 'retrying') {
-                        emit(onProgress, {
-                            percent: 30 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 34),
-                            stage: `Retrying slide ${slideIndex + 1} image`,
-                            detail: 'Replicate returned a temporary failure or rate limit. Retrying this image with backoff.'
-                        });
-                    }
-                }
-            );
-            return { slideIndex, file, path };
+            const file = await generateImage(slideImagePrompt(slides[slideIndex], analysis.title), path, config, (state) => {
+                const status = String(state?.status || '').toLowerCase();
+                if (status === 'rate_limit_wait') emit(onProgress, {
+                    percent: 30 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 34),
+                    stage: `Waiting to generate slide ${slideIndex + 1} image`,
+                    detail: rateLimitDetail(state),
+                    modelStatus: status
+                });
+                if (status === 'retrying') emit(onProgress, {
+                    percent: 30 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 34),
+                    stage: `Retrying slide ${slideIndex + 1} image`,
+                    detail: 'Retrying this slide image after a temporary Replicate failure.'
+                });
+            });
+            files.push(file);
+            slides[slideIndex].rasterVisualAsset = path;
+            successfulSlideIndexes.add(slideIndex);
+            slideImagesGenerated += 1;
         } catch (err) {
             warnings.push(`Slide ${slideIndex + 1} image: ${err.message}`);
             logger.warn('scorm_replicate_slide_image_failed', { module: 'scorm', slideIndex, error: err.message, code: err.code, status: err.status || null });
-            return null;
         } finally {
             completedJobs += 1;
-            const fraction = selectedIndexes.length ? completedJobs / selectedIndexes.length : 1;
             emit(onProgress, {
-                percent: 30 + Math.round(fraction * 34),
+                percent: 30 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 34),
                 stage: 'Generating learning-slide images',
-                detail: `${completedJobs} of ${selectedIndexes.length} primary image jobs completed.`
+                detail: `${completedJobs} of ${selectedIndexes.length} slide image jobs completed.`
             });
         }
-    });
-
-    for (const result of imageResults.filter(Boolean)) {
-        files.push(result.file);
-        slides[result.slideIndex].rasterVisualAsset = result.path;
-        successfulSlideIndexes.add(result.slideIndex);
-        slideImagesGenerated += 1;
     }
 
     if (coverGenerated && slideImagesGenerated < requiredSlideImages) {
         const recoveryCandidates = [
             ...selectedIndexes.filter((index) => !successfulSlideIndexes.has(index)),
-            ...slides.map((_, index) => index).filter((index) => !selectedIndexes.includes(index) && !successfulSlideIndexes.has(index))
+            ...slides.map((_, index) => index).filter((index) => !successfulSlideIndexes.has(index) && !selectedIndexes.includes(index))
         ];
-        emit(onProgress, {
-            percent: 65,
-            stage: 'Recovering missing course images',
-            detail: `Only ${1 + slideImagesGenerated} image(s) completed. Retrying missing visual slots sequentially within the Replicate request limit.`
-        });
-
+        emit(onProgress, { percent: 65, stage: 'Recovering missing course images', detail: 'Retrying missing visuals with a simpler object-only prompt.' });
         for (const slideIndex of recoveryCandidates) {
             if (slideImagesGenerated >= requiredSlideImages) break;
             const path = `assets/media/slide-${String(slideIndex + 1).padStart(3, '0')}.webp`;
             try {
-                const file = await generateImage(
-                    recoverySlideImagePrompt(slides[slideIndex], analysis.title),
-                    path,
-                    config,
-                    (state) => {
-                        const status = String(state?.status || '').toLowerCase();
-                        if (status === 'rate_limit_wait') {
-                            emit(onProgress, {
-                                percent: 66,
-                                stage: `Waiting to recover slide ${slideIndex + 1} image`,
-                                detail: rateLimitDetail(state),
-                                modelStatus: status
-                            });
-                        }
-                        if (status === 'retrying') {
-                            emit(onProgress, {
-                                percent: 66,
-                                stage: `Recovering slide ${slideIndex + 1} image`,
-                                detail: 'Waiting briefly before another low-cost FLUX attempt.'
-                            });
-                        }
-                    }
-                );
+                const file = await generateImage(recoverySlideImagePrompt(slides[slideIndex], analysis.title), path, config, (state) => {
+                    if (String(state?.status || '').toLowerCase() === 'rate_limit_wait') emit(onProgress, { percent: 66, stage: `Waiting to recover slide ${slideIndex + 1} image`, detail: rateLimitDetail(state), modelStatus: 'rate_limit_wait' });
+                });
                 files.push(file);
                 slides[slideIndex].rasterVisualAsset = path;
                 successfulSlideIndexes.add(slideIndex);
                 slideImagesGenerated += 1;
-                emit(onProgress, {
-                    percent: 66 + Math.round((slideImagesGenerated / Math.max(1, requiredSlideImages)) * 6),
-                    stage: 'Recovering missing course images',
-                    detail: `${1 + slideImagesGenerated} of ${requiredImages} required course images are now ready.`
-                });
             } catch (err) {
                 warnings.push(`Recovery slide ${slideIndex + 1}: ${err.message}`);
                 logger.warn('scorm_replicate_slide_image_recovery_failed', { module: 'scorm', slideIndex, error: err.message, code: err.code, status: err.status || null });
@@ -402,8 +331,7 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     if (!coverGenerated || slideImagesGenerated < requiredSlideImages) {
         const totalGenerated = (coverGenerated ? 1 : 0) + slideImagesGenerated;
         const reason = warningSummary(warnings);
-        const suffix = reason ? ` Replicate reported: ${reason}` : '';
-        const err = new Error(`Course image generation was incomplete. Generated ${totalGenerated} image(s), but at least ${requiredImages} including the front cover are required.${suffix}`);
+        const err = new Error(`Course image generation was incomplete. Generated ${totalGenerated} image(s), but at least ${requiredImages} including the front cover are required.${reason ? ` Replicate reported: ${reason}` : ''}`);
         err.code = 'REPLICATE_IMAGES_INCOMPLETE';
         err.imageWarnings = warnings;
         emit(onProgress, { percent: 72, stage: 'Image generation incomplete', detail: err.message });
@@ -418,36 +346,26 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
         replicateMedia: {
             imageModel: config.imageModel,
             imageMegapixels: config.imageMegapixels,
-            estimatedImageUnitUsd: 0.001,
+            estimatedImageUnitUsd: IMAGE_UNIT_USD,
             coverGenerated,
             slideImagesGenerated,
             totalImagesGenerated,
-            estimatedImageCostUsd: Number((totalImagesGenerated * 0.001).toFixed(4)),
+            estimatedImageCostUsd: Number((totalImagesGenerated * IMAGE_UNIT_USD).toFixed(4)),
             maxImages: config.maxImages,
             minImages: requiredImages,
             predictionRequestsPerMinute: predictionRequestsPerMinute(),
             selectedSlideIndexes: selectedIndexes,
             successfulSlideIndexes: Array.from(successfulSlideIndexes).sort((a, b) => a - b),
-            imageConcurrency: config.imageConcurrency,
+            imageStyle: 'simple_non_human_no_text',
             audio: false,
             warnings
         }
     };
 
-    emit(onProgress, { percent: 76, stage: 'Images ready', detail: `${totalImagesGenerated} raster images are ready. Formatting and packaging the SCORM course next.` });
+    emit(onProgress, { percent: 76, stage: 'Images ready', detail: `${totalImagesGenerated} simple non-human raster images are ready. Building the SCORM package next.` });
     logger.info('scorm_replicate_media_ready', {
-        module: 'scorm',
-        imageModel: config.imageModel,
-        coverGenerated,
-        slideImagesGenerated,
-        totalImagesGenerated,
-        estimatedImageCostUsd: updated.replicateMedia.estimatedImageCostUsd,
-        requiredImages,
-        predictionRequestsPerMinute: predictionRequestsPerMinute(),
-        imageConcurrency: config.imageConcurrency,
-        audio: false,
-        files: files.length,
-        warnings: warnings.length
+        module: 'scorm', imageModel: config.imageModel, coverGenerated, slideImagesGenerated, totalImagesGenerated,
+        requiredImages, predictionRequestsPerMinute: predictionRequestsPerMinute(), files: files.length, warnings: warnings.length
     });
 
     return { analysis: updated, files, metadata: updated.replicateMedia };
@@ -465,5 +383,7 @@ module.exports = {
     retryDelayMs,
     rateLimitDetail,
     warningSummary,
-    DEFAULT_IMAGE_MODEL
+    noHumanNoTextRules,
+    DEFAULT_IMAGE_MODEL,
+    IMAGE_UNIT_USD
 };
