@@ -201,7 +201,7 @@ function planExperienceV5(rawAnalysis) {
 
     return {
         ...analysis,
-        experienceVersion: 6,
+        experienceVersion: 5,
         experiencePlanner: 'content-visible-v6',
         slides: planned
     };
