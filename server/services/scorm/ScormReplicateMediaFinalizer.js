@@ -95,6 +95,7 @@ function replicateMediaScript(assetMap = {}) {
   if(window.__quizmotoReplicateMediaV2)return;
   window.__quizmotoReplicateMediaV2=true;
   var ASSETS=${safeMap};
+  var observerTimer=null;
   function esc(s){var M={'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'};return String(s||'').replace(/[<>&"']/g,function(c){return M[c]||c})}
   function src(path){path=String(path||'');return ASSETS[path]||path}
   function cssUrl(path){return 'url("'+src(path).replace(/["\\]/g,'\\$&')+'")'}
@@ -115,14 +116,16 @@ function replicateMediaScript(assetMap = {}) {
       var target=node.querySelector('.qmx-hub-art')||node.querySelector('.spot-visual')||node.querySelector('.hero-art');
       if(target){
         target.classList.add('qmx-raster-frame');
-        if(target.getAttribute('data-qmx-replicate-raster')!==path){target.innerHTML=imageHtml(s);target.setAttribute('data-qmx-replicate-raster',path)}
+        var targetRaster=target.querySelector('img.qmx-replicate-raster');
+        if(target.getAttribute('data-qmx-replicate-raster')!==path||!targetRaster){target.innerHTML=imageHtml(s);target.setAttribute('data-qmx-replicate-raster',path)}
         return;
       }
       var stage=node.querySelector('.stage,.qmx-stage')||node;
       var panel=stage.querySelector('.qmx-raster-panel');
       if(!panel){panel=document.createElement('div');panel.className='qmx-raster-panel';stage.appendChild(panel)}
       stage.classList.add('qmx-raster-stage');
-      if(panel.getAttribute('data-qmx-replicate-raster')!==path){panel.innerHTML=imageHtml(s);panel.setAttribute('data-qmx-replicate-raster',path)}
+      var panelRaster=panel.querySelector('img.qmx-replicate-raster');
+      if(panel.getAttribute('data-qmx-replicate-raster')!==path||!panelRaster){panel.innerHTML=imageHtml(s);panel.setAttribute('data-qmx-replicate-raster',path)}
     });
   }
   function normaliseInteractionDensity(slides,data){
@@ -138,9 +141,22 @@ function replicateMediaScript(assetMap = {}) {
     var slides=Array.prototype.slice.call(document.querySelectorAll('.slide'));if(!slides.length)return false;
     installCover(slides[0],data);installRasterSlides(slides,data);normaliseInteractionDensity(slides,data);installQuizExplanations(data);return true;
   }
-  function run(){install();[80,220,520,950,1600,2600].forEach(function(ms){setTimeout(install,ms)})}
+  function watchForLegacyVisualOverrides(){
+    if(typeof MutationObserver!=='function')return;
+    var area=document.getElementById('content-area');if(!area||area.getAttribute('data-qmx-raster-observer')==='1')return;
+    area.setAttribute('data-qmx-raster-observer','1');
+    var observer=new MutationObserver(function(mutations){
+      var changed=false;
+      for(var i=0;i<mutations.length;i++){if(mutations[i]&&mutations[i].type==='childList'){changed=true;break}}
+      if(!changed)return;
+      if(observerTimer)clearTimeout(observerTimer);
+      observerTimer=setTimeout(function(){observerTimer=null;install()},24);
+    });
+    observer.observe(area,{subtree:true,childList:true});
+  }
+  function run(){install();watchForLegacyVisualOverrides();[80,220,520,950,1600,2600].forEach(function(ms){setTimeout(install,ms)})}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();
-  window.addEventListener('load',function(){[0,120,500,1200].forEach(function(ms){setTimeout(install,ms)})},{once:true});
+  window.addEventListener('load',function(){[0,120,500,1200].forEach(function(ms){setTimeout(install,ms)});setTimeout(watchForLegacyVisualOverrides,0)},{once:true});
 })();
 </script>`;
 }
@@ -148,11 +164,11 @@ function replicateMediaScript(assetMap = {}) {
 function injectReplicateMediaUi(html, assetMap = {}) {
     let source = String(html || '');
     if (!source.includes('quizmoto-replicate-media-v2')) {
-        source = source.includes('</head>') ? source.replace('</head>', `${REPLICATE_MEDIA_CSS}\n</head>`) : `${REPLICATE_MEDIA_CSS}\n${source}`;
+        source = source.includes('</head>') ? source.replace('</head>', () => `${REPLICATE_MEDIA_CSS}\n</head>`) : `${REPLICATE_MEDIA_CSS}\n${source}`;
     }
     if (!source.includes('quizmoto-replicate-media-script-v2')) {
         const script = replicateMediaScript(assetMap);
-        source = source.includes('</body>') ? source.replace('</body>', `${script}\n</body>`) : `${source}\n${script}`;
+        source = source.includes('</body>') ? source.replace('</body>', () => `${script}\n</body>`) : `${source}\n${script}`;
     }
     return source;
 }
