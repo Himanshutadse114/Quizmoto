@@ -22,8 +22,8 @@ function mediaConfig() {
     return {
         enabled: String(process.env.REPLICATE_SCORM_MEDIA || 'true').trim().toLowerCase() !== 'false',
         imageModel: String(process.env.REPLICATE_SCORM_IMAGE_MODEL || DEFAULT_IMAGE_MODEL).trim(),
-        maxImages: clampInt(process.env.REPLICATE_SCORM_MAX_IMAGES, 5, 1, 8),
-        minImages: clampInt(process.env.REPLICATE_SCORM_MIN_IMAGES, 3, 1, 8),
+        maxImages: clampInt(process.env.REPLICATE_SCORM_MAX_IMAGES, 8, 1, 8),
+        minImages: clampInt(process.env.REPLICATE_SCORM_MIN_IMAGES, 6, 1, 8),
         imageMegapixels: String(process.env.REPLICATE_SCORM_IMAGE_MEGAPIXELS || '1').trim(),
         imageQuality: clampInt(process.env.REPLICATE_SCORM_IMAGE_QUALITY, 82, 50, 100),
         imageRetries: clampInt(process.env.REPLICATE_SCORM_IMAGE_RETRIES, 1, 0, 2)
@@ -57,8 +57,6 @@ function imageSlideIndexes(slides, count) {
     if (!total || count <= 0) return [];
     if (count >= total) return Array.from({ length: total }, (_, index) => index);
 
-    // Space images across the whole learning journey rather than clustering them
-    // near the beginning. This keeps a 10-14 slide course visually paced.
     const chosen = new Set();
     for (let slot = 0; slot < count; slot += 1) {
         const index = count === 1
