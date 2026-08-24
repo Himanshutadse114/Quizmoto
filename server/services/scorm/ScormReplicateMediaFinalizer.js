@@ -80,6 +80,73 @@ const REPLICATE_MEDIA_CSS = `
   align-self:center!important;
 }
 
+/* Image-bearing structured slides use compact one-screen arrangements. A
+   four-step process/timeline becomes a 2x2 teaching block rather than four
+   squeezed columns beside the image. Comparison becomes a readable stack. */
+.qmx-raster-stage > .process,
+.qmx-raster-stage > .timeline{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:11px!important;
+  padding-top:0!important;
+  align-items:stretch!important;
+}
+.qmx-raster-stage > .timeline:before{display:none!important}
+.qmx-raster-stage > .process .step{
+  min-height:112px!important;
+  padding:14px!important;
+}
+.qmx-raster-stage > .process .step:after{display:none!important}
+.qmx-raster-stage > .timeline .milestone{
+  text-align:left!important;
+  display:flex!important;
+  gap:9px!important;
+  align-items:flex-start!important;
+}
+.qmx-raster-stage > .timeline .dot{
+  width:24px!important;
+  height:24px!important;
+  min-width:24px!important;
+  margin:4px 0 0!important;
+  border-width:5px!important;
+  box-shadow:none!important;
+}
+.qmx-raster-stage > .timeline .milestone p{
+  flex:1!important;
+  padding:12px!important;
+  min-height:92px!important;
+}
+.qmx-raster-stage > .compare{
+  grid-template-columns:1fr!important;
+  gap:10px!important;
+}
+.qmx-raster-stage > .compare .compare-col{
+  padding:14px 16px!important;
+  border-radius:14px!important;
+}
+.qmx-raster-stage > .compare .compare-item{
+  padding:7px 0!important;
+  font-size:12px!important;
+}
+.qmx-raster-stage > .cards-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px!important;
+}
+.qmx-raster-stage .concept-card{
+  padding:14px!important;
+  min-height:98px!important;
+}
+.qmx-raster-stage .concept-number{
+  width:28px!important;
+  height:28px!important;
+  margin-bottom:8px!important;
+}
+.qmx-raster-stage .concept-card p,
+.qmx-raster-stage .step p,
+.qmx-raster-stage .hub-item{
+  font-size:12px!important;
+  line-height:1.42!important;
+}
+
 /* Only intentionally interactive slides stay flip/reveal based. */
 .qmx-static-card{cursor:default!important;perspective:none!important}
 .qmx-static-card .qmx-flip-inner{transform:none!important;min-height:94px!important;transition:none!important}
@@ -121,6 +188,9 @@ const REPLICATE_MEDIA_CSS = `
   .slide.qmx-cover-slide .lead{font-size:14px!important;line-height:1.5!important}
   .qmx-cover-raster{height:185px!important;min-height:185px!important;border-radius:16px!important;margin-top:18px!important}
   .qmx-raster-panel{height:220px!important;min-height:200px!important;border-radius:16px!important}
+  .qmx-raster-stage > .process,
+  .qmx-raster-stage > .timeline,
+  .qmx-raster-stage > .cards-grid{grid-template-columns:1fr!important}
 }
 </style>`;
 
