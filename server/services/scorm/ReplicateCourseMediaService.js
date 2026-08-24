@@ -3,7 +3,8 @@ const {
     hasReplicateToken,
     runReplicateModel,
     outputUrl,
-    downloadReplicateAsset
+    downloadReplicateAsset,
+    predictionRequestsPerMinute
 } = require('./ReplicateClient');
 
 // Locked low-cost production model for SCORM artwork. At 1 MP this endpoint is
@@ -135,7 +136,16 @@ function isRetryableImageError(err) {
 function retryDelayMs(err, attempt, config) {
     const rateLimited = String(err?.code || '') === 'REPLICATE_RATE_LIMIT';
     const base = rateLimited ? Math.max(3000, config.retryBaseMs * 2) : config.retryBaseMs;
-    return Math.min(15000, base * Math.pow(2, Math.max(0, attempt)));
+    const exponential = Math.min(30000, base * Math.pow(2, Math.max(0, attempt)));
+    const serverWait = Math.max(0, Number(err?.retryAfterMs || 0));
+    // If Replicate tells us its reset time, respect it and add a small guard.
+    return Math.min(60000, Math.max(exponential, serverWait > 0 ? serverWait + 500 : 0));
+}
+
+function rateLimitDetail(state) {
+    const seconds = Math.max(1, Math.ceil(Number(state?.waitMs || 0) / 1000));
+    const rpm = Number(state?.rateLimitPerMinute || predictionRequestsPerMinute());
+    return `Replicate allows ${rpm} new prediction request(s) per minute on this account. The next image request will start in about ${seconds}s.`;
 }
 
 async function generateImage(prompt, path, config, onStatus) {
@@ -184,6 +194,7 @@ async function generateImage(prompt, path, config, onStatus) {
                 delayMs,
                 code: err.code,
                 status: err.status || null,
+                retryAfterMs: err.retryAfterMs || 0,
                 error: err.message
             });
             await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -257,13 +268,14 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     emit(onProgress, {
         percent: 8,
         stage: 'Creating course cover image',
-        detail: `Generating the front image plus up to ${selectedIndexes.length} learning-slide images with low-cost FLUX.2 Klein. No audio is generated.`
+        detail: `Generating the front image plus up to ${selectedIndexes.length} learning-slide images with low-cost FLUX.2 Klein. Replicate requests are automatically paced to ${predictionRequestsPerMinute()} per minute. No audio is generated.`
     });
 
     try {
         const coverPath = 'assets/media/course-cover.webp';
         const coverFile = await generateImage(coverImagePrompt(analysis), coverPath, config, (state) => {
             const status = String(state?.status || '').toLowerCase();
+            if (status === 'rate_limit_wait') emit(onProgress, { percent: 9, stage: 'Waiting for Replicate rate-limit slot', detail: rateLimitDetail(state), modelStatus: status });
             if (status === 'starting') emit(onProgress, { percent: 10, stage: 'Waiting for Replicate image model', detail: 'Replicate accepted the cover request and is starting FLUX.2 Klein.', modelStatus: status, predictionId: state.predictionId || '' });
             if (status === 'processing') emit(onProgress, { percent: 16, stage: 'Generating course cover image', detail: 'FLUX.2 Klein is actively creating the front-slide image.', modelStatus: status, predictionId: state.predictionId || '' });
             if (status === 'retrying') emit(onProgress, { percent: 12, stage: 'Retrying course cover image', detail: 'The cover request hit a temporary image-service issue. Retrying with backoff.' });
@@ -280,7 +292,7 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     emit(onProgress, {
         percent: 30,
         stage: 'Generating learning-slide images',
-        detail: `Creating up to ${selectedIndexes.length} topic-relevant slide images one at a time for reliability.`
+        detail: `Creating up to ${selectedIndexes.length} topic-relevant slide images sequentially and within Replicate's ${predictionRequestsPerMinute()}/minute prediction limit.`
     });
 
     let completedJobs = 0;
@@ -292,7 +304,16 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
                 path,
                 config,
                 (state) => {
-                    if (String(state?.status || '').toLowerCase() === 'retrying') {
+                    const status = String(state?.status || '').toLowerCase();
+                    if (status === 'rate_limit_wait') {
+                        emit(onProgress, {
+                            percent: 30 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 34),
+                            stage: `Waiting to generate slide ${slideIndex + 1} image`,
+                            detail: rateLimitDetail(state),
+                            modelStatus: status
+                        });
+                    }
+                    if (status === 'retrying') {
                         emit(onProgress, {
                             percent: 30 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 34),
                             stage: `Retrying slide ${slideIndex + 1} image`,
@@ -332,7 +353,7 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
         emit(onProgress, {
             percent: 65,
             stage: 'Recovering missing course images',
-            detail: `Only ${1 + slideImagesGenerated} image(s) completed. Retrying missing visual slots sequentially.`
+            detail: `Only ${1 + slideImagesGenerated} image(s) completed. Retrying missing visual slots sequentially within the Replicate request limit.`
         });
 
         for (const slideIndex of recoveryCandidates) {
@@ -344,7 +365,16 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
                     path,
                     config,
                     (state) => {
-                        if (String(state?.status || '').toLowerCase() === 'retrying') {
+                        const status = String(state?.status || '').toLowerCase();
+                        if (status === 'rate_limit_wait') {
+                            emit(onProgress, {
+                                percent: 66,
+                                stage: `Waiting to recover slide ${slideIndex + 1} image`,
+                                detail: rateLimitDetail(state),
+                                modelStatus: status
+                            });
+                        }
+                        if (status === 'retrying') {
                             emit(onProgress, {
                                 percent: 66,
                                 stage: `Recovering slide ${slideIndex + 1} image`,
@@ -395,6 +425,7 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
             estimatedImageCostUsd: Number((totalImagesGenerated * 0.001).toFixed(4)),
             maxImages: config.maxImages,
             minImages: requiredImages,
+            predictionRequestsPerMinute: predictionRequestsPerMinute(),
             selectedSlideIndexes: selectedIndexes,
             successfulSlideIndexes: Array.from(successfulSlideIndexes).sort((a, b) => a - b),
             imageConcurrency: config.imageConcurrency,
@@ -412,6 +443,7 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
         totalImagesGenerated,
         estimatedImageCostUsd: updated.replicateMedia.estimatedImageCostUsd,
         requiredImages,
+        predictionRequestsPerMinute: predictionRequestsPerMinute(),
         imageConcurrency: config.imageConcurrency,
         audio: false,
         files: files.length,
@@ -431,6 +463,7 @@ module.exports = {
     recoverySlideImagePrompt,
     isRetryableImageError,
     retryDelayMs,
+    rateLimitDetail,
     warningSummary,
     DEFAULT_IMAGE_MODEL
 };
