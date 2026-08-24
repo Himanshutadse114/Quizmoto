@@ -77,12 +77,46 @@ function buildExplanation(question, analysis) {
     return clean(parts.join(' '));
 }
 
+function normalizeOption(value) {
+    return clean(value).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function quizIntegrityIssues(rawAnalysis) {
+    const quiz = Array.isArray(rawAnalysis?.quiz) ? rawAnalysis.quiz : [];
+    if (!quiz.length) return ['The course does not contain any knowledge-check questions.'];
+
+    const issues = [];
+    quiz.forEach((raw, index) => {
+        const item = raw && typeof raw === 'object' ? raw : {};
+        const label = `Knowledge check ${index + 1}`;
+        const question = clean(item.question);
+        const options = Array.isArray(item.options) ? item.options.map(clean) : [];
+        const optionKeys = options.map(normalizeOption).filter(Boolean);
+        const correctAnswer = Number(item.correctAnswer);
+
+        if (!question) issues.push(`${label} is missing its question text.`);
+        if (options.length !== 4 || options.some((option) => !option)) {
+            issues.push(`${label} must contain exactly four non-empty answer options.`);
+        } else if (new Set(optionKeys).size !== 4) {
+            issues.push(`${label} contains duplicate answer options.`);
+        }
+        if (!Number.isInteger(correctAnswer) || correctAnswer < 0 || correctAnswer >= 4) {
+            issues.push(`${label} does not have a valid correct answer.`);
+        }
+        if (explanationWordCount(item.explanation) < 20) {
+            issues.push(`${label} does not have a complete learner explanation.`);
+        }
+    });
+
+    return issues;
+}
+
 function repairQuizExplanations(rawAnalysis) {
     const analysis = rawAnalysis && typeof rawAnalysis === 'object' ? { ...rawAnalysis } : {};
     const quiz = Array.isArray(analysis.quiz) ? analysis.quiz : [];
     let repaired = 0;
 
-    analysis.quiz = quiz.map((raw, index) => {
+    analysis.quiz = quiz.map((raw) => {
         const item = raw && typeof raw === 'object' ? { ...raw } : {};
         const options = Array.isArray(item.options) ? item.options.map(clean).slice(0, 4) : [];
         const correctAnswer = Number(item.correctAnswer);
@@ -102,15 +136,38 @@ function repairQuizExplanations(rawAnalysis) {
         };
     });
 
+    const issues = quizIntegrityIssues(analysis);
     analysis.quizIntegrity = {
-        explanationsGuaranteed: true,
-        repairedExplanations: repaired
+        explanationsGuaranteed: issues.every((issue) => !/explanation/i.test(issue)),
+        repairedExplanations: repaired,
+        valid: issues.length === 0,
+        issueCount: issues.length
     };
+    return analysis;
+}
+
+function ensureQuizIntegrity(rawAnalysis) {
+    const analysis = repairQuizExplanations(rawAnalysis);
+    const issues = quizIntegrityIssues(analysis);
+    analysis.quizIntegrity = {
+        ...(analysis.quizIntegrity || {}),
+        valid: issues.length === 0,
+        issueCount: issues.length
+    };
+
+    if (issues.length) {
+        const err = new Error(`The AI returned an incomplete knowledge check: ${issues[0]} Please retry course generation.`);
+        err.code = 'SCORM_QUIZ_INCOMPLETE';
+        err.issues = issues;
+        throw err;
+    }
     return analysis;
 }
 
 module.exports = {
     repairQuizExplanations,
+    ensureQuizIntegrity,
+    quizIntegrityIssues,
     buildExplanation,
     relevantSlide,
     overlapScore,
