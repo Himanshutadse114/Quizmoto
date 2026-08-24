@@ -13,40 +13,74 @@ function wordCount(value) {
     return clean(value).split(/\s+/).filter(Boolean).length;
 }
 
+/**
+ * Detailed course copy must stay learner-visible.
+ *
+ * Older planner versions split a 120-170 word teaching passage into a one-line
+ * intro plus a hidden revealText field. The base learner renderer displays
+ * `content`, so a second planning pass could collapse a detailed slide down to
+ * its first sentence. Keep the complete instructional passage in introText and
+ * content instead; interactions are supplied by key points/cards, not by hiding
+ * the lesson itself.
+ */
 function splitCopy(content) {
     const full = clean(content);
-    if (!full) return { introText: '', revealText: '' };
-    const sentences = full.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [full];
-    const first = clean(sentences[0]);
-    if (first && wordCount(first) <= 38 && sentences.length > 1) {
-        return { introText: first, revealText: clean(sentences.slice(1).join(' ')) };
-    }
-    const words = full.split(/\s+/);
-    if (words.length > 40) {
-        return {
-            introText: `${words.slice(0, 28).join(' ')}…`,
-            revealText: words.slice(28).join(' ')
-        };
-    }
     return { introText: full, revealText: '' };
+}
+
+/**
+ * Repair legacy planned slides when they are rebuilt. Old generated analyses
+ * can contain only the first sentence in content/introText and the remaining
+ * teaching copy in revealText. Merge those fields back into one canonical,
+ * visible passage so Save & rebuild can repair an existing thin-looking course.
+ *
+ * In the new planner content and introText initially match. If the Content
+ * Editor later changes introText, the mismatch is intentional learner editing,
+ * so the edited visible text becomes canonical on rebuild.
+ */
+function canonicalLearningCopy(slide) {
+    const content = clean(slide?.content);
+    const intro = clean(slide?.introText);
+    const reveal = clean(slide?.revealText);
+
+    if (reveal) {
+        const visible = intro || content;
+        const contentLooksTruncated = wordCount(content) < 70;
+        const introLooksTruncated = wordCount(intro) < 70;
+        if (contentLooksTruncated || introLooksTruncated) {
+            const prefix = visible || content;
+            if (!prefix) return reveal;
+            if (normalize(reveal).startsWith(normalize(prefix))) return reveal;
+            return clean(`${prefix} ${reveal}`);
+        }
+    }
+
+    if (!reveal && intro && content && normalize(intro) !== normalize(content)) {
+        return intro;
+    }
+
+    return content || intro || reveal;
 }
 
 function metaphorFor(slide) {
     if (clean(slide.visualMetaphor)) return clean(slide.visualMetaphor).toLowerCase();
-    const text = `${slide.title || ''} ${slide.content || ''}`.toLowerCase();
+    const text = `${slide.title || ''} ${slide.content || ''} ${(Array.isArray(slide.keyPoints) ? slide.keyPoints.join(' ') : '')}`.toLowerCase();
 
-    // Prefer the most specific visual signal before broad attack-channel terms.
-    // For example, "QR phishing" must remain a QR experience instead of being
-    // downgraded to the generic email/phishing metaphor.
-    if (/qr|quick response/.test(text)) return 'qr';
-    if (/voice|deepfake|audio|synthetic|artificial intelligence|\bai\b/.test(text)) return 'ai-wave';
+    // Prefer the attack/channel being taught before secondary words such as
+    // "credential" or "file". This prevents a phishing lesson from receiving
+    // a password/MFA illustration simply because the consequence mentions a
+    // stolen login.
+    if (/qr|quick response|quishing/.test(text)) return 'qr';
+    if (/deepfake|voice clone|audio clone|synthetic voice|synthetic video|artificial intelligence|\bai\b/.test(text)) return 'ai-wave';
+    if (/smish|sms|text message|whatsapp|messaging app/.test(text)) return 'phone';
+    if (/vish|phone call|caller|callback|pretext|pretexting/.test(text)) return 'phone';
+    if (/phish|fraudulent email|suspicious email|inbox|sender address|email message/.test(text)) return 'email';
+    if (/bait|usb|removable media|malicious attachment|attachment/.test(text)) return 'file';
+    if (/tailgat|physical access|restricted area|badge|impersonat|identity/.test(text)) return 'identity';
+    if (/browser|website|url|domain|sign-in page|login page/.test(text)) return 'browser';
     if (/password|credential|login|authentication|mfa|passkey/.test(text)) return 'lock';
-    if (/phone|sms|whatsapp|call|mobile/.test(text)) return 'phone';
-    if (/ransom|file|attachment|document/.test(text)) return 'file';
-    if (/cloud|share|drive/.test(text)) return 'cloud';
-    if (/identity|account|employee|user|person/.test(text)) return 'identity';
-    if (/browser|website|url|link/.test(text)) return 'browser';
-    if (/email|phish|inbox|message/.test(text)) return 'email';
+    if (/ransom|encrypt(s|ed)? file|malware payload/.test(text)) return 'file';
+    if (/cloud|share|drive|saas/.test(text)) return 'cloud';
     if (/warning|incident|threat|malware|risk|attack/.test(text)) return 'warning';
     return 'shield';
 }
@@ -108,7 +142,16 @@ function interactionFor(type, layout, existing) {
     return { type: 'hotspot_explore', prompt: 'Explore the learning points before continuing.' };
 }
 
-function concisePoints(points) {
+function pointLimitFor(slide, type) {
+    const layout = clean(slide?.layout).toLowerCase();
+    // Cards and HUB items become flip/reveal cards in the learner runtime.
+    // Four items fit as a 2x2 learning block without forcing page scrolling.
+    if (layout === 'cards' || layout === 'hub' || type === 'reveal') return 4;
+    if (layout === 'process' || layout === 'timeline' || layout === 'cycle' || layout === 'spotlight') return 4;
+    return 6;
+}
+
+function concisePoints(points, limit = 6) {
     const seen = new Set();
     return (Array.isArray(points) ? points : [])
         .map(clean)
@@ -119,7 +162,7 @@ function concisePoints(points) {
             seen.add(key);
             return true;
         })
-        .slice(0, 6);
+        .slice(0, limit);
 }
 
 function planExperienceV5(rawAnalysis) {
@@ -130,15 +173,12 @@ function planExperienceV5(rawAnalysis) {
 
     const planned = slides.map((rawSlide, index) => {
         const slide = rawSlide && typeof rawSlide === 'object' ? rawSlide : {};
-        const hasEditableIntro = Object.prototype.hasOwnProperty.call(slide, 'introText');
-        const hasEditableReveal = Object.prototype.hasOwnProperty.call(slide, 'revealText');
-        const canonicalContent = hasEditableIntro ? clean(slide.introText) : clean(slide.content);
+        const canonicalContent = canonicalLearningCopy(slide);
         const planningSlide = { ...slide, content: canonicalContent };
         const explicitType = clean(planningSlide.screenType).toLowerCase();
         const hasExplicitType = SCREEN_TYPES.includes(explicitType);
         let type = preferredType(planningSlide, index);
         if (!hasExplicitType && type === previousType) type = alternateType(type, planningSlide, index);
-        const copy = splitCopy(canonicalContent);
         const explicitBackground = clean(planningSlide.backgroundStyle).toLowerCase();
         const background = explicitBackground || backgroundFor(type, index, previousBackground);
         const result = {
@@ -146,10 +186,12 @@ function planExperienceV5(rawAnalysis) {
             content: canonicalContent,
             screenType: type,
             backgroundStyle: BACKGROUNDS.includes(background) ? background : backgroundFor(type, index, previousBackground),
-            visualMetaphor: metaphorFor(planningSlide),
-            introText: hasEditableIntro ? clean(slide.introText) : copy.introText,
-            revealText: hasEditableReveal ? clean(slide.revealText) : copy.revealText,
-            keyPoints: concisePoints(slide.keyPoints),
+            visualMetaphor: metaphorFor({ ...planningSlide, visualMetaphor: '' }),
+            // Keep the complete teaching passage visible. revealText is reserved
+            // for future per-card detail, never for hiding the main lesson.
+            introText: canonicalContent,
+            revealText: '',
+            keyPoints: concisePoints(slide.keyPoints, pointLimitFor(planningSlide, type)),
             interaction: interactionFor(type, planningSlide.layout, planningSlide.interaction)
         };
         previousType = result.screenType;
@@ -160,7 +202,7 @@ function planExperienceV5(rawAnalysis) {
     return {
         ...analysis,
         experienceVersion: 5,
-        experiencePlanner: 'content-aware-v5',
+        experiencePlanner: 'content-visible-v6',
         slides: planned
     };
 }
@@ -168,9 +210,11 @@ function planExperienceV5(rawAnalysis) {
 module.exports = {
     planExperienceV5,
     splitCopy,
+    canonicalLearningCopy,
     metaphorFor,
     preferredType,
     backgroundFor,
+    pointLimitFor,
     SCREEN_TYPES,
     BACKGROUNDS
 };
