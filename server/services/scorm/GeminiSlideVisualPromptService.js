@@ -37,10 +37,11 @@ function modelCandidates() {
 
 function sharedVisualRules() {
     return [
-        'Create a prompt for ONE 16:9 course illustration that communicates only the supplied lesson meaning.',
+        'Create a prompt for ONE Wide 16:9 course illustration that communicates only the supplied lesson meaning.',
         'Use a simple, clean, professional object-based or abstract visual metaphor that can be understood at slide size.',
-        'NON-HUMAN ONLY: no people, faces, hands, bodies, silhouettes, portraits, avatars or human figures.',
-        'NO TEXT IN THE IMAGE: no words, letters, numbers, captions, labels, logos, brand names, watermarks, signs or readable interfaces.',
+        'NON-HUMAN VISUAL ONLY: do not show people, faces, hands, bodies, silhouettes, portraits, avatars or human figures.',
+        'ABSOLUTELY NO TEXT IN THE IMAGE: No words, letters, numbers, captions, labels, logos, brand names, watermarks, signs or readable interfaces.',
+        'Use no vector art or infographic typography; the result should look like a polished raster course illustration.',
         'Do not introduce cybersecurity objects, locks, shields, warning signs, email envelopes, QR codes, malware symbols or devices unless the supplied lesson itself is genuinely about those concepts.',
         'Do not copy generic examples from unrelated domains. Choose objects, shapes, colours and relationships that directly express THIS lesson.',
         'Keep the composition uncluttered with one clear focal idea, 2 to 5 main visual elements, generous negative space, realistic or soft-3D styling and subtle premium corporate lighting.',
@@ -55,7 +56,8 @@ function coverInstruction(analysis) {
         `COURSE TITLE: ${clean(analysis?.title) || 'Learning course'}`,
         `COURSE SUMMARY: ${excerpt(analysis?.summary, 1400)}`,
         sharedVisualRules(),
-        'Represent the central subject of the whole course, not one isolated detail. Do not include the course title as text inside the image.'
+        'Represent the central subject of the whole course, not one isolated detail.',
+        'Do not force a believable workplace scene unless the supplied course is actually workplace-based. Do not include the course title as text inside the image.'
     ].join('\n\n');
 }
 
@@ -64,12 +66,12 @@ function slideInstruction(slide, analysis, slideIndex) {
     return [
         'You are the visual director for a professional digital learning course.',
         'Write ONLY a production-ready image-generation prompt for this ONE slide. Base the visual strictly on the supplied slide. Ignore unrelated topics from other courses.',
-        `COURSE CONTEXT: ${clean(analysis?.title) || 'Learning course'}`,
-        `SLIDE NUMBER: ${Number(slideIndex) + 1}`,
-        `SLIDE TITLE: ${clean(slide?.title) || `Section ${Number(slideIndex) + 1}`}`,
-        `SLIDE LESSON: ${excerpt(slide?.content || slide?.introText || slide?.revealText, 1800)}`,
-        keyPoints.length ? `KEY POINTS: ${keyPoints.join(' | ')}` : '',
-        clean(slide?.visualTitle) ? `INTENDED EMPHASIS: ${clean(slide.visualTitle)}` : '',
+        `Course: ${clean(analysis?.title) || 'Learning course'}`,
+        `Slide number: ${Number(slideIndex) + 1}`,
+        `Slide topic: ${clean(slide?.title) || `Section ${Number(slideIndex) + 1}`}`,
+        `What this slide teaches: ${excerpt(slide?.content || slide?.introText || slide?.revealText, 1800)}`,
+        keyPoints.length ? `Key ideas: ${keyPoints.join(' | ')}` : '',
+        clean(slide?.visualTitle) ? `Visual emphasis: ${clean(slide.visualTitle)}` : '',
         sharedVisualRules(),
         'The image must make sense beside this exact slide without relying on any words inside the image.'
     ].filter(Boolean).join('\n\n');
