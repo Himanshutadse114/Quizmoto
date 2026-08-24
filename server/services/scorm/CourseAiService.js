@@ -1,10 +1,12 @@
 const logger = require('../../utils/logger');
 const GeminiPolicyAnalysisService = require('./PolicyAnalysisService');
+const { ensureCourseVisualPrompts } = require('./GeminiCourseVisualPromptBatchService');
 
 /**
  * SCORM authoring uses a deliberately hybrid provider strategy:
  * - Gemini writes and quality-refines all course content and knowledge checks.
- * - Replicate is reserved for raster image generation during final packaging.
+ * - Gemini also plans the cover + every slide image prompt in one batch request.
+ * - Replicate/FLUX Schnell is reserved for raster rendering during packaging.
  *
  * Keep this decision server-side so an old SCORM_AI_PROVIDER=replicate Render
  * variable cannot accidentally route long-form course writing back through a
@@ -32,23 +34,34 @@ async function analyzePolicy(args = {}) {
     emit(args.onProgress, {
         percent: 8,
         stage: 'Creating course content with Gemini',
-        detail: 'Gemini is writing the lessons, slide structure and knowledge checks. Replicate is not used for course text.'
+        detail: 'Gemini is extracting the learning content, slide structure and knowledge checks.'
     });
 
-    const analysis = await GeminiPolicyAnalysisService.analyzePolicy(args);
+    let analysis = await GeminiPolicyAnalysisService.analyzePolicy(args);
+    analysis.aiProvider = 'gemini';
+
+    emit(args.onProgress, {
+        percent: 88,
+        stage: 'Planning all course images with Gemini',
+        detail: 'Gemini is creating the cover prompt and every slide prompt together in one batch from the completed course data.'
+    });
+
+    analysis = await ensureCourseVisualPrompts(analysis);
     analysis.aiProvider = 'gemini';
 
     emit(args.onProgress, {
         percent: 94,
-        stage: 'Gemini course content ready',
-        detail: 'The course draft and quiz are ready. Final raster images will be generated with Replicate only after you click Generate course.',
+        stage: 'Course data and image prompts ready',
+        detail: 'The learner content and all slide-specific image prompts are ready. FLUX Schnell only needs to render the selected images.',
         modelStatus: 'succeeded'
     });
 
-    logger.info('scorm_gemini_content_ready', {
+    logger.info('scorm_gemini_content_and_visual_plan_ready', {
         module: 'scorm',
         slides: Array.isArray(analysis.slides) ? analysis.slides.length : 0,
-        quiz: Array.isArray(analysis.quiz) ? analysis.quiz.length : 0
+        quiz: Array.isArray(analysis.quiz) ? analysis.quiz.length : 0,
+        visualPromptMode: analysis.visualPromptPlan?.mode || null,
+        slidePromptsReady: analysis.visualPromptPlan?.slidePromptsReady || 0
     });
 
     return analysis;
