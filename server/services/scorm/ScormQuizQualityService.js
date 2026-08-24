@@ -55,15 +55,20 @@ function explanationWordCount(value) {
 }
 
 function buildExplanation(question, analysis) {
-    const options = Array.isArray(question?.options) ? question.options : [];
+    const options = Array.isArray(question?.options) ? question.options.map(clean) : [];
     const correctIndex = Number(question?.correctAnswer);
-    const correct = clean(options[correctIndex]) || 'the selected safe action';
+    const correct = Number.isInteger(correctIndex) && correctIndex >= 0 && correctIndex < options.length
+        ? clean(options[correctIndex])
+        : '';
     const slide = relevantSlide(question?.question, analysis?.slides);
     const evidence = usefulSentence(slide?.content);
     const title = clean(slide?.title);
 
+    const lead = correct
+        ? `${correct} is the best answer because it follows the safe behaviour taught in this course.`
+        : 'The correct response is the one that follows the safe behaviour taught in this course.';
     const parts = [
-        `${correct} is the best answer because it follows the safe behaviour taught in this course.`,
+        lead,
         evidence,
         title ? `This reflects the lesson on ${title.toLowerCase()} and helps the learner make the safer workplace decision before proceeding.` : 'Applying this behaviour helps the learner make the safer workplace decision before proceeding.',
         'It also reduces the chance of acting on an unverified, misleading or risky request.'
@@ -79,15 +84,10 @@ function repairQuizExplanations(rawAnalysis) {
 
     analysis.quiz = quiz.map((raw, index) => {
         const item = raw && typeof raw === 'object' ? { ...raw } : {};
-        const options = Array.isArray(item.options)
-            ? item.options.map(clean).filter(Boolean).slice(0, 4)
-            : [];
-        while (options.length < 4) options.push(`Alternative ${options.length + 1}`);
-
-        let correctAnswer = Number(item.correctAnswer);
-        if (!Number.isInteger(correctAnswer) || correctAnswer < 0 || correctAnswer > 3) correctAnswer = 0;
-
+        const options = Array.isArray(item.options) ? item.options.map(clean).slice(0, 4) : [];
+        const correctAnswer = Number(item.correctAnswer);
         let explanation = clean(item.explanation);
+
         if (explanationWordCount(explanation) < 20) {
             explanation = buildExplanation({ ...item, options, correctAnswer }, analysis);
             repaired += 1;
@@ -95,7 +95,7 @@ function repairQuizExplanations(rawAnalysis) {
 
         return {
             ...item,
-            question: clean(item.question) || `Knowledge check ${index + 1}`,
+            question: clean(item.question),
             options,
             correctAnswer,
             explanation
