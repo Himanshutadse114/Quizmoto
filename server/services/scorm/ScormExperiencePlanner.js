@@ -33,6 +33,10 @@ function splitCopy(content) {
  * can contain only the first sentence in content/introText and the remaining
  * teaching copy in revealText. Merge those fields back into one canonical,
  * visible passage so Save & rebuild can repair an existing thin-looking course.
+ *
+ * In the new planner content and introText initially match. If the Content
+ * Editor later changes introText, the mismatch is intentional learner editing,
+ * so the edited visible text becomes canonical on rebuild.
  */
 function canonicalLearningCopy(slide) {
     const content = clean(slide?.content);
@@ -49,6 +53,10 @@ function canonicalLearningCopy(slide) {
             if (normalize(reveal).startsWith(normalize(prefix))) return reveal;
             return clean(`${prefix} ${reveal}`);
         }
+    }
+
+    if (!reveal && intro && content && normalize(intro) !== normalize(content)) {
+        return intro;
     }
 
     return content || intro || reveal;
