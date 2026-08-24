@@ -1,12 +1,14 @@
 /**
  * AI author: source brief / policy / PDF / PPT -> SCORM 1.2 package.
- * Gemini API keys remain server-side.
+ * AI provider keys remain server-side. Replicate is preferred when
+ * REPLICATE_API_TOKEN is configured; Gemini remains available as fallback.
  */
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware');
 const { featureFlags, scormMaxUploadMb } = require('../../config/featureFlags');
-const { analyzePolicy } = require('../../services/scorm/PolicyAnalysisService');
+const { analyzePolicy } = require('../../services/scorm/CourseAiService');
+const { prepareReplicateCourseMedia } = require('../../services/scorm/ReplicateCourseMediaService');
 const { planExperienceV5 } = require('../../services/scorm/ScormExperiencePlanner');
 const { buildScormPackageZip } = require('../../services/scorm/ScormAnswerTrackingPackageFinalizer');
 const { getTheme, listThemes, normalizeThemeId } = require('../../services/scorm/ScormThemeCatalog');
@@ -18,10 +20,20 @@ const { unpackPackage } = require('../../services/scorm/ScormUnpackService');
 const { generateQuiz } = require('../../services/QuizAiGenerationService');
 const logger = require('../../utils/logger');
 
+function aiErrorStatus(code) {
+    if (code === 'QUIZ_AI_SOURCE_REQUIRED') return 400;
+    if (code === 'QUIZ_AI_FILE_TOO_LARGE') return 413;
+    if (code === 'GEMINI_KEY_MISSING' || code === 'REPLICATE_KEY_MISSING') return 503;
+    if (code === 'GEMINI_QUOTA' || code === 'REPLICATE_RATE_LIMIT') return 429;
+    if (code === 'REPLICATE_BILLING') return 402;
+    if (code === 'REPLICATE_SOURCE_NEEDS_TEXT') return 422;
+    return 500;
+}
+
 router.use((req, res, next) => {
     if (!featureFlags.scormAiAuthor) {
         return res.status(403).json({
-            message: 'AI author is disabled. Set SCORM_AI_AUTHOR=true and GEMINI_API_KEY on the server.'
+            message: 'AI author is disabled. Set SCORM_AI_AUTHOR=true and configure REPLICATE_API_TOKEN or GEMINI_API_KEY on the server.'
         });
     }
     next();
@@ -61,17 +73,8 @@ router.post('/quiz-generate', auth, async (req, res) => {
         res.json(quiz);
     } catch (err) {
         const code = err.code || 'QUIZ_AI_ERROR';
-        const status = code === 'QUIZ_AI_SOURCE_REQUIRED'
-            ? 400
-            : code === 'QUIZ_AI_FILE_TOO_LARGE'
-                ? 413
-                : code === 'GEMINI_KEY_MISSING'
-                    ? 503
-                    : code === 'GEMINI_QUOTA'
-                        ? 429
-                        : 500;
         logger.error('live_quiz_ai_generate_failed', { module: 'quiz', error: err.message, code });
-        res.status(status).json({ message: err.message || 'AI failed to generate quiz. Please try again.', code });
+        res.status(aiErrorStatus(code)).json({ message: err.message || 'AI failed to generate quiz. Please try again.', code });
     }
 });
 
@@ -109,11 +112,17 @@ router.post('/analyze', auth, async (req, res) => {
         analysis.themeId = selectedThemeId;
         analysis.themeName = selectedTheme.name;
         analysis.experienceVersion = 5;
-        res.json({ ok: true, analysis, templateId: selectedThemeId, theme: { id: selectedThemeId, name: selectedTheme.name, slug: selectedTheme.slug } });
+        res.json({
+            ok: true,
+            analysis,
+            aiProvider: analysis.aiProvider || 'gemini',
+            aiModel: analysis.aiModel || null,
+            templateId: selectedThemeId,
+            theme: { id: selectedThemeId, name: selectedTheme.name, slug: selectedTheme.slug }
+        });
     } catch (err) {
         logger.error('scorm_ai_analyze_failed', { module: 'scorm', error: err.message, code: err.code });
-        const status = err.code === 'GEMINI_KEY_MISSING' ? 503 : 500;
-        res.status(status).json({ message: err.message, code: err.code || 'AI_ERROR' });
+        res.status(aiErrorStatus(err.code)).json({ message: err.message, code: err.code || 'AI_ERROR' });
     }
 });
 
@@ -127,13 +136,21 @@ router.post('/generate', auth, async (req, res) => {
         if (!analysis) {
             const cleanTopic = String(topic || '').trim();
             const cleanDescription = String(description || '').trim();
-            const brief = [cleanTopic ? `Topic: ${cleanTopic}` : '', cleanDescription ? `Description and learning context:\n${cleanDescription}` : ''].filter(Boolean).join('\n\n');
+            const brief = [
+                cleanTopic ? `Topic: ${cleanTopic}` : '',
+                cleanDescription ? `Description and learning context:\n${cleanDescription}` : ''
+            ].filter(Boolean).join('\n\n');
             if (!fileBase64 && !brief) return res.status(400).json({ message: 'analysis, source document, or topic/description required' });
             const raw = fileBase64
                 ? String(fileBase64).replace(/^data:[^;]+;base64,/, '')
                 : Buffer.from(brief, 'utf8').toString('base64');
-            analysis = await analyzePolicy({ fileBase64: raw, mimeType: fileBase64 ? (mimeType || 'application/pdf') : 'text/plain', detailLevel: detailLevel || 'detailed' });
+            analysis = await analyzePolicy({
+                fileBase64: raw,
+                mimeType: fileBase64 ? (mimeType || 'application/pdf') : 'text/plain',
+                detailLevel: detailLevel || 'detailed'
+            });
         }
+
         analysis = planExperienceV5(analysis);
         analysis = {
             ...(analysis || {}),
@@ -143,9 +160,15 @@ router.post('/generate', auth, async (req, res) => {
         };
         if (title) analysis.title = title;
 
+        // Media is generated after the editor/planner step so the final learner
+        // text, titles and visual cues drive the image and narration prompts.
+        const media = await prepareReplicateCourseMedia(analysis);
+        analysis = media.analysis;
+
         const zipBuf = await buildScormPackageZip(analysis, {
             templateId: selectedThemeId,
-            logoDataUrl: logoDataUrl || null
+            logoDataUrl: logoDataUrl || null,
+            replicateMediaFiles: media.files
         });
         const replaceId = req.body?.replacePackageId || req.body?.packageId || null;
         let pkg = null;
@@ -208,12 +231,12 @@ router.post('/generate', auth, async (req, res) => {
             title: pkg.title,
             templateId: selectedThemeId,
             theme: { id: selectedThemeId, name: selectedTheme.name, slug: selectedTheme.slug },
+            media: media.metadata || null,
             errorMessage: pkg.errorMessage
         });
     } catch (err) {
         logger.error('scorm_ai_generate_failed', { module: 'scorm', error: err.message, code: err.code });
-        const status = err.code === 'GEMINI_KEY_MISSING' ? 503 : 500;
-        res.status(status).json({ message: err.message, code: err.code || 'AI_ERROR' });
+        res.status(aiErrorStatus(err.code)).json({ message: err.message, code: err.code || 'AI_ERROR' });
     }
 });
 
