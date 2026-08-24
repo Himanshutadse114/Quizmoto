@@ -18,6 +18,12 @@ const { getObjectStorage } = require('../../storage/ObjectStorage');
 const { packageZipKey } = require('../../services/scorm/storageKeys');
 const { unpackPackage } = require('../../services/scorm/ScormUnpackService');
 const { generateQuiz } = require('../../services/QuizAiGenerationService');
+const {
+    cleanId: cleanProgressId,
+    setProgress,
+    getProgress,
+    failProgress
+} = require('../../services/scorm/ScormGenerationProgress');
 const logger = require('../../utils/logger');
 
 function aiErrorStatus(code) {
@@ -30,6 +36,12 @@ function aiErrorStatus(code) {
     return 500;
 }
 
+function reporter(progressId, userId, task) {
+    const id = cleanProgressId(progressId);
+    if (!id) return () => {};
+    return (patch = {}) => setProgress(id, userId, { task, status: 'running', ...patch });
+}
+
 router.use((req, res, next) => {
     if (!featureFlags.scormAiAuthor) {
         return res.status(403).json({
@@ -37,6 +49,13 @@ router.use((req, res, next) => {
         });
     }
     next();
+});
+
+router.get('/progress/:progressId', auth, (req, res) => {
+    const progress = getProgress(req.params.progressId, req.userId);
+    if (!progress) return res.status(404).json({ ok: false, message: 'Progress not found' });
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ ok: true, progress });
 });
 
 router.get('/themes', auth, (_req, res) => {
@@ -79,6 +98,18 @@ router.post('/quiz-generate', auth, async (req, res) => {
 });
 
 router.post('/analyze', auth, async (req, res) => {
+    const progressId = cleanProgressId(req.body?.progressId);
+    const report = reporter(progressId, req.userId, 'analyze');
+    if (progressId) {
+        setProgress(progressId, req.userId, {
+            task: 'analyze',
+            status: 'running',
+            percent: 1,
+            stage: 'Preparing course request',
+            detail: 'Preparing your source material and learning requirements.'
+        });
+    }
+
     try {
         const { fileBase64, mimeType, detailLevel, titleHint, templateId, themeId, topic, description } = req.body || {};
         const cleanTopic = String(topic || '').trim();
@@ -105,13 +136,25 @@ router.post('/analyze', auth, async (req, res) => {
         let analysis = await analyzePolicy({
             fileBase64: sourceBase64,
             mimeType: sourceMimeType,
-            detailLevel: detailLevel || 'detailed'
+            detailLevel: detailLevel || 'detailed',
+            onProgress: report
         });
+        report({ percent: 97, stage: 'Formatting learning content', detail: 'Applying the course layouts and learner interactions.' });
         analysis = planExperienceV5(analysis);
         if ((titleHint || cleanTopic) && !analysis.title) analysis.title = titleHint || cleanTopic;
         analysis.themeId = selectedThemeId;
         analysis.themeName = selectedTheme.name;
         analysis.experienceVersion = 5;
+        if (progressId) {
+            setProgress(progressId, req.userId, {
+                task: 'analyze',
+                status: 'complete',
+                percent: 100,
+                stage: 'Learning content ready',
+                detail: 'The course draft is ready for review in the Content Editor.',
+                modelStatus: 'succeeded'
+            });
+        }
         res.json({
             ok: true,
             analysis,
@@ -121,12 +164,25 @@ router.post('/analyze', auth, async (req, res) => {
             theme: { id: selectedThemeId, name: selectedTheme.name, slug: selectedTheme.slug }
         });
     } catch (err) {
+        if (progressId) failProgress(progressId, req.userId, err);
         logger.error('scorm_ai_analyze_failed', { module: 'scorm', error: err.message, code: err.code });
         res.status(aiErrorStatus(err.code)).json({ message: err.message, code: err.code || 'AI_ERROR' });
     }
 });
 
 router.post('/generate', auth, async (req, res) => {
+    const progressId = cleanProgressId(req.body?.progressId);
+    const report = reporter(progressId, req.userId, 'generate');
+    if (progressId) {
+        setProgress(progressId, req.userId, {
+            task: 'generate',
+            status: 'running',
+            percent: 2,
+            stage: 'Preparing final course',
+            detail: 'Preparing the reviewed learning content for image generation and SCORM packaging.'
+        });
+    }
+
     try {
         let analysis = req.body?.analysis;
         const { fileBase64, mimeType, detailLevel, templateId, themeId, logoDataUrl, title, topic, description } = req.body || {};
@@ -147,10 +203,12 @@ router.post('/generate', auth, async (req, res) => {
             analysis = await analyzePolicy({
                 fileBase64: raw,
                 mimeType: fileBase64 ? (mimeType || 'application/pdf') : 'text/plain',
-                detailLevel: detailLevel || 'detailed'
+                detailLevel: detailLevel || 'detailed',
+                onProgress: report
             });
         }
 
+        report({ percent: 5, stage: 'Formatting course structure', detail: 'Applying the final learner layouts before creating images.' });
         analysis = planExperienceV5(analysis);
         analysis = {
             ...(analysis || {}),
@@ -160,11 +218,12 @@ router.post('/generate', auth, async (req, res) => {
         };
         if (title) analysis.title = title;
 
-        // Media is generated after the editor/planner step so the final learner
-        // text, titles and visual cues drive the image and narration prompts.
-        const media = await prepareReplicateCourseMedia(analysis);
+        // Only raster imagery is generated externally. Audio/TTS is intentionally
+        // disabled so generated courses remain visual, lightweight and low-cost.
+        const media = await prepareReplicateCourseMedia(analysis, { onProgress: report });
         analysis = media.analysis;
 
+        report({ percent: 80, stage: 'Building the SCORM package', detail: 'Combining course content, images, interactions and tracking into the learner package.' });
         const zipBuf = await buildScormPackageZip(analysis, {
             templateId: selectedThemeId,
             logoDataUrl: logoDataUrl || null,
@@ -176,6 +235,8 @@ router.post('/generate', auth, async (req, res) => {
             pkg = await ScormPackage.findOne({ where: { id: replaceId, hostId: req.userId } });
             if (!pkg || pkg.status === 'deleted') return res.status(404).json({ message: 'Package to replace not found' });
         }
+
+        report({ percent: 86, stage: 'Saving generated course', detail: 'Saving the SCORM package and course metadata.' });
         if (!pkg) {
             pkg = await ScormPackage.create({
                 hostId: req.userId,
@@ -204,6 +265,8 @@ router.post('/generate', auth, async (req, res) => {
         await storage.putObject({ key: zipKey, body: zipBuf, contentType: 'application/zip' });
         pkg.storageKeyZip = zipKey;
         await pkg.save();
+
+        report({ percent: 92, stage: 'Preparing learner files', detail: 'Unpacking the generated SCORM so it can be previewed and launched.' });
         try {
             await unpackPackage(pkg.id);
         } catch (e) {
@@ -213,10 +276,22 @@ router.post('/generate', auth, async (req, res) => {
 
         let course = null;
         if (pkg.status === 'ready') {
+            report({ percent: 97, stage: 'Finalising course workspace', detail: 'Connecting the generated package to the course workspace.' });
             course = await ensureCourseForPackage({
                 packageId: pkg.id,
                 hostId: req.userId,
                 title: pkg.title
+            });
+        }
+
+        if (progressId) {
+            setProgress(progressId, req.userId, {
+                task: 'generate',
+                status: 'complete',
+                percent: 100,
+                stage: 'Course ready',
+                detail: 'The generated SCORM course is ready to open.',
+                modelStatus: 'succeeded'
             });
         }
 
@@ -235,6 +310,7 @@ router.post('/generate', auth, async (req, res) => {
             errorMessage: pkg.errorMessage
         });
     } catch (err) {
+        if (progressId) failProgress(progressId, req.userId, err);
         logger.error('scorm_ai_generate_failed', { module: 'scorm', error: err.message, code: err.code });
         res.status(aiErrorStatus(err.code)).json({ message: err.message, code: err.code || 'AI_ERROR' });
     }
