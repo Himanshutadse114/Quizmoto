@@ -96,7 +96,7 @@ export default function CourseGenerator() {
   const muted = { color: 'var(--scorm-muted)' };
 
   return (
-    <div className="p-4 md:p-7 lg:p-9 max-w-7xl mx-auto pb-24">
+    <div className="scorm-course-generator p-4 md:p-7 lg:p-9 max-w-7xl mx-auto pb-24">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7 pb-7 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
         <div className="max-w-3xl">
           <div className="scorm-micro text-[10px] uppercase font-semibold">Course builder</div>
@@ -121,13 +121,13 @@ export default function CourseGenerator() {
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
-        <section className="rounded-2xl border overflow-hidden" style={surface}>
-          <div className="px-5 md:px-6 py-5 border-b flex items-center justify-between gap-4" style={{ borderColor: 'var(--scorm-line)' }}>
+        <section className="scorm-course-generator-panel rounded-2xl border overflow-hidden" style={surface}>
+          <div className="scorm-course-generator-panel-header px-5 md:px-6 py-5 border-b flex items-center justify-between gap-4" style={{ borderColor: 'var(--scorm-line)' }}>
             <div>
               <div className="scorm-micro text-[9px] uppercase font-semibold">Course source</div>
               <h2 className="text-[18px] font-semibold mt-1" style={ink}>Tell us what the course should cover</h2>
             </div>
-            <div className="hidden sm:grid w-10 h-10 rounded-lg border place-items-center" style={{ ...softSurface, color: 'var(--scorm-accent)' }}>
+            <div className="scorm-course-generator-icon hidden sm:grid w-10 h-10 rounded-lg border place-items-center" style={{ ...softSurface, color: 'var(--scorm-accent)' }}>
               <FileText size={18} />
             </div>
           </div>
@@ -147,7 +147,7 @@ export default function CourseGenerator() {
               <div className="min-w-0">
                 <div className="scorm-micro text-[9px] uppercase font-semibold h-4 flex items-center mb-2">Source file</div>
                 <label
-                  className="h-14 rounded-lg border px-3 flex items-center gap-3 cursor-pointer transition-colors"
+                  className="scorm-course-generator-upload h-14 rounded-lg border px-3 flex items-center gap-3 cursor-pointer transition-colors"
                   style={softSurface}
                 >
                   <FileUp size={16} className="shrink-0" style={{ color: 'var(--scorm-accent)' }} />
@@ -187,7 +187,7 @@ export default function CourseGenerator() {
                       key={option.value}
                       type="button"
                       onClick={() => setDetailLevel(option.value)}
-                      className="text-left rounded-xl border p-4 transition-all min-h-[104px]"
+                      className={`scorm-course-generator-depth ${selected ? 'is-selected' : ''} text-left rounded-xl border p-4 transition-all min-h-[104px]`}
                       style={{
                         background: selected ? 'var(--scorm-accent-soft)' : 'var(--scorm-surface-soft)',
                         borderColor: selected ? 'var(--scorm-accent)' : 'var(--scorm-line)'
@@ -205,7 +205,7 @@ export default function CourseGenerator() {
             </div>
           </div>
 
-          <div className="px-5 md:px-6 py-5 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" style={{ ...softSurface, borderColor: 'var(--scorm-line)' }}>
+          <div className="scorm-course-generator-footer px-5 md:px-6 py-5 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" style={{ ...softSurface, borderColor: 'var(--scorm-line)' }}>
             <div className="text-[11px] leading-relaxed max-w-xl" style={muted}>
               You can leave this page after generation starts. Progress remains visible from Courses and you will be notified when the course is ready.
             </div>
@@ -222,8 +222,8 @@ export default function CourseGenerator() {
         </section>
 
         <aside className="space-y-4 xl:sticky xl:top-24">
-          <section className="rounded-2xl border overflow-hidden" style={surface}>
-            <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
+          <section className="scorm-course-generator-panel rounded-2xl border overflow-hidden" style={surface}>
+            <div className="scorm-course-generator-panel-header px-5 py-4 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
               <div className="scorm-micro text-[9px] uppercase font-semibold">What happens next</div>
               <h3 className="text-[16px] font-semibold mt-1" style={ink}>Background generation</h3>
             </div>
@@ -234,7 +234,7 @@ export default function CourseGenerator() {
                 ['3', 'Course package', 'The final learner package is assembled and saved.']
               ].map(([number, title, copy]) => (
                 <div key={number} className="flex gap-3">
-                  <div className="w-7 h-7 rounded-lg border grid place-items-center text-[10px] font-semibold shrink-0" style={{ ...softSurface, color: 'var(--scorm-accent)' }}>{number}</div>
+                  <div className="scorm-course-generator-step w-7 h-7 rounded-lg border grid place-items-center text-[10px] font-semibold shrink-0" style={{ ...softSurface, color: 'var(--scorm-accent)' }}>{number}</div>
                   <div>
                     <div className="text-xs font-semibold" style={ink}>{title}</div>
                     <div className="text-[11px] leading-relaxed mt-1" style={muted}>{copy}</div>
@@ -244,7 +244,7 @@ export default function CourseGenerator() {
             </div>
           </section>
 
-          <section className="rounded-2xl border p-5" style={softSurface}>
+          <section className="scorm-course-generator-note rounded-2xl border p-5" style={softSurface}>
             <div className="flex items-start gap-3">
               <CheckCircle2 size={17} className="shrink-0 mt-0.5" style={{ color: 'var(--scorm-accent)' }} />
               <div>
