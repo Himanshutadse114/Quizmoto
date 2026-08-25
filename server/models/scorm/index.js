@@ -6,6 +6,7 @@ const ScormCmiState = require('./ScormCmiState');
 const ScormRuntimeSnapshot = require('./ScormRuntimeSnapshot');
 const ScormXapiStatement = require('./ScormXapiStatement');
 const ScormLearnerRoster = require('./ScormLearnerRoster');
+const ScormUserEntitlement = require('./ScormUserEntitlement');
 const ScormAccessGrant = require('../ScormAccessGrant');
 const ScormAccessRequest = require('../ScormAccessRequest');
 
@@ -36,6 +37,7 @@ module.exports = {
     ScormRuntimeSnapshot,
     ScormXapiStatement,
     ScormLearnerRoster,
+    ScormUserEntitlement,
     ScormAccessGrant,
     ScormAccessRequest
 };
