@@ -58,15 +58,27 @@ describe('SCORM course interactions', () => {
         expect(style).to.include('line-height: 1 !important');
     });
 
-    it('centers no-image learning slides without changing image-based slide layout', () => {
+    it('keeps no-image slide text left and puts the interaction grid in the visual column', () => {
         const style = courseInteractionStyle();
         expect(style).to.include('.qmx-learning-shell.no-image');
-        expect(style).to.include('width: min(980px,100%) !important');
-        expect(style).to.include('text-align: center');
-        expect(style).to.include('max-width: 820px !important');
+        expect(style).to.include('width: min(1180px,100%) !important');
+        expect(style).to.include('grid-template-columns: minmax(0,1.08fr) minmax(420px,.92fr)');
+        expect(style).to.include('text-align: left');
+        expect(style).to.include('grid-column: 2');
+        expect(style).to.include('grid-row: 1 / span 3');
         expect(style).to.include('.qmx-learning-shell.no-image .qmx-cards.qmx-flip-grid');
-        expect(style).to.include('justify-content: center !important');
-        expect(style).to.not.include('.qmx-learning-shell.has-image .qmx-copy {\n  text-align: center');
+        expect(style).to.include('grid-template-columns: repeat(2,minmax(0,1fr)) !important');
+        expect(style).to.not.include('deliberately centred reading layout');
+    });
+
+    it('requires every flip card on the active slide to be revealed before Next is enabled', () => {
+        const script = courseInteractionScript();
+        expect(script).to.include("card.setAttribute('data-qmx-revealed','false')");
+        expect(script).to.include("if (flipped) card.setAttribute('data-qmx-revealed','true')");
+        expect(script).to.include('function unrevealedCards(slide)');
+        expect(script).to.include("next.setAttribute('data-qmx-reveal-locked','true')");
+        expect(script).to.include('Reveal every key point before continuing');
+        expect(script).to.include("document.addEventListener('click', blockLockedNext, true)");
     });
 
     it('upgrades only learning key-point cards and leaves quiz controls alone', () => {
