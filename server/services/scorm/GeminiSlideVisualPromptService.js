@@ -29,16 +29,18 @@ function modelCandidates() {
 
 function sharedVisualRules() {
     return [
-        'Create a prompt for ONE Wide 16:9 course illustration that communicates only the supplied lesson meaning.',
-        'Use a simple, clean, professional object-based or abstract visual metaphor that can be understood at slide size.',
+        'Create a prompt for ONE wide 16:9 course illustration that communicates only the supplied lesson meaning.',
+        'STYLE: use a polished modern semi-realistic 3D render / soft-3D educational illustration with believable depth, perspective, materials, soft shadows and premium studio lighting.',
+        'TOPIC SPECIFICITY: translate the exact slide title, lesson text and key ideas into a concrete scene or object arrangement. Prefer recognisable topic-specific objects and environments over generic abstract symbolism whenever the lesson supports them.',
+        'Each visual should tell one clear visual story at slide size with one main focal concept and 2 to 5 supporting elements. Keep the composition uncluttered with generous negative space.',
         'NON-HUMAN VISUAL ONLY: do not show people, faces, hands, bodies, silhouettes, portraits, avatars or human figures.',
-        'ABSOLUTELY NO TEXT IN THE IMAGE: No words, letters, numbers, captions, labels, logos, brand names, watermarks, signs or readable interfaces.',
-        'Use no vector art or infographic typography; the result should look like a polished raster course illustration.',
+        'ABSOLUTELY NO TEXT IN THE IMAGE: no words, letters, numbers, captions, labels, logos, brand names, watermarks, signs, readable interfaces or typography of any kind.',
+        'Do not use flat vector art, poster layouts or infographic typography. The result should feel like a premium 3D course illustration, not clip-art.',
         'Do not introduce cybersecurity objects, locks, shields, warning signs, email envelopes, QR codes, malware symbols or devices unless the supplied lesson itself is genuinely about those concepts.',
-        'Do not copy generic examples from unrelated domains. Choose objects, shapes, colours and relationships that directly express THIS lesson.',
-        'Keep the composition uncluttered with one clear focal idea, 2 to 5 main visual elements, generous negative space, realistic or soft-3D styling and subtle premium corporate lighting.',
-        'The final prompt must explicitly say 16:9, non-human, no text, no logos and no watermark.',
-        'Return only ONE concise image-generation prompt as plain text, approximately 80 to 180 words. Do not return JSON, Markdown, code fences, headings or commentary.'
+        'Do not copy generic examples from unrelated domains. Objects, environment, camera angle, materials and relationships must directly express THIS lesson.',
+        'Use a clean presentation-ready composition that remains easy to understand when displayed beside course text.',
+        'The final prompt must explicitly say 16:9, modern 3D, non-human, no text, no logos and no watermark.',
+        'Return only ONE concise image-generation prompt as plain text, approximately 90 to 190 words. Do not return JSON, Markdown, code fences, headings or commentary.'
     ].join(' ');
 }
 
@@ -49,8 +51,8 @@ function coverInstruction(analysis) {
         `COURSE TITLE: ${clean(analysis?.title) || 'Learning course'}`,
         `COURSE SUMMARY: ${excerpt(analysis?.summary, 1400)}`,
         sharedVisualRules(),
-        'Represent the central subject of the whole course, not one isolated detail.',
-        'Do not force a believable workplace scene unless the supplied course is actually workplace-based. Do not include the course title as text inside the image.'
+        'Represent the central subject of the whole course using a specific 3D visual concept, not one isolated slide detail.',
+        'Do not force a workplace scene unless the supplied course is actually workplace-based. Do not include the course title as text inside the image.'
     ].join('\n\n');
 }
 
@@ -65,6 +67,7 @@ function slideInstruction(slide, analysis, slideIndex) {
         `What this slide teaches: ${excerpt(slide?.content || slide?.introText || slide?.revealText, 1800)}`,
         keyPoints.length ? `Key ideas: ${keyPoints.join(' | ')}` : '',
         clean(slide?.visualTitle) ? `Visual emphasis: ${clean(slide.visualTitle)}` : '',
+        'Choose one concrete topic-specific 3D scene or object arrangement that visually explains this exact slide. The learner should be able to infer the concept from the objects and relationships alone.',
         sharedVisualRules(),
         'The image must make sense beside this exact slide without relying on any words inside the image.'
     ].filter(Boolean).join('\n\n');
@@ -90,6 +93,8 @@ function batchInstruction(analysis) {
         `COURSE SUMMARY: ${excerpt(analysis?.summary, 1500)}`,
         slideBlocks,
         'For the cover and EVERY slide, create a different production-ready FLUX Schnell image prompt grounded only in that exact lesson.',
+        'Make adjacent slide visuals meaningfully different in subject, object arrangement and camera composition so the course does not look repetitive.',
+        'Every visual should use the same premium modern 3D art direction while remaining specific to its own slide topic.',
         sharedVisualRules(),
         'OUTPUT FORMAT — use exactly one record per line and no other text:',
         'COVER|||<cover prompt>',
@@ -135,6 +140,19 @@ function normalizeVisualPrompt(value) {
     return clean(text);
 }
 
+function enforceVisualPromptRequirements(value) {
+    const prompt = normalizeVisualPrompt(value);
+    if (!prompt) return '';
+    const requirements = [];
+    if (!/\b3d\b/i.test(prompt)) requirements.push('Modern polished semi-realistic 3D render with believable depth, materials, soft shadows and premium studio lighting.');
+    if (!/(?:16\s*:\s*9|wide\s+composition|widescreen)/i.test(prompt)) requirements.push('Wide 16:9 composition.');
+    if (!/(?:non-human|no people|without people|no human)/i.test(prompt)) requirements.push('Non-human scene with no people, faces, hands, bodies or silhouettes.');
+    if (!/(?:no text|without text|text-free|no typography)/i.test(prompt)) requirements.push('Absolutely no text, letters, numbers, captions, labels or readable interface elements.');
+    if (!/(?:no logos|without logos)/i.test(prompt)) requirements.push('No logos or brand marks.');
+    if (!/(?:no watermark|without watermark)/i.test(prompt)) requirements.push('No watermark.');
+    return clean([prompt, ...requirements].join(' '));
+}
+
 function parseBatchPrompts(value, slideCount) {
     const source = stripCodeFence(value);
     const lines = source.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
@@ -144,13 +162,13 @@ function parseBatchPrompts(value, slideCount) {
     for (const line of lines) {
         let match = line.match(/^COVER\s*\|\|\|\s*(.+)$/i);
         if (match) {
-            coverPrompt = normalizeVisualPrompt(match[1]);
+            coverPrompt = enforceVisualPromptRequirements(match[1]);
             continue;
         }
         match = line.match(/^SLIDE\s+(\d+)\s*\|\|\|\s*(.+)$/i);
         if (match) {
             const index = Number(match[1]) - 1;
-            if (index >= 0 && index < slidePrompts.length) slidePrompts[index] = normalizeVisualPrompt(match[2]);
+            if (index >= 0 && index < slidePrompts.length) slidePrompts[index] = enforceVisualPromptRequirements(match[2]);
         }
     }
 
@@ -227,7 +245,7 @@ async function requestGeminiText(instruction, maxOutputTokens, temperature = 0.2
 
 async function callGeminiForPrompt(instruction) {
     const result = await requestGeminiText(instruction, 700, 0.22);
-    const prompt = normalizeVisualPrompt(result.text);
+    const prompt = enforceVisualPromptRequirements(result.text);
     if (!prompt || prompt.length < 80) throw visualPromptError('Gemini returned an incomplete visual prompt.');
     return { prompt, model: result.model };
 }
@@ -287,5 +305,6 @@ module.exports = {
     sharedVisualRules,
     modelCandidates,
     normalizeVisualPrompt,
+    enforceVisualPromptRequirements,
     recoverPromptFromBrokenJson
 };
