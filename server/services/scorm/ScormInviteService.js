@@ -6,7 +6,8 @@ const {
     ScormCourse,
     ScormRegistration,
     ScormAttempt,
-    ScormPackage
+    ScormPackage,
+    ScormLearnerRoster
 } = require('../../models/scorm');
 const { ensurePackageLaunchMetadata } = require('./ScormLaunchMetadataService');
 
@@ -79,8 +80,6 @@ async function nextAttempt(reg, transaction) {
         Boolean(reg.lastCommitAt) ||
         Boolean(latest?.finishedAt);
 
-    // A duplicate submit/refresh before the learner has actually started should
-    // keep the same first attempt instead of inflating the attempt counter.
     if (latest && !hasStartedBefore && !latest.finishedAt) {
         return latest;
     }
@@ -112,8 +111,6 @@ async function acceptInvite({ inviteCode, learnerName, learnerEmail }) {
     }
 
     return sequelize.transaction(async (transaction) => {
-        // Lock the course row so concurrent joins for the same course cannot both
-        // create a registration for the same learner email.
         const course = await ScormCourse.findOne({
             where: { inviteCode, status: 'published' },
             transaction,
@@ -125,6 +122,27 @@ async function acceptInvite({ inviteCode, learnerName, learnerEmail }) {
             throw err;
         }
 
+        const approvedLearner = await ScormLearnerRoster.findOne({
+            where: { hostId: course.hostId, email: normalizedEmail },
+            transaction
+        });
+
+        if (!approvedLearner) {
+            const rosterCount = await ScormLearnerRoster.count({
+                where: { hostId: course.hostId },
+                transaction
+            });
+            const err = new Error(
+                rosterCount === 0
+                    ? 'This course is not accepting learners yet. Ask the course administrator to add the approved learner roster.'
+                    : 'This email is not authorised for this course. Use your organisation email or contact the course administrator.'
+            );
+            err.code = rosterCount === 0 ? 'LEARNER_ROSTER_EMPTY' : 'LEARNER_NOT_APPROVED';
+            throw err;
+        }
+
+        const resolvedLearnerName = approvedLearner.learnerName || String(learnerName || '').trim() || 'Learner';
+
         const pkg = await ScormPackage.findByPk(course.packageId, { transaction });
         if (!pkg || pkg.status !== 'ready') {
             const err = new Error('Course package is not ready');
@@ -132,10 +150,6 @@ async function acceptInvite({ inviteCode, learnerName, learnerEmail }) {
             throw err;
         }
 
-        // Do not create a learner registration or attempt until the package can
-        // actually launch. Older packages may be ready but have a null entryHref;
-        // this recovers the launch file from stored metadata/manifest/content and
-        // persists it atomically with the invite transaction.
         await ensurePackageLaunchMetadata(pkg, { transaction });
         course.setDataValue('package', pkg);
 
@@ -158,14 +172,12 @@ async function acceptInvite({ inviteCode, learnerName, learnerEmail }) {
         if (!reg) {
             reg = await ScormRegistration.create({
                 courseId: course.id,
-                learnerName: learnerName || 'Learner',
+                learnerName: resolvedLearnerName,
                 learnerEmail: normalizedEmail,
                 status: 'invited'
             }, { transaction });
         } else {
-            // Keep one canonical registration per course/email and refresh the
-            // learner's display details instead of creating another tracking row.
-            reg.learnerName = learnerName || reg.learnerName || 'Learner';
+            reg.learnerName = resolvedLearnerName;
             reg.learnerEmail = normalizedEmail;
             if (reg.status === 'revoked') reg.status = 'invited';
         }
