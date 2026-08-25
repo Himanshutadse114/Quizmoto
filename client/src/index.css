@@ -8,6 +8,7 @@
 @import "./pages/Scorm/courseDetailNoticeThemeFix.css";
 @import "./pages/Scorm/scormNestedHeadingScale.css";
 @import "./pages/Scorm/authorVisualPolish.css";
+@import "./pages/Scorm/scormAuthGoogleButtonFix.css";
 
 @theme {
   --color-quizmoto-red: #eb1736;
