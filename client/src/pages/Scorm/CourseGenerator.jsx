@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FileUp, Loader2, Sparkles } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { startBackgroundCourseGeneration } from '../../services/courseGenerationJobs';
@@ -44,10 +44,10 @@ export default function CourseGenerator() {
     if (!token) navigate('/');
   }, [token, navigate]);
 
-  if (editId) return <AuthorVisual />;
-
   const hasSource = Boolean(file || topic.trim() || description.trim());
-  const displayTitle = useMemo(() => topic.trim() || file?.name || 'New course', [topic, file]);
+  const displayTitle = topic.trim() || file?.name || 'New course';
+
+  if (editId) return <AuthorVisual />;
 
   const generateCourse = async () => {
     if (!hasSource || busy || !token) return;
