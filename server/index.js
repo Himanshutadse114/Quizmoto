@@ -28,9 +28,19 @@ const Metrics = require('./utils/metrics');
 const app = express();
 const server = http.createServer(app);
 
+function normalizeOrigin(value) {
+    const raw = String(value || '').trim();
+    if (!raw || raw === '*') return raw;
+    try {
+        return new URL(raw).origin;
+    } catch (_) {
+        return raw.replace(/\/$/, '');
+    }
+}
+
 const configuredCorsOrigins = String(process.env.CORS_ORIGIN || '')
     .split(',')
-    .map((value) => value.trim())
+    .map(normalizeOrigin)
     .filter(Boolean);
 const isProduction = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
 const allowDevelopmentWildcard = !isProduction && (
@@ -44,6 +54,18 @@ if (isProduction && (
     process.exit(1);
 }
 
+// Keep browser origins explicit in production. In addition to CORS_ORIGIN, accept
+// common deployment variables and the current Quizmoto Render frontend. This avoids
+// a stale CORS_ORIGIN breaking the platform after a frontend host migration while
+// still refusing arbitrary *.onrender.com origins.
+const deploymentFrontendOrigins = [
+    process.env.FRONTEND_URL,
+    process.env.CLIENT_URL,
+    process.env.PUBLIC_FRONTEND_URL,
+    process.env.VITE_FRONTEND_URL,
+    'https://quizmoto-frontend.onrender.com'
+].map(normalizeOrigin).filter(Boolean);
+
 // SCORM learner content is served by this backend and posts its progress back to
 // /api/scorm/session on the same Render origin. Browsers send an Origin header on
 // POST requests even when they are same-origin, so the backend must allow its own
@@ -56,16 +78,24 @@ try {
 } catch (_) {
     renderExternalOrigin = '';
 }
-const allowedCorsOrigins = new Set(configuredCorsOrigins);
+const allowedCorsOrigins = new Set([
+    ...configuredCorsOrigins,
+    ...deploymentFrontendOrigins
+]);
 if (renderExternalOrigin) allowedCorsOrigins.add(renderExternalOrigin);
 
 const corsOrigin = (origin, callback) => {
     // Native/mobile clients, health checks and server-to-server requests may not
-    // include an Origin header. Browser origins must match the configured list
-    // or the backend's own public Render origin.
-    if (!origin || allowDevelopmentWildcard || allowedCorsOrigins.has(origin)) {
+    // include an Origin header. Browser origins must match the configured list,
+    // a known deployed frontend, or the backend's own public Render origin.
+    const normalizedRequestOrigin = normalizeOrigin(origin);
+    if (!origin || allowDevelopmentWildcard || allowedCorsOrigins.has(normalizedRequestOrigin)) {
         return callback(null, true);
     }
+    logger.warn('cors_origin_rejected', {
+        module: 'http',
+        origin: normalizedRequestOrigin || String(origin || '')
+    });
     return callback(new Error('Origin is not allowed by CORS'));
 };
 
