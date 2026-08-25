@@ -23,6 +23,7 @@ import {
   Moon
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import ScormGenerationNotifier from '../../components/ScormGenerationNotifier';
 import { readScormPlatformTheme, saveScormPlatformTheme } from './platformTheme';
 import './scormEditorialTheme.css';
 import './scormDashboard.css';
@@ -231,6 +232,7 @@ export default function ScormPlatformShell() {
         </header>
         <main className="scorm-main min-h-[calc(100vh-64px)] pb-24 lg:pb-0"><Outlet /></main>
       </div>
+      <ScormGenerationNotifier />
       <MobileTabBar scormAccess={scormAccess} />
     </div>
   );
