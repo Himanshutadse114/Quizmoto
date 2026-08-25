@@ -133,28 +133,28 @@ export default function CourseGenerator() {
           </div>
 
           <div className="p-5 md:p-6 space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              <label className="block">
-                <span className="scorm-micro text-[9px] uppercase font-semibold">Topic</span>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+              <div className="min-w-0">
+                <div className="scorm-micro text-[9px] uppercase font-semibold h-4 flex items-center mb-2">Topic</div>
                 <input
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   placeholder="e.g. Phishing Awareness"
-                  className="scorm-course-search mt-1.5 w-full px-3 py-3 text-sm"
+                  className="scorm-course-search w-full h-14 px-3 text-sm"
                 />
-              </label>
+              </div>
 
-              <div>
-                <div className="scorm-micro text-[9px] uppercase font-semibold">Source file</div>
+              <div className="min-w-0">
+                <div className="scorm-micro text-[9px] uppercase font-semibold h-4 flex items-center mb-2">Source file</div>
                 <label
-                  className="mt-1.5 min-h-[46px] rounded-lg border px-3 flex items-center gap-3 cursor-pointer transition-colors"
+                  className="h-14 rounded-lg border px-3 flex items-center gap-3 cursor-pointer transition-colors"
                   style={softSurface}
                 >
                   <FileUp size={16} className="shrink-0" style={{ color: 'var(--scorm-accent)' }} />
                   <span className="text-xs truncate flex-1" style={{ color: file ? 'var(--scorm-ink-soft)' : 'var(--scorm-muted)' }}>
                     {file ? file.name : 'Upload source file (optional)'}
                   </span>
-                  <span className="scorm-button-secondary px-3 py-2 text-[10px] font-semibold shrink-0">Browse</span>
+                  <span className="scorm-button-secondary h-10 px-3 inline-flex items-center justify-center text-[10px] font-semibold shrink-0">Browse</span>
                   <input type="file" className="sr-only" onChange={(e) => setFile(e.target.files?.[0] || null)} />
                 </label>
               </div>
