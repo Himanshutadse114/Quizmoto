@@ -38,7 +38,7 @@ const ScormLibrary = lazy(() => import('./pages/Scorm/Library'));
 const ScormCourseDetail = lazy(() => import('./pages/Scorm/CourseDetail'));
 const ScormLearnLanding = lazy(() => import('./pages/Scorm/LearnLanding'));
 const ScormPlayerShell = lazy(() => import('./pages/Scorm/PlayerShell'));
-const ScormAuthor = lazy(() => import('./pages/Scorm/AuthorVisual'));
+const ScormAuthor = lazy(() => import('./pages/Scorm/CourseGenerator'));
 const ScormReports = lazy(() => import('./pages/Scorm/Reports'));
 const ScormVisualStudio = lazy(() => import('./pages/Scorm/VisualStudio'));
 const ScormAccessAdmin = lazy(() => import('./pages/Scorm/AccessAdmin'));
