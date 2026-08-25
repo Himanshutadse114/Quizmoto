@@ -7,6 +7,11 @@ import './scormEditorialTheme.css';
 import './scormContrastPolish.css';
 import './scormModernDark.css';
 
+function isValidEmail(value) {
+  const email = String(value || '').trim();
+  return email.length > 0 && email.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 export default function ScormLearnLanding() {
   const { inviteCode } = useParams();
   const [course, setCourse] = useState(null);
@@ -29,13 +34,21 @@ export default function ScormLearnLanding() {
       setError('Name is required');
       return;
     }
+    if (!email.trim()) {
+      setError('Email address is required');
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setError('Enter a valid email address');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const res = await axios.post(apiUrl('/api/scorm/registrations/accept'), {
         inviteCode,
         learnerName: name.trim(),
-        learnerEmail: email.trim() || null
+        learnerEmail: email.trim()
       });
       const {
         registrationId,
@@ -124,19 +137,24 @@ export default function ScormLearnLanding() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
+                autoComplete="name"
                 className="w-full min-w-0 py-3 px-3.5 text-sm font-medium"
                 placeholder="Enter your name"
               />
             </div>
             <div className="min-w-0">
-              <label className="block text-[11px] font-semibold text-[#cbd5e1] mb-1.5">Email <span className="font-normal text-[#71839c]">optional</span></label>
+              <label className="block text-[11px] font-semibold text-[#cbd5e1] mb-1.5">Email <span className="text-[#fda4af]">*</span></label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                inputMode="email"
                 className="w-full min-w-0 py-3 px-3.5 text-sm font-medium"
                 placeholder="you@example.com"
               />
+              <div className="mt-1.5 text-[10px] text-[#71839c]">Required to identify your learner record and save course progress.</div>
             </div>
             {error && <div className="rounded-xl border border-[#7f2739] bg-[#35131d] p-3 text-xs text-[#fecdd3]">{error}</div>}
             <button
