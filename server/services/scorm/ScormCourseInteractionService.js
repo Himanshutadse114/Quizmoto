@@ -12,6 +12,52 @@ function courseInteractionStyle() {
   align-items: stretch;
   justify-content: start;
 }
+
+/* Slides without a generated image use a deliberately centred reading layout. */
+.qmx-learning-shell.no-image {
+  width: min(980px,100%) !important;
+  margin-inline: auto !important;
+}
+.qmx-learning-shell.no-image .qmx-copy {
+  width: 100%;
+  margin-inline: auto;
+  text-align: center;
+}
+.qmx-learning-shell.no-image .qmx-copy h2 {
+  max-width: 960px;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+.qmx-learning-shell.no-image .qmx-copy > p {
+  max-width: 820px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+.qmx-learning-shell.no-image .qmx-cards,
+.qmx-learning-shell.no-image .qmx-process,
+.qmx-learning-shell.no-image .qmx-compare {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  justify-content: center !important;
+}
+.qmx-learning-shell.no-image .qmx-cards.qmx-flip-grid {
+  justify-content: center !important;
+}
+.qmx-learning-shell.no-image .qmx-step,
+.qmx-learning-shell.no-image .qmx-compare-col {
+  text-align: center;
+}
+.qmx-learning-shell.no-image .qmx-flip-face {
+  align-items: center;
+  text-align: center;
+}
+.qmx-learning-shell.no-image .qmx-card.qmx-flip-card .qmx-flip-number {
+  align-self: center !important;
+}
+.qmx-learning-shell.no-image .qmx-flip-back p {
+  text-align: center;
+}
+
 .qmx-card.qmx-flip-card {
   min-height: 0 !important;
   padding: 0 !important;
@@ -111,6 +157,7 @@ function courseInteractionStyle() {
   .qmx-cards.qmx-flip-grid{grid-template-columns:minmax(0,1fr) !important;max-width:420px}
 }
 @media(max-width:620px){
+  .qmx-learning-shell.no-image{width:100%!important}
   .qmx-flip-inner,.qmx-flip-face{min-height:106px}
   .qmx-flip-face{padding:12px 13px}
   .qmx-card.qmx-flip-card .qmx-flip-number{width:26px!important;height:26px!important;min-width:26px!important;min-height:26px!important;flex-basis:26px!important}
