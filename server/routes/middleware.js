@@ -4,6 +4,7 @@ const {
     getAccessRole,
     accessDeniedPayload
 } = require('../services/scorm/ScormAccessService');
+const { enforceRequestEntitlement } = require('../services/scorm/ScormEntitlementService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
@@ -15,6 +16,9 @@ module.exports = async (req, res, next) => {
         const decoded = jwt.verify(token, JWT_SECRET);
         const url = String(req.originalUrl || req.baseUrl || '');
         const isScormAdminRequest = url.startsWith('/api/scorm/');
+
+        req.userId = decoded.userId;
+        req.authScope = decoded.scope || null;
 
         // SCORM AI is a separately gated authoring workspace. Public learner
         // endpoints do not use this middleware; protected admin endpoints that do
@@ -35,12 +39,21 @@ module.exports = async (req, res, next) => {
 
             req.scormRole = role;
             req.scormEmail = user.email || null;
+            await enforceRequestEntitlement(req, {
+                userId: decoded.userId,
+                email: user.email,
+                role
+            });
         }
 
-        req.userId = decoded.userId;
-        req.authScope = decoded.scope || null;
         next();
     } catch (err) {
+        if (err?.status) {
+            return res.status(err.status).json({
+                message: err.message,
+                code: err.code || 'SCORM_ENTITLEMENT_DENIED'
+            });
+        }
         res.status(401).json({ message: 'Token is not valid' });
     }
 };
