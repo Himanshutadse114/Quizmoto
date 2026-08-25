@@ -179,7 +179,7 @@ export default function ScormAuth() {
                   size="large"
                   shape="rectangular"
                   text="continue_with"
-                  width="320"
+                  width="400"
                 />
               </div>
               <div className="sa-google-hint">A new Google identity is captured for approval and receives immediate limited platform access.</div>
