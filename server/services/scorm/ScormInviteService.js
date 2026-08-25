@@ -10,6 +10,7 @@ const {
     ScormLearnerRoster
 } = require('../../models/scorm');
 const { ensurePackageLaunchMetadata } = require('./ScormLaunchMetadataService');
+const { assertEnrollmentAllowed } = require('./ScormEntitlementService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
@@ -138,9 +139,11 @@ async function acceptInvite({ inviteCode, learnerName, learnerEmail }) {
                     : 'This email is not authorised for this course. Use your organisation email or contact the course administrator.'
             );
             err.code = rosterCount === 0 ? 'LEARNER_ROSTER_EMPTY' : 'LEARNER_NOT_APPROVED';
+            err.status = 403;
             throw err;
         }
 
+        await assertEnrollmentAllowed(course.hostId, normalizedEmail);
         const resolvedLearnerName = approvedLearner.learnerName || String(learnerName || '').trim() || 'Learner';
 
         const pkg = await ScormPackage.findByPk(course.packageId, { transaction });
