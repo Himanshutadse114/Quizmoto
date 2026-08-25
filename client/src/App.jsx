@@ -34,6 +34,7 @@ const ScormFeatureLocked = lazy(() => import('./pages/Scorm/FeatureLocked'));
 const QuizmotoModule = lazy(() => import('./pages/Scorm/QuizmotoModule'));
 const ScormCourses = lazy(() => import('./pages/Scorm/Courses'));
 const ScormTracking = lazy(() => import('./pages/Scorm/Tracking'));
+const ScormLearnerRoster = lazy(() => import('./pages/Scorm/LearnerRoster'));
 const ScormLibrary = lazy(() => import('./pages/Scorm/Library'));
 const ScormCourseDetail = lazy(() => import('./pages/Scorm/CourseDetail'));
 const ScormLearnLanding = lazy(() => import('./pages/Scorm/LearnLanding'));
@@ -128,6 +129,7 @@ function AppRoutes() {
 
           <Route path="courses" element={<ScormFeatureGate featureId="courses"><ScormCourses /></ScormFeatureGate>} />
           <Route path="courses/:id" element={<ScormFeatureGate featureId="courses"><ScormCourseDetail /></ScormFeatureGate>} />
+          <Route path="roster" element={<ScormFeatureGate featureId="tracking"><ScormLearnerRoster /></ScormFeatureGate>} />
           <Route path="tracking" element={<ScormFeatureGate featureId="tracking"><ScormTracking /></ScormFeatureGate>} />
           <Route path="library" element={<ScormFeatureGate featureId="library"><ScormLibrary /></ScormFeatureGate>} />
           <Route path="author" element={<ScormFeatureGate featureId="author"><ScormAuthor /></ScormFeatureGate>} />
