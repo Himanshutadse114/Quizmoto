@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { BookOpen, Search, Users, CheckCircle2, Clock3, ChevronRight, Plus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import BackgroundCourseJobs from '../../components/BackgroundCourseJobs';
+import { useCourseGenerationJobs } from '../../services/courseGenerationJobs';
 
 const Metric = ({ label, value, icon: Icon }) => (
   <div className="scorm-course-metric rounded-xl border p-4 md:p-5">
@@ -22,16 +24,17 @@ const Metric = ({ label, value, icon: Icon }) => (
 export default function ScormCourses() {
   const { token } = useAuth();
   const navigate = useNavigate();
+  const jobs = useCourseGenerationJobs(token, { poll: false });
   const [courses, setCourses] = useState([]);
   const [tracking, setTracking] = useState({ courses: [] });
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (!token) return navigate('/login');
+  const loadCourses = useCallback(() => {
+    if (!token) return Promise.resolve();
     const headers = { Authorization: `Bearer ${token}` };
-    Promise.all([
+    return Promise.all([
       axios.get(apiUrl('/api/scorm/courses'), { headers }),
       axios.get(apiUrl('/api/scorm/tracking/summary'), { headers }).catch(() => ({ data: { courses: [] } }))
     ])
@@ -40,7 +43,21 @@ export default function ScormCourses() {
         setTracking(trackingRes.data || { courses: [] });
       })
       .catch((err) => setError(err.response?.data?.message || err.message));
-  }, [token, navigate]);
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return navigate('/login');
+    loadCourses();
+  }, [token, navigate, loadCourses]);
+
+  const readySignature = useMemo(
+    () => jobs.filter((job) => job.status === 'ready').map((job) => `${job.id}:${job.updatedAt}`).join('|'),
+    [jobs]
+  );
+
+  useEffect(() => {
+    if (readySignature) loadCourses();
+  }, [readySignature, loadCourses]);
 
   const trackingById = useMemo(
     () => new Map((tracking.courses || []).map((row) => [String(row.id), row])),
@@ -70,6 +87,8 @@ export default function ScormCourses() {
       </div>
 
       {error && <div className="mb-5 p-4 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-200 text-sm">{error}</div>}
+
+      <BackgroundCourseJobs />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Metric label="Total courses" value={courses.length} icon={BookOpen} />
