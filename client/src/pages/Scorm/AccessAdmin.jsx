@@ -2,10 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import {
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   LogIn,
   RefreshCw,
   Save,
+  Search,
   ShieldCheck,
   SlidersHorizontal,
   Trash2,
@@ -123,6 +126,14 @@ function EntitlementEditor({ grant, onSave, saving }) {
   );
 }
 
+function hasCustomRestrictions(grant) {
+  if (grant.protected) return false;
+  const entitlement = grant.entitlement || {};
+  const hasLimit = entitlement.maxCourses != null || entitlement.maxLearners != null;
+  const hasDisabledPermission = Object.values(entitlement.permissions || {}).some((value) => value === false);
+  return hasLimit || hasDisabledPermission;
+}
+
 export default function AccessAdmin() {
   const { token, user } = useAuth();
   const [grants, setGrants] = useState([]);
@@ -133,10 +144,25 @@ export default function AccessAdmin() {
   const [approvingId, setApprovingId] = useState(null);
   const [removingId, setRemovingId] = useState(null);
   const [savingGrantId, setSavingGrantId] = useState(null);
+  const [expandedGrantId, setExpandedGrantId] = useState(null);
+  const [accountSearch, setAccountSearch] = useState('');
+  const [accountFilter, setAccountFilter] = useState('all');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
+
+  const filteredGrants = useMemo(() => {
+    const query = accountSearch.trim().toLowerCase();
+    return grants.filter((grant) => {
+      if (query && !String(grant.email || '').toLowerCase().includes(query)) return false;
+      if (accountFilter === 'users' && grant.role === 'super_admin') return false;
+      if (accountFilter === 'super_admin' && grant.role !== 'super_admin') return false;
+      if (accountFilter === 'restricted' && !hasCustomRestrictions(grant)) return false;
+      if (accountFilter === 'unrestricted' && (grant.protected || hasCustomRestrictions(grant))) return false;
+      return true;
+    });
+  }, [grants, accountSearch, accountFilter]);
 
   const loadAccess = async () => {
     setLoading(true);
@@ -198,6 +224,7 @@ export default function AccessAdmin() {
     try {
       await axios.delete(apiUrl(`/api/scorm/access/${grant.id}`), { headers });
       setMessage(`${grant.email} is no longer authorised. Their registered account is back in Pending Registrations and can be approved again later.`);
+      if (expandedGrantId === grant.id) setExpandedGrantId(null);
       await loadAccess();
     } catch (err) {
       setError(err.response?.data?.message || 'Could not remove SCORM AI access.');
@@ -210,6 +237,15 @@ export default function AccessAdmin() {
     if (method === 'google') return 'Google';
     if (method === 'mixed') return 'Google + password';
     return 'Email + password';
+  };
+
+  const jumpToAccount = (value) => {
+    const nextId = value === '' ? null : Number(value) || value;
+    setExpandedGrantId(nextId);
+    if (!nextId) return;
+    requestAnimationFrame(() => {
+      document.getElementById(`access-account-${nextId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
   };
 
   return (
@@ -305,61 +341,129 @@ export default function AccessAdmin() {
           </section>
 
           <section className="border border-[#29405f] rounded-2xl overflow-hidden bg-[#07111f]">
-            <div className="px-4 py-3.5 border-b border-[#29405f] flex items-center justify-between gap-3 bg-[#0a1626]">
-              <div>
-                <div className="text-[#60a5fa] text-[8px] uppercase tracking-[.13em] font-semibold">Approved identities</div>
-                <div className="mt-1 text-[#f8fafc] font-semibold">Accounts, limits & permissions</div>
-                <div className="mt-1 text-[#8295ae] text-xs">Blank limits mean unlimited. Setting a limit to 0 disables new courses or learner enrolments.</div>
+            <div className="px-4 py-4 md:px-5 border-b border-[#29405f] bg-[#0a1626]">
+              <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+                <div>
+                  <div className="text-[#60a5fa] text-[8px] uppercase tracking-[.13em] font-semibold">Approved identities</div>
+                  <div className="mt-1 text-[#f8fafc] font-semibold">Accounts, limits & permissions</div>
+                  <div className="mt-1 text-[#8295ae] text-xs">Search for an account, then expand only the user you want to manage.</div>
+                </div>
+                <div className="text-[#8295ae] text-[9px]">{loading ? 'Loading…' : `${filteredGrants.length} of ${grants.length} account${grants.length === 1 ? '' : 's'}`}</div>
               </div>
-              <div className="text-[#8295ae] text-[9px]">{loading ? 'Loading…' : `${grants.length} account${grants.length === 1 ? '' : 's'}`}</div>
+
+              <div className="mt-4 grid lg:grid-cols-[minmax(0,1.5fr)_210px_260px] gap-2.5">
+                <label className="relative min-w-0">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#71839c] pointer-events-none" />
+                  <input
+                    type="search"
+                    value={accountSearch}
+                    onChange={(e) => setAccountSearch(e.target.value)}
+                    placeholder="Search by email address"
+                    className="w-full min-h-10 rounded-lg border border-[#29405f] bg-[#07111f] pl-9 pr-3 text-xs text-[#f8fafc] outline-none focus:border-[#60a5fa]"
+                  />
+                </label>
+
+                <select
+                  value={accountFilter}
+                  onChange={(e) => setAccountFilter(e.target.value)}
+                  className="min-h-10 rounded-lg border border-[#29405f] bg-[#07111f] px-3 text-xs text-[#f8fafc] outline-none focus:border-[#60a5fa]"
+                >
+                  <option value="all">All accounts</option>
+                  <option value="users">Users only</option>
+                  <option value="restricted">Restricted accounts</option>
+                  <option value="unrestricted">Unrestricted users</option>
+                  <option value="super_admin">Super admin</option>
+                </select>
+
+                <select
+                  value={expandedGrantId == null ? '' : String(expandedGrantId)}
+                  onChange={(e) => jumpToAccount(e.target.value)}
+                  className="min-h-10 rounded-lg border border-[#29405f] bg-[#07111f] px-3 text-xs text-[#f8fafc] outline-none focus:border-[#60a5fa]"
+                >
+                  <option value="">Jump to account…</option>
+                  {filteredGrants.map((grant) => (
+                    <option key={grant.id} value={grant.id}>{grant.email}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {loading ? (
               <div className="p-10 text-center text-[#8295ae] text-sm">Loading authorised accounts…</div>
             ) : grants.length === 0 ? (
               <div className="p-10 text-center text-[#8295ae] text-sm">No access grants found.</div>
+            ) : filteredGrants.length === 0 ? (
+              <div className="p-10 text-center">
+                <Search size={24} className="mx-auto text-[#71839c]" />
+                <div className="mt-3 text-[#dce7f5] font-semibold">No matching accounts.</div>
+                <div className="mt-1 text-[#71839c] text-xs">Try a different email or account filter.</div>
+              </div>
             ) : (
-              <div className="divide-y divide-[#22324a]">
-                {grants.map((grant) => (
-                  <div key={grant.id} className="px-4 py-4 md:px-5 hover:bg-[#0b1728] transition-colors">
-                    <div className="grid lg:grid-cols-[minmax(0,1fr)_150px_190px_auto] gap-3 lg:items-center">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[#f1f5f9] font-semibold text-sm break-all">{grant.email}</span>
-                          {grant.protected && <span className="px-2 py-1 rounded-md border border-blue-400/30 bg-blue-500/10 text-blue-300 text-[8px] uppercase tracking-[.1em] font-semibold">Protected</span>}
+              <div className="divide-y divide-[#22324a] max-h-[680px] overflow-y-auto">
+                {filteredGrants.map((grant) => {
+                  const expanded = expandedGrantId === grant.id;
+                  const restricted = hasCustomRestrictions(grant);
+                  return (
+                    <div id={`access-account-${grant.id}`} key={grant.id} className="px-4 py-3.5 md:px-5 hover:bg-[#0b1728] transition-colors">
+                      <div className="grid lg:grid-cols-[minmax(0,1fr)_130px_200px_auto] gap-3 lg:items-center">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedGrantId(expanded ? null : grant.id)}
+                          className="min-w-0 text-left group"
+                          aria-expanded={expanded}
+                        >
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[#f1f5f9] font-semibold text-sm break-all group-hover:text-[#93c5fd] transition-colors">{grant.email}</span>
+                            {grant.protected && <span className="px-2 py-1 rounded-md border border-blue-400/30 bg-blue-500/10 text-blue-300 text-[8px] uppercase tracking-[.1em] font-semibold">Protected</span>}
+                            {!grant.protected && restricted && <span className="px-2 py-1 rounded-md border border-amber-400/30 bg-amber-500/10 text-amber-300 text-[8px] uppercase tracking-[.1em] font-semibold">Restricted</span>}
+                          </div>
+                          <div className="mt-1 text-[#71839c] text-[9px]">
+                            {grant.usage?.courses || 0} courses · {grant.usage?.learners || 0} learners
+                          </div>
+                        </button>
+
+                        <div>
+                          <div className="text-[#71839c] text-[8px] uppercase tracking-[.1em]">Role</div>
+                          <div className="mt-1 text-[#dce7f5] text-xs font-semibold">{grant.role === 'super_admin' ? 'Super Admin' : 'User'}</div>
                         </div>
-                        <div className="mt-1 text-[#71839c] text-[8px] uppercase tracking-[.08em]">Approved by {grant.addedByEmail || 'system'}</div>
-                      </div>
-                      <div>
-                        <div className="text-[#71839c] text-[8px] uppercase tracking-[.1em]">Role</div>
-                        <div className="mt-1 text-[#dce7f5] text-xs font-semibold">{grant.role === 'super_admin' ? 'Super Admin' : 'User'}</div>
-                      </div>
-                      <div>
-                        <div className="text-[#71839c] text-[8px] uppercase tracking-[.1em]">Approved</div>
-                        <div className="mt-1 text-[#dce7f5] text-xs">{grant.createdAt ? new Date(grant.createdAt).toLocaleString() : '—'}</div>
-                      </div>
-                      <div className="flex lg:justify-end">
-                        {grant.protected ? (
-                          <span className="text-[#71839c] text-[8px] uppercase tracking-[.08em]">Cannot remove</span>
-                        ) : (
+
+                        <div>
+                          <div className="text-[#71839c] text-[8px] uppercase tracking-[.1em]">Approved</div>
+                          <div className="mt-1 text-[#dce7f5] text-xs">{grant.createdAt ? new Date(grant.createdAt).toLocaleString() : '—'}</div>
+                        </div>
+
+                        <div className="flex flex-wrap lg:justify-end gap-2">
+                          {!grant.protected && (
+                            <button
+                              type="button"
+                              onClick={() => removeAccess(grant)}
+                              disabled={removingId === grant.id}
+                              className="min-h-9 px-3 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-[9px] font-semibold inline-flex items-center gap-2 hover:border-rose-400/50 hover:text-rose-200 disabled:opacity-50"
+                            >
+                              <Trash2 size={13} /> {removingId === grant.id ? 'Removing…' : 'Remove'}
+                            </button>
+                          )}
                           <button
                             type="button"
-                            onClick={() => removeAccess(grant)}
-                            disabled={removingId === grant.id}
-                            className="min-h-9 px-3 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-[9px] font-semibold inline-flex items-center gap-2 hover:border-rose-400/50 hover:text-rose-200 disabled:opacity-50"
+                            onClick={() => setExpandedGrantId(expanded ? null : grant.id)}
+                            className="scorm-button-secondary min-h-9 px-3 text-[9px] font-semibold inline-flex items-center gap-2"
                           >
-                            <Trash2 size={13} /> {removingId === grant.id ? 'Removing…' : 'Remove access'}
+                            {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                            {expanded ? 'Hide' : grant.protected ? 'View' : 'Manage'}
                           </button>
-                        )}
+                        </div>
                       </div>
+
+                      {expanded && (
+                        <EntitlementEditor
+                          grant={grant}
+                          onSave={saveEntitlement}
+                          saving={savingGrantId === grant.id}
+                        />
+                      )}
                     </div>
-                    <EntitlementEditor
-                      grant={grant}
-                      onSave={saveEntitlement}
-                      saving={savingGrantId === grant.id}
-                    />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>
