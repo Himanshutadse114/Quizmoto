@@ -1,0 +1,100 @@
+/* Course generator route-specific theme corrections.
+ * The dark compatibility layer intentionally styles generic rounded panels.
+ * These selectors restore readable light-theme surfaces for the generator
+ * without changing the dark theme or other SCORM routes.
+ */
+
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-panel {
+  background: #ffffff !important;
+  color: var(--scorm-light-text) !important;
+  border-color: var(--scorm-light-border) !important;
+  box-shadow: var(--scorm-light-shadow-sm) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-panel-header {
+  background: #fbfdfc !important;
+  border-color: var(--scorm-light-border) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-panel-header h2,
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-panel-header h3 {
+  color: var(--scorm-light-text) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-panel-header h2 {
+  font-size: 1.25rem !important;
+  line-height: 1.3 !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.02em !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-panel-header h3 {
+  font-size: 1rem !important;
+  line-height: 1.35 !important;
+  font-weight: 600 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-icon,
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-step {
+  background: #eaf7f5 !important;
+  border-color: #c7e5e0 !important;
+  color: var(--scorm-light-teal-strong) !important;
+  box-shadow: none !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-upload {
+  background: #f7fbfa !important;
+  border-color: #cbdedb !important;
+  color: var(--scorm-light-body) !important;
+  box-shadow: none !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-upload:hover {
+  background: #f0f8f6 !important;
+  border-color: #a9d7d1 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-depth {
+  background: #f8fbfa !important;
+  border-color: var(--scorm-light-border) !important;
+  color: var(--scorm-light-text) !important;
+  box-shadow: none !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-depth:hover {
+  background: #f1f8f6 !important;
+  border-color: #b9dcd7 !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-depth.is-selected {
+  background: var(--scorm-light-teal-soft) !important;
+  border-color: var(--scorm-light-teal-brand) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-footer {
+  background: #f8fbfa !important;
+  border-color: var(--scorm-light-border) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-note {
+  background: #f1faf8 !important;
+  border-color: #cfe8e4 !important;
+  color: var(--scorm-light-text) !important;
+  box-shadow: var(--scorm-light-shadow-sm) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-note .font-semibold,
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-panel .font-semibold {
+  color: var(--scorm-light-text) !important;
+}
+
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-panel p,
+body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-note p {
+  color: var(--scorm-light-body) !important;
+}
+
+@media (max-width: 767px) {
+  body .scorm-editorial.scorm-theme-light .scorm-course-generator .scorm-course-generator-panel-header h2 {
+    font-size: 1.125rem !important;
+  }
+}
