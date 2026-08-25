@@ -13,6 +13,15 @@ const {
     ScormXapiStatement
 } = require('../../models/scorm');
 
+function normalizeEmail(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+function isValidEmail(value) {
+    const email = normalizeEmail(value);
+    return email.length > 0 && email.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 async function joinInvite(req, res) {
     try {
         const { inviteCode, learnerName, learnerEmail } = req.body || {};
@@ -20,11 +29,17 @@ async function joinInvite(req, res) {
         if (!String(learnerName || '').trim()) {
             return res.status(400).json({ message: 'learnerName required' });
         }
+        if (!String(learnerEmail || '').trim()) {
+            return res.status(400).json({ message: 'learnerEmail required' });
+        }
+        if (!isValidEmail(learnerEmail)) {
+            return res.status(400).json({ message: 'Enter a valid email address' });
+        }
 
         const result = await acceptInvite({
             inviteCode: String(inviteCode).trim(),
             learnerName: String(learnerName).trim(),
-            learnerEmail: learnerEmail ? String(learnerEmail).trim() : null
+            learnerEmail: normalizeEmail(learnerEmail)
         });
         const pkg = result.course.package;
         const registrationId = result.registration.id;
