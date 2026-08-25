@@ -17,6 +17,8 @@ describe('SCORM browser narration', () => {
         expect(html).to.include('qmx-narration-toggle');
         expect(html).to.include('/google/i');
         expect(html).to.include('Narration On');
+        expect(html).to.not.include('🔊');
+        expect(html).to.not.include('🔈');
     });
 
     it('does not inject narration more than once', () => {
@@ -39,10 +41,21 @@ describe('SCORM browser narration', () => {
         expect(Object.keys(result.files).some((name) => /\.(mp3|wav|ogg)$/i.test(name))).to.equal(false);
     });
 
-    it('prefers Google voices when the browser exposes them and otherwise falls back locally', () => {
+    it('prefers natural voices, waits for browser voices, and uses slower pacing', () => {
         const script = browserNarrationScript();
-        expect(script).to.include("if (/google/i.test(name)) total += 100");
-        expect(script).to.include('voice.localService');
+        expect(script).to.include("if (/natural|neural|premium|enhanced|online/i.test(name)) total += 140");
+        expect(script).to.include("if (/google/i.test(name)) total += 90");
         expect(script).to.include("navigator.language || 'en-US'");
+        expect(script).to.include("synth.addEventListener('voiceschanged'");
+        expect(script).to.include('utterance.rate = 0.86');
+        expect(script).to.include('utterance.pitch = 0.98');
+    });
+
+    it('shortens learning paragraphs before narration by roughly three visual lines', () => {
+        const script = browserNarrationScript();
+        expect(script).to.include('shortenLearningParagraphs');
+        expect(script).to.include(".slide[data-kind=\"learning\"] .qmx-copy > p");
+        expect(script).to.include('words.length >= 150 ? 42');
+        expect(script).to.include("data-qmx-shortened");
     });
 });
