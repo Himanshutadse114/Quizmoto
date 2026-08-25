@@ -3,7 +3,7 @@ const { buildScormPackageZip: buildLegacyPackage } = require('./ScormAnswerTrack
 const { buildRasterCoursePackageZip } = require('./ScormRasterCoursePackageBuilder');
 
 const REPLICATE_MEDIA_CSS = '<style id="quizmoto-replicate-media-v3"></style>';
-const BROWSER_NARRATION_SCRIPT_ID = 'quizmoto-browser-narration-v1';
+const BROWSER_NARRATION_SCRIPT_ID = 'quizmoto-browser-narration-v2';
 
 function escapeHtml(value) {
     return String(value || '')
@@ -100,6 +100,43 @@ function browserNarrationScript() {
     return document.querySelector('.slide.active');
   }
 
+  function shortenParagraph(value) {
+    var source = cleanText(value);
+    if (!source) return '';
+    var words = source.split(/\\s+/).filter(Boolean);
+    if (words.length < 75) return source;
+
+    var reduction = words.length >= 150 ? 42 : (words.length >= 110 ? 36 : 28);
+    var target = Math.max(55, words.length - reduction);
+    var sentences = source.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [source];
+    var selected = [];
+    var count = 0;
+
+    for (var i = 0; i < sentences.length; i += 1) {
+      var sentence = cleanText(sentences[i]);
+      if (!sentence) continue;
+      var sentenceWords = sentence.split(/\\s+/).filter(Boolean).length;
+      if (selected.length >= 2 && count + sentenceWords > target) break;
+      selected.push(sentence);
+      count += sentenceWords;
+      if (count >= target) break;
+    }
+
+    if (!selected.length || count < Math.max(40, target - 20)) {
+      var clipped = words.slice(0, target).join(' ').replace(/[,:;\\-]+$/, '').trim();
+      return /[.!?]$/.test(clipped) ? clipped : clipped + '.';
+    }
+    return cleanText(selected.join(' '));
+  }
+
+  function shortenLearningParagraphs() {
+    Array.prototype.forEach.call(document.querySelectorAll('.slide[data-kind="learning"] .qmx-copy > p'), function(node){
+      if (!node || node.getAttribute('data-qmx-shortened') === 'true') return;
+      node.textContent = shortenParagraph(node.textContent);
+      node.setAttribute('data-qmx-shortened', 'true');
+    });
+  }
+
   function narrationText(slide) {
     if (!slide) return '';
     var selectors = [
@@ -139,11 +176,12 @@ function browserNarrationScript() {
         var name = String(voice.name || '');
         var voiceLang = String(voice.lang || '').toLowerCase();
         var total = 0;
-        if (/google/i.test(name)) total += 100;
-        if (/natural|neural|premium|enhanced/i.test(name)) total += 40;
-        if (/microsoft|samantha|karen|daniel|serena|moira/i.test(name)) total += 25;
-        if (voiceLang === requested) total += 20;
-        if (voice.localService) total += 5;
+        if (/natural|neural|premium|enhanced|online/i.test(name)) total += 140;
+        if (/google/i.test(name)) total += 90;
+        if (/aria|jenny|ava|sonia|ryan|emma|brian|samantha|karen|daniel|serena|moira/i.test(name)) total += 55;
+        if (/espeak|compact|robot|classic/i.test(name)) total -= 80;
+        if (voiceLang === requested) total += 25;
+        else if (voiceLang.indexOf(base) === 0) total += 12;
         return total;
       }
       return score(b) - score(a);
@@ -155,7 +193,7 @@ function browserNarrationScript() {
     var button = document.getElementById('qmx-narration-toggle');
     if (!button) return;
     button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
-    button.textContent = enabled ? '🔊 Narration On' : '🔈 Narration Off';
+    button.textContent = enabled ? 'Narration On' : 'Narration Off';
     button.title = enabled ? 'Stop automatic narration' : 'Read this course aloud';
     button.style.background = enabled ? '#282824' : 'transparent';
     button.style.color = enabled ? '#fff' : '#282824';
@@ -163,6 +201,31 @@ function browserNarrationScript() {
 
   function stopNarration() {
     try { synth.cancel(); } catch (_) {}
+  }
+
+  function speakWithBestVoice(utterance, lang) {
+    var started = false;
+    var start = function(){
+      if (started) return;
+      started = true;
+      var voice = chooseVoice(lang);
+      if (voice) {
+        utterance.voice = voice;
+        utterance.lang = voice.lang || lang;
+      }
+      try { synth.speak(utterance); } catch (_) {}
+    };
+
+    var voices = synth.getVoices ? synth.getVoices() : [];
+    if (voices && voices.length) {
+      start();
+      return;
+    }
+
+    if (typeof synth.addEventListener === 'function') {
+      try { synth.addEventListener('voiceschanged', start, { once: true }); } catch (_) {}
+    }
+    window.setTimeout(start, 500);
   }
 
   function speakCurrentSlide(force) {
@@ -177,15 +240,14 @@ function browserNarrationScript() {
     var utterance = new SpeechSynthesisUtterance(spoken);
     var lang = document.documentElement.lang || navigator.language || 'en-US';
     utterance.lang = lang;
-    var voice = chooseVoice(lang);
-    if (voice) utterance.voice = voice;
-    utterance.rate = 0.98;
-    utterance.pitch = 1;
+    utterance.rate = 0.86;
+    utterance.pitch = 0.98;
     utterance.volume = 1;
-    try { synth.speak(utterance); } catch (_) {}
+    speakWithBestVoice(utterance, lang);
   }
 
   function install() {
+    shortenLearningParagraphs();
     var header = document.querySelector('header');
     if (!header || document.getElementById('qmx-narration-toggle')) return;
     var button = document.createElement('button');
@@ -217,6 +279,7 @@ function browserNarrationScript() {
     var main = document.querySelector('main');
     if (main && typeof MutationObserver !== 'undefined') {
       observer = new MutationObserver(function(){
+        shortenLearningParagraphs();
         if (!enabled) return;
         var slide = activeSlide();
         if (slide && slide !== lastSlide) speakCurrentSlide(false);
