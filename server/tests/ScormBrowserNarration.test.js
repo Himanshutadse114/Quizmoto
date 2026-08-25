@@ -2,8 +2,11 @@ const { expect } = require('chai');
 const JSZip = require('jszip');
 const {
     BROWSER_NARRATION_SCRIPT_ID,
+    COURSE_TYPOGRAPHY_STYLE_ID,
     browserNarrationScript,
+    courseTypographyStyle,
     injectBrowserNarrationUi,
+    injectCourseTypographyUi,
     addBrowserNarrationToZip
 } = require('../services/scorm/ScormReplicateMediaFinalizer');
 
@@ -30,13 +33,14 @@ describe('SCORM browser narration', () => {
 
     it('keeps narration entirely inside the SCORM ZIP without adding audio files', async () => {
         const zip = new JSZip();
-        zip.file('index.html', '<html><body><header></header><main></main></body></html>');
+        zip.file('index.html', '<html><head></head><body><header></header><main></main></body></html>');
         zip.file('assets/media/course-cover.webp', Buffer.from('fake-image'));
         const input = await zip.generateAsync({ type: 'nodebuffer' });
         const output = await addBrowserNarrationToZip(input);
         const result = await JSZip.loadAsync(output);
         const html = await result.file('index.html').async('string');
         expect(html).to.include(BROWSER_NARRATION_SCRIPT_ID);
+        expect(html).to.include(COURSE_TYPOGRAPHY_STYLE_ID);
         expect(result.file('assets/media/course-cover.webp')).to.not.equal(null);
         expect(Object.keys(result.files).some((name) => /\.(mp3|wav|ogg)$/i.test(name))).to.equal(false);
     });
@@ -57,5 +61,19 @@ describe('SCORM browser narration', () => {
         expect(script).to.include(".slide[data-kind=\"learning\"] .qmx-copy > p");
         expect(script).to.include('words.length >= 150 ? 42');
         expect(script).to.include("data-qmx-shortened");
+    });
+
+    it('reduces excessive heading, question and option font weight in generated courses', () => {
+        const style = courseTypographyStyle();
+        expect(style).to.include(COURSE_TYPOGRAPHY_STYLE_ID);
+        expect(style).to.include('.qmx-copy h2');
+        expect(style).to.include('.qmx-quiz-shell h2');
+        expect(style).to.include('.quiz-option');
+        expect(style).to.include('font-weight: 600 !important');
+        expect(style).to.include('font-weight: 500 !important');
+
+        const html = injectCourseTypographyUi('<html><head></head><body></body></html>');
+        expect(html).to.include(COURSE_TYPOGRAPHY_STYLE_ID);
+        expect((injectCourseTypographyUi(html).match(new RegExp(COURSE_TYPOGRAPHY_STYLE_ID, 'g')) || []).length).to.equal(1);
     });
 });
