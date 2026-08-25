@@ -1,0 +1,47 @@
+/* Course workspace status/QA theme fixes.
+ * These selectors intentionally target the legacy utility combinations used in
+ * CourseDetail.jsx so both platform themes render the same components with
+ * appropriate contrast.
+ */
+
+/* Dark theme -------------------------------------------------------------- */
+html body .scorm-editorial.scorm-theme-dark main span[class*="bg-[#EEF4FF]"][class*="text-[#3538CD]"][class*="border-[#C7D7FE]"] {
+  background: rgba(59, 130, 246, .11) !important;
+  color: #B9D8FF !important;
+  border-color: rgba(96, 165, 250, .25) !important;
+}
+
+html body .scorm-editorial.scorm-theme-dark main div[class*="bg-[#EEF4FF]"][class*="text-[#253B80]"][class*="border-[#B2CCFF]"] {
+  background: #071523 !important;
+  background-image: none !important;
+  color: #C7DDFC !important;
+  border-color: rgba(96, 165, 250, .22) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .02) !important;
+}
+
+html body .scorm-editorial.scorm-theme-dark main span[class*="bg-[#ECFDF3]"][class*="text-[#027A48]"][class*="border-[#ABEFC6]"] {
+  background: rgba(16, 185, 129, .12) !important;
+  color: #86E7BC !important;
+  border-color: rgba(52, 211, 153, .24) !important;
+}
+
+/* Light theme ------------------------------------------------------------- */
+html body .scorm-editorial.scorm-theme-light main span[class*="bg-[#EEF4FF]"][class*="text-[#3538CD]"][class*="border-[#C7D7FE]"] {
+  background: #E8F7F4 !important;
+  color: #0B6259 !important;
+  border-color: #BDE5DF !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main div[class*="bg-[#EEF4FF]"][class*="text-[#253B80]"][class*="border-[#B2CCFF]"] {
+  background: #EDF8F6 !important;
+  background-image: none !important;
+  color: #245A53 !important;
+  border-color: #C9E5E0 !important;
+  box-shadow: none !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main span[class*="bg-[#ECFDF3]"][class*="text-[#027A48]"][class*="border-[#ABEFC6]"] {
+  background: #E8F7F1 !important;
+  color: #0A644B !important;
+  border-color: #B9E2D2 !important;
+}
