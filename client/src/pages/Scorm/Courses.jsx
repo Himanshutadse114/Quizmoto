@@ -6,18 +6,36 @@ import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import BackgroundCourseJobs from '../../components/BackgroundCourseJobs';
 import { useCourseGenerationJobs } from '../../services/courseGenerationJobs';
+import { fetchScormData, peekScormData } from '../../services/scormDataCache';
 
-const Metric = ({ label, value, icon: Icon }) => (
+const Metric = ({ label, value, icon: Icon, loading = false }) => (
   <div className="scorm-course-metric rounded-xl border p-4 md:p-5">
     <div className="flex items-start justify-between gap-3">
       <div>
-        <div className="scorm-display text-2xl md:text-[30px] leading-none">{value}</div>
+        {loading ? (
+          <div className="h-8 w-14 rounded-md bg-current/10 animate-pulse" aria-label={`Loading ${label}`} />
+        ) : (
+          <div className="scorm-display text-2xl md:text-[30px] leading-none">{value}</div>
+        )}
         <div className="scorm-micro mt-2 text-[9px] uppercase font-bold">{label}</div>
       </div>
       <div className="scorm-course-metric-icon w-9 h-9 rounded-lg border grid place-items-center">
         <Icon size={16} />
       </div>
     </div>
+  </div>
+);
+
+const CourseRowSkeleton = () => (
+  <div className="scorm-course-row grid grid-cols-1 lg:grid-cols-[1.5fr_.65fr_.65fr_.75fr_auto] gap-4 items-center px-5 md:px-6 py-5 animate-pulse" aria-hidden="true">
+    <div>
+      <div className="h-4 w-3/5 rounded bg-current/10" />
+      <div className="h-2.5 w-2/5 rounded bg-current/10 mt-2" />
+    </div>
+    <div className="hidden lg:block h-5 w-10 rounded bg-current/10" />
+    <div className="hidden lg:block h-5 w-10 rounded bg-current/10" />
+    <div className="hidden lg:block h-5 w-12 rounded bg-current/10" />
+    <div className="h-4 w-4 rounded bg-current/10" />
   </div>
 );
 
@@ -30,24 +48,39 @@ export default function ScormCourses() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const loadCourses = useCallback(() => {
-    if (!token) return Promise.resolve();
+  const loadCourses = useCallback(async ({ initial = false } = {}) => {
+    if (!token) return;
     const headers = { Authorization: `Bearer ${token}` };
-    return Promise.all([
-      axios.get(apiUrl('/api/scorm/courses'), { headers }),
-      axios.get(apiUrl('/api/scorm/tracking/summary'), { headers }).catch(() => ({ data: { courses: [] } }))
-    ])
-      .then(([courseRes, trackingRes]) => {
-        setCourses(courseRes.data || []);
-        setTracking(trackingRes.data || { courses: [] });
-      })
-      .catch((err) => setError(err.response?.data?.message || err.message));
+
+    if (initial) {
+      const cachedCourses = peekScormData('courses', token);
+      const cachedTracking = peekScormData('tracking-summary', token);
+      if (cachedCourses) setCourses(Array.isArray(cachedCourses) ? cachedCourses : []);
+      if (cachedTracking) setTracking(cachedTracking || { courses: [] });
+      if (cachedCourses && cachedTracking) setLoading(false);
+    }
+
+    try {
+      const [courseData, trackingData] = await Promise.all([
+        fetchScormData('courses', token, () => axios.get(apiUrl('/api/scorm/courses'), { headers }).then((res) => res.data || [])),
+        fetchScormData('tracking-summary', token, () => axios.get(apiUrl('/api/scorm/tracking/summary'), { headers }).then((res) => res.data || { courses: [] }))
+          .catch(() => peekScormData('tracking-summary', token) || { courses: [] })
+      ]);
+      setCourses(Array.isArray(courseData) ? courseData : []);
+      setTracking(trackingData || { courses: [] });
+      setError(null);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message);
+    } finally {
+      setLoading(false);
+    }
   }, [token]);
 
   useEffect(() => {
     if (!token) return navigate('/login');
-    loadCourses();
+    loadCourses({ initial: true });
   }, [token, navigate, loadCourses]);
 
   const readySignature = useMemo(
@@ -73,6 +106,8 @@ export default function ScormCourses() {
     });
   }, [courses, query, status]);
 
+  const learnerCount = (tracking.courses || []).reduce((sum, course) => sum + Number(course.learners || 0), 0);
+
   return (
     <div className="p-4 md:p-7 lg:p-9 max-w-7xl mx-auto">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7 pb-7 border-b border-white/10">
@@ -91,10 +126,10 @@ export default function ScormCourses() {
       <BackgroundCourseJobs />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <Metric label="Total courses" value={courses.length} icon={BookOpen} />
-        <Metric label="Published" value={courses.filter((c) => c.status === 'published').length} icon={CheckCircle2} />
-        <Metric label="Draft" value={courses.filter((c) => c.status === 'draft').length} icon={Clock3} />
-        <Metric label="Learners" value={tracking.courses?.reduce((sum, c) => sum + Number(c.learners || 0), 0) || 0} icon={Users} />
+        <Metric label="Total courses" value={courses.length} icon={BookOpen} loading={loading} />
+        <Metric label="Published" value={courses.filter((c) => c.status === 'published').length} icon={CheckCircle2} loading={loading} />
+        <Metric label="Draft" value={courses.filter((c) => c.status === 'draft').length} icon={Clock3} loading={loading} />
+        <Metric label="Learners" value={learnerCount} icon={Users} loading={loading} />
       </div>
 
       <div className="scorm-course-list-shell rounded-xl overflow-hidden border">
@@ -122,14 +157,15 @@ export default function ScormCourses() {
         </div>
 
         <div className="scorm-course-rows divide-y">
-          {filtered.length === 0 && (
+          {loading && [0, 1, 2, 3].map((item) => <CourseRowSkeleton key={item} />)}
+          {!loading && filtered.length === 0 && (
             <div className="p-10 text-center">
               <BookOpen size={23} className="mx-auto text-[#8295ae] mb-3" />
               <div className="text-sm font-semibold text-[#f1f5f9]">No courses match this view</div>
               <div className="text-xs text-[#8295ae] mt-1">Try a different search or filter.</div>
             </div>
           )}
-          {filtered.map((course) => {
+          {!loading && filtered.map((course) => {
             const stats = trackingById.get(String(course.id)) || {};
             return (
               <Link
