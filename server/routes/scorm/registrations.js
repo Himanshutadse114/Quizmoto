@@ -56,7 +56,6 @@ async function joinInvite(req, res) {
             packageId: pkg ? pkg.id : null,
             entryHref,
             token: result.token,
-            // Backwards-compatible alias for older learner clients.
             playToken: result.token,
             playerPath: `/scorm/player/${registrationId}`,
             playUrl: `/api/scorm/play/${registrationId}`
@@ -64,9 +63,13 @@ async function joinInvite(req, res) {
     } catch (err) {
         const code = err.code === 'NOT_FOUND'
             ? 404
-            : ['PACKAGE_NOT_READY', 'PACKAGE_LAUNCH_MISSING'].includes(err.code)
-                ? 409
-                : 500;
+            : ['LEARNER_NOT_APPROVED', 'LEARNER_ROSTER_EMPTY'].includes(err.code)
+                ? 403
+                : ['PACKAGE_NOT_READY', 'PACKAGE_LAUNCH_MISSING'].includes(err.code)
+                    ? 409
+                    : ['EMAIL_REQUIRED', 'EMAIL_INVALID'].includes(err.code)
+                        ? 400
+                        : 500;
         console.error('[scorm-invite] join failed', {
             inviteCode: req.body?.inviteCode || null,
             error: err?.message || String(err),
@@ -77,8 +80,6 @@ async function joinInvite(req, res) {
     }
 }
 
-// /accept is canonical. /join remains as a compatibility alias because older
-// deployed learner bundles used that URL.
 router.post('/accept', joinInvite);
 router.post('/join', joinInvite);
 
@@ -98,9 +99,6 @@ router.post('/:id/revoke', auth, async (req, res) => {
     }
 });
 
-// Permanently remove a learner registration and every SCORM record owned by it.
-// This is intentionally different from revoke: revoke preserves audit evidence;
-// delete removes the learner from tracking/reports for this course.
 router.delete('/:id', auth, async (req, res) => {
     try {
         const registrationId = String(req.params.id || '').trim();
@@ -111,8 +109,6 @@ router.delete('/:id', auth, async (req, res) => {
             return res.status(404).json({ message: 'Learner registration not found' });
         }
 
-        // The V2 learning-state table is created lazily and is not represented by
-        // a Sequelize model, so ensure it exists before entering the transaction.
         await LearningState.ensureReady();
 
         await sequelize.transaction(async (transaction) => {
