@@ -21,6 +21,9 @@ router.use('/runtime', require('./runtime'));
 router.use('/content', require('./content'));
 router.use('/play', require('./play'));
 router.use('/xapi', require('./xapi'));
+// Rebuild interception must run before the normal author route so edits reuse
+// the existing packaged visuals instead of calling image generation again.
+router.use('/author', require('./authorRebuild'));
 router.use('/author', require('./author'));
 router.use('/access', require('./access'));
 
