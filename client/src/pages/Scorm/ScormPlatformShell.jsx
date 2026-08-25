@@ -35,6 +35,7 @@ import './scormButtonTealOverride.css';
 import './scormLightTheme.css';
 import './scormLightContrastGuard.css';
 import './scormLightRoutePolish.css';
+import './courseGeneratorThemeFix.css';
 
 const NAV_GROUPS = [
   {
