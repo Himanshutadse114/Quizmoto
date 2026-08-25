@@ -3,40 +3,50 @@ const COURSE_INTERACTION_SCRIPT_ID = 'quizmoto-course-interactions-script-v1';
 
 function courseInteractionStyle() {
     return `<style id="${COURSE_INTERACTION_STYLE_ID}">
-/* Interactive learning cards: click/tap or keyboard to reveal the key point. */
+/* Interactive learning cards: compact click/tap or keyboard reveal cards. */
 .qmx-cards { perspective: 1200px; }
+.qmx-cards.qmx-flip-grid {
+  grid-template-columns: repeat(2,minmax(220px,280px)) !important;
+  gap: 12px !important;
+  max-width: 572px;
+  align-items: stretch;
+  justify-content: start;
+}
 .qmx-card.qmx-flip-card {
-  min-height: 172px;
+  min-height: 0 !important;
   padding: 0 !important;
   border: 0 !important;
   background: transparent !important;
   cursor: pointer;
   outline: none;
   perspective: 1200px;
+  align-self: stretch;
 }
 .qmx-flip-inner {
   position: relative;
+  display: grid;
   width: 100%;
-  height: 100%;
-  min-height: 172px;
+  min-height: 112px;
   transform-style: preserve-3d;
   transition: transform .55s cubic-bezier(.2,.72,.22,1);
 }
 .qmx-flip-card.is-flipped .qmx-flip-inner { transform: rotateY(180deg); }
 .qmx-flip-face {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  grid-area: 1 / 1;
+  min-height: 112px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: 16px;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 13px 14px;
   border: 1px solid var(--paper-3);
   border-radius: 12px;
   background: var(--surface);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  box-shadow: 0 9px 24px rgba(15,23,42,.06);
-  overflow: auto;
+  box-shadow: 0 7px 18px rgba(15,23,42,.055);
+  overflow: hidden;
 }
 .qmx-flip-front {
   background: linear-gradient(145deg,var(--surface),var(--soft));
@@ -47,50 +57,63 @@ function courseInteractionStyle() {
   border-color: var(--accent);
   background: var(--surface);
 }
-.qmx-flip-number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
+.qmx-card.qmx-flip-card .qmx-flip-number {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  align-self: flex-start !important;
+  flex: 0 0 28px !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 8px;
   background: var(--soft);
   color: var(--primary-dark);
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 10px !important;
+  line-height: 1 !important;
+  font-weight: 700 !important;
+  text-align: center;
 }
 .qmx-flip-title {
-  margin-top: auto;
+  margin-top: 2px;
   color: var(--ink);
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.25;
   font-weight: 600;
 }
 .qmx-flip-hint {
-  margin-top: 10px;
+  margin-top: auto;
+  padding-top: 4px;
   color: var(--primary-dark);
-  font-size: 9px;
+  font-size: 8.5px;
   line-height: 1.2;
   font-weight: 600;
-  letter-spacing: .08em;
+  letter-spacing: .075em;
   text-transform: uppercase;
 }
 .qmx-flip-back p {
-  margin: 12px 0 0 !important;
+  margin: 2px 0 0 !important;
   color: var(--ink-soft) !important;
-  font-size: 13px !important;
-  line-height: 1.5 !important;
+  font-size: 12.5px !important;
+  line-height: 1.42 !important;
   font-weight: 500 !important;
 }
 .qmx-flip-card:hover .qmx-flip-face,
 .qmx-flip-card:focus-visible .qmx-flip-face {
   border-color: var(--accent);
-  box-shadow: 0 12px 28px rgba(15,23,42,.10);
+  box-shadow: 0 9px 22px rgba(15,23,42,.085);
 }
 .qmx-flip-card:focus-visible .qmx-flip-face { outline: 2px solid var(--primary); outline-offset: 2px; }
+@media(max-width:760px){
+  .qmx-cards.qmx-flip-grid{grid-template-columns:minmax(0,1fr) !important;max-width:420px}
+}
 @media(max-width:620px){
-  .qmx-card.qmx-flip-card,.qmx-flip-inner{min-height:158px}
-  .qmx-flip-face{padding:14px}
+  .qmx-flip-inner,.qmx-flip-face{min-height:106px}
+  .qmx-flip-face{padding:12px 13px}
+  .qmx-card.qmx-flip-card .qmx-flip-number{width:26px!important;height:26px!important;min-width:26px!important;min-height:26px!important;flex-basis:26px!important}
 }
 @media(prefers-reduced-motion:reduce){
   .qmx-flip-inner{transition:none!important}
@@ -144,7 +167,12 @@ function courseInteractionScript() {
   }
 
   function upgradeCards(){
-    Array.prototype.forEach.call(document.querySelectorAll('.slide[data-kind="learning"] .qmx-cards .qmx-card'), upgradeCard);
+    Array.prototype.forEach.call(document.querySelectorAll('.slide[data-kind="learning"] .qmx-cards'), function(grid){
+      var cards = grid.querySelectorAll('.qmx-card');
+      if (!cards.length) return;
+      grid.classList.add('qmx-flip-grid');
+      Array.prototype.forEach.call(cards, upgradeCard);
+    });
   }
 
   function toggleCard(card){
