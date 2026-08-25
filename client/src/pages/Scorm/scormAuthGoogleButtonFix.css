@@ -1,0 +1,36 @@
+/* Keep the native Google Identity Services button visually flush with its container.
+ * Google caps the rendered button width, so the wrapper follows that width instead
+ * of drawing a wider empty placeholder around it.
+ */
+.scorm-auth-workbench .sa-google-block {
+  width: 100%;
+}
+
+.scorm-auth-workbench .sa-google-button {
+  width: min(100%, 400px) !important;
+  max-width: 400px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+  justify-content: flex-start !important;
+}
+
+.scorm-auth-workbench .sa-google-button > div {
+  width: 100% !important;
+  max-width: 400px !important;
+}
+
+.scorm-auth-workbench .sa-google-button iframe {
+  display: block !important;
+  margin: 0 !important;
+}
+
+@media (max-width: 480px) {
+  .scorm-auth-workbench .sa-google-button,
+  .scorm-auth-workbench .sa-google-button > div {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
