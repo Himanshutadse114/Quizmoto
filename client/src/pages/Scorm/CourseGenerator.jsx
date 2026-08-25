@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FileUp, Loader2, Sparkles } from 'lucide-react';
+import { ArrowRight, CheckCircle2, FileText, FileUp, Loader2, Sparkles } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { startBackgroundCourseGeneration } from '../../services/courseGenerationJobs';
 import AuthorVisual from './AuthorVisual';
@@ -26,6 +26,12 @@ function createProgressId() {
   if (!random) random = `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
   return `scorm-course-${random}`.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 96);
 }
+
+const depthOptions = [
+  { value: 'concise', label: 'Concise', description: 'A focused course for quick learning.' },
+  { value: 'detailed', label: 'Detailed', description: 'Balanced depth for most training needs.' },
+  { value: 'comprehensive', label: 'Comprehensive', description: 'Broader coverage for deeper learning.' }
+];
 
 export default function CourseGenerator() {
   const navigate = useNavigate();
@@ -84,71 +90,173 @@ export default function CourseGenerator() {
     }
   };
 
+  const surface = { background: 'var(--scorm-surface)', borderColor: 'var(--scorm-line)' };
+  const softSurface = { background: 'var(--scorm-surface-soft)', borderColor: 'var(--scorm-line)' };
+  const ink = { color: 'var(--scorm-ink)' };
+  const muted = { color: 'var(--scorm-muted)' };
+
   return (
-    <div className="min-h-screen max-w-[1100px] mx-auto p-4 md:p-7 pb-24 relative">
-      <div className="mb-7">
-        <div className="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">Course Builder</div>
-        <h1 className="text-2xl md:text-3xl font-semibold text-white mt-1">Create a course</h1>
-        <p className="text-sm text-slate-400 mt-2 max-w-2xl">
-          Add a topic, learning goal or source file. Course generation continues in the background, so you can keep using the platform while it is being prepared.
-        </p>
+    <div className="p-4 md:p-7 lg:p-9 max-w-7xl mx-auto pb-24">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7 pb-7 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
+        <div className="max-w-3xl">
+          <div className="scorm-micro text-[10px] uppercase font-semibold">Course builder</div>
+          <h1 className="scorm-display text-[42px] md:text-[56px] mt-2" style={ink}>Create a course</h1>
+          <p className="text-sm mt-3 leading-relaxed max-w-2xl" style={muted}>
+            Add a topic, learning goal or source file. Generation runs in the background, so you can continue using the platform while the course is prepared.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate('/scorm/courses')}
+          className="scorm-button-secondary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold"
+        >
+          View courses <ArrowRight size={14} />
+        </button>
       </div>
 
-      {error && <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div>}
+      {error && (
+        <div className="mb-5 rounded-xl border px-4 py-3 text-sm" style={{ background: 'var(--scorm-danger-soft)', borderColor: 'var(--scorm-danger)', color: 'var(--scorm-danger)' }}>
+          {error}
+        </div>
+      )}
 
-      <section className="scorm-panel rounded-3xl border p-5 md:p-7 max-w-3xl">
-        <div className="text-sm font-semibold text-white mb-5">Course source</div>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Topic</label>
-            <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. Phishing Awareness" className="w-full p-3 text-sm rounded-xl" />
-          </div>
-
-          <div>
-            <label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Description or learning goals</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} placeholder="Describe what learners should understand and be able to do after completing the course." className="w-full p-3 text-sm rounded-xl" />
-          </div>
-
-          <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.025] px-4 py-4 text-sm text-slate-400 cursor-pointer hover:bg-white/[.04] transition-colors">
-            <FileUp size={18} className="text-[#7BDCD3]" />
-            <div className="min-w-0">
-              <div className="font-semibold text-slate-300 truncate">{file ? file.name : 'Upload source file (optional)'}</div>
-              <div className="text-[11px] text-slate-500 mt-0.5">Use a policy, PDF, presentation or other supported source material.</div>
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
+        <section className="rounded-2xl border overflow-hidden" style={surface}>
+          <div className="px-5 md:px-6 py-5 border-b flex items-center justify-between gap-4" style={{ borderColor: 'var(--scorm-line)' }}>
+            <div>
+              <div className="scorm-micro text-[9px] uppercase font-semibold">Course source</div>
+              <h2 className="text-[18px] font-semibold mt-1" style={ink}>Tell us what the course should cover</h2>
             </div>
-            <input type="file" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-          </label>
+            <div className="hidden sm:grid w-10 h-10 rounded-lg border place-items-center" style={{ ...softSurface, color: 'var(--scorm-accent)' }}>
+              <FileText size={18} />
+            </div>
+          </div>
 
-          <div>
-            <div className="text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Course depth</div>
-            <div className="flex gap-2 flex-wrap">
-              {[
-                ['concise', 'Concise'],
-                ['detailed', 'Detailed'],
-                ['comprehensive', 'Comprehensive']
-              ].map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setDetailLevel(value)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${detailLevel === value ? 'bg-white text-black border-white' : 'border-white/15 text-white/60 hover:text-white'}`}
+          <div className="p-5 md:p-6 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <label className="block">
+                <span className="scorm-micro text-[9px] uppercase font-semibold">Topic</span>
+                <input
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  placeholder="e.g. Phishing Awareness"
+                  className="scorm-course-search mt-1.5 w-full px-3 py-3 text-sm"
+                />
+              </label>
+
+              <div>
+                <div className="scorm-micro text-[9px] uppercase font-semibold">Source file</div>
+                <label
+                  className="mt-1.5 min-h-[46px] rounded-lg border px-3 flex items-center gap-3 cursor-pointer transition-colors"
+                  style={softSurface}
                 >
-                  {label}
-                </button>
-              ))}
+                  <FileUp size={16} className="shrink-0" style={{ color: 'var(--scorm-accent)' }} />
+                  <span className="text-xs truncate flex-1" style={{ color: file ? 'var(--scorm-ink-soft)' : 'var(--scorm-muted)' }}>
+                    {file ? file.name : 'Upload source file (optional)'}
+                  </span>
+                  <span className="scorm-button-secondary px-3 py-2 text-[10px] font-semibold shrink-0">Browse</span>
+                  <input type="file" className="sr-only" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                </label>
+              </div>
+            </div>
+
+            <label className="block">
+              <span className="scorm-micro text-[9px] uppercase font-semibold">Description or learning goals</span>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={5}
+                placeholder="Describe what learners should understand and be able to do after completing the course."
+                className="scorm-course-search mt-1.5 w-full px-3 py-3 text-sm resize-y min-h-[145px]"
+              />
+            </label>
+
+            <div>
+              <div className="flex items-end justify-between gap-4 mb-3">
+                <div>
+                  <div className="scorm-micro text-[9px] uppercase font-semibold">Course depth</div>
+                  <div className="text-xs mt-1" style={muted}>Choose how much detail the generated course should include.</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {depthOptions.map((option) => {
+                  const selected = detailLevel === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setDetailLevel(option.value)}
+                      className="text-left rounded-xl border p-4 transition-all min-h-[104px]"
+                      style={{
+                        background: selected ? 'var(--scorm-accent-soft)' : 'var(--scorm-surface-soft)',
+                        borderColor: selected ? 'var(--scorm-accent)' : 'var(--scorm-line)'
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold" style={ink}>{option.label}</span>
+                        {selected && <CheckCircle2 size={16} style={{ color: 'var(--scorm-accent)' }} />}
+                      </div>
+                      <div className="text-[11px] leading-relaxed mt-2" style={muted}>{option.description}</div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          <div className="pt-2">
-            <button type="button" onClick={generateCourse} disabled={busy || !hasSource} className="scorm-button-primary inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold disabled:opacity-50">
+          <div className="px-5 md:px-6 py-5 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" style={{ ...softSurface, borderColor: 'var(--scorm-line)' }}>
+            <div className="text-[11px] leading-relaxed max-w-xl" style={muted}>
+              You can leave this page after generation starts. Progress remains visible from Courses and you will be notified when the course is ready.
+            </div>
+            <button
+              type="button"
+              onClick={generateCourse}
+              disabled={busy || !hasSource}
+              className="scorm-button-primary inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               {busy ? <Loader2 size={17} className="animate-spin" /> : <Sparkles size={17} />}
               {busy ? 'Starting…' : 'Generate course'}
             </button>
-            <p className="mt-3 text-[11px] leading-relaxed text-slate-500 max-w-xl">
-              After generation starts, you can browse other areas of the platform. The Courses page will show live progress and you will be notified when the course is ready.
-            </p>
           </div>
-        </div>
-      </section>
+        </section>
+
+        <aside className="space-y-4 xl:sticky xl:top-24">
+          <section className="rounded-2xl border overflow-hidden" style={surface}>
+            <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
+              <div className="scorm-micro text-[9px] uppercase font-semibold">What happens next</div>
+              <h3 className="text-[16px] font-semibold mt-1" style={ink}>Background generation</h3>
+            </div>
+            <div className="p-5 space-y-4">
+              {[
+                ['1', 'Course content', 'The learning structure and knowledge checks are prepared.'],
+                ['2', 'Course visuals', 'Supporting visuals are created for the course.'],
+                ['3', 'Course package', 'The final learner package is assembled and saved.']
+              ].map(([number, title, copy]) => (
+                <div key={number} className="flex gap-3">
+                  <div className="w-7 h-7 rounded-lg border grid place-items-center text-[10px] font-semibold shrink-0" style={{ ...softSurface, color: 'var(--scorm-accent)' }}>{number}</div>
+                  <div>
+                    <div className="text-xs font-semibold" style={ink}>{title}</div>
+                    <div className="text-[11px] leading-relaxed mt-1" style={muted}>{copy}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border p-5" style={softSurface}>
+            <div className="flex items-start gap-3">
+              <CheckCircle2 size={17} className="shrink-0 mt-0.5" style={{ color: 'var(--scorm-accent)' }} />
+              <div>
+                <div className="text-xs font-semibold" style={ink}>No need to wait on this page</div>
+                <div className="text-[11px] leading-relaxed mt-1" style={muted}>
+                  Once generation begins, continue working anywhere in the platform. Your course will appear in Courses when it is ready.
+                </div>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </div>
     </div>
   );
 }
