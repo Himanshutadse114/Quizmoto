@@ -183,11 +183,16 @@ export default function ScormLibrary() {
   const processingCount = packages.filter((p) => p.status === 'processing').length;
   const aiCount = packages.filter((p) => isQuizmotoAi(p)).length;
 
+  const ink = { color: 'var(--scorm-ink)' };
+  const muted = { color: 'var(--scorm-muted)' };
+  const softSurface = { background: 'var(--scorm-surface-soft)', borderColor: 'var(--scorm-line)' };
+  const surface = { background: 'var(--scorm-surface)', borderColor: 'var(--scorm-line-strong)' };
+
   return (
     <div className="p-4 md:p-7 lg:p-9 max-w-7xl mx-auto">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7 pb-7 border-b border-white/10">
         <div className="max-w-3xl">
-          <div className="scorm-micro text-[10px] uppercase font-semibold text-slate-500">Content operations</div>
+          <div className="scorm-micro text-[10px] uppercase font-semibold">Content operations</div>
           <h1 className="scorm-display text-[42px] md:text-[56px] mt-2">SCORM Library</h1>
           <p className="text-sm mt-3 leading-relaxed max-w-2xl">
             Upload, validate and manage SCORM packages. Generated packages can be edited here, while external packages remain available for launch and download.
@@ -199,9 +204,9 @@ export default function ScormLibrary() {
       </div>
 
       {msg && (
-        <div className="mb-5 rounded-xl border border-[#29405f] bg-[#07111f] px-4 py-3 text-xs text-[#b8c7da] flex items-start justify-between gap-4">
-          <span>{msg}</span>
-          <button type="button" onClick={() => setMsg(null)} className="shrink-0 text-[#8295ae] hover:text-[#f1f5f9]">Dismiss</button>
+        <div className="mb-5 rounded-xl border px-4 py-3 text-xs flex items-start justify-between gap-4" style={softSurface}>
+          <span style={{ color: 'var(--scorm-ink-soft)' }}>{msg}</span>
+          <button type="button" onClick={() => setMsg(null)} className="shrink-0 font-semibold" style={muted}>Dismiss</button>
         </div>
       )}
 
@@ -215,18 +220,18 @@ export default function ScormLibrary() {
       <section className="scorm-course-list-shell rounded-xl overflow-hidden border mb-6">
         <div className="scorm-course-toolbar p-4 md:p-5 border-b flex items-center justify-between gap-3">
           <div>
-            <div className="scorm-micro text-[9px] uppercase font-semibold text-[#8295ae]">Upload package</div>
-            <h2 className="mt-1 text-base font-semibold text-[#f1f5f9]">Add a SCORM ZIP</h2>
-            <p className="mt-1 text-xs text-[#8295ae]">ZIP files up to {MAX_SCORM_UPLOAD_MB} MB are validated before becoming available.</p>
+            <div className="scorm-micro text-[9px] uppercase font-semibold">Upload package</div>
+            <div className="mt-1 text-base font-semibold" style={ink}>Add a SCORM ZIP</div>
+            <p className="mt-1 text-xs">ZIP files up to {MAX_SCORM_UPLOAD_MB} MB are validated before becoming available.</p>
           </div>
-          <div className="hidden sm:grid w-10 h-10 place-items-center rounded-lg border border-[#29405f] text-[#60a5fa]">
+          <div className="hidden sm:grid w-10 h-10 place-items-center rounded-lg border" style={{ ...softSurface, color: 'var(--scorm-accent)' }}>
             <UploadCloud size={18} />
           </div>
         </div>
 
         <div className="p-4 md:p-5 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] gap-3 items-end">
           <label className="block">
-            <span className="scorm-micro text-[9px] uppercase text-[#8295ae]">Package title</span>
+            <span className="scorm-micro text-[9px] uppercase">Package title</span>
             <input
               type="text"
               placeholder="Optional title"
@@ -237,10 +242,10 @@ export default function ScormLibrary() {
           </label>
 
           <label className="block">
-            <span className="scorm-micro text-[9px] uppercase text-[#8295ae]">SCORM ZIP</span>
-            <div className="mt-1.5 min-h-[42px] rounded-lg border border-[#29405f] px-3 flex items-center gap-3 bg-[#07111f]">
-              <FileArchive size={16} className="text-[#60a5fa] shrink-0" />
-              <span className="text-xs text-[#b8c7da] truncate flex-1">{selectedFile ? selectedFile.name : 'Choose a .zip file'}</span>
+            <span className="scorm-micro text-[9px] uppercase">SCORM ZIP</span>
+            <div className="mt-1.5 min-h-[42px] rounded-lg border px-3 flex items-center gap-3" style={surface}>
+              <FileArchive size={16} className="shrink-0" style={{ color: 'var(--scorm-accent)' }} />
+              <span className="text-xs truncate flex-1" style={{ color: 'var(--scorm-ink-soft)' }}>{selectedFile ? selectedFile.name : 'Choose a .zip file'}</span>
               <label className="scorm-button-secondary cursor-pointer px-3 py-2 text-[10px] font-semibold shrink-0">
                 Browse
                 <input
@@ -269,13 +274,13 @@ export default function ScormLibrary() {
       <section className="scorm-course-list-shell rounded-xl overflow-hidden border">
         <div className="scorm-course-toolbar p-4 md:p-5 border-b flex flex-col xl:flex-row gap-3 xl:items-center justify-between">
           <div>
-            <div className="scorm-micro text-[9px] uppercase font-semibold text-[#8295ae]">Package inventory</div>
-            <h2 className="mt-1 text-base font-semibold text-[#f1f5f9]">Available packages</h2>
+            <div className="scorm-micro text-[9px] uppercase font-semibold">Package inventory</div>
+            <div className="mt-1 text-base font-semibold" style={ink}>Available packages</div>
           </div>
 
           <div className="flex flex-col md:flex-row gap-3 md:items-center flex-1 xl:justify-end">
             <div className="relative flex-1 max-w-md">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8295ae]" />
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={muted} />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -300,9 +305,9 @@ export default function ScormLibrary() {
         <div className="scorm-course-rows divide-y">
           {filtered.length === 0 && (
             <div className="p-10 text-center">
-              <FileArchive size={24} className="mx-auto text-[#8295ae] mb-3" />
-              <div className="text-sm font-semibold text-[#f1f5f9]">No packages match this view</div>
-              <div className="text-xs text-[#8295ae] mt-1">Try another search or upload a SCORM ZIP.</div>
+              <FileArchive size={24} className="mx-auto mb-3" style={muted} />
+              <div className="text-sm font-semibold" style={ink}>No packages match this view</div>
+              <div className="text-xs mt-1" style={muted}>Try another search or upload a SCORM ZIP.</div>
             </div>
           )}
 
@@ -313,30 +318,30 @@ export default function ScormLibrary() {
                 <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_130px_150px_auto] gap-4 xl:items-center">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap min-w-0">
-                      <h3 className="font-semibold text-[14px] text-[#f1f5f9] truncate max-w-full" title={p.title}>{p.title}</h3>
+                      <h3 className="font-semibold text-[14px] truncate max-w-full" title={p.title}>{p.title}</h3>
                       <span className={`scorm-course-status scorm-micro shrink-0 px-2 py-1 rounded-md text-[8px] uppercase font-semibold border ${p.status === 'ready' ? 'is-published' : 'is-draft'}`}>
                         {p.status}
                       </span>
                     </div>
-                    <div className="scorm-micro text-[9px] text-[#8295ae] mt-1 flex flex-wrap gap-x-1">
+                    <div className="scorm-micro text-[9px] mt-1 flex flex-wrap gap-x-1">
                       <span>{p.standard || 'scorm_1_2'}</span>
                       <span>·</span>
                       <span>{generated ? 'Generated' : 'External'}</span>
                       {p.fileCount != null && <><span>·</span><span>{p.fileCount} files</span></>}
                       {p.entryHref && <><span>·</span><span className="truncate max-w-[260px]">{p.entryHref}</span></>}
                     </div>
-                    {p.status === 'processing' && <div className="text-[10px] text-amber-300 mt-2">Validating and extracting package…</div>}
-                    {p.errorMessage && <div className="text-[10px] text-rose-300 mt-2">{p.errorMessage}</div>}
+                    {p.status === 'processing' && <div className="text-[10px] mt-2" style={{ color: 'var(--scorm-amber)' }}>Validating and extracting package…</div>}
+                    {p.errorMessage && <div className="text-[10px] mt-2" style={{ color: 'var(--scorm-red)' }}>{p.errorMessage}</div>}
                   </div>
 
                   <div>
-                    <div className="text-xs font-semibold text-[#f1f5f9]">{generated ? 'Generated' : 'Uploaded'}</div>
-                    <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Source</div>
+                    <div className="text-xs font-semibold" style={ink}>{generated ? 'Generated' : 'Uploaded'}</div>
+                    <div className="scorm-micro text-[8px] uppercase mt-1">Source</div>
                   </div>
 
                   <div>
-                    <div className="text-xs font-semibold text-[#f1f5f9]">{p.fileCount != null ? p.fileCount : '—'}</div>
-                    <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Files</div>
+                    <div className="text-xs font-semibold" style={ink}>{p.fileCount != null ? p.fileCount : '—'}</div>
+                    <div className="scorm-micro text-[8px] uppercase mt-1">Files</div>
                   </div>
 
                   <div className="flex flex-wrap gap-2 xl:justify-end">
@@ -360,7 +365,8 @@ export default function ScormLibrary() {
                     </button>
                     <button
                       onClick={() => removePkg(p.id)}
-                      className="px-3 py-2 rounded-lg border border-rose-500/25 bg-rose-500/5 text-rose-300 text-[10px] font-semibold inline-flex items-center gap-1.5 hover:bg-rose-500/10"
+                      className="px-3 py-2 rounded-lg border text-[10px] font-semibold inline-flex items-center gap-1.5"
+                      style={{ color: 'var(--scorm-red)', borderColor: 'color-mix(in srgb, var(--scorm-red) 28%, transparent)', background: 'var(--scorm-red-soft)' }}
                     >
                       <Trash2 size={13} /> Delete
                     </button>
