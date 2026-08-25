@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware');
+const ScormAccessGrant = require('../../models/ScormAccessGrant');
 const {
     ADMIN_CONTACT_EMAIL,
     SUPER_ADMIN_EMAIL,
@@ -9,6 +10,11 @@ const {
     approveAccessRequest,
     removeGrant
 } = require('../../services/scorm/ScormAccessService');
+const {
+    getEntitlement,
+    updateEntitlement,
+    getUsageForEmail
+} = require('../../services/scorm/ScormEntitlementService');
 
 function requireSuperAdmin(req, res, next) {
     if (req.scormRole !== 'super_admin') {
@@ -20,7 +26,12 @@ function requireSuperAdmin(req, res, next) {
     next();
 }
 
-function serializeGrant(grant) {
+async function serializeGrant(grant) {
+    const protectedGrant = grant.role === 'super_admin' || grant.email === SUPER_ADMIN_EMAIL;
+    const [entitlement, usage] = await Promise.all([
+        getEntitlement(grant.email, protectedGrant ? 'super_admin' : grant.role),
+        getUsageForEmail(grant.email)
+    ]);
     return {
         id: grant.id,
         email: grant.email,
@@ -28,7 +39,9 @@ function serializeGrant(grant) {
         addedByEmail: grant.addedByEmail || null,
         createdAt: grant.createdAt,
         updatedAt: grant.updatedAt,
-        protected: grant.role === 'super_admin' || grant.email === SUPER_ADMIN_EMAIL
+        protected: protectedGrant,
+        entitlement,
+        usage
     };
 }
 
@@ -53,7 +66,8 @@ router.get('/me', auth, async (req, res) => {
         email: req.scormEmail || null,
         role: req.scormRole || 'user',
         isSuperAdmin: req.scormRole === 'super_admin',
-        adminContact: ADMIN_CONTACT_EMAIL
+        adminContact: ADMIN_CONTACT_EMAIL,
+        entitlement: req.scormEntitlement || await getEntitlement(req.scormEmail, req.scormRole)
     });
 });
 
@@ -66,7 +80,7 @@ router.get('/', auth, requireSuperAdmin, async (req, res) => {
         res.json({
             superAdminEmail: SUPER_ADMIN_EMAIL,
             adminContact: ADMIN_CONTACT_EMAIL,
-            grants: grants.map(serializeGrant),
+            grants: await Promise.all(grants.map(serializeGrant)),
             requests: requests.map(serializeRequest),
             pendingRequests: requests.filter((request) => request.status === 'pending').map(serializeRequest)
         });
@@ -93,12 +107,34 @@ router.post('/requests/:id/approve', auth, requireSuperAdmin, async (req, res) =
         }
         res.json({
             approved: true,
-            grant: serializeGrant(result.grant),
+            grant: await serializeGrant(result.grant),
             request: serializeRequest(result.request)
         });
     } catch (err) {
         console.error('[scorm-access] approve request failed', err);
         res.status(500).json({ message: 'Could not approve this SCORM AI registration.' });
+    }
+});
+
+router.patch('/:id/entitlement', auth, requireSuperAdmin, async (req, res) => {
+    try {
+        const grant = await ScormAccessGrant.findByPk(req.params.id);
+        if (!grant) return res.status(404).json({ message: 'Access grant not found.' });
+        if (grant.role === 'super_admin' || grant.email === SUPER_ADMIN_EMAIL) {
+            return res.status(400).json({ message: 'The super administrator always has unrestricted access.' });
+        }
+
+        await updateEntitlement(grant.email, req.body || {}, {
+            userId: req.userId,
+            email: req.scormEmail
+        });
+        res.json({
+            ok: true,
+            grant: await serializeGrant(grant)
+        });
+    } catch (err) {
+        console.error('[scorm-access] entitlement update failed', err);
+        res.status(500).json({ message: 'Could not update this user’s limits and permissions.' });
     }
 });
 
