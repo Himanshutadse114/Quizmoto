@@ -25,6 +25,11 @@ function normalizeLearnerEmail(value) {
     return email || null;
 }
 
+function isValidLearnerEmail(value) {
+    const email = normalizeLearnerEmail(value);
+    return Boolean(email && email.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+}
+
 function signRegistrationToken(registrationId, courseId) {
     return jwt.sign(
         { scormRegId: registrationId, courseId, typ: 'scorm_reg' },
@@ -95,6 +100,16 @@ async function nextAttempt(reg, transaction) {
 
 async function acceptInvite({ inviteCode, learnerName, learnerEmail }) {
     const normalizedEmail = normalizeLearnerEmail(learnerEmail);
+    if (!normalizedEmail) {
+        const err = new Error('Learner email is required');
+        err.code = 'EMAIL_REQUIRED';
+        throw err;
+    }
+    if (!isValidLearnerEmail(normalizedEmail)) {
+        const err = new Error('Enter a valid learner email address');
+        err.code = 'EMAIL_INVALID';
+        throw err;
+    }
 
     return sequelize.transaction(async (transaction) => {
         // Lock the course row so concurrent joins for the same course cannot both
@@ -124,24 +139,21 @@ async function acceptInvite({ inviteCode, learnerName, learnerEmail }) {
         await ensurePackageLaunchMetadata(pkg, { transaction });
         course.setDataValue('package', pkg);
 
-        let reg = null;
-        if (normalizedEmail) {
-            reg = await ScormRegistration.findOne({
-                where: {
-                    courseId: course.id,
-                    isPreview: false,
-                    [Op.and]: [
-                        sequelize.where(
-                            sequelize.fn('LOWER', sequelize.col('learnerEmail')),
-                            normalizedEmail
-                        )
-                    ]
-                },
-                order: [['createdAt', 'ASC']],
-                transaction,
-                lock: transaction.LOCK.UPDATE
-            });
-        }
+        let reg = await ScormRegistration.findOne({
+            where: {
+                courseId: course.id,
+                isPreview: false,
+                [Op.and]: [
+                    sequelize.where(
+                        sequelize.fn('LOWER', sequelize.col('learnerEmail')),
+                        normalizedEmail
+                    )
+                ]
+            },
+            order: [['createdAt', 'ASC']],
+            transaction,
+            lock: transaction.LOCK.UPDATE
+        });
 
         if (!reg) {
             reg = await ScormRegistration.create({
@@ -176,6 +188,7 @@ module.exports = {
     randomCode,
     hashToken,
     normalizeLearnerEmail,
+    isValidLearnerEmail,
     signRegistrationToken,
     verifyRegistrationToken,
     createInviteCode,
