@@ -38,9 +38,30 @@ describe('SCORM course interactions', () => {
         expect(style).to.include('var(--accent)');
     });
 
+    it('keeps flip cards compact and lets content determine their height', () => {
+        const style = courseInteractionStyle();
+        expect(style).to.include('grid-template-columns: repeat(2,minmax(220px,280px))');
+        expect(style).to.include('max-width: 572px');
+        expect(style).to.include('display: grid');
+        expect(style).to.include('grid-area: 1 / 1');
+        expect(style).to.include('min-height: 112px');
+        expect(style).to.not.include('min-height: 172px');
+    });
+
+    it('overrides the original card span rules so the number stays centered in its badge', () => {
+        const style = courseInteractionStyle();
+        expect(style).to.include('.qmx-card.qmx-flip-card .qmx-flip-number');
+        expect(style).to.include('display: inline-flex !important');
+        expect(style).to.include('width: 28px !important');
+        expect(style).to.include('height: 28px !important');
+        expect(style).to.include('margin: 0 !important');
+        expect(style).to.include('line-height: 1 !important');
+    });
+
     it('upgrades only learning key-point cards and leaves quiz controls alone', () => {
         const script = courseInteractionScript();
-        expect(script).to.include('.slide[data-kind="learning"] .qmx-cards .qmx-card');
+        expect(script).to.include('.slide[data-kind="learning"] .qmx-cards');
+        expect(script).to.include("grid.classList.add('qmx-flip-grid')");
         expect(script).to.not.include('.quiz-option');
     });
 });
