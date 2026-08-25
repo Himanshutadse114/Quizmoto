@@ -13,49 +13,61 @@ function courseInteractionStyle() {
   justify-content: start;
 }
 
-/* Slides without a generated image use a deliberately centred reading layout. */
+/* No-image slides keep the reading content on the left and use the visual column for interactions. */
 .qmx-learning-shell.no-image {
-  width: min(980px,100%) !important;
+  width: min(1180px,100%) !important;
   margin-inline: auto !important;
 }
 .qmx-learning-shell.no-image .qmx-copy {
   width: 100%;
-  margin-inline: auto;
-  text-align: center;
+  display: grid;
+  grid-template-columns: minmax(0,1.08fr) minmax(420px,.92fr);
+  column-gap: 42px;
+  row-gap: 0;
+  align-items: start;
+  text-align: left;
 }
-.qmx-learning-shell.no-image .qmx-copy h2 {
-  max-width: 960px;
-  margin-left: auto !important;
-  margin-right: auto !important;
+.qmx-learning-shell.no-image .qmx-copy > .eyebrow,
+.qmx-learning-shell.no-image .qmx-copy > h2,
+.qmx-learning-shell.no-image .qmx-copy > p {
+  grid-column: 1;
+}
+.qmx-learning-shell.no-image .qmx-copy > .eyebrow { grid-row: 1; }
+.qmx-learning-shell.no-image .qmx-copy > h2 {
+  grid-row: 2;
+  max-width: 720px;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }
 .qmx-learning-shell.no-image .qmx-copy > p {
-  max-width: 820px !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
+  grid-row: 3;
+  max-width: 650px !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }
 .qmx-learning-shell.no-image .qmx-cards,
 .qmx-learning-shell.no-image .qmx-process,
 .qmx-learning-shell.no-image .qmx-compare {
-  margin-left: auto !important;
-  margin-right: auto !important;
-  justify-content: center !important;
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+  justify-self: end;
+  width: 100%;
+  margin: 0 !important;
 }
 .qmx-learning-shell.no-image .qmx-cards.qmx-flip-grid {
-  justify-content: center !important;
+  grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  max-width: 560px;
+  justify-content: stretch !important;
 }
 .qmx-learning-shell.no-image .qmx-step,
-.qmx-learning-shell.no-image .qmx-compare-col {
-  text-align: center;
-}
-.qmx-learning-shell.no-image .qmx-flip-face {
-  align-items: center;
-  text-align: center;
+.qmx-learning-shell.no-image .qmx-compare-col,
+.qmx-learning-shell.no-image .qmx-flip-face,
+.qmx-learning-shell.no-image .qmx-flip-back p {
+  text-align: left;
 }
 .qmx-learning-shell.no-image .qmx-card.qmx-flip-card .qmx-flip-number {
-  align-self: center !important;
-}
-.qmx-learning-shell.no-image .qmx-flip-back p {
-  text-align: center;
+  align-self: flex-start !important;
 }
 
 .qmx-card.qmx-flip-card {
@@ -153,8 +165,18 @@ function courseInteractionStyle() {
   box-shadow: 0 9px 22px rgba(15,23,42,.085);
 }
 .qmx-flip-card:focus-visible .qmx-flip-face { outline: 2px solid var(--primary); outline-offset: 2px; }
+#next-btn[data-qmx-reveal-locked="true"] { opacity: .38 !important; cursor: not-allowed !important; }
+@media(max-width:980px){
+  .qmx-learning-shell.no-image .qmx-copy{display:block;text-align:left}
+  .qmx-learning-shell.no-image .qmx-copy>h2{max-width:none}
+  .qmx-learning-shell.no-image .qmx-copy>p{max-width:840px!important}
+  .qmx-learning-shell.no-image .qmx-cards,
+  .qmx-learning-shell.no-image .qmx-process,
+  .qmx-learning-shell.no-image .qmx-compare{width:100%;max-width:572px;margin-top:22px!important;justify-self:start}
+}
 @media(max-width:760px){
   .qmx-cards.qmx-flip-grid{grid-template-columns:minmax(0,1fr) !important;max-width:420px}
+  .qmx-learning-shell.no-image .qmx-cards.qmx-flip-grid{grid-template-columns:minmax(0,1fr) !important;max-width:420px}
 }
 @media(max-width:620px){
   .qmx-learning-shell.no-image{width:100%!important}
@@ -191,6 +213,7 @@ function courseInteractionScript() {
     card.textContent = '';
     card.classList.add('qmx-flip-card');
     card.setAttribute('data-qmx-flip-ready','true');
+    card.setAttribute('data-qmx-revealed','false');
     card.setAttribute('role','button');
     card.setAttribute('tabindex','0');
     card.setAttribute('aria-expanded','false');
@@ -222,12 +245,42 @@ function courseInteractionScript() {
     });
   }
 
+  function activeSlide(){ return document.querySelector('.slide.active'); }
+
+  function unrevealedCards(slide){
+    if (!slide) return [];
+    return Array.prototype.filter.call(slide.querySelectorAll('.qmx-flip-card'), function(card){
+      return card.getAttribute('data-qmx-revealed') !== 'true';
+    });
+  }
+
+  function syncNextGate(){
+    var next = document.getElementById('next-btn');
+    if (!next) return;
+    var slide = activeSlide();
+    var cards = slide ? slide.querySelectorAll('.qmx-flip-card') : [];
+    var locked = cards.length > 0 && unrevealedCards(slide).length > 0;
+    if (locked) {
+      next.disabled = true;
+      next.setAttribute('data-qmx-reveal-locked','true');
+      next.title = 'Reveal every key point before continuing';
+      next.setAttribute('aria-label','Reveal every key point before continuing');
+    } else {
+      if (next.getAttribute('data-qmx-reveal-locked') === 'true') next.disabled = false;
+      next.removeAttribute('data-qmx-reveal-locked');
+      next.removeAttribute('title');
+      next.removeAttribute('aria-label');
+    }
+  }
+
   function toggleCard(card){
     if (!card) return;
     var flipped = !card.classList.contains('is-flipped');
     card.classList.toggle('is-flipped', flipped);
+    if (flipped) card.setAttribute('data-qmx-revealed','true');
     card.setAttribute('aria-expanded', flipped ? 'true' : 'false');
     card.setAttribute('aria-label', (flipped ? 'Hide' : 'Reveal') + ' key point');
+    syncNextGate();
   }
 
   document.addEventListener('click', function(event){
@@ -242,12 +295,27 @@ function courseInteractionScript() {
     toggleCard(card);
   }, false);
 
+  function blockLockedNext(event){
+    var next = event.target && event.target.closest ? event.target.closest('#next-btn') : null;
+    if (!next) return;
+    var slide = activeSlide();
+    if (!unrevealedCards(slide).length) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    syncNextGate();
+  }
+
   function install(){
     upgradeCards();
+    syncNextGate();
+    document.addEventListener('click', blockLockedNext, true);
     var main = document.querySelector('main');
     if (main && typeof MutationObserver !== 'undefined') {
-      var observer = new MutationObserver(upgradeCards);
-      observer.observe(main,{subtree:true,childList:true});
+      var observer = new MutationObserver(function(){
+        upgradeCards();
+        syncNextGate();
+      });
+      observer.observe(main,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
     }
   }
 
