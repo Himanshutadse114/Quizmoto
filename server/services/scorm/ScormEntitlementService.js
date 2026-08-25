@@ -1,7 +1,11 @@
 const { Op } = require('sequelize');
 const User = require('../../models/User');
 const ScormUserEntitlement = require('../../models/scorm/ScormUserEntitlement');
-const { ScormCourse, ScormLearnerRoster } = require('../../models/scorm');
+const {
+    ScormCourse,
+    ScormLearnerRoster,
+    ScormRegistration
+} = require('../../models/scorm');
 
 const DEFAULT_PERMISSIONS = Object.freeze({
     courseAuthoring: true,
@@ -114,21 +118,41 @@ async function updateEntitlement(email, patch = {}, actor = {}) {
     return serializeEntitlement(row, 'user');
 }
 
+async function enrolledLearnerCount(hostId) {
+    const courses = await ScormCourse.findAll({
+        where: { hostId },
+        attributes: ['id'],
+        raw: true
+    });
+    const courseIds = courses.map((course) => course.id);
+    if (!courseIds.length) return 0;
+    return ScormRegistration.count({
+        distinct: true,
+        col: 'learnerEmail',
+        where: {
+            courseId: { [Op.in]: courseIds },
+            isPreview: false,
+            learnerEmail: { [Op.ne]: null }
+        }
+    });
+}
+
 async function getUsageForEmail(email) {
     const normalized = normalizeEmail(email);
     const user = normalized ? await User.findOne({ where: { email: normalized } }) : null;
-    if (!user) return { courses: 0, learners: 0 };
+    if (!user) return { courses: 0, learners: 0, rosterLearners: 0 };
 
-    const [courses, learners] = await Promise.all([
+    const [courses, learners, rosterLearners] = await Promise.all([
         ScormCourse.count({
             where: {
                 hostId: user.id,
                 status: { [Op.ne]: 'archived' }
             }
         }),
+        enrolledLearnerCount(user.id),
         ScormLearnerRoster.count({ where: { hostId: user.id } })
     ]);
-    return { courses, learners };
+    return { courses, learners, rosterLearners };
 }
 
 function deny(message, code) {
@@ -170,6 +194,47 @@ async function assertCourseLimit(userId, entitlement) {
     }
 }
 
+async function assertEnrollmentAllowed(hostId, learnerEmail) {
+    const email = normalizeEmail(learnerEmail);
+    if (!hostId || !email) return;
+    const host = await User.findByPk(hostId);
+    if (!host) return;
+
+    const { getAccessRole } = require('./ScormAccessService');
+    const role = await getAccessRole(host.email);
+    const entitlement = await getEntitlement(host.email, role || 'user');
+    const max = normalizeLimit(entitlement.maxLearners);
+    if (max === null) return;
+
+    const courses = await ScormCourse.findAll({
+        where: { hostId },
+        attributes: ['id'],
+        raw: true
+    });
+    const courseIds = courses.map((course) => course.id);
+    if (!courseIds.length) {
+        if (max === 0) throw deny('Learner enrollment is disabled for this account.', 'SCORM_LEARNER_LIMIT_REACHED');
+        return;
+    }
+
+    const existing = await ScormRegistration.findOne({
+        where: {
+            courseId: { [Op.in]: courseIds },
+            isPreview: false,
+            learnerEmail: email
+        }
+    });
+    if (existing) return;
+
+    const current = await enrolledLearnerCount(hostId);
+    if (current >= max) {
+        throw deny(
+            `Learner enrollment limit reached (${current}/${max}). Contact the course administrator.`,
+            'SCORM_LEARNER_LIMIT_REACHED'
+        );
+    }
+}
+
 function requestedRosterEmails(req) {
     const rows = req.body?.learners || req.body?.emails || [];
     const list = Array.isArray(rows) ? rows : [];
@@ -192,7 +257,7 @@ async function assertLearnerLimit(req, userId, entitlement) {
         const current = await ScormLearnerRoster.count({ where: { hostId: userId } });
         if (current + 1 > max) {
             throw deny(
-                `Learner limit reached (${current}/${max}). Contact the super administrator to increase your limit.`,
+                `Learner roster limit reached (${current}/${max}). Contact the super administrator to increase your limit.`,
                 'SCORM_LEARNER_LIMIT_REACHED'
             );
         }
@@ -261,5 +326,6 @@ module.exports = {
     getEntitlement,
     updateEntitlement,
     getUsageForEmail,
+    assertEnrollmentAllowed,
     enforceRequestEntitlement
 };
