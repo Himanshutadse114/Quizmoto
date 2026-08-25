@@ -1,6 +1,7 @@
 const { expect } = require('chai');
 const {
     normalizeVisualPrompt,
+    enforceVisualPromptRequirements,
     recoverPromptFromBrokenJson,
     sharedVisualRules,
     slideInstruction,
@@ -13,6 +14,15 @@ describe('Gemini slide visual prompt service', () => {
         const rules = sharedVisualRules();
         expect(rules).to.include('plain text');
         expect(rules).to.include('Do not return JSON');
+    });
+
+    it('requires premium topic-specific 3D visuals without text', () => {
+        const rules = sharedVisualRules();
+        expect(rules).to.include('semi-realistic 3D render');
+        expect(rules).to.include('TOPIC SPECIFICITY');
+        expect(rules).to.include('ABSOLUTELY NO TEXT IN THE IMAGE');
+        expect(rules).to.include('NON-HUMAN VISUAL ONLY');
+        expect(rules).to.include('16:9');
     });
 
     it('accepts a normal plain-text image prompt', () => {
@@ -34,6 +44,16 @@ describe('Gemini slide visual prompt service', () => {
         expect(normalizeVisualPrompt(broken)).to.equal(recovered);
     });
 
+    it('enforces 3D and text-free requirements when the generated prompt omits them', () => {
+        const prompt = enforceVisualPromptRequirements('A secure office desk with a laptop and document tray representing careful data handling.');
+        expect(prompt).to.match(/3D/i);
+        expect(prompt).to.include('Wide 16:9 composition');
+        expect(prompt).to.include('Non-human scene');
+        expect(prompt).to.include('Absolutely no text');
+        expect(prompt).to.include('No logos');
+        expect(prompt).to.include('No watermark');
+    });
+
     it('grounds an emotions slide in its actual lesson and forbids unrelated cyber imagery', () => {
         const instruction = slideInstruction({
             title: 'Why Emotional Understanding Matters',
@@ -46,6 +66,7 @@ describe('Gemini slide visual prompt service', () => {
         expect(instruction).to.include('Why Emotional Understanding Matters');
         expect(instruction).to.include('self-awareness');
         expect(instruction).to.include('empathy');
+        expect(instruction).to.include('concrete topic-specific 3D scene');
         expect(instruction).to.include('Do not introduce cybersecurity objects');
         expect(instruction).to.include('Do not return JSON');
     });
@@ -61,6 +82,8 @@ describe('Gemini slide visual prompt service', () => {
         };
         const instruction = batchInstruction(course);
         expect(instruction).to.include('Create the complete visual plan for the course in ONE response');
+        expect(instruction).to.include('meaningfully different in subject, object arrangement and camera composition');
+        expect(instruction).to.include('premium modern 3D art direction');
         expect(instruction).to.include('COVER|||<cover prompt>');
         expect(instruction).to.include('SLIDE 1|||<slide 1 prompt>');
         expect(instruction).to.include('SLIDE 2|||<slide 2 prompt>');
@@ -74,5 +97,8 @@ describe('Gemini slide visual prompt service', () => {
         expect(parsed.coverPrompt).to.include('emotional spectrum');
         expect(parsed.slidePrompts[0]).to.include('empathy');
         expect(parsed.slidePrompts[1]).to.include('pleasantness');
+        expect(parsed.coverPrompt).to.match(/3D/i);
+        expect(parsed.slidePrompts[0]).to.match(/3D/i);
+        expect(parsed.slidePrompts[1]).to.match(/3D/i);
     });
 });
