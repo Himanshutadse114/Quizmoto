@@ -4,6 +4,7 @@ const { buildRasterCoursePackageZip } = require('./ScormRasterCoursePackageBuild
 
 const REPLICATE_MEDIA_CSS = '<style id="quizmoto-replicate-media-v3"></style>';
 const BROWSER_NARRATION_SCRIPT_ID = 'quizmoto-browser-narration-v2';
+const COURSE_TYPOGRAPHY_STYLE_ID = 'quizmoto-course-typography-v1';
 
 function escapeHtml(value) {
     return String(value || '')
@@ -80,6 +81,39 @@ function injectReplicateMediaUi(html, assetMap = {}) {
         source = source.includes('</body>') ? source.replace('</body>', `${script}\n</body>`) : `${source}\n${script}`;
     }
     return source;
+}
+
+function courseTypographyStyle() {
+    return `<style id="${COURSE_TYPOGRAPHY_STYLE_ID}">
+/* Keep learner courses readable without overly heavy headings or answer text. */
+header h1,
+.progress-text,
+.part,
+.nav-btn,
+.qmx-meta span { font-weight: 600 !important; }
+
+.eyebrow { font-weight: 700 !important; }
+
+.qmx-copy h2,
+.qmx-quiz-shell h2,
+.qmx-final-shell h2 { font-weight: 600 !important; }
+
+.qmx-card p,
+.qmx-step p,
+.qmx-compare-col p,
+.quiz-option,
+.feedback { font-weight: 500 !important; }
+
+.feedback strong,
+.qmx-compare-col b { font-weight: 600 !important; }
+</style>`;
+}
+
+function injectCourseTypographyUi(html) {
+    let source = String(html || '');
+    if (!source || source.includes(COURSE_TYPOGRAPHY_STYLE_ID)) return source;
+    const style = courseTypographyStyle();
+    return source.includes('</head>') ? source.replace('</head>', `${style}\n</head>`) : `${style}\n${source}`;
 }
 
 function browserNarrationScript() {
@@ -259,7 +293,7 @@ function browserNarrationScript() {
     button.style.border = '1px solid rgba(40,40,36,.28)';
     button.style.borderRadius = '8px';
     button.style.fontSize = '11px';
-    button.style.fontWeight = '800';
+    button.style.fontWeight = '600';
     button.style.cursor = 'pointer';
     button.style.whiteSpace = 'nowrap';
     button.style.flexShrink = '0';
@@ -308,8 +342,10 @@ async function addBrowserNarrationToZip(zipBuffer) {
     const zip = await JSZip.loadAsync(zipBuffer);
     const indexFile = zip.file('index.html');
     if (!indexFile) return zipBuffer;
-    const html = await indexFile.async('string');
-    zip.file('index.html', injectBrowserNarrationUi(html));
+    let html = await indexFile.async('string');
+    html = injectCourseTypographyUi(html);
+    html = injectBrowserNarrationUi(html);
+    zip.file('index.html', html);
     return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
 }
 
@@ -349,9 +385,12 @@ module.exports = {
     replicateMediaScript,
     validateRasterMedia,
     isRasterPath,
+    courseTypographyStyle,
+    injectCourseTypographyUi,
     browserNarrationScript,
     injectBrowserNarrationUi,
     addBrowserNarrationToZip,
+    COURSE_TYPOGRAPHY_STYLE_ID,
     BROWSER_NARRATION_SCRIPT_ID,
     REPLICATE_MEDIA_CSS
 };
