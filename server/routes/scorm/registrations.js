@@ -61,15 +61,15 @@ async function joinInvite(req, res) {
             playUrl: `/api/scorm/play/${registrationId}`
         });
     } catch (err) {
-        const code = err.code === 'NOT_FOUND'
+        const code = Number(err?.status) || (err.code === 'NOT_FOUND'
             ? 404
-            : ['LEARNER_NOT_APPROVED', 'LEARNER_ROSTER_EMPTY'].includes(err.code)
+            : ['LEARNER_NOT_APPROVED', 'LEARNER_ROSTER_EMPTY', 'SCORM_LEARNER_LIMIT_REACHED'].includes(err.code)
                 ? 403
                 : ['PACKAGE_NOT_READY', 'PACKAGE_LAUNCH_MISSING'].includes(err.code)
                     ? 409
                     : ['EMAIL_REQUIRED', 'EMAIL_INVALID'].includes(err.code)
                         ? 400
-                        : 500;
+                        : 500);
         console.error('[scorm-invite] join failed', {
             inviteCode: req.body?.inviteCode || null,
             error: err?.message || String(err),
