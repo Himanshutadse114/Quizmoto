@@ -58,6 +58,17 @@ describe('SCORM course interactions', () => {
         expect(style).to.include('line-height: 1 !important');
     });
 
+    it('centers no-image learning slides without changing image-based slide layout', () => {
+        const style = courseInteractionStyle();
+        expect(style).to.include('.qmx-learning-shell.no-image');
+        expect(style).to.include('width: min(980px,100%) !important');
+        expect(style).to.include('text-align: center');
+        expect(style).to.include('max-width: 820px !important');
+        expect(style).to.include('.qmx-learning-shell.no-image .qmx-cards.qmx-flip-grid');
+        expect(style).to.include('justify-content: center !important');
+        expect(style).to.not.include('.qmx-learning-shell.has-image .qmx-copy {\n  text-align: center');
+    });
+
     it('upgrades only learning key-point cards and leaves quiz controls alone', () => {
         const script = courseInteractionScript();
         expect(script).to.include('.slide[data-kind="learning"] .qmx-cards');
