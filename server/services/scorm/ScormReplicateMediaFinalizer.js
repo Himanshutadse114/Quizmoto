@@ -3,6 +3,7 @@ const { buildScormPackageZip: buildLegacyPackage } = require('./ScormAnswerTrack
 const { buildRasterCoursePackageZip } = require('./ScormRasterCoursePackageBuilder');
 
 const REPLICATE_MEDIA_CSS = '<style id="quizmoto-replicate-media-v3"></style>';
+const BROWSER_NARRATION_SCRIPT_ID = 'quizmoto-browser-narration-v1';
 
 function escapeHtml(value) {
     return String(value || '')
@@ -81,6 +82,174 @@ function injectReplicateMediaUi(html, assetMap = {}) {
     return source;
 }
 
+function browserNarrationScript() {
+    return `<script id="${BROWSER_NARRATION_SCRIPT_ID}">
+(function(){
+  if (!('speechSynthesis' in window) || typeof window.SpeechSynthesisUtterance === 'undefined') return;
+
+  var synth = window.speechSynthesis;
+  var enabled = false;
+  var lastSlide = null;
+  var observer = null;
+
+  function cleanText(value) {
+    return String(value || '').replace(/\\s+/g, ' ').trim();
+  }
+
+  function activeSlide() {
+    return document.querySelector('.slide.active');
+  }
+
+  function narrationText(slide) {
+    if (!slide) return '';
+    var selectors = [
+      '.eyebrow',
+      'h2',
+      '.qmx-copy > p',
+      '.qmx-card p',
+      '.qmx-step p',
+      '.qmx-compare-col p',
+      '.quiz-option',
+      '.feedback',
+      '.qmx-final-shell > p'
+    ];
+    var seen = [];
+    selectors.forEach(function(selector){
+      Array.prototype.forEach.call(slide.querySelectorAll(selector), function(node){
+        if (node.classList && node.classList.contains('feedback') && window.getComputedStyle(node).display === 'none') return;
+        var value = cleanText(node.textContent);
+        if (value && seen.indexOf(value) === -1) seen.push(value);
+      });
+    });
+    if (!seen.length) return cleanText(slide.innerText || slide.textContent);
+    return seen.join('. ');
+  }
+
+  function chooseVoice(lang) {
+    var voices = synth.getVoices ? synth.getVoices() : [];
+    if (!voices || !voices.length) return null;
+    var requested = cleanText(lang || document.documentElement.lang || navigator.language || 'en-US').toLowerCase();
+    var base = requested.split('-')[0];
+    var candidates = voices.filter(function(voice){
+      return String(voice.lang || '').toLowerCase().indexOf(base) === 0;
+    });
+    if (!candidates.length) candidates = voices.slice();
+    candidates.sort(function(a, b){
+      function score(voice) {
+        var name = String(voice.name || '');
+        var voiceLang = String(voice.lang || '').toLowerCase();
+        var total = 0;
+        if (/google/i.test(name)) total += 100;
+        if (/natural|neural|premium|enhanced/i.test(name)) total += 40;
+        if (/microsoft|samantha|karen|daniel|serena|moira/i.test(name)) total += 25;
+        if (voiceLang === requested) total += 20;
+        if (voice.localService) total += 5;
+        return total;
+      }
+      return score(b) - score(a);
+    });
+    return candidates[0] || null;
+  }
+
+  function updateButton() {
+    var button = document.getElementById('qmx-narration-toggle');
+    if (!button) return;
+    button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    button.textContent = enabled ? '🔊 Narration On' : '🔈 Narration Off';
+    button.title = enabled ? 'Stop automatic narration' : 'Read this course aloud';
+    button.style.background = enabled ? '#282824' : 'transparent';
+    button.style.color = enabled ? '#fff' : '#282824';
+  }
+
+  function stopNarration() {
+    try { synth.cancel(); } catch (_) {}
+  }
+
+  function speakCurrentSlide(force) {
+    if (!enabled) return;
+    var slide = activeSlide();
+    if (!slide) return;
+    if (!force && slide === lastSlide) return;
+    lastSlide = slide;
+    var spoken = narrationText(slide);
+    if (!spoken) return;
+    stopNarration();
+    var utterance = new SpeechSynthesisUtterance(spoken);
+    var lang = document.documentElement.lang || navigator.language || 'en-US';
+    utterance.lang = lang;
+    var voice = chooseVoice(lang);
+    if (voice) utterance.voice = voice;
+    utterance.rate = 0.98;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    try { synth.speak(utterance); } catch (_) {}
+  }
+
+  function install() {
+    var header = document.querySelector('header');
+    if (!header || document.getElementById('qmx-narration-toggle')) return;
+    var button = document.createElement('button');
+    button.id = 'qmx-narration-toggle';
+    button.type = 'button';
+    button.setAttribute('aria-label', 'Toggle course narration');
+    button.style.minHeight = '34px';
+    button.style.padding = '6px 10px';
+    button.style.border = '1px solid rgba(40,40,36,.28)';
+    button.style.borderRadius = '8px';
+    button.style.fontSize = '11px';
+    button.style.fontWeight = '800';
+    button.style.cursor = 'pointer';
+    button.style.whiteSpace = 'nowrap';
+    button.style.flexShrink = '0';
+    button.addEventListener('click', function(){
+      enabled = !enabled;
+      updateButton();
+      if (enabled) {
+        lastSlide = null;
+        speakCurrentSlide(true);
+      } else {
+        stopNarration();
+      }
+    });
+    header.appendChild(button);
+    updateButton();
+
+    var main = document.querySelector('main');
+    if (main && typeof MutationObserver !== 'undefined') {
+      observer = new MutationObserver(function(){
+        if (!enabled) return;
+        var slide = activeSlide();
+        if (slide && slide !== lastSlide) speakCurrentSlide(false);
+      });
+      observer.observe(main, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+
+  window.addEventListener('pagehide', stopNarration);
+  window.addEventListener('beforeunload', stopNarration);
+})();
+</script>`;
+}
+
+function injectBrowserNarrationUi(html) {
+    let source = String(html || '');
+    if (!source || source.includes(BROWSER_NARRATION_SCRIPT_ID)) return source;
+    const script = browserNarrationScript();
+    return source.includes('</body>') ? source.replace('</body>', `${script}\n</body>`) : `${source}\n${script}`;
+}
+
+async function addBrowserNarrationToZip(zipBuffer) {
+    const zip = await JSZip.loadAsync(zipBuffer);
+    const indexFile = zip.file('index.html');
+    if (!indexFile) return zipBuffer;
+    const html = await indexFile.async('string');
+    zip.file('index.html', injectBrowserNarrationUi(html));
+    return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+}
+
 function injectManifestFiles(manifest, paths) {
     let source = String(manifest || '');
     const unique = Array.from(new Set((paths || []).map((path) => String(path || '').trim()).filter(Boolean)));
@@ -98,11 +267,12 @@ async function buildScormPackageZip(analysis, opts = {}) {
     const validation = validateRasterMedia(analysis, mediaFiles);
 
     if (validation.raster) {
-        return buildRasterCoursePackageZip(analysis, {
+        const rasterZip = await buildRasterCoursePackageZip(analysis, {
             templateId: opts.templateId,
             logoDataUrl: opts.logoDataUrl || null,
             mediaFiles
         });
+        return addBrowserNarrationToZip(rasterZip);
     }
 
     return buildLegacyPackage(analysis, opts);
@@ -116,5 +286,9 @@ module.exports = {
     replicateMediaScript,
     validateRasterMedia,
     isRasterPath,
+    browserNarrationScript,
+    injectBrowserNarrationUi,
+    addBrowserNarrationToZip,
+    BROWSER_NARRATION_SCRIPT_ID,
     REPLICATE_MEDIA_CSS
 };
