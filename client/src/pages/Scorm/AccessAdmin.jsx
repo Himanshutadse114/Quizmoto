@@ -5,13 +5,123 @@ import {
   Clock3,
   LogIn,
   RefreshCw,
+  Save,
   ShieldCheck,
+  SlidersHorizontal,
   Trash2,
   UserCheck,
   UserPlus
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+
+const PERMISSION_LABELS = [
+  ['courseAuthoring', 'Create courses'],
+  ['coursePublishing', 'Publish courses'],
+  ['coursePreview', 'Preview courses'],
+  ['learnerRoster', 'Manage learner roster'],
+  ['learnerTracking', 'Learner tracking'],
+  ['reports', 'Reports & exports'],
+  ['library', 'SCORM library'],
+  ['contentEditor', 'Content editor']
+];
+
+function limitValue(value) {
+  return value === null || value === undefined ? '' : String(value);
+}
+
+function EntitlementEditor({ grant, onSave, saving }) {
+  const initial = grant.entitlement || {};
+  const [maxCourses, setMaxCourses] = useState(limitValue(initial.maxCourses));
+  const [maxLearners, setMaxLearners] = useState(limitValue(initial.maxLearners));
+  const [permissions, setPermissions] = useState(initial.permissions || {});
+
+  useEffect(() => {
+    setMaxCourses(limitValue(grant.entitlement?.maxCourses));
+    setMaxLearners(limitValue(grant.entitlement?.maxLearners));
+    setPermissions(grant.entitlement?.permissions || {});
+  }, [grant.id, grant.entitlement]);
+
+  if (grant.protected) {
+    return (
+      <div className="mt-4 rounded-xl border border-blue-400/20 bg-blue-500/5 px-4 py-3 text-[10px] text-[#93c5fd]">
+        Super administrator access is unrestricted: unlimited courses, unlimited learners and all capabilities enabled.
+      </div>
+    );
+  }
+
+  const save = () => {
+    onSave(grant, {
+      maxCourses: maxCourses === '' ? null : Math.max(0, Number(maxCourses) || 0),
+      maxLearners: maxLearners === '' ? null : Math.max(0, Number(maxLearners) || 0),
+      permissions
+    });
+  };
+
+  return (
+    <div className="mt-4 rounded-xl border border-[#29405f] bg-[#050d18] p-4">
+      <div className="flex items-center gap-2 text-[#93c5fd] text-[9px] uppercase tracking-[.12em] font-semibold">
+        <SlidersHorizontal size={13} /> Account restrictions
+      </div>
+
+      <div className="mt-3 grid sm:grid-cols-2 gap-3">
+        <label className="block">
+          <span className="text-[9px] uppercase tracking-[.09em] text-[#8295ae]">Maximum courses</span>
+          <input
+            type="number"
+            min="0"
+            value={maxCourses}
+            onChange={(e) => setMaxCourses(e.target.value)}
+            placeholder="Unlimited"
+            className="mt-1.5 w-full rounded-lg border border-[#29405f] bg-[#07111f] px-3 py-2 text-xs text-[#f8fafc] outline-none focus:border-[#60a5fa]"
+          />
+          <div className="mt-1 text-[9px] text-[#71839c]">Used {grant.usage?.courses || 0}{grant.entitlement?.maxCourses == null ? ' · unlimited' : ` / ${grant.entitlement.maxCourses}`}</div>
+        </label>
+
+        <label className="block">
+          <span className="text-[9px] uppercase tracking-[.09em] text-[#8295ae]">Maximum enrolled learners</span>
+          <input
+            type="number"
+            min="0"
+            value={maxLearners}
+            onChange={(e) => setMaxLearners(e.target.value)}
+            placeholder="Unlimited"
+            className="mt-1.5 w-full rounded-lg border border-[#29405f] bg-[#07111f] px-3 py-2 text-xs text-[#f8fafc] outline-none focus:border-[#60a5fa]"
+          />
+          <div className="mt-1 text-[9px] text-[#71839c]">Enrolled {grant.usage?.learners || 0} · roster {grant.usage?.rosterLearners || 0}</div>
+        </label>
+      </div>
+
+      <div className="mt-4">
+        <div className="text-[9px] uppercase tracking-[.09em] text-[#8295ae] mb-2">Feature access</div>
+        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-2">
+          {PERMISSION_LABELS.map(([key, label]) => (
+            <label key={key} className="flex items-center gap-2 rounded-lg border border-[#22324a] bg-[#07111f] px-3 py-2 text-[10px] text-[#cbd5e1] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={permissions[key] !== false}
+                onChange={(e) => setPermissions((current) => ({ ...current, [key]: e.target.checked }))}
+                className="accent-[#4FC9BF]"
+              />
+              <span>{label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="scorm-button-primary min-h-9 px-3.5 text-[10px] font-semibold inline-flex items-center gap-2 disabled:opacity-50"
+        >
+          <Save size={13} /> {saving ? 'Saving…' : 'Save restrictions'}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function AccessAdmin() {
   const { token, user } = useAuth();
@@ -22,6 +132,7 @@ export default function AccessAdmin() {
   const [loading, setLoading] = useState(true);
   const [approvingId, setApprovingId] = useState(null);
   const [removingId, setRemovingId] = useState(null);
+  const [savingGrantId, setSavingGrantId] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -53,12 +164,28 @@ export default function AccessAdmin() {
     setMessage('');
     try {
       await axios.post(apiUrl(`/api/scorm/access/requests/${request.id}/approve`), {}, { headers });
-      setMessage(`${request.email} is approved. They can now sign in with the same credentials they already registered.`);
+      setMessage(`${request.email} is approved. You can now configure course, learner and feature limits for this account.`);
       await loadAccess();
     } catch (err) {
       setError(err.response?.data?.message || 'Could not approve this SCORM AI registration.');
     } finally {
       setApprovingId(null);
+    }
+  };
+
+  const saveEntitlement = async (grant, patch) => {
+    setSavingGrantId(grant.id);
+    setError('');
+    setMessage('');
+    try {
+      const res = await axios.patch(apiUrl(`/api/scorm/access/${grant.id}/entitlement`), patch, { headers });
+      const updated = res.data?.grant;
+      if (updated) setGrants((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setMessage(`Restrictions updated for ${grant.email}. Changes are enforced server-side immediately.`);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not save account restrictions.');
+    } finally {
+      setSavingGrantId(null);
     }
   };
 
@@ -93,7 +220,7 @@ export default function AccessAdmin() {
             <div className="text-[#60a5fa] text-[9px] uppercase tracking-[.16em] font-semibold">Super administrator</div>
             <h1 className="mt-2 font-bold text-[#f8fafc] text-3xl md:text-4xl leading-none tracking-[-.035em]">SCORM AI Access Control</h1>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[#aebed1]">
-              Users register first and remain pending until you approve their captured identity. Once approved, they sign in with the same password or Google account they originally used—no activation code and no second registration.
+              Approve accounts, set course and learner limits, and control access to authoring, publishing, previews, learner management, tracking, reports, the library and the content editor.
             </p>
           </div>
           <button type="button" onClick={loadAccess} disabled={loading} className="scorm-button-secondary min-h-10 px-3.5 text-[10px] font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50">
@@ -107,7 +234,7 @@ export default function AccessAdmin() {
               <div className="w-9 h-9 rounded-xl bg-[#2563eb] text-white grid place-items-center"><ShieldCheck size={17} /></div>
               <div className="mt-3 text-[#60a5fa] text-[8px] uppercase tracking-[.12em] font-semibold">Protected super admin</div>
               <div className="mt-1 text-[#f1f5f9] text-sm font-semibold break-all">{superAdminEmail}</div>
-              <div className="mt-1 text-[#71839c] text-[8px] uppercase tracking-[.08em]">Google Sign-In only</div>
+              <div className="mt-1 text-[#71839c] text-[8px] uppercase tracking-[.08em]">Unlimited access</div>
             </div>
             <div className="border border-[#263950] rounded-2xl bg-[#07111f] p-4">
               <div className="w-9 h-9 rounded-xl border border-[#315a8b] text-[#93c5fd] grid place-items-center"><Clock3 size={17} /></div>
@@ -181,7 +308,8 @@ export default function AccessAdmin() {
             <div className="px-4 py-3.5 border-b border-[#29405f] flex items-center justify-between gap-3 bg-[#0a1626]">
               <div>
                 <div className="text-[#60a5fa] text-[8px] uppercase tracking-[.13em] font-semibold">Approved identities</div>
-                <div className="mt-1 text-[#f8fafc] font-semibold">SCORM AI allowlist</div>
+                <div className="mt-1 text-[#f8fafc] font-semibold">Accounts, limits & permissions</div>
+                <div className="mt-1 text-[#8295ae] text-xs">Blank limits mean unlimited. Setting a limit to 0 disables new courses or learner enrolments.</div>
               </div>
               <div className="text-[#8295ae] text-[9px]">{loading ? 'Loading…' : `${grants.length} account${grants.length === 1 ? '' : 's'}`}</div>
             </div>
@@ -193,36 +321,43 @@ export default function AccessAdmin() {
             ) : (
               <div className="divide-y divide-[#22324a]">
                 {grants.map((grant) => (
-                  <div key={grant.id} className="px-4 py-4 grid lg:grid-cols-[minmax(0,1fr)_150px_190px_auto] gap-3 lg:items-center hover:bg-[#0b1728] transition-colors">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[#f1f5f9] font-semibold text-sm break-all">{grant.email}</span>
-                        {grant.protected && <span className="px-2 py-1 rounded-md border border-blue-400/30 bg-blue-500/10 text-blue-300 text-[8px] uppercase tracking-[.1em] font-semibold">Protected</span>}
+                  <div key={grant.id} className="px-4 py-4 md:px-5 hover:bg-[#0b1728] transition-colors">
+                    <div className="grid lg:grid-cols-[minmax(0,1fr)_150px_190px_auto] gap-3 lg:items-center">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[#f1f5f9] font-semibold text-sm break-all">{grant.email}</span>
+                          {grant.protected && <span className="px-2 py-1 rounded-md border border-blue-400/30 bg-blue-500/10 text-blue-300 text-[8px] uppercase tracking-[.1em] font-semibold">Protected</span>}
+                        </div>
+                        <div className="mt-1 text-[#71839c] text-[8px] uppercase tracking-[.08em]">Approved by {grant.addedByEmail || 'system'}</div>
                       </div>
-                      <div className="mt-1 text-[#71839c] text-[8px] uppercase tracking-[.08em]">Approved by {grant.addedByEmail || 'system'}</div>
+                      <div>
+                        <div className="text-[#71839c] text-[8px] uppercase tracking-[.1em]">Role</div>
+                        <div className="mt-1 text-[#dce7f5] text-xs font-semibold">{grant.role === 'super_admin' ? 'Super Admin' : 'User'}</div>
+                      </div>
+                      <div>
+                        <div className="text-[#71839c] text-[8px] uppercase tracking-[.1em]">Approved</div>
+                        <div className="mt-1 text-[#dce7f5] text-xs">{grant.createdAt ? new Date(grant.createdAt).toLocaleString() : '—'}</div>
+                      </div>
+                      <div className="flex lg:justify-end">
+                        {grant.protected ? (
+                          <span className="text-[#71839c] text-[8px] uppercase tracking-[.08em]">Cannot remove</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => removeAccess(grant)}
+                            disabled={removingId === grant.id}
+                            className="min-h-9 px-3 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-[9px] font-semibold inline-flex items-center gap-2 hover:border-rose-400/50 hover:text-rose-200 disabled:opacity-50"
+                          >
+                            <Trash2 size={13} /> {removingId === grant.id ? 'Removing…' : 'Remove access'}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-[#71839c] text-[8px] uppercase tracking-[.1em]">Role</div>
-                      <div className="mt-1 text-[#dce7f5] text-xs font-semibold">{grant.role === 'super_admin' ? 'Super Admin' : 'User'}</div>
-                    </div>
-                    <div>
-                      <div className="text-[#71839c] text-[8px] uppercase tracking-[.1em]">Approved</div>
-                      <div className="mt-1 text-[#dce7f5] text-xs">{grant.createdAt ? new Date(grant.createdAt).toLocaleString() : '—'}</div>
-                    </div>
-                    <div className="flex lg:justify-end">
-                      {grant.protected ? (
-                        <span className="text-[#71839c] text-[8px] uppercase tracking-[.08em]">Cannot remove</span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => removeAccess(grant)}
-                          disabled={removingId === grant.id}
-                          className="min-h-9 px-3 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-[9px] font-semibold inline-flex items-center gap-2 hover:border-rose-400/50 hover:text-rose-200 disabled:opacity-50"
-                        >
-                          <Trash2 size={13} /> {removingId === grant.id ? 'Removing…' : 'Remove access'}
-                        </button>
-                      )}
-                    </div>
+                    <EntitlementEditor
+                      grant={grant}
+                      onSave={saveEntitlement}
+                      saving={savingGrantId === grant.id}
+                    />
                   </div>
                 ))}
               </div>
@@ -230,7 +365,7 @@ export default function AccessAdmin() {
           </section>
 
           <div className="border border-[#29405f] rounded-xl bg-[#07111f] px-4 py-3 text-[#8295ae] text-xs leading-relaxed">
-            Signed in as <span className="text-[#dce7f5]">{user?.email || superAdminEmail}</span>. Pending users are told that their registration is captured and to contact <span className="text-[#60a5fa]">{adminContact}</span>. After approval, they use the same credentials they registered originally.
+            Signed in as <span className="text-[#dce7f5]">{user?.email || superAdminEmail}</span>. Limits and disabled capabilities are enforced by the server, so users cannot bypass them by calling the API directly.
           </div>
         </div>
       </section>
