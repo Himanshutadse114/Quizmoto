@@ -30,6 +30,15 @@ describe('SCORM player local-first persistence', () => {
         expect(source).to.include('revision=Math.max(0,Number(d&&d.clientRevision||0))');
     });
 
+    it('bootstraps the entry document with srcdoc so the preview cannot remain a blank iframe', () => {
+        expect(source).to.include('async function loadEntryDocument');
+        expect(source).to.include("packageContentKey(pkg.id, entryHref)");
+        expect(source).to.include('injectBaseHref(source, tokenizedBaseHref(token, entryHref))');
+        expect(source).to.include('contentHtml: entryDocument.html');
+        expect(source).to.include('if(BOOT.contentHtml){frame.srcdoc=BOOT.contentHtml;}');
+        expect(source).to.include("const candidates = [...new Set([requested, 'index.html'].filter(Boolean))]");
+    });
+
     it('persists a full versioned state document asynchronously', () => {
         expect(source).to.include('clientVersion:2,clientRevision:revision,values:localValues');
         expect(source).to.include('fetch(SESSION,{method:"POST"');
