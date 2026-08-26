@@ -1,4 +1,5 @@
 import React, { useCallback, useRef } from 'react';
+import { injectPlatformTeal } from './injectPlatformTeal';
 
 const BRAND_RE = /SCORMs\.ai|SCORMs\s+AI|SCORMsAI|scorms\.ai/gi;
 
@@ -306,6 +307,7 @@ export default function MarketingLanding() {
     };
 
     const patchAll = () => {
+      injectPlatformTeal(doc);
       patchText();
       patchNavbarLogo();
       patchFooter();
