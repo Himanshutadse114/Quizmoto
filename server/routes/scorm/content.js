@@ -288,6 +288,13 @@ function patchLegacyCourseInteractionRuntime(source) {
         "if (!grid.classList.contains('qmx-flip-grid')) grid.classList.add('qmx-flip-grid');"
     );
 
+    // Keep flip cards visually flat/solid even for courses that were packaged
+    // before the current interaction stylesheet was updated.
+    patched = patched.replace(
+        'background: linear-gradient(145deg,var(--surface),var(--soft));',
+        'background: var(--surface);'
+    );
+
     const legacyObserver = `    var main = document.querySelector('main');
     if (main && typeof MutationObserver !== 'undefined') {
       var observer = new MutationObserver(function(){
