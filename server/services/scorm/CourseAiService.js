@@ -11,6 +11,66 @@ function emit(onProgress, patch) {
     try { onProgress(patch); } catch (_) {}
 }
 
+function positiveInt(value, fallback, min = 1000, max = 600000) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(min, Math.min(max, Math.round(parsed)));
+}
+
+/**
+ * Course authoring can legitimately spend tens of seconds inside one model
+ * request. Previously the UI received a single 8% update and then nothing
+ * until every content/refinement pass had finished, which made healthy jobs
+ * look frozen. Keep a bounded, honest heartbeat while the promise is active.
+ */
+async function runWithProgressHeartbeat({
+    task,
+    onProgress,
+    startPercent,
+    maxPercent,
+    stage,
+    detail,
+    timeoutMs,
+    timeoutCode = 'GEMINI_TIMEOUT'
+}) {
+    let settled = false;
+    let percent = Math.max(1, Number(startPercent) || 1);
+    const ceiling = Math.max(percent, Number(maxPercent) || percent);
+    const startedAt = Date.now();
+
+    emit(onProgress, { percent, stage, detail });
+
+    const heartbeat = setInterval(() => {
+        if (settled) return;
+        percent = Math.min(ceiling, percent + 2);
+        const elapsedSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+        emit(onProgress, {
+            percent,
+            stage,
+            detail: `${detail} Still working (${elapsedSeconds}s).`
+        });
+    }, 6000);
+    if (typeof heartbeat.unref === 'function') heartbeat.unref();
+
+    let timeoutHandle = null;
+    const timeoutPromise = new Promise((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+            const error = new Error('Course generation took too long while preparing the learning content. Please retry.');
+            error.code = timeoutCode;
+            reject(error);
+        }, timeoutMs);
+        if (typeof timeoutHandle.unref === 'function') timeoutHandle.unref();
+    });
+
+    try {
+        return await Promise.race([Promise.resolve().then(task), timeoutPromise]);
+    } finally {
+        settled = true;
+        clearInterval(heartbeat);
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+    }
+}
+
 async function analyzePolicy(args = {}) {
     const requested = String(process.env.SCORM_AI_PROVIDER || '').trim().toLowerCase();
     if (requested && requested !== 'gemini') {
@@ -21,22 +81,51 @@ async function analyzePolicy(args = {}) {
         });
     }
 
-    emit(args.onProgress, {
-        percent: 8,
-        stage: 'Creating complete course plan with Gemini',
-        detail: 'Gemini is extracting the source, writing the course, knowledge checks and the complete visual plan before the editor opens.'
-    });
+    const contentTimeoutMs = positiveInt(process.env.GEMINI_SCORM_CONTENT_TIMEOUT_MS, 180000, 30000, 600000);
+    const visualPlanTimeoutMs = positiveInt(process.env.GEMINI_SCORM_VISUAL_PLAN_TIMEOUT_MS, 90000, 20000, 300000);
 
-    let analysis = await GeminiPolicyAnalysisService.analyzePolicy(args);
+    let analysis;
+    try {
+        analysis = await runWithProgressHeartbeat({
+            task: () => GeminiPolicyAnalysisService.analyzePolicy(args),
+            onProgress: args.onProgress,
+            startPercent: 8,
+            maxPercent: 26,
+            stage: 'Creating course content',
+            detail: 'Writing the learning structure, slide content and knowledge checks.',
+            timeoutMs: contentTimeoutMs
+        });
+    } catch (error) {
+        logger.error('scorm_content_generation_failed', {
+            module: 'scorm',
+            error: error.message,
+            code: error.code || null
+        });
+        throw error;
+    }
     analysis.aiProvider = 'gemini';
 
-    emit(args.onProgress, {
-        percent: 88,
-        stage: 'Planning all course images with Gemini',
-        detail: 'Gemini is creating the cover prompt and every slide image prompt together in one visual-planning request.'
-    });
+    let visualPlan;
+    try {
+        visualPlan = await runWithProgressHeartbeat({
+            task: () => generateCourseVisualPrompts(analysis),
+            onProgress: args.onProgress,
+            startPercent: 28,
+            maxPercent: 34,
+            stage: 'Planning course visuals',
+            detail: 'Preparing slide-specific visual directions for the course.',
+            timeoutMs: visualPlanTimeoutMs,
+            timeoutCode: 'GEMINI_VISUAL_PLAN_TIMEOUT'
+        });
+    } catch (error) {
+        logger.error('scorm_visual_plan_generation_failed', {
+            module: 'scorm',
+            error: error.message,
+            code: error.code || null
+        });
+        throw error;
+    }
 
-    const visualPlan = await generateCourseVisualPrompts(analysis);
     analysis = {
         ...analysis,
         coverImagePrompt: visualPlan.coverPrompt,
@@ -54,9 +143,9 @@ async function analyzePolicy(args = {}) {
     };
 
     emit(args.onProgress, {
-        percent: 96,
-        stage: 'Course content and visual plan ready',
-        detail: 'Course text, quizzes and all slide-specific image prompts are ready. Generate course will only render the pre-planned images with FLUX Schnell and package the SCORM.',
+        percent: 36,
+        stage: 'Course content ready',
+        detail: 'Course text, knowledge checks and slide visual directions are ready.',
         modelStatus: 'succeeded'
     });
 
@@ -73,5 +162,7 @@ async function analyzePolicy(args = {}) {
 
 module.exports = {
     analyzePolicy,
-    selectedProvider
+    selectedProvider,
+    runWithProgressHeartbeat,
+    positiveInt
 };
