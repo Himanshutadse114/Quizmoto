@@ -56,6 +56,31 @@ function interactionCount(interactionsJson, rawMapJson = null, values = null) {
     return indices.size;
 }
 
+function liveInteractionScore(state, course) {
+    const map = stateMap(state);
+    if (!map || typeof map !== 'object' || Array.isArray(map)) return null;
+
+    const results = new Map();
+    for (const [key, rawValue] of Object.entries(map)) {
+        const match = String(key).match(/^cmi\.interactions\.(\d+)\.result$/i);
+        if (!match) continue;
+        const value = String(rawValue || '').trim().toLowerCase();
+        if (!value) continue;
+        if (value === 'correct' || value === 'wrong' || value === 'incorrect') {
+            results.set(Number(match[1]), value === 'correct');
+        }
+    }
+    if (!results.size) return null;
+
+    const analysis = parseJson(course?.package?.analysisJson, {}) || {};
+    const quizCount = Array.isArray(analysis.quiz) ? analysis.quiz.length : 0;
+    const highestInteraction = Math.max(...Array.from(results.keys())) + 1;
+    const denominator = Math.max(1, quizCount || highestInteraction || results.size);
+    const correct = Array.from(results.values()).filter(Boolean).length;
+
+    return Math.max(0, Math.min(100, Math.round((correct / denominator) * 1000) / 10));
+}
+
 function qaState({ registration, cmiState, progressPercent }) {
     const lessonStatus = String(
         cmiState?.lessonStatus || registration?.lastLessonStatus || ''
@@ -97,7 +122,21 @@ function serializePreviewStats(registration, course) {
     const primaryState = learningStateV2 || legacyState;
     const row = serializeRegistration(registration, course);
 
-    const scoreRaw = primaryState?.scoreRaw != null ? primaryState.scoreRaw : row.lastScoreRaw;
+    // Authored courses write each quiz interaction immediately, while the final
+    // cmi.core.score.raw is traditionally written only when the learner finishes.
+    // The v2 state layer can also contain a legacy row-level 0 before a score key
+    // has ever been written. For Admin Preview, derive a live provisional score
+    // from the captured interaction results until an explicit SCORM score exists.
+    const explicitScoreRaw = stateValue(primaryState, ['cmi.core.score.raw', 'cmi.score.raw']);
+    const provisionalInteractionScore = explicitScoreRaw == null
+        ? liveInteractionScore(primaryState, course)
+        : null;
+    const scoreRaw = explicitScoreRaw != null
+        ? explicitScoreRaw
+        : provisionalInteractionScore != null
+            ? provisionalInteractionScore
+            : primaryState?.scoreRaw != null ? primaryState.scoreRaw : row.lastScoreRaw;
+
     const scoreMin = stateValue(primaryState, ['cmi.core.score.min', 'cmi.score.min']) ?? legacyState?.scoreMin ?? null;
     const scoreMax = stateValue(primaryState, ['cmi.core.score.max', 'cmi.score.max']) ?? legacyState?.scoreMax ?? null;
     const totalTime = primaryState?.totalTime || row.lastTotalTime || legacyState?.totalTime || null;
@@ -151,5 +190,6 @@ function serializePreviewStats(registration, course) {
 module.exports = {
     serializePreviewStats,
     scorePercent,
-    interactionCount
+    interactionCount,
+    liveInteractionScore
 };
