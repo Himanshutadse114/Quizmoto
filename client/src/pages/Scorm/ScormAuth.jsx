@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LockKeyhole, Mail, ShieldCheck, UserRound, Zap, Sun, Moon } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
@@ -21,9 +21,38 @@ export default function ScormAuth() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [theme, setTheme] = useState(readScormPlatformTheme);
+  const [googleButtonWidth, setGoogleButtonWidth] = useState(320);
+  const googleButtonRef = useRef(null);
 
   useEffect(() => { prepareScormLogin(); }, []);
   useEffect(() => { saveScormPlatformTheme(theme); }, [theme]);
+
+  useEffect(() => {
+    const container = googleButtonRef.current;
+    if (!container) return undefined;
+
+    const updateGoogleButtonWidth = () => {
+      const availableWidth = Math.floor(container.clientWidth - 8);
+      if (availableWidth <= 0) return;
+      setGoogleButtonWidth(Math.max(200, Math.min(400, availableWidth)));
+    };
+
+    updateGoogleButtonWidth();
+
+    const observer = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(updateGoogleButtonWidth)
+      : null;
+    observer?.observe(container);
+
+    window.addEventListener('resize', updateGoogleButtonWidth);
+    window.addEventListener('orientationchange', updateGoogleButtonWidth);
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', updateGoogleButtonWidth);
+      window.removeEventListener('orientationchange', updateGoogleButtonWidth);
+    };
+  }, []);
 
   const switchMode = (nextMode) => { setMode(nextMode); setError(''); };
 
@@ -120,7 +149,18 @@ export default function ScormAuth() {
 
             <div className="sa-google-block">
               <div className="sa-google-label"><ShieldCheck size={13} /> Google account</div>
-              <div className="sa-google-button"><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError('Google Sign-In failed. Please try again.')} theme="outline" size="large" shape="rectangular" text="continue_with" width="400" /></div>
+              <div ref={googleButtonRef} className="sa-google-button">
+                <GoogleLogin
+                  key={googleButtonWidth}
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => setError('Google Sign-In failed. Please try again.')}
+                  theme="outline"
+                  size="large"
+                  shape="rectangular"
+                  text="continue_with"
+                  width={String(googleButtonWidth)}
+                />
+              </div>
               <div className="sa-google-hint">A new Google identity is captured for approval and receives immediate limited platform access.</div>
             </div>
 
