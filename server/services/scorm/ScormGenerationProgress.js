@@ -19,6 +19,16 @@ function prune() {
     }
 }
 
+function ownedEntry(progressId, userId) {
+    const id = cleanId(progressId);
+    if (!id) return null;
+    prune();
+    const entry = STORE.get(id);
+    if (!entry) return null;
+    if (entry.userId && String(userId || '') && entry.userId !== String(userId)) return null;
+    return entry;
+}
+
 function setProgress(progressId, userId, patch = {}) {
     const id = cleanId(progressId);
     if (!id) return null;
@@ -34,9 +44,15 @@ function setProgress(progressId, userId, patch = {}) {
         modelStatus: '',
         predictionId: '',
         startedAt: Date.now(),
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        cancelledAt: 0
     };
     if (existing.userId && String(userId || '') && existing.userId !== String(userId)) return null;
+
+    // Cancellation is terminal. Late progress callbacks from provider requests
+    // must never turn a stopped job back into a running/complete job.
+    if (existing.status === 'cancelled' && patch.status !== 'cancelled') return { ...existing };
+
     const next = {
         ...existing,
         ...patch,
@@ -50,16 +66,47 @@ function setProgress(progressId, userId, patch = {}) {
 }
 
 function getProgress(progressId, userId) {
-    const id = cleanId(progressId);
-    if (!id) return null;
-    prune();
-    const entry = STORE.get(id);
-    if (!entry) return null;
-    if (entry.userId && String(userId || '') && entry.userId !== String(userId)) return null;
-    return { ...entry };
+    const entry = ownedEntry(progressId, userId);
+    return entry ? { ...entry } : null;
+}
+
+function cancelProgress(progressId, userId) {
+    const existing = ownedEntry(progressId, userId);
+    if (!existing) return null;
+    if (existing.status === 'complete' || existing.status === 'error') return { ...existing };
+    const now = Date.now();
+    const next = {
+        ...existing,
+        status: 'cancelled',
+        stage: 'Generation stopped',
+        detail: 'Course generation was stopped by the user.',
+        modelStatus: 'cancelled',
+        cancelledAt: now,
+        updatedAt: now
+    };
+    STORE.set(existing.id, next);
+    return { ...next };
+}
+
+function isCancelled(progressId, userId) {
+    return Boolean(ownedEntry(progressId, userId)?.status === 'cancelled');
+}
+
+function cancellationError() {
+    const error = new Error('Course generation was stopped.');
+    error.code = 'SCORM_GENERATION_CANCELLED';
+    return error;
+}
+
+function assertNotCancelled(progressId, userId) {
+    if (progressId && isCancelled(progressId, userId)) throw cancellationError();
 }
 
 function failProgress(progressId, userId, error) {
+    const current = ownedEntry(progressId, userId);
+    if (current?.status === 'cancelled' || error?.code === 'SCORM_GENERATION_CANCELLED') {
+        return current ? { ...current } : null;
+    }
     const message = String(error?.message || error || 'Course generation failed').slice(0, 500);
     return setProgress(progressId, userId, {
         status: 'error',
@@ -72,5 +119,9 @@ module.exports = {
     cleanId,
     setProgress,
     getProgress,
+    cancelProgress,
+    isCancelled,
+    assertNotCancelled,
+    cancellationError,
     failProgress
 };
