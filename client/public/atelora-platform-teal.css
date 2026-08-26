@@ -1,12 +1,97 @@
-/* Company website accent = Atelora platform teal */
+/* Company website = platform dark + teal */
 :root {
   --scorm-platform-teal: #4FC9BF;
   --scorm-platform-teal-strong: #7BDCD3;
   --scorm-platform-teal-hover: #9BE8E1;
   --scorm-platform-teal-dark: #06201E;
+  --atelora-bg: #0A0F0E;
+  --atelora-bg-deep: #070B0A;
+  --atelora-panel: #121A19;
+  --atelora-line: rgba(255,255,255,.10);
+  --atelora-text: #EDF4F2;
+  --atelora-muted: #A9BAB6;
+  color-scheme: dark;
 }
-html { accent-color: #4FC9BF; }
-::selection { background: rgba(79, 201, 191, .28); color: #06201E; }
+
+html,
+body {
+  background: var(--atelora-bg) !important;
+  background-image:
+    radial-gradient(circle at 18% -8%, rgba(79,201,191,.10), transparent 25rem),
+    radial-gradient(circle at 88% 100%, rgba(63,203,140,.04), transparent 26rem),
+    linear-gradient(180deg, #0D1413 0%, #0A0F0E 56%, #070B0A 100%) !important;
+  color: var(--atelora-text) !important;
+  color-scheme: dark !important;
+  accent-color: #4FC9BF;
+}
+
+::selection {
+  background: rgba(79, 201, 191, .28);
+  color: #06201E;
+}
+
+body,
+h1, h2, h3, h4, h5, h6,
+p, li, dt, dd, label, small, strong, em,
+span, div, section, article, aside, main,
+header, nav, footer, blockquote, figcaption {
+  color: var(--atelora-text);
+}
+
+p, small, figcaption,
+header nav a,
+footer a,
+footer p,
+footer span {
+  color: var(--atelora-muted);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #F4FBFA !important;
+}
+
+header, nav, [role="banner"], footer,
+[class*="footer" i], [id*="footer" i] {
+  background: rgba(10, 15, 14, .92) !important;
+  background-image: none !important;
+  border-color: var(--atelora-line) !important;
+  color: var(--atelora-text) !important;
+  backdrop-filter: blur(18px);
+}
+
+section, article, aside, main {
+  background-color: transparent;
+}
+
+hr,
+[class*="border"],
+[class*="divider"] {
+  border-color: var(--atelora-line) !important;
+}
+
+img {
+  border-color: var(--atelora-line);
+}
+
+a:not([href="/login"]):not([data-atelora-login-cta="1"]) {
+  color: var(--atelora-text);
+}
+
+a:not([href="/login"]):not([data-atelora-login-cta="1"]):hover {
+  color: #7BDCD3;
+}
+
+input, textarea, select {
+  background: #121A19 !important;
+  border-color: var(--atelora-line) !important;
+  color: var(--atelora-text) !important;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: #4FC9BF !important;
+  box-shadow: 0 0 0 3px rgba(79, 201, 191, .16) !important;
+}
+
 a[href="/login"],
 a[data-atelora-login-cta="1"],
 button[data-atelora-login-cta="1"] {
@@ -15,6 +100,7 @@ button[data-atelora-login-cta="1"] {
   border-color: #7BDCD3 !important;
   color: #06201E !important;
 }
+
 a[href="/login"]:hover,
 a[data-atelora-login-cta="1"]:hover {
   background: #7BDCD3 !important;
