@@ -35,11 +35,16 @@ describe('SCORM generation cancellation', () => {
 
     it('exposes a protected cancel endpoint and client stop/remove controls', () => {
         const author = fs.readFileSync(path.join(__dirname, '../routes/scorm/author.js'), 'utf8');
+        const media = fs.readFileSync(path.join(__dirname, '../services/scorm/ReplicateCourseMediaService.js'), 'utf8');
         const jobs = fs.readFileSync(path.join(__dirname, '../../client/src/services/courseGenerationJobs.js'), 'utf8');
         const panel = fs.readFileSync(path.join(__dirname, '../../client/src/components/BackgroundCourseJobs.jsx'), 'utf8');
 
         expect(author).to.include("router.post('/progress/:progressId/cancel', auth");
         expect(author).to.include('checkpoint(progressId, req.userId)');
+        expect(author).to.include('checkCancelled: () => checkpoint(progressId, req.userId)');
+        expect(media).to.include("String(err?.code || '') === 'SCORM_GENERATION_CANCELLED'");
+        expect(media).to.include("const checkCancelled = typeof opts.checkCancelled === 'function'");
+        expect(media).to.include('if (isGenerationCancelled(err)) throw err');
         expect(jobs).to.include('cancelCourseGenerationJob');
         expect(jobs).to.include('removeCourseGenerationJob');
         expect(panel).to.include("'Stop'");
