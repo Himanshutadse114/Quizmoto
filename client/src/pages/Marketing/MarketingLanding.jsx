@@ -5,8 +5,16 @@ export default function MarketingLanding() {
     <iframe
       title="Atelora"
       src="/landing/index.html"
-      className="fixed inset-0 z-50 h-screen w-screen border-0 bg-white"
-      style={{ width: '100vw', height: '100vh', border: 0 }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 50,
+        display: 'block',
+        width: '100vw',
+        height: '100vh',
+        border: 0,
+        background: '#fff',
+      }}
     />
   );
 }
