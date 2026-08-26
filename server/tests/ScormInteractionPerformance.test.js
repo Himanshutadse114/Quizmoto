@@ -43,6 +43,35 @@ describe('SCORM authored interaction responsiveness', () => {
         expect(patched).to.include('quizmoto-mobile-course-css');
     });
 
+    it('repairs the self-observing flip-card runtime in already stored course packages', () => {
+        const legacy = `<script>
+function upgradeCards(){
+  var grid=document.querySelector('.qmx-cards');
+  grid.classList.add('qmx-flip-grid');
+}
+function syncNextGate(){}
+function install(){
+    upgradeCards();
+    syncNextGate();
+    document.addEventListener('click', blockLockedNext, true);
+    var main = document.querySelector('main');
+    if (main && typeof MutationObserver !== 'undefined') {
+      var observer = new MutationObserver(function(){
+        upgradeCards();
+        syncNextGate();
+      });
+      observer.observe(main,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
+    }
+}
+</script>`;
+        const patched = contentRouter.patchLegacyCourseInteractionRuntime(legacy);
+        expect(patched).to.not.include('observer.observe(main');
+        expect(patched).to.not.include('new MutationObserver(function(){');
+        expect(patched).to.include("if (!grid.classList.contains('qmx-flip-grid')) grid.classList.add('qmx-flip-grid')");
+        expect(patched).to.include('function syncAfterNavigation(event)');
+        expect(patched).to.include("event.target.closest('#next-btn,#prev-btn')");
+    });
+
     it('merges progress into existing suspend data instead of erasing quiz resume answers', () => {
         const bridge = contentRouter.authoredRuntimeBridge();
         expect(bridge).to.include("var raw=doLMSGetValue('cmi.suspend_data')");
