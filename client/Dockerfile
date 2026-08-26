@@ -3,6 +3,9 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
+# The landing-site preparation step uses unzip inside the container.
+RUN apk add --no-cache unzip
+
 # Install dependencies
 COPY package*.json ./
 RUN npm install

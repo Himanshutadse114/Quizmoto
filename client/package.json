@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "prepare:landing": "node scripts/prepareLanding.cjs",
+    "predev": "npm run prepare:landing",
     "dev": "vite",
+    "prebuild": "npm run prepare:landing",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
