@@ -4,19 +4,95 @@
  * v2 tracking is local-first: the SCORM API is synchronous and entirely in
  * memory, while a complete attempt-state document is persisted asynchronously.
  * A slow database can therefore never make LMSInitialize/Get/Set/Commit fail.
+ *
+ * The initial SCO HTML is bootstrapped with iframe.srcdoc. This avoids a class
+ * of blank/black preview failures where the browser opens the player shell but
+ * the first authenticated content navigation never paints. Relative package
+ * assets still resolve through the normal tokenized content route via <base>.
  */
 const express = require('express');
+const path = require('path');
 const router = express.Router();
 const { verifyRegistrationToken } = require('../../services/scorm/ScormInviteService');
 const { ScormRegistration, ScormCourse, ScormPackage } = require('../../models/scorm');
+const { getObjectStorage } = require('../../storage/ObjectStorage');
+const { packageContentKey } = require('../../services/scorm/storageKeys');
+const contentRouter = require('./content');
 
 function escapeHtml(s) {
     return String(s || '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
+        .replace(/\"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+function safeScriptJson(value) {
+    return JSON.stringify(value)
+        .replace(/</g, '\\u003c')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029');
+}
+
+function tokenizedBaseHref(token, entryHref) {
+    const tokEnc = encodeURIComponent(token);
+    const dir = path.posix.dirname(String(entryHref || 'index.html').replace(/\\/g, '/'));
+    const cleanDir = dir && dir !== '.' ? dir.replace(/^\/+|\/+$/g, '') : '';
+    const encodedDir = cleanDir
+        ? cleanDir.split('/').filter(Boolean).map(encodeURIComponent).join('/') + '/'
+        : '';
+    return '/api/scorm/content/t/' + tokEnc + '/' + encodedDir;
+}
+
+function injectBaseHref(source, href) {
+    let html = String(source || '');
+    if (!html) return html;
+    const base = '<base href="' + escapeHtml(href) + '">';
+    if (/<base\s/i.test(html)) return html;
+    if (/<head[^>]*>/i.test(html)) return html.replace(/<head([^>]*)>/i, '<head$1>' + base);
+    return base + html;
+}
+
+function injectUniversalBridge(source) {
+    let html = String(source || '');
+    if (!html || html.includes('quizmoto-runtime-progress-bridge-v1')) return html;
+    const bridge = typeof contentRouter.universalRuntimeProgressBridge === 'function'
+        ? contentRouter.universalRuntimeProgressBridge()
+        : '';
+    if (!bridge) return html;
+    return html.includes('</body>') ? html.replace('</body>', bridge + '\n</body>') : html + bridge;
+}
+
+async function loadEntryDocument(pkg, token, requestedEntry) {
+    const storage = getObjectStorage();
+    const requested = String(requestedEntry || pkg.entryHref || 'index.html')
+        .replace(/^\/+/, '')
+        .replace(/\\/g, '/');
+    const candidates = [...new Set([requested, 'index.html'].filter(Boolean))];
+    let lastError = null;
+
+    for (const entryHref of candidates) {
+        try {
+            const buffer = await storage.getObjectBuffer(packageContentKey(pkg.id, entryHref));
+            let source = buffer.toString('utf8');
+
+            if (pkg.source === 'ai_author' && typeof contentRouter.patchAuthoredHtml === 'function') {
+                source = contentRouter.patchAuthoredHtml(source);
+            }
+            source = injectUniversalBridge(source);
+            source = injectBaseHref(source, tokenizedBaseHref(token, entryHref));
+
+            return { entryHref, html: source };
+        } catch (err) {
+            lastError = err;
+        }
+    }
+
+    const error = new Error('Course entry file could not be loaded from storage');
+    error.code = 'SCORM_ENTRY_MISSING';
+    error.cause = lastError;
+    throw error;
 }
 
 router.get('/:regId', async (req, res) => {
@@ -51,7 +127,9 @@ router.get('/:regId', async (req, res) => {
         if (pkg.status !== 'ready') return res.status(409).send('Package not ready');
 
         const embeddedPreview = Boolean(reg.isPreview) && String(req.query.previewEmbed || '') === '1';
-        const entryHref = String(req.query.entryHref || pkg.entryHref || 'index.html').replace(/^\/+/, '');
+        const requestedEntry = String(req.query.entryHref || pkg.entryHref || 'index.html').replace(/^\/+/, '');
+        const entryDocument = await loadEntryDocument(pkg, token, requestedEntry);
+        const entryHref = entryDocument.entryHref;
         const tokEnc = encodeURIComponent(token);
         const contentSrc = '/api/scorm/content/t/' + tokEnc + '/' + entryHref.split('/').map(encodeURIComponent).join('/') + (embeddedPreview ? '?previewEmbed=1' : '');
         const sessionEndpoint = '/api/scorm/session/' + reg.id;
@@ -59,13 +137,14 @@ router.get('/:regId', async (req, res) => {
         const learnerName = reg.learnerName || 'Learner';
         const courseTitle = reg.course.title || 'SCORM Player';
 
-        const boot = JSON.stringify({
+        const boot = safeScriptJson({
             token,
             registrationId: String(reg.id),
             sessionEndpoint,
             xapiEndpoint,
             learnerName,
-            contentSrc
+            contentSrc,
+            contentHtml: entryDocument.html
         });
 
         const html = `<!DOCTYPE html>
@@ -79,8 +158,13 @@ html,body{margin:0;height:100%;background:#0d0618;color:#fff;font-family:system-
 #bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:#000;border-bottom:1px solid #ffffff22;font-size:12px;height:42px;box-sizing:border-box}
 #bar button{background:#ffffff18;border:0;color:#fff;padding:6px 12px;border-radius:8px;font-weight:700;cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
 #bar button:hover{background:#ffffff28}
-#frame{border:0;width:100%;height:calc(100% - 42px);display:block;background:#111}
+#stage{position:relative;width:100%;height:calc(100% - 42px);background:#111;overflow:hidden}
+#frame{border:0;width:100%;height:100%;display:block;background:#fff}
 #status{opacity:.78}
+#course-loading{position:absolute;inset:0;z-index:3;display:grid;place-items:center;background:#111;color:#d7dde7;font-size:13px;letter-spacing:.01em}
+#course-loading.hidden{display:none}
+#course-error{display:none;max-width:520px;margin:24px;padding:18px;border:1px solid #ffffff24;border-radius:12px;background:#181818;color:#fff;line-height:1.5}
+#course-error strong{display:block;margin-bottom:6px}
 </style>
 <script>
 (function(){
@@ -142,8 +226,23 @@ function beaconPersist(eventName){
   }
   return true;
 }
+function showCourseError(message){
+  try{
+    var loading=document.getElementById("course-loading"),error=document.getElementById("course-error");
+    if(loading)loading.classList.add("hidden");
+    if(error){error.style.display="block";error.innerHTML="<strong>Course content could not be displayed.</strong>"+String(message||"Please reopen the preview.");}
+  }catch(e){}
+}
 function loadContent(){
-  try{var frame=document.getElementById("frame");if(frame&&!frame.getAttribute("data-loaded")){frame.setAttribute("data-loaded","1");frame.src=BOOT.contentSrc;}}catch(e){}
+  try{
+    var frame=document.getElementById("frame");
+    if(!frame||frame.getAttribute("data-loaded"))return;
+    frame.setAttribute("data-loaded","1");
+    frame.onload=function(){try{var loading=document.getElementById("course-loading");if(loading)loading.classList.add("hidden");setStatus("SCORM - course loaded");}catch(e){}};
+    if(BOOT.contentHtml){frame.srcdoc=BOOT.contentHtml;}
+    else{frame.src=BOOT.contentSrc;}
+    setTimeout(function(){try{var loading=document.getElementById("course-loading");if(loading&&!loading.classList.contains("hidden"))setStatus("SCORM - loading course content");}catch(e){}},2500);
+  }catch(e){showCourseError(e&&e.message?e.message:"Unable to start course content.");}
 }
 function loadSavedState(){
   setStatus("SCORM - loading saved progress");
@@ -198,7 +297,11 @@ window.addEventListener("DOMContentLoaded",loadSavedState);
   <span id="status">SCORM - preparing learner state</span>
   <div><button type="button" id="btnSave">Save</button><button type="button" id="btnExit">Exit</button></div>
 </div>
-<iframe id="frame" name="scorm_content" title="SCORM Content" src="about:blank" allow="autoplay; fullscreen" allowfullscreen></iframe>
+<div id="stage">
+  <div id="course-loading">Opening course content…</div>
+  <div id="course-error"></div>
+  <iframe id="frame" name="scorm_content" title="SCORM Content" src="about:blank" allow="autoplay; fullscreen" allowfullscreen></iframe>
+</div>
 <script>
 (function(){
 var exiting=false;
@@ -214,7 +317,7 @@ function persistAndFinish(){
   try{window.API.LMSCommit("");}catch(e){}
   try{window.API.LMSFinish("");}catch(e){}
 }
-function notifyParentExit(){try{if(window.opener&&!window.opener.closed){window.opener.postMessage({type:"quizmoto-scorm-exit",registrationId:${JSON.stringify(String(reg.id))}},"*");}}catch(e){}}
+function notifyParentExit(){try{if(window.opener&&!window.opener.closed){window.opener.postMessage({type:"quizmoto-scorm-exit",registrationId:${safeScriptJson(String(reg.id))}},"*");}}catch(e){}}
 function closePlayer(){
   try{notifyParentExit();}catch(e){}
   try{window.close();}catch(e){}
@@ -234,8 +337,12 @@ document.getElementById("btnExit").onclick=function(){persistAndFinish();closePl
     } catch (err) {
         console.error('[scorm-player-v2] launch failed', {
             registrationId: req.params.regId,
-            error: err?.message || String(err)
+            error: err?.message || String(err),
+            code: err?.code || null
         });
+        if (err?.code === 'SCORM_ENTRY_MISSING') {
+            return res.status(409).send('Course content is missing. Rebuild or regenerate the course package and try again.');
+        }
         res.status(500).send('Player error: ' + (err.message || 'unknown'));
     }
 });
