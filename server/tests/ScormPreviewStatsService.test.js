@@ -2,7 +2,8 @@ const { expect } = require('chai');
 const {
     serializePreviewStats,
     scorePercent,
-    interactionCount
+    interactionCount,
+    liveInteractionScore
 } = require('../services/scorm/ScormPreviewStatsService');
 
 describe('SCORM admin preview stats', () => {
@@ -129,6 +130,74 @@ describe('SCORM admin preview stats', () => {
         expect(result.scoreMax).to.equal(null);
         expect(result.interactionCount).to.equal(1);
         expect(result.stateVersion).to.equal(7);
+    });
+
+    it('derives a live provisional QA score from captured interaction results before Finish', () => {
+        const registration = {
+            id: 'preview-live-score',
+            courseId: 'course-live-score',
+            status: 'active',
+            isPreview: true,
+            lastLessonStatus: 'incomplete',
+            lastScoreRaw: 0,
+            updatedAt: '2026-08-26T08:45:00.000Z',
+            learningStateV2: {
+                lessonStatus: 'incomplete',
+                scoreRaw: 0,
+                lessonLocation: '4',
+                totalTime: '00:02:00.00',
+                progressPercent: 40,
+                sequence: 5,
+                values: {
+                    'cmi.core.lesson_location': '4',
+                    'cmi.core.lesson_status': 'incomplete',
+                    'cmi.interactions.0.id': 'quiz_1',
+                    'cmi.interactions.0.result': 'correct',
+                    'cmi.interactions.1.id': 'quiz_2',
+                    'cmi.interactions.1.result': 'correct'
+                }
+            }
+        };
+        const course = {
+            title: 'Security Essentials',
+            package: {
+                analysisJson: JSON.stringify({
+                    slides: [{ title: 'Intro' }],
+                    quiz: [{}, {}, {}, {}]
+                })
+            }
+        };
+
+        const result = serializePreviewStats(registration, course);
+
+        expect(result.interactionCount).to.equal(2);
+        expect(result.scoreRaw).to.equal(50);
+        expect(result.scorePercent).to.equal(50);
+    });
+
+    it('keeps an explicit SCORM score authoritative over a provisional interaction score', () => {
+        const state = {
+            scoreRaw: 0,
+            values: {
+                'cmi.core.score.raw': '75',
+                'cmi.interactions.0.result': 'correct',
+                'cmi.interactions.1.result': 'wrong'
+            }
+        };
+        const course = { package: { analysisJson: JSON.stringify({ quiz: [{}, {}] }) } };
+
+        expect(liveInteractionScore(state, course)).to.equal(50);
+
+        const result = serializePreviewStats({
+            id: 'preview-explicit-score',
+            courseId: 'course-explicit-score',
+            status: 'active',
+            isPreview: true,
+            learningStateV2: state
+        }, course);
+
+        expect(result.scoreRaw).to.equal(75);
+        expect(result.scorePercent).to.equal(75);
     });
 
     it('normalizes scores when a custom min/max range is supplied', () => {
