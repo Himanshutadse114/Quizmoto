@@ -37,7 +37,6 @@ const ScormTracking = lazy(() => import('./pages/Scorm/Tracking'));
 const ScormLearnerRoster = lazy(() => import('./pages/Scorm/LearnerRoster'));
 const ScormLibrary = lazy(() => import('./pages/Scorm/Library'));
 const ScormCourseDetail = lazy(() => import('./pages/Scorm/CourseDetail'));
-const ScormCoursePreviewRedirect = lazy(() => import('./pages/Scorm/CoursePreviewRedirect'));
 const ScormLearnLanding = lazy(() => import('./pages/Scorm/LearnLanding'));
 const ScormPlayerShell = lazy(() => import('./pages/Scorm/PlayerShell'));
 const ScormAuthor = lazy(() => import('./pages/Scorm/CourseGenerator'));
@@ -138,11 +137,6 @@ function AppRoutes() {
           <Route path="reports" element={<ScormFeatureGate featureId="reports"><ScormReports /></ScormFeatureGate>} />
           <Route path="access" element={<AccessAdminGate />} />
         </Route>
-
-        {/* Compatibility routes for older/stale Preview links. They create a
-            fresh QA preview registration and hand off to the canonical player. */}
-        <Route path="/scorm/course/:id/preview" element={<PlatformProtected><ScormCoursePreviewRedirect /></PlatformProtected>} />
-        <Route path="/scorm/courses/:id/preview" element={<PlatformProtected><ScormCoursePreviewRedirect /></PlatformProtected>} />
 
         <Route path="/scorm/live-quiz" element={<LegacyQuizRedirect kind="dashboard" />} />
         <Route path="/scorm/live-quiz/create" element={<LegacyQuizRedirect kind="create" />} />

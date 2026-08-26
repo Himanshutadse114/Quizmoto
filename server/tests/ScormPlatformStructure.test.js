@@ -12,7 +12,6 @@ describe('SCORM AI platform product structure', () => {
     const auth = source('../client/src/pages/Scorm/ScormAuth.jsx');
     const author = source('../client/src/pages/Scorm/AuthorVisual.jsx');
     const quizEditor = source('../client/src/pages/Scorm/AuthorQuizEditor.jsx');
-    const previewRedirect = source('../client/src/pages/Scorm/CoursePreviewRedirect.jsx');
 
     it('uses SCORM AI authentication as the root product entry', () => {
         expect(app).to.include('<Route path="/" element={<PlatformEntry />} />');
@@ -47,16 +46,5 @@ describe('SCORM AI platform product structure', () => {
         expect(quizEditor).to.include('Add question');
         expect(quizEditor).to.include('Move question up');
         expect(quizEditor).to.include('Move question down');
-    });
-
-    it('recovers legacy course preview URLs instead of leaving a blank dark screen', () => {
-        expect(app).to.include('ScormCoursePreviewRedirect');
-        expect(app).to.include('<Route path="/scorm/course/:id/preview"');
-        expect(app).to.include('<Route path="/scorm/courses/:id/preview"');
-        expect(previewRedirect).to.include('/api/scorm/courses/${encodeURIComponent(id || \'\')}/preview');
-        expect(previewRedirect).to.include('/api/scorm/play/${encodeURIComponent(registrationId)}');
-        expect(previewRedirect).to.include('window.location.replace');
-        expect(previewRedirect).to.include('Opening course preview');
-        expect(previewRedirect).to.include('Preview could not be opened');
     });
 });
