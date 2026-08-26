@@ -263,7 +263,10 @@ router.post('/generate', auth, async (req, res) => {
         checkpoint(progressId, req.userId);
         // Only raster imagery is generated externally. Audio/TTS is intentionally
         // disabled so generated courses remain visual, lightweight and low-cost.
-        const media = await prepareReplicateCourseMedia(analysis, { onProgress: report });
+        const media = await prepareReplicateCourseMedia(analysis, {
+            onProgress: report,
+            checkCancelled: () => checkpoint(progressId, req.userId)
+        });
         analysis = media.analysis;
         checkpoint(progressId, req.userId);
 
