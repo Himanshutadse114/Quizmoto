@@ -13,7 +13,6 @@ import {
   ChevronRight,
   Plus,
   Upload,
-  Layers3,
   ShieldCheck,
   LockKeyhole,
   Gamepad2,
@@ -46,13 +45,13 @@ const NAV_GROUPS = [
     ]
   },
   {
-    label: 'SCORM AI',
+    label: 'Lumo',
     items: [
-      { to: '/scorm/author', label: 'AI Course Author', icon: Sparkles, requiresScorm: true },
+      { to: '/scorm/author', label: 'Course Author', icon: Sparkles, requiresScorm: true },
       { to: '/scorm/courses', label: 'My Courses', icon: BookOpen, requiresScorm: true },
       { to: '/scorm/roster', label: 'Learner Roster', icon: UserCheck, requiresScorm: true },
       { to: '/scorm/visual-studio', label: 'Content Editor', icon: Palette, requiresScorm: true },
-      { to: '/scorm/library', label: 'SCORM Library', icon: Library, requiresScorm: true },
+      { to: '/scorm/library', label: 'Course Library', icon: Library, requiresScorm: true },
       { to: '/scorm/tracking', label: 'Learner Tracking', icon: Activity, requiresScorm: true },
       { to: '/scorm/reports', label: 'Reports & Insights', icon: BarChart3, requiresScorm: true }
     ]
@@ -108,12 +107,12 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess }) {
 
 function Brand() {
   return (
-    <Link to="/scorm" className="scorm-brand flex items-center gap-3 min-w-0">
-      <div className="scorm-brand-mark w-10 h-10 grid place-items-center shrink-0"><Layers3 size={19} strokeWidth={2.2} /></div>
-      <div className="min-w-0">
-        <div className="scorm-display scorm-brand-name text-[16px] leading-none truncate"><span>SCORM</span> <span className="text-blue-400">AI</span></div>
-        <div className="scorm-brand-subtitle mt-1 text-[10px] truncate">Learning intelligence platform</div>
-      </div>
+    <Link to="/scorm" className="scorm-brand flex items-center min-w-0" aria-label="Lumo home">
+      <img
+        src="/lumo-logo.png"
+        alt="Lumo"
+        className="block h-[44px] w-auto max-w-[196px] object-contain object-left"
+      />
     </Link>
   );
 }
@@ -207,11 +206,11 @@ export default function ScormPlatformShell() {
             </div>
           )}
           {scormAccess ? (
-            <div className="scorm-status-card rounded-xl px-3.5 py-3"><div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />SCORM AI unlocked</div><div className="mt-1.5 text-[10px] leading-relaxed">Authoring, learner tracking, reporting and SCORM operations are active.</div></div>
+            <div className="scorm-status-card rounded-xl px-3.5 py-3"><div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />Lumo unlocked</div><div className="mt-1.5 text-[10px] leading-relaxed">Course authoring, learner tracking, reporting and learning operations are active.</div></div>
           ) : (
             <div className="rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
               <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={13} /> Approval pending</div>
-              <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae]">Quizmoto is unlocked. SCORM AI features unlock after administrator approval.</div>
+              <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae]">Quizmoto is unlocked. Lumo course and learner features unlock after administrator approval.</div>
               <button type="button" onClick={refreshApproval} disabled={checkingAccess} className="mt-2 inline-flex items-center gap-1.5 text-[9px] font-semibold text-[#60a5fa] disabled:opacity-50"><RefreshCw size={11} className={checkingAccess ? 'animate-spin' : ''} /> Refresh access</button>
             </div>
           )}
@@ -223,14 +222,14 @@ export default function ScormPlatformShell() {
 
       <div className="lg:pl-[268px] min-h-screen">
         <header className="scorm-topbar sticky top-0 z-30 min-h-[64px] border-b px-4 md:px-7 py-2.5 flex items-center gap-3 md:gap-4">
-          <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open SCORM AI navigation" className="scorm-topbar-icon lg:hidden w-10 h-10 grid place-items-center shrink-0"><Menu size={18} /></button>
-          {!scormAccess && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> SCORM AI approval pending · Quizmoto available</div>}
+          <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open Lumo navigation" className="scorm-topbar-icon lg:hidden w-10 h-10 grid place-items-center shrink-0"><Menu size={18} /></button>
+          {!scormAccess && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> Lumo approval pending · Quizmoto available</div>}
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
             <Link to="/scorm/quizmoto" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
             {isSuperAdmin && <Link to="/scorm/access" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><ShieldCheck size={14} /> Access</Link>}
             <Link to="/scorm/library?upload=1" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Upload size={14} /> {scormAccess ? 'Upload' : 'Library'}</Link>
-            <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold">{scormAccess ? <Plus size={14} /> : <LockKeyhole size={14} />}<span className="hidden sm:inline">{scormAccess ? 'Create course' : 'Explore AI Author'}</span><span className="sm:hidden">{scormAccess ? 'Create' : 'AI'}</span></Link>
+            <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold">{scormAccess ? <Plus size={14} /> : <LockKeyhole size={14} />}<span className="hidden sm:inline">{scormAccess ? 'Create course' : 'Explore course author'}</span><span className="sm:hidden">{scormAccess ? 'Create' : 'Explore'}</span></Link>
           </div>
         </header>
         <main className="scorm-main min-h-[calc(100vh-64px)] pb-24 lg:pb-0"><Outlet /></main>
