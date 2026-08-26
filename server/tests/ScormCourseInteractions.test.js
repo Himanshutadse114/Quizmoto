@@ -81,10 +81,19 @@ describe('SCORM course interactions', () => {
         expect(script).to.include("document.addEventListener('click', blockLockedNext, true)");
     });
 
+    it('does not use a self-observing MutationObserver for slide navigation', () => {
+        const script = courseInteractionScript();
+        expect(script).to.not.include('new MutationObserver');
+        expect(script).to.not.include('observer.observe(main');
+        expect(script).to.include('function syncAfterNavigation(event)');
+        expect(script).to.include("event.target.closest('#next-btn,#prev-btn')");
+        expect(script).to.include('setTimeout(syncNextGate, 0)');
+    });
+
     it('upgrades only learning key-point cards and leaves quiz controls alone', () => {
         const script = courseInteractionScript();
         expect(script).to.include('.slide[data-kind="learning"] .qmx-cards');
-        expect(script).to.include("grid.classList.add('qmx-flip-grid')");
+        expect(script).to.include("if (!grid.classList.contains('qmx-flip-grid')) grid.classList.add('qmx-flip-grid')");
         expect(script).to.not.include('.quiz-option');
     });
 });
