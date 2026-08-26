@@ -5,7 +5,6 @@
   --scorm-platform-teal-hover: #9BE8E1;
   --scorm-platform-teal-dark: #06201E;
   --atelora-bg: #0A0F0E;
-  --atelora-bg-deep: #070B0A;
   --atelora-panel: #121A19;
   --atelora-line: rgba(255,255,255,.10);
   --atelora-text: #EDF4F2;
@@ -15,12 +14,12 @@
 
 html,
 body {
-  background: var(--atelora-bg) !important;
+  background: #0A0F0E !important;
   background-image:
     radial-gradient(circle at 18% -8%, rgba(79,201,191,.10), transparent 25rem),
     radial-gradient(circle at 88% 100%, rgba(63,203,140,.04), transparent 26rem),
     linear-gradient(180deg, #0D1413 0%, #0A0F0E 56%, #070B0A 100%) !important;
-  color: var(--atelora-text) !important;
+  color: #EDF4F2 !important;
   color-scheme: dark !important;
   accent-color: #4FC9BF;
 }
@@ -31,65 +30,46 @@ body {
 }
 
 body,
-h1, h2, h3, h4, h5, h6,
-p, li, dt, dd, label, small, strong, em,
-span, div, section, article, aside, main,
-header, nav, footer, blockquote, figcaption {
-  color: var(--atelora-text);
-}
-
-p, small, figcaption,
-header nav a,
-footer a,
-footer p,
-footer span {
-  color: var(--atelora-muted);
+main,
+section,
+article,
+aside,
+header,
+nav,
+footer,
+[role="banner"],
+[role="dialog"],
+[role="navigation"],
+[aria-modal="true"] {
+  background-color: #0A0F0E !important;
+  color: #EDF4F2 !important;
 }
 
 h1, h2, h3, h4, h5, h6 {
   color: #F4FBFA !important;
 }
 
-header, nav, [role="banner"], footer,
-[class*="footer" i], [id*="footer" i] {
-  background: rgba(10, 15, 14, .92) !important;
-  background-image: none !important;
-  border-color: var(--atelora-line) !important;
-  color: var(--atelora-text) !important;
-  backdrop-filter: blur(18px);
+p, small, figcaption {
+  color: #A9BAB6 !important;
 }
 
-section, article, aside, main {
-  background-color: transparent;
+[data-atelora-navbar-guard] {
+  display: none !important;
 }
 
-hr,
-[class*="border"],
-[class*="divider"] {
-  border-color: var(--atelora-line) !important;
-}
-
-img {
-  border-color: var(--atelora-line);
-}
-
-a:not([href="/login"]):not([data-atelora-login-cta="1"]) {
-  color: var(--atelora-text);
-}
-
-a:not([href="/login"]):not([data-atelora-login-cta="1"]):hover {
-  color: #7BDCD3;
+[data-atelora-logo],
+[data-atelora-footer-logo],
+header img,
+nav img,
+[role="banner"] img {
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 input, textarea, select {
   background: #121A19 !important;
-  border-color: var(--atelora-line) !important;
-  color: var(--atelora-text) !important;
-}
-
-input:focus, textarea:focus, select:focus {
-  border-color: #4FC9BF !important;
-  box-shadow: 0 0 0 3px rgba(79, 201, 191, .16) !important;
+  border-color: rgba(255,255,255,.10) !important;
+  color: #EDF4F2 !important;
 }
 
 a[href="/login"],
