@@ -107,7 +107,7 @@ function courseInteractionStyle() {
   overflow: hidden;
 }
 .qmx-flip-front {
-  background: linear-gradient(145deg,var(--surface),var(--soft));
+  background: var(--surface);
   border-color: var(--paper-3);
 }
 .qmx-flip-back {
