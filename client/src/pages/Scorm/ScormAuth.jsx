@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layers3, LockKeyhole, Mail, ShieldCheck, UserRound, Zap, Sun, Moon } from 'lucide-react';
+import { LockKeyhole, Mail, ShieldCheck, UserRound, Zap, Sun, Moon } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -95,9 +95,9 @@ export default function ScormAuth() {
     <div className={`scorm-auth-workbench scorm-theme-${theme}`}>
       <div className="sa-shell">
         <div className="sa-topbar">
-          <div className="sa-top-note">SCORM AI Platform · Quizmoto included</div>
+          <div className="sa-top-note">Lumo Learning Platform · Quizmoto included</div>
           <div className="flex items-center gap-3">
-            <div className="sa-top-note">SCORM capabilities unlock after administrator approval</div>
+            <div className="sa-top-note">Course and learner capabilities unlock after administrator approval</div>
             <button
               type="button"
               className="sa-theme-toggle"
@@ -120,33 +120,37 @@ export default function ScormAuth() {
           className="sa-card"
         >
           <section className="sa-brand-panel">
-            <div className="sa-mark"><Layers3 size={22} /></div>
-            <div className="sa-kicker">AI learning creation & live engagement</div>
-            <h1 className="sa-title">SCORM <span>AI</span></h1>
+            <img
+              src="/lumo-logo.png"
+              alt="Lumo"
+              className="block w-[210px] max-w-full h-auto object-contain object-left mb-7"
+            />
+            <div className="sa-kicker">Create · deliver · measure</div>
+            <h1 className="sa-title">Learning, <span>built smarter</span></h1>
             <p className="sa-copy">
-              One workspace for AI-assisted course creation, SCORM delivery, learner intelligence and Quizmoto live engagement.
+              One workspace for course creation, SCORM delivery, learner progress, reporting and Quizmoto live engagement.
             </p>
-            <div className="sa-points" aria-label="SCORM AI platform highlights">
+            <div className="sa-points" aria-label="Lumo platform highlights">
               <div className="sa-point"><span className="sa-point-dot" /> Quizmoto is available immediately after registration</div>
-              <div className="sa-point"><span className="sa-point-dot" /> SCORM AI capabilities stay visible while approval is pending</div>
+              <div className="sa-point"><span className="sa-point-dot" /> Course and learner features stay visible while approval is pending</div>
               <div className="sa-point"><span className="sa-point-dot" /> Approval unlocks authoring, courses, tracking and reports</div>
             </div>
             <div className="sa-notice" style={{ marginTop: 24 }}>
               <div className="sa-notice-title"><Zap size={14} style={{ display: 'inline', marginRight: 7 }} />Start before approval</div>
-              <div>Register, enter the platform and use Quizmoto straight away. Locked SCORM AI modules explain exactly what becomes available after approval.</div>
+              <div>Register, enter Lumo and use Quizmoto straight away. Locked learning modules explain exactly what becomes available after approval.</div>
             </div>
           </section>
 
           <section className="sa-form-panel">
             <div className="sa-form-kicker">Platform access</div>
-            <h2 className="sa-form-title">{isLogin ? 'Sign in to SCORM AI' : 'Create your platform account'}</h2>
+            <h2 className="sa-form-title">{isLogin ? 'Sign in to Lumo' : 'Create your Lumo account'}</h2>
             <p className="sa-form-sub">
               {isLogin
-                ? 'Sign in with your SCORM AI account. Pending users can still access Quizmoto and preview locked SCORM AI capabilities.'
-                : 'Registration gives you immediate platform access with Quizmoto unlocked. The Super Admin separately approves the SCORM AI feature set.'}
+                ? 'Sign in to your Lumo account. Pending users can still access Quizmoto and explore locked learning capabilities.'
+                : 'Registration gives you immediate platform access with Quizmoto unlocked. The Super Admin separately approves the full Lumo feature set.'}
             </p>
 
-            <div className="sa-tabs" role="tablist" aria-label="SCORM AI authentication mode">
+            <div className="sa-tabs" role="tablist" aria-label="Lumo authentication mode">
               <button
                 type="button"
                 role="tab"
@@ -240,7 +244,7 @@ export default function ScormAuth() {
               </label>
 
               <button type="submit" disabled={busy} className="sa-submit">
-                {busy ? 'Please wait…' : isLogin ? 'Enter platform' : 'Create account & enter'}
+                {busy ? 'Please wait…' : isLogin ? 'Enter Lumo' : 'Create account & enter'}
               </button>
             </form>
           </section>
