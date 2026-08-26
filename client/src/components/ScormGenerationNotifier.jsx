@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   markCourseGenerationJobNotified,
+  publicGenerationError,
   useCourseGenerationJobs
 } from '../services/courseGenerationJobs';
 
@@ -36,7 +37,7 @@ export default function ScormGenerationNotifier() {
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold">{ready ? 'Your course is ready' : 'Course generation failed'}</div>
           <div className="mt-1 text-xs opacity-70 truncate">{job.title || 'Course'}</div>
-          {!ready && job.error && <div className="mt-2 text-[11px] leading-relaxed text-rose-400">{job.error}</div>}
+          {!ready && job.error && <div className="mt-2 text-[11px] leading-relaxed text-rose-400">{publicGenerationError(job.error)}</div>}
           {ready && (
             <div className="mt-3 flex items-center gap-2">
               {job.courseId ? (
