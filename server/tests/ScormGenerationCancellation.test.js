@@ -26,7 +26,11 @@ describe('SCORM generation cancellation', () => {
         const current = getProgress(id, userId);
         expect(current.status).to.equal('cancelled');
         expect(current.percent).to.equal(35);
-        expect(() => assertNotCancelled(id, userId)).to.throw().with.property('code', 'SCORM_GENERATION_CANCELLED');
+
+        let cancellation = null;
+        try { assertNotCancelled(id, userId); } catch (error) { cancellation = error; }
+        expect(cancellation).to.be.an('error');
+        expect(cancellation.code).to.equal('SCORM_GENERATION_CANCELLED');
     });
 
     it('exposes a protected cancel endpoint and client stop/remove controls', () => {
