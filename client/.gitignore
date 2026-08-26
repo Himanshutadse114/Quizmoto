@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Generated from landing-website-updated.zip
+public/landing/
+.landing-template-temp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
