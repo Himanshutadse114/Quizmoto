@@ -15,6 +15,7 @@ import './pages/Scorm/scormVisualStudioFixes.css';
 import './pages/Scorm/scormReferenceTheme.css';
 import './pages/Scorm/scormReferencePolish.css';
 
+const MarketingLanding = lazy(() => import('./pages/Marketing/MarketingLanding'));
 const CreateQuiz = lazy(() => import('./pages/Host/CreateQuiz'));
 const EditQuiz = lazy(() => import('./pages/Host/EditQuiz'));
 const Reports = lazy(() => import('./pages/Host/Reports'));
@@ -45,27 +46,29 @@ const ScormVisualStudio = lazy(() => import('./pages/Scorm/VisualStudio'));
 const ScormAccessAdmin = lazy(() => import('./pages/Scorm/AccessAdmin'));
 
 function RouteFallback() {
+  const { pathname } = useLocation();
+  const marketing = pathname === '/';
   return (
-    <div className="min-h-[55vh] grid place-items-center relative z-20">
+    <div className={`min-h-[55vh] grid place-items-center relative z-20 ${marketing ? 'text-[#0b1514]' : 'text-white'}`}>
       <div className="text-center">
-        <div className="w-9 h-9 rounded-full border-2 border-white/20 border-t-white animate-spin mx-auto" />
-        <div className="mt-3 text-xs font-semibold text-white/60">Loading…</div>
+        <div className={`w-9 h-9 rounded-full border-2 animate-spin mx-auto ${marketing ? 'border-[#0b1514]/15 border-t-[#17978d]' : 'border-white/20 border-t-white'}`} />
+        <div className={`mt-3 text-xs font-semibold ${marketing ? 'text-[#60716d]' : 'text-white/60'}`}>Loading…</div>
       </div>
     </div>
   );
 }
 
-function PlatformEntry() {
+function LoginEntry() {
   const { token, platformAccess, loading } = useAuth();
   if (loading) return <RouteFallback />;
-  if (token && platformAccess) return <Navigate to="/scorm" replace />;
+  if (token && platformAccess) return <Navigate to="/atelora" replace />;
   return <ScormAuth />;
 }
 
 function PlatformProtected({ children }) {
   const { token, platformAccess, loading } = useAuth();
   if (loading) return <RouteFallback />;
-  if (!token || !platformAccess) return <Navigate to="/" replace />;
+  if (!token || !platformAccess) return <Navigate to="/login" replace />;
   return children;
 }
 
@@ -82,29 +85,36 @@ function ScormHomeGate() {
 function AccessAdminGate() {
   const { scormAccess, user } = useAuth();
   const isSuperAdmin = Boolean(scormAccess && (user?.isSuperAdmin || user?.role === 'super_admin'));
-  return isSuperAdmin ? <ScormAccessAdmin /> : <Navigate to="/scorm" replace />;
+  return isSuperAdmin ? <ScormAccessAdmin /> : <Navigate to="/atelora" replace />;
 }
 
 function LegacyQuizRedirect({ kind }) {
   const { id, pin } = useParams();
   const targets = {
-    dashboard: '/scorm/quizmoto',
-    create: '/scorm/quizmoto/create',
-    reports: '/scorm/quizmoto/reports',
-    edit: `/scorm/quizmoto/edit/${id || ''}`,
+    dashboard: '/atelora/quizmoto',
+    create: '/atelora/quizmoto/create',
+    reports: '/atelora/quizmoto/reports',
+    edit: `/atelora/quizmoto/edit/${id || ''}`,
     lobby: `/host/lobby/${pin || ''}`,
     game: `/host/game/${pin || ''}`
   };
-  return <Navigate to={targets[kind] || '/scorm/quizmoto'} replace />;
+  return <Navigate to={targets[kind] || '/atelora/quizmoto'} replace />;
+}
+
+function LegacyScormRedirect() {
+  const location = useLocation();
+  if (location.pathname === '/scorm/login') return <Navigate to="/login" replace />;
+  const suffix = location.pathname.replace(/^\/scorm/, '');
+  return <Navigate to={`/atelora${suffix}${location.search}${location.hash}`} replace />;
 }
 
 function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
-        <Route path="/" element={<PlatformEntry />} />
-        <Route path="/login" element={<Navigate to="/" replace />} />
-        <Route path="/scorm/login" element={<Navigate to="/" replace />} />
+        <Route path="/" element={<MarketingLanding />} />
+        <Route path="/login" element={<LoginEntry />} />
+        <Route path="/atelora/login" element={<Navigate to="/login" replace />} />
 
         <Route path="/player/login" element={<PlayerLogin />} />
         <Route path="/player/dashboard" element={<PlayerDashboard />} />
@@ -119,14 +129,12 @@ function AppRoutes() {
         <Route path="/host/lobby/:pin" element={<Lobby />} />
         <Route path="/host/game/:pin" element={<GameView />} />
 
-        <Route path="/scorm" element={<PlatformProtected><ScormPlatformShell /></PlatformProtected>}>
+        <Route path="/atelora" element={<PlatformProtected><ScormPlatformShell /></PlatformProtected>}>
           <Route index element={<ScormHomeGate />} />
-
           <Route path="quizmoto" element={<QuizmotoModule />} />
           <Route path="quizmoto/create" element={<CreateQuiz embedded />} />
           <Route path="quizmoto/edit/:id" element={<EditQuiz embedded />} />
           <Route path="quizmoto/reports" element={<Reports embedded />} />
-
           <Route path="courses" element={<ScormFeatureGate featureId="courses"><ScormCourses /></ScormFeatureGate>} />
           <Route path="courses/:id" element={<ScormFeatureGate featureId="courses"><ScormCourseDetail /></ScormFeatureGate>} />
           <Route path="roster" element={<ScormFeatureGate featureId="tracking"><ScormLearnerRoster /></ScormFeatureGate>} />
@@ -138,22 +146,16 @@ function AppRoutes() {
           <Route path="access" element={<AccessAdminGate />} />
         </Route>
 
-        <Route path="/scorm/live-quiz" element={<LegacyQuizRedirect kind="dashboard" />} />
-        <Route path="/scorm/live-quiz/create" element={<LegacyQuizRedirect kind="create" />} />
-        <Route path="/scorm/live-quiz/edit/:id" element={<LegacyQuizRedirect kind="edit" />} />
-        <Route path="/scorm/live-quiz/reports" element={<LegacyQuizRedirect kind="reports" />} />
-        <Route path="/scorm/live-quiz/lobby/:pin" element={<LegacyQuizRedirect kind="lobby" />} />
-        <Route path="/scorm/live-quiz/game/:pin" element={<LegacyQuizRedirect kind="game" />} />
+        <Route path="/atelora/learn/:inviteCode" element={<ScormLearnLanding />} />
+        <Route path="/atelora/player/:registrationId" element={<ScormPlayerShell />} />
 
+        <Route path="/scorm/*" element={<LegacyScormRedirect />} />
         <Route path="/dashboard" element={<LegacyQuizRedirect kind="dashboard" />} />
         <Route path="/create-quiz" element={<LegacyQuizRedirect kind="create" />} />
         <Route path="/edit-quiz/:id" element={<LegacyQuizRedirect kind="edit" />} />
         <Route path="/reports" element={<LegacyQuizRedirect kind="reports" />} />
         <Route path="/host/lobby-old/:pin" element={<LegacyQuizRedirect kind="lobby" />} />
         <Route path="/host/game-old/:pin" element={<LegacyQuizRedirect kind="game" />} />
-
-        <Route path="/scorm/learn/:inviteCode" element={<ScormLearnLanding />} />
-        <Route path="/scorm/player/:registrationId" element={<ScormPlayerShell />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -163,13 +165,16 @@ function AppRoutes() {
 
 function AppSurface() {
   const { pathname } = useLocation();
+  const isMarketing = pathname === '/';
   const isQuizGameStage = pathname.startsWith('/host/lobby') || pathname.startsWith('/host/game') || pathname === '/join' || pathname.startsWith('/player/');
-  const surfaceClass = isQuizGameStage
-    ? 'bg-quizmoto-darkPurple live-quiz-stage quizmoto-classic-live-stage'
-    : 'bg-[#0A0F0E]';
+  const surfaceClass = isMarketing
+    ? 'bg-[#f7fbfa] text-[#0b1514]'
+    : isQuizGameStage
+      ? 'bg-quizmoto-darkPurple live-quiz-stage quizmoto-classic-live-stage text-white'
+      : 'bg-[#0A0F0E] text-white';
 
   return (
-    <div className={`min-h-screen text-white relative ${surfaceClass}`}>
+    <div className={`min-h-screen relative ${surfaceClass}`}>
       {isQuizGameStage && (
         <>
           <div className="bg-shape shape-1 w-64 h-64 border-[32px] border-white rounded-full" />
