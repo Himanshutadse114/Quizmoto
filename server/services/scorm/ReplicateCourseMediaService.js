@@ -41,9 +41,19 @@ function mediaConfig() {
     };
 }
 
+function isGenerationCancelled(err) {
+    return String(err?.code || '') === 'SCORM_GENERATION_CANCELLED';
+}
+
 function emit(onProgress, patch) {
     if (typeof onProgress !== 'function') return;
-    try { onProgress(patch); } catch (_) {}
+    try {
+        onProgress(patch);
+    } catch (err) {
+        // Progress callbacks are normally best-effort, but cancellation must be
+        // allowed to unwind the media pipeline instead of being swallowed.
+        if (isGenerationCancelled(err)) throw err;
+    }
 }
 
 function sentenceExcerpt(value, maxChars) {
@@ -105,11 +115,12 @@ function rateLimitDetail(state) {
     return `Replicate allows ${rpm} new prediction request(s) per minute. The next image request will start in about ${seconds}s.`;
 }
 
-async function generateImage(prompt, path, config, onStatus) {
+async function generateImage(prompt, path, config, onStatus, checkCancelled = null) {
     let lastError = null;
     const attempts = 1 + config.imageRetries;
     for (let attempt = 0; attempt < attempts; attempt += 1) {
         try {
+            if (typeof checkCancelled === 'function') checkCancelled();
             if (attempt > 0 && typeof onStatus === 'function') onStatus({ status: 'retrying', attempt: attempt + 1, lastError });
             const output = await runReplicateModel(config.imageModel, {
                 prompt,
@@ -125,6 +136,7 @@ async function generateImage(prompt, path, config, onStatus) {
                 timeoutMs: Number(process.env.REPLICATE_SCORM_IMAGE_TIMEOUT_MS || 180000),
                 onStatus
             });
+            if (typeof checkCancelled === 'function') checkCancelled();
             const url = outputUrl(output);
             if (!url) {
                 const err = new Error('Replicate image model returned no output URL.');
@@ -132,6 +144,7 @@ async function generateImage(prompt, path, config, onStatus) {
                 throw err;
             }
             const body = await downloadReplicateAsset(url);
+            if (typeof checkCancelled === 'function') checkCancelled();
             if (!body || body.length < 512) {
                 const err = new Error('Replicate image download was empty or incomplete.');
                 err.code = 'REPLICATE_IMAGE_EMPTY';
@@ -139,8 +152,10 @@ async function generateImage(prompt, path, config, onStatus) {
             }
             return { path, body, contentType: 'image/webp' };
         } catch (err) {
+            if (isGenerationCancelled(err)) throw err;
             lastError = err;
             if (attempt >= attempts - 1 || !isRetryableImageError(err)) break;
+            if (typeof checkCancelled === 'function') checkCancelled();
             const delayMs = retryDelayMs(err, attempt, config);
             logger.warn('scorm_replicate_image_retry', {
                 module: 'scorm', path, attempt: attempt + 1, nextAttempt: attempt + 2,
@@ -189,6 +204,8 @@ function assignRasterVisual(slide, path, promptInfo) {
 
 async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     const onProgress = opts.onProgress;
+    const checkCancelled = typeof opts.checkCancelled === 'function' ? opts.checkCancelled : () => {};
+    checkCancelled();
     const analysis = rawAnalysis && typeof rawAnalysis === 'object' ? { ...rawAnalysis } : {};
     const slides = Array.isArray(analysis.slides) ? analysis.slides.map(clearLegacyVisuals) : [];
 
@@ -224,6 +241,7 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     const requiredImages = Math.min(availableImageSlots, config.maxImages, config.minImages);
     const requiredSlideImages = Math.max(0, requiredImages - 1);
 
+    checkCancelled();
     emit(onProgress, {
         percent: 7,
         stage: 'Planning course visuals with Gemini',
@@ -231,8 +249,10 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     });
 
     try {
+        checkCancelled();
         emit(onProgress, { percent: 9, stage: 'Writing cover image prompt with Gemini', detail: 'Gemini is translating the overall course meaning into a non-human, no-text cover concept.' });
         const coverPrompt = await generateCoverVisualPrompt({ ...analysis, slides });
+        checkCancelled();
         promptModel = coverPrompt.model;
         analysis.coverImagePrompt = coverPrompt.prompt;
         analysis.coverImagePromptProvider = 'gemini';
@@ -240,24 +260,28 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
 
         const coverPath = 'assets/media/course-cover.webp';
         const coverFile = await generateImage(coverPrompt.prompt, coverPath, config, (state) => {
+            checkCancelled();
             const status = String(state?.status || '').toLowerCase();
             if (status === 'rate_limit_wait') emit(onProgress, { percent: 11, stage: 'Waiting for Replicate rate-limit slot', detail: rateLimitDetail(state), modelStatus: status });
             if (status === 'starting') emit(onProgress, { percent: 12, stage: 'Starting cover image', detail: 'FLUX Schnell accepted Gemini’s cover prompt.', modelStatus: status, predictionId: state.predictionId || '' });
             if (status === 'processing') emit(onProgress, { percent: 16, stage: 'Generating course cover image', detail: 'Rendering the Gemini-directed 16:9 cover image.', modelStatus: status, predictionId: state.predictionId || '' });
             if (status === 'retrying') emit(onProgress, { percent: 13, stage: 'Retrying course cover image', detail: 'Retrying the cover after a temporary image-service issue.' });
-        });
+        }, checkCancelled);
+        checkCancelled();
         files.push(coverFile);
         analysis.coverImageAsset = coverPath;
         analysis.coverVisualAsset = coverPath;
         analysis.coverMobileVisualAsset = coverPath;
         coverGenerated = true;
     } catch (err) {
+        if (isGenerationCancelled(err)) throw err;
         warnings.push(`Cover image: ${err.message}`);
         logger.warn('scorm_course_cover_failed', { module: 'scorm', error: err.message, code: err.code, status: err.status || null });
     }
 
     let completedJobs = 0;
     for (const slideIndex of selectedIndexes) {
+        checkCancelled();
         const path = `assets/media/slide-${String(slideIndex + 1).padStart(3, '0')}.webp`;
         try {
             const basePercent = 22 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 40);
@@ -267,9 +291,11 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
                 detail: `Gemini is reading only slide ${slideIndex + 1}'s lesson, title and key points to design the correct visual.`
             });
             const promptInfo = await generateSlideVisualPrompt(slides[slideIndex], { ...analysis, slides }, slideIndex);
+            checkCancelled();
             promptModel = promptModel || promptInfo.model;
 
             const file = await generateImage(promptInfo.prompt, path, config, (state) => {
+                checkCancelled();
                 const status = String(state?.status || '').toLowerCase();
                 if (status === 'rate_limit_wait') emit(onProgress, {
                     percent: basePercent,
@@ -289,25 +315,30 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
                     stage: `Retrying slide ${slideIndex + 1} image`,
                     detail: 'Retrying this image after a temporary Replicate failure.'
                 });
-            });
+            }, checkCancelled);
 
+            checkCancelled();
             files.push(file);
             assignRasterVisual(slides[slideIndex], path, promptInfo);
             successfulSlideIndexes.add(slideIndex);
             slideImagesGenerated += 1;
         } catch (err) {
+            if (isGenerationCancelled(err)) throw err;
             warnings.push(`Slide ${slideIndex + 1} image: ${err.message}`);
             logger.warn('scorm_slide_image_failed', { module: 'scorm', slideIndex, error: err.message, code: err.code, status: err.status || null });
         } finally {
-            completedJobs += 1;
-            emit(onProgress, {
-                percent: 24 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 44),
-                stage: 'Generating learning-slide images',
-                detail: `${completedJobs} of ${selectedIndexes.length} slide image jobs completed.`
-            });
+            if (!isGenerationCancelled(null)) {
+                completedJobs += 1;
+                emit(onProgress, {
+                    percent: 24 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 44),
+                    stage: 'Generating learning-slide images',
+                    detail: `${completedJobs} of ${selectedIndexes.length} slide image jobs completed.`
+                });
+            }
         }
     }
 
+    checkCancelled();
     if (coverGenerated && slideImagesGenerated < requiredSlideImages) {
         const recoveryCandidates = [
             ...selectedIndexes.filter((index) => !successfulSlideIndexes.has(index)),
@@ -315,29 +346,35 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
         ];
         emit(onProgress, { percent: 69, stage: 'Recovering missing course images', detail: 'Regenerating slide-specific Gemini prompts for any missing visual slots.' });
         for (const slideIndex of recoveryCandidates) {
+            checkCancelled();
             if (slideImagesGenerated >= requiredSlideImages) break;
             const path = `assets/media/slide-${String(slideIndex + 1).padStart(3, '0')}.webp`;
             try {
                 const promptInfo = await generateSlideVisualPrompt(slides[slideIndex], { ...analysis, slides }, slideIndex);
+                checkCancelled();
                 const file = await generateImage(promptInfo.prompt, path, config, (state) => {
+                    checkCancelled();
                     if (String(state?.status || '').toLowerCase() === 'rate_limit_wait') emit(onProgress, {
                         percent: 70,
                         stage: `Waiting to recover slide ${slideIndex + 1} image`,
                         detail: rateLimitDetail(state),
                         modelStatus: 'rate_limit_wait'
                     });
-                });
+                }, checkCancelled);
+                checkCancelled();
                 files.push(file);
                 assignRasterVisual(slides[slideIndex], path, promptInfo);
                 successfulSlideIndexes.add(slideIndex);
                 slideImagesGenerated += 1;
             } catch (err) {
+                if (isGenerationCancelled(err)) throw err;
                 warnings.push(`Recovery slide ${slideIndex + 1}: ${err.message}`);
                 logger.warn('scorm_slide_image_recovery_failed', { module: 'scorm', slideIndex, error: err.message, code: err.code, status: err.status || null });
             }
         }
     }
 
+    checkCancelled();
     if (!coverGenerated || slideImagesGenerated < requiredSlideImages) {
         const totalGenerated = (coverGenerated ? 1 : 0) + slideImagesGenerated;
         const reason = warningSummary(warnings);
@@ -379,6 +416,7 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
         }
     };
 
+    checkCancelled();
     emit(onProgress, {
         percent: 76,
         stage: 'Canonical course images ready',
