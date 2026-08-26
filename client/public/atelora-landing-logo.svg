@@ -15,5 +15,5 @@
     <path d="M0 6 9 0h15l-9 8 9 8H9L0 10l5-2Z" fill="url(#g1)" opacity=".92"/>
     <path d="M10 18 19 10h15l-9 8 9 8H19l-9-6 5-2Z" fill="url(#g2)"/>
   </g>
-  <text x="47" y="30" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="600" letter-spacing="-.7" fill="#0E2A27">atelora</text>
+  <text x="47" y="30" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="600" letter-spacing="-.7" fill="#EDF4F2">atelora</text>
 </svg>
