@@ -88,11 +88,33 @@ function patchBrand(text) {
     .replace(/SCORMs\.ai/gi, 'Atelora')
     .replace(/SCORMs\s+AI/gi, 'Atelora')
     .replace(/SCORMsAI/gi, 'Atelora')
-    .replace(/scorms\.ai/gi, 'Atelora');
+    .replace(/scorms\.ai/gi, 'Atelora')
+    .replace(/#58d5d1/gi, '#4FC9BF')
+    .replace(/#5edad7/gi, '#7BDCD3')
+    .replace(/#7ad8d2/gi, '#7BDCD3')
+    .replace(/#3bafc5/gi, '#4FC9BF')
+    .replace(/#a9dfff/gi, '#9BE8E1')
+    .replace(/#bfeff1/gi, '#D9F5F1')
+    .replace(/#cfe8ff/gi, '#D9F5F1')
+    .replace(/#cfeeff/gi, '#D9F5F1')
+    .replace(/#dff3ff/gi, '#E8F7F5')
+    .replace(/#2cc9bf/gi, '#4FC9BF')
+    .replace(/#19b7ad/gi, '#4FC9BF')
+    .replace(/#35d4ca/gi, '#7BDCD3')
+    .replace(/#35cbd0/gi, '#4FC9BF')
+    .replace(/#2abdc5/gi, '#4FC9BF');
 }
 
 const localBrandBridge = `
 <style id="atelora-brand-style">
+  :root {
+    --scorm-platform-teal: #4FC9BF;
+    --scorm-platform-teal-strong: #7BDCD3;
+    --scorm-platform-teal-hover: #9BE8E1;
+    --scorm-platform-teal-dark: #06201E;
+  }
+  html { accent-color: #4FC9BF; }
+  ::selection { background: rgba(79,201,191,.28); color: #06201E; }
   .atelora-runtime-logo {
     display: block !important;
     width: 132px !important;
@@ -266,6 +288,9 @@ for (const file of walk(outputDir)) {
   }
 
   let next = patchBrand(text);
+  if (/\.html?$/i.test(file) && /<\/head\s*>/i.test(next) && !next.includes('atelora-platform-teal.css')) {
+    next = next.replace(/<\/head\s*>/i, '<link rel="stylesheet" href="/atelora-platform-teal.css"></head>');
+  }
   if (/\.html?$/i.test(file) && /<\/body\s*>/i.test(next) && !next.includes('id="atelora-brand-bridge"')) {
     next = next.replace(/<\/body\s*>/i, `${localBrandBridge}</body>`);
   }
