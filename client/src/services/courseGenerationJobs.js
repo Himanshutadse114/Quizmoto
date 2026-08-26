@@ -6,6 +6,9 @@ const STORAGE_KEY = 'quizmoto_scorm_generation_jobs_v1';
 const EVENT_NAME = 'quizmoto-course-generation-jobs';
 const MAX_JOBS = 12;
 const KEEP_MS = 24 * 60 * 60 * 1000;
+const STALE_PROGRESS_MS = 4 * 60 * 1000;
+const MISSING_PROGRESS_LIMIT = 12;
+const MISSING_PROGRESS_GRACE_MS = 30 * 1000;
 const requestControllers = new Map();
 const cancelledJobs = new Set();
 
@@ -63,13 +66,15 @@ export function publicGenerationError(value) {
   return raw;
 }
 
-function publicStage(progress = {}) {
-  const percent = Math.max(1, Math.min(100, Math.round(Number(progress.percent) || 1)));
+function publicStage(progress = {}, floorPercent = 1) {
+  const reported = Math.max(1, Math.min(100, Math.round(Number(progress.percent) || 1)));
+  const percent = Math.max(Math.max(1, Number(floorPercent) || 1), reported);
   if (percent >= 100) return { percent, stage: 'Course ready' };
   if (percent >= 92) return { percent, stage: 'Finalising course' };
   if (percent >= 80) return { percent, stage: 'Building course' };
-  if (percent >= 55) return { percent, stage: 'Creating visuals' };
-  if (percent >= 20) return { percent, stage: 'Creating course content' };
+  if (percent >= 36) return { percent, stage: 'Creating course visuals' };
+  if (percent >= 28) return { percent, stage: 'Planning course visuals' };
+  if (percent >= 8) return { percent, stage: 'Creating course content' };
   return { percent, stage: 'Preparing source material' };
 }
 
@@ -81,6 +86,7 @@ export function startBackgroundCourseGeneration({ token, payload, title }) {
   if (previousController) previousController.abort();
   const controller = new AbortController();
   requestControllers.set(id, controller);
+  const now = Date.now();
 
   upsertCourseGenerationJob(id, {
     title: displayTitle,
@@ -91,7 +97,10 @@ export function startBackgroundCourseGeneration({ token, payload, title }) {
     courseId: null,
     packageId: null,
     error: '',
-    notifiedAt: 0
+    notifiedAt: 0,
+    progressUpdatedAt: now,
+    missingProgressCount: 0,
+    serverStatus: 'running'
   });
 
   axios.post(apiUrl('/api/scorm/author/generate'), payload, {
@@ -112,23 +121,28 @@ export function startBackgroundCourseGeneration({ token, payload, title }) {
       title: data.title || displayTitle,
       courseId: data.courseId || null,
       packageId: data.packageId || null,
-      error: ''
+      error: '',
+      progressUpdatedAt: Date.now(),
+      missingProgressCount: 0,
+      serverStatus: 'complete'
     });
   }).catch((err) => {
     if (cancelledJobs.has(id) || err?.code === 'ERR_CANCELED' || axios.isCancel?.(err)) return;
     // A browser/network timeout does not necessarily stop server-side generation.
-    // Keep the job alive and let progress polling resolve the final state.
+    // Keep the job alive briefly and let progress polling resolve the final state.
     if (!err.response) {
       upsertCourseGenerationJob(id, {
         status: 'running',
-        detail: 'Course generation is still running in the background.'
+        detail: 'Checking the background course generation process.'
       });
       return;
     }
     upsertCourseGenerationJob(id, {
       status: 'failed',
       stage: 'Generation failed',
-      error: publicGenerationError(err.response?.data?.message || err.message)
+      error: publicGenerationError(err.response?.data?.message || err.message),
+      progressUpdatedAt: Date.now(),
+      serverStatus: 'error'
     });
   }).finally(() => {
     if (requestControllers.get(id) === controller) requestControllers.delete(id);
@@ -174,6 +188,7 @@ export async function cancelCourseGenerationJob(token, jobOrId) {
 
 export async function refreshCourseGenerationJob(token, job) {
   if (!token || !job?.id || !['running', 'queued'].includes(job.status)) return job;
+  const now = Date.now();
   try {
     const res = await axios.get(apiUrl(`/api/scorm/author/progress/${encodeURIComponent(job.id)}`), {
       headers: { Authorization: `Bearer ${token}` },
@@ -186,14 +201,23 @@ export async function refreshCourseGenerationJob(token, job) {
       removeCourseGenerationJob(job.id);
       return { ...job, status: 'cancelled' };
     }
-    const visible = publicStage(progress);
+
+    const visible = publicStage(progress, job.percent);
     const result = progress.result || {};
+    const previousPercent = Math.max(1, Number(job.percent) || 1);
+    const serverStatus = String(progress.status || 'running');
+    const progressed = visible.percent > previousPercent || serverStatus !== String(job.serverStatus || 'running');
+    const progressUpdatedAt = progressed ? now : Number(job.progressUpdatedAt || job.createdAt || now);
+
     if (progress.status === 'error') {
       return upsertCourseGenerationJob(job.id, {
         status: 'failed',
         percent: visible.percent,
         stage: 'Generation failed',
-        error: publicGenerationError(progress.detail)
+        error: publicGenerationError(progress.detail),
+        progressUpdatedAt: now,
+        missingProgressCount: 0,
+        serverStatus: 'error'
       });
     }
     if (progress.status === 'complete' || visible.percent >= 100) {
@@ -205,17 +229,59 @@ export async function refreshCourseGenerationJob(token, job) {
         title: result.title || job.title,
         courseId: result.courseId || job.courseId || null,
         packageId: result.packageId || job.packageId || null,
-        error: ''
+        error: '',
+        progressUpdatedAt: now,
+        missingProgressCount: 0,
+        serverStatus: 'complete'
       });
     }
+
+    if (now - progressUpdatedAt > STALE_PROGRESS_MS) {
+      return upsertCourseGenerationJob(job.id, {
+        status: 'failed',
+        stage: 'Generation interrupted',
+        error: 'Course generation stopped responding. Please remove this attempt and try again.',
+        progressUpdatedAt: now,
+        missingProgressCount: 0,
+        serverStatus
+      });
+    }
+
     return upsertCourseGenerationJob(job.id, {
       status: 'running',
       percent: visible.percent,
       stage: visible.stage,
-      detail: 'Course generation continues in the background.'
+      detail: 'Course generation continues in the background.',
+      progressUpdatedAt,
+      missingProgressCount: 0,
+      serverStatus
     });
   } catch (err) {
-    // 404 can happen briefly before the server registers the progress record.
+    const status = Number(err.response?.status || 0);
+    if (status === 404) {
+      const missingProgressCount = Number(job.missingProgressCount || 0) + 1;
+      const ageMs = now - Number(job.createdAt || now);
+      if (missingProgressCount >= MISSING_PROGRESS_LIMIT && ageMs >= MISSING_PROGRESS_GRACE_MS) {
+        return upsertCourseGenerationJob(job.id, {
+          status: 'failed',
+          stage: 'Generation interrupted',
+          error: 'The background generation session was interrupted. Please remove this attempt and start again.',
+          missingProgressCount,
+          progressUpdatedAt: now,
+          serverStatus: 'missing'
+        });
+      }
+      return upsertCourseGenerationJob(job.id, { missingProgressCount });
+    }
+
+    if (now - Number(job.progressUpdatedAt || job.createdAt || now) > STALE_PROGRESS_MS) {
+      return upsertCourseGenerationJob(job.id, {
+        status: 'failed',
+        stage: 'Generation interrupted',
+        error: 'Course generation could not be reached. Please remove this attempt and try again.',
+        progressUpdatedAt: now
+      });
+    }
     return job;
   }
 }
