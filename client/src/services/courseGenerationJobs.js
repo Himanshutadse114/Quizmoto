@@ -6,6 +6,8 @@ const STORAGE_KEY = 'quizmoto_scorm_generation_jobs_v1';
 const EVENT_NAME = 'quizmoto-course-generation-jobs';
 const MAX_JOBS = 12;
 const KEEP_MS = 24 * 60 * 60 * 1000;
+const requestControllers = new Map();
+const cancelledJobs = new Set();
 
 function safeParse(value, fallback) {
   try { return JSON.parse(value); } catch (_) { return fallback; }
@@ -18,7 +20,7 @@ export function readCourseGenerationJobs() {
   if (!Array.isArray(jobs)) return [];
   return jobs
     .filter((job) => job && job.id)
-    .filter((job) => job.status === 'running' || job.status === 'queued' || now - Number(job.updatedAt || job.createdAt || now) < KEEP_MS)
+    .filter((job) => ['running', 'queued', 'cancelling'].includes(job.status) || now - Number(job.updatedAt || job.createdAt || now) < KEEP_MS)
     .slice(0, MAX_JOBS);
 }
 
@@ -42,8 +44,23 @@ export function upsertCourseGenerationJob(id, patch = {}) {
   return nextJob;
 }
 
+export function removeCourseGenerationJob(id) {
+  const next = readCourseGenerationJobs().filter((job) => job.id !== id);
+  writeJobs(next);
+  return next;
+}
+
 export function markCourseGenerationJobNotified(id) {
   return upsertCourseGenerationJob(id, { notifiedAt: Date.now() });
+}
+
+export function publicGenerationError(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return 'Course generation failed. Please try again.';
+  if (/gemini|replicate|flux|model\s*=|api\s*error/i.test(raw)) {
+    return 'Course generation failed while preparing the course. Please try again.';
+  }
+  return raw;
 }
 
 function publicStage(progress = {}) {
@@ -59,6 +76,12 @@ function publicStage(progress = {}) {
 export function startBackgroundCourseGeneration({ token, payload, title }) {
   const id = payload.progressId;
   const displayTitle = String(title || payload.topic || 'New course').trim() || 'New course';
+  cancelledJobs.delete(id);
+  const previousController = requestControllers.get(id);
+  if (previousController) previousController.abort();
+  const controller = new AbortController();
+  requestControllers.set(id, controller);
+
   upsertCourseGenerationJob(id, {
     title: displayTitle,
     status: 'running',
@@ -73,8 +96,10 @@ export function startBackgroundCourseGeneration({ token, payload, title }) {
 
   axios.post(apiUrl('/api/scorm/author/generate'), payload, {
     headers: { Authorization: `Bearer ${token}` },
-    timeout: 600000
+    timeout: 600000,
+    signal: controller.signal
   }).then((res) => {
+    if (cancelledJobs.has(id)) return;
     const data = res.data || {};
     if (data.errorMessage || (data.status && data.status !== 'ready')) {
       throw new Error(data.errorMessage || `Course generation finished with status: ${data.status}.`);
@@ -90,6 +115,7 @@ export function startBackgroundCourseGeneration({ token, payload, title }) {
       error: ''
     });
   }).catch((err) => {
+    if (cancelledJobs.has(id) || err?.code === 'ERR_CANCELED' || axios.isCancel?.(err)) return;
     // A browser/network timeout does not necessarily stop server-side generation.
     // Keep the job alive and let progress polling resolve the final state.
     if (!err.response) {
@@ -102,11 +128,48 @@ export function startBackgroundCourseGeneration({ token, payload, title }) {
     upsertCourseGenerationJob(id, {
       status: 'failed',
       stage: 'Generation failed',
-      error: err.response?.data?.message || err.message || 'Course generation failed.'
+      error: publicGenerationError(err.response?.data?.message || err.message)
     });
+  }).finally(() => {
+    if (requestControllers.get(id) === controller) requestControllers.delete(id);
   });
 
   return id;
+}
+
+export async function cancelCourseGenerationJob(token, jobOrId) {
+  const id = typeof jobOrId === 'string' ? jobOrId : jobOrId?.id;
+  if (!token || !id) return false;
+
+  cancelledJobs.add(id);
+  const existing = readCourseGenerationJobs().find((job) => job.id === id);
+  if (existing) {
+    upsertCourseGenerationJob(id, {
+      status: 'cancelling',
+      stage: 'Stopping generation',
+      detail: 'Stopping this course generation process.'
+    });
+  }
+
+  let stopped = false;
+  try {
+    await axios.post(apiUrl(`/api/scorm/author/progress/${encodeURIComponent(id)}/cancel`), {}, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 10000
+    });
+    stopped = true;
+  } catch (err) {
+    // If the server no longer knows this job, there is no live process left on
+    // that server instance, so it is safe to clear the stale browser entry.
+    if ([404, 409].includes(Number(err.response?.status || 0))) stopped = true;
+    else throw err;
+  } finally {
+    const controller = requestControllers.get(id);
+    if (controller) controller.abort();
+    requestControllers.delete(id);
+    if (stopped) removeCourseGenerationJob(id);
+  }
+  return stopped;
 }
 
 export async function refreshCourseGenerationJob(token, job) {
@@ -118,6 +181,11 @@ export async function refreshCourseGenerationJob(token, job) {
     });
     const progress = res.data?.progress;
     if (!progress) return job;
+    if (progress.status === 'cancelled') {
+      cancelledJobs.add(job.id);
+      removeCourseGenerationJob(job.id);
+      return { ...job, status: 'cancelled' };
+    }
     const visible = publicStage(progress);
     const result = progress.result || {};
     if (progress.status === 'error') {
@@ -125,7 +193,7 @@ export async function refreshCourseGenerationJob(token, job) {
         status: 'failed',
         percent: visible.percent,
         stage: 'Generation failed',
-        error: progress.detail || 'Course generation failed.'
+        error: publicGenerationError(progress.detail)
       });
     }
     if (progress.status === 'complete' || visible.percent >= 100) {
