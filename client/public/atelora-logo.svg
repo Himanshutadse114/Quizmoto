@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 64" role="img" aria-labelledby="title desc">
   <title id="title">Atelora</title>
   <desc id="desc">Atelora learning platform logo</desc>
-  <g fill="none" stroke="#35d4ca" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+  <g fill="none" stroke="#4FC9BF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M12 20 32 8l20 12-20 11Z"/>
     <path d="M12 29 32 40l20-11"/>
     <path d="M12 38 32 50l20-12"/>
     <path d="M32 8v42" opacity=".7"/>
   </g>
-  <text x="70" y="43" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="38" font-weight="700" letter-spacing="-1.5" fill="#eafffb">Atelora</text>
+  <text x="70" y="43" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="38" font-weight="700" letter-spacing="-1.5" fill="#D9F5F1">Atelora</text>
 </svg>
