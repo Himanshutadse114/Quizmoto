@@ -274,12 +274,51 @@ function universalRuntimeProgressBridge() {
 </script>`;
 }
 
+function patchLegacyCourseInteractionRuntime(source) {
+    let patched = String(source || '');
+
+    // The first flip-card release watched every class mutation under <main> and
+    // then rewrote the same grid classes from inside that observer. On authored
+    // courses this can create an observer feedback loop during render(), pinning
+    // the browser main thread, preventing image requests from painting and making
+    // navigation appear dead. Patch already-stored packages at serve time so they
+    // do not need a rebuild just to recover from that runtime bug.
+    patched = patched.replace(
+        "grid.classList.add('qmx-flip-grid');",
+        "if (!grid.classList.contains('qmx-flip-grid')) grid.classList.add('qmx-flip-grid');"
+    );
+
+    const legacyObserver = `    var main = document.querySelector('main');
+    if (main && typeof MutationObserver !== 'undefined') {
+      var observer = new MutationObserver(function(){
+        upgradeCards();
+        syncNextGate();
+      });
+      observer.observe(main,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
+    }`;
+
+    const eventDrivenSync = `    function syncAfterNavigation(event){
+      var nav = event.target && event.target.closest ? event.target.closest('#next-btn,#prev-btn') : null;
+      if (!nav) return;
+      setTimeout(syncNextGate, 0);
+    }
+    document.addEventListener('click', syncAfterNavigation, false);
+    window.addEventListener('load', function(){ setTimeout(syncNextGate, 0); });`;
+
+    if (patched.includes(legacyObserver)) {
+        patched = patched.replace(legacyObserver, eventDrivenSync);
+    }
+
+    return patched;
+}
+
 function patchAuthoredHtml(source) {
     let patched = String(source || '');
 
     // patchTrackingRuntime is deliberately idempotent so stored v4/v5 modules can
     // receive newer resume/tracking fixes without duplicating injected helpers.
     patched = patchTrackingRuntime(patched);
+    patched = patchLegacyCourseInteractionRuntime(patched);
 
     // Older interaction tracking committed synchronously inside the answer click
     // handler. Quizmoto's parent player now batches authored writes asynchronously.
@@ -315,14 +354,17 @@ async function patchHtmlIfNeeded(packageId, rel, buf) {
 
     const source = buf.toString('utf8');
     let patched = source;
-    if (pkg.source === 'ai_author') patched = patchAuthoredHtml(patched);
 
-    // All SCORM content is served same-origin through this route. Inject a tiny
-    // no-op-unless-detected observer so live completion can be captured from
-    // common progress UI while the SCO is still running. Quizmoto-authored
-    // modules are tracked exactly from their active .slide; third-party packages
-    // only participate when they expose a standard progress element/value.
-    patched = injectUniversalProgressBridge(patched);
+    if (pkg.source === 'ai_author') {
+        // Quizmoto-authored courses already have an exact slide-aware tracking
+        // bridge. Do not add the generic whole-document MutationObserver as well;
+        // it is redundant and needlessly expensive on visual/interactive slides.
+        patched = patchAuthoredHtml(patched);
+    } else {
+        // Third-party packages do not have the authored bridge, so retain the
+        // generic progress detector for them only.
+        patched = injectUniversalProgressBridge(patched);
+    }
 
     if (patched === source) return { buffer: buf, patched: false };
     return { buffer: Buffer.from(patched, 'utf8'), patched: true };
@@ -377,6 +419,7 @@ router.get('/:packageId/*path', async (req, res) => {
 });
 
 router.patchAuthoredHtml = patchAuthoredHtml;
+router.patchLegacyCourseInteractionRuntime = patchLegacyCourseInteractionRuntime;
 router.authoredRuntimeBridge = authoredRuntimeBridge;
 router.universalRuntimeProgressBridge = universalRuntimeProgressBridge;
 module.exports = router;
