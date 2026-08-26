@@ -49,10 +49,10 @@ function RouteFallback() {
   const { pathname } = useLocation();
   const marketing = pathname === '/';
   return (
-    <div className={`min-h-[55vh] grid place-items-center relative z-20 ${marketing ? 'text-[#0b1514]' : 'text-white'}`}>
+    <div className={`min-h-[55vh] grid place-items-center relative z-20 ${marketing ? 'text-[#EDF4F2]' : 'text-white'}`}>
       <div className="text-center">
-        <div className={`w-9 h-9 rounded-full border-2 animate-spin mx-auto ${marketing ? 'border-[#0b1514]/15 border-t-[#17978d]' : 'border-white/20 border-t-white'}`} />
-        <div className={`mt-3 text-xs font-semibold ${marketing ? 'text-[#60716d]' : 'text-white/60'}`}>Loading…</div>
+        <div className={`w-9 h-9 rounded-full border-2 animate-spin mx-auto ${marketing ? 'border-white/15 border-t-[#4FC9BF]' : 'border-white/20 border-t-white'}`} />
+        <div className={`mt-3 text-xs font-semibold ${marketing ? 'text-[#A9BAB6]' : 'text-white/60'}`}>Loading…</div>
       </div>
     </div>
   );
@@ -168,7 +168,7 @@ function AppSurface() {
   const isMarketing = pathname === '/';
   const isQuizGameStage = pathname.startsWith('/host/lobby') || pathname.startsWith('/host/game') || pathname === '/join' || pathname.startsWith('/player/');
   const surfaceClass = isMarketing
-    ? 'bg-[#f7fbfa] text-[#0b1514]'
+    ? 'bg-[#0A0F0E] text-[#EDF4F2]'
     : isQuizGameStage
       ? 'bg-quizmoto-darkPurple live-quiz-stage quizmoto-classic-live-stage text-white'
       : 'bg-[#0A0F0E] text-white';
