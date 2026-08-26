@@ -2,14 +2,23 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import './marketingLanding.css';
 
-const features = [
-  ['01', 'Generate', 'Start from a prompt, document, or learning goal and turn it into a usable course structure.'],
-  ['02', 'Publish', 'Prepare content for modern digital learning delivery with structured course workflows.'],
-  ['03', 'Engage', 'Run live quiz moments that add participation, energy, and active recall to learning.'],
-  ['04', 'Improve', 'Track learner progress, completion, and engagement to keep improving the experience.']
+const workflow = [
+  ['01', 'Brief', 'Start with a topic, document, policy, presentation, or learning objective. Define the audience, expected outcomes, and the level of depth you want.'],
+  ['02', 'Plan', 'Atelora structures the material into a clear learning flow, sections, knowledge checks, and supporting content before production begins.'],
+  ['03', 'Produce', 'Course content and visuals are assembled into a polished digital learning experience that follows one consistent design system.'],
+  ['04', 'Publish', 'Prepare the course for delivery, package the learning experience, and make it ready for your learners or SCORM-oriented workflow.'],
+  ['05', 'Measure', 'Track learner progress, completion, engagement, live quiz activity, and reporting from the same Atelora workspace.']
 ];
 
-const Check = ({ children }) => <div className="mk-check"><span>✓</span><div>{children}</div></div>;
+const comparison = [
+  ['Manual course creation across disconnected tools', 'One connected AI-assisted workflow'],
+  ['Hours of repetitive authoring and formatting', 'Structured course creation from a topic or source file'],
+  ['Separate quiz and engagement products', 'Live quizzes inside the same learning platform'],
+  ['Fragmented learner tracking and reporting', 'Progress, activity, and reporting in one workbench'],
+  ['A learning experience that feels like an export', 'A modern learner-facing course experience']
+];
+
+const Arrow = () => <span aria-hidden="true">→</span>;
 
 export default function MarketingLanding() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -18,7 +27,7 @@ export default function MarketingLanding() {
     const nodes = [...document.querySelectorAll('.mk-reveal')];
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => entry.isIntersecting && entry.target.classList.add('is-visible'));
-    }, { threshold: 0.1 });
+    }, { threshold: 0.08 });
     nodes.forEach((node) => observer.observe(node));
     return () => observer.disconnect();
   }, []);
@@ -28,23 +37,23 @@ export default function MarketingLanding() {
   return (
     <div className="atelora-marketing">
       <header className="mk-nav-wrap" id="top">
-        <div className="mk-container">
+        <div className="mk-container mk-container-nav">
           <nav className="mk-nav" aria-label="Primary navigation">
             <a className="mk-brand" href="#top" onClick={closeMenu} aria-label="Atelora home">
               <span className="mk-brand-mark" aria-hidden="true"><i/><i/><i/></span>
               <span>Atelora</span>
             </a>
+
             <div className={`mk-nav-links ${menuOpen ? 'is-open' : ''}`}>
-              <a href="#platform" onClick={closeMenu}>Platform</a>
-              <a href="#author" onClick={closeMenu}>Course Author</a>
-              <a href="#live" onClick={closeMenu}>Live Quizzes</a>
-              <a href="#learner" onClick={closeMenu}>Learner Experience</a>
-              <a href="#insights" onClick={closeMenu}>Reporting</a>
-              <a href="#faq" onClick={closeMenu}>FAQ</a>
+              <a href="#how" onClick={closeMenu}>How it works <Arrow /></a>
+              <a href="#what" onClick={closeMenu}>What you get <Arrow /></a>
+              <a href="#platform" onClick={closeMenu}>The platform <Arrow /></a>
+              <a href="#origin" onClick={closeMenu}>Origin <Arrow /></a>
             </div>
+
             <div className="mk-nav-actions">
-              <Link className="mk-btn mk-btn-soft mk-hide-mobile" to="/login">Log in</Link>
-              <Link className="mk-btn mk-btn-dark" to="/login">Explore Atelora <span>→</span></Link>
+              <Link className="mk-login" to="/login">Log in</Link>
+              <Link className="mk-primary-cta" to="/login">Explore Atelora <Arrow /></Link>
               <button className="mk-menu-btn" type="button" onClick={() => setMenuOpen((value) => !value)} aria-label="Toggle navigation"><i/></button>
             </div>
           </nav>
@@ -54,151 +63,160 @@ export default function MarketingLanding() {
       <main>
         <section className="mk-hero">
           <div className="mk-container">
-            <div className="mk-kicker mk-reveal"><span className="mk-dot"/> AI authoring · SCORM-ready delivery · Live engagement</div>
-            <h1 className="mk-display mk-reveal">Build learning faster. Deliver it beautifully. Measure the impact.</h1>
-            <div className="mk-hero-copy mk-reveal">
-              <p className="mk-lead">Atelora helps teams create courses with AI, publish polished learning experiences, run live quizzes, manage learners, and track progress from one connected platform.</p>
-              <div className="mk-actions">
-                <Link className="mk-btn mk-btn-mint" to="/login">Explore Atelora <span>→</span></Link>
-                <a className="mk-btn mk-btn-soft" href="#learner">See learner experience</a>
+            <div className="mk-trust mk-reveal">Built for modern learning teams</div>
+            <h1 className="mk-display mk-reveal">Create better learning in a fraction of the time.</h1>
+            <div className="mk-hero-bottom mk-reveal">
+              <p>Turn a brief, policy, presentation, or source file into structured learning, launch live engagement, and track learner progress from one connected Atelora platform.</p>
+              <div className="mk-hero-action-line">
+                <Link className="mk-primary-cta mk-primary-cta-large" to="/login">Explore Atelora <Arrow /></Link>
+                <span>AI authoring · learner delivery · live quizzes</span>
               </div>
             </div>
-            <div className="mk-hero-stage mk-reveal">
-              <div className="mk-hero-media"><img src="/atelora-marketing/hero.webp" alt="Atelora Learning Workbench dashboard" fetchPriority="high" /></div>
-              <div className="mk-floating-card">
-                <strong>Everything connected</strong>
-                <p>Create courses, launch learning, engage learners live, and review performance without splitting work across different tools.</p>
-                <div><span>AI Course Author</span><span>Live Quizzes</span><span>Learner Insights</span></div>
+            <div className="mk-hero-media mk-reveal">
+              <img src="/atelora-marketing/hero.webp" alt="Atelora learning workbench dashboard" fetchPriority="high" />
+            </div>
+          </div>
+        </section>
+
+        <section className="mk-editorial-section mk-shift">
+          <div className="mk-container">
+            <div className="mk-section-label mk-reveal">The shift</div>
+            <div className="mk-section-heading-wrap mk-reveal">
+              <h2>The traditional learning stack was built for a different way of working.</h2>
+              <p>Authoring, learner delivery, engagement, and reporting have traditionally lived in separate tools. Atelora brings those workflows into one product so teams can move from source material to learner outcomes with less friction.</p>
+            </div>
+
+            <div className="mk-compare mk-reveal">
+              <div className="mk-compare-head"><span>The legacy stack</span><span>Atelora</span></div>
+              {comparison.map(([oldWay, ateloraWay]) => (
+                <div className="mk-compare-row" key={oldWay}><span>{oldWay}</span><span>{ateloraWay}</span></div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="mk-editorial-section" id="how">
+          <div className="mk-container">
+            <div className="mk-section-label mk-reveal">How it works</div>
+            <div className="mk-section-heading-wrap mk-reveal">
+              <h2>One platform, five phases, no broken handoffs.</h2>
+            </div>
+            <ol className="mk-workflow mk-reveal">
+              {workflow.map(([num, title, copy]) => (
+                <li key={num}>
+                  <div className="mk-step-number">{num}</div>
+                  <h3>{title}</h3>
+                  <p>{copy}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section className="mk-editorial-section" id="what">
+          <div className="mk-container">
+            <div className="mk-section-label mk-reveal">What you get</div>
+            <div className="mk-section-heading-wrap mk-reveal">
+              <h2>Three connected surfaces. Everything else stays out of the way.</h2>
+            </div>
+
+            <article className="mk-deliverable mk-reveal">
+              <div className="mk-deliverable-index">01 · The course workspace</div>
+              <div className="mk-deliverable-media"><img src="/atelora-marketing/author.webp" alt="Atelora course authoring workspace" loading="lazy" /></div>
+              <p>Build structured learning from a topic or source file, choose the level of detail, and keep the authoring workflow focused from start to publish.</p>
+            </article>
+
+            <article className="mk-deliverable mk-reveal">
+              <div className="mk-deliverable-index">02 · The learner experience</div>
+              <div className="mk-deliverable-media"><img src="/atelora-marketing/player.webp" alt="Atelora learner course experience" loading="lazy" /></div>
+              <p>Give learners a clean, modern course surface with clear progression, supporting visuals, knowledge checks, and a focused path through the material.</p>
+            </article>
+
+            <article className="mk-deliverable mk-reveal">
+              <div className="mk-deliverable-index">03 · The reporting surface</div>
+              <div className="mk-deliverable-media"><img src="/atelora-marketing/analytics.webp" alt="Atelora learner reporting dashboard" loading="lazy" /></div>
+              <p>See courses, learners, progress, completion, and activity from one learning workbench so follow-up and improvement happen faster.</p>
+            </article>
+          </div>
+        </section>
+
+        <section className="mk-platform-section" id="platform">
+          <div className="mk-container">
+            <div className="mk-section-label mk-section-label-light mk-reveal">The platform · Atelora workspace</div>
+            <div className="mk-platform-heading mk-reveal">
+              <h2>Today, Atelora runs as one connected learning platform.</h2>
+              <p>Create learning, engage learners live, manage course access, and review progress without leaving the same workspace.</p>
+            </div>
+
+            <div className="mk-platform-grid mk-reveal">
+              <div className="mk-platform-copy">
+                <div className="mk-platform-list-block"><h3>You provide</h3><ul><li>Topic, source material, or learning goal</li><li>Learner audience and course depth</li><li>Your preferred content and visual direction</li></ul></div>
+                <div className="mk-platform-list-block"><h3>Atelora gives you</h3><ul><li>AI-assisted course authoring</li><li>Interactive live quiz engagement</li><li>Learner delivery, tracking, and reporting</li></ul></div>
+                <div className="mk-platform-meta"><span>Access</span><strong>Self-serve platform</strong></div>
+                <div className="mk-platform-meta"><span>Workflow</span><strong>Create → deliver → engage → measure</strong></div>
+              </div>
+
+              <div className="mk-offer-card">
+                <div className="mk-offer-kicker">Atelora platform</div>
+                <div className="mk-offer-title">One workspace</div>
+                <p>Course creation, learner delivery, live engagement, progress tracking, and reporting are designed to work together from day one.</p>
+                <ul><li>AI Course Author</li><li>Course Library and learner roster</li><li>Live quiz engagement</li><li>Progress and completion tracking</li><li>Reports and insights</li></ul>
+                <Link className="mk-primary-cta mk-primary-cta-light" to="/login">Explore Atelora <Arrow /></Link>
               </div>
             </div>
+
+            <div className="mk-platform-peek mk-reveal">
+              <div className="mk-peek-label">A peek at the platform</div>
+              <img src="/atelora-marketing/live.webp" alt="Atelora live engagement dashboard" loading="lazy" />
+            </div>
           </div>
         </section>
 
-        <section className="mk-proof-strip">
+        <section className="mk-editorial-section mk-access-modes">
           <div className="mk-container">
-            <div className="mk-proof-grid mk-reveal">
-              <span>AI course generation</span><span>SCORM-ready workflows</span><span>Interactive live quizzes</span><span>Learner management</span><span>Reporting & progress</span>
+            <div className="mk-section-label mk-reveal">Where this goes</div>
+            <div className="mk-section-heading-wrap mk-reveal"><h2>One product, two sides of the learning experience.</h2></div>
+            <div className="mk-mode-grid mk-reveal">
+              <article><div className="mk-mode-kicker">Author & admin</div><h3>Build and manage</h3><p>Create courses, manage learners, publish content, run live sessions, and review the performance of your learning program.</p></article>
+              <article><div className="mk-mode-kicker">Learner</div><h3>Learn and engage</h3><p>Enter through a simple learner flow, complete modern courses, participate in live quizzes, and keep progress saved along the way.</p></article>
             </div>
+            <div className="mk-access-note mk-reveal">The value of Atelora is not another isolated authoring tool. It is the continuity between what your team creates and what your learners actually experience.</div>
           </div>
         </section>
 
-        <section className="mk-section" id="platform">
+        <section className="mk-editorial-section mk-origin" id="origin">
           <div className="mk-container">
-            <div className="mk-intro mk-reveal">
-              <div className="mk-eyebrow">One connected platform</div>
-              <div><h2 className="mk-title">From source material to learner outcomes in one clear workflow.</h2><p className="mk-lead">Atelora brings course creation, learner delivery, live engagement, and reporting together so teams can build and improve learning without operational friction.</p></div>
+            <div className="mk-section-label mk-reveal">Origin</div>
+            <div className="mk-section-heading-wrap mk-reveal">
+              <h2>Atelora was built around a simple problem: learning workflows are too fragmented.</h2>
             </div>
-            <div className="mk-capabilities mk-reveal">
-              {features.map(([num, title, copy]) => <article key={num}><div className="mk-cap-num">{num}</div><h3>{title}</h3><p>{copy}</p></article>)}
-            </div>
-          </div>
-        </section>
-
-        <section className="mk-feature" id="author">
-          <div className="mk-container mk-feature-grid">
-            <div className="mk-feature-copy mk-reveal">
-              <div className="mk-eyebrow">AI Course Author</div>
-              <h2>Turn topics, goals, and source files into structured learning.</h2>
-              <p>Give Atelora a topic, upload supporting material, choose the depth you want, and let the authoring workflow prepare a structured learning foundation in the background.</p>
-              <div className="mk-checks"><Check>Topic-led and source-file-led course creation</Check><Check>Concise, detailed, and comprehensive depth options</Check><Check>Background generation that lets authors keep working</Check></div>
-            </div>
-            <div className="mk-feature-media mk-reveal"><img src="/atelora-marketing/author.webp" alt="Atelora AI course author interface" loading="lazy" /></div>
-          </div>
-        </section>
-
-        <section className="mk-feature mk-feature-alt" id="live">
-          <div className="mk-container mk-feature-grid">
-            <div className="mk-feature-copy mk-reveal">
-              <div className="mk-eyebrow">Live Quiz Engagement</div>
-              <h2>Keep learners active with live quizzes and instant feedback.</h2>
-              <p>Build quiz libraries, launch real-time sessions, review participation, and bring more energy into learning from the same Atelora environment.</p>
-              <div className="mk-checks"><Check>Interactive live sessions for active recall and participation</Check><Check>AI-assisted question creation and reusable quiz workflows</Check><Check>Real-time visibility into participation, scores, and engagement</Check></div>
-            </div>
-            <div className="mk-feature-media mk-reveal"><img src="/atelora-marketing/live.webp" alt="Atelora live quiz engagement dashboard" loading="lazy" /></div>
-          </div>
-        </section>
-
-        <section className="mk-feature" id="learner">
-          <div className="mk-container mk-feature-grid">
-            <div className="mk-feature-copy mk-reveal">
-              <div className="mk-eyebrow">Learner Experience</div>
-              <h2>Give learners a clean path from invitation to course completion.</h2>
-              <p>Make the entry experience simple, move learners directly into the course, and keep progress visible through the learning journey.</p>
-              <div className="mk-checks"><Check>Simple learner invite and identification flow</Check><Check>Focused transition from enrolment to course launch</Check><Check>Clear progress-aware delivery designed for completion</Check></div>
-            </div>
-            <div className="mk-feature-media mk-reveal"><img src="/atelora-marketing/learner.webp" alt="Atelora learner invitation to course journey" loading="lazy" /></div>
-          </div>
-        </section>
-
-        <section className="mk-dark">
-          <div className="mk-container">
-            <div className="mk-eyebrow mk-reveal">Why Atelora</div>
-            <h2 className="mk-title mk-reveal">A complete learning workflow—without the patchwork.</h2>
-            <p className="mk-lead mk-reveal">Creation, delivery, engagement, and visibility stay connected instead of living in separate tools.</p>
-            <div className="mk-dark-grid mk-reveal">
-              <article><span>CREATE</span><h3>Structured authoring</h3><p>Move faster from topic or source material to usable learning structure.</p></article>
-              <article><span>DELIVER</span><h3>Modern learner experience</h3><p>Present learning in a clean, product-like interface rather than a static exported feel.</p></article>
-              <article><span>MEASURE</span><h3>Visible outcomes</h3><p>Bring learner activity, progress, and engagement together for faster follow-up.</p></article>
+            <div className="mk-origin-copy mk-reveal">
+              <p>Course authoring, quizzes, learner management, delivery, and reporting often force teams into a collection of disconnected systems. That creates repetitive work for administrators and an inconsistent experience for learners.</p>
+              <p>Atelora brings those surfaces together around one learning workflow—so a course can move from idea to delivery, engagement, and reporting without losing context between each stage.</p>
             </div>
           </div>
         </section>
 
-        <section className="mk-feature mk-feature-alt" id="insights">
-          <div className="mk-container mk-feature-grid">
-            <div className="mk-feature-copy mk-reveal">
-              <div className="mk-eyebrow">Learning Workbench</div>
-              <h2>See progress and performance while they still matter.</h2>
-              <p>Monitor learner activity, course performance, progress trends, and completion visibility from one operating view for learning teams and administrators.</p>
-              <div className="mk-checks"><Check>Course, learner, and progress visibility in one dashboard</Check><Check>High-level operational insight for timely follow-up</Check><Check>Reporting built for authors, admins, and learning managers</Check></div>
-            </div>
-            <div className="mk-feature-media mk-reveal"><img src="/atelora-marketing/analytics.webp" alt="Atelora analytics dashboard" loading="lazy" /></div>
-          </div>
-        </section>
-
-        <section className="mk-section" id="experience">
-          <div className="mk-container mk-delivery mk-reveal">
-            <div>
-              <div className="mk-eyebrow">Course Delivery</div>
-              <h2 className="mk-title">Deliver learning in a way that feels modern—not like a static slide export.</h2>
-              <p className="mk-lead">Atelora keeps content, progress, supporting visuals, and navigation inside one learner-focused interface.</p>
-              <div className="mk-checks"><Check>Readable layouts with clear progress context</Check><Check>Section-based learning with room for knowledge checks</Check><Check>Responsive course delivery for desktop and mobile</Check></div>
-            </div>
-            <img src="/atelora-marketing/player.webp" alt="Atelora course player" loading="lazy" />
-          </div>
-        </section>
-
-        <section className="mk-section" id="faq">
-          <div className="mk-container">
-            <div className="mk-eyebrow mk-reveal">FAQ</div>
-            <h2 className="mk-title mk-reveal">Common questions about Atelora.</h2>
-            <div className="mk-faq mk-reveal">
-              <details open><summary>What does Atelora help teams do?</summary><p>Atelora helps teams create courses with AI, deliver structured learning, run live quizzes, manage learners, and review progress and reporting from one place.</p></details>
-              <details><summary>Does Atelora support SCORM-oriented learning workflows?</summary><p>Yes. Atelora is designed around modern course delivery and SCORM-oriented workflows while keeping the learner experience and platform branding focused on Atelora.</p></details>
-              <details><summary>Is live engagement part of the same platform?</summary><p>Yes. Live quiz engagement sits inside the same Atelora platform, keeping authoring, delivery, learner activity, and engagement connected.</p></details>
-              <details><summary>Who is Atelora for?</summary><p>Learning teams, internal training teams, onboarding programs, compliance functions, enablement teams, and organizations that want a cleaner end-to-end learning workflow.</p></details>
-            </div>
-          </div>
-        </section>
-
-        <section className="mk-final">
+        <section className="mk-final-brief">
           <div className="mk-container mk-reveal">
-            <div className="mk-eyebrow">Atelora</div>
-            <h2 className="mk-title">A modern learning platform built around the complete journey.</h2>
-            <p className="mk-lead">From AI course authoring to learner delivery, live engagement, and reporting, Atelora helps teams run learning as one connected experience.</p>
-            <div className="mk-final-row"><span>AI Course Author · Live Quizzes · Learner Experience · Learning Workbench</span><Link className="mk-btn mk-btn-dark" to="/login">Explore Atelora <span>→</span></Link></div>
+            <div className="mk-section-label">Final brief</div>
+            <h2>Bring your next training brief.</h2>
+            <p>The policy update that needs a course. The onboarding module that needs rebuilding. The awareness topic your team wants to turn into something learners will actually complete. Start it in Atelora.</p>
+            <Link className="mk-primary-cta mk-primary-cta-large" to="/login">Explore Atelora <Arrow /></Link>
           </div>
         </section>
       </main>
 
       <footer className="mk-footer">
-        <div className="mk-container">
-          <div className="mk-footer-grid">
-            <div><a className="mk-brand" href="#top"><span className="mk-brand-mark"><i/><i/><i/></span><span>Atelora</span></a><p>AI-powered course authoring, learner delivery, live quiz engagement, and reporting in one connected learning platform.</p></div>
-            <div><h4>Platform</h4><a href="#author">AI Course Author</a><a href="#live">Live Quizzes</a><a href="#insights">Learning Workbench</a></div>
-            <div><h4>Experience</h4><a href="#learner">Learner Journey</a><a href="#experience">Course Delivery</a><Link to="/login">Log in</Link></div>
+        <div className="mk-container mk-footer-grid">
+          <div className="mk-footer-brand">
+            <a className="mk-brand" href="#top"><span className="mk-brand-mark"><i/><i/><i/></span><span>Atelora</span></a>
+            <p>An AI-powered platform for course authoring, learner delivery, live engagement, and learning insights.</p>
           </div>
-          <div className="mk-copy"><span>© 2026 Atelora</span><span>Learning, built smarter.</span></div>
+          <div><h4>Platform</h4><Link to="/login">Log in</Link><a href="#how">How it works</a><a href="#what">What you get</a></div>
+          <div><h4>Site</h4><a href="#platform">The platform</a><a href="#origin">Origin</a><a href="#top">Back to top</a></div>
         </div>
+        <div className="mk-container mk-footer-bottom"><span>© 2026 Atelora</span><span>Learning, built smarter.</span></div>
       </footer>
     </div>
   );
