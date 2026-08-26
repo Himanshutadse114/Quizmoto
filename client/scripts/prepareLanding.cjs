@@ -83,26 +83,177 @@ const textExtensions = new Set([
 ]);
 
 function patchBrand(text) {
-  const protectedUrls = [];
-  text = text.replace(/https?:\/\/(?:www\.)?scorms\.ai[^\s"'<>)]*/gi, (match) => {
-    const token = `__ATELORA_PROTECTED_URL_${protectedUrls.length}__`;
-    protectedUrls.push(match);
-    return token;
-  });
-
-  text = text
+  return text
+    .replace(/https?:\/\/(?:www\.)?scorms\.ai/gi, '')
     .replace(/SCORMs\.ai/gi, 'Atelora')
     .replace(/SCORMs\s+AI/gi, 'Atelora')
-    .replace(/SCORMsAI/gi, 'Atelora');
-
-  protectedUrls.forEach((url, index) => {
-    text = text.replace(`__ATELORA_PROTECTED_URL_${index}__`, url);
-  });
-
-  return text;
+    .replace(/SCORMsAI/gi, 'Atelora')
+    .replace(/scorms\.ai/gi, 'Atelora');
 }
 
-const localNavBridge = `\n<script id="atelora-local-nav">\n(function () {\n  document.addEventListener('click', function (event) {\n    var target = event.target;\n    var link = target && target.closest ? target.closest('a') : null;\n    if (!link) return;\n    var label = (link.textContent || '').replace(/\\s+/g, ' ').trim().toLowerCase();\n    if (label.indexOf('explore atelora') !== -1) {\n      event.preventDefault();\n      window.top.location.href = '/login';\n    }\n  });\n})();\n</script>\n`;
+const localBrandBridge = `
+<style id="atelora-brand-style">
+  .atelora-runtime-logo {
+    display: block !important;
+    width: 132px !important;
+    max-width: 132px !important;
+    height: auto !important;
+    object-fit: contain !important;
+  }
+</style>
+<script id="atelora-brand-bridge">
+(function () {
+  var BRAND_RE = /SCORMs\\.ai|SCORMs\\s+AI|SCORMsAI|scorms\\.ai/gi;
+  var BRAND_LOGO = '/atelora-landing-logo.svg';
+
+  function brandValue(value) {
+    return typeof value === 'string' ? value.replace(BRAND_RE, 'Atelora') : value;
+  }
+
+  function patchText(root) {
+    var walker = document.createTreeWalker(root || document.body, NodeFilter.SHOW_TEXT);
+    var node;
+    var touched = [];
+    while ((node = walker.nextNode())) {
+      if (node.nodeValue && BRAND_RE.test(node.nodeValue)) touched.push(node);
+      BRAND_RE.lastIndex = 0;
+    }
+    touched.forEach(function (textNode) {
+      textNode.nodeValue = brandValue(textNode.nodeValue);
+    });
+  }
+
+  function patchAttributes(root) {
+    var nodes = (root || document).querySelectorAll ? (root || document).querySelectorAll('*') : [];
+    nodes.forEach(function (el) {
+      ['alt', 'title', 'aria-label', 'data-label'].forEach(function (name) {
+        if (!el.hasAttribute || !el.hasAttribute(name)) return;
+        var value = el.getAttribute(name);
+        var next = brandValue(value);
+        if (next !== value) el.setAttribute(name, next);
+      });
+    });
+  }
+
+  function useAteloraLogo(el) {
+    if (!el || el.dataset && el.dataset.ateloraLogo === '1') return;
+    var rect = el.getBoundingClientRect ? el.getBoundingClientRect() : { width: 132, height: 32 };
+    if (el.tagName && el.tagName.toLowerCase() === 'img') {
+      el.src = BRAND_LOGO;
+      el.removeAttribute('srcset');
+      el.alt = 'Atelora';
+      el.classList.add('atelora-runtime-logo');
+      el.style.width = Math.max(118, Math.min(150, rect.width || 132)) + 'px';
+      el.style.height = 'auto';
+      if (el.dataset) el.dataset.ateloraLogo = '1';
+      return;
+    }
+
+    var img = document.createElement('img');
+    img.src = BRAND_LOGO;
+    img.alt = 'Atelora';
+    img.className = 'atelora-runtime-logo';
+    img.style.width = Math.max(118, Math.min(150, rect.width || 132)) + 'px';
+    img.style.height = 'auto';
+    img.dataset.ateloraLogo = '1';
+    if (el.className && typeof el.className === 'string') img.className += ' ' + el.className;
+    el.replaceWith(img);
+  }
+
+  function patchHeaderLogo() {
+    var selectors = [
+      'header img', 'header svg', 'nav img', 'nav svg',
+      '[role="banner"] img', '[role="banner"] svg',
+      'img[alt*="scorm" i]', 'img[title*="scorm" i]'
+    ];
+    var candidates = Array.prototype.slice.call(document.querySelectorAll(selectors.join(',')));
+
+    var explicit = candidates.find(function (el) {
+      var meta = [
+        el.getAttribute && el.getAttribute('alt'),
+        el.getAttribute && el.getAttribute('title'),
+        el.getAttribute && el.getAttribute('src'),
+        el.getAttribute && el.getAttribute('aria-label'),
+        el.parentElement && el.parentElement.getAttribute && el.parentElement.getAttribute('aria-label')
+      ].filter(Boolean).join(' ');
+      return /scorms?\\.?ai/i.test(meta);
+    });
+
+    if (explicit) {
+      useAteloraLogo(explicit);
+      return;
+    }
+
+    var likely = candidates.find(function (el) {
+      if (!el.getBoundingClientRect) return false;
+      var rect = el.getBoundingClientRect();
+      return rect.top >= 0 && rect.top < 180 && rect.width >= 70 && rect.width <= 260 && rect.height > 14 && rect.height <= 90;
+    });
+
+    if (likely) useAteloraLogo(likely);
+  }
+
+  function patchHeaderBackgroundLogo() {
+    var containers = document.querySelectorAll('header *, nav *, [role="banner"] *');
+    containers.forEach(function (el) {
+      var rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+      if (!rect || rect.top < 0 || rect.top > 180 || rect.width < 70 || rect.width > 260 || rect.height > 90) return;
+      var bg = window.getComputedStyle ? window.getComputedStyle(el).backgroundImage : '';
+      if (/scorm|logo/i.test(bg || '') && bg !== 'none') {
+        el.style.backgroundImage = 'url("' + BRAND_LOGO + '")';
+        el.style.backgroundSize = 'contain';
+        el.style.backgroundRepeat = 'no-repeat';
+        el.style.backgroundPosition = 'left center';
+      }
+    });
+  }
+
+  function patchLinks() {
+    document.querySelectorAll('a').forEach(function (link) {
+      var label = (link.textContent || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+      var href = link.getAttribute('href') || '';
+      if (/scorms\\.ai/i.test(href)) link.setAttribute('href', '#');
+      if (label.indexOf('explore atelora') !== -1 || label.indexOf('start a pilot') !== -1) {
+        link.setAttribute('href', '/login');
+        link.setAttribute('target', '_top');
+      }
+    });
+  }
+
+  function patchAll() {
+    if (!document.body) return;
+    patchText(document.body);
+    patchAttributes(document);
+    patchHeaderLogo();
+    patchHeaderBackgroundLogo();
+    patchLinks();
+    if (document.title) document.title = brandValue(document.title);
+  }
+
+  document.addEventListener('click', function (event) {
+    var target = event.target;
+    var link = target && target.closest ? target.closest('a') : null;
+    if (!link) return;
+    var label = (link.textContent || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+    if (label.indexOf('explore atelora') !== -1 || label.indexOf('start a pilot') !== -1) {
+      event.preventDefault();
+      window.top.location.href = '/login';
+    }
+  });
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', patchAll);
+  else patchAll();
+
+  var observer = new MutationObserver(function () {
+    window.clearTimeout(window.__ateloraBrandTimer);
+    window.__ateloraBrandTimer = window.setTimeout(patchAll, 50);
+  });
+  if (document.documentElement) observer.observe(document.documentElement, { childList: true, subtree: true });
+  window.setTimeout(patchAll, 300);
+  window.setTimeout(patchAll, 1200);
+})();
+</script>
+`;
 
 let patchedCount = 0;
 for (const file of walk(outputDir)) {
@@ -113,10 +264,12 @@ for (const file of walk(outputDir)) {
   } catch {
     continue;
   }
+
   let next = patchBrand(text);
-  if (/\.html?$/i.test(file) && /<\/body\s*>/i.test(next) && !next.includes('id="atelora-local-nav"')) {
-    next = next.replace(/<\/body\s*>/i, `${localNavBridge}</body>`);
+  if (/\.html?$/i.test(file) && /<\/body\s*>/i.test(next) && !next.includes('id="atelora-brand-bridge"')) {
+    next = next.replace(/<\/body\s*>/i, `${localBrandBridge}</body>`);
   }
+
   if (next !== text) {
     fs.writeFileSync(file, next, 'utf8');
     patchedCount += 1;
