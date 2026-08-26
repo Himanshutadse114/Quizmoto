@@ -1,0 +1,22 @@
+/* Company website accent = Atelora platform teal */
+:root {
+  --scorm-platform-teal: #4FC9BF;
+  --scorm-platform-teal-strong: #7BDCD3;
+  --scorm-platform-teal-hover: #9BE8E1;
+  --scorm-platform-teal-dark: #06201E;
+}
+html { accent-color: #4FC9BF; }
+::selection { background: rgba(79, 201, 191, .28); color: #06201E; }
+a[href="/login"],
+a[data-atelora-login-cta="1"],
+button[data-atelora-login-cta="1"] {
+  background: #4FC9BF !important;
+  background-image: none !important;
+  border-color: #7BDCD3 !important;
+  color: #06201E !important;
+}
+a[href="/login"]:hover,
+a[data-atelora-login-cta="1"]:hover {
+  background: #7BDCD3 !important;
+  color: #06201E !important;
+}
