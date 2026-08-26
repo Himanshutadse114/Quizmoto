@@ -16,6 +16,19 @@ const PLATFORM_COPY = new Map([
   ['from €499 · pilot slots open.', 'AI authoring · SCORM · Quizmoto · Analytics'],
 ]);
 
+const FOOTER_COPY = new Map([
+  ['an ai-native production studio for branded scorm courses.', 'AI-powered learning platform for SCORM-ready courses, Quizmoto, learner tracking and analytics.'],
+  ['an initiative by', ''],
+  ['legit ↗', 'Atelora'],
+  ['legit', 'Atelora'],
+  ['hello@wearelegit.ai', 'Explore Atelora'],
+  ['wearelegit.ai', 'AI Course Studio · Quizmoto'],
+  ['© 2026 atelora · a legit initiative.', '© 2026 Atelora · AI-powered learning platform.'],
+  ['© 2026 atelora · a legit initiative', '© 2026 Atelora · AI-powered learning platform.'],
+  ['built in helsinki.', 'Built for modern learning teams.'],
+  ['built in helsinki', 'Built for modern learning teams.'],
+]);
+
 function rewriteValue(value) {
   if (typeof value !== 'string') return value;
 
@@ -27,6 +40,26 @@ function rewriteValue(value) {
   const leading = branded.match(/^\s*/)?.[0] || '';
   const trailing = branded.match(/\s*$/)?.[0] || '';
   return `${leading}${replacement}${trailing}`;
+}
+
+function rewriteFooterValue(value) {
+  if (typeof value !== 'string') return value;
+
+  const branded = rewriteValue(value);
+  const normalized = branded.replace(/\s+/g, ' ').trim();
+  const replacement = FOOTER_COPY.get(normalized.toLowerCase());
+  if (replacement !== undefined) {
+    const leading = branded.match(/^\s*/)?.[0] || '';
+    const trailing = branded.match(/\s*$/)?.[0] || '';
+    return `${leading}${replacement}${trailing}`;
+  }
+
+  return branded
+    .replace(/hello@wearelegit\.ai/gi, 'Explore Atelora')
+    .replace(/wearelegit\.ai/gi, 'AI Course Studio · Quizmoto')
+    .replace(/An AI-native production studio for branded SCORM courses\./gi, 'AI-powered learning platform for SCORM-ready courses, Quizmoto, learner tracking and analytics.')
+    .replace(/A Legit initiative\.?/gi, 'AI-powered learning platform.')
+    .replace(/Built in Helsinki\.?/gi, 'Built for modern learning teams.');
 }
 
 function getMeta(element) {
@@ -139,8 +172,6 @@ export default function MarketingLanding() {
         brandHost = img.closest('a') || img.parentElement || brandHost;
       }
 
-      // Final visual guard: this sits over the original brand area, so even a
-      // baked-in logo/background image cannot expose the old SCORMs.ai name.
       if (brandHost && !brandHost.querySelector?.('[data-atelora-navbar-guard="1"]')) {
         const hostRect = brandHost.getBoundingClientRect?.();
         if (hostRect && hostRect.top < 125 && hostRect.width >= 70 && hostRect.width <= 300) {
@@ -174,6 +205,93 @@ export default function MarketingLanding() {
       }
     };
 
+    const findFooter = () => {
+      const semantic = doc.querySelector('footer, [class*="footer" i], [id*="footer" i]');
+      if (semantic) return semantic;
+
+      const marker = Array.from(doc.querySelectorAll('body *')).find((element) => {
+        const label = (element.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        return label === 'get in touch';
+      });
+
+      if (!marker) return null;
+      let current = marker;
+      while (current?.parentElement && current !== doc.body) {
+        const text = (current.textContent || '').toLowerCase();
+        if (text.includes('privacy policy') && (text.includes('wearelegit') || text.includes('scorms.ai') || text.includes('atelora'))) {
+          return current;
+        }
+        current = current.parentElement;
+      }
+      return marker.parentElement?.parentElement || null;
+    };
+
+    const patchFooter = () => {
+      const footer = findFooter();
+      if (!footer) return;
+
+      const footerWalker = doc.createTreeWalker(footer, frameWindow.NodeFilter.SHOW_TEXT);
+      const footerTextNodes = [];
+      let footerNode;
+      while ((footerNode = footerWalker.nextNode())) footerTextNodes.push(footerNode);
+
+      footerTextNodes.forEach((textNode) => {
+        const next = rewriteFooterValue(textNode.nodeValue || '');
+        if (next !== textNode.nodeValue) textNode.nodeValue = next;
+      });
+
+      footer.querySelectorAll('a').forEach((link) => {
+        const href = link.getAttribute('href') || '';
+        const label = (link.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+        if (/wearelegit\.ai|mailto:hello@wearelegit\.ai|legit/i.test(href) || label === 'explore atelora' || label === 'atelora') {
+          link.setAttribute('href', '/login');
+          link.setAttribute('target', '_top');
+          link.dataset.ateloraLoginCta = '1';
+        }
+      });
+
+      const logoUrl = '/atelora-landing-logo.svg';
+      const footerRect = footer.getBoundingClientRect?.();
+      const footerVisuals = Array.from(footer.querySelectorAll('img, svg, picture, [role="img"]'))
+        .map((element) => ({ element, rect: element.getBoundingClientRect?.() }))
+        .filter(({ rect }) => rect
+          && footerRect
+          && rect.top >= footerRect.top - 8
+          && rect.left < (frameWindow.innerWidth || 1440) * 0.45
+          && rect.width >= 65
+          && rect.width <= 280
+          && rect.height >= 14
+          && rect.height <= 100)
+        .sort((a, b) => {
+          const explicitA = /scorms?\.?ai|brand|logo/i.test(getMeta(a.element)) ? -1000 : 0;
+          const explicitB = /scorms?\.?ai|brand|logo/i.test(getMeta(b.element)) ? -1000 : 0;
+          return explicitA - explicitB || a.rect.left - b.rect.left || a.rect.top - b.rect.top;
+        });
+
+      const candidate = footerVisuals[0]?.element || null;
+      const candidateRect = footerVisuals[0]?.rect || null;
+      if (candidate?.tagName?.toLowerCase() === 'img') {
+        candidate.src = logoUrl;
+        candidate.removeAttribute('srcset');
+        candidate.alt = 'Atelora';
+        candidate.dataset.ateloraFooterLogo = '1';
+        candidate.style.objectFit = 'contain';
+        candidate.style.width = `${Math.max(125, Math.min(candidateRect?.width || 145, 165))}px`;
+        candidate.style.height = 'auto';
+      } else if (candidate && !candidate.dataset?.ateloraFooterLogo) {
+        const img = doc.createElement('img');
+        img.src = logoUrl;
+        img.alt = 'Atelora';
+        img.dataset.ateloraFooterLogo = '1';
+        img.style.display = 'block';
+        img.style.width = `${Math.max(125, Math.min(candidateRect?.width || 145, 165))}px`;
+        img.style.height = 'auto';
+        img.style.objectFit = 'contain';
+        candidate.replaceWith(img);
+      }
+    };
+
     const patchLinks = () => {
       doc.querySelectorAll('a, button').forEach((element) => {
         const label = (element.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -190,6 +308,7 @@ export default function MarketingLanding() {
     const patchAll = () => {
       patchText();
       patchNavbarLogo();
+      patchFooter();
       patchLinks();
     };
 
