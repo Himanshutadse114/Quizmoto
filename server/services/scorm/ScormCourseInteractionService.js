@@ -240,7 +240,7 @@ function courseInteractionScript() {
     Array.prototype.forEach.call(document.querySelectorAll('.slide[data-kind="learning"] .qmx-cards'), function(grid){
       var cards = grid.querySelectorAll('.qmx-card');
       if (!cards.length) return;
-      grid.classList.add('qmx-flip-grid');
+      if (!grid.classList.contains('qmx-flip-grid')) grid.classList.add('qmx-flip-grid');
       Array.prototype.forEach.call(cards, upgradeCard);
     });
   }
@@ -305,18 +305,18 @@ function courseInteractionScript() {
     syncNextGate();
   }
 
+  function syncAfterNavigation(event){
+    var nav = event.target && event.target.closest ? event.target.closest('#next-btn,#prev-btn') : null;
+    if (!nav) return;
+    setTimeout(syncNextGate, 0);
+  }
+
   function install(){
     upgradeCards();
     syncNextGate();
     document.addEventListener('click', blockLockedNext, true);
-    var main = document.querySelector('main');
-    if (main && typeof MutationObserver !== 'undefined') {
-      var observer = new MutationObserver(function(){
-        upgradeCards();
-        syncNextGate();
-      });
-      observer.observe(main,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
-    }
+    document.addEventListener('click', syncAfterNavigation, false);
+    window.addEventListener('load', function(){ setTimeout(syncNextGate, 0); });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
