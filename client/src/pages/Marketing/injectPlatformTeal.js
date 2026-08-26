@@ -3,28 +3,22 @@ export function injectPlatformTeal(doc) {
 
   const STYLE_ID = 'atelora-platform-teal';
   const css = `
-:root{
-  --scorm-platform-teal:#4FC9BF;
-  --scorm-platform-teal-strong:#7BDCD3;
-  --scorm-platform-teal-hover:#9BE8E1;
-  --scorm-platform-teal-dark:#06201E;
-  color-scheme:dark;
-}
+:root{color-scheme:dark;}
 html,body{
   background:#0A0F0E !important;
   color:#EDF4F2 !important;
   color-scheme:dark !important;
   accent-color:#4FC9BF;
 }
-body,h1,h2,h3,h4,h5,h6,p,li,span,div,section,article,header,nav,footer,label{
-  color:#EDF4F2;
+body,main,section,article,aside,header,nav,footer,[role="banner"],[role="dialog"],[aria-modal="true"]{
+  background-color:#0A0F0E !important;
+  color:#EDF4F2 !important;
 }
 h1,h2,h3,h4,h5,h6{color:#F4FBFA !important;}
-p,small,figcaption,footer p,footer span,footer a{color:#A9BAB6;}
-header,nav,[role="banner"],footer{
-  background:rgba(10,15,14,.92) !important;
-  border-color:rgba(255,255,255,.10) !important;
-  color:#EDF4F2 !important;
+p,small,figcaption{color:#A9BAB6 !important;}
+[data-atelora-navbar-guard]{display:none !important;}
+[data-atelora-logo],[data-atelora-footer-logo],header img,nav img{
+  background:transparent !important;
 }
 ::selection{background:rgba(79,201,191,.28);color:#06201E;}
 a[href="/login"],
@@ -33,11 +27,6 @@ button[data-atelora-login-cta="1"]{
   background:#4FC9BF !important;
   background-image:none !important;
   border-color:#7BDCD3 !important;
-  color:#06201E !important;
-}
-a[href="/login"]:hover,
-a[data-atelora-login-cta="1"]:hover{
-  background:#7BDCD3 !important;
   color:#06201E !important;
 }
 `;
@@ -70,9 +59,9 @@ a[data-atelora-login-cta="1"]:hover{
     [/#7ad8d2/gi, '#7BDCD3'],
     [/#3bafc5/gi, '#4FC9BF'],
     [/#a9dfff/gi, '#9BE8E1'],
-    [/#bfeff1/gi, '#D9F5F1'],
-    [/#cfe8ff/gi, '#D9F5F1'],
-    [/#cfeeff/gi, '#D9F5F1'],
+    [/#bfeff1/gi, '#12201E'],
+    [/#cfe8ff/gi, '#12201E'],
+    [/#cfeeff/gi, '#12201E'],
     [/#dff3ff/gi, '#12201E'],
     [/#2cc9bf/gi, '#4FC9BF'],
     [/#19b7ad/gi, '#4FC9BF'],
@@ -93,14 +82,14 @@ a[data-atelora-login-cta="1"]:hover{
     [/#f3f8fa/gi, '#0D1413'],
     [/#e9f3f4/gi, '#121A19'],
     [/#eef4f5/gi, '#121A19'],
-    [/#eef4f2/gi, '#121A19'],
+    [/#ffffff/gi, '#0A0F0E'],
+    [/#fff(?![0-9a-f])/gi, '#0A0F0E'],
     [/#d8dee2/gi, '#2C3835'],
-    [/#dbe2df/gi, '#2C3835'],
     [/#394650/gi, '#C7D5D1'],
     [/#6e7a83/gi, '#A9BAB6'],
     [/#182128/gi, '#EDF4F2'],
     [/rgb\(\s*88\s*,\s*213\s*,\s*209\s*\)/gi, 'rgb(79, 201, 191)'],
-    [/rgb\(\s*59\s*,\s*175\s*,\s*197\s*\)/gi, 'rgb(79, 201, 191)'],
+    [/rgb\(\s*255\s*,\s*255\s*,\s*255\s*\)/gi, 'rgb(10, 15, 14)'],
   ];
 
   const remap = (value) => {
@@ -133,5 +122,34 @@ a[data-atelora-login-cta="1"]:hover{
       override.textContent = next;
       link.after(override);
     }).catch(() => {});
+  });
+
+  const win = doc.defaultView;
+  if (!win) return;
+
+  const parseRgb = (value) => {
+    const match = String(value || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    if (!match) return null;
+    return { r: Number(match[1]), g: Number(match[2]), b: Number(match[3]) };
+  };
+  const luma = ({ r, g, b }) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+
+  doc.querySelectorAll('body, body *').forEach((el) => {
+    const tag = el.tagName;
+    if (tag === 'IMG' || tag === 'SVG' || tag === 'VIDEO' || tag === 'CANVAS' || tag === 'PATH') return;
+    if (el.dataset?.ateloraLoginCta === '1' || el.closest?.('[data-atelora-login-cta="1"]')) return;
+
+    const computed = win.getComputedStyle(el);
+    const bg = parseRgb(computed.backgroundColor);
+    if (bg && luma(bg) > 0.74) {
+      const panel = el.clientWidth > 220 && el.clientHeight > 120;
+      el.style.setProperty('background-color', panel ? '#121A19' : '#0A0F0E', 'important');
+      el.style.setProperty('background-image', 'none', 'important');
+    }
+
+    const fg = parseRgb(computed.color);
+    if (fg && luma(fg) < 0.55) {
+      el.style.setProperty('color', '#EDF4F2', 'important');
+    }
   });
 }
