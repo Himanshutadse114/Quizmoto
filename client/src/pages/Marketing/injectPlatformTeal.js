@@ -40,6 +40,40 @@ function markMajorSurfaces(doc) {
   if (footer) footer.dataset.ateloraFooter = '1';
 }
 
+function rgbValues(value) {
+  const match = value?.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : null;
+}
+
+function markResidualLightSurfaces(doc) {
+  const frameWindow = doc.defaultView;
+  if (!frameWindow) return;
+
+  const viewportWidth = frameWindow.innerWidth || 1440;
+  const roots = [doc.body, doc.querySelector('main'), ...doc.querySelectorAll('[data-atelora-surface]')].filter(Boolean);
+  const candidates = new Set();
+
+  roots.forEach((root) => {
+    Array.from(root.children || []).forEach((child) => {
+      candidates.add(child);
+      Array.from(child.children || []).forEach((grandchild) => candidates.add(grandchild));
+    });
+  });
+
+  candidates.forEach((element) => {
+    if (isPageChrome(element) || element.matches?.('button, a, input, textarea, select, picture, figure, img, video')) return;
+    const rect = element.getBoundingClientRect?.();
+    if (!rect || rect.width < viewportWidth * 0.68 || rect.height < 120) return;
+
+    const style = frameWindow.getComputedStyle(element);
+    const rgb = rgbValues(style.backgroundColor);
+    if (!rgb) return;
+
+    const [r, g, b] = rgb;
+    if (r >= 238 && g >= 238 && b >= 238) element.dataset.ateloraResidualLightSurface = '1';
+  });
+}
+
 function findHeroContainer(doc, heroHeading) {
   if (!heroHeading) return null;
 
@@ -114,10 +148,10 @@ function markReadableText(doc) {
     if (!directText(element)) return;
 
     const style = doc.defaultView?.getComputedStyle?.(element);
-    const match = style?.color?.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
-    if (!match) return;
+    const rgb = rgbValues(style?.color);
+    if (!rgb) return;
 
-    const [, r, g, b] = match.map(Number);
+    const [r, g, b] = rgb;
     const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
     if (luminance < 0.44) element.dataset.ateloraDarkText = '1';
   });
@@ -135,6 +169,12 @@ export function injectPlatformTeal(doc) {
   doc.documentElement.setAttribute(THEME_ATTR, 'dark');
   doc.body.setAttribute(THEME_ATTR, 'dark');
 
+  markMajorSurfaces(doc);
+  markResidualLightSurfaces(doc);
+  markHero(doc);
+  markReadableText(doc);
+  makeLogosDarkReady(doc);
+
   if (!doc.getElementById(THEME_ID)) {
     const link = doc.createElement('link');
     link.id = THEME_ID;
@@ -142,11 +182,6 @@ export function injectPlatformTeal(doc) {
     link.href = '/atelora-platform-teal.css';
     doc.head?.appendChild(link);
   }
-
-  markMajorSurfaces(doc);
-  markHero(doc);
-  markReadableText(doc);
-  makeLogosDarkReady(doc);
 }
 
 export default injectPlatformTeal;
