@@ -6,11 +6,13 @@ const crypto = require('crypto');
 const clientDir = path.resolve(__dirname, '..');
 const sourceDir = path.join(clientDir, 'landing-site');
 const outputDir = path.join(clientDir, 'public', 'landing');
+const contentSourcePath = path.join(sourceDir, 'atelora-content.js');
 const EXPECTED_PARTS = 6;
 const EXPECTED_PART_SIZE = 8000;
 const EXPECTED_LAST_PART_SIZE = 3080;
 const EXPECTED_HTML_SHA256 = 'e3b3fb067683a087c995421f949496898670439893a69eab178436943e750653';
 const LOCAL_CSS_PATH = '/landing/atelora-clone.css';
+const CONTENT_SCRIPT_PATH = '/landing/atelora-content.js';
 const STYLESHEET_URLS = [
   'https://cdn.prod.website-files.com/671511cf4e0de2cd564eaa9d/css/9PIWBwGCQe6z.css',
   'https://cdn.prod.website-files.com/671511cf4e0de2cd564eaa9d/css/IHgaQYuRys9z.css',
@@ -77,6 +79,9 @@ function reconstructLanding() {
   if (!/\/atelora-landing-logo\.svg/i.test(htmlText)) {
     throw new Error('Atelora landing validation failed: Atelora logo reference is missing.');
   }
+  if (!fs.existsSync(contentSourcePath)) {
+    throw new Error('Atelora landing validation failed: editable content layer is missing.');
+  }
 
   return htmlText;
 }
@@ -130,21 +135,31 @@ function replaceExternalStylesheets(htmlText) {
   return result.replace(/<\/head>/i, `${localLink}</head>`);
 }
 
+function injectEditableContentLayer(htmlText) {
+  const contentScript = `<script src="${CONTENT_SCRIPT_PATH}" data-atelora-content="true"></script>`;
+  if (htmlText.includes('data-atelora-content="true"')) return htmlText;
+  return htmlText.replace(/<\/body>/i, `${contentScript}</body>`);
+}
+
 async function main() {
   const htmlText = reconstructLanding();
   const localCss = await downloadLandingCss();
-  const preparedHtml = replaceExternalStylesheets(htmlText);
+  const preparedHtml = injectEditableContentLayer(replaceExternalStylesheets(htmlText));
 
   if (!preparedHtml.includes(LOCAL_CSS_PATH)) {
     throw new Error('Atelora landing validation failed: local stylesheet reference was not created.');
+  }
+  if (!preparedHtml.includes(CONTENT_SCRIPT_PATH)) {
+    throw new Error('Atelora landing validation failed: editable content layer was not injected.');
   }
 
   fs.rmSync(outputDir, { recursive: true, force: true });
   fs.mkdirSync(outputDir, { recursive: true });
   fs.writeFileSync(path.join(outputDir, 'index.html'), preparedHtml, 'utf8');
   fs.writeFileSync(path.join(outputDir, 'atelora-clone.css'), localCss, 'utf8');
+  fs.copyFileSync(contentSourcePath, path.join(outputDir, 'atelora-content.js'));
 
-  console.log(`Prepared verified Atelora primary website (${Buffer.byteLength(preparedHtml)} HTML bytes, ${Buffer.byteLength(localCss)} local CSS bytes).`);
+  console.log(`Prepared verified Atelora primary website (${Buffer.byteLength(preparedHtml)} HTML bytes, ${Buffer.byteLength(localCss)} local CSS bytes, editable content layer enabled).`);
 }
 
 main().catch((error) => {
