@@ -54,14 +54,14 @@ if (hash !== EXPECTED_HTML_SHA256) {
   throw new Error(`Atelora landing checksum mismatch: ${hash}`);
 }
 
-const forbiddenVisibleCopy = [
+const forbiddenLegacyCopy = [
   /Local Marketing That Your Locations Actually Use/i,
-  /Book a Demo/i,
   /Trusted by leading brands to manage local marketing at scale/i,
+  /Built for Real Local Marketing Challenges/i,
 ];
-for (const pattern of forbiddenVisibleCopy) {
+for (const pattern of forbiddenLegacyCopy) {
   if (pattern.test(htmlText)) {
-    throw new Error(`Atelora landing validation failed: legacy source-site copy matched ${pattern}.`);
+    throw new Error(`Atelora landing validation failed: legacy visible copy matched ${pattern}.`);
   }
 }
 
