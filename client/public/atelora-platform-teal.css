@@ -40,6 +40,14 @@ html[data-atelora-theme="dark"] [data-atelora-surface="raised"] {
   border-color: var(--atelora-border) !important;
 }
 
+/* Only large structural wrappers that were confirmed as near-white are
+   neutralised. Small components keep their intended visual identity. */
+html[data-atelora-theme="dark"] [data-atelora-residual-light-surface="1"] {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: var(--atelora-border) !important;
+}
+
 html[data-atelora-theme="dark"] [data-atelora-header="1"],
 html[data-atelora-theme="dark"] header,
 html[data-atelora-theme="dark"] nav,
