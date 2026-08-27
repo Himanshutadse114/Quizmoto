@@ -1,88 +1,201 @@
-/* Company website = platform dark + teal */
-:root {
-  --scorm-platform-teal: #4FC9BF;
-  --scorm-platform-teal-strong: #7BDCD3;
-  --scorm-platform-teal-hover: #9BE8E1;
-  --scorm-platform-teal-dark: #06201E;
-  --atelora-bg: #0A0F0E;
-  --atelora-panel: #121A19;
-  --atelora-line: rgba(255,255,255,.10);
-  --atelora-text: #EDF4F2;
-  --atelora-muted: #A9BAB6;
+html[data-atelora-theme="dark"] {
   color-scheme: dark;
+  --atelora-bg: #061113;
+  --atelora-bg-soft: #081719;
+  --atelora-surface: #0a1d1f;
+  --atelora-surface-raised: #0d2426;
+  --atelora-surface-strong: #112c2f;
+  --atelora-border: rgba(151, 211, 204, 0.16);
+  --atelora-border-strong: rgba(151, 211, 204, 0.27);
+  --atelora-text: #f2f8f7;
+  --atelora-text-soft: #b4c9c6;
+  --atelora-muted: #829d99;
+  --atelora-accent: #4dcfc8;
+  --atelora-accent-strong: #72ddd7;
+  --atelora-accent-ink: #032221;
+  background: var(--atelora-bg) !important;
 }
 
-html,
-body {
-  background: #0A0F0E !important;
-  background-image:
-    radial-gradient(circle at 18% -8%, rgba(79,201,191,.10), transparent 25rem),
-    radial-gradient(circle at 88% 100%, rgba(63,203,140,.04), transparent 26rem),
-    linear-gradient(180deg, #0D1413 0%, #0A0F0E 56%, #070B0A 100%) !important;
-  color: #EDF4F2 !important;
-  color-scheme: dark !important;
-  accent-color: #4FC9BF;
+html[data-atelora-theme="dark"],
+html[data-atelora-theme="dark"] body {
+  background: var(--atelora-bg) !important;
+  color: var(--atelora-text);
 }
 
-::selection {
-  background: rgba(79, 201, 191, .28);
-  color: #06201E;
+html[data-atelora-theme="dark"] body {
+  min-height: 100%;
 }
 
-body,
-main,
-section,
-article,
-aside,
-header,
-nav,
-footer,
-[role="banner"],
-[role="dialog"],
-[role="navigation"],
-[aria-modal="true"] {
-  background-color: #0A0F0E !important;
-  color: #EDF4F2 !important;
+/* Major page surfaces are marked by the runtime bridge. This preserves the
+   original section hierarchy instead of painting every div the same colour. */
+html[data-atelora-theme="dark"] [data-atelora-surface="base"] {
+  background-color: var(--atelora-bg-soft) !important;
+  color: var(--atelora-text);
+  border-color: var(--atelora-border) !important;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  color: #F4FBFA !important;
+html[data-atelora-theme="dark"] [data-atelora-surface="raised"] {
+  background-color: var(--atelora-surface) !important;
+  color: var(--atelora-text);
+  border-color: var(--atelora-border) !important;
 }
 
-p, small, figcaption {
-  color: #A9BAB6 !important;
+html[data-atelora-theme="dark"] [data-atelora-header="1"],
+html[data-atelora-theme="dark"] header,
+html[data-atelora-theme="dark"] nav,
+html[data-atelora-theme="dark"] [role="banner"] {
+  background-color: rgba(6, 17, 19, 0.96) !important;
+  color: var(--atelora-text) !important;
+  border-color: var(--atelora-border) !important;
+  box-shadow: 0 1px 0 var(--atelora-border);
+  backdrop-filter: blur(16px);
 }
 
-[data-atelora-navbar-guard] {
+html[data-atelora-theme="dark"] [data-atelora-footer="1"],
+html[data-atelora-theme="dark"] footer,
+html[data-atelora-theme="dark"] [class*="footer" i] {
+  background-color: #050e10 !important;
+  color: var(--atelora-text-soft) !important;
+  border-color: var(--atelora-border) !important;
+}
+
+/* Hero: remove only the large product visual, then let the original content
+   use the full available width. Other imagery across the site stays intact. */
+html[data-atelora-theme="dark"] [data-atelora-hero="1"] {
+  background:
+    radial-gradient(circle at 16% 0%, rgba(77, 207, 200, 0.10), transparent 31rem),
+    radial-gradient(circle at 88% 14%, rgba(81, 128, 143, 0.09), transparent 27rem),
+    var(--atelora-bg-soft) !important;
+  color: var(--atelora-text) !important;
+}
+
+html[data-atelora-theme="dark"] [data-atelora-hero-visual="1"] {
   display: none !important;
 }
 
-[data-atelora-logo],
-[data-atelora-footer-logo],
-header img,
-nav img,
-[role="banner"] img {
-  background: transparent !important;
-  box-shadow: none !important;
+html[data-atelora-theme="dark"] [data-atelora-hero="1"] > div,
+html[data-atelora-theme="dark"] [data-atelora-hero="1"] > div > div {
+  grid-template-columns: minmax(0, 1fr) !important;
 }
 
-input, textarea, select {
-  background: #121A19 !important;
-  border-color: rgba(255,255,255,.10) !important;
-  color: #EDF4F2 !important;
+html[data-atelora-theme="dark"] [data-atelora-hero="1"] h1 {
+  max-width: 980px;
+  color: var(--atelora-text) !important;
 }
 
-a[href="/login"],
-a[data-atelora-login-cta="1"],
-button[data-atelora-login-cta="1"] {
-  background: #4FC9BF !important;
-  background-image: none !important;
-  border-color: #7BDCD3 !important;
-  color: #06201E !important;
+html[data-atelora-theme="dark"] [data-atelora-hero="1"] p {
+  max-width: 780px;
 }
 
-a[href="/login"]:hover,
-a[data-atelora-login-cta="1"]:hover {
-  background: #7BDCD3 !important;
-  color: #06201E !important;
+/* Typography: only semantic copy and text nodes that were confirmed to be
+   too dark for the new background are adjusted. */
+html[data-atelora-theme="dark"] h1,
+html[data-atelora-theme="dark"] h2,
+html[data-atelora-theme="dark"] h3,
+html[data-atelora-theme="dark"] h4,
+html[data-atelora-theme="dark"] h5,
+html[data-atelora-theme="dark"] h6,
+html[data-atelora-theme="dark"] [class*="heading" i],
+html[data-atelora-theme="dark"] [class*="title" i] {
+  color: var(--atelora-text) !important;
+}
+
+html[data-atelora-theme="dark"] p,
+html[data-atelora-theme="dark"] li,
+html[data-atelora-theme="dark"] label,
+html[data-atelora-theme="dark"] small {
+  color: var(--atelora-text-soft);
+}
+
+html[data-atelora-theme="dark"] [data-atelora-dark-text="1"] {
+  color: var(--atelora-text-soft) !important;
+}
+
+html[data-atelora-theme="dark"] a:not([class*="button" i]):not([class*="btn" i]) {
+  color: var(--atelora-accent-strong);
+}
+
+/* Elevated content keeps separation without turning every container into a
+   card. These selectors are limited to explicitly card-like components. */
+html[data-atelora-theme="dark"] [class*="card" i],
+html[data-atelora-theme="dark"] [class*="panel" i],
+html[data-atelora-theme="dark"] [class*="tile" i] {
+  background-color: var(--atelora-surface-raised) !important;
+  color: var(--atelora-text) !important;
+  border-color: var(--atelora-border) !important;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.18);
+}
+
+html[data-atelora-theme="dark"] [class*="card" i] p,
+html[data-atelora-theme="dark"] [class*="panel" i] p,
+html[data-atelora-theme="dark"] [class*="tile" i] p {
+  color: var(--atelora-text-soft) !important;
+}
+
+/* Interactive controls retain a strong Atelora accent and readable states. */
+html[data-atelora-theme="dark"] button,
+html[data-atelora-theme="dark"] a[class*="button" i],
+html[data-atelora-theme="dark"] a[class*="btn" i],
+html[data-atelora-theme="dark"] [role="button"] {
+  border-color: var(--atelora-border-strong);
+}
+
+html[data-atelora-theme="dark"] input,
+html[data-atelora-theme="dark"] textarea,
+html[data-atelora-theme="dark"] select {
+  background: #071719 !important;
+  color: var(--atelora-text) !important;
+  border-color: var(--atelora-border-strong) !important;
+}
+
+html[data-atelora-theme="dark"] input::placeholder,
+html[data-atelora-theme="dark"] textarea::placeholder {
+  color: var(--atelora-muted) !important;
+}
+
+html[data-atelora-theme="dark"] input:focus,
+html[data-atelora-theme="dark"] textarea:focus,
+html[data-atelora-theme="dark"] select:focus {
+  border-color: var(--atelora-accent) !important;
+  outline: 2px solid rgba(77, 207, 200, 0.18);
+  outline-offset: 2px;
+}
+
+html[data-atelora-theme="dark"] hr {
+  border-color: var(--atelora-border) !important;
+}
+
+/* The existing landing wordmark was drawn for a light header. Keep the asset,
+   but render it cleanly against the dark navigation/footer surfaces. */
+html[data-atelora-theme="dark"] [data-atelora-navbar-guard="1"] {
+  background: #061113 !important;
+}
+
+html[data-atelora-theme="dark"] [data-atelora-navbar-guard="1"] img,
+html[data-atelora-theme="dark"] [data-atelora-footer-logo="1"] {
+  filter: brightness(0) invert(1) !important;
+}
+
+html[data-atelora-theme="dark"] img:not([data-atelora-footer-logo="1"]),
+html[data-atelora-theme="dark"] video {
+  opacity: 0.98;
+}
+
+@media (max-width: 720px) {
+  html[data-atelora-theme="dark"] [data-atelora-hero="1"] {
+    text-align: left;
+  }
+
+  html[data-atelora-theme="dark"] [data-atelora-hero="1"] h1,
+  html[data-atelora-theme="dark"] [data-atelora-hero="1"] p {
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-atelora-theme="dark"] *,
+  html[data-atelora-theme="dark"] *::before,
+  html[data-atelora-theme="dark"] *::after {
+    scroll-behavior: auto !important;
+  }
 }
