@@ -15,23 +15,66 @@ function isPageChrome(element) {
   return element.matches('header, nav, footer, [role="banner"], [class*="footer" i], [class*="navbar" i], [class*="navigation" i]');
 }
 
+function rgbValues(value) {
+  const match = value?.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : null;
+}
+
+function isLightRgb(rgb) {
+  if (!rgb) return false;
+  const [r, g, b] = rgb;
+  return r >= 224 && g >= 224 && b >= 224;
+}
+
+function isLightGradient(value) {
+  if (!value || value === 'none' || !/gradient/i.test(value)) return false;
+  const lower = value.toLowerCase();
+  if (/#fff(?:fff)?\b|#f[0-9a-f]{2,5}\b/.test(lower)) return true;
+
+  const matches = [...lower.matchAll(/rgba?\((\d+),\s*(\d+),\s*(\d+)/g)];
+  return matches.some((match) => Number(match[1]) >= 220 && Number(match[2]) >= 220 && Number(match[3]) >= 220);
+}
+
+function markRootSurfaces(doc) {
+  Array.from(doc.body.children || []).forEach((element) => {
+    if (!element?.dataset || element.matches?.('script, style, link, iframe')) return;
+    element.dataset.ateloraRootSurface = '1';
+  });
+}
+
 function markMajorSurfaces(doc) {
   const main = doc.querySelector('main') || doc.body;
-  let sections = Array.from(main.children || []).filter((element) => {
-    if (isPageChrome(element)) return false;
-    const tag = element.tagName?.toLowerCase();
-    const rect = element.getBoundingClientRect?.();
-    return tag === 'section' || tag === 'article' || (rect && rect.height >= 220);
-  });
+  const frameWindow = doc.defaultView;
+  const viewportWidth = frameWindow?.innerWidth || 1440;
 
-  if (sections.length <= 1) {
-    const semantic = Array.from(main.querySelectorAll('section, article'));
-    sections = semantic.filter((section) => !semantic.some((other) => other !== section && other.contains(section)));
-  }
+  const semanticSections = Array.from(main.querySelectorAll('section, article'))
+    .filter((section) => {
+      if (isPageChrome(section)) return false;
+      const rect = section.getBoundingClientRect?.();
+      return rect && rect.width >= viewportWidth * 0.45 && rect.height >= 140;
+    })
+    .sort((a, b) => (a.getBoundingClientRect?.().top || 0) - (b.getBoundingClientRect?.().top || 0));
 
-  sections.forEach((section, index) => {
+  semanticSections.forEach((section, index) => {
     section.dataset.ateloraSurface = index % 2 === 0 ? 'base' : 'raised';
   });
+
+  if (!semanticSections.length) {
+    const sectionLikeDivs = Array.from(main.querySelectorAll('div'))
+      .filter((element) => {
+        if (isPageChrome(element)) return false;
+        const rect = element.getBoundingClientRect?.();
+        if (!rect || rect.width < viewportWidth * 0.72 || rect.height < 220) return false;
+
+        const style = frameWindow?.getComputedStyle?.(element);
+        return isLightRgb(rgbValues(style?.backgroundColor)) || isLightGradient(style?.backgroundImage);
+      })
+      .sort((a, b) => (a.getBoundingClientRect?.().top || 0) - (b.getBoundingClientRect?.().top || 0));
+
+    sectionLikeDivs.forEach((section, index) => {
+      section.dataset.ateloraSurface = index % 2 === 0 ? 'base' : 'raised';
+    });
+  }
 
   const header = doc.querySelector('header, [role="banner"], nav, [class*="navbar" i], [class*="navigation" i]');
   if (header) header.dataset.ateloraHeader = '1';
@@ -40,37 +83,34 @@ function markMajorSurfaces(doc) {
   if (footer) footer.dataset.ateloraFooter = '1';
 }
 
-function rgbValues(value) {
-  const match = value?.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
-  return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : null;
-}
-
 function markResidualLightSurfaces(doc) {
   const frameWindow = doc.defaultView;
   if (!frameWindow) return;
 
   const viewportWidth = frameWindow.innerWidth || 1440;
-  const roots = [doc.body, doc.querySelector('main'), ...doc.querySelectorAll('[data-atelora-surface]')].filter(Boolean);
-  const candidates = new Set();
+  const selectors = [
+    'main', 'section', 'article', 'aside',
+    'div',
+    '[class*="section" i]', '[class*="content" i]', '[class*="band" i]', '[class*="block" i]',
+    '[class*="comparison" i]', '[class*="compare" i]', '[class*="stack" i]', '[class*="feature" i]'
+  ].join(',');
 
-  roots.forEach((root) => {
-    Array.from(root.children || []).forEach((child) => {
-      candidates.add(child);
-      Array.from(child.children || []).forEach((grandchild) => candidates.add(grandchild));
-    });
-  });
+  const candidates = Array.from(doc.querySelectorAll(selectors));
 
   candidates.forEach((element) => {
-    if (isPageChrome(element) || element.matches?.('button, a, input, textarea, select, picture, figure, img, video')) return;
+    if (!element?.dataset || isPageChrome(element)) return;
+    if (element.matches?.('button, a, input, textarea, select, option, picture, figure, img, video, svg')) return;
+
     const rect = element.getBoundingClientRect?.();
-    if (!rect || rect.width < viewportWidth * 0.68 || rect.height < 120) return;
+    if (!rect || rect.width < Math.min(viewportWidth * 0.46, 720) || rect.height < 80) return;
 
     const style = frameWindow.getComputedStyle(element);
-    const rgb = rgbValues(style.backgroundColor);
-    if (!rgb) return;
+    const lightBackground = isLightRgb(rgbValues(style.backgroundColor));
+    const lightGradient = isLightGradient(style.backgroundImage);
 
-    const [r, g, b] = rgb;
-    if (r >= 238 && g >= 238 && b >= 238) element.dataset.ateloraResidualLightSurface = '1';
+    if (lightBackground || lightGradient) {
+      element.dataset.ateloraResidualLightSurface = '1';
+    }
   });
 }
 
@@ -141,7 +181,7 @@ function markHero(doc) {
 
 function markReadableText(doc) {
   const excluded = 'button, [role="button"], input, textarea, select, option, [class*="badge" i], [class*="pill" i], [class*="chip" i], [class*="tag" i]';
-  const elements = Array.from(doc.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, label, small, a, span, div'));
+  const elements = Array.from(doc.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, label, small, a, span, div, td, th'));
 
   elements.forEach((element) => {
     if (element.matches?.(excluded) || element.closest?.(excluded)) return;
@@ -153,7 +193,7 @@ function markReadableText(doc) {
 
     const [r, g, b] = rgb;
     const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-    if (luminance < 0.44) element.dataset.ateloraDarkText = '1';
+    if (luminance < 0.52) element.dataset.ateloraDarkText = '1';
   });
 }
 
@@ -169,6 +209,7 @@ export function injectPlatformTeal(doc) {
   doc.documentElement.setAttribute(THEME_ATTR, 'dark');
   doc.body.setAttribute(THEME_ATTR, 'dark');
 
+  markRootSurfaces(doc);
   markMajorSurfaces(doc);
   markResidualLightSurfaces(doc);
   markHero(doc);

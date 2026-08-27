@@ -17,34 +17,48 @@ html[data-atelora-theme="dark"] {
 }
 
 html[data-atelora-theme="dark"],
-html[data-atelora-theme="dark"] body {
+html[data-atelora-theme="dark"] body,
+html[data-atelora-theme="dark"] [data-atelora-root-surface="1"] {
   background: var(--atelora-bg) !important;
-  color: var(--atelora-text);
+  color: var(--atelora-text) !important;
 }
 
 html[data-atelora-theme="dark"] body {
   min-height: 100%;
 }
 
-/* Major page surfaces are marked by the runtime bridge. This preserves the
-   original section hierarchy instead of painting every div the same colour. */
-html[data-atelora-theme="dark"] [data-atelora-surface="base"] {
+/* The landing clone contains nested white production-site wrappers. Make the
+   actual structural sections dark instead of only changing text colour. */
+html[data-atelora-theme="dark"] main,
+html[data-atelora-theme="dark"] section,
+html[data-atelora-theme="dark"] article {
   background-color: var(--atelora-bg-soft) !important;
-  color: var(--atelora-text);
+  border-color: var(--atelora-border) !important;
+}
+
+html[data-atelora-theme="dark"] [data-atelora-surface="base"] {
+  background: var(--atelora-bg-soft) !important;
+  color: var(--atelora-text) !important;
   border-color: var(--atelora-border) !important;
 }
 
 html[data-atelora-theme="dark"] [data-atelora-surface="raised"] {
-  background-color: var(--atelora-surface) !important;
-  color: var(--atelora-text);
+  background: var(--atelora-surface) !important;
+  color: var(--atelora-text) !important;
   border-color: var(--atelora-border) !important;
 }
 
-/* Only large structural wrappers that were confirmed as near-white are
-   neutralised. Small components keep their intended visual identity. */
+/* Any deep wrapper that still resolves to a light background is explicitly
+   converted. This is targeted by runtime inspection, not a blanket div rule. */
 html[data-atelora-theme="dark"] [data-atelora-residual-light-surface="1"] {
-  background-color: transparent !important;
+  background-color: var(--atelora-bg-soft) !important;
   background-image: none !important;
+  color: var(--atelora-text) !important;
+  border-color: var(--atelora-border) !important;
+}
+
+html[data-atelora-theme="dark"] [data-atelora-residual-light-surface="1"]::before,
+html[data-atelora-theme="dark"] [data-atelora-residual-light-surface="1"]::after {
   border-color: var(--atelora-border) !important;
 }
 
@@ -52,23 +66,22 @@ html[data-atelora-theme="dark"] [data-atelora-header="1"],
 html[data-atelora-theme="dark"] header,
 html[data-atelora-theme="dark"] nav,
 html[data-atelora-theme="dark"] [role="banner"] {
-  background-color: rgba(6, 17, 19, 0.96) !important;
+  background: rgba(6, 17, 19, 0.96) !important;
   color: var(--atelora-text) !important;
   border-color: var(--atelora-border) !important;
-  box-shadow: 0 1px 0 var(--atelora-border);
+  box-shadow: 0 1px 0 var(--atelora-border) !important;
   backdrop-filter: blur(16px);
 }
 
 html[data-atelora-theme="dark"] [data-atelora-footer="1"],
 html[data-atelora-theme="dark"] footer,
 html[data-atelora-theme="dark"] [class*="footer" i] {
-  background-color: #050e10 !important;
+  background: #050e10 !important;
   color: var(--atelora-text-soft) !important;
   border-color: var(--atelora-border) !important;
 }
 
-/* Hero: remove only the large product visual, then let the original content
-   use the full available width. Other imagery across the site stays intact. */
+/* Hero */
 html[data-atelora-theme="dark"] [data-atelora-hero="1"] {
   background:
     radial-gradient(circle at 16% 0%, rgba(77, 207, 200, 0.10), transparent 31rem),
@@ -95,8 +108,7 @@ html[data-atelora-theme="dark"] [data-atelora-hero="1"] p {
   max-width: 780px;
 }
 
-/* Typography: only semantic copy and text nodes that were confirmed to be
-   too dark for the new background are adjusted. */
+/* Typography */
 html[data-atelora-theme="dark"] h1,
 html[data-atelora-theme="dark"] h2,
 html[data-atelora-theme="dark"] h3,
@@ -112,7 +124,7 @@ html[data-atelora-theme="dark"] p,
 html[data-atelora-theme="dark"] li,
 html[data-atelora-theme="dark"] label,
 html[data-atelora-theme="dark"] small {
-  color: var(--atelora-text-soft);
+  color: var(--atelora-text-soft) !important;
 }
 
 html[data-atelora-theme="dark"] [data-atelora-dark-text="1"] {
@@ -123,15 +135,14 @@ html[data-atelora-theme="dark"] a:not([class*="button" i]):not([class*="btn" i])
   color: var(--atelora-accent-strong);
 }
 
-/* Elevated content keeps separation without turning every container into a
-   card. These selectors are limited to explicitly card-like components. */
+/* Cards and panels */
 html[data-atelora-theme="dark"] [class*="card" i],
 html[data-atelora-theme="dark"] [class*="panel" i],
 html[data-atelora-theme="dark"] [class*="tile" i] {
   background-color: var(--atelora-surface-raised) !important;
   color: var(--atelora-text) !important;
   border-color: var(--atelora-border) !important;
-  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.18) !important;
 }
 
 html[data-atelora-theme="dark"] [class*="card" i] p,
@@ -140,7 +151,46 @@ html[data-atelora-theme="dark"] [class*="tile" i] p {
   color: var(--atelora-text-soft) !important;
 }
 
-/* Interactive controls retain a strong Atelora accent and readable states. */
+/* Comparison tables were one of the remaining white areas in the clone. */
+html[data-atelora-theme="dark"] table {
+  width: 100%;
+  background: var(--atelora-surface-raised) !important;
+  color: var(--atelora-text) !important;
+  border-color: var(--atelora-border) !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.20) !important;
+}
+
+html[data-atelora-theme="dark"] thead,
+html[data-atelora-theme="dark"] tbody,
+html[data-atelora-theme="dark"] tfoot,
+html[data-atelora-theme="dark"] tr {
+  background: transparent !important;
+  color: var(--atelora-text) !important;
+  border-color: var(--atelora-border) !important;
+}
+
+html[data-atelora-theme="dark"] th {
+  background: var(--atelora-surface-strong) !important;
+  color: var(--atelora-text) !important;
+  border-color: var(--atelora-border) !important;
+}
+
+html[data-atelora-theme="dark"] td {
+  background: var(--atelora-surface-raised) !important;
+  color: var(--atelora-text-soft) !important;
+  border-color: var(--atelora-border) !important;
+}
+
+html[data-atelora-theme="dark"] tr:nth-child(even) td {
+  background: #0b2022 !important;
+}
+
+html[data-atelora-theme="dark"] th *,
+html[data-atelora-theme="dark"] td * {
+  color: inherit !important;
+}
+
+/* Forms and controls */
 html[data-atelora-theme="dark"] button,
 html[data-atelora-theme="dark"] a[class*="button" i],
 html[data-atelora-theme="dark"] a[class*="btn" i],
@@ -173,8 +223,7 @@ html[data-atelora-theme="dark"] hr {
   border-color: var(--atelora-border) !important;
 }
 
-/* The existing landing wordmark was drawn for a light header. Keep the asset,
-   but render it cleanly against the dark navigation/footer surfaces. */
+/* Logo treatment */
 html[data-atelora-theme="dark"] [data-atelora-navbar-guard="1"] {
   background: #061113 !important;
 }
@@ -197,6 +246,10 @@ html[data-atelora-theme="dark"] video {
   html[data-atelora-theme="dark"] [data-atelora-hero="1"] h1,
   html[data-atelora-theme="dark"] [data-atelora-hero="1"] p {
     max-width: 100%;
+  }
+
+  html[data-atelora-theme="dark"] table {
+    font-size: 0.92rem;
   }
 }
 
