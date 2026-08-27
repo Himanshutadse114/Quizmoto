@@ -245,11 +245,11 @@ function injectAteloraExperience(html) {
         return el.children.length === 0 && el.tagName !== 'IMG' && norm(el.textContent).length > 0;
       });
       var longLeaves = leaves.filter(function (el) { return norm(el.textContent).length > 24; });
-      if (longLeaves[0]) longLeaves[0].textContent = data[0];
-      if (longLeaves[1]) longLeaves[1].textContent = data[1];
+      if (longLeaves[0] && longLeaves[0].textContent !== data[0]) longLeaves[0].textContent = data[0];
+      if (longLeaves[1] && longLeaves[1].textContent !== data[1]) longLeaves[1].textContent = data[1];
       leaves.forEach(function (el) {
         var t = norm(el.textContent);
-        if (t === 'article') el.textContent = 'Platform';
+        if (t === 'article' && el.textContent !== 'Platform') el.textContent = 'Platform';
       });
     });
   }
