@@ -10,12 +10,24 @@ function directText(element) {
     .trim();
 }
 
+function isPageChrome(element) {
+  if (!element?.matches) return false;
+  return element.matches('header, nav, footer, [role="banner"], [class*="footer" i], [class*="navbar" i], [class*="navigation" i]');
+}
+
 function markMajorSurfaces(doc) {
-  const candidates = Array.from(doc.querySelectorAll('main section, body > section, main > div > section'));
-  const sections = candidates.filter((section, index, list) => {
-    if (list.some((other) => other !== section && other.contains(section))) return false;
-    return true;
+  const main = doc.querySelector('main') || doc.body;
+  let sections = Array.from(main.children || []).filter((element) => {
+    if (isPageChrome(element)) return false;
+    const tag = element.tagName?.toLowerCase();
+    const rect = element.getBoundingClientRect?.();
+    return tag === 'section' || tag === 'article' || (rect && rect.height >= 220);
   });
+
+  if (sections.length <= 1) {
+    const semantic = Array.from(main.querySelectorAll('section, article'));
+    sections = semantic.filter((section) => !semantic.some((other) => other !== section && other.contains(section)));
+  }
 
   sections.forEach((section, index) => {
     section.dataset.ateloraSurface = index % 2 === 0 ? 'base' : 'raised';
@@ -28,6 +40,25 @@ function markMajorSurfaces(doc) {
   if (footer) footer.dataset.ateloraFooter = '1';
 }
 
+function findHeroContainer(doc, heroHeading) {
+  if (!heroHeading) return null;
+
+  const semantic = heroHeading.closest('section, [class*="hero" i], [id*="hero" i]');
+  if (semantic) return semantic;
+
+  const main = doc.querySelector('main');
+  let current = heroHeading.parentElement;
+  let best = null;
+
+  while (current && current !== doc.body && current !== main) {
+    const rect = current.getBoundingClientRect?.();
+    if (rect && rect.height >= 260 && rect.height <= 1100 && rect.width >= 280) best = current;
+    current = current.parentElement;
+  }
+
+  return best || doc.querySelector('main > section, main section, [class*="hero" i], [id*="hero" i]');
+}
+
 function markHero(doc) {
   const headings = Array.from(doc.querySelectorAll('h1, h2'));
   const heroHeading = headings.find((heading) => {
@@ -37,9 +68,7 @@ function markHero(doc) {
       || text.includes('custom scorm course');
   }) || headings.find((heading) => heading.tagName.toLowerCase() === 'h1');
 
-  const hero = heroHeading?.closest('section, [class*="hero" i], main > div')
-    || doc.querySelector('main > section, main section, [class*="hero" i]');
-
+  const hero = findHeroContainer(doc, heroHeading);
   if (!hero) return;
   hero.dataset.ateloraHero = '1';
 
