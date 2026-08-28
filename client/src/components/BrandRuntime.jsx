@@ -11,6 +11,7 @@ const LEGACY_LOGO_SUFFIX = '/atelora-logo.svg';
 
 const TEXT_SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'CODE', 'PRE']);
 const BRAND_ATTRIBUTES = ['alt', 'title', 'aria-label', 'placeholder', 'content'];
+const BRAND_LOGO_SELECTOR = `img[data-lmsgen-brand-logo="1"], img[src$="${LEGACY_LOGO_SUFFIX}"], img[src="${BRAND_LOGO_LIGHT}"], img[src="${BRAND_LOGO_DARK}"]`;
 
 function replaceBrand(value) {
   if (!value || typeof value !== 'string') return value;
@@ -36,20 +37,22 @@ function brandLogoImage(element) {
 
   if (!isKnownBrandLogo) return;
 
-  element.dataset.lmsgenBrandLogo = '1';
-  element.alt = 'LMSGEN';
+  if (element.dataset.lmsgenBrandLogo !== '1') {
+    element.dataset.lmsgenBrandLogo = '1';
+  }
+  if (element.getAttribute('alt') !== 'LMSGEN') {
+    element.setAttribute('alt', 'LMSGEN');
+  }
 
   const lightTheme = Boolean(element.closest('.scorm-theme-light'));
   const nextSrc = lightTheme ? BRAND_LOGO_LIGHT : BRAND_LOGO_DARK;
   if (rawSrc !== nextSrc) element.setAttribute('src', nextSrc);
 }
 
-function refreshBrandLogos() {
-  document
-    .querySelectorAll(
-      `img[data-lmsgen-brand-logo="1"], img[src$="${LEGACY_LOGO_SUFFIX}"], img[src="${BRAND_LOGO_LIGHT}"], img[src="${BRAND_LOGO_DARK}"]`,
-    )
-    .forEach(brandLogoImage);
+function refreshBrandLogos(root = document) {
+  if (root instanceof HTMLImageElement) brandLogoImage(root);
+  if (!root?.querySelectorAll) return;
+  root.querySelectorAll(BRAND_LOGO_SELECTOR).forEach(brandLogoImage);
 }
 
 function brandElement(element) {
@@ -112,7 +115,6 @@ export default function BrandRuntime() {
   useLayoutEffect(() => {
     brandDocumentMetadata();
     brandSubtree(document.body);
-    refreshBrandLogos();
 
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
@@ -123,13 +125,17 @@ export default function BrandRuntime() {
 
         if (mutation.type === 'attributes') {
           brandElement(mutation.target);
+          if (mutation.attributeName === 'class') {
+            // Theme classes live on containers, so only rescan logos inside the
+            // container whose theme actually changed instead of the whole page.
+            refreshBrandLogos(mutation.target);
+          }
           continue;
         }
 
         mutation.addedNodes.forEach(brandSubtree);
       }
       brandDocumentMetadata();
-      refreshBrandLogos();
     });
 
     observer.observe(document.body, {
