@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LockKeyhole, Mail, ShieldCheck, UserRound, Zap, Sun, Moon } from 'lucide-react';
+import { Layers3, LockKeyhole, Mail, ShieldCheck, UserRound, Zap, Sun, Moon } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -12,7 +12,12 @@ import './scormLightContrastGuard.css';
 
 export default function ScormAuth() {
   const navigate = useNavigate();
-  const { loginScorm, loginScormWithGoogle, registerScorm, prepareScormLogin } = useAuth();
+  const {
+    loginScorm,
+    loginScormWithGoogle,
+    registerScorm,
+    prepareScormLogin
+  } = useAuth();
   const [mode, setMode] = useState('login');
   const [username, setUsername] = useState('');
   const [identifier, setIdentifier] = useState('');
@@ -21,47 +26,26 @@ export default function ScormAuth() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [theme, setTheme] = useState(readScormPlatformTheme);
-  const [googleButtonWidth, setGoogleButtonWidth] = useState(320);
-  const googleButtonRef = useRef(null);
-
-  useEffect(() => { prepareScormLogin(); }, []);
-  useEffect(() => { saveScormPlatformTheme(theme); }, [theme]);
 
   useEffect(() => {
-    const container = googleButtonRef.current;
-    if (!container) return undefined;
-
-    const updateGoogleButtonWidth = () => {
-      const availableWidth = Math.floor(container.clientWidth - 8);
-      if (availableWidth <= 0) return;
-      setGoogleButtonWidth(Math.max(200, Math.min(400, availableWidth)));
-    };
-
-    updateGoogleButtonWidth();
-
-    const observer = typeof ResizeObserver !== 'undefined'
-      ? new ResizeObserver(updateGoogleButtonWidth)
-      : null;
-    observer?.observe(container);
-
-    window.addEventListener('resize', updateGoogleButtonWidth);
-    window.addEventListener('orientationchange', updateGoogleButtonWidth);
-
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener('resize', updateGoogleButtonWidth);
-      window.removeEventListener('orientationchange', updateGoogleButtonWidth);
-    };
+    prepareScormLogin();
   }, []);
 
-  const switchMode = (nextMode) => { setMode(nextMode); setError(''); };
+  useEffect(() => {
+    saveScormPlatformTheme(theme);
+  }, [theme]);
+
+  const switchMode = (nextMode) => {
+    setMode(nextMode);
+    setError('');
+  };
 
   const finishPlatformLogin = (result) => {
     if (!result?.token) {
       setError(result?.message || 'A platform session could not be created.');
       return;
     }
-    navigate('/atelora', { replace: true });
+    navigate('/scorm', { replace: true });
   };
 
   const submit = async (event) => {
@@ -72,7 +56,11 @@ export default function ScormAuth() {
       if (mode === 'login') {
         finishPlatformLogin(await loginScorm({ identifier: identifier.trim(), password }));
       } else {
-        finishPlatformLogin(await registerScorm({ username: username.trim(), email: email.trim().toLowerCase(), password }));
+        finishPlatformLogin(await registerScorm({
+          username: username.trim(),
+          email: email.trim().toLowerCase(),
+          password
+        }));
       }
     } catch (err) {
       const data = err.response?.data;
@@ -107,10 +95,17 @@ export default function ScormAuth() {
     <div className={`scorm-auth-workbench scorm-theme-${theme}`}>
       <div className="sa-shell">
         <div className="sa-topbar">
-          <div className="sa-top-note">Atelora Learning Platform · Live quizzes included</div>
+          <div className="sa-top-note">SCORM AI Platform · Quizmoto included</div>
           <div className="flex items-center gap-3">
-            <div className="sa-top-note">Course and learner capabilities unlock after administrator approval</div>
-            <button type="button" className="sa-theme-toggle" onClick={() => setTheme((current) => current === 'light' ? 'dark' : 'light')} aria-label={isLight ? 'Switch to dark theme' : 'Switch to light theme'} aria-pressed={isLight} title={isLight ? 'Switch to dark theme' : 'Switch to light theme'}>
+            <div className="sa-top-note">SCORM capabilities unlock after administrator approval</div>
+            <button
+              type="button"
+              className="sa-theme-toggle"
+              onClick={() => setTheme((current) => current === 'light' ? 'dark' : 'light')}
+              aria-label={isLight ? 'Switch to dark theme' : 'Switch to light theme'}
+              aria-pressed={isLight}
+              title={isLight ? 'Switch to dark theme' : 'Switch to light theme'}
+            >
               <ThemeIcon size={15} strokeWidth={2} />
               <span className="scorm-theme-toggle-label">{isLight ? 'Dark' : 'Light'}</span>
               <span className="scorm-theme-toggle-track" aria-hidden="true"><span className="scorm-theme-toggle-knob" /></span>
@@ -118,47 +113,73 @@ export default function ScormAuth() {
           </div>
         </div>
 
-        <motion.main initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }} className="sa-card">
+        <motion.main
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22 }}
+          className="sa-card"
+        >
           <section className="sa-brand-panel">
-            <img src="/atelora-logo.svg" alt="Atelora" className="block w-[210px] max-w-full h-auto object-contain object-left mb-7" />
-            <div className="sa-kicker">Create · deliver · measure</div>
-            <h1 className="sa-title">Learning, <span>built smarter</span></h1>
-            <p className="sa-copy">One workspace for course creation, SCORM delivery, learner progress, reporting and live quiz engagement.</p>
-            <div className="sa-points" aria-label="Atelora platform highlights">
-              <div className="sa-point"><span className="sa-point-dot" /> Live quizzes are available immediately after registration</div>
-              <div className="sa-point"><span className="sa-point-dot" /> Course and learner features stay visible while approval is pending</div>
+            <div className="sa-mark"><Layers3 size={22} /></div>
+            <div className="sa-kicker">AI learning creation & live engagement</div>
+            <h1 className="sa-title">SCORM <span>AI</span></h1>
+            <p className="sa-copy">
+              One workspace for AI-assisted course creation, SCORM delivery, learner intelligence and Quizmoto live engagement.
+            </p>
+            <div className="sa-points" aria-label="SCORM AI platform highlights">
+              <div className="sa-point"><span className="sa-point-dot" /> Quizmoto is available immediately after registration</div>
+              <div className="sa-point"><span className="sa-point-dot" /> SCORM AI capabilities stay visible while approval is pending</div>
               <div className="sa-point"><span className="sa-point-dot" /> Approval unlocks authoring, courses, tracking and reports</div>
             </div>
             <div className="sa-notice" style={{ marginTop: 24 }}>
               <div className="sa-notice-title"><Zap size={14} style={{ display: 'inline', marginRight: 7 }} />Start before approval</div>
-              <div>Register, enter Atelora and use live quizzes straight away. Locked learning modules explain what becomes available after approval.</div>
+              <div>Register, enter the platform and use Quizmoto straight away. Locked SCORM AI modules explain exactly what becomes available after approval.</div>
             </div>
           </section>
 
           <section className="sa-form-panel">
             <div className="sa-form-kicker">Platform access</div>
-            <h2 className="sa-form-title">{isLogin ? 'Sign in to Atelora' : 'Create your Atelora account'}</h2>
-            <p className="sa-form-sub">{isLogin ? 'Sign in to your Atelora account. Pending users can still access live quizzes and explore locked learning capabilities.' : 'Registration gives you immediate platform access with live quizzes unlocked. The Super Admin separately approves the full Atelora feature set.'}</p>
+            <h2 className="sa-form-title">{isLogin ? 'Sign in to SCORM AI' : 'Create your platform account'}</h2>
+            <p className="sa-form-sub">
+              {isLogin
+                ? 'Sign in with your SCORM AI account. Pending users can still access Quizmoto and preview locked SCORM AI capabilities.'
+                : 'Registration gives you immediate platform access with Quizmoto unlocked. The Super Admin separately approves the SCORM AI feature set.'}
+            </p>
 
-            <div className="sa-tabs" role="tablist" aria-label="Atelora authentication mode">
-              <button type="button" role="tab" aria-selected={isLogin} onClick={() => switchMode('login')} className={`sa-tab ${isLogin ? 'is-active' : ''}`}>Log in</button>
-              <button type="button" role="tab" aria-selected={!isLogin} onClick={() => switchMode('register')} className={`sa-tab ${!isLogin ? 'is-active' : ''}`}>Register</button>
+            <div className="sa-tabs" role="tablist" aria-label="SCORM AI authentication mode">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={isLogin}
+                onClick={() => switchMode('login')}
+                className={`sa-tab ${isLogin ? 'is-active' : ''}`}
+              >
+                Log in
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!isLogin}
+                onClick={() => switchMode('register')}
+                className={`sa-tab ${!isLogin ? 'is-active' : ''}`}
+              >
+                Register
+              </button>
             </div>
 
             {error && <div className="sa-error">{error}</div>}
 
             <div className="sa-google-block">
               <div className="sa-google-label"><ShieldCheck size={13} /> Google account</div>
-              <div ref={googleButtonRef} className="sa-google-button">
+              <div className="sa-google-button">
                 <GoogleLogin
-                  key={googleButtonWidth}
                   onSuccess={handleGoogleSuccess}
                   onError={() => setError('Google Sign-In failed. Please try again.')}
                   theme="outline"
                   size="large"
                   shape="rectangular"
                   text="continue_with"
-                  width={String(googleButtonWidth)}
+                  width="400"
                 />
               </div>
               <div className="sa-google-hint">A new Google identity is captured for approval and receives immediate limited platform access.</div>
@@ -167,10 +188,60 @@ export default function ScormAuth() {
             <div className="sa-divider" aria-hidden="true"><span>or use platform credentials</span></div>
 
             <form onSubmit={submit} className="sa-form">
-              {!isLogin && <label><span className="sa-label">Name</span><div className="sa-input-wrap"><UserRound size={15} /><input value={username} onChange={(event) => setUsername(event.target.value)} required minLength={2} placeholder="Your name" className="sa-input" autoComplete="name" /></div></label>}
-              <label><span className="sa-label">{isLogin ? 'Email or username' : 'Email'}</span><div className="sa-input-wrap"><Mail size={15} /><input type={isLogin ? 'text' : 'email'} value={isLogin ? identifier : email} onChange={(event) => isLogin ? setIdentifier(event.target.value) : setEmail(event.target.value)} required placeholder={isLogin ? 'you@company.com or username' : 'you@company.com'} className="sa-input" autoComplete={isLogin ? 'username' : 'email'} /></div></label>
-              <label><span className="sa-label">Password</span><div className="sa-input-wrap"><LockKeyhole size={15} /><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} placeholder="Minimum 8 characters" className="sa-input" autoComplete={isLogin ? 'current-password' : 'new-password'} /></div></label>
-              <button type="submit" disabled={busy} className="sa-submit">{busy ? 'Please wait…' : isLogin ? 'Enter Atelora' : 'Create account & enter'}</button>
+              {!isLogin && (
+                <label>
+                  <span className="sa-label">Name</span>
+                  <div className="sa-input-wrap">
+                    <UserRound size={15} />
+                    <input
+                      value={username}
+                      onChange={(event) => setUsername(event.target.value)}
+                      required
+                      minLength={2}
+                      placeholder="Your name"
+                      className="sa-input"
+                      autoComplete="name"
+                    />
+                  </div>
+                </label>
+              )}
+
+              <label>
+                <span className="sa-label">{isLogin ? 'Email or username' : 'Email'}</span>
+                <div className="sa-input-wrap">
+                  <Mail size={15} />
+                  <input
+                    type={isLogin ? 'text' : 'email'}
+                    value={isLogin ? identifier : email}
+                    onChange={(event) => isLogin ? setIdentifier(event.target.value) : setEmail(event.target.value)}
+                    required
+                    placeholder={isLogin ? 'you@company.com or username' : 'you@company.com'}
+                    className="sa-input"
+                    autoComplete={isLogin ? 'username' : 'email'}
+                  />
+                </div>
+              </label>
+
+              <label>
+                <span className="sa-label">Password</span>
+                <div className="sa-input-wrap">
+                  <LockKeyhole size={15} />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    required
+                    minLength={8}
+                    placeholder="Minimum 8 characters"
+                    className="sa-input"
+                    autoComplete={isLogin ? 'current-password' : 'new-password'}
+                  />
+                </div>
+              </label>
+
+              <button type="submit" disabled={busy} className="sa-submit">
+                {busy ? 'Please wait…' : isLogin ? 'Enter platform' : 'Create account & enter'}
+              </button>
             </form>
           </section>
         </motion.main>
