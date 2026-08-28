@@ -108,7 +108,7 @@
         '<span class="atelora-product-chip">Platform preview</span>' +
         "</div>" +
         '<div class="atelora-product-media">' +
-        '<img src="/atelora-marketing/hero.webp" alt="Atelora learning platform dashboard" loading="eager" decoding="async" />' +
+        '<img src="/atelora-marketing/hero-dashboard.png" alt="Atelora learning platform dashboard" loading="eager" decoding="async" />' +
         "</div>" +
         "</div>";
       visual.appendChild(product);
