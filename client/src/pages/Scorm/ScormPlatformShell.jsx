@@ -108,11 +108,8 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess }) {
 function Brand({ theme }) {
   const logoSrc = theme === 'light' ? '/branding/lmsgen-logo-light.png' : '/branding/lmsgen-logo-dark.png';
   return (
-    <Link to="/scorm" className="scorm-brand flex items-center gap-3 min-w-0">
+    <Link to="/scorm" className="scorm-brand flex items-center min-w-0">
       <img src={logoSrc} alt="LMSGEN" className="scorm-brand-logo shrink-0" />
-      <div className="min-w-0">
-        <div className="scorm-brand-subtitle mt-0.5 text-[10px] truncate">Learning intelligence platform</div>
-      </div>
     </Link>
   );
 }
