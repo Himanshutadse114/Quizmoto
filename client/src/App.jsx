@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocatio
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
+import MarketingLanding from './pages/Marketing/MarketingLanding';
 import './pages/Host/liveQuizTheme.css';
 import './pages/Host/classicQuizmoto.css';
 import './pages/Host/quizmotoHostWorkbench.css';
@@ -15,7 +16,6 @@ import './pages/Scorm/scormVisualStudioFixes.css';
 import './pages/Scorm/scormReferenceTheme.css';
 import './pages/Scorm/scormReferencePolish.css';
 
-const MarketingLanding = lazy(() => import('./pages/Marketing/MarketingLanding'));
 const CreateQuiz = lazy(() => import('./pages/Host/CreateQuiz'));
 const EditQuiz = lazy(() => import('./pages/Host/EditQuiz'));
 const Reports = lazy(() => import('./pages/Host/Reports'));
