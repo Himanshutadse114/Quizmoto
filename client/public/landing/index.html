@@ -608,10 +608,10 @@
               <div class="caption text-color-lemon font-weight-normal">
                 For modern L&amp;D and security awareness teams
               </div>
-              <h1 class="hp-hero-h1">Create Learning Your Teams Actually Want to Complete</h1>
+              <h1 class="hp-hero-h1">Save 95% of time and budget on every custom SCORM course.</h1>
               <p class="hp-hero-p">
-                Build SCORM-ready courses with AI, run Quizmoto games and quizzes, manage learners and track progress in
-                one platform.
+                Send your brief today, get your next-level SCORM course in your LMS Next minute. AI-powered production
+                at a fraction of the cost and resources.
               </p>
               <div class="hp-hero-cta-c">
                 <a cd="book-a-demo" href="/login" class="btn-primary hp-hero w-button">Explore Atelora</a
@@ -3611,6 +3611,29 @@
           ScrollTrigger.refresh();
         });
       }
+    </script>
+    <script type="text/javascript">
+      (function () {
+        // The rotating "THE PLATFORM" headline already has a ScrollTrigger
+        // snap configured (on .hp-platform-s), but its snap-back duration is
+        // 1-3s, which leaves two headlines partially overlapping on screen
+        // for that whole window every time scrolling stops mid-slide.
+        // Shorten it so the snap settles almost immediately.
+        function speedUpPlatformSnap() {
+          var trigger = ScrollTrigger.getAll().filter(function (t) {
+            return t.trigger && t.trigger.classList && t.trigger.classList.contains("hp-platform-s");
+          })[0];
+          if (trigger && trigger.vars && trigger.vars.snap) {
+            trigger.vars.snap.duration = 0.25;
+            trigger.vars.snap.delay = 0;
+          }
+        }
+        if (document.readyState === "complete") {
+          speedUpPlatformSnap();
+        } else {
+          window.addEventListener("load", speedUpPlatformSnap);
+        }
+      })();
     </script>
     <script src="js/nav-menu.js"></script>
     <!--<script>
