@@ -1,0 +1,295 @@
+/* Atelora-owned visual polish layered over the exported marketing template. */
+
+body.atelora-site-refresh .w-locales-list {
+  display: none !important;
+}
+
+body.atelora-site-refresh .book-demo-s {
+  display: none !important;
+}
+
+body.atelora-site-refresh .animate-strip {
+  animation-duration: 48s;
+}
+
+body.atelora-site-refresh .hp-platform-card-w,
+body.atelora-site-refresh .hp-trust-card-w,
+body.atelora-site-refresh .hp-mark-perk-expand,
+body.atelora-site-refresh .hp-mark-perk-w {
+  border-radius: 1.6rem;
+}
+
+body.atelora-home-refresh .hp-hero-s {
+  background:
+    radial-gradient(circle at 50% 4%, rgba(64, 196, 184, 0.1), transparent 38rem),
+    #0d3b37;
+  padding-top: 10rem;
+}
+
+body.atelora-home-refresh .hp-hero-c {
+  max-width: 110rem;
+  margin-top: 10rem;
+  margin-bottom: 6rem;
+}
+
+body.atelora-home-refresh .hp-hero-w {
+  max-width: 104rem;
+  margin-bottom: 0;
+  row-gap: 2.8rem;
+}
+
+body.atelora-home-refresh .caption.text-color-lemon.font-weight-normal {
+  color: #9edbd4;
+  font-family: "Open Sauce One", sans-serif;
+  font-size: 1.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+body.atelora-home-refresh .hp-hero-h1 {
+  color: #f5f8f7;
+  font-family: "Open Sauce One", sans-serif;
+  font-size: clamp(5.8rem, 6.4vw, 9.2rem);
+  font-weight: 520;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+  text-transform: none;
+}
+
+body.atelora-home-refresh .hp-hero-p {
+  color: #d2e1de;
+  max-width: 75rem;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 2.2rem;
+  line-height: 1.55;
+}
+
+body.atelora-home-refresh .hp-hero-cta-c {
+  margin-top: 0.6rem;
+}
+
+body.atelora-home-refresh .btn-primary.hp-hero {
+  border-radius: 999px;
+  padding: 1.8rem 3rem;
+  font-size: 1.8rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+body.atelora-home-refresh .btn-primary.hp-hero.outline {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.38);
+  padding-left: 2.4rem;
+  padding-right: 2.8rem;
+}
+
+body.atelora-home-refresh .hp-hero-logo-title,
+body.atelora-home-refresh .logostrip-c {
+  display: none !important;
+}
+
+body.atelora-home-refresh .atelora-hero-signals {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  margin: 0.2rem auto 0;
+}
+
+body.atelora-home-refresh .atelora-hero-signals span {
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  color: #c9dad7;
+  padding: 0.8rem 1.25rem;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+body.atelora-home-refresh .hp-hero-img-c.new {
+  aspect-ratio: auto;
+  display: block;
+  width: 100%;
+  max-width: 156rem;
+  margin: 0 auto;
+  padding: 0 3.2rem 12rem;
+}
+
+body.atelora-home-refresh .hp-hero-img-c.new > :not(.atelora-hero-product) {
+  display: none !important;
+}
+
+body.atelora-home-refresh .atelora-hero-product {
+  width: min(100%, 146rem);
+  margin: 0 auto;
+  position: relative;
+}
+
+body.atelora-home-refresh .atelora-product-shell {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 2.2rem;
+  background: #102e2b;
+  box-shadow:
+    0 30px 90px rgba(0, 0, 0, 0.27),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset;
+}
+
+body.atelora-home-refresh .atelora-product-chrome {
+  min-height: 5.6rem;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1.6rem;
+  padding: 0 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: #163f3a;
+  color: #dbe9e6;
+}
+
+body.atelora-home-refresh .atelora-window-dots {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+body.atelora-home-refresh .atelora-window-dots i {
+  display: block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+body.atelora-home-refresh .atelora-product-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+body.atelora-home-refresh .atelora-product-chip {
+  justify-self: end;
+  border: 1px solid rgba(158, 219, 212, 0.25);
+  border-radius: 999px;
+  color: #aee3dd;
+  padding: 0.55rem 1rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+body.atelora-home-refresh .atelora-product-media {
+  background: #f3f6f5;
+}
+
+body.atelora-home-refresh .atelora-product-media img {
+  width: 100%;
+  height: auto;
+  max-height: none;
+  object-fit: contain;
+  display: block;
+}
+
+body.atelora-home-refresh .hp-platform-card-w:hover .hp-platf-card-img {
+  transform: scale(1.035);
+}
+
+body.atelora-home-refresh .hp-mark-perk-savetime-graph [data-animation-type="lottie"],
+body.atelora-home-refresh .hp-mark-perk-maximize-graph [data-animation-type="lottie"] {
+  opacity: 0.76;
+}
+
+body.atelora-home-refresh .global-footer-strip-c .animate-strip {
+  opacity: 0.82;
+}
+
+@media (max-width: 991px) {
+  body.atelora-home-refresh .hp-hero-s {
+    padding-top: 8rem;
+  }
+
+  body.atelora-home-refresh .hp-hero-c {
+    margin-top: 7rem;
+    margin-bottom: 5rem;
+  }
+
+  body.atelora-home-refresh .hp-hero-h1 {
+    font-size: clamp(5.4rem, 9vw, 7.6rem);
+  }
+
+  body.atelora-home-refresh .hp-hero-img-c.new {
+    padding: 0 2.4rem 9rem;
+  }
+}
+
+@media (max-width: 767px) {
+  body.atelora-home-refresh .hp-hero-s {
+    padding-top: 7rem;
+  }
+
+  body.atelora-home-refresh .hp-hero-c {
+    margin-top: 5rem;
+    margin-bottom: 4rem;
+    padding: 0 0.6rem;
+  }
+
+  body.atelora-home-refresh .hp-hero-w {
+    row-gap: 2.2rem;
+  }
+
+  body.atelora-home-refresh .hp-hero-h1 {
+    font-size: 5.3rem;
+    letter-spacing: -0.045em;
+  }
+
+  body.atelora-home-refresh .hp-hero-p {
+    font-size: 1.9rem;
+  }
+
+  body.atelora-home-refresh .hp-hero-cta-c {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  body.atelora-home-refresh .btn-primary.hp-hero {
+    justify-content: center;
+  }
+
+  body.atelora-home-refresh .atelora-hero-signals {
+    gap: 0.7rem;
+  }
+
+  body.atelora-home-refresh .atelora-hero-signals span {
+    font-size: 1.25rem;
+  }
+
+  body.atelora-home-refresh .hp-hero-img-c.new {
+    padding: 0 1.6rem 7rem;
+  }
+
+  body.atelora-home-refresh .atelora-product-shell {
+    border-radius: 1.5rem;
+  }
+
+  body.atelora-home-refresh .atelora-product-chrome {
+    min-height: 4.7rem;
+    padding: 0 1.2rem;
+    grid-template-columns: auto 1fr;
+  }
+
+  body.atelora-home-refresh .atelora-product-title {
+    justify-self: start;
+    font-size: 1.2rem;
+  }
+
+  body.atelora-home-refresh .atelora-product-chip {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.atelora-site-refresh .animate-strip {
+    animation: none !important;
+  }
+}

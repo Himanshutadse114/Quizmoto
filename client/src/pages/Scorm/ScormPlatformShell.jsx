@@ -170,12 +170,12 @@ export default function ScormPlatformShell() {
       const status = err?.response?.status;
       if (status === 401) {
         logout();
-        navigate('/', { replace: true });
+        navigate('/login', { replace: true });
       }
     });
   }, [platformAccess]);
 
-  if (!platformAccess) return <Navigate to="/" replace />;
+  if (!platformAccess) return <Navigate to="/login" replace />;
 
   const refreshApproval = async () => {
     setCheckingAccess(true);
@@ -188,7 +188,7 @@ export default function ScormPlatformShell() {
 
   const signOut = () => {
     logout();
-    navigate('/', { replace: true });
+    navigate('/login', { replace: true });
   };
 
   const toggleTheme = () => setTheme((current) => current === 'light' ? 'dark' : 'light');

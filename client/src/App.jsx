@@ -65,7 +65,7 @@ function PlatformEntry() {
 function PlatformProtected({ children }) {
   const { token, platformAccess, loading } = useAuth();
   if (loading) return <RouteFallback />;
-  if (!token || !platformAccess) return <Navigate to="/" replace />;
+  if (!token || !platformAccess) return <Navigate to="/login" replace />;
   return children;
 }
 
@@ -102,9 +102,12 @@ function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
-        <Route path="/" element={<PlatformEntry />} />
-        <Route path="/login" element={<Navigate to="/" replace />} />
-        <Route path="/scorm/login" element={<Navigate to="/" replace />} />
+        {/* A fresh page load of "/" never reaches this - the host serves the
+            marketing site's own static index.html directly for that path.
+            This only matters for an internal client-side navigate("/"). */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<PlatformEntry />} />
+        <Route path="/scorm/login" element={<Navigate to="/login" replace />} />
 
         <Route path="/player/login" element={<PlayerLogin />} />
         <Route path="/player/dashboard" element={<PlayerDashboard />} />
@@ -155,7 +158,7 @@ function AppRoutes() {
         <Route path="/scorm/learn/:inviteCode" element={<ScormLearnLanding />} />
         <Route path="/scorm/player/:registrationId" element={<ScormPlayerShell />} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Suspense>
   );

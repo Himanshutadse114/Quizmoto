@@ -47,7 +47,7 @@ export default function CourseGenerator() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!token) navigate('/');
+    if (!token) navigate('/login');
   }, [token, navigate]);
 
   const hasSource = Boolean(file || topic.trim() || description.trim());

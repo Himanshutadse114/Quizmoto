@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 44" role="img" aria-labelledby="title desc">
+  <title id="title">Atelora</title>
+  <desc id="desc">Atelora logo</desc>
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9BE8E1"/>
+      <stop offset="1" stop-color="#4FC9BF"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7BDCD3"/>
+      <stop offset="1" stop-color="#4FC9BF"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(3 5)">
+    <path d="M0 6 9 0h15l-9 8 9 8H9L0 10l5-2Z" fill="url(#g1)" opacity=".92"/>
+    <path d="M10 18 19 10h15l-9 8 9 8H19l-9-6 5-2Z" fill="url(#g2)"/>
+  </g>
+  <text x="47" y="30" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="600" letter-spacing="-.7" fill="#EDF4F2">atelora</text>
+</svg>

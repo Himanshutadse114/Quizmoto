@@ -332,7 +332,7 @@ export default function AuthorVisual() {
   }, [busyTask, busyProgressId, token, headers]);
 
   useEffect(() => {
-    if (!token) { navigate('/'); return; }
+    if (!token) { navigate('/login'); return; }
     if (editId) return;
     try {
       const stored = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');

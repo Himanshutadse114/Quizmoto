@@ -133,7 +133,7 @@ export default function VisualStudio() {
 
   useEffect(() => {
     if (!token) {
-      navigate('/');
+      navigate('/login');
       return;
     }
     if (packageId) return;
