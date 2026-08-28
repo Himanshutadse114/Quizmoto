@@ -52,3 +52,26 @@ services:
           type: web
           name: kahoot-awareness-backend
           envVarKey: RENDER_EXTERNAL_URL
+    routes:
+      # Serve the pre-built marketing pages directly so the browser never has
+      # to boot the React app just to redirect away from it (was causing a
+      # full double page-load, and the visible lag, on every homepage visit).
+      - type: rewrite
+        source: /
+        destination: /landing/index.html
+      - type: rewrite
+        source: /solutions
+        destination: /landing/solutions/index.html
+      - type: rewrite
+        source: /about
+        destination: /landing/about/index.html
+      - type: rewrite
+        source: /blog
+        destination: /landing/blog/index.html
+      - type: rewrite
+        source: /contact
+        destination: /landing/contact/index.html
+      # Everything else is a client-side route handled by the React app.
+      - type: rewrite
+        source: /*
+        destination: /index.html
