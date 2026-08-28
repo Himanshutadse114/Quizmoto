@@ -3636,25 +3636,45 @@
 
         // The headline swap itself is a plain slide (all three .platform-h2
         // share one translateY, no opacity change), so while actively
-        // scrolling through the section -- not just while it's settling --
-        // two headlines are legible on top of each other at full opacity.
-        // Fade each headline by how much of it actually sits inside the
-        // clipped container so only the most-in-view one stays readable.
-        function updatePlatformHeadlineOpacity() {
+        // scrolling through the section two headlines are legible on top of
+        // each other at once. A soft crossfade still reads as clutter with
+        // text this large and bold, so instead of blending: hard-cut. Show
+        // only whichever single headline currently has the most overlap
+        // with the visible container, and fully hide every other one.
+        function updatePlatformHeadlineVisibility() {
           var container = document.querySelector(".hp-plaf-stats-title-c");
           var heads = document.querySelectorAll(".platform-h2");
           if (!container || !heads.length) return;
           var cRect = container.getBoundingClientRect();
           if (!cRect.height) return;
-          heads.forEach(function (el) {
+
+          var bestIndex = 0;
+          var bestFraction = -1;
+          var fractions = [];
+          heads.forEach(function (el, i) {
             var r = el.getBoundingClientRect();
             var overlap = Math.min(r.bottom, cRect.bottom) - Math.max(r.top, cRect.top);
             var fraction = Math.max(0, Math.min(1, overlap / r.height));
-            el.style.opacity = fraction < 0.98 ? String(fraction) : "1";
+            fractions.push(fraction);
+            if (fraction > bestFraction) {
+              bestFraction = fraction;
+              bestIndex = i;
+            }
           });
-          requestAnimationFrame(updatePlatformHeadlineOpacity);
+
+          heads.forEach(function (el, i) {
+            if (i === bestIndex) {
+              el.style.opacity = "1";
+              el.style.visibility = "visible";
+            } else {
+              el.style.opacity = "0";
+              el.style.visibility = "hidden";
+            }
+          });
+
+          requestAnimationFrame(updatePlatformHeadlineVisibility);
         }
-        requestAnimationFrame(updatePlatformHeadlineOpacity);
+        requestAnimationFrame(updatePlatformHeadlineVisibility);
       })();
     </script>
     <script src="js/nav-menu.js"></script>
