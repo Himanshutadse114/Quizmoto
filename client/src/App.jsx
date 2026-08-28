@@ -61,7 +61,7 @@ function RouteFallback() {
 function LoginEntry() {
   const { token, platformAccess, loading } = useAuth();
   if (loading) return <RouteFallback />;
-  if (token && platformAccess) return <Navigate to="/atelora" replace />;
+  if (token && platformAccess) return <Navigate to="/lmsgen" replace />;
   return <ScormAuth />;
 }
 
@@ -85,27 +85,33 @@ function ScormHomeGate() {
 function AccessAdminGate() {
   const { scormAccess, user } = useAuth();
   const isSuperAdmin = Boolean(scormAccess && (user?.isSuperAdmin || user?.role === 'super_admin'));
-  return isSuperAdmin ? <ScormAccessAdmin /> : <Navigate to="/atelora" replace />;
+  return isSuperAdmin ? <ScormAccessAdmin /> : <Navigate to="/lmsgen" replace />;
 }
 
 function LegacyQuizRedirect({ kind }) {
   const { id, pin } = useParams();
   const targets = {
-    dashboard: '/atelora/quizmoto',
-    create: '/atelora/quizmoto/create',
-    reports: '/atelora/quizmoto/reports',
-    edit: `/atelora/quizmoto/edit/${id || ''}`,
+    dashboard: '/lmsgen/quizmoto',
+    create: '/lmsgen/quizmoto/create',
+    reports: '/lmsgen/quizmoto/reports',
+    edit: `/lmsgen/quizmoto/edit/${id || ''}`,
     lobby: `/host/lobby/${pin || ''}`,
     game: `/host/game/${pin || ''}`
   };
-  return <Navigate to={targets[kind] || '/atelora/quizmoto'} replace />;
+  return <Navigate to={targets[kind] || '/lmsgen/quizmoto'} replace />;
 }
 
 function LegacyScormRedirect() {
   const location = useLocation();
   if (location.pathname === '/scorm/login') return <Navigate to="/login" replace />;
   const suffix = location.pathname.replace(/^\/scorm/, '');
-  return <Navigate to={`/atelora${suffix}${location.search}${location.hash}`} replace />;
+  return <Navigate to={`/lmsgen${suffix}${location.search}${location.hash}`} replace />;
+}
+
+function LegacyBrandRedirect() {
+  const location = useLocation();
+  const suffix = location.pathname.replace(/^\/atelora/, '');
+  return <Navigate to={`/lmsgen${suffix}${location.search}${location.hash}`} replace />;
 }
 
 function AppRoutes() {
@@ -118,7 +124,7 @@ function AppRoutes() {
         <Route path="/contact" element={<MarketingLanding src="/landing/contact/index.html" />} />
         <Route path="/blog" element={<MarketingLanding src="/landing/blog/index.html" />} />
         <Route path="/login" element={<LoginEntry />} />
-        <Route path="/atelora/login" element={<Navigate to="/login" replace />} />
+        <Route path="/lmsgen/login" element={<Navigate to="/login" replace />} />
 
         <Route path="/player/login" element={<PlayerLogin />} />
         <Route path="/player/dashboard" element={<PlayerDashboard />} />
@@ -133,7 +139,7 @@ function AppRoutes() {
         <Route path="/host/lobby/:pin" element={<Lobby />} />
         <Route path="/host/game/:pin" element={<GameView />} />
 
-        <Route path="/atelora" element={<PlatformProtected><ScormPlatformShell /></PlatformProtected>}>
+        <Route path="/lmsgen" element={<PlatformProtected><ScormPlatformShell /></PlatformProtected>}>
           <Route index element={<ScormHomeGate />} />
           <Route path="quizmoto" element={<QuizmotoModule />} />
           <Route path="quizmoto/create" element={<CreateQuiz embedded />} />
@@ -150,9 +156,10 @@ function AppRoutes() {
           <Route path="access" element={<AccessAdminGate />} />
         </Route>
 
-        <Route path="/atelora/learn/:inviteCode" element={<ScormLearnLanding />} />
-        <Route path="/atelora/player/:registrationId" element={<ScormPlayerShell />} />
+        <Route path="/lmsgen/learn/:inviteCode" element={<ScormLearnLanding />} />
+        <Route path="/lmsgen/player/:registrationId" element={<ScormPlayerShell />} />
 
+        <Route path="/atelora/*" element={<LegacyBrandRedirect />} />
         <Route path="/scorm/*" element={<LegacyScormRedirect />} />
         <Route path="/dashboard" element={<LegacyQuizRedirect kind="dashboard" />} />
         <Route path="/create-quiz" element={<LegacyQuizRedirect kind="create" />} />
