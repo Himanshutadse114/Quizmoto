@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocatio
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
+import ChunkLoadErrorBoundary from './components/ChunkLoadErrorBoundary';
 import MarketingLanding from './pages/Marketing/MarketingLanding';
 import './pages/Host/liveQuizTheme.css';
 import './pages/Host/classicQuizmoto.css';
@@ -116,8 +117,9 @@ function LegacyBrandRedirect() {
 
 function AppRoutes() {
   return (
-    <Suspense fallback={<RouteFallback />}>
-      <Routes>
+    <ChunkLoadErrorBoundary>
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
         <Route path="/" element={<MarketingLanding />} />
         <Route path="/solutions" element={<MarketingLanding src="/landing/solutions/index.html" />} />
         <Route path="/about" element={<MarketingLanding src="/landing/about/index.html" />} />
@@ -169,8 +171,9 @@ function AppRoutes() {
         <Route path="/host/game-old/:pin" element={<LegacyQuizRedirect kind="game" />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
+        </Routes>
+      </Suspense>
+    </ChunkLoadErrorBoundary>
   );
 }
 
