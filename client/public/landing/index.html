@@ -3606,6 +3606,11 @@
     <script src="js/gsap-scrolltrigger.min.js" type="text/javascript"></script>
     <script type="text/javascript">
       gsap.registerPlugin(ScrollTrigger);
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function () {
+          ScrollTrigger.refresh();
+        });
+      }
     </script>
     <script src="js/nav-menu.js"></script>
     <!--<script>
