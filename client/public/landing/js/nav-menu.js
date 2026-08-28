@@ -1,6 +1,9 @@
 (function () {
   "use strict";
 
+  const BRAND_LOGO_LIGHT = "/branding/lmsgen-logo-light.webp";
+  const BRAND_LOGO_DARK = "/branding/lmsgen-logo-dark.webp";
+
   const staticToFriendly = new Map([
     ["/landing/index.html", "/"],
     ["/landing/solutions/index.html", "/solutions"],
@@ -85,13 +88,25 @@
   const languageToggle = document.querySelector(".local-dropdown");
   const languageMenu = document.querySelector(".local-dropdown-c");
 
+  function setMarketingLogo(sticky) {
+    if (!logo) return;
+    const nextSrc = sticky ? BRAND_LOGO_LIGHT : BRAND_LOGO_DARK;
+    if (logo.getAttribute("src") !== nextSrc) logo.setAttribute("src", nextSrc);
+    logo.setAttribute("alt", "LMSGEN");
+  }
+
   function applyStickyState() {
-    if (!stickySentinel || !header) return;
+    if (!header) {
+      setMarketingLogo(false);
+      return;
+    }
 
-    const sticky =
-      window.scrollY >= stickySentinel.offsetTop ||
-      Boolean(menuButton && menuButton.classList.contains("w--open"));
+    const sticky = stickySentinel
+      ? window.scrollY >= stickySentinel.offsetTop ||
+        Boolean(menuButton && menuButton.classList.contains("w--open"))
+      : Boolean(menuButton && menuButton.classList.contains("w--open"));
 
+    setMarketingLogo(sticky);
     if (menuIcon) menuIcon.classList.toggle("sticky", sticky);
     if (logo) logo.classList.toggle("sticky", sticky);
     header.classList.toggle("sticky", sticky);

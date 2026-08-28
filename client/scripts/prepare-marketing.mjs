@@ -35,6 +35,24 @@ const HERO_PRODUCT = `<div class="atelora-hero-product">
 
 function brandMarketingHtml(html) {
   return html
+    // Structured metadata should use the light-background version for broad compatibility.
+    .replace(
+      /\/landing\/images\/logos\/atelora-landing-logo\.svg/g,
+      '/branding/lmsgen-logo-light.webp',
+    )
+    // Visible exported-site logos sit on the dark marketing header by default.
+    .replace(
+      /(?:\.\.\/)*images\/logos\/atelora-landing-logo\.svg/g,
+      '/branding/lmsgen-logo-dark.webp',
+    )
+    .replace(
+      /(?:\.\.\/)*images\/icons\/favicon\.png/g,
+      '/branding/lmsgen-favicon.png',
+    )
+    .replace(
+      /(?:\.\.\/)*images\/icons\/apple-touch-icon\.png/g,
+      '/branding/lmsgen-favicon.png',
+    )
     .replace(/\bAtelora\b/g, 'LMSGEN')
     .replace(/\bATELORA\b/g, 'LMSGEN');
 }
@@ -48,6 +66,10 @@ function ensureHeadAssets(html, baseHref) {
 
   if (!html.includes('/landing/css/atelora-home-refresh.css')) {
     inserts.push('<link rel="stylesheet" href="/landing/css/atelora-home-refresh.css" />');
+  }
+
+  if (!html.includes('href="/branding/lmsgen-favicon.png"')) {
+    inserts.push('<link rel="icon" type="image/png" href="/branding/lmsgen-favicon.png" />');
   }
 
   if (!inserts.length) return html;

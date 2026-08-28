@@ -5,6 +5,10 @@ const BRAND_REPLACEMENTS = [
   [/\bATELORA\b/g, 'LMSGEN'],
 ];
 
+const BRAND_LOGO_LIGHT = '/branding/lmsgen-logo-light.webp';
+const BRAND_LOGO_DARK = '/branding/lmsgen-logo-dark.webp';
+const LEGACY_LOGO_SUFFIX = '/atelora-logo.svg';
+
 const TEXT_SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'CODE', 'PRE']);
 const BRAND_ATTRIBUTES = ['alt', 'title', 'aria-label', 'placeholder', 'content'];
 
@@ -20,6 +24,34 @@ function rewriteLegacyBrandHref(element) {
   element.setAttribute('href', rawHref.replace(/^\/atelora/, '/lmsgen'));
 }
 
+function brandLogoImage(element) {
+  if (!(element instanceof HTMLImageElement)) return;
+
+  const rawSrc = element.getAttribute('src') || '';
+  const isKnownBrandLogo =
+    element.dataset.lmsgenBrandLogo === '1' ||
+    rawSrc.endsWith(LEGACY_LOGO_SUFFIX) ||
+    rawSrc === BRAND_LOGO_LIGHT ||
+    rawSrc === BRAND_LOGO_DARK;
+
+  if (!isKnownBrandLogo) return;
+
+  element.dataset.lmsgenBrandLogo = '1';
+  element.alt = 'LMSGEN';
+
+  const lightTheme = Boolean(element.closest('.scorm-theme-light'));
+  const nextSrc = lightTheme ? BRAND_LOGO_LIGHT : BRAND_LOGO_DARK;
+  if (rawSrc !== nextSrc) element.setAttribute('src', nextSrc);
+}
+
+function refreshBrandLogos() {
+  document
+    .querySelectorAll(
+      `img[data-lmsgen-brand-logo="1"], img[src$="${LEGACY_LOGO_SUFFIX}"], img[src="${BRAND_LOGO_LIGHT}"], img[src="${BRAND_LOGO_DARK}"]`,
+    )
+    .forEach(brandLogoImage);
+}
+
 function brandElement(element) {
   if (!(element instanceof Element)) return;
 
@@ -31,6 +63,7 @@ function brandElement(element) {
   }
 
   rewriteLegacyBrandHref(element);
+  brandLogoImage(element);
 }
 
 function brandSubtree(root) {
@@ -79,6 +112,7 @@ export default function BrandRuntime() {
   useLayoutEffect(() => {
     brandDocumentMetadata();
     brandSubtree(document.body);
+    refreshBrandLogos();
 
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
@@ -95,6 +129,7 @@ export default function BrandRuntime() {
         mutation.addedNodes.forEach(brandSubtree);
       }
       brandDocumentMetadata();
+      refreshBrandLogos();
     });
 
     observer.observe(document.body, {
@@ -102,7 +137,7 @@ export default function BrandRuntime() {
       childList: true,
       characterData: true,
       attributes: true,
-      attributeFilter: [...BRAND_ATTRIBUTES, 'href'],
+      attributeFilter: [...BRAND_ATTRIBUTES, 'href', 'src', 'class'],
     });
 
     return () => observer.disconnect();
