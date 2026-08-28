@@ -38,12 +38,12 @@ function brandMarketingHtml(html) {
     // Structured metadata should use the light-background version for broad compatibility.
     .replace(
       /\/landing\/images\/logos\/atelora-landing-logo\.svg/g,
-      '/branding/lmsgen-logo-light.webp',
+      '/branding/lmsgen-logo-light.png',
     )
     // Visible exported-site logos sit on the dark marketing header by default.
     .replace(
       /(?:\.\.\/)*images\/logos\/atelora-landing-logo\.svg/g,
-      '/branding/lmsgen-logo-dark.webp',
+      '/branding/lmsgen-logo-dark.png',
     )
     .replace(
       /(?:\.\.\/)*images\/icons\/favicon\.png/g,

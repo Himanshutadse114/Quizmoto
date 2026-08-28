@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  const BRAND_LOGO_LIGHT = "/branding/lmsgen-logo-light.webp";
-  const BRAND_LOGO_DARK = "/branding/lmsgen-logo-dark.webp";
+  const BRAND_LOGO_LIGHT = "/branding/lmsgen-logo-light.png";
+  const BRAND_LOGO_DARK = "/branding/lmsgen-logo-dark.png";
 
   // Pretty URLs (/, /solutions, /about, /blog, /contact) are rewritten to
   // their built documents by the host's static routing, so plain <a> links
