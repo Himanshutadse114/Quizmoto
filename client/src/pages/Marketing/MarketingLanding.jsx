@@ -1,10 +1,10 @@
 import React from 'react';
 
-export default function MarketingLanding() {
+export default function MarketingLanding({ src = '/landing/index.html' }) {
   return (
     <iframe
       title="Primary website"
-      src="/landing/index.html"
+      src={src}
       style={{
         position: 'fixed',
         inset: 0,

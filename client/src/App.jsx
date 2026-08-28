@@ -113,6 +113,10 @@ function AppRoutes() {
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/" element={<MarketingLanding />} />
+        <Route path="/solutions" element={<MarketingLanding src="/landing/solutions/index.html" />} />
+        <Route path="/about" element={<MarketingLanding src="/landing/about/index.html" />} />
+        <Route path="/contact" element={<MarketingLanding src="/landing/contact/index.html" />} />
+        <Route path="/blog" element={<MarketingLanding src="/landing/blog/index.html" />} />
         <Route path="/login" element={<LoginEntry />} />
         <Route path="/atelora/login" element={<Navigate to="/login" replace />} />
 
