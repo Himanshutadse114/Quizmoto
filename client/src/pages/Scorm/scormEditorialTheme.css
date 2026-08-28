@@ -300,6 +300,7 @@
 .scorm-editorial .scorm-brand-wrap { border-color: var(--scorm-sidebar-line) !important; }
 .scorm-editorial .scorm-brand-name { color: #FFFFFF !important; letter-spacing: -.03em !important; font-weight: 700 !important; }
 .scorm-editorial .scorm-brand-subtitle { color: var(--scorm-sidebar-muted) !important; }
+.scorm-editorial .scorm-brand-logo { display: block; width: 132px; height: auto; }
 .scorm-editorial .scorm-brand-mark {
   background: linear-gradient(145deg, #766CFF, #4E46C7) !important;
   color: #FFFFFF !important;

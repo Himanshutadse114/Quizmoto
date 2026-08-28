@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layers3, LockKeyhole, Mail, ShieldCheck, UserRound, Zap, Sun, Moon } from 'lucide-react';
+import { LockKeyhole, Mail, ShieldCheck, UserRound, Zap, Sun, Moon } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -90,12 +90,13 @@ export default function ScormAuth() {
   const isLogin = mode === 'login';
   const isLight = theme === 'light';
   const ThemeIcon = isLight ? Moon : Sun;
+  const logoSrc = isLight ? '/branding/lmsgen-logo-light.png' : '/branding/lmsgen-logo-dark.png';
 
   return (
     <div className={`scorm-auth-workbench scorm-theme-${theme}`}>
       <div className="sa-shell">
         <div className="sa-topbar">
-          <div className="sa-top-note">SCORM AI Platform · Quizmoto included</div>
+          <div className="sa-top-note">LMSGEN Platform · Quizmoto included</div>
           <div className="flex items-center gap-3">
             <div className="sa-top-note">SCORM capabilities unlock after administrator approval</div>
             <button
@@ -120,33 +121,32 @@ export default function ScormAuth() {
           className="sa-card"
         >
           <section className="sa-brand-panel">
-            <div className="sa-mark"><Layers3 size={22} /></div>
-            <div className="sa-kicker">AI learning creation & live engagement</div>
-            <h1 className="sa-title">SCORM <span>AI</span></h1>
+            <img src={logoSrc} alt="LMSGEN" className="sa-logo" />
+            <div className="sa-kicker" style={{ marginTop: 22 }}>AI learning creation & live engagement</div>
             <p className="sa-copy">
               One workspace for AI-assisted course creation, SCORM delivery, learner intelligence and Quizmoto live engagement.
             </p>
-            <div className="sa-points" aria-label="SCORM AI platform highlights">
+            <div className="sa-points" aria-label="LMSGEN platform highlights">
               <div className="sa-point"><span className="sa-point-dot" /> Quizmoto is available immediately after registration</div>
-              <div className="sa-point"><span className="sa-point-dot" /> SCORM AI capabilities stay visible while approval is pending</div>
+              <div className="sa-point"><span className="sa-point-dot" /> LMSGEN capabilities stay visible while approval is pending</div>
               <div className="sa-point"><span className="sa-point-dot" /> Approval unlocks authoring, courses, tracking and reports</div>
             </div>
             <div className="sa-notice" style={{ marginTop: 24 }}>
               <div className="sa-notice-title"><Zap size={14} style={{ display: 'inline', marginRight: 7 }} />Start before approval</div>
-              <div>Register, enter the platform and use Quizmoto straight away. Locked SCORM AI modules explain exactly what becomes available after approval.</div>
+              <div>Register, enter the platform and use Quizmoto straight away. Locked LMSGEN modules explain exactly what becomes available after approval.</div>
             </div>
           </section>
 
           <section className="sa-form-panel">
             <div className="sa-form-kicker">Platform access</div>
-            <h2 className="sa-form-title">{isLogin ? 'Sign in to SCORM AI' : 'Create your platform account'}</h2>
+            <h2 className="sa-form-title">{isLogin ? 'Sign in to LMSGEN' : 'Create your platform account'}</h2>
             <p className="sa-form-sub">
               {isLogin
-                ? 'Sign in with your SCORM AI account. Pending users can still access Quizmoto and preview locked SCORM AI capabilities.'
-                : 'Registration gives you immediate platform access with Quizmoto unlocked. The Super Admin separately approves the SCORM AI feature set.'}
+                ? 'Sign in with your LMSGEN account. Pending users can still access Quizmoto and preview locked LMSGEN capabilities.'
+                : 'Registration gives you immediate platform access with Quizmoto unlocked. The Super Admin separately approves the LMSGEN feature set.'}
             </p>
 
-            <div className="sa-tabs" role="tablist" aria-label="SCORM AI authentication mode">
+            <div className="sa-tabs" role="tablist" aria-label="LMSGEN authentication mode">
               <button
                 type="button"
                 role="tab"

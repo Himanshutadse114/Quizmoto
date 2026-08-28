@@ -13,7 +13,6 @@ import {
   ChevronRight,
   Plus,
   Upload,
-  Layers3,
   ShieldCheck,
   LockKeyhole,
   Gamepad2,
@@ -46,7 +45,7 @@ const NAV_GROUPS = [
     ]
   },
   {
-    label: 'SCORM AI',
+    label: 'LMSGEN',
     items: [
       { to: '/scorm/author', label: 'AI Course Author', icon: Sparkles, requiresScorm: true },
       { to: '/scorm/courses', label: 'My Courses', icon: BookOpen, requiresScorm: true },
@@ -106,13 +105,13 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess }) {
   );
 }
 
-function Brand() {
+function Brand({ theme }) {
+  const logoSrc = theme === 'light' ? '/branding/lmsgen-logo-light.png' : '/branding/lmsgen-logo-dark.png';
   return (
     <Link to="/scorm" className="scorm-brand flex items-center gap-3 min-w-0">
-      <div className="scorm-brand-mark w-10 h-10 grid place-items-center shrink-0"><Layers3 size={19} strokeWidth={2.2} /></div>
+      <img src={logoSrc} alt="LMSGEN" className="scorm-brand-logo shrink-0" />
       <div className="min-w-0">
-        <div className="scorm-display scorm-brand-name text-[16px] leading-none truncate"><span>SCORM</span> <span className="text-blue-400">AI</span></div>
-        <div className="scorm-brand-subtitle mt-1 text-[10px] truncate">Learning intelligence platform</div>
+        <div className="scorm-brand-subtitle mt-0.5 text-[10px] truncate">Learning intelligence platform</div>
       </div>
     </Link>
   );
@@ -197,7 +196,7 @@ export default function ScormPlatformShell() {
   return (
     <div className={`scorm-editorial scorm-theme-${theme} min-h-screen relative z-20`}>
       <aside className="scorm-sidebar fixed inset-y-0 left-0 z-40 hidden lg:flex w-[268px] flex-col border-r">
-        <div className="scorm-brand-wrap h-[76px] px-5 flex items-center border-b"><Brand /></div>
+        <div className="scorm-brand-wrap h-[76px] px-5 flex items-center border-b"><Brand theme={theme} /></div>
         <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} />
         <div className="scorm-sidebar-footer p-3 border-t space-y-2.5">
           {isSuperAdmin && (
@@ -207,11 +206,11 @@ export default function ScormPlatformShell() {
             </div>
           )}
           {scormAccess ? (
-            <div className="scorm-status-card rounded-xl px-3.5 py-3"><div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />SCORM AI unlocked</div><div className="mt-1.5 text-[10px] leading-relaxed">Authoring, learner tracking, reporting and SCORM operations are active.</div></div>
+            <div className="scorm-status-card rounded-xl px-3.5 py-3"><div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />LMSGEN unlocked</div><div className="mt-1.5 text-[10px] leading-relaxed">Authoring, learner tracking, reporting and SCORM operations are active.</div></div>
           ) : (
             <div className="rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
               <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={13} /> Approval pending</div>
-              <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae]">Quizmoto is unlocked. SCORM AI features unlock after administrator approval.</div>
+              <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae]">Quizmoto is unlocked. LMSGEN features unlock after administrator approval.</div>
               <button type="button" onClick={refreshApproval} disabled={checkingAccess} className="mt-2 inline-flex items-center gap-1.5 text-[9px] font-semibold text-[#60a5fa] disabled:opacity-50"><RefreshCw size={11} className={checkingAccess ? 'animate-spin' : ''} /> Refresh access</button>
             </div>
           )}
@@ -219,12 +218,12 @@ export default function ScormPlatformShell() {
         </div>
       </aside>
 
-      {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><button aria-label="Close navigation" className="absolute inset-0 bg-[#02050b]/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)} /><div className="scorm-mobile-drawer absolute inset-y-0 left-0 w-[304px] max-w-[88vw] border-r flex flex-col"><div className="h-[72px] px-4 flex items-center justify-between border-b"><Brand /><button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="scorm-drawer-close w-9 h-9 grid place-items-center"><X size={17} /></button></div><Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} onNavigate={() => setMobileOpen(false)} /><div className="p-3 border-t"><button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><LogOut size={14} /> Sign out</span><ChevronRight size={13} /></button></div></div></div>}
+      {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><button aria-label="Close navigation" className="absolute inset-0 bg-[#02050b]/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)} /><div className="scorm-mobile-drawer absolute inset-y-0 left-0 w-[304px] max-w-[88vw] border-r flex flex-col"><div className="h-[72px] px-4 flex items-center justify-between border-b"><Brand theme={theme} /><button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="scorm-drawer-close w-9 h-9 grid place-items-center"><X size={17} /></button></div><Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} onNavigate={() => setMobileOpen(false)} /><div className="p-3 border-t"><button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><LogOut size={14} /> Sign out</span><ChevronRight size={13} /></button></div></div></div>}
 
       <div className="lg:pl-[268px] min-h-screen">
         <header className="scorm-topbar sticky top-0 z-30 min-h-[64px] border-b px-4 md:px-7 py-2.5 flex items-center gap-3 md:gap-4">
-          <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open SCORM AI navigation" className="scorm-topbar-icon lg:hidden w-10 h-10 grid place-items-center shrink-0"><Menu size={18} /></button>
-          {!scormAccess && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> SCORM AI approval pending · Quizmoto available</div>}
+          <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open LMSGEN navigation" className="scorm-topbar-icon lg:hidden w-10 h-10 grid place-items-center shrink-0"><Menu size={18} /></button>
+          {!scormAccess && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> LMSGEN approval pending · Quizmoto available</div>}
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
             <Link to="/scorm/quizmoto" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
