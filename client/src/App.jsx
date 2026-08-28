@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocatio
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
+import MarketingSite from './pages/Marketing/MarketingSite';
 import './pages/Host/liveQuizTheme.css';
 import './pages/Host/classicQuizmoto.css';
 import './pages/Host/quizmotoHostWorkbench.css';
@@ -102,10 +103,11 @@ function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
-        {/* A fresh page load of "/" never reaches this - the host serves the
-            marketing site's own static index.html directly for that path.
-            This only matters for an internal client-side navigate("/"). */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<MarketingSite src="/landing/index.html" title="LMSGEN" tabTitle="LMSGEN | AI-Powered Learning Platform" />} />
+        <Route path="/solutions" element={<MarketingSite src="/landing/solutions/index.html" title="LMSGEN solutions" tabTitle="AI Course Authoring, SCORM & Live Quizzes | LMSGEN" />} />
+        <Route path="/about" element={<MarketingSite src="/landing/about/index.html" title="About LMSGEN" tabTitle="About LMSGEN: Learning Platform for L&D and Security Awareness Teams" />} />
+        <Route path="/blog" element={<MarketingSite src="/landing/blog/index.html" title="LMSGEN blog" tabTitle="LMSGEN Blog: Insights on Learning, SCORM & Security Awareness" />} />
+        <Route path="/contact" element={<MarketingSite src="/landing/contact/index.html" title="Contact LMSGEN" tabTitle="Contact LMSGEN | Learning Platform" />} />
         <Route path="/login" element={<PlatformEntry />} />
         <Route path="/scorm/login" element={<Navigate to="/login" replace />} />
 

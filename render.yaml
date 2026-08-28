@@ -52,30 +52,3 @@ services:
           type: web
           name: kahoot-awareness-backend
           envVarKey: RENDER_EXTERNAL_URL
-    routes:
-      # The marketing site's own index.html is copied to dist/index.html by
-      # scripts/prepare-marketing.mjs, so "/" already resolves to a real file
-      # - no rewrite rule needed there, and nothing to collide with the SPA.
-      # These map the marketing site's other pretty URLs to their built
-      # documents (still nested under /landing/ on disk); the browser's
-      # address bar is untouched, since this is a server-side rewrite, not a
-      # client-side redirect.
-      - type: rewrite
-        source: /solutions
-        destination: /landing/solutions/index.html
-      - type: rewrite
-        source: /about
-        destination: /landing/about/index.html
-      - type: rewrite
-        source: /blog
-        destination: /landing/blog/index.html
-      - type: rewrite
-        source: /contact
-        destination: /landing/contact/index.html
-      # Everything else (the platform SPA: /login, /scorm/*, /player/*, etc.)
-      # has no literal file, so it falls through to the app's own entry
-      # document, which is app.html (not index.html - that's the marketing
-      # page). React Router takes over client-side from there.
-      - type: rewrite
-        source: /*
-        destination: /app.html

@@ -60,8 +60,14 @@ function brandMarketingHtml(html) {
 function ensureHeadAssets(html, baseHref) {
   const inserts = [];
 
+  // target="_top" matters because this page is served inside the platform
+  // app's iframe (see MarketingSite.jsx): without it, every internal link -
+  // including "Log in" and links to the other marketing pages - would
+  // navigate inside the iframe's own frame instead of the actual browser
+  // tab, leaving the user stuck looking at the outer app's chrome around a
+  // page that silently changed underneath it.
   if (!/<base\s+href=/i.test(html)) {
-    inserts.push(`<base href="${baseHref}" />`);
+    inserts.push(`<base href="${baseHref}" target="_top" />`);
   }
 
   if (!html.includes('/landing/css/atelora-home-refresh.css')) {
@@ -135,16 +141,6 @@ async function preparePage(page) {
 
   await fs.writeFile(filePath, html, 'utf8');
   console.log(`Prepared LMSGEN marketing page: ${page.file}`);
-
-  // The home page keeps its <base href="/landing/"> so its own relative
-  // asset references still resolve correctly, but the *document itself*
-  // needs to be reachable at the literal site root. Placing a copy there
-  // means Render serves it directly as a real file for "/" - no rewrite
-  // rule, no redirect, no client-side JS involved for a fresh page load.
-  if (page.home) {
-    await fs.copyFile(filePath, path.join(clientRoot, 'dist', 'index.html'));
-    console.log('Copied prepared home page to dist/index.html (site root)');
-  }
 }
 
 try {
