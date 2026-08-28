@@ -1,16 +1,78 @@
 (function () {
   "use strict";
 
-  const refreshCssId = "atelora-home-refresh-css";
-  if (!document.getElementById(refreshCssId)) {
-    const link = document.createElement("link");
-    link.id = refreshCssId;
-    link.rel = "stylesheet";
-    link.href = "/landing/css/atelora-home-refresh.css";
-    document.head.appendChild(link);
+  const staticToFriendly = new Map([
+    ["/landing/index.html", "/"],
+    ["/landing/solutions/index.html", "/solutions"],
+    ["/landing/about/index.html", "/about"],
+    ["/landing/blog/index.html", "/blog"],
+    ["/landing/contact/index.html", "/contact"],
+  ]);
+
+  const friendlyToStatic = new Map(
+    Array.from(staticToFriendly.entries(), ([staticPath, friendlyPath]) => [friendlyPath, staticPath]),
+  );
+
+  // Static marketing pages can be opened directly on any host. Keep the public
+  // URL clean without forcing the page back through the React router.
+  const friendlyPath = staticToFriendly.get(window.location.pathname);
+  if (friendlyPath) {
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${friendlyPath}${window.location.search}${window.location.hash}`,
+    );
   }
 
-  document.body.classList.add("atelora-site-refresh");
+  // Marketing-to-marketing navigation goes straight to the prebuilt document,
+  // avoiding the React Suspense fallback and the old iframe remount.
+  document.addEventListener("click", (event) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    const anchor = event.target.closest("a[href]");
+    if (!anchor) return;
+
+    let url;
+    try {
+      url = new URL(anchor.href, window.location.origin);
+    } catch {
+      return;
+    }
+
+    if (url.origin !== window.location.origin) return;
+    const staticPath = friendlyToStatic.get(url.pathname);
+    if (!staticPath) return;
+
+    event.preventDefault();
+    window.location.assign(`${staticPath}${url.search}${url.hash}`);
+  });
+
+  // Warm the other marketing documents once the current page is interactive.
+  const prefetchMarketingPages = () => {
+    friendlyToStatic.forEach((staticPath) => {
+      if (staticPath === window.location.pathname) return;
+      const link = document.createElement("link");
+      link.rel = "prefetch";
+      link.as = "document";
+      link.href = staticPath;
+      document.head.appendChild(link);
+    });
+  };
+
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(prefetchMarketingPages, { timeout: 1600 });
+  } else {
+    window.setTimeout(prefetchMarketingPages, 600);
+  }
 
   const menuButton = document.querySelector(".global-nav-menu-btn.w-nav-button");
   const menuIcon = document.querySelector(".global-nav-menu-icon");
@@ -50,6 +112,8 @@
   window.addEventListener("scroll", applyStickyState, { passive: true });
   applyStickyState();
 
+  // The legacy demo modal is no longer used. Close controls remain harmless if
+  // an older cached document still contains the modal markup.
   document.querySelectorAll('[cd="close-book"]').forEach((button) => {
     button.addEventListener("click", () => {
       document.querySelectorAll(".book-demo-s.active").forEach((modal) => {
@@ -58,62 +122,19 @@
     });
   });
 
-  const arrowButton = document.querySelector(".btn-primary.arrow");
-  const submitButton = document.querySelector(".btn-primary.submit");
-  if (arrowButton && submitButton) {
+  // Keep arrow-style form controls functional without relying on one global form.
+  document.querySelectorAll(".btn-primary.arrow").forEach((arrowButton) => {
+    const form = arrowButton.closest("form");
+    if (!form) return;
+
+    const submitButton = form.querySelector(
+      'input[type="submit"], button[type="submit"], .btn-primary.submit',
+    );
+    if (!submitButton) return;
+
     arrowButton.addEventListener("click", (event) => {
       event.preventDefault();
       submitButton.click();
     });
-  }
-
-  function refreshHomepage() {
-    const hero = document.querySelector(".hp-hero-s");
-    if (!hero) return;
-
-    document.body.classList.add("atelora-home-refresh");
-
-    const kicker = hero.querySelector(".caption.text-color-lemon");
-    const heading = hero.querySelector(".hp-hero-h1");
-    const paragraph = hero.querySelector(".hp-hero-p");
-
-    if (kicker) kicker.textContent = "One workspace for modern learning teams";
-    if (heading) heading.textContent = "Create, deliver and measure learning in one place.";
-    if (paragraph) {
-      paragraph.textContent =
-        "Build SCORM-ready courses with AI, run live Quizmoto sessions, manage learners and track progress from one connected Atelora workspace.";
-    }
-
-    const secondaryCta = hero.querySelector(".hp-hero-cta-c .btn-primary.hp-hero.outline div");
-    if (secondaryCta) secondaryCta.textContent = "See solutions";
-
-    const ctaRow = hero.querySelector(".hp-hero-cta-c");
-    if (ctaRow && !hero.querySelector(".atelora-hero-signals")) {
-      const signals = document.createElement("div");
-      signals.className = "atelora-hero-signals";
-      signals.innerHTML =
-        "<span>AI Course Studio</span><span>Live Quizmoto</span><span>Learning Analytics</span>";
-      ctaRow.insertAdjacentElement("afterend", signals);
-    }
-
-    const visual = document.querySelector(".hp-hero-img-c.new");
-    if (visual && !visual.querySelector(".atelora-hero-product")) {
-      const product = document.createElement("div");
-      product.className = "atelora-hero-product";
-      product.innerHTML =
-        '<div class="atelora-product-shell">' +
-        '<div class="atelora-product-chrome">' +
-        '<span class="atelora-window-dots" aria-hidden="true"><i></i><i></i><i></i></span>' +
-        '<span class="atelora-product-title">Atelora workspace</span>' +
-        '<span class="atelora-product-chip">Platform preview</span>' +
-        "</div>" +
-        '<div class="atelora-product-media">' +
-        '<img src="/atelora-marketing/hero-dashboard.png" alt="Atelora learning platform dashboard" loading="eager" decoding="async" />' +
-        "</div>" +
-        "</div>";
-      visual.appendChild(product);
-    }
-  }
-
-  refreshHomepage();
+  });
 })();
