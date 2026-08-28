@@ -21,17 +21,23 @@ const HOME_REPLACEMENTS = [
     'Send your brief today, get your next-level SCORM course in your LMS Next minute. AI-powered production',
     'Build SCORM-ready courses with AI, run live Quizmoto sessions, manage learners and track progress',
   ],
-  ['at a fraction of the cost and resources.', 'from one connected Atelora workspace.'],
+  ['at a fraction of the cost and resources.', 'from one connected LMSGEN workspace.'],
   ['<div>How It Works</div>', '<div>See solutions</div>'],
 ];
 
 const HERO_PRODUCT = `<div class="atelora-hero-product">
               <div class="atelora-product-shell">
                 <div class="atelora-product-media">
-                  <img src="/atelora-marketing/hero-dashboard.png" alt="Atelora learning platform dashboard" loading="eager" decoding="async" />
+                  <img src="/atelora-marketing/hero-dashboard.png" alt="LMSGEN learning platform dashboard" loading="eager" decoding="async" />
                 </div>
               </div>
             </div>`;
+
+function brandMarketingHtml(html) {
+  return html
+    .replace(/\bAtelora\b/g, 'LMSGEN')
+    .replace(/\bATELORA\b/g, 'LMSGEN');
+}
 
 function ensureHeadAssets(html, baseHref) {
   const inserts = [];
@@ -99,17 +105,19 @@ async function preparePage(page) {
   if (page.file === 'contact/index.html') {
     html = html.replace(
       '<title>Contact</title>',
-      '<title>Contact Atelora | Learning Platform</title>',
+      '<title>Contact LMSGEN | Learning Platform</title>',
     );
   }
 
+  html = brandMarketingHtml(html);
+
   await fs.writeFile(filePath, html, 'utf8');
-  console.log(`Prepared marketing page: ${page.file}`);
+  console.log(`Prepared LMSGEN marketing page: ${page.file}`);
 }
 
 try {
   await Promise.all(pages.map(preparePage));
 } catch (error) {
-  console.error('Failed to prepare Atelora marketing pages:', error);
+  console.error('Failed to prepare LMSGEN marketing pages:', error);
   process.exitCode = 1;
 }
