@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="720" viewBox="0 0 1100 720" role="img" aria-label="LMSGEN tracking dashboard">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#06191c"/>
+      <stop offset="1" stop-color="#0A0F0E"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4FC9BF"/>
+      <stop offset="1" stop-color="#7BDCD3"/>
+    </linearGradient>
+  </defs>
+  <rect width="1100" height="720" rx="28" fill="url(#bg)"/>
+  <rect x="24" y="24" width="1052" height="672" rx="22" fill="#10211F" stroke="#4FC9BF" stroke-opacity="0.22"/>
+  <text x="64" y="88" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="700">LEARNER TRACKING</text>
+  <rect x="64" y="120" width="300" height="140" rx="16" fill="#122825"/>
+  <text x="88" y="168" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="14">Completion</text>
+  <text x="88" y="214" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="42" font-weight="700">86%</text>
+  <rect x="384" y="120" width="300" height="140" rx="16" fill="#122825"/>
+  <text x="408" y="168" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="14">Active learners</text>
+  <text x="408" y="214" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="42" font-weight="700">124</text>
+  <rect x="704" y="120" width="332" height="140" rx="16" fill="#122825"/>
+  <text x="728" y="168" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="14">Avg. score</text>
+  <text x="728" y="214" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="42" font-weight="700">91</text>
+  <rect x="64" y="288" width="972" height="360" rx="16" fill="#0A0F0E" stroke="#4FC9BF" stroke-opacity="0.18"/>
+  <rect x="100" y="560" width="40" height="40" fill="#4FC9BF"/>
+  <rect x="160" y="500" width="40" height="100" fill="#7BDCD3"/>
+  <rect x="220" y="470" width="40" height="130" fill="#4FC9BF"/>
+  <rect x="280" y="430" width="40" height="170" fill="#9BE8E1"/>
+  <rect x="340" y="450" width="40" height="150" fill="#4FC9BF"/>
+  <rect x="400" y="400" width="40" height="200" fill="#7BDCD3"/>
+  <rect x="460" y="420" width="40" height="180" fill="#4FC9BF"/>
+  <rect x="520" y="380" width="40" height="220" fill="#9BE8E1"/>
+  <rect x="620" y="340" width="380" height="44" rx="10" fill="#16312E"/>
+  <rect x="620" y="400" width="380" height="44" rx="10" fill="#16312E"/>
+  <rect x="620" y="460" width="380" height="44" rx="10" fill="#16312E"/>
+  <rect x="620" y="520" width="380" height="44" rx="10" fill="#16312E"/>
+</svg>
