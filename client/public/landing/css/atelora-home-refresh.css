@@ -266,7 +266,10 @@ body.atelora-home-refresh .global-footer-strip-c .animate-strip {
 
 @media (max-width: 767px) {
   body.atelora-home-refresh .hp-hero-s {
+    height: auto !important;
+    min-height: 0 !important;
     padding-top: 7rem;
+    padding-bottom: 0 !important;
   }
 
   body.atelora-home-refresh .hp-hero-c {
@@ -305,16 +308,26 @@ body.atelora-home-refresh .global-footer-strip-c .animate-strip {
     font-size: 1.25rem;
   }
 
-  /* Keep the entire dashboard visible in the browser frame on phones. */
+  /* Keep the entire dashboard visible and collapse any desktop scroll-space on phones. */
   body.atelora-home-refresh .hp-hero-img-c.new {
-    padding: 0 1.2rem 6.5rem;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0 1.2rem 3rem !important;
+    margin-bottom: 0 !important;
     overflow: visible;
   }
 
   body.atelora-home-refresh .atelora-hero-product {
     width: 94%;
-    margin-left: auto;
-    margin-right: auto;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
+  }
+
+  body.atelora-home-refresh .atelora-product-shell,
+  body.atelora-home-refresh .atelora-product-media {
+    height: auto !important;
+    min-height: 0 !important;
   }
 
   body.atelora-home-refresh .atelora-product-shell {
@@ -327,7 +340,6 @@ body.atelora-home-refresh .global-footer-strip-c .animate-strip {
 
   body.atelora-home-refresh .atelora-product-media {
     width: 100%;
-    height: auto;
     overflow: hidden;
     display: block;
     background: #0a2422;
@@ -375,8 +387,7 @@ body.atelora-home-refresh .global-footer-strip-c .animate-strip {
 
 @media (max-width: 479px) {
   body.atelora-home-refresh .hp-hero-img-c.new {
-    padding-left: 0.8rem;
-    padding-right: 0.8rem;
+    padding: 0 0.8rem 2.4rem !important;
   }
 
   body.atelora-home-refresh .atelora-hero-product {
