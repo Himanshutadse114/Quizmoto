@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
 // Renders one of the pre-built static marketing pages inside the SPA's own
 // document. This avoids depending on server-level rewrite/fallback rules
@@ -9,6 +10,8 @@ import React, { useEffect } from 'react';
 // reload, no DOM-wide text/logo swapping needed - the static file is already
 // correctly branded at build time.
 export default function MarketingSite({ src, title, tabTitle }) {
+  const { hash } = useLocation();
+
   useEffect(() => {
     if (!tabTitle) return;
     const previous = document.title;
@@ -18,7 +21,7 @@ export default function MarketingSite({ src, title, tabTitle }) {
 
   return (
     <iframe
-      src={src}
+      src={hash ? `${src}${hash}` : src}
       title={title}
       style={{
         position: 'fixed',

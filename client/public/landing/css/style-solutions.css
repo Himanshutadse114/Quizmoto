@@ -3242,3 +3242,14 @@ figcaption {
     font-size: 3.2rem;
   }
 }
+
+#ai-course-authoring,
+#scorm-ready-delivery,
+#quizmoto-engagement,
+#learning-analytics,
+#admin-access,
+#ai-human-control,
+#central-learning-library,
+#learner-management {
+  scroll-margin-top: 12rem;
+}
