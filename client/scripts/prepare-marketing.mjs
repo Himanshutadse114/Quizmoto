@@ -24,7 +24,7 @@ const BLOG_POST_SLUGS = [
 const pages = [
   { file: 'index.html', base: '/landing/', home: true },
   { file: 'solutions/index.html', base: '/landing/solutions/' },
-  { file: 'about/index.html', base: '/landing/about/' },
+  { file: 'about/index.html', base: '/landing/about/', visibleLogoVariant: 'light' },
   { file: 'blog/index.html', base: '/landing/blog/', visibleLogoVariant: 'light' },
   { file: 'contact/index.html', base: '/landing/contact/' },
   ...BLOG_POST_SLUGS.map((slug) => ({
