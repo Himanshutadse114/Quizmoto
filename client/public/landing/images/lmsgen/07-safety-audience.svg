@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="720" viewBox="0 0 1100 720" role="img" aria-label="LMSGEN audience">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#06191c"/>
+      <stop offset="1" stop-color="#0A0F0E"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4FC9BF"/>
+      <stop offset="1" stop-color="#7BDCD3"/>
+    </linearGradient>
+  </defs>
+  <rect width="1100" height="720" rx="28" fill="url(#bg)"/>
+  <rect x="24" y="24" width="1052" height="672" rx="22" fill="#10211F" stroke="#4FC9BF" stroke-opacity="0.22"/>
+  <text x="64" y="90" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="700">BUILT FOR REAL TEAMS</text>
+  <text x="64" y="136" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="32" font-weight="700">Security awareness that people finish</text>
+  <circle cx="220" cy="360" r="90" fill="#16312E"/>
+  <circle cx="220" cy="330" r="28" fill="#4FC9BF"/>
+  <circle cx="430" cy="360" r="90" fill="#16312E"/>
+  <circle cx="430" cy="330" r="28" fill="#7BDCD3"/>
+  <circle cx="640" cy="360" r="90" fill="#16312E"/>
+  <circle cx="640" cy="330" r="28" fill="#9BE8E1"/>
+  <circle cx="850" cy="360" r="90" fill="#16312E"/>
+  <circle cx="850" cy="330" r="28" fill="#4FC9BF"/>
+  <text x="176" y="490" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">L&D leads</text>
+  <text x="372" y="490" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">Security teams</text>
+  <text x="592" y="490" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">Managers</text>
+  <text x="804" y="490" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">Learners</text>
+  <rect x="64" y="540" width="972" height="80" rx="16" fill="#122825"/>
+  <text x="88" y="588" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="18">Role-based access, SCORM packages, live Quizmoto and completion reports.</text>
+</svg>
