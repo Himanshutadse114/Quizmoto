@@ -195,17 +195,25 @@ body.atelora-home-refresh .hp-platform-card-w {
   background: #06191a;
 }
 
-body.atelora-home-refresh .nhp-platf-btn-w {
+/* Every platform card uses the same reserved header strip for its pill. */
+body.atelora-home-refresh .hp-platform-card-w > .nhp-platf-btn-w {
   position: absolute !important;
-  top: 2rem !important;
+  top: 1.8rem !important;
   right: auto !important;
   bottom: auto !important;
   left: 50% !important;
-  z-index: 4 !important;
+  z-index: 6 !important;
   transform: translateX(-50%) !important;
+  margin: 0 !important;
 }
 
-body.atelora-home-refresh .hp-platf-card-img-w {
+body.atelora-home-refresh .hp-platform-card-w > .nhp-platf-btn-w .nhp-platf-btn-inner {
+  margin: 0 !important;
+  white-space: nowrap;
+}
+
+/* Keep the dashboard image below the pill instead of letting either overlap it. */
+body.atelora-home-refresh .hp-platform-card-w > .hp-platf-card-img-w {
   top: 8.5rem !important;
   bottom: 0 !important;
   height: calc(100% - 8.5rem) !important;
@@ -292,12 +300,42 @@ body.atelora-home-refresh .global-footer-strip-c .animate-strip {
     font-size: 1.25rem;
   }
 
+  /* Mobile hero gets a dedicated viewport instead of shrinking the whole desktop dashboard. */
   body.atelora-home-refresh .hp-hero-img-c.new {
-    padding: 0 1.6rem 7rem;
+    padding: 0 1.2rem 6.5rem;
+    overflow: hidden;
+  }
+
+  body.atelora-home-refresh .atelora-hero-product {
+    width: 100%;
   }
 
   body.atelora-home-refresh .atelora-product-shell {
     border-radius: 1.5rem;
+    background: #0a2422;
+    box-shadow:
+      0 20px 48px rgba(0, 0, 0, 0.28),
+      0 1px 0 rgba(255, 255, 255, 0.08) inset;
+  }
+
+  body.atelora-home-refresh .atelora-product-media {
+    width: 100%;
+    height: clamp(32rem, 98vw, 42rem);
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    background: #0a2422;
+  }
+
+  body.atelora-home-refresh .atelora-product-media img {
+    width: auto !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-width: 165% !important;
+    object-fit: cover !important;
+    object-position: 50% 10% !important;
+    flex: none;
   }
 
   body.atelora-home-refresh .atelora-product-chrome {
@@ -315,13 +353,28 @@ body.atelora-home-refresh .global-footer-strip-c .animate-strip {
     display: none;
   }
 
-  body.atelora-home-refresh .nhp-platf-btn-w {
-    top: 1.4rem !important;
+  body.atelora-home-refresh .hp-platform-card-w > .nhp-platf-btn-w {
+    top: 1.3rem !important;
   }
 
-  body.atelora-home-refresh .hp-platf-card-img-w {
+  body.atelora-home-refresh .hp-platform-card-w > .hp-platf-card-img-w {
     top: 7rem !important;
     height: calc(100% - 7rem) !important;
+  }
+}
+
+@media (max-width: 479px) {
+  body.atelora-home-refresh .hp-hero-img-c.new {
+    padding-left: 0.8rem;
+    padding-right: 0.8rem;
+  }
+
+  body.atelora-home-refresh .atelora-product-media {
+    height: 36rem;
+  }
+
+  body.atelora-home-refresh .atelora-product-media img {
+    min-width: 178% !important;
   }
 }
 
