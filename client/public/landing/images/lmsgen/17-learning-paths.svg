@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620" role="img" aria-label="LEARNING PATHS">
+  <defs>
+    <linearGradient id="bg17" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#06191c"/>
+      <stop offset="1" stop-color="#0A0F0E"/>
+    </linearGradient>
+    <linearGradient id="teal17" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4FC9BF"/>
+      <stop offset="1" stop-color="#7BDCD3"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="620" rx="24" fill="url(#bg17)"/>
+  <rect x="18" y="18" width="864" height="584" rx="18" fill="#10211F" stroke="#4FC9BF" stroke-opacity="0.22"/>
+  <text x="48" y="64" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="700">LEARNING PATHS</text>
+  <text x="48" y="96" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="700">Personal next steps.</text>
+  <circle cx="160" cy="280" r="54" fill="#16312E" stroke="#4FC9BF" stroke-width="3"/>
+  <circle cx="360" cy="280" r="54" fill="#16312E" stroke="#4FC9BF" stroke-width="3"/>
+  <circle cx="560" cy="280" r="54" fill="#4FC9BF"/>
+  <circle cx="760" cy="280" r="54" fill="#0E1C1A" stroke="#2A4440" stroke-width="3"/>
+  <line x1="214" y1="280" x2="306" y2="280" stroke="#4FC9BF" stroke-width="4"/>
+  <line x1="414" y1="280" x2="506" y2="280" stroke="#4FC9BF" stroke-width="4"/>
+  <line x1="614" y1="280" x2="706" y2="280" stroke="#2A4440" stroke-width="4"/>
+  <text x="132" y="286" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="14">Start</text>
+  <text x="330" y="286" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="14">Core</text>
+  <text x="534" y="286" fill="#0A0F0E" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="700">Now</text>
+  <text x="732" y="286" fill="#6A8A86" font-family="Inter,Arial,sans-serif" font-size="14">Next</text>
+  <text x="56" y="420" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="20">Branch by role, risk or score</text>
+  <text x="56" y="456" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="16">Security team path  ·  New-hire path  ·  Manager path</text>
+</svg>

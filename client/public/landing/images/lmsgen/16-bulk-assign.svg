@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620" role="img" aria-label="BULK ASSIGN">
+  <defs>
+    <linearGradient id="bg16" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#06191c"/>
+      <stop offset="1" stop-color="#0A0F0E"/>
+    </linearGradient>
+    <linearGradient id="teal16" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4FC9BF"/>
+      <stop offset="1" stop-color="#7BDCD3"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="620" rx="24" fill="url(#bg16)"/>
+  <rect x="18" y="18" width="864" height="584" rx="18" fill="#10211F" stroke="#4FC9BF" stroke-opacity="0.22"/>
+  <text x="48" y="64" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="700">BULK ASSIGN</text>
+  <text x="48" y="96" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="700">Send to the whole team.</text>
+  <rect x="56" y="150" width="500" height="380" rx="16" fill="#0A0F0E"/>
+  <rect x="80" y="178" width="220" height="16" rx="8" fill="#4FC9BF"/>
+  <rect x="80" y="220" width="452" height="48" rx="10" fill="#16312E"/>
+  <rect x="80" y="280" width="452" height="48" rx="10" fill="#16312E"/>
+  <rect x="80" y="340" width="452" height="48" rx="10" fill="#16312E"/>
+  <rect x="80" y="400" width="452" height="48" rx="10" fill="#16312E"/>
+  <text x="100" y="250" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">Aisha Khan</text>
+  <text x="100" y="310" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">Noah Patel</text>
+  <text x="100" y="370" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">Maya Chen</text>
+  <rect x="580" y="150" width="260" height="380" rx="16" fill="#0E1C1A"/>
+  <text x="608" y="220" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="16">ASSIGN TO</text>
+  <text x="608" y="270" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="28" font-weight="700">128</text>
+  <text x="608" y="310" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">learners</text>
+  <rect x="608" y="360" width="204" height="48" rx="24" fill="url(#teal16)"/>
+  <text x="650" y="390" fill="#0A0F0E" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="700">Send course</text>
+</svg>
