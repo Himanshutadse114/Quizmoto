@@ -25,9 +25,13 @@ const pages = [
   { file: 'index.html', base: '/landing/', home: true },
   { file: 'solutions/index.html', base: '/landing/solutions/' },
   { file: 'about/index.html', base: '/landing/about/' },
-  { file: 'blog/index.html', base: '/landing/blog/' },
+  { file: 'blog/index.html', base: '/landing/blog/', visibleLogoVariant: 'light' },
   { file: 'contact/index.html', base: '/landing/contact/' },
-  ...BLOG_POST_SLUGS.map((slug) => ({ file: `blog/${slug}.html`, base: '/landing/blog/' })),
+  ...BLOG_POST_SLUGS.map((slug) => ({
+    file: `blog/${slug}.html`,
+    base: '/landing/blog/',
+    visibleLogoVariant: 'light',
+  })),
 ];
 
 const HOME_REPLACEMENTS = [
@@ -206,17 +210,20 @@ function replaceFeatureCardImages(html) {
   return html;
 }
 
-function brandMarketingHtml(html) {
+function brandMarketingHtml(html, visibleLogoVariant = 'dark') {
   return html
     // Structured metadata should use the light-background version for broad compatibility.
     .replace(
       /\/landing\/images\/logos\/atelora-landing-logo\.svg/g,
       '/branding/lmsgen-logo-light.png',
     )
-    // Visible exported-site logos sit on the dark marketing header by default.
+    // Visible exported-site logos sit on the dark marketing header by default,
+    // but pages whose header keeps its bright turquoise background (no JS
+    // scroll-based swap, unlike the homepage) need the dark-text variant -
+    // the white-text "dark" logo is nearly invisible against turquoise.
     .replace(
       /(?:\.\.\/)*images\/logos\/atelora-landing-logo\.svg/g,
-      '/branding/lmsgen-logo-dark.png',
+      `/branding/lmsgen-logo-${visibleLogoVariant}.png`,
     )
     .replace(
       /(?:\.\.\/)*images\/icons\/favicon\.png/g,
@@ -316,7 +323,7 @@ async function preparePage(page) {
     );
   }
 
-  html = brandMarketingHtml(html);
+  html = brandMarketingHtml(html, page.visibleLogoVariant);
 
   await fs.writeFile(filePath, html, 'utf8');
   console.log(`Prepared LMSGEN marketing page: ${page.file}`);
