@@ -1,17 +1,25 @@
 (function(){"use strict";const c=document.querySelector(".global-nav-menu-btn.w-nav-button"),s=document.querySelector(".global-nav-menu-icon"),r=document.querySelector(".nav-logo"),n=document.querySelector(".global-header-c"),a=document.querySelector(".btn-primary.nav-bar.w-button.secondary"),l=document.querySelector(".global-header-nav-w"),i=document.querySelectorAll(".global-nav-link"),d=document.querySelector(".navbar-scroll"),u=document.querySelector(".local-dropdown"),y=document.querySelector(".local-dropdown-c");function o(){if(!d)return;const e=d.offsetTop;window.scrollY>=e||c.classList.contains("w--open")?(s.classList.add("sticky"),r.classList.add("sticky"),n.classList.add("sticky"),a.classList.remove("secondary"),l.classList.add("sticky"),u.classList.add("sticky"),y.classList.add("sticky"),i.forEach(function(t){t.classList.add("sticky")})):(s.classList.remove("sticky"),r.classList.remove("sticky"),n.classList.remove("sticky"),a.classList.add("secondary"),l.classList.remove("sticky"),u.classList.remove("sticky"),y.classList.remove("sticky"),i.forEach(function(t){t.classList.remove("sticky")}))}new MutationObserver(o).observe(c,{attributes:!0,attributeFilter:["class"]}),window.addEventListener("scroll",o),o();const m=document.querySelectorAll('[cd="book-a-demo"]'),b=document.querySelectorAll('[cd="close-book"]');m.forEach(e=>{e.addEventListener("click",()=>{document.querySelector(".book-demo-s").classList.add("active")})}),b.forEach(e=>{e.addEventListener("click",()=>{document.querySelector(".book-demo-s").classList.remove("active")})});const arrow=document.querySelector(".btn-primary.arrow");arrow&&arrow.addEventListener("click",()=>{const submit=document.querySelector(".btn-primary.submit");submit&&submit.click()});
 
+  const hide=document.createElement("style");
+  hide.textContent=".sl-features-key-c{display:none!important}";
+  document.head.appendChild(hide);
+  const keyBlock=document.querySelector(".sl-features-key-c");
+  if(keyBlock){
+    const wrap=keyBlock.parentElement;
+    const prev=wrap&&wrap.previousElementSibling;
+    if(prev&&prev.classList.contains("global-separator")) prev.remove();
+    if(wrap) wrap.remove();
+    else keyBlock.remove();
+  }
+
   const ART_BASE="/landing/images/lmsgen/";
   const css=document.createElement("link");
   css.rel="stylesheet";
-  css.href="/landing/css/lmsgen-advantage-assets.css?v=20260830";
+  css.href="/landing/css/lmsgen-advantage-assets.css?v=20260830b";
   document.head.appendChild(css);
 
   const art=[
     [".sl-hero-img", ART_BASE+"01-hero-course-studio.svg", "LMSGEN course studio — AI authoring, SCORM delivery and learner tracking"],
-    ["#ai-human-control .sl-featkey-card-img img", ART_BASE+"03-course-editor.svg", "LMSGEN course editor"],
-    [".sl-features-key-cards-c .sl-features-key-card-w:nth-child(2) .sl-featkey-card-img img", ART_BASE+"09-interactive-live.svg", "Interactive live sessions at scale"],
-    [".sl-features-key-cards-c .sl-features-key-card-w:nth-child(3) .sl-featkey-card-img img", ART_BASE+"12-admin-roles.svg", "Access control and compliance"],
-    [".sl-features-key-banner-img-w img", ART_BASE+"06-how-it-works-steps.svg", "LMSGEN how it works — draft, edit, publish and track"],
     ["#ai-course-authoring .sl-feat-common-img", ART_BASE+"02-ai-from-documents.svg", "LMSGEN turns documents into structured courses"],
     ["#scorm-ready-delivery .sl-feat-common-img", ART_BASE+"10-scorm-package.svg", "SCORM-ready package delivery"],
     ["#quizmoto-engagement .sl-feat-common-img", ART_BASE+"11-quizmoto-live.svg", "Quizmoto live quiz — separate realtime feature"],
