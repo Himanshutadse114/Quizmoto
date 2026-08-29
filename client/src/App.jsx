@@ -86,6 +86,32 @@ function AccessAdminGate() {
   return isSuperAdmin ? <ScormAccessAdmin /> : <Navigate to="/scorm" replace />;
 }
 
+const BLOG_POST_TITLES = {
+  'why-scorm-courses-go-unfinished': 'Why Most SCORM Courses Go Unfinished (And How to Fix It)',
+  'live-quizzes-vs-static-assessments': 'Live Quizzes vs. Static Assessments: What Actually Improves Retention',
+  'scorm-1-2-vs-scorm-2004': 'SCORM 1.2 vs. SCORM 2004: What Actually Matters for Course Authors',
+  'ai-assisted-authoring-course-timeline': 'How AI-Assisted Authoring Changes the Course Creation Timeline',
+  'signs-security-awareness-training-needs-refresh': '5 Signs Your Security Awareness Training Needs a Refresh',
+  'slide-deck-to-scorm-migration-guide': 'From Slide Deck to SCORM Package: A Practical Migration Guide',
+  'quizmoto-as-a-full-learning-platform': 'What We Learned Building Quizmoto Into a Full Learning Platform',
+  'designing-knowledge-checks-that-dont-feel-like-a-test': "Designing Knowledge Checks That Don't Feel Like a Test",
+};
+
+function BlogPost() {
+  const { slug } = useParams();
+  if (!Object.prototype.hasOwnProperty.call(BLOG_POST_TITLES, slug)) {
+    return <Navigate to="/blog" replace />;
+  }
+  const title = BLOG_POST_TITLES[slug];
+  return (
+    <MarketingSite
+      src={`/landing/blog/${slug}.html`}
+      title={title}
+      tabTitle={`${title} | LMSGEN Blog`}
+    />
+  );
+}
+
 function LegacyQuizRedirect({ kind }) {
   const { id, pin } = useParams();
   const targets = {
@@ -107,6 +133,7 @@ function AppRoutes() {
         <Route path="/solutions" element={<MarketingSite src="/landing/solutions/index.html" title="LMSGEN solutions" tabTitle="AI Course Authoring, SCORM & Live Quizzes | LMSGEN" />} />
         <Route path="/about" element={<MarketingSite src="/landing/about/index.html" title="About LMSGEN" tabTitle="About LMSGEN: Learning Platform for L&D and Security Awareness Teams" />} />
         <Route path="/blog" element={<MarketingSite src="/landing/blog/index.html" title="LMSGEN blog" tabTitle="LMSGEN Blog: Insights on Learning, SCORM & Security Awareness" />} />
+        <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/contact" element={<MarketingSite src="/landing/contact/index.html" title="Contact LMSGEN" tabTitle="Contact LMSGEN | Learning Platform" />} />
         <Route path="/login" element={<PlatformEntry />} />
         <Route path="/scorm/login" element={<Navigate to="/login" replace />} />

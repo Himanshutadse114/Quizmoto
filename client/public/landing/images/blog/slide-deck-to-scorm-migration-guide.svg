@@ -1,0 +1,21 @@
+<svg viewBox="0 0 792 492" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="From Slide Deck to SCORM Package: A Practical Migration Guide">
+  <rect width="792" height="492" fill="#003f3a"/>
+  
+      <g>
+        <rect x="86" y="150" width="220" height="150" rx="10" fill="#0a4842"/>
+        <rect x="104" y="132" width="220" height="150" rx="10" fill="#0a5a53"/>
+        <rect x="122" y="114" width="220" height="150" rx="10" fill="#003f3a" stroke="#00d9cc" stroke-width="2"/>
+        <rect x="146" y="140" width="172" height="14" rx="7" fill="#00d9cc"/>
+        <rect x="146" y="168" width="140" height="10" rx="5" fill="#0f7269"/>
+        <rect x="146" y="188" width="150" height="10" rx="5" fill="#0f7269"/>
+      </g>
+      <path d="M400 230h70" stroke="#ff8b6a" stroke-width="3" stroke-dasharray="6 8"/>
+      <path d="M448 214l22 16-22 16" stroke="#ff8b6a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <g>
+        <rect x="520" y="140" width="190" height="190" rx="16" fill="#003f3a" stroke="#fafa45" stroke-width="3"/>
+        <path d="M520 190h190" stroke="#fafa45" stroke-width="2"/>
+        <path d="M615 140v190" stroke="#fafa45" stroke-width="2" opacity="0.5"/>
+        <text x="615" y="270" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#fafa45" letter-spacing="1">SCORM</text>
+        <text x="615" y="290" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#cfe9e5">PACKAGE</text>
+      </g>
+</svg>

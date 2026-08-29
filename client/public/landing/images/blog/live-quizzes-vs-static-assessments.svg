@@ -1,0 +1,15 @@
+<svg viewBox="0 0 792 492" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Live Quizzes vs. Static Assessments: What Actually Improves Retention">
+  <rect width="792" height="492" fill="#003f3a"/>
+  
+      <rect x="64" y="80" width="300" height="332" rx="20" fill="#0a5a53"/>
+      <rect x="428" y="80" width="300" height="332" rx="20" fill="#003f3a" stroke="#00d9cc" stroke-width="3"/>
+      <text x="94" y="126" font-family="Arial, sans-serif" font-size="16" fill="#9fc6c1" letter-spacing="2">STATIC QUIZ</text>
+      <rect x="94" y="150" width="240" height="14" rx="7" fill="#0f7269"/>
+      <rect x="94" y="180" width="200" height="14" rx="7" fill="#0f7269"/>
+      <rect x="94" y="210" width="220" height="14" rx="7" fill="#0f7269"/>
+      <rect x="94" y="240" width="160" height="14" rx="7" fill="#0f7269"/>
+      <text x="458" y="126" font-family="Arial, sans-serif" font-size="16" fill="#fafa45" letter-spacing="2">LIVE QUIZMOTO</text>
+      <circle cx="578" cy="260" r="86" fill="#0a4842"/>
+      <path d="M578 205l18 44h46l-37 28 14 45-41-27-41 27 14-45-37-28h46z" fill="#fafa45"/>
+      <text x="458" y="380" font-family="Arial, sans-serif" font-size="13" fill="#cfe9e5">Instant feedback, live leaderboard</text>
+</svg>

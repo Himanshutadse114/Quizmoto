@@ -1,0 +1,12 @@
+<svg viewBox="0 0 792 492" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Designing Knowledge Checks That Don't Feel Like a Test">
+  <rect width="792" height="492" fill="#003f3a"/>
+  
+      <path d="M160 130h360a40 40 0 0 1 40 40v100a40 40 0 0 1-40 40H320l-60 56v-56h-100a40 40 0 0 1-40-40V170a40 40 0 0 1 40-40z" fill="#003f3a" stroke="#fafa45" stroke-width="3"/>
+      <circle cx="240" cy="220" r="14" fill="#00d9cc"/>
+      <path d="M233 220l5 6 11-13" stroke="#003f3a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="272" y="210" width="220" height="20" rx="10" fill="#0f7269"/>
+      <circle cx="580" cy="120" r="26" fill="#ff8b6a"/>
+      <path d="M580 108v14l10 8" stroke="#003f3a" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <circle cx="660" cy="330" r="20" fill="#b580ff"/>
+      <circle cx="120" cy="330" r="16" fill="#00d9cc"/>
+</svg>

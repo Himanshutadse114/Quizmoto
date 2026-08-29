@@ -1,0 +1,10 @@
+<svg viewBox="0 0 792 492" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What We Learned Building Quizmoto Into a Full Learning Platform">
+  <rect width="792" height="492" fill="#003f3a"/>
+  
+      <rect x="146" y="300" width="500" height="70" rx="14" fill="#0a5a53"/>
+      <rect x="176" y="220" width="440" height="70" rx="14" fill="#003f3a" stroke="#00d9cc" stroke-width="2"/>
+      <rect x="206" y="140" width="380" height="70" rx="14" fill="#003f3a" stroke="#fafa45" stroke-width="3"/>
+      <text x="396" y="343" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#cfe9e5" letter-spacing="1">ANALYTICS</text>
+      <text x="396" y="263" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#00d9cc" letter-spacing="1">COURSE AUTHORING</text>
+      <text x="396" y="183" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#fafa45" letter-spacing="1">LIVE QUIZMOTO</text>
+</svg>

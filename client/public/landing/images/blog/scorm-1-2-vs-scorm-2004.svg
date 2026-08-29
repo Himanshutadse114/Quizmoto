@@ -1,0 +1,12 @@
+<svg viewBox="0 0 792 492" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="SCORM 1.2 vs. SCORM 2004: What Actually Matters for Course Authors">
+  <rect width="792" height="492" fill="#003f3a"/>
+  
+      <circle cx="240" cy="240" r="150" fill="#0a5a53"/>
+      <circle cx="552" cy="240" r="150" fill="#003f3a" stroke="#00d9cc" stroke-width="3"/>
+      <text x="240" y="230" text-anchor="middle" font-family="National 2 Condensed, Arial, sans-serif" font-size="46" fill="#00d9cc">1.2</text>
+      <text x="240" y="270" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#cfe9e5" letter-spacing="1">SCORM</text>
+      <text x="552" y="230" text-anchor="middle" font-family="National 2 Condensed, Arial, sans-serif" font-size="42" fill="#fafa45">2004</text>
+      <text x="552" y="270" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#cfe9e5" letter-spacing="1">SCORM</text>
+      <path d="M400 240h60" stroke="#ff8b6a" stroke-width="3" stroke-dasharray="6 8"/>
+      <path d="M448 224l16 16-16 16" stroke="#ff8b6a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

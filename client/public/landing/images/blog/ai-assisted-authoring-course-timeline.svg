@@ -1,0 +1,16 @@
+<svg viewBox="0 0 792 492" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How AI-Assisted Authoring Changes the Course Creation Timeline">
+  <rect width="792" height="492" fill="#003f3a"/>
+  
+      <rect x="64" y="150" width="664" height="6" rx="3" fill="#0f7269"/>
+      <circle cx="128" cy="153" r="34" fill="#0a5a53"/>
+      <rect x="112" y="139" width="32" height="28" rx="3" fill="#00d9cc"/>
+      <circle cx="368" cy="153" r="34" fill="#003f3a" stroke="#fafa45" stroke-width="3"/>
+      <path d="M368 133l7 15 16 2-12 11 3 16-14-8-14 8 3-16-12-11 16-2z" fill="#fafa45"/>
+      <circle cx="608" cy="153" r="34" fill="#0a5a53"/>
+      <rect x="592" y="138" width="12" height="30" rx="2" fill="#b580ff"/>
+      <rect x="606" y="138" width="12" height="30" rx="2" fill="#b580ff" opacity="0.6"/>
+      <text x="128" y="230" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#cfe9e5">BRIEF</text>
+      <text x="368" y="230" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#fafa45">AI DRAFT</text>
+      <text x="608" y="230" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#cfe9e5">REVIEWED COURSE</text>
+      <text x="396" y="300" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#9fc6c1">Hours, not days, from brief to reviewable draft</text>
+</svg>

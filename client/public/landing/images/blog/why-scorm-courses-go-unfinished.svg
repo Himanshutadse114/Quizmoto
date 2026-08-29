@@ -1,0 +1,15 @@
+<svg viewBox="0 0 792 492" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Why Most SCORM Courses Go Unfinished (And How to Fix It)">
+  <rect width="792" height="492" fill="#003f3a"/>
+  
+      <rect x="64" y="118" width="664" height="256" rx="24" fill="#0a5a53"/>
+      <rect x="96" y="166" width="600" height="20" rx="10" fill="#0f7269"/>
+      <rect x="96" y="166" width="252" height="20" rx="10" fill="#00d9cc"/>
+      <circle cx="348" cy="176" r="15" fill="#ff8b6a"/>
+      <rect x="96" y="216" width="600" height="20" rx="10" fill="#0f7269"/>
+      <rect x="96" y="216" width="180" height="20" rx="10" fill="#fafa45"/>
+      <rect x="96" y="266" width="600" height="20" rx="10" fill="#0f7269"/>
+      <rect x="96" y="266" width="120" height="20" rx="10" fill="#b580ff"/>
+      <text x="96" y="330" font-family="Arial, sans-serif" font-size="15" fill="#cfe9e5" letter-spacing="1">MODULE 1</text>
+      <text x="348" y="330" font-family="Arial, sans-serif" font-size="15" fill="#ff8b6a" letter-spacing="1">MOST LEARNERS STOP HERE</text>
+      <text x="96" y="352" font-family="Arial, sans-serif" font-size="13" fill="#9fc6c1">Completion drop-off across a typical course</text>
+</svg>

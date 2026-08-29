@@ -6,12 +6,24 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const clientRoot = path.resolve(scriptDir, '..');
 const landingRoot = path.join(clientRoot, 'dist', 'landing');
 
+const BLOG_POST_SLUGS = [
+  'why-scorm-courses-go-unfinished',
+  'live-quizzes-vs-static-assessments',
+  'scorm-1-2-vs-scorm-2004',
+  'ai-assisted-authoring-course-timeline',
+  'signs-security-awareness-training-needs-refresh',
+  'slide-deck-to-scorm-migration-guide',
+  'quizmoto-as-a-full-learning-platform',
+  'designing-knowledge-checks-that-dont-feel-like-a-test',
+];
+
 const pages = [
   { file: 'index.html', base: '/landing/', home: true },
   { file: 'solutions/index.html', base: '/landing/solutions/' },
   { file: 'about/index.html', base: '/landing/about/' },
   { file: 'blog/index.html', base: '/landing/blog/' },
   { file: 'contact/index.html', base: '/landing/contact/' },
+  ...BLOG_POST_SLUGS.map((slug) => ({ file: `blog/${slug}.html`, base: '/landing/blog/' })),
 ];
 
 const HOME_REPLACEMENTS = [

@@ -1,0 +1,15 @@
+<svg viewBox="0 0 792 492" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="5 Signs Your Security Awareness Training Needs a Refresh">
+  <rect width="792" height="492" fill="#003f3a"/>
+  
+      <path d="M396 70l150 54v120c0 96-64 158-150 188-86-30-150-92-150-188V124z" fill="#0a5a53"/>
+      <path d="M396 70l150 54v120c0 96-64 158-150 188" fill="#003f3a" stroke="#00d9cc" stroke-width="2"/>
+      <path d="M348 260l34 34 62-70" stroke="#fafa45" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="150" cy="130" r="22" fill="#ff8b6a"/>
+      <text x="150" y="137" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="#003f3a" font-weight="bold">!</text>
+      <circle cx="644" cy="130" r="22" fill="#b580ff"/>
+      <circle cx="644" cy="130" r="7" fill="#003f3a"/>
+      <circle cx="120" cy="360" r="18" fill="#00d9cc"/>
+      <circle cx="672" cy="360" r="18" fill="#fafa45"/>
+      <circle cx="70" cy="230" r="12" fill="#4d7975"/>
+      <circle cx="722" cy="230" r="12" fill="#4d7975"/>
+</svg>
