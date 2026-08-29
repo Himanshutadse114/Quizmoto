@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620" role="img" aria-label="BRAND TEMPLATES">
+  <defs>
+    <linearGradient id="bg13" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#06191c"/>
+      <stop offset="1" stop-color="#0A0F0E"/>
+    </linearGradient>
+    <linearGradient id="teal13" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4FC9BF"/>
+      <stop offset="1" stop-color="#7BDCD3"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="620" rx="24" fill="url(#bg13)"/>
+  <rect x="18" y="18" width="864" height="584" rx="18" fill="#10211F" stroke="#4FC9BF" stroke-opacity="0.22"/>
+  <text x="48" y="64" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="700">BRAND TEMPLATES</text>
+  <text x="48" y="96" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="700">On-brand from day one.</text>
+  <rect x="56" y="150" width="250" height="380" rx="16" fill="#0A0F0E" stroke="#4FC9BF" stroke-opacity="0.25"/>
+  <rect x="76" y="178" width="210" height="12" rx="6" fill="#4FC9BF"/>
+  <rect x="76" y="210" width="170" height="8" rx="4" fill="#2A4440"/>
+  <rect x="76" y="240" width="210" height="120" rx="10" fill="#16312E"/>
+  <rect x="76" y="380" width="210" height="8" rx="4" fill="#2A4440"/>
+  <rect x="76" y="400" width="160" height="8" rx="4" fill="#2A4440"/>
+  <rect x="324" y="150" width="250" height="380" rx="16" fill="#0A0F0E" stroke="#4FC9BF" stroke-opacity="0.18"/>
+  <rect x="344" y="178" width="210" height="12" rx="6" fill="#7BDCD3"/>
+  <rect x="344" y="240" width="210" height="80" rx="10" fill="#16312E"/>
+  <rect x="344" y="336" width="210" height="80" rx="10" fill="#16312E"/>
+  <rect x="592" y="150" width="250" height="380" rx="16" fill="#0A0F0E" stroke="#4FC9BF" stroke-opacity="0.18"/>
+  <rect x="612" y="178" width="210" height="12" rx="6" fill="#9BE8E1"/>
+  <circle cx="717" cy="310" r="50" fill="#16312E"/>
+  <circle cx="717" cy="310" r="28" fill="#4FC9BF"/>
+  <text x="656" y="430" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">Gamma Editorial</text>
+</svg>

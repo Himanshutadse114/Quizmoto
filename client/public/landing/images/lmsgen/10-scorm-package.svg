@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620" role="img" aria-label="SCORM PACKAGE">
+  <defs>
+    <linearGradient id="bg10" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#06191c"/>
+      <stop offset="1" stop-color="#0A0F0E"/>
+    </linearGradient>
+    <linearGradient id="teal10" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4FC9BF"/>
+      <stop offset="1" stop-color="#7BDCD3"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="620" rx="24" fill="url(#bg10)"/>
+  <rect x="18" y="18" width="864" height="584" rx="18" fill="#10211F" stroke="#4FC9BF" stroke-opacity="0.22"/>
+  <text x="48" y="64" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="700">SCORM PACKAGE</text>
+  <text x="48" y="96" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="700">Export 1.2 / 2004 ready.</text>
+  <rect x="80" y="160" width="280" height="360" rx="18" fill="#0A0F0E" stroke="#4FC9BF" stroke-opacity="0.3"/>
+  <rect x="110" y="200" width="220" height="14" rx="7" fill="#4FC9BF"/>
+  <rect x="110" y="236" width="180" height="10" rx="5" fill="#2A4440"/>
+  <rect x="110" y="280" width="220" height="56" rx="10" fill="#16312E"/>
+  <rect x="110" y="352" width="220" height="56" rx="10" fill="#16312E"/>
+  <rect x="110" y="424" width="220" height="56" rx="10" fill="#16312E"/>
+  <text x="400" y="250" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="20">imsmanifest.xml</text>
+  <text x="400" y="290" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="18">index.html</text>
+  <text x="400" y="330" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="18">assets / slides</text>
+  <text x="400" y="370" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="18">quiz.xml</text>
+  <rect x="400" y="420" width="360" height="56" rx="28" fill="url(#teal10)"/>
+  <text x="490" y="455" fill="#0A0F0E" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700">Download SCORM ZIP</text>
+</svg>
