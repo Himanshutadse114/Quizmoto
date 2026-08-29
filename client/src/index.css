@@ -84,3 +84,384 @@ body {
 .scorm-editorial [style*="--preview-primary"] [class*="text-green-700"] { color: #15803d !important; }
 .scorm-editorial [style*="--preview-primary"] [class*="text-red-700"] { color: #b91c1c !important; }
 .scorm-editorial [style*="--preview-primary"] p { color: #475569 !important; }
+
+/* Mobile density layer: compact LMSGEN surfaces without changing desktop. */
+@media (max-width: 767px) {
+  /* Authentication */
+  .scorm-auth-workbench .sa-shell {
+    width: calc(100% - 28px) !important;
+    max-width: 520px !important;
+    min-height: 100dvh !important;
+    padding: 8px 0 14px !important;
+    gap: 8px !important;
+  }
+
+  .scorm-auth-workbench .sa-topbar {
+    min-height: 30px !important;
+  }
+
+  .scorm-auth-workbench .sa-theme-toggle {
+    min-height: 32px !important;
+    padding: 0 9px !important;
+    border-radius: 9px !important;
+    gap: 6px !important;
+  }
+
+  .scorm-auth-workbench .sa-card {
+    border-radius: 12px !important;
+    border-top-width: 1px !important;
+    box-shadow: 0 12px 30px rgba(0,0,0,.24) !important;
+  }
+
+  .scorm-auth-workbench .sa-brand-panel {
+    padding: 15px 15px 14px !important;
+  }
+
+  .scorm-auth-workbench .sa-brand-panel::after,
+  .scorm-auth-workbench .sa-points,
+  .scorm-auth-workbench .sa-copy {
+    display: none !important;
+  }
+
+  .scorm-auth-workbench .sa-logo {
+    width: min(176px, 58vw) !important;
+  }
+
+  .scorm-auth-workbench .sa-kicker {
+    margin-top: 11px !important;
+    font-size: 7.5px !important;
+    letter-spacing: .12em !important;
+  }
+
+  .scorm-auth-workbench .sa-notice {
+    margin-top: 13px !important;
+    padding: 9px 10px !important;
+    border-radius: 8px !important;
+    font-size: 9.5px !important;
+    line-height: 1.42 !important;
+  }
+
+  .scorm-auth-workbench .sa-notice-title {
+    margin-bottom: 4px !important;
+    font-size: 8px !important;
+  }
+
+  .scorm-auth-workbench .sa-form-panel {
+    padding: 15px 14px 18px !important;
+  }
+
+  .scorm-auth-workbench .sa-form-kicker {
+    font-size: 7.5px !important;
+    letter-spacing: .11em !important;
+  }
+
+  .scorm-auth-workbench .sa-form-title {
+    margin-top: 6px !important;
+    font-size: 23px !important;
+    line-height: 1.05 !important;
+  }
+
+  .scorm-auth-workbench .sa-form-sub {
+    margin-top: 7px !important;
+    font-size: 10.5px !important;
+    line-height: 1.45 !important;
+  }
+
+  .scorm-auth-workbench .sa-tabs {
+    margin-top: 12px !important;
+    gap: 3px !important;
+    padding: 3px !important;
+    border-radius: 8px !important;
+  }
+
+  .scorm-auth-workbench .sa-tab {
+    min-height: 34px !important;
+    border-radius: 6px !important;
+    font-size: 9.5px !important;
+  }
+
+  .scorm-auth-workbench .sa-google-block {
+    margin-top: 11px !important;
+  }
+
+  .scorm-auth-workbench .sa-google-label {
+    margin-bottom: 5px !important;
+    font-size: 7.5px !important;
+  }
+
+  .scorm-auth-workbench .sa-google-button {
+    min-height: 40px !important;
+    padding: 2px !important;
+    border-radius: 8px !important;
+  }
+
+  .scorm-auth-workbench .sa-google-button > div {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .scorm-auth-workbench .sa-google-hint {
+    margin-top: 5px !important;
+    font-size: 8px !important;
+    line-height: 1.35 !important;
+  }
+
+  .scorm-auth-workbench .sa-divider {
+    margin-top: 10px !important;
+    gap: 7px !important;
+    font-size: 6.5px !important;
+  }
+
+  .scorm-auth-workbench .sa-form {
+    margin-top: 10px !important;
+    gap: 9px !important;
+  }
+
+  .scorm-auth-workbench .sa-label {
+    margin-bottom: 5px !important;
+    font-size: 7.5px !important;
+  }
+
+  .scorm-auth-workbench .sa-input-wrap svg {
+    left: 11px !important;
+  }
+
+  .scorm-auth-workbench .sa-input {
+    min-height: 40px !important;
+    padding: 0 11px 0 36px !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+  }
+
+  .scorm-auth-workbench .sa-submit {
+    min-height: 40px !important;
+    margin-top: 1px !important;
+    border-radius: 8px !important;
+    font-size: 10.5px !important;
+    box-shadow: 0 5px 14px rgba(79,201,191,.12) !important;
+  }
+
+  /* Logged-in LMSGEN platform */
+  .scorm-editorial .scorm-topbar {
+    min-height: 54px !important;
+    padding: 6px 12px !important;
+    gap: 8px !important;
+  }
+
+  .scorm-editorial .scorm-topbar-icon {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 9px !important;
+  }
+
+  .scorm-editorial .scorm-theme-toggle {
+    min-height: 34px !important;
+    padding: 0 8px !important;
+    gap: 5px !important;
+    border-radius: 9px !important;
+  }
+
+  .scorm-editorial .scorm-button-primary,
+  .scorm-editorial .scorm-button-secondary {
+    min-height: 34px !important;
+    padding: 7px 10px !important;
+    border-radius: 9px !important;
+    font-size: 10px !important;
+  }
+
+  .scorm-editorial .scorm-main {
+    min-height: calc(100vh - 54px) !important;
+    padding-bottom: 76px !important;
+  }
+
+  .scorm-editorial .scorm-main > div {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .scorm-editorial .scorm-page-hero {
+    padding: 10px 0 12px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .scorm-editorial .scorm-display {
+    font-size: clamp(26px, 8vw, 34px) !important;
+    line-height: 1 !important;
+    letter-spacing: -.04em !important;
+  }
+
+  .scorm-editorial h1 {
+    font-size: clamp(24px, 7vw, 31px) !important;
+    line-height: 1.08 !important;
+  }
+
+  .scorm-editorial h2:not(.scorm-display) {
+    font-size: clamp(21px, 6vw, 27px) !important;
+    line-height: 1.12 !important;
+  }
+
+  .scorm-editorial h3 {
+    font-size: 16px !important;
+    line-height: 1.2 !important;
+  }
+
+  .scorm-editorial .scorm-eyebrow {
+    font-size: 8px !important;
+  }
+
+  .scorm-editorial .scorm-health-pill {
+    min-height: 21px !important;
+    padding: 3px 7px !important;
+    font-size: 8px !important;
+  }
+
+  .scorm-editorial .scorm-metric-card {
+    min-height: 92px !important;
+    padding: 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .scorm-editorial .scorm-metric-value {
+    font-size: 23px !important;
+  }
+
+  .scorm-editorial .scorm-metric-label {
+    margin-top: 8px !important;
+    font-size: 8px !important;
+  }
+
+  .scorm-editorial .scorm-metric-icon,
+  .scorm-editorial .scorm-action-icon,
+  .scorm-editorial .scorm-progress-icon {
+    width: 31px !important;
+    height: 31px !important;
+    border-radius: 8px !important;
+  }
+
+  .scorm-editorial .scorm-panel {
+    border-radius: 12px !important;
+  }
+
+  .scorm-editorial .scorm-panel-header {
+    min-height: 52px !important;
+    padding: 11px 13px !important;
+  }
+
+  .scorm-editorial .scorm-course-row,
+  .scorm-editorial .scorm-activity-row {
+    padding: 11px 13px !important;
+  }
+
+  .scorm-editorial .scorm-action-card {
+    min-height: 128px !important;
+    padding: 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .scorm-editorial .scorm-progress-hero {
+    min-height: 220px !important;
+    padding: 16px !important;
+    border-radius: 13px !important;
+  }
+
+  .scorm-editorial .scorm-progress-number {
+    font-size: 42px !important;
+  }
+
+  .scorm-editorial .scorm-alert {
+    padding: 9px 11px !important;
+    border-radius: 9px !important;
+    font-size: 10.5px !important;
+  }
+
+  .scorm-editorial .scorm-mobile-drawer {
+    width: 276px !important;
+    max-width: 84vw !important;
+  }
+
+  .scorm-editorial .scorm-mobile-tabbar {
+    bottom: 8px !important;
+    width: min(calc(100% - 24px), 350px) !important;
+    padding: 4px !important;
+    border-radius: 12px !important;
+  }
+
+  .scorm-editorial .scorm-mobile-tab {
+    gap: 3px !important;
+    padding: 7px 8px !important;
+    border-radius: 9px !important;
+  }
+
+  .scorm-editorial .scorm-mobile-tab span {
+    font-size: 8.5px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .scorm-auth-workbench .sa-shell {
+    width: calc(100% - 22px) !important;
+    padding-top: 6px !important;
+  }
+
+  .scorm-auth-workbench .sa-brand-panel {
+    padding: 13px 13px 12px !important;
+  }
+
+  .scorm-auth-workbench .sa-logo {
+    width: min(164px, 55vw) !important;
+  }
+
+  .scorm-auth-workbench .sa-kicker {
+    margin-top: 9px !important;
+    font-size: 7px !important;
+  }
+
+  .scorm-auth-workbench .sa-notice {
+    margin-top: 11px !important;
+    padding: 8px 9px !important;
+    font-size: 9px !important;
+  }
+
+  .scorm-auth-workbench .sa-form-panel {
+    padding: 13px 12px 16px !important;
+  }
+
+  .scorm-auth-workbench .sa-form-title {
+    font-size: 21px !important;
+  }
+
+  .scorm-auth-workbench .sa-form-sub {
+    font-size: 10px !important;
+  }
+
+  .scorm-auth-workbench .sa-google-hint {
+    display: none !important;
+  }
+
+  .scorm-auth-workbench .sa-input {
+    min-height: 38px !important;
+    font-size: 13.5px !important;
+  }
+
+  .scorm-auth-workbench .sa-submit,
+  .scorm-auth-workbench .sa-google-button {
+    min-height: 38px !important;
+  }
+
+  .scorm-editorial .scorm-main > div {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .scorm-editorial .scorm-display {
+    font-size: 26px !important;
+  }
+
+  .scorm-editorial h1 {
+    font-size: 24px !important;
+  }
+
+  .scorm-editorial h2:not(.scorm-display) {
+    font-size: 21px !important;
+  }
+}

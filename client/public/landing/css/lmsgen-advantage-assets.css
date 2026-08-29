@@ -1,0 +1,51 @@
+/* LMSGEN topic-specific artwork for the "Everything You Need to Run Modern Learning" section. */
+body.atelora-home-refresh .hp-advg-s .hp-mark-perk-expand-img,
+body.atelora-home-refresh .hp-advg-s .hp-mark-perk-savetime-graph,
+body.atelora-home-refresh .hp-advg-s .hp-mark-perk-maximize-graph {
+  overflow: hidden;
+}
+
+body.atelora-home-refresh .hp-advg-s .lmsgen-advantage-art-shell {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #06191c 0%, #020b0e 100%);
+  border: 1px solid rgba(0, 217, 204, 0.16);
+  border-radius: 1.8rem;
+}
+
+body.atelora-home-refresh .hp-advg-s .lmsgen-advantage-art {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 1.2rem;
+}
+
+body.atelora-home-refresh .hp-advg-s .hp-mark-perk-expand-img .overlay-gradient {
+  display: none;
+}
+
+body.atelora-home-refresh .hp-advg-s .hp-mark-perk-expand-img .lmsgen-advantage-art-shell {
+  padding: 1.4rem;
+  border-radius: 2rem;
+}
+
+@media screen and (max-width: 767px) {
+  body.atelora-home-refresh .hp-advg-s .lmsgen-advantage-art-shell {
+    padding: 0.8rem;
+    border-radius: 1.4rem;
+  }
+
+  body.atelora-home-refresh .hp-advg-s .lmsgen-advantage-art {
+    border-radius: 1rem;
+  }
+}

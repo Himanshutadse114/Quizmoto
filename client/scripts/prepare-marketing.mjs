@@ -1,10 +1,14 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { inflateRawSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const clientRoot = path.resolve(scriptDir, '..');
+const repoRoot = path.resolve(clientRoot, '..');
 const landingRoot = path.join(clientRoot, 'dist', 'landing');
+const featureZipPath = path.join(repoRoot, 'lmsgen-feature-assets-6-images.zip');
+const featureAssetsRoot = path.join(clientRoot, 'dist', 'lmsgen-feature-assets');
 
 const BLOG_POST_SLUGS = [
   'why-scorm-courses-go-unfinished',
@@ -37,13 +41,170 @@ const HOME_REPLACEMENTS = [
   ['<div>How It Works</div>', '<div>See solutions</div>'],
 ];
 
-const HERO_PRODUCT = `<div class="atelora-hero-product">
+const FEATURE_CARD_TEXT_REPLACEMENTS = [
+  ['<div>COURSE</div>', '<div>LIBRARY</div>'],
+  ['<div>TRACK</div>', '<div>MANAGE</div>'],
+  ['Learner Workspace', 'Learner Hub'],
+  ['Learners · Teams · Cohorts', 'Courses · Progress · Achievements'],
+  ['Quizmoto Ready', 'Live Quizmoto'],
+  ['Interactive · Ready to play', 'Live quizzes · Leaderboards'],
+  ['SCORM Course', 'Content Library'],
+  ['Cybersecurity Awareness · 15 min', 'Courses · Templates · Media'],
+  ['Learner Progress', 'Access Control'],
+  ['1,600 completed · 3,000 assigned', 'Users · Roles · Permissions'],
+  ['Learning Analytics', 'Analytics & Reports'],
+  ['Completed · In progress', 'Progress · Completion · Insights'],
+];
+
+const FEATURE_ASSETS = [
+  {
+    source: 'k0VcyWYrW2RY.webp',
+    file: '01-ai-course-studio.png',
+    alt: 'LMSGEN AI Course Studio dashboard',
+  },
+  {
+    source: '5eVCMAfSY5wt.webp',
+    file: '03-learner-hub.png',
+    alt: 'LMSGEN Learner Hub dashboard',
+  },
+  {
+    source: '2kzoglR4Cy5k.webp',
+    file: '02-live-quizmoto.png',
+    alt: 'LMSGEN Live Quizmoto dashboard',
+  },
+  {
+    source: 'uLN1vcZMAWJ7.webp',
+    file: '05-content-library.png',
+    alt: 'LMSGEN Content Library dashboard',
+  },
+  {
+    source: 'Fzt1dp49TVmE.webp',
+    file: '06-access-control.png',
+    alt: 'LMSGEN Access Control dashboard',
+  },
+  {
+    source: 'IV3mJqP3eCWA.webp',
+    file: '04-analytics-reports.png',
+    alt: 'LMSGEN Analytics and Reports dashboard',
+  },
+];
+
+const HERO_PRODUCT = `<div class="atelora-hero-product" style="width:min(92%,132rem)">
               <div class="atelora-product-shell">
+                <div class="atelora-product-chrome" aria-hidden="true">
+                  <div class="atelora-window-dots"><i></i><i></i><i></i></div>
+                  <div class="atelora-product-title">LMSGEN Platform</div>
+                  <div class="atelora-product-chip">Learning workspace</div>
+                </div>
                 <div class="atelora-product-media">
                   <img src="/atelora-marketing/hero-dashboard.png" alt="LMSGEN learning platform dashboard" loading="eager" decoding="async" />
                 </div>
               </div>
             </div>`;
+
+function findEndOfCentralDirectory(buffer) {
+  const signature = 0x06054b50;
+  const minimumOffset = Math.max(0, buffer.length - 22 - 0xffff);
+
+  for (let offset = buffer.length - 22; offset >= minimumOffset; offset -= 1) {
+    if (buffer.readUInt32LE(offset) === signature) return offset;
+  }
+
+  throw new Error('Feature asset ZIP is missing a valid end-of-central-directory record.');
+}
+
+async function extractFeatureAssets() {
+  const zip = await fs.readFile(featureZipPath);
+  const eocdOffset = findEndOfCentralDirectory(zip);
+  const entryCount = zip.readUInt16LE(eocdOffset + 10);
+  let centralOffset = zip.readUInt32LE(eocdOffset + 16);
+  const expectedFiles = new Set(FEATURE_ASSETS.map(({ file }) => file));
+  const extractedFiles = new Set();
+
+  await fs.mkdir(featureAssetsRoot, { recursive: true });
+
+  for (let index = 0; index < entryCount; index += 1) {
+    if (zip.readUInt32LE(centralOffset) !== 0x02014b50) {
+      throw new Error(`Invalid feature asset ZIP central directory entry at index ${index}.`);
+    }
+
+    const compressionMethod = zip.readUInt16LE(centralOffset + 10);
+    const compressedSize = zip.readUInt32LE(centralOffset + 20);
+    const uncompressedSize = zip.readUInt32LE(centralOffset + 24);
+    const fileNameLength = zip.readUInt16LE(centralOffset + 28);
+    const extraLength = zip.readUInt16LE(centralOffset + 30);
+    const commentLength = zip.readUInt16LE(centralOffset + 32);
+    const localHeaderOffset = zip.readUInt32LE(centralOffset + 42);
+    const fileName = zip
+      .subarray(centralOffset + 46, centralOffset + 46 + fileNameLength)
+      .toString('utf8');
+    const baseName = path.basename(fileName);
+
+    if (expectedFiles.has(baseName)) {
+      if (zip.readUInt32LE(localHeaderOffset) !== 0x04034b50) {
+        throw new Error(`Invalid local ZIP header for ${baseName}.`);
+      }
+
+      const localFileNameLength = zip.readUInt16LE(localHeaderOffset + 26);
+      const localExtraLength = zip.readUInt16LE(localHeaderOffset + 28);
+      const dataOffset = localHeaderOffset + 30 + localFileNameLength + localExtraLength;
+      const compressedData = zip.subarray(dataOffset, dataOffset + compressedSize);
+      let fileData;
+
+      if (compressionMethod === 0) {
+        fileData = compressedData;
+      } else if (compressionMethod === 8) {
+        fileData = inflateRawSync(compressedData);
+      } else {
+        throw new Error(`Unsupported ZIP compression method ${compressionMethod} for ${baseName}.`);
+      }
+
+      if (fileData.length !== uncompressedSize) {
+        throw new Error(`Extracted size mismatch for ${baseName}.`);
+      }
+
+      await fs.writeFile(path.join(featureAssetsRoot, baseName), fileData);
+      extractedFiles.add(baseName);
+    }
+
+    centralOffset += 46 + fileNameLength + extraLength + commentLength;
+  }
+
+  const missingFiles = [...expectedFiles].filter((file) => !extractedFiles.has(file));
+  if (missingFiles.length) {
+    throw new Error(`Feature asset ZIP is missing: ${missingFiles.join(', ')}`);
+  }
+
+  console.log(`Prepared ${extractedFiles.size} LMSGEN feature card assets.`);
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function replaceFeatureCardImages(html) {
+  for (const asset of FEATURE_ASSETS) {
+    const imagePattern = new RegExp(
+      `<img\\s+src="images/${escapeRegExp(asset.source)}"[\\s\\S]*?class="hp-platf-card-img"\\s*\\/>`,
+    );
+    const replacement = `<img
+                        src="/lmsgen-feature-assets/${asset.file}"
+                        loading="lazy"
+                        width="540"
+                        height="641"
+                        alt="${asset.alt}"
+                        class="hp-platf-card-img lmsgen-feature-card-img"
+                      />`;
+
+    if (!imagePattern.test(html)) {
+      throw new Error(`Could not locate homepage platform card image: ${asset.source}`);
+    }
+
+    html = html.replace(imagePattern, replacement);
+  }
+
+  return html;
+}
 
 function brandMarketingHtml(html) {
   return html
@@ -117,6 +278,12 @@ function prepareHome(html) {
     html = html.split(from).join(to);
   }
 
+  for (const [from, to] of FEATURE_CARD_TEXT_REPLACEMENTS) {
+    html = html.replace(from, to);
+  }
+
+  html = replaceFeatureCardImages(html);
+
   if (!html.includes('class="atelora-hero-product"')) {
     html = html.replace(
       '<div class="hp-hero-img-c new">',
@@ -156,6 +323,7 @@ async function preparePage(page) {
 }
 
 try {
+  await extractFeatureAssets();
   await Promise.all(pages.map(preparePage));
 } catch (error) {
   console.error('Failed to prepare LMSGEN marketing pages:', error);

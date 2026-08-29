@@ -122,7 +122,7 @@ body.atelora-home-refresh .hp-hero-img-c.new > :not(.atelora-hero-product) {
 }
 
 body.atelora-home-refresh .atelora-hero-product {
-  width: min(100%, 146rem);
+  width: min(92%, 134rem);
   margin: 0 auto;
   position: relative;
 }
@@ -191,6 +191,47 @@ body.atelora-home-refresh .atelora-product-media img {
   display: block;
 }
 
+body.atelora-home-refresh .hp-platform-card-w {
+  background: #06191a;
+}
+
+/* Every platform card uses the same reserved header strip for its pill. */
+body.atelora-home-refresh .hp-platform-card-w > .nhp-platf-btn-w {
+  position: absolute !important;
+  top: 1.8rem !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: 50% !important;
+  z-index: 6 !important;
+  transform: translateX(-50%) !important;
+  margin: 0 !important;
+}
+
+body.atelora-home-refresh .hp-platform-card-w > .nhp-platf-btn-w .nhp-platf-btn-inner {
+  margin: 0 !important;
+  white-space: nowrap;
+}
+
+/* Dashboard image is above the card background, but below pill/info overlays. */
+body.atelora-home-refresh .hp-platform-card-w > .hp-platf-card-img-w {
+  z-index: 1 !important;
+  top: 8.5rem !important;
+  bottom: 0 !important;
+  height: calc(100% - 8.5rem) !important;
+}
+
+body.atelora-home-refresh .hp-platform-card-w > .hp-platf-card-inf-w.new {
+  z-index: 4 !important;
+}
+
+body.atelora-home-refresh .hp-platf-card-img.lmsgen-feature-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center top;
+  background: #06191a;
+}
+
 body.atelora-home-refresh .hp-platform-card-w:hover .hp-platf-card-img {
   transform: scale(1.035);
 }
@@ -225,66 +266,218 @@ body.atelora-home-refresh .global-footer-strip-c .animate-strip {
 
 @media (max-width: 767px) {
   body.atelora-home-refresh .hp-hero-s {
-    padding-top: 7rem;
+    height: auto !important;
+    min-height: 0 !important;
+    padding-top: 9.2rem !important;
+    padding-bottom: 0 !important;
   }
 
   body.atelora-home-refresh .hp-hero-c {
-    margin-top: 5rem;
-    margin-bottom: 4rem;
-    padding: 0 0.6rem;
+    margin-top: 1rem !important;
+    margin-bottom: 1.6rem !important;
+    padding: 0 1.2rem;
   }
 
   body.atelora-home-refresh .hp-hero-w {
-    row-gap: 2.2rem;
+    row-gap: 1.25rem;
+  }
+
+  body.atelora-home-refresh .caption.text-color-lemon.font-weight-normal {
+    font-size: 1.25rem;
+    letter-spacing: 0.07em;
+    line-height: 1.2;
   }
 
   body.atelora-home-refresh .hp-hero-h1 {
-    font-size: 5.3rem;
-    letter-spacing: -0.045em;
+    max-width: 35rem;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 4.2rem;
+    letter-spacing: -0.035em;
+    line-height: 1.01;
   }
 
   body.atelora-home-refresh .hp-hero-p {
-    font-size: 1.9rem;
+    max-width: 34rem;
+    font-size: 1.55rem;
+    line-height: 1.45;
   }
 
   body.atelora-home-refresh .hp-hero-cta-c {
     flex-direction: column;
     align-items: stretch;
+    gap: 1rem;
+    margin-top: 0 !important;
   }
 
   body.atelora-home-refresh .btn-primary.hp-hero {
     justify-content: center;
+    padding: 1.35rem 1.8rem;
+    font-size: 1.5rem;
+  }
+
+  body.atelora-home-refresh .btn-primary.hp-hero.outline {
+    padding-left: 1.8rem;
+    padding-right: 1.8rem;
   }
 
   body.atelora-home-refresh .atelora-hero-signals {
-    gap: 0.7rem;
+    gap: 0.55rem;
+    margin-top: 0 !important;
   }
 
   body.atelora-home-refresh .atelora-hero-signals span {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
+    padding: 0.55rem 0.85rem;
   }
 
+  /* Keep the entire dashboard visible while removing desktop-style vertical space. */
   body.atelora-home-refresh .hp-hero-img-c.new {
-    padding: 0 1.6rem 7rem;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0 1.2rem 1.8rem !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    overflow: visible;
+  }
+
+  body.atelora-home-refresh .atelora-hero-product {
+    width: 92%;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
+  }
+
+  body.atelora-home-refresh .atelora-product-shell,
+  body.atelora-home-refresh .atelora-product-media {
+    height: auto !important;
+    min-height: 0 !important;
   }
 
   body.atelora-home-refresh .atelora-product-shell {
-    border-radius: 1.5rem;
+    border-radius: 1rem;
+    background: #0a2422;
+    box-shadow:
+      0 12px 30px rgba(0, 0, 0, 0.22),
+      0 1px 0 rgba(255, 255, 255, 0.06) inset;
   }
 
+  body.atelora-home-refresh .atelora-product-media {
+    width: 100%;
+    overflow: hidden;
+    display: block;
+    background: #0a2422;
+  }
+
+  body.atelora-home-refresh .atelora-product-media img {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    object-fit: contain !important;
+    object-position: center top !important;
+    display: block;
+  }
+
+  /* Slim browser chrome specifically for phone screens. */
   body.atelora-home-refresh .atelora-product-chrome {
-    min-height: 4.7rem;
-    padding: 0 1.2rem;
-    grid-template-columns: auto 1fr;
+    min-height: 2.9rem !important;
+    height: 2.9rem !important;
+    padding: 0 0.75rem !important;
+    gap: 0.7rem !important;
+    grid-template-columns: auto 1fr !important;
+    border-bottom-color: rgba(255, 255, 255, 0.07);
+  }
+
+  body.atelora-home-refresh .atelora-window-dots {
+    gap: 0.35rem;
+  }
+
+  body.atelora-home-refresh .atelora-window-dots i {
+    width: 0.55rem;
+    height: 0.55rem;
   }
 
   body.atelora-home-refresh .atelora-product-title {
     justify-self: start;
-    font-size: 1.2rem;
+    font-size: 0.95rem;
+    line-height: 1;
+    letter-spacing: 0.01em;
   }
 
   body.atelora-home-refresh .atelora-product-chip {
     display: none;
+  }
+
+  body.atelora-home-refresh .hp-platform-card-w > .nhp-platf-btn-w {
+    top: 1.3rem !important;
+  }
+
+  body.atelora-home-refresh .hp-platform-card-w > .hp-platf-card-img-w {
+    z-index: 1 !important;
+    top: 7rem !important;
+    height: calc(100% - 7rem) !important;
+  }
+
+  body.atelora-home-refresh .hp-platform-card-w > .hp-platf-card-inf-w.new {
+    z-index: 4 !important;
+  }
+}
+
+@media (max-width: 479px) {
+  body.atelora-home-refresh .hp-hero-s {
+    padding-top: 8.8rem !important;
+  }
+
+  body.atelora-home-refresh .hp-hero-c {
+    margin-top: 0.8rem !important;
+    margin-bottom: 1.3rem !important;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  body.atelora-home-refresh .caption.text-color-lemon.font-weight-normal {
+    font-size: 1.15rem;
+  }
+
+  body.atelora-home-refresh .hp-hero-h1 {
+    max-width: 32rem;
+    font-size: 3.75rem;
+    line-height: 1.02;
+  }
+
+  body.atelora-home-refresh .hp-hero-p {
+    max-width: 31rem;
+    font-size: 1.45rem;
+    line-height: 1.42;
+  }
+
+  body.atelora-home-refresh .btn-primary.hp-hero {
+    padding: 1.25rem 1.5rem;
+    font-size: 1.4rem;
+  }
+
+  body.atelora-home-refresh .hp-hero-img-c.new {
+    padding: 0 0.8rem 1.4rem !important;
+  }
+
+  body.atelora-home-refresh .atelora-hero-product {
+    width: 94%;
+  }
+
+  body.atelora-home-refresh .atelora-product-chrome {
+    min-height: 2.6rem !important;
+    height: 2.6rem !important;
+    padding: 0 0.65rem !important;
+  }
+
+  body.atelora-home-refresh .atelora-window-dots i {
+    width: 0.48rem;
+    height: 0.48rem;
+  }
+
+  body.atelora-home-refresh .atelora-product-title {
+    font-size: 0.85rem;
   }
 }
 

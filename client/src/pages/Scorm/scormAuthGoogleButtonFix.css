@@ -1,36 +1,59 @@
-/* Keep the native Google Identity Services button visually flush with its container.
- * Google caps the rendered button width, so the wrapper follows that width instead
- * of drawing a wider empty placeholder around it.
+/* Keep the native Google Identity Services button centered and contained.
+ * Google may render an inline 400px width; these rules make the wrapper and
+ * iframe obey the available card width on smaller screens.
  */
 .scorm-auth-workbench .sa-google-block {
   width: 100%;
+  min-width: 0;
 }
 
 .scorm-auth-workbench .sa-google-button {
-  width: min(100%, 400px) !important;
+  width: 100% !important;
   max-width: 400px !important;
+  min-width: 0 !important;
   min-height: 40px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
   padding: 0 !important;
   border: 0 !important;
   background: transparent !important;
-  overflow: visible !important;
-  justify-content: flex-start !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .scorm-auth-workbench .sa-google-button > div {
   width: 100% !important;
   max-width: 400px !important;
+  min-width: 0 !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  display: flex !important;
+  justify-content: center !important;
 }
 
 .scorm-auth-workbench .sa-google-button iframe {
   display: block !important;
-  margin: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 auto !important;
 }
 
 @media (max-width: 480px) {
-  .scorm-auth-workbench .sa-google-button,
-  .scorm-auth-workbench .sa-google-button > div {
+  .scorm-auth-workbench .sa-google-button {
     width: 100% !important;
     max-width: 100% !important;
+  }
+
+  .scorm-auth-workbench .sa-google-button > div,
+  .scorm-auth-workbench .sa-google-button > div[style],
+  .scorm-auth-workbench .sa-google-button iframe {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
   }
 }
