@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="720" viewBox="0 0 1100 720" role="img" aria-label="LMSGEN how it works">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#06191c"/>
+      <stop offset="1" stop-color="#0A0F0E"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4FC9BF"/>
+      <stop offset="1" stop-color="#7BDCD3"/>
+    </linearGradient>
+  </defs>
+  <rect width="1100" height="720" rx="28" fill="url(#bg)"/>
+  <rect x="24" y="24" width="1052" height="672" rx="22" fill="#10211F" stroke="#4FC9BF" stroke-opacity="0.22"/>
+  <text x="64" y="90" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="700">HOW IT WORKS</text>
+  <rect x="64" y="150" width="220" height="420" rx="20" fill="#122825"/>
+  <circle cx="174" cy="220" r="28" fill="#4FC9BF"/>
+  <text x="166" y="228" fill="#0A0F0E" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">1</text>
+  <text x="96" y="300" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">Upload</text>
+  <text x="96" y="336" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="15">Drop a brief or deck</text>
+  <rect x="314" y="150" width="220" height="420" rx="20" fill="#122825"/>
+  <circle cx="424" cy="220" r="28" fill="#4FC9BF"/>
+  <text x="416" y="228" fill="#0A0F0E" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">2</text>
+  <text x="346" y="300" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">Edit</text>
+  <text x="346" y="336" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="15">Refine slides and quiz</text>
+  <rect x="564" y="150" width="220" height="420" rx="20" fill="#122825"/>
+  <circle cx="674" cy="220" r="28" fill="#4FC9BF"/>
+  <text x="666" y="228" fill="#0A0F0E" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">3</text>
+  <text x="596" y="300" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">Publish</text>
+  <text x="596" y="336" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="15">SCORM or share link</text>
+  <rect x="814" y="150" width="220" height="420" rx="20" fill="#122825"/>
+  <circle cx="924" cy="220" r="28" fill="#4FC9BF"/>
+  <text x="916" y="228" fill="#0A0F0E" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">4</text>
+  <text x="846" y="300" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">Track</text>
+  <text x="846" y="336" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="15">See completion live</text>
+</svg>
