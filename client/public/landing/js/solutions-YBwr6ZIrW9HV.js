@@ -13,18 +13,19 @@
   }
 
   const ART_BASE="/landing/images/lmsgen/";
+  const ART_VER="?v=20260830c";
   const css=document.createElement("link");
   css.rel="stylesheet";
-  css.href="/landing/css/lmsgen-advantage-assets.css?v=20260830b";
+  css.href="/landing/css/lmsgen-advantage-assets.css"+ART_VER;
   document.head.appendChild(css);
 
   const art=[
     [".sl-hero-img", ART_BASE+"01-hero-course-studio.svg", "LMSGEN course studio — AI authoring, SCORM delivery and learner tracking"],
     ["#ai-course-authoring .sl-feat-common-img", ART_BASE+"02-ai-from-documents.svg", "LMSGEN turns documents into structured courses"],
-    ["#scorm-ready-delivery .sl-feat-common-img", ART_BASE+"10-scorm-package.svg", "SCORM-ready package delivery"],
+    ["#scorm-ready-delivery .sl-feat-common-img", ART_BASE+"10-scorm-package.svg", "Publish in LMSGEN or export a SCORM package"],
     ["#quizmoto-engagement .sl-feat-common-img", ART_BASE+"11-quizmoto-live.svg", "Quizmoto live quiz — separate realtime feature"],
     ["#learning-analytics .sl-feat-common-img", ART_BASE+"04-tracking-dashboard.svg", "LMSGEN learner tracking dashboard"],
-    ["#admin-access .sl-feat-common-img", ART_BASE+"07-safety-audience.svg", "Admin and audience access controls"],
+    ["#admin-access .sl-feat-common-img", ART_BASE+"12-admin-roles.svg", "Admin roles, approvals and access controls"],
     [".sl-feat-templ-cards-c .sl-features-key-card-w:nth-child(1) .sl-featkey-card-img img", ART_BASE+"13-brand-templates.svg", "Create on-brand courses from source documents"],
     [".sl-feat-templ-cards-c .sl-features-key-card-w:nth-child(2) .sl-featkey-card-img img", ART_BASE+"14-studio-scale.svg", "LMSGEN course studio at scale"],
     [".nsl-local-graph-cards-row .nsl-local-graph-card:nth-child(1) .nsl-local-graph-card-img-c img", ART_BASE+"15-self-paced.svg", "Self-paced course template"],
@@ -35,8 +36,8 @@
   function applySrc(img, src, alt){
     img.removeAttribute("srcset");
     img.removeAttribute("sizes");
-    img.setAttribute("src", src);
-    img.src = src;
+    img.setAttribute("src", src+ART_VER);
+    img.src = src+ART_VER;
     if(alt) img.alt = alt;
     img.loading = img.classList.contains("sl-hero-img") ? "eager" : "lazy";
     img.style.opacity = "1";
@@ -47,16 +48,25 @@
     });
   });
   const og=document.querySelector('meta[property="og:image"]');
-  if(og) og.setAttribute("content", ART_BASE+"08-og-banner.svg");
+  if(og) og.setAttribute("content", ART_BASE+"08-og-banner.svg"+ART_VER);
 
   const Q_HEAD = "Quizmoto — a separate live-quiz feature";
   const Q_BODY = "Quizmoto is a separate feature in your LMSGEN workspace. Conduct live quizzes where participants join with a code and play in realtime — it is not the SCORM course player.";
+  const SCORM_HEAD = "SCORM-Ready Delivery";
+  const SCORM_BODY = "LMSGEN has its own LMS — publish a course and start tracking learners right away. You can also export the course as SCORM and add it to your own LMS.";
   const section = document.querySelector("#quizmoto-engagement");
   if(section){
     const h = section.querySelector("h3");
     const p = section.querySelector("p");
     if(h) h.textContent = Q_HEAD;
     if(p) p.textContent = Q_BODY;
+  }
+  const scorm = document.querySelector("#scorm-ready-delivery");
+  if(scorm){
+    const h = scorm.querySelector("h3");
+    const p = scorm.querySelector("p");
+    if(h) h.textContent = SCORM_HEAD;
+    if(p) p.textContent = SCORM_BODY;
   }
   document.querySelectorAll("p, h3, .paragraph-s, .paragraph-m, .paragraph-l").forEach(function(el){
     const t = (el.textContent || "").trim();
@@ -71,6 +81,9 @@
     }
     if(t === "Quizmoto, Live"){
       el.textContent = Q_HEAD;
+    }
+    if(t === "Package and deliver standards-ready SCORM courses through any LMS in minutes."){
+      el.textContent = SCORM_BODY;
     }
   });
 })();
