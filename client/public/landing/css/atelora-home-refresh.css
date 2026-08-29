@@ -191,6 +191,14 @@ body.atelora-home-refresh .atelora-product-media img {
   display: block;
 }
 
+body.atelora-home-refresh .hp-platf-card-img.lmsgen-feature-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  background: #06191a;
+}
+
 body.atelora-home-refresh .hp-platform-card-w:hover .hp-platf-card-img {
   transform: scale(1.035);
 }
