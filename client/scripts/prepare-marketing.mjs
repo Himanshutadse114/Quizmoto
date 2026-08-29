@@ -77,8 +77,13 @@ const FEATURE_ASSETS = [
   },
 ];
 
-const HERO_PRODUCT = `<div class="atelora-hero-product">
+const HERO_PRODUCT = `<div class="atelora-hero-product" style="width:min(92%,132rem)">
               <div class="atelora-product-shell">
+                <div class="atelora-product-chrome" aria-hidden="true">
+                  <div class="atelora-window-dots"><i></i><i></i><i></i></div>
+                  <div class="atelora-product-title">LMSGEN Platform</div>
+                  <div class="atelora-product-chip">Learning workspace</div>
+                </div>
                 <div class="atelora-product-media">
                   <img src="/atelora-marketing/hero-dashboard.png" alt="LMSGEN learning platform dashboard" loading="eager" decoding="async" />
                 </div>
