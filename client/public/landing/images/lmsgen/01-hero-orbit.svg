@@ -1,32 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="920" viewBox="0 0 1400 920" role="img" aria-label="LMSGEN platform with rotating services">
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="860" viewBox="0 0 1400 860" role="img" aria-label="LMSGEN services orbiting the platform">
   <defs>
-    <radialGradient id="glow" cx="50%" cy="42%" r="42%">
-      <stop offset="0" stop-color="#4FC9BF" stop-opacity="0.28"/>
-      <stop offset="0.45" stop-color="#4FC9BF" stop-opacity="0.08"/>
+    <radialGradient id="glow" cx="50%" cy="46%" r="38%">
+      <stop offset="0" stop-color="#4FC9BF" stop-opacity="0.26"/>
       <stop offset="1" stop-color="#4FC9BF" stop-opacity="0"/>
     </radialGradient>
     <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur stdDeviation="3.5" result="b"/>
+      <feGaussianBlur stdDeviation="3.2" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <style>
-      .ring { fill: none; stroke: #4FC9BF; stroke-dasharray: 5 14; }
-      .spin { transform-origin: 700px 430px; animation: spin 42s linear infinite; }
-      .hold { animation: hold 42s linear infinite; }
-      @keyframes spin { to { transform: rotate(360deg); } }
-      @keyframes hold { to { transform: rotate(-360deg); } }
-    </style>
   </defs>
 
-  <rect width="1400" height="920" fill="#0A0F0E"/>
-  <ellipse cx="700" cy="430" rx="420" ry="300" fill="url(#glow)"/>
+  <ellipse cx="700" cy="400" rx="400" ry="280" fill="url(#glow)"/>
+  <ellipse cx="700" cy="400" rx="480" ry="240" fill="none" stroke="#4FC9BF" stroke-opacity="0.32" stroke-width="1.5" stroke-dasharray="6 16">
+    <animate attributeName="stroke-dashoffset" from="0" to="-220" dur="8s" repeatCount="indefinite"/>
+  </ellipse>
+  <ellipse cx="700" cy="400" rx="400" ry="196" fill="none" stroke="#4FC9BF" stroke-opacity="0.14" stroke-width="1" stroke-dasharray="4 18">
+    <animate attributeName="stroke-dashoffset" from="0" to="180" dur="14s" repeatCount="indefinite"/>
+  </ellipse>
+  <circle cx="700" cy="400" r="150" fill="none" stroke="#4FC9BF" stroke-opacity="0.12" stroke-width="1"/>
 
-  <ellipse class="ring" cx="700" cy="430" rx="470" ry="250" stroke-opacity="0.28" stroke-width="1.4"/>
-  <ellipse class="ring" cx="700" cy="430" rx="390" ry="200" stroke-opacity="0.16" stroke-width="1"/>
-  <ellipse cx="700" cy="430" rx="168" ry="168" fill="none" stroke="#4FC9BF" stroke-opacity="0.14" stroke-width="1"/>
-
-  <g transform="translate(700 400)" filter="url(#soft)">
+  <g filter="url(#soft)" transform="translate(700 400)">
     <g fill="none" stroke="#7BDCD3" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M-78 -8 h46 a10 10 0 0 1 10 10 v78 a10 10 0 0 1 -10 10 h-46 a10 10 0 0 1 -10 -10 v-78 a10 10 0 0 1 10 -10z"/>
       <path d="M-68 18 h36 M-68 36 h28 M-68 54 h32"/>
@@ -44,47 +38,50 @@
     <text y="188" text-anchor="middle" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="700" letter-spacing="4">LMSGEN</text>
   </g>
 
-  <g class="spin">
-    <g transform="translate(700 180)">
-      <g class="hold">
+  <g id="lmsgen-orbit-spin">
+    <animateTransform attributeName="transform" type="rotate" from="0 700 400" to="360 700 400" dur="36s" repeatCount="indefinite"/>
+
+    <g transform="translate(700 160)">
+      <g>
+        <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="-360 0 0" dur="36s" repeatCount="indefinite"/>
         <rect x="-62" y="-18" width="124" height="36" rx="18" fill="#071412" stroke="#4FC9BF" stroke-width="1.4"/>
         <text y="5" text-anchor="middle" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="650" letter-spacing="1.4">AI STUDIO</text>
       </g>
     </g>
-    <g transform="translate(1040 300)">
-      <g class="hold">
+    <g transform="translate(1116 280)">
+      <g>
+        <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="-360 0 0" dur="36s" repeatCount="indefinite"/>
         <rect x="-52" y="-18" width="104" height="36" rx="18" fill="#071412" stroke="#4FC9BF" stroke-width="1.4"/>
         <text y="5" text-anchor="middle" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="650" letter-spacing="1.4">SCORM</text>
       </g>
     </g>
-    <g transform="translate(1080 520)">
-      <g class="hold">
+    <g transform="translate(1116 520)">
+      <g>
+        <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="-360 0 0" dur="36s" repeatCount="indefinite"/>
         <rect x="-64" y="-18" width="128" height="36" rx="18" fill="#071412" stroke="#4FC9BF" stroke-width="1.4"/>
         <text y="5" text-anchor="middle" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="650" letter-spacing="1.4">QUIZMOTO</text>
       </g>
     </g>
-    <g transform="translate(700 680)">
-      <g class="hold">
+    <g transform="translate(700 640)">
+      <g>
+        <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="-360 0 0" dur="36s" repeatCount="indefinite"/>
         <rect x="-58" y="-18" width="116" height="36" rx="18" fill="#071412" stroke="#4FC9BF" stroke-width="1.4"/>
         <text y="5" text-anchor="middle" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="650" letter-spacing="1.4">PUBLISH</text>
       </g>
     </g>
-    <g transform="translate(320 520)">
-      <g class="hold">
+    <g transform="translate(284 520)">
+      <g>
+        <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="-360 0 0" dur="36s" repeatCount="indefinite"/>
         <rect x="-56" y="-18" width="112" height="36" rx="18" fill="#071412" stroke="#4FC9BF" stroke-width="1.4"/>
         <text y="5" text-anchor="middle" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="650" letter-spacing="1.4">REPORTS</text>
       </g>
     </g>
-    <g transform="translate(360 300)">
-      <g class="hold">
+    <g transform="translate(284 280)">
+      <g>
+        <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="-360 0 0" dur="36s" repeatCount="indefinite"/>
         <rect x="-62" y="-18" width="124" height="36" rx="18" fill="#071412" stroke="#4FC9BF" stroke-width="1.4"/>
         <text y="5" text-anchor="middle" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="650" letter-spacing="1.4">LEARNERS</text>
       </g>
     </g>
-  </g>
-
-  <g transform="translate(700 830)">
-    <rect x="-150" y="-18" width="300" height="36" rx="18" fill="none" stroke="#4FC9BF" stroke-opacity="0.35" stroke-width="1.2"/>
-    <text y="5" text-anchor="middle" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="13" letter-spacing="1.6">AUTHOR  ·  PUBLISH  ·  TRACK</text>
   </g>
 </svg>
