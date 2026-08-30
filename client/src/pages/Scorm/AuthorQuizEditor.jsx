@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { ArrowDown, ArrowUp, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import './authorQuizEditor.css';
+import './authorQuizLightFix.css';
 
 const blankQuestion = () => ({
   question: '',
