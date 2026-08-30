@@ -4,7 +4,7 @@
   const BRAND_LOGO_BLACK = "/branding/lmsgen-logo-light.png";
   const BRAND_LOGO_WHITE = "/branding/lmsgen-logo-dark.png";
 
-  const cssHref = "/landing/css/lmsgen-advantage-assets.css?v=20260830j";
+  const cssHref = "/landing/css/lmsgen-advantage-assets.css?v=20260830p";
   if (!document.querySelector('link[href*="lmsgen-advantage-assets.css"]')) {
     const link = document.createElement("link");
     link.rel = "stylesheet";
@@ -16,8 +16,16 @@
     });
   }
 
+  if (!document.querySelector('link[href*="family=Inter"]')) {
+    const inter = document.createElement("link");
+    inter.rel = "stylesheet";
+    inter.href = "https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&display=swap";
+    document.head.appendChild(inter);
+  }
+
   const hide = document.createElement("style");
-  hide.textContent = ".ab-hero-carousel-w,.ab-hero-img,.ab-hero-carousel-slide{display:none!important}";
+  hide.textContent = ".ab-hero-carousel-w,.ab-hero-img,.ab-hero-carousel-slide{display:none!important}" +
+    "html,body,button,input,textarea,select,h1,h2,h3,h4,h5,h6,p,a,span,li,label,.hp-hero-h1,.hp-hero-p,.caption,.paragraph-l,.paragraph-m,.btn-primary,.global-nav-link{font-family:Inter,system-ui,sans-serif!important}";
   document.head.appendChild(hide);
   const aboutCarousel = document.querySelector(".ab-hero-carousel-w");
   if (aboutCarousel) aboutCarousel.remove();
