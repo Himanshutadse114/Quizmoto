@@ -47,9 +47,7 @@
   const hide=document.createElement("style");
   hide.textContent=".sl-features-key-c,.sl-hero-deco,.ab-hero-carousel-w,.ab-hero-img{display:none!important}"+
     ".sl-hero-img-w,.sl-hero-img-c{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important}"+
-    ".lmsgen-orbit-svg{display:block;width:100%;height:auto;background:transparent}"+
-    "#lmsgen-orbit-spin{transform-box:view-box;transform-origin:700px 400px;animation:lmsgenOrbit 36s linear infinite}"+
-    "@keyframes lmsgenOrbit{to{transform:rotate(360deg)}}";
+    ".lmsgen-orbit-svg{display:block;width:100%;height:auto;background:transparent}";
   document.head.appendChild(hide);
   const keyBlock=document.querySelector(".sl-features-key-c");
   if(keyBlock){
