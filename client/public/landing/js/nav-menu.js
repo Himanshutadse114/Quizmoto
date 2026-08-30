@@ -4,7 +4,7 @@
   const BRAND_LOGO_BLACK = "/branding/lmsgen-logo-light.png";
   const BRAND_LOGO_WHITE = "/branding/lmsgen-logo-dark.png";
 
-  const cssHref = "/landing/css/lmsgen-advantage-assets.css?v=20260830q";
+  const cssHref = "/landing/css/lmsgen-advantage-assets.css?v=20260830r";
   if (!document.querySelector('link[href*="lmsgen-advantage-assets.css"]')) {
     const link = document.createElement("link");
     link.rel = "stylesheet";
@@ -14,6 +14,13 @@
     document.querySelectorAll('link[href*="lmsgen-advantage-assets.css"]').forEach((el) => {
       el.href = cssHref;
     });
+  }
+
+  if (!document.querySelector('link[href*="Plus+Jakarta+Sans"]')) {
+    const fonts = document.createElement("link");
+    fonts.rel = "stylesheet";
+    fonts.href = "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap";
+    document.head.appendChild(fonts);
   }
 
   const hide = document.createElement("style");
