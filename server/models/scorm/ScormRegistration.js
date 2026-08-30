@@ -11,6 +11,10 @@ const ScormRegistration = sequelize.define('ScormRegistration', {
         type: DataTypes.UUID,
         allowNull: false
     },
+    campaignId: {
+        type: DataTypes.UUID,
+        allowNull: true
+    },
     learnerUserId: {
         type: DataTypes.INTEGER,
         allowNull: true
@@ -78,6 +82,7 @@ const ScormRegistration = sequelize.define('ScormRegistration', {
     tableName: 'scorm_registrations',
     indexes: [
         { fields: ['courseId'] },
+        { fields: ['campaignId'] },
         { fields: ['status'] },
         { fields: ['learnerEmail'] },
         { fields: ['assignedAt'] }

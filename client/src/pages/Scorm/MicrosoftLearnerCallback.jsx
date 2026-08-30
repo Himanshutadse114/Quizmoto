@@ -8,6 +8,7 @@ export default function MicrosoftLearnerCallback() {
   const { workspaceId } = useParams();
   const navigate = useNavigate();
   const [error, setError] = useState('');
+  const [returnPath, setReturnPath] = useState(`/learn/${workspaceId}`);
 
   useEffect(() => {
     let cancelled = false;
@@ -15,10 +16,30 @@ export default function MicrosoftLearnerCallback() {
       try {
         const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
         const returnedState = params.get('state') || '';
-        const expectedState = sessionStorage.getItem(`lmsgen_ms_state_${workspaceId}`) || '';
         const idToken = params.get('id_token') || '';
         const providerError = params.get('error_description') || params.get('error') || '';
+
+        let campaignPending = null;
+        try {
+          const raw = sessionStorage.getItem('lmsgen_ms_campaign_pending');
+          if (raw) campaignPending = JSON.parse(raw);
+        } catch (_) {
+          campaignPending = null;
+        }
+
+        const isCampaign = Boolean(
+          campaignPending?.campaignId &&
+          campaignPending?.workspaceId === workspaceId &&
+          campaignPending?.state
+        );
+        const expectedState = isCampaign
+          ? String(campaignPending.state)
+          : (sessionStorage.getItem(`lmsgen_ms_state_${workspaceId}`) || '');
+        const destination = isCampaign ? `/campaign/${campaignPending.campaignId}` : `/learn/${workspaceId}`;
+        setReturnPath(destination);
+
         sessionStorage.removeItem(`lmsgen_ms_state_${workspaceId}`);
+        sessionStorage.removeItem('lmsgen_ms_campaign_pending');
 
         if (providerError) throw new Error(providerError);
         if (!returnedState || !expectedState || returnedState !== expectedState) {
@@ -26,10 +47,17 @@ export default function MicrosoftLearnerCallback() {
         }
         if (!idToken) throw new Error('Microsoft did not return an identity token.');
 
-        const res = await axios.post(apiUrl(`/api/scorm-learner/workspace/${workspaceId}/microsoft`), { idToken });
-        if (!res.data?.token) throw new Error('Microsoft learner sign-in did not return a session.');
-        localStorage.setItem(`lmsgen_learner_${workspaceId}`, res.data.token);
-        if (!cancelled) navigate(`/learn/${workspaceId}`, { replace: true });
+        if (isCampaign) {
+          const res = await axios.post(apiUrl(`/api/scorm-learner/campaign/${campaignPending.campaignId}/microsoft`), { idToken });
+          if (!res.data?.token) throw new Error('Microsoft campaign sign-in did not return a session.');
+          localStorage.setItem(`lmsgen_campaign_${campaignPending.campaignId}`, res.data.token);
+        } else {
+          const res = await axios.post(apiUrl(`/api/scorm-learner/workspace/${workspaceId}/microsoft`), { idToken });
+          if (!res.data?.token) throw new Error('Microsoft learner sign-in did not return a session.');
+          localStorage.setItem(`lmsgen_learner_${workspaceId}`, res.data.token);
+        }
+
+        if (!cancelled) navigate(destination, { replace: true });
       } catch (err) {
         if (!cancelled) setError(err.response?.data?.message || err.message || 'Microsoft learner sign-in failed.');
       }
@@ -46,13 +74,13 @@ export default function MicrosoftLearnerCallback() {
             <ShieldAlert size={24} className="mx-auto text-[#bd4258]" />
             <h1 className="text-xl font-semibold mt-3">Microsoft sign-in failed</h1>
             <p className="text-sm text-[#687e7a] mt-2 leading-relaxed">{error}</p>
-            <button type="button" onClick={() => navigate(`/learn/${workspaceId}`, { replace: true })} className="mt-5 h-10 px-4 rounded-xl bg-[#45c5bc] text-[#0d2926] text-xs font-semibold">Return to learner sign-in</button>
+            <button type="button" onClick={() => navigate(returnPath, { replace: true })} className="mt-5 h-10 px-4 rounded-xl bg-[#45c5bc] text-[#0d2926] text-xs font-semibold">Return to sign-in</button>
           </>
         ) : (
           <>
             <RefreshCw size={22} className="animate-spin mx-auto text-[#159b91]" />
             <h1 className="text-xl font-semibold mt-3">Verifying Microsoft identity</h1>
-            <p className="text-sm text-[#687e7a] mt-2">This will only take a moment.</p>
+            <p className="text-sm text-[#687e7a] mt-2">Checking your learner access…</p>
           </>
         )}
       </div>

@@ -30,6 +30,11 @@ router.use((req, res, next) => {
     next();
 });
 
+// Campaign delivery is the preferred organisation flow. It is mounted under
+// the learner API so campaign SSO shares the same public feature gate/CORS
+// surface as the existing workspace learner portal.
+router.use('/campaign', require('./scormCampaignLearner'));
+
 router.get('/workspace/:workspaceId/config', async (req, res) => {
     try {
         const { workspace, config } = await getWorkspaceAndConfig(req.params.workspaceId);

@@ -22,6 +22,7 @@ router.use('/slide-preview', require('./slidePreview'));
 router.use('/registrations', require('./registrations'));
 router.use('/roster', require('./roster'));
 router.use('/assignments', require('./assignments'));
+router.use('/campaigns', require('./campaigns'));
 router.use('/learner-access', require('./authConfig'));
 router.use('/session', require('./session'));
 router.use('/runtime', require('./runtime'));
@@ -44,6 +45,7 @@ router.get('/features', (req, res) => {
         workspaceRbac: true,
         workspaceSso: true,
         staffSso: true,
+        campaignDelivery: true,
         standards: {
             scorm12: true,
             scorm2004: true,

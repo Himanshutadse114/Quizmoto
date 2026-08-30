@@ -4,11 +4,7 @@ const { sequelize } = require('../../config/database');
 const queryInterface = () => sequelize.getQueryInterface();
 
 async function describeTableOrNull(tableName) {
-    try {
-        return await queryInterface().describeTable(tableName);
-    } catch (_) {
-        return null;
-    }
+    try { return await queryInterface().describeTable(tableName); } catch (_) { return null; }
 }
 
 async function ensureTable(tableName, definition) {
@@ -28,9 +24,7 @@ async function ensureColumn(tableName, columnName, definition) {
 async function ensureColumns(tableName, definitions) {
     const changes = [];
     for (const [columnName, definition] of Object.entries(definitions)) {
-        if (await ensureColumn(tableName, columnName, definition)) {
-            changes.push(`${tableName}.${columnName}`);
-        }
+        if (await ensureColumn(tableName, columnName, definition)) changes.push(`${tableName}.${columnName}`);
     }
     return changes;
 }
@@ -47,7 +41,6 @@ async function ensureIndex(tableName, fields, options = {}) {
                 && currentFields.every((field, indexPosition) => field === fields[indexPosition])
                 && Boolean(index.unique) === Boolean(options.unique);
         });
-
     if (exists) return false;
     await qi.addIndex(tableName, fields, options);
     return true;
@@ -62,36 +55,17 @@ function timestampColumns() {
 
 function workspaceColumns() {
     return {
-        id: {
-            type: DataTypes.UUID,
-            allowNull: false,
-            primaryKey: true
-        },
-        ownerUserId: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            unique: true
-        },
-        name: {
-            type: DataTypes.STRING(160),
-            allowNull: false
-        },
-        status: {
-            type: DataTypes.STRING(32),
-            allowNull: false,
-            defaultValue: 'active'
-        },
+        id: { type: DataTypes.UUID, allowNull: false, primaryKey: true },
+        ownerUserId: { type: DataTypes.INTEGER, allowNull: false, unique: true },
+        name: { type: DataTypes.STRING(160), allowNull: false },
+        status: { type: DataTypes.STRING(32), allowNull: false, defaultValue: 'active' },
         ...timestampColumns()
     };
 }
 
 function workspaceMemberColumns() {
     return {
-        id: {
-            type: DataTypes.UUID,
-            allowNull: false,
-            primaryKey: true
-        },
+        id: { type: DataTypes.UUID, allowNull: false, primaryKey: true },
         workspaceId: {
             type: DataTypes.UUID,
             allowNull: false,
@@ -99,52 +73,21 @@ function workspaceMemberColumns() {
             onUpdate: 'CASCADE',
             onDelete: 'CASCADE'
         },
-        userId: {
-            type: DataTypes.INTEGER,
-            allowNull: true
-        },
-        email: {
-            type: DataTypes.STRING(320),
-            allowNull: false,
-            unique: true
-        },
-        displayName: {
-            type: DataTypes.STRING(160),
-            allowNull: true
-        },
-        role: {
-            type: DataTypes.STRING(32),
-            allowNull: false,
-            defaultValue: 'co_admin'
-        },
-        status: {
-            type: DataTypes.STRING(32),
-            allowNull: false,
-            defaultValue: 'invited'
-        },
-        invitedByUserId: {
-            type: DataTypes.INTEGER,
-            allowNull: true
-        },
-        invitedByEmail: {
-            type: DataTypes.STRING(320),
-            allowNull: true
-        },
-        joinedAt: {
-            type: DataTypes.DATE,
-            allowNull: true
-        },
+        userId: { type: DataTypes.INTEGER, allowNull: true },
+        email: { type: DataTypes.STRING(320), allowNull: false, unique: true },
+        displayName: { type: DataTypes.STRING(160), allowNull: true },
+        role: { type: DataTypes.STRING(32), allowNull: false, defaultValue: 'co_admin' },
+        status: { type: DataTypes.STRING(32), allowNull: false, defaultValue: 'invited' },
+        invitedByUserId: { type: DataTypes.INTEGER, allowNull: true },
+        invitedByEmail: { type: DataTypes.STRING(320), allowNull: true },
+        joinedAt: { type: DataTypes.DATE, allowNull: true },
         ...timestampColumns()
     };
 }
 
 function workspaceAuthConfigColumns() {
     return {
-        id: {
-            type: DataTypes.UUID,
-            allowNull: false,
-            primaryKey: true
-        },
+        id: { type: DataTypes.UUID, allowNull: false, primaryKey: true },
         workspaceId: {
             type: DataTypes.UUID,
             allowNull: false,
@@ -153,77 +96,74 @@ function workspaceAuthConfigColumns() {
             onUpdate: 'CASCADE',
             onDelete: 'CASCADE'
         },
+        joiningMode: { type: DataTypes.STRING(32), allowNull: false, defaultValue: 'assigned_email' },
+        googleEnabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+        googleClientId: { type: DataTypes.STRING(255), allowNull: true },
+        microsoftEnabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+        microsoftClientId: { type: DataTypes.STRING(255), allowNull: true },
+        microsoftTenantId: { type: DataTypes.STRING(128), allowNull: true },
+        allowedDomainsJson: { type: DataTypes.TEXT, allowNull: true },
+        staffJoiningMode: { type: DataTypes.STRING(32), allowNull: false, defaultValue: 'password_or_sso' },
+        staffGoogleEnabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+        staffGoogleClientId: { type: DataTypes.STRING(255), allowNull: true },
+        staffMicrosoftEnabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+        staffMicrosoftClientId: { type: DataTypes.STRING(255), allowNull: true },
+        staffMicrosoftTenantId: { type: DataTypes.STRING(128), allowNull: true },
+        staffAllowedDomainsJson: { type: DataTypes.TEXT, allowNull: true },
+        updatedByUserId: { type: DataTypes.INTEGER, allowNull: true },
+        ...timestampColumns()
+    };
+}
 
-        // Learner policy.
-        joiningMode: {
-            type: DataTypes.STRING(32),
+function campaignColumns() {
+    return {
+        id: { type: DataTypes.UUID, allowNull: false, primaryKey: true },
+        workspaceId: {
+            type: DataTypes.UUID,
             allowNull: false,
-            defaultValue: 'assigned_email'
+            references: { model: 'scorm_workspaces', key: 'id' },
+            onUpdate: 'CASCADE',
+            onDelete: 'CASCADE'
         },
-        googleEnabled: {
-            type: DataTypes.BOOLEAN,
-            allowNull: false,
-            defaultValue: false
-        },
-        googleClientId: {
-            type: DataTypes.STRING(255),
-            allowNull: true
-        },
-        microsoftEnabled: {
-            type: DataTypes.BOOLEAN,
-            allowNull: false,
-            defaultValue: false
-        },
-        microsoftClientId: {
-            type: DataTypes.STRING(255),
-            allowNull: true
-        },
-        microsoftTenantId: {
-            type: DataTypes.STRING(128),
-            allowNull: true
-        },
-        allowedDomainsJson: {
-            type: DataTypes.TEXT,
-            allowNull: true
-        },
+        hostId: { type: DataTypes.INTEGER, allowNull: false },
+        name: { type: DataTypes.STRING(180), allowNull: false },
+        status: { type: DataTypes.STRING(32), allowNull: false, defaultValue: 'draft' },
+        dueAt: { type: DataTypes.DATE, allowNull: true },
+        required: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+        createdByUserId: { type: DataTypes.INTEGER, allowNull: true },
+        startedAt: { type: DataTypes.DATE, allowNull: true },
+        endedAt: { type: DataTypes.DATE, allowNull: true },
+        ...timestampColumns()
+    };
+}
 
-        // Staff/Admin policy.
-        staffJoiningMode: {
-            type: DataTypes.STRING(32),
+function campaignLearnerColumns() {
+    return {
+        id: { type: DataTypes.UUID, allowNull: false, primaryKey: true },
+        campaignId: {
+            type: DataTypes.UUID,
             allowNull: false,
-            defaultValue: 'password_or_sso'
+            references: { model: 'scorm_campaigns', key: 'id' },
+            onUpdate: 'CASCADE',
+            onDelete: 'CASCADE'
         },
-        staffGoogleEnabled: {
-            type: DataTypes.BOOLEAN,
-            allowNull: false,
-            defaultValue: false
-        },
-        staffGoogleClientId: {
-            type: DataTypes.STRING(255),
-            allowNull: true
-        },
-        staffMicrosoftEnabled: {
-            type: DataTypes.BOOLEAN,
-            allowNull: false,
-            defaultValue: false
-        },
-        staffMicrosoftClientId: {
-            type: DataTypes.STRING(255),
-            allowNull: true
-        },
-        staffMicrosoftTenantId: {
-            type: DataTypes.STRING(128),
-            allowNull: true
-        },
-        staffAllowedDomainsJson: {
-            type: DataTypes.TEXT,
-            allowNull: true
-        },
+        email: { type: DataTypes.STRING(320), allowNull: false },
+        learnerName: { type: DataTypes.STRING(180), allowNull: true },
+        ...timestampColumns()
+    };
+}
 
-        updatedByUserId: {
-            type: DataTypes.INTEGER,
-            allowNull: true
+function campaignCourseColumns() {
+    return {
+        id: { type: DataTypes.UUID, allowNull: false, primaryKey: true },
+        campaignId: {
+            type: DataTypes.UUID,
+            allowNull: false,
+            references: { model: 'scorm_campaigns', key: 'id' },
+            onUpdate: 'CASCADE',
+            onDelete: 'CASCADE'
         },
+        courseId: { type: DataTypes.UUID, allowNull: false },
         ...timestampColumns()
     };
 }
@@ -235,63 +175,66 @@ async function ensureWorkspaceSchema() {
         ['scorm_workspace_members', workspaceMemberColumns()],
         ['scorm_workspace_auth_configs', workspaceAuthConfigColumns()]
     ];
-
     for (const [tableName, columns] of tables) {
-        if (await ensureTable(tableName, columns)) {
-            changes.push(tableName);
-        } else {
-            changes.push(...await ensureColumns(tableName, columns));
-        }
+        if (await ensureTable(tableName, columns)) changes.push(tableName);
+        else changes.push(...await ensureColumns(tableName, columns));
     }
-
     const indexes = [
         ['scorm_workspaces', ['status'], { name: 'scorm_workspaces_status_idx' }],
-        ['scorm_workspace_members', ['workspaceId', 'email'], {
-            name: 'scorm_workspace_members_workspace_email_uq',
-            unique: true
-        }],
-        ['scorm_workspace_members', ['workspaceId', 'role'], {
-            name: 'scorm_workspace_members_workspace_role_idx'
-        }],
-        ['scorm_workspace_members', ['userId'], {
-            name: 'scorm_workspace_members_user_idx'
-        }],
-        ['scorm_workspace_members', ['status'], {
-            name: 'scorm_workspace_members_status_idx'
-        }]
+        ['scorm_workspace_members', ['workspaceId', 'email'], { name: 'scorm_workspace_members_workspace_email_uq', unique: true }],
+        ['scorm_workspace_members', ['workspaceId', 'role'], { name: 'scorm_workspace_members_workspace_role_idx' }],
+        ['scorm_workspace_members', ['userId'], { name: 'scorm_workspace_members_user_idx' }],
+        ['scorm_workspace_members', ['status'], { name: 'scorm_workspace_members_status_idx' }]
     ];
-
     for (const [tableName, fields, options] of indexes) {
-        if (await ensureIndex(tableName, fields, options)) {
-            changes.push(options.name);
-        }
+        if (await ensureIndex(tableName, fields, options)) changes.push(options.name);
     }
+    return changes;
+}
 
+async function ensureCampaignSchema() {
+    const changes = [];
+    const tables = [
+        ['scorm_campaigns', campaignColumns()],
+        ['scorm_campaign_learners', campaignLearnerColumns()],
+        ['scorm_campaign_courses', campaignCourseColumns()]
+    ];
+    for (const [tableName, columns] of tables) {
+        if (await ensureTable(tableName, columns)) changes.push(tableName);
+        else changes.push(...await ensureColumns(tableName, columns));
+    }
+    const indexes = [
+        ['scorm_campaigns', ['workspaceId'], { name: 'scorm_campaigns_workspace_idx' }],
+        ['scorm_campaigns', ['status'], { name: 'scorm_campaigns_status_idx' }],
+        ['scorm_campaign_learners', ['campaignId', 'email'], { name: 'scorm_campaign_learners_campaign_email_uq', unique: true }],
+        ['scorm_campaign_learners', ['email'], { name: 'scorm_campaign_learners_email_idx' }],
+        ['scorm_campaign_courses', ['campaignId', 'courseId'], { name: 'scorm_campaign_courses_campaign_course_uq', unique: true }]
+    ];
+    for (const [tableName, fields, options] of indexes) {
+        if (await ensureIndex(tableName, fields, options)) changes.push(options.name);
+    }
     return changes;
 }
 
 async function ensurePlatformSchema() {
     const changes = [];
-
-    // Workspace/role/SSO tables were introduced after the original SCORM schema.
-    // Long-lived production databases intentionally do not use destructive
-    // sequelize.sync({ alter: true }), so create/repair these tables explicitly.
     changes.push(...await ensureWorkspaceSchema());
+    changes.push(...await ensureCampaignSchema());
 
     const registrationColumns = [
         ['assignedAt', { type: DataTypes.DATE, allowNull: true }],
         ['assignedByUserId', { type: DataTypes.INTEGER, allowNull: true }],
         ['dueAt', { type: DataTypes.DATE, allowNull: true }],
         ['assignmentSource', { type: DataTypes.STRING(32), allowNull: true }],
-        ['required', { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true }]
+        ['required', { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true }],
+        ['campaignId', { type: DataTypes.UUID, allowNull: true }]
     ];
-
     for (const [name, definition] of registrationColumns) {
-        if (await ensureColumn('scorm_registrations', name, definition)) {
-            changes.push(`scorm_registrations.${name}`);
-        }
+        if (await ensureColumn('scorm_registrations', name, definition)) changes.push(`scorm_registrations.${name}`);
     }
-
+    if (await ensureIndex('scorm_registrations', ['campaignId'], { name: 'scorm_registrations_campaign_idx' })) {
+        changes.push('scorm_registrations_campaign_idx');
+    }
     return { changed: changes.length > 0, changes };
 }
 
