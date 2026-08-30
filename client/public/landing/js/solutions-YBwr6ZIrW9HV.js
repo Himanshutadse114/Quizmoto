@@ -61,7 +61,7 @@
   if(aboutCarousel) aboutCarousel.remove();
 
   const ART_BASE="/landing/images/lmsgen/";
-  const ART_VER="?v=20260830m";
+  const ART_VER="?v=20260830n";
   const css=document.createElement("link");
   css.rel="stylesheet";
   css.href="/landing/css/lmsgen-advantage-assets.css"+ART_VER;
