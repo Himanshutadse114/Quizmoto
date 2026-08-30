@@ -1,4 +1,48 @@
-(function(){"use strict";const c=document.querySelector(".global-nav-menu-btn.w-nav-button"),s=document.querySelector(".global-nav-menu-icon"),r=document.querySelector(".nav-logo"),n=document.querySelector(".global-header-c"),a=document.querySelector(".btn-primary.nav-bar.w-button.secondary"),l=document.querySelector(".global-header-nav-w"),i=document.querySelectorAll(".global-nav-link"),d=document.querySelector(".navbar-scroll"),u=document.querySelector(".local-dropdown"),y=document.querySelector(".local-dropdown-c");function o(){if(!d)return;const e=d.offsetTop;window.scrollY>=e||c.classList.contains("w--open")?(s.classList.add("sticky"),r.classList.add("sticky"),n.classList.add("sticky"),a.classList.remove("secondary"),l.classList.add("sticky"),u.classList.add("sticky"),y.classList.add("sticky"),i.forEach(function(t){t.classList.add("sticky")})):(s.classList.remove("sticky"),r.classList.remove("sticky"),n.classList.remove("sticky"),a.classList.add("secondary"),l.classList.remove("sticky"),u.classList.remove("sticky"),y.classList.remove("sticky"),i.forEach(function(t){t.classList.remove("sticky")}))}new MutationObserver(o).observe(c,{attributes:!0,attributeFilter:["class"]}),window.addEventListener("scroll",o),o();const m=document.querySelectorAll('[cd="book-a-demo"]'),b=document.querySelectorAll('[cd="close-book"]');m.forEach(e=>{e.addEventListener("click",()=>{document.querySelector(".book-demo-s").classList.add("active")})}),b.forEach(e=>{e.addEventListener("click",()=>{document.querySelector(".book-demo-s").classList.remove("active")})});const arrow=document.querySelector(".btn-primary.arrow");arrow&&arrow.addEventListener("click",()=>{const submit=document.querySelector(".btn-primary.submit");submit&&submit.click()});
+(function(){"use strict";const c=document.querySelector(".global-nav-menu-btn.w-nav-button"),s=document.querySelector(".global-nav-menu-icon"),r=document.querySelector(".nav-logo"),n=document.querySelector(".global-header-c"),a=document.querySelector(".btn-primary.nav-bar.w-button.secondary"),l=document.querySelector(".global-header-nav-w"),i=document.querySelectorAll(".global-nav-link"),d=document.querySelector(".navbar-scroll"),u=document.querySelector(".local-dropdown"),y=document.querySelector(".local-dropdown-c");
+  const LOGO_BLACK="/branding/lmsgen-logo-light.png";
+  const LOGO_WHITE="/branding/lmsgen-logo-dark.png";
+  function headerIsLight(sticky){
+    if(!n) return sticky;
+    if(sticky) return true;
+    if(n.classList.contains("white")||n.classList.contains("lemon")||n.classList.contains("turquoise")) return true;
+    try{
+      const bg=window.getComputedStyle(n).backgroundColor||"";
+      const m=bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      if(m){
+        const R=Number(m[1]),G=Number(m[2]),B=Number(m[3]);
+        return (0.299*R+0.587*G+0.114*B)/255>0.55;
+      }
+    }catch(e){}
+    return false;
+  }
+  function setLogo(useBlack){
+    if(!r) return;
+    const next=useBlack?LOGO_BLACK:LOGO_WHITE;
+    if(r.getAttribute("src")!==next) r.setAttribute("src", next);
+    r.setAttribute("alt","LMSGEN");
+  }
+  function o(){
+    if(!n){ setLogo(false); return; }
+    const menuOpen=c&&c.classList.contains("w--open");
+    const sticky=d? (window.scrollY>=d.offsetTop||menuOpen) : !!menuOpen;
+    setLogo(headerIsLight(sticky));
+    if(s) s.classList.toggle("sticky", sticky);
+    if(r) r.classList.toggle("sticky", sticky);
+    n.classList.toggle("sticky", sticky);
+    if(a) a.classList.toggle("secondary", !sticky);
+    if(l) l.classList.toggle("sticky", sticky);
+    if(u) u.classList.toggle("sticky", sticky);
+    if(y) y.classList.toggle("sticky", sticky);
+    i.forEach(function(t){ t.classList.toggle("sticky", sticky); });
+  }
+  if(c) new MutationObserver(o).observe(c,{attributes:!0,attributeFilter:["class"]});
+  window.addEventListener("scroll",o,{passive:true});
+  o();
+  const m=document.querySelectorAll('[cd="book-a-demo"]'),b=document.querySelectorAll('[cd="close-book"]');
+  m.forEach(e=>{e.addEventListener("click",()=>{const el=document.querySelector(".book-demo-s"); if(el) el.classList.add("active")})});
+  b.forEach(e=>{e.addEventListener("click",()=>{document.querySelectorAll(".book-demo-s.active").forEach(function(el){el.classList.remove("active")})})});
+  const arrow=document.querySelector(".btn-primary.arrow");
+  arrow&&arrow.addEventListener("click",()=>{const submit=document.querySelector(".btn-primary.submit");submit&&submit.click()});
 
   const hide=document.createElement("style");
   hide.textContent=".sl-features-key-c{display:none!important}";
