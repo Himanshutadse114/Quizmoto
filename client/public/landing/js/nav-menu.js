@@ -5,7 +5,7 @@
   const BRAND_LOGO_WHITE = "/branding/lmsgen-logo-dark.png";
   const STICKY_AFTER = 48;
 
-  const cssHref = "/landing/css/lmsgen-advantage-assets.css?v=20260830t";
+  const cssHref = "/landing/css/lmsgen-advantage-assets.css?v=20260830u";
   if (!document.querySelector('link[href*="lmsgen-advantage-assets.css"]')) {
     const link = document.createElement("link");
     link.rel = "stylesheet";
@@ -139,7 +139,7 @@
 
     document.querySelectorAll(".hp-platf-stats-cta-c .paragraph-l").forEach((el) => {
       el.textContent =
-        "AI creates the course. Publish on LMSGEN, send an invite, and track results — or export SCORM to your LMS.";
+        "AI creates the course. Publish on LMSGEN, send an invite, and track results - or export SCORM to your LMS.";
     });
 
     const buttonMap = {
@@ -191,11 +191,11 @@
       },
       "Learning Analytics": {
         title: "Analytics & Reports",
-        body: "Completion, score and time on course — live dashboard plus PDF and Excel reports.",
+        body: "Completion, score and time on course - live dashboard plus PDF and Excel reports.",
       },
       "Analytics & Reports": {
         title: "Analytics & Reports",
-        body: "Completion, score and time on course — live dashboard plus PDF and Excel reports.",
+        body: "Completion, score and time on course - live dashboard plus PDF and Excel reports.",
       },
     };
 
