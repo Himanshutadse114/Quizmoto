@@ -100,3 +100,49 @@ body.atelora-home-refresh .hp-platf-card-inner-text-c > div:last-child {
   white-space: normal;
   line-height: 1.35;
 }
+
+/*
+ * Solutions mid-page sections sit on the dark #0A0F0E canvas, but Webflow
+ * still paints them jungle #003F3A (meant for a white page). Force readable
+ * platform colors on those blocks only. Hero, lemon band, footer, and the
+ * cookie modal keep their own contrast.
+ */
+body.lmsgen-solutions-ready .sl-feat-main-s,
+body.lmsgen-solutions-ready .sl-feat-common-s,
+body.lmsgen-solutions-ready .sl-feat-templ-s,
+body.lmsgen-solutions-ready .nsol-manage-s {
+  color: #EDF4F2;
+}
+
+body.lmsgen-solutions-ready .sl-feat-main-s .h5,
+body.lmsgen-solutions-ready .sl-feat-main-s .global-feat-logos-text,
+body.lmsgen-solutions-ready .sl-feat-common-s .caption,
+body.lmsgen-solutions-ready .sl-feat-templ-s .caption,
+body.lmsgen-solutions-ready .nsol-manage-s .caption {
+  color: #9BE8E1;
+}
+
+body.lmsgen-solutions-ready .sl-feat-main-s h2,
+body.lmsgen-solutions-ready .sl-feat-common-s h2,
+body.lmsgen-solutions-ready .sl-feat-common-s h3,
+body.lmsgen-solutions-ready .sl-feat-templ-s h2,
+body.lmsgen-solutions-ready .sl-feat-templ-s h3,
+body.lmsgen-solutions-ready .sl-feat-templ-s .h4,
+body.lmsgen-solutions-ready .nsol-manage-s h2,
+body.lmsgen-solutions-ready .nsol-manage-s h3 {
+  color: #7BDCD3;
+}
+
+body.lmsgen-solutions-ready .sl-feat-common-s p,
+body.lmsgen-solutions-ready .sl-feat-common-s .paragraph-l,
+body.lmsgen-solutions-ready .sl-feat-common-s .paragraph-m,
+body.lmsgen-solutions-ready .sl-feat-common-s .nsl-channels-p,
+body.lmsgen-solutions-ready .sl-feat-templ-s p,
+body.lmsgen-solutions-ready .sl-feat-templ-s .paragraph-l,
+body.lmsgen-solutions-ready .sl-feat-templ-s .paragraph-m,
+body.lmsgen-solutions-ready .nsol-manage-s p,
+body.lmsgen-solutions-ready .nsol-manage-s .paragraph-l,
+body.lmsgen-solutions-ready .sl-feat-common-list-item,
+body.lmsgen-solutions-ready .sl-feat-common-list-item div {
+  color: #EDF4F2;
+}
