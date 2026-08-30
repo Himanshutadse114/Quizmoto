@@ -82,3 +82,21 @@ body.atelora-home-refresh .hp-advg-s .hp-mark-perk-expand-img .lmsgen-advantage-
   height: 100%;
   min-height: 180px;
 }
+
+/* Homepage platform cards — hide leftover country flags / map pins */
+body.atelora-home-refresh .hp-platf-card-inner-icon {
+  display: none !important;
+}
+
+body.atelora-home-refresh .hp-platf-card-inner-text-c {
+  max-width: 100%;
+}
+
+body.atelora-home-refresh .hp-platf-card-inner-title {
+  font-weight: 650;
+}
+
+body.atelora-home-refresh .hp-platf-card-inner-text-c > div:last-child {
+  white-space: normal;
+  line-height: 1.35;
+}
