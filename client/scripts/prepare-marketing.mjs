@@ -36,7 +36,7 @@ const pages = [
 
 const HERO_HEADING = 'Save 95% of time and budget on every custom SCORM course.';
 const HERO_DESCRIPTION =
-  'AI turns your brief into a SCORM course in minutes. Publish it on the LMSGEN LMS, share an invite with your learners, and start tracking — or export the package to your own LMS.';
+  'Send your brief today, get your next-level SCORM course in your LMS the next minutes. AI-powered production at a fraction of the cost and resources.';
 const HERO_EYEBROW = 'Create with AI. Publish on LMSGEN. Invite your team.';
 
 const HOME_REPLACEMENTS = [
@@ -49,15 +49,15 @@ const FEATURE_CARD_TEXT_REPLACEMENTS = [
   ['<div>COURSE</div>', '<div>LIBRARY</div>'],
   ['<div>TRACK</div>', '<div>MANAGE</div>'],
   ['Learner Workspace', 'Learner Hub'],
-  ['Learners · Teams · Cohorts', 'Courses · Progress · Achievements'],
+  ['Learners \u00b7 Teams \u00b7 Cohorts', 'Courses \u00b7 Progress \u00b7 Achievements'],
   ['Quizmoto Ready', 'Live Quizmoto'],
-  ['Interactive · Ready to play', 'Live quizzes · Leaderboards'],
+  ['Interactive \u00b7 Ready to play', 'Live quizzes \u00b7 Leaderboards'],
   ['SCORM Course', 'Content Library'],
-  ['Cybersecurity Awareness · 15 min', 'Courses · Templates · Media'],
+  ['Cybersecurity Awareness \u00b7 15 min', 'Courses \u00b7 Templates \u00b7 Media'],
   ['Learner Progress', 'Access Control'],
-  ['1,600 completed · 3,000 assigned', 'Users · Roles · Permissions'],
+  ['1,600 completed \u00b7 3,000 assigned', 'Users \u00b7 Roles \u00b7 Permissions'],
   ['Learning Analytics', 'Analytics & Reports'],
-  ['Completed · In progress', 'Progress · Completion · Insights'],
+  ['Completed \u00b7 In progress', 'Progress \u00b7 Completion \u00b7 Insights'],
 ];
 
 const FEATURE_ASSETS = [
@@ -97,7 +97,7 @@ const SOLUTIONS_ART = [
   {
     needles: ['/atelora-marketing/hero-dashboard.png', 'class="sl-hero-img"'],
     src: '/landing/images/lmsgen/01-hero-course-studio.svg',
-    alt: 'LMSGEN course studio — AI authoring, SCORM delivery and learner tracking',
+    alt: 'LMSGEN course studio \u2014 AI authoring, SCORM delivery and learner tracking',
     className: 'sl-hero-img',
     eager: true,
   },
@@ -116,7 +116,7 @@ const SOLUTIONS_ART = [
   {
     needles: ['zhRy34iPucqP.webp'],
     src: '/landing/images/lmsgen/11-quizmoto-live.svg',
-    alt: 'Quizmoto live quiz — separate realtime feature',
+    alt: 'Quizmoto live quiz \u2014 separate realtime feature',
     className: 'sl-feat-common-img',
   },
   {
@@ -167,7 +167,7 @@ const SOLUTIONS_ART = [
 const SOLUTIONS_TEXT = [
   [
     'Turn passive training into active participation with live Quizmoto quizzes and game-based sessions.',
-    'Quizmoto is a separate live-quiz feature. Run realtime quizzes in your workspace — users join and play together, live.',
+    'Quizmoto is a separate live-quiz feature. Run realtime quizzes in your workspace \u2014 users join and play together, live.',
   ],
   [
     'Add live Quizmoto quizzes and game-based checks to any course, for any team.',
@@ -175,12 +175,12 @@ const SOLUTIONS_TEXT = [
   ],
   [
     'Run fast, competitive live quizzes that make training more memorable.',
-    'Quizmoto is a separate feature in your LMSGEN workspace. Conduct live quizzes where participants join with a code and play in realtime — it is not the SCORM course player.',
+    'Quizmoto is a separate feature in your LMSGEN workspace. Conduct live quizzes where participants join with a code and play in realtime \u2014 it is not the SCORM course player.',
   ],
-  ['Quizmoto, Live', 'Quizmoto — a separate live-quiz feature'],
+  ['Quizmoto, Live', 'Quizmoto \u2014 a separate live-quiz feature'],
   [
     'Package and deliver standards-ready SCORM courses through any LMS in minutes.',
-    'LMSGEN has its own LMS — publish a course and start tracking learners right away. You can also export the course as SCORM and add it to your own LMS.',
+    'LMSGEN has its own LMS \u2014 publish a course and start tracking learners right away. You can also export the course as SCORM and add it to your own LMS.',
   ],
   [
     'From first draft to final report, Atelora keeps course creation and delivery fast and consistent.',
@@ -325,7 +325,7 @@ function replaceMatchingImgTag(html, needle, src, alt, className, eager) {
 
   const loading = eager ? 'eager' : 'lazy';
   const cls = className ? ` class="${className}"` : '';
-  const tag = `<img src="${src}?v=20260830d" alt="${alt}" loading="${loading}" decoding="async"${cls} />`;
+  const tag = `<img src="${src}?v=20260830e" alt="${alt}" loading="${loading}" decoding="async"${cls} />`;
   return { html: html.slice(0, tagStart) + tag + html.slice(tagEnd + 1), replaced: true };
 }
 
@@ -366,8 +366,7 @@ function prepareSolutions(html) {
     html = html.split(from).join(to);
   }
 
-  html = html.replace(
-    /content="\\.\\.\\/images\\/oVItWEnycNKS\\.png"/g,
+  html = html.split('content="../images/oVItWEnycNKS.png"').join(
     'content="/landing/images/lmsgen/08-og-banner.svg"',
   );
 
@@ -377,29 +376,29 @@ function prepareSolutions(html) {
 function brandMarketingHtml(html, visibleLogoVariant = 'dark') {
   return html
     .replace(
-      /\\/landing\\/images\\/logos\\/atelora-landing-logo\\.svg/g,
+      /\/landing\/images\/logos\/atelora-landing-logo\.svg/g,
       '/branding/lmsgen-logo-light.png',
     )
     .replace(
-      /(?:\\.\\.\\/)*images\\/logos\\/atelora-landing-logo\\.svg/g,
+      /(?:\.\.\/)*images\/logos\/atelora-landing-logo\.svg/g,
       `/branding/lmsgen-logo-${visibleLogoVariant}.png`,
     )
     .replace(
-      /(?:\\.\\.\\/)*images\\/icons\\/favicon\\.png/g,
+      /(?:\.\.\/)*images\/icons\/favicon\.png/g,
       '/branding/lmsgen-favicon.png',
     )
     .replace(
-      /(?:\\.\\.\\/)*images\\/icons\\/apple-touch-icon\\.png/g,
+      /(?:\.\.\/)*images\/icons\/apple-touch-icon\.png/g,
       '/branding/lmsgen-favicon.png',
     )
-    .replace(/\\bAtelora\\b/g, 'LMSGEN')
-    .replace(/\\bATELORA\\b/g, 'LMSGEN');
+    .replace(/\bAtelora\b/g, 'LMSGEN')
+    .replace(/\bATELORA\b/g, 'LMSGEN');
 }
 
 function ensureHeadAssets(html, baseHref) {
   const inserts = [];
 
-  if (!/<base\\s+href=/i.test(html)) {
+  if (!/<base\s+href=/i.test(html)) {
     inserts.push(`<base href="${baseHref}" target="_top" />`);
   }
 
@@ -408,7 +407,7 @@ function ensureHeadAssets(html, baseHref) {
   }
 
   if (!html.includes('/landing/css/lmsgen-advantage-assets.css')) {
-    inserts.push('<link rel="stylesheet" href="/landing/css/lmsgen-advantage-assets.css?v=20260830d" />');
+    inserts.push('<link rel="stylesheet" href="/landing/css/lmsgen-advantage-assets.css?v=20260830e" />');
   }
 
   if (!html.includes('id="lmsgen-anti-fouc"')) {
@@ -426,17 +425,17 @@ function ensureHeadAssets(html, baseHref) {
 function ensureNavMenu(html) {
   if (html.includes('/landing/js/nav-menu.js') || html.includes('js/nav-menu.js')) return html;
   return html.replace(
-    /<\\/body>/i,
+    /<\/body>/i,
     '    <script src="/landing/js/nav-menu.js"></script>\n  </body>',
   );
 }
 
 function ensureBodyClasses(html, classes) {
   return html.replace(/<body([^>]*)>/i, (match, attrs = '') => {
-    const classMatch = attrs.match(/\\sclass=(['"])(.*?)\\1/i);
+    const classMatch = attrs.match(/\sclass=(['"])(.*?)\1/i);
 
     if (classMatch) {
-      const existing = classMatch[2].split(/\\s+/).filter(Boolean);
+      const existing = classMatch[2].split(/\s+/).filter(Boolean);
       const merged = [...new Set([...existing, ...classes])].join(' ');
       const updatedAttrs = attrs.replace(
         classMatch[0],
@@ -451,15 +450,15 @@ function ensureBodyClasses(html, classes) {
 
 function applyHeroCopy(html) {
   html = html.replace(
-    /<div class="caption text-color-lemon font-weight-normal">[\\s\\S]*?<\\/div>/,
+    /<div class="caption text-color-lemon font-weight-normal">[\s\S]*?<\/div>/,
     `<div class="caption text-color-lemon font-weight-normal">\n                ${HERO_EYEBROW}\n              </div>`,
   );
   html = html.replace(
-    /<h1 class="hp-hero-h1">[\\s\\S]*?<\\/h1>/,
+    /<h1 class="hp-hero-h1">[\s\S]*?<\/h1>/,
     `<h1 class="hp-hero-h1">${HERO_HEADING}</h1>`,
   );
   html = html.replace(
-    /<p class="hp-hero-p">[\\s\\S]*?<\\/p>/,
+    /<p class="hp-hero-p">[\s\S]*?<\/p>/,
     `<p class="hp-hero-p">\n                ${HERO_DESCRIPTION}\n              </p>`,
   );
   return html;
@@ -492,7 +491,7 @@ async function preparePage(page) {
   const filePath = path.join(landingRoot, page.file);
   let html = await fs.readFile(filePath, 'utf8');
 
-  html = html.replace(/<!--\\s*Last Published:[\\s\\S]*?-->\\s*/i, '');
+  html = html.replace(/<!--\s*Last Published:[\s\S]*?-->\s*/i, '');
   html = ensureHeadAssets(html, page.base);
   html = ensureBodyClasses(html, [
     'atelora-site-refresh',
