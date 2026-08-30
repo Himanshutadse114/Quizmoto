@@ -5,7 +5,7 @@
   const BRAND_LOGO_WHITE = "/branding/lmsgen-logo-dark.png";
   const STICKY_AFTER = 48;
 
-  const cssHref = "/landing/css/lmsgen-advantage-assets.css?v=20260830u";
+  const cssHref = "/landing/css/lmsgen-advantage-assets.css?v=20260830v";
   if (!document.querySelector('link[href*="lmsgen-advantage-assets.css"]')) {
     const link = document.createElement("link");
     link.rel = "stylesheet";
@@ -118,6 +118,7 @@
   });
 
   applyHomePlatformCopy();
+  insertHomeQuizmotoSection();
 
   function applyHomePlatformCopy() {
     const cards = document.querySelectorAll(".hp-platf-card-inner");
@@ -129,8 +130,10 @@
 
     const headingMap = {
       "Create Training Faster with AI": "Create with AI in minutes",
-      "Engage Learners with Quizmoto": "Publish on LMSGEN and invite your team",
-      "Track Progress with Clear Analytics": "Or export SCORM to your own LMS",
+      "Engage Learners with Quizmoto": "Engage teams with live Quizmoto",
+      "Publish on LMSGEN and invite your team": "Engage teams with live Quizmoto",
+      "Track Progress with Clear Analytics": "Publish SCORM or track in LMSGEN",
+      "Or export SCORM to your own LMS": "Publish SCORM or track in LMSGEN",
     };
     document.querySelectorAll(".platform-h2").forEach((el) => {
       const key = (el.textContent || "").replace(/\u2028/g, "").trim();
@@ -139,13 +142,16 @@
 
     document.querySelectorAll(".hp-platf-stats-cta-c .paragraph-l").forEach((el) => {
       el.textContent =
-        "AI creates the course. Publish on LMSGEN, send an invite, and track results - or export SCORM to your LMS.";
+        "Create a course with AI. Invite learners to LMSGEN. Or host a live Quizmoto quiz \u2014 players join with a code and compete in realtime.";
     });
 
     const buttonMap = {
-      LEARN: "PUBLISH",
-      ENGAGE: "INVITE",
-      COURSE: "EXPORT",
+      LEARN: "CREATE",
+      ENGAGE: "PLAY",
+      COURSE: "PUBLISH",
+      PUBLISH: "CREATE",
+      INVITE: "PLAY",
+      EXPORT: "PUBLISH",
     };
     document.querySelectorAll(".nhp-platf-btn-inner div").forEach((el) => {
       const key = (el.textContent || "").trim();
@@ -167,11 +173,11 @@
       },
       "Quizmoto Ready": {
         title: "Live Quizmoto",
-        body: "Host a live quiz. Players join with a code and compete together in realtime.",
+        body: "A separate live-quiz feature. Host a session, share a join code or link, and everyone plays the same questions in realtime.",
       },
       "Live Quizmoto": {
         title: "Live Quizmoto",
-        body: "Host a live quiz. Players join with a code and compete together in realtime.",
+        body: "A separate live-quiz feature. Host a session, share a join code or link, and everyone plays the same questions in realtime.",
       },
       "SCORM Course": {
         title: "SCORM Delivery",
@@ -191,11 +197,11 @@
       },
       "Learning Analytics": {
         title: "Analytics & Reports",
-        body: "Completion, score and time on course - live dashboard plus PDF and Excel reports.",
+        body: "Completion, score and time on course \u2014 live dashboard plus PDF and Excel reports.",
       },
       "Analytics & Reports": {
         title: "Analytics & Reports",
-        body: "Completion, score and time on course - live dashboard plus PDF and Excel reports.",
+        body: "Completion, score and time on course \u2014 live dashboard plus PDF and Excel reports.",
       },
     };
 
@@ -209,5 +215,40 @@
       const bodyEl = card.querySelector(".hp-platf-card-inner-text-c > div:last-child");
       if (bodyEl && bodyEl !== titleEl) bodyEl.textContent = next.body;
     });
+  }
+
+  function insertHomeQuizmotoSection() {
+    if (!onHome) return;
+    if (document.querySelector(".lmsgen-quizmoto-home")) return;
+
+    const card = document.querySelector(".hp-platform-card-w");
+    const anchor = card && card.closest("section");
+    if (!anchor) return;
+
+    const block = document.createElement("section");
+    block.className = "lmsgen-quizmoto-home";
+    block.id = "quizmoto";
+    block.innerHTML =
+      '<div class="lmsgen-qm-inner">' +
+        '<div class="lmsgen-qm-copy">' +
+          '<p class="lmsgen-qm-kicker">Live quiz \u00b7 separate from the SCORM player</p>' +
+          '<h2>Quizmoto is LMSGEN\u2019s live quiz engine</h2>' +
+          '<p class="lmsgen-qm-lead">Quizmoto is not the course player. It is a dedicated live-quiz feature in the same workspace. The host starts a session, shares a join code or link, and every player answers the same questions in realtime \u2014 classroom, all-hands, or remote.</p>' +
+          '<ul class="lmsgen-qm-steps">' +
+            '<li><strong>Host</strong> opens Quizmoto and starts a live quiz.</li>' +
+            '<li><strong>Players</strong> join with a code, QR, or copied link \u2014 no LMS login needed.</li>' +
+            '<li><strong>Play</strong> with a countdown, live answers, podium, then downloadable reports.</li>' +
+          '</ul>' +
+          '<div class="lmsgen-qm-actions">' +
+            '<a class="lmsgen-qm-btn" href="/login">Host a live quiz</a>' +
+            '<a class="lmsgen-qm-link" href="/landing/solutions/#quizmoto-engagement">See it on Solutions</a>' +
+          '</div>' +
+        '</div>' +
+        '<div class="lmsgen-qm-visual">' +
+          '<img src="/landing/images/lmsgen/11-quizmoto-live.svg?v=20260830v" alt="Quizmoto live quiz \u2014 join code, realtime play, podium" />' +
+        '</div>' +
+      '</div>';
+
+    anchor.insertAdjacentElement("afterend", block);
   }
 })();
