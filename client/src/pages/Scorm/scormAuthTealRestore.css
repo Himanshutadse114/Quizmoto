@@ -15,6 +15,11 @@
   --sa-orange: #4FC9BF !important;
   --sa-orange-strong: #7BDCD3 !important;
   --sa-yellow: #7BDCD3 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 100dvh !important;
+  height: auto !important;
   background:
     radial-gradient(circle at 18% -8%, rgba(79,201,191,.10), transparent 25rem),
     radial-gradient(circle at 88% 100%, rgba(63,203,140,.04), transparent 26rem),
@@ -110,6 +115,12 @@
 
 .scorm-auth-workbench.sa-login-only .sa-shell {
   width: min(460px, calc(100% - 28px)) !important;
+  min-height: unset !important;
+  height: auto !important;
+  margin: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
 }
 
 .scorm-auth-workbench.sa-login-only .sa-card,
@@ -117,5 +128,7 @@
   grid-template-columns: 1fr !important;
   min-height: 0 !important;
   max-width: 460px !important;
+  width: 100% !important;
   margin: 0 auto !important;
+  align-self: center !important;
 }
