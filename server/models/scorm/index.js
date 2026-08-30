@@ -9,6 +9,7 @@ const ScormLearnerRoster = require('./ScormLearnerRoster');
 const ScormUserEntitlement = require('./ScormUserEntitlement');
 const ScormWorkspace = require('./ScormWorkspace');
 const ScormWorkspaceMember = require('./ScormWorkspaceMember');
+const ScormWorkspaceAuthConfig = require('./ScormWorkspaceAuthConfig');
 const ScormAccessGrant = require('../ScormAccessGrant');
 const ScormAccessRequest = require('../ScormAccessRequest');
 
@@ -40,6 +41,16 @@ ScormWorkspaceMember.belongsTo(ScormWorkspace, {
     as: 'workspace'
 });
 
+ScormWorkspace.hasOne(ScormWorkspaceAuthConfig, {
+    foreignKey: 'workspaceId',
+    as: 'authConfig',
+    onDelete: 'CASCADE'
+});
+ScormWorkspaceAuthConfig.belongsTo(ScormWorkspace, {
+    foreignKey: 'workspaceId',
+    as: 'workspace'
+});
+
 module.exports = {
     ScormPackage,
     ScormCourse,
@@ -52,6 +63,7 @@ module.exports = {
     ScormUserEntitlement,
     ScormWorkspace,
     ScormWorkspaceMember,
+    ScormWorkspaceAuthConfig,
     ScormAccessGrant,
     ScormAccessRequest
 };
