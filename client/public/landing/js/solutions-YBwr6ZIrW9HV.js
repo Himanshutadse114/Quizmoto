@@ -45,7 +45,11 @@
   arrow&&arrow.addEventListener("click",()=>{const submit=document.querySelector(".btn-primary.submit");submit&&submit.click()});
 
   const hide=document.createElement("style");
-  hide.textContent=".sl-features-key-c,.sl-hero-deco,.ab-hero-carousel-w,.ab-hero-img{display:none!important}";
+  hide.textContent=".sl-features-key-c,.sl-hero-deco,.ab-hero-carousel-w,.ab-hero-img{display:none!important}"+
+    ".sl-hero-img-w,.sl-hero-img-c{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important}"+
+    ".lmsgen-orbit-svg{display:block;width:100%;height:auto;background:transparent}"+
+    "#lmsgen-orbit-spin{transform-box:view-box;transform-origin:700px 400px;animation:lmsgenOrbit 36s linear infinite}"+
+    "@keyframes lmsgenOrbit{to{transform:rotate(360deg)}}";
   document.head.appendChild(hide);
   const keyBlock=document.querySelector(".sl-features-key-c");
   if(keyBlock){
@@ -61,7 +65,7 @@
   if(aboutCarousel) aboutCarousel.remove();
 
   const ART_BASE="/landing/images/lmsgen/";
-  const ART_VER="?v=20260830j";
+  const ART_VER="?v=20260830k";
   const css=document.createElement("link");
   css.rel="stylesheet";
   css.href="/landing/css/lmsgen-advantage-assets.css"+ART_VER;
@@ -95,6 +99,22 @@
       applySrc(img, item[1], item[2]);
     });
   });
+
+  document.querySelectorAll(".sl-hero-img").forEach(function(img){
+    const url = ART_BASE+"01-hero-orbit.svg"+ART_VER;
+    fetch(url).then(function(res){ return res.ok ? res.text() : Promise.reject(); }).then(function(markup){
+      const box = document.createElement("div");
+      box.innerHTML = markup;
+      const svg = box.querySelector("svg");
+      if(!svg) return;
+      svg.classList.add("sl-hero-img","lmsgen-orbit-svg");
+      svg.setAttribute("role","img");
+      svg.removeAttribute("width");
+      svg.removeAttribute("height");
+      img.replaceWith(svg);
+    }).catch(function(){});
+  });
+
   const og=document.querySelector('meta[property="og:image"]');
   if(og) og.setAttribute("content", ART_BASE+"08-og-banner.svg"+ART_VER);
 
