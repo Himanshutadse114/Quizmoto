@@ -4,7 +4,7 @@
   const BRAND_LOGO_BLACK = "/branding/lmsgen-logo-light.png";
   const BRAND_LOGO_WHITE = "/branding/lmsgen-logo-dark.png";
 
-  const cssHref = "/landing/css/lmsgen-advantage-assets.css?v=20260830f";
+  const cssHref = "/landing/css/lmsgen-advantage-assets.css?v=20260830g";
   if (!document.querySelector('link[href*="lmsgen-advantage-assets.css"]')) {
     const link = document.createElement("link");
     link.rel = "stylesheet";
