@@ -10,6 +10,9 @@ const ScormUserEntitlement = require('./ScormUserEntitlement');
 const ScormWorkspace = require('./ScormWorkspace');
 const ScormWorkspaceMember = require('./ScormWorkspaceMember');
 const ScormWorkspaceAuthConfig = require('./ScormWorkspaceAuthConfig');
+const ScormCampaign = require('./ScormCampaign');
+const ScormCampaignLearner = require('./ScormCampaignLearner');
+const ScormCampaignCourse = require('./ScormCampaignCourse');
 const ScormAccessGrant = require('../ScormAccessGrant');
 const ScormAccessRequest = require('../ScormAccessRequest');
 
@@ -51,6 +54,20 @@ ScormWorkspaceAuthConfig.belongsTo(ScormWorkspace, {
     as: 'workspace'
 });
 
+ScormWorkspace.hasMany(ScormCampaign, { foreignKey: 'workspaceId', as: 'campaigns', onDelete: 'CASCADE' });
+ScormCampaign.belongsTo(ScormWorkspace, { foreignKey: 'workspaceId', as: 'workspace' });
+
+ScormCampaign.hasMany(ScormCampaignLearner, { foreignKey: 'campaignId', as: 'learners', onDelete: 'CASCADE' });
+ScormCampaignLearner.belongsTo(ScormCampaign, { foreignKey: 'campaignId', as: 'campaign' });
+
+ScormCampaign.hasMany(ScormCampaignCourse, { foreignKey: 'campaignId', as: 'campaignCourses', onDelete: 'CASCADE' });
+ScormCampaignCourse.belongsTo(ScormCampaign, { foreignKey: 'campaignId', as: 'campaign' });
+ScormCampaignCourse.belongsTo(ScormCourse, { foreignKey: 'courseId', as: 'course' });
+ScormCourse.hasMany(ScormCampaignCourse, { foreignKey: 'courseId', as: 'campaignLinks' });
+
+ScormCampaign.hasMany(ScormRegistration, { foreignKey: 'campaignId', as: 'registrations' });
+ScormRegistration.belongsTo(ScormCampaign, { foreignKey: 'campaignId', as: 'campaign' });
+
 module.exports = {
     ScormPackage,
     ScormCourse,
@@ -64,6 +81,9 @@ module.exports = {
     ScormWorkspace,
     ScormWorkspaceMember,
     ScormWorkspaceAuthConfig,
+    ScormCampaign,
+    ScormCampaignLearner,
+    ScormCampaignCourse,
     ScormAccessGrant,
     ScormAccessRequest
 };
