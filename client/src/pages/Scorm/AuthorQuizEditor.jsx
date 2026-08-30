@@ -95,9 +95,9 @@ export default function AuthorQuizEditor({ quiz = [], onChange }) {
         </button>
       </div>
 
-      <div className="p-4 md:p-5 space-y-4">
+      <div className="qmx-quiz-body p-4 md:p-5 space-y-4">
         {questions.length === 0 && (
-          <div className="qmx-quiz-empty rounded-2xl border border-dashed p-8 text-center">
+          <div className="qmx-quiz-empty p-8 text-center">
             <div className="qmx-quiz-empty-title text-sm font-semibold">No knowledge-check questions</div>
             <div className="qmx-quiz-empty-copy text-xs mt-1">Add a question to include an assessment in this course.</div>
             <button type="button" onClick={add} className="scorm-button-primary mt-4 inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold"><Plus size={14} /> Add first question</button>
@@ -111,7 +111,7 @@ export default function AuthorQuizEditor({ quiz = [], onChange }) {
             question.explanation.trim()
           );
           return (
-            <article key={questionIndex} className="qmx-question-card rounded-2xl border overflow-hidden">
+            <article key={questionIndex} className="qmx-question-card overflow-hidden">
               <div className="qmx-question-header px-4 py-3.5 border-b flex items-center gap-3">
                 <div className="qmx-question-index w-9 h-9 rounded-xl grid place-items-center font-mono font-bold">{questionIndex + 1}</div>
                 <div className="min-w-0 flex-1">
@@ -126,7 +126,7 @@ export default function AuthorQuizEditor({ quiz = [], onChange }) {
                 </div>
               </div>
 
-              <div className="p-4 md:p-5 space-y-4">
+              <div className="qmx-question-body p-4 md:p-5 space-y-4">
                 <div>
                   <label className="qmx-field-label block text-[10px] uppercase tracking-[.11em] font-semibold mb-2">Question</label>
                   <textarea rows={2} value={question.question} onChange={(event) => update(questionIndex, { question: event.target.value })} className="w-full p-3 text-sm leading-relaxed" placeholder="Enter the learner question" />
