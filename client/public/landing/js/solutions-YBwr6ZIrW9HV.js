@@ -45,9 +45,7 @@
   arrow&&arrow.addEventListener("click",()=>{const submit=document.querySelector(".btn-primary.submit");submit&&submit.click()});
 
   const hide=document.createElement("style");
-  hide.textContent=".sl-features-key-c,.sl-hero-deco,.ab-hero-carousel-w,.ab-hero-img{display:none!important}"+
-    ".sl-hero-img-w,.sl-hero-img-c{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important}"+
-    ".lmsgen-orbit-svg{display:block;width:100%;height:auto;background:transparent}";
+  hide.textContent=".sl-features-key-c,.sl-hero-deco,.ab-hero-carousel-w,.ab-hero-img{display:none!important}";
   document.head.appendChild(hide);
   const keyBlock=document.querySelector(".sl-features-key-c");
   if(keyBlock){
@@ -63,14 +61,31 @@
   if(aboutCarousel) aboutCarousel.remove();
 
   const ART_BASE="/landing/images/lmsgen/";
-  const ART_VER="?v=20260830k";
+  const ART_VER="?v=20260830m";
   const css=document.createElement("link");
   css.rel="stylesheet";
   css.href="/landing/css/lmsgen-advantage-assets.css"+ART_VER;
   document.head.appendChild(css);
 
+  const HOME_HERO = "/atelora-marketing/hero-dashboard.png";
+  const heroWrap = document.querySelector(".sl-hero-img-w") || document.querySelector(".sl-hero-img-c");
+  if(heroWrap){
+    heroWrap.innerHTML =
+      '<div class="atelora-hero-product">'+
+        '<div class="atelora-product-shell">'+
+          '<div class="atelora-product-chrome" aria-hidden="true">'+
+            '<div class="atelora-window-dots"><i></i><i></i><i></i></div>'+
+            '<div class="atelora-product-title">LMSGEN Platform</div>'+
+            '<div class="atelora-product-chip">Learning workspace</div>'+
+          '</div>'+
+          '<div class="atelora-product-media">'+
+            '<img src="'+HOME_HERO+'" alt="LMSGEN learning platform dashboard" class="sl-hero-img" loading="eager" decoding="async" />'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+  }
+
   const art=[
-    [".sl-hero-img", ART_BASE+"01-hero-orbit.svg", "LMSGEN platform — AI Studio, SCORM, Quizmoto, publish and reports"],
     ["#ai-course-authoring .sl-feat-common-img", ART_BASE+"02-ai-from-documents.svg", "LMSGEN turns documents into structured courses"],
     ["#scorm-ready-delivery .sl-feat-common-img", ART_BASE+"10-scorm-package.svg", "Publish in LMSGEN or export a SCORM package"],
     ["#quizmoto-engagement .sl-feat-common-img", ART_BASE+"11-quizmoto-live.svg", "Quizmoto live quiz — separate realtime feature"],
@@ -89,28 +104,13 @@
     img.setAttribute("src", src+ART_VER);
     img.src = src+ART_VER;
     if(alt) img.alt = alt;
-    img.loading = img.classList.contains("sl-hero-img") ? "eager" : "lazy";
+    img.loading = "lazy";
     img.style.opacity = "1";
   }
   art.forEach(function(item){
     document.querySelectorAll(item[0]).forEach(function(img){
       applySrc(img, item[1], item[2]);
     });
-  });
-
-  document.querySelectorAll(".sl-hero-img").forEach(function(img){
-    const url = ART_BASE+"01-hero-orbit.svg"+ART_VER;
-    fetch(url).then(function(res){ return res.ok ? res.text() : Promise.reject(); }).then(function(markup){
-      const box = document.createElement("div");
-      box.innerHTML = markup;
-      const svg = box.querySelector("svg");
-      if(!svg) return;
-      svg.classList.add("sl-hero-img","lmsgen-orbit-svg");
-      svg.setAttribute("role","img");
-      svg.removeAttribute("width");
-      svg.removeAttribute("height");
-      img.replaceWith(svg);
-    }).catch(function(){});
   });
 
   const og=document.querySelector('meta[property="og:image"]');
