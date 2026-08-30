@@ -2,13 +2,15 @@ const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
 const auth = require('../middleware');
+const User = require('../../models/User');
 const { sequelize } = require('../../config/database');
 const {
     ScormLearnerRoster,
     ScormCourse,
     ScormRegistration
 } = require('../../models/scorm');
-const { assertEnrollmentAllowed } = require('../../services/scorm/ScormEntitlementService');
+const { getAccessRole } = require('../../services/scorm/ScormAccessService');
+const { getEntitlement } = require('../../services/scorm/ScormEntitlementService');
 
 const MAX_ASSIGNMENT_COMBINATIONS = 5000;
 
@@ -50,6 +52,45 @@ function serializeAssignment(reg) {
             status: reg.course.status
         } : null
     };
+}
+
+async function assertBulkLearnerLimit(hostId, learnerEmails) {
+    const host = await User.findByPk(hostId);
+    if (!host?.email) return;
+    const role = await getAccessRole(host.email);
+    const entitlement = await getEntitlement(host.email, role || 'admin');
+    const maxLearners = entitlement?.maxLearners;
+    if (maxLearners === null || maxLearners === undefined) return;
+
+    const courses = await ScormCourse.findAll({
+        where: { hostId },
+        attributes: ['id'],
+        raw: true
+    });
+    const courseIds = courses.map((course) => course.id);
+    const existingRows = courseIds.length
+        ? await ScormRegistration.findAll({
+            where: {
+                courseId: { [Op.in]: courseIds },
+                isPreview: false,
+                status: { [Op.ne]: 'revoked' },
+                learnerEmail: { [Op.ne]: null }
+            },
+            attributes: ['learnerEmail'],
+            raw: true
+        })
+        : [];
+
+    const enrolled = new Set(existingRows.map((row) => normalizeEmail(row.learnerEmail)).filter(Boolean));
+    const requested = [...new Set((learnerEmails || []).map(normalizeEmail).filter(Boolean))];
+    const additional = requested.filter((email) => !enrolled.has(email)).length;
+    const projected = enrolled.size + additional;
+    if (projected > Number(maxLearners)) {
+        const err = new Error(`Assigning these learners would exceed the workspace learner limit (${projected}/${maxLearners}).`);
+        err.status = 403;
+        err.code = 'SCORM_LEARNER_LIMIT_REACHED';
+        throw err;
+    }
 }
 
 router.get('/', auth, async (req, res) => {
@@ -126,9 +167,7 @@ router.post('/bulk', auth, async (req, res) => {
             });
         }
 
-        for (const learner of learners) {
-            await assertEnrollmentAllowed(req.userId, learner.email);
-        }
+        await assertBulkLearnerLimit(req.userId, learners.map((learner) => learner.email));
 
         let created = 0;
         let updated = 0;
@@ -151,7 +190,7 @@ router.post('/bulk', auth, async (req, res) => {
                             courseId: course.id,
                             learnerEmail: email,
                             learnerName: learner.learnerName || 'Learner',
-                            status: 'assigned',
+                            status: 'invited',
                             assignedAt: new Date(),
                             assignedByUserId: req.authenticatedUserId || req.userId,
                             dueAt,
@@ -162,7 +201,7 @@ router.post('/bulk', auth, async (req, res) => {
                     } else {
                         registration.learnerEmail = email;
                         registration.learnerName = learner.learnerName || registration.learnerName || 'Learner';
-                        if (registration.status === 'revoked') registration.status = 'assigned';
+                        if (registration.status === 'revoked') registration.status = 'invited';
                         if (!registration.assignedAt) registration.assignedAt = new Date();
                         registration.assignedByUserId = req.authenticatedUserId || req.userId;
                         registration.dueAt = dueAt;
