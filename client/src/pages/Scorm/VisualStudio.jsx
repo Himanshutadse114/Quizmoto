@@ -45,65 +45,88 @@ const Metric = ({ label, value, icon: Icon }) => (
   </div>
 );
 
+function ThemeCard({ theme, selected, disabled, onSelect }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(theme.id)}
+      disabled={disabled}
+      aria-pressed={selected}
+      className="text-left rounded-2xl border p-2.5 sm:p-3.5 transition-all min-w-0"
+      style={{
+        borderColor: selected ? theme.primary : 'var(--scorm-line)',
+        background: selected ? theme.background : 'var(--scorm-surface-soft)',
+        boxShadow: selected ? `0 0 0 2px ${theme.primary}33` : 'none'
+      }}
+    >
+      <div
+        className="h-20 sm:h-24 rounded-xl border overflow-hidden flex"
+        style={{ borderColor: `${theme.primary}33`, background: theme.background }}
+      >
+        <div className="w-[34%] h-full shrink-0" style={{ background: theme.primary }} />
+        <div className="flex-1 min-w-0 p-2.5 flex flex-col justify-center" style={{ color: theme.text }}>
+          <div className="h-2 rounded-full w-[82%]" style={{ background: theme.text, opacity: 0.92 }} />
+          <div className="h-1.5 rounded-full w-[64%] mt-2" style={{ background: theme.text, opacity: 0.38 }} />
+          <div className="h-1.5 rounded-full w-[70%] mt-1.5" style={{ background: theme.text, opacity: 0.22 }} />
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-2 mt-2.5 min-h-[22px]">
+        <span className="text-xs font-semibold truncate">{theme.name}</span>
+        {selected && <CheckCircle2 size={16} className="shrink-0" style={{ color: theme.primary }} />}
+      </div>
+    </button>
+  );
+}
+
 function ThemeModal({ course, value, loading, saving, onChange, onClose, onSave }) {
   if (!course) return null;
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Course colour theme">
-      <div className="w-full max-w-2xl scorm-panel rounded-2xl border overflow-hidden shadow-2xl">
-        <div className="p-5 md:p-6 border-b flex items-start justify-between gap-4">
+    <div
+      className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Course colour theme"
+    >
+      <div className="w-full md:max-w-2xl max-h-[min(92dvh,720px)] md:max-h-[88vh] mb-[5.25rem] md:mb-0 scorm-panel rounded-t-[28px] md:rounded-2xl border overflow-hidden shadow-2xl flex flex-col">
+        <div className="p-4 md:p-6 border-b flex items-start justify-between gap-3 shrink-0">
           <div className="min-w-0">
             <div className="scorm-micro text-[9px] uppercase font-semibold">Course appearance</div>
-            <h2 className="text-xl font-semibold mt-1">Choose a colour theme</h2>
-            <p className="text-xs mt-1.5 max-w-xl">Change the learner-course colours after creation. Existing text, questions and generated images stay exactly the same.</p>
+            <h2 className="text-lg md:text-xl font-semibold mt-1">Choose a colour theme</h2>
+            <p className="text-xs mt-1.5 leading-relaxed">
+              Change learner-course colours after creation. Existing text, questions and generated images stay the same.
+            </p>
           </div>
           <button type="button" onClick={onClose} disabled={saving} className="scorm-button-secondary w-10 h-10 grid place-items-center shrink-0" aria-label="Close theme settings"><X size={16} /></button>
         </div>
 
-        <div className="p-5 md:p-6">
-          <div className="text-sm font-semibold truncate mb-4">{course.title || 'Untitled course'}</div>
+        <div className="p-4 md:p-6 overflow-y-auto min-h-0 flex-1 overscroll-contain">
+          <div className="text-sm font-semibold break-words mb-4">{course.title || 'Untitled course'}</div>
           {loading ? (
             <div className="min-h-[180px] grid place-items-center">
               <div className="text-center text-sm opacity-70"><Loader2 size={20} className="animate-spin mx-auto mb-2" />Loading current theme…</div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {COURSE_THEMES.map((theme) => {
-                const selected = value === theme.id;
-                return (
-                  <button
-                    key={theme.id}
-                    type="button"
-                    onClick={() => onChange(theme.id)}
-                    disabled={saving}
-                    className="text-left rounded-xl border p-3.5 transition-all"
-                    style={{ borderColor: selected ? 'var(--scorm-accent)' : 'var(--scorm-line)', background: selected ? 'var(--scorm-accent-soft)' : 'var(--scorm-surface-soft)' }}
-                  >
-                    <div className="h-16 rounded-lg border overflow-hidden flex" style={{ borderColor: 'var(--scorm-line)', background: theme.background }}>
-                      <div className="w-1/3 h-full" style={{ background: theme.primary }} />
-                      <div className="flex-1 p-2">
-                        <div className="h-2 rounded-full w-4/5" style={{ background: theme.text, opacity: 0.9 }} />
-                        <div className="h-1.5 rounded-full w-3/5 mt-2" style={{ background: theme.text, opacity: 0.35 }} />
-                        <div className="h-1.5 rounded-full w-2/3 mt-1.5" style={{ background: theme.text, opacity: 0.22 }} />
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 mt-3">
-                      <span className="text-xs font-semibold">{theme.name}</span>
-                      {selected && <CheckCircle2 size={15} style={{ color: 'var(--scorm-accent)' }} />}
-                    </div>
-                  </button>
-                );
-              })}
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+              {COURSE_THEMES.map((theme) => (
+                <ThemeCard
+                  key={theme.id}
+                  theme={theme}
+                  selected={value === theme.id}
+                  disabled={saving}
+                  onSelect={onChange}
+                />
+              ))}
             </div>
           )}
 
-          <div className="mt-5 rounded-xl border px-4 py-3 text-[11px] leading-relaxed" style={{ background: 'var(--scorm-surface-soft)', borderColor: 'var(--scorm-line)', color: 'var(--scorm-muted)' }}>
-            Theme changes rebuild only the SCORM styling. The existing course visuals are reused, so no new image generation is requested.
+          <div className="mt-4 rounded-xl border px-3.5 py-3 text-[11px] leading-relaxed" style={{ background: 'var(--scorm-surface-soft)', borderColor: 'var(--scorm-line)', color: 'var(--scorm-muted)' }}>
+            Theme changes rebuild only the SCORM styling. Course visuals are reused, so no new image generation is requested.
           </div>
         </div>
 
-        <div className="p-5 border-t flex items-center justify-end gap-2" style={{ background: 'var(--scorm-surface-soft)', borderColor: 'var(--scorm-line)' }}>
-          <button type="button" onClick={onClose} disabled={saving} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold">Cancel</button>
-          <button type="button" onClick={onSave} disabled={loading || saving || !value} className="scorm-button-primary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold disabled:opacity-50">
+        <div className="p-4 md:p-5 border-t shrink-0 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2" style={{ background: 'var(--scorm-surface-soft)', borderColor: 'var(--scorm-line)' }}>
+          <button type="button" onClick={onClose} disabled={saving} className="scorm-button-secondary w-full sm:w-auto px-4 py-3 sm:py-2.5 text-sm sm:text-xs font-semibold">Cancel</button>
+          <button type="button" onClick={onSave} disabled={loading || saving || !value} className="scorm-button-primary w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 text-sm sm:text-xs font-semibold disabled:opacity-50">
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Palette size={14} />}
             {saving ? 'Applying theme…' : 'Apply theme'}
           </button>
@@ -220,7 +243,7 @@ export default function VisualStudio() {
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7 pb-7 border-b border-white/10">
         <div className="max-w-3xl">
           <div className="scorm-micro text-[10px] uppercase font-semibold text-slate-500">Content management</div>
-          <h2 className="scorm-display text-[42px] md:text-[56px] mt-2">Course Content Editor</h2>
+          <h2 className="scorm-display text-[32px] sm:text-[42px] md:text-[56px] mt-2 leading-none">Course Content Editor</h2>
           <p className="text-sm mt-3 leading-relaxed max-w-2xl">
             Update learner-visible text, knowledge checks and the course colour theme while keeping generated visuals intact.
           </p>
