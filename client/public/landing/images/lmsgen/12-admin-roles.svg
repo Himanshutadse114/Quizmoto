@@ -1,34 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620" role="img" aria-label="ADMIN ACCESS">
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="720" viewBox="0 0 980 720" role="img" aria-label="LMSGEN Admin roles">
   <defs>
-    <linearGradient id="bg12" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#06191c"/>
-      <stop offset="1" stop-color="#0A0F0E"/>
-    </linearGradient>
-    <linearGradient id="teal12" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#4FC9BF"/>
-      <stop offset="1" stop-color="#7BDCD3"/>
-    </linearGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#071614"/><stop offset="1" stop-color="#0A0F0E"/></linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4FC9BF"/><stop offset="1" stop-color="#9BE8E1"/></linearGradient>
   </defs>
-  <rect width="900" height="620" rx="24" fill="url(#bg12)"/>
-  <rect x="18" y="18" width="864" height="584" rx="18" fill="#10211F" stroke="#4FC9BF" stroke-opacity="0.22"/>
-  <text x="48" y="64" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="700">ADMIN ACCESS</text>
-  <text x="48" y="96" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="700">Roles, approvals, control.</text>
-  <rect x="56" y="150" width="788" height="64" rx="12" fill="#0A0F0E"/>
-  <text x="80" y="190" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="20">Users · Roles · Approvals</text>
-  <rect x="56" y="232" width="240" height="280" rx="16" fill="#0E1C1A"/>
-  <text x="80" y="280" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="18">Owner</text>
-  <rect x="80" y="300" width="190" height="10" rx="5" fill="#4FC9BF"/>
-  <text x="80" y="360" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">Publish courses</text>
-  <text x="80" y="392" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">Host live quizzes</text>
-  <rect x="320" y="232" width="240" height="280" rx="16" fill="#0E1C1A"/>
-  <text x="344" y="280" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="18">Author</text>
-  <rect x="344" y="300" width="140" height="10" rx="5" fill="#7BDCD3"/>
-  <text x="344" y="360" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">Edit drafts</text>
-  <text x="344" y="392" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">Submit review</text>
-  <rect x="584" y="232" width="240" height="280" rx="16" fill="#0E1C1A"/>
-  <text x="608" y="280" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="18">Learner</text>
-  <rect x="608" y="300" width="90" height="10" rx="5" fill="#9BE8E1"/>
-  <text x="608" y="360" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">Take courses</text>
-  <text x="608" y="392" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">Join live quiz</text>
+  <rect width="980" height="720" rx="28" fill="url(#bg)"/>
+  <rect x="24" y="24" width="932" height="672" rx="18" fill="#10211F" stroke="#4FC9BF" stroke-opacity="0.28"/>
+  <rect x="24" y="24" width="932" height="46" rx="18" fill="#16312E"/>
+  <circle cx="48" cy="47" r="6" fill="#FF6B6B"/>
+  <circle cx="68" cy="47" r="6" fill="#F7D774"/>
+  <circle cx="88" cy="47" r="6" fill="#4FC9BF"/>
+  <text x="116" y="52" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="600">LMSGEN  Admin roles</text>
+  <text x="70" y="130" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="24" font-weight="700">Roles and access</text>
+  <rect x="70" y="160" width="270" height="460" rx="16" fill="#0C1A18"/>
+  <rect x="90" y="184" width="230" height="52" rx="12" fill="#1A3D39"/>
+  <text x="110" y="216" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="15">Owner</text>
+  <rect x="90" y="250" width="230" height="52" rx="12" fill="#16312E"/>
+  <text x="110" y="282" fill="#CDE7E3" font-family="Inter,Arial,sans-serif" font-size="15">Admin</text>
+  <rect x="90" y="316" width="230" height="52" rx="12" fill="#132826"/>
+  <text x="110" y="348" fill="#CDE7E3" font-family="Inter,Arial,sans-serif" font-size="15">Author</text>
+  <rect x="90" y="382" width="230" height="52" rx="12" fill="#132826"/>
+  <text x="110" y="414" fill="#CDE7E3" font-family="Inter,Arial,sans-serif" font-size="15">Host</text>
+  <rect x="90" y="448" width="230" height="52" rx="12" fill="#132826"/>
+  <text x="110" y="480" fill="#CDE7E3" font-family="Inter,Arial,sans-serif" font-size="15">Learner</text>
+  <rect x="360" y="160" width="550" height="460" rx="16" fill="#0C1A18"/>
+  <text x="388" y="204" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="14">PERMISSIONS  ·  OWNER</text>
+  <rect x="388" y="230" width="22" height="22" rx="6" fill="#4FC9BF"/>
+  <text x="424" y="248" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="15">Publish courses</text>
+  <rect x="388" y="276" width="22" height="22" rx="6" fill="#4FC9BF"/>
+  <text x="424" y="294" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="15">Manage roles</text>
+  <rect x="388" y="322" width="22" height="22" rx="6" fill="#4FC9BF"/>
+  <text x="424" y="340" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="15">Export SCORM</text>
+  <rect x="388" y="368" width="22" height="22" rx="6" fill="#4FC9BF"/>
+  <text x="424" y="386" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="15">View all reports</text>
+  <rect x="388" y="520" width="200" height="48" rx="24" fill="url(#teal)"/>
+  <text x="430" y="550" fill="#0A0F0E" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="700">Save access</text>
 </svg>

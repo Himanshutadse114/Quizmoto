@@ -55,12 +55,10 @@ body.atelora-home-refresh .hp-advg-s .hp-mark-perk-expand-img .lmsgen-advantage-
   }
 }
 
-/* Solutions page — KEY FEATURES block removed */
 .sl-features-key-c {
   display: none !important;
 }
 
-/* Solutions page — Trusted by + logo slider removed */
 body.lmsgen-solutions-ready .global-feat-logos-c,
 body.lmsgen-solutions-ready .sl-feat-main-s > .container:first-child,
 body.lmsgen-solutions-ready .sl-feat-main-s > .global-separator {
@@ -73,7 +71,6 @@ body.lmsgen-solutions-ready .sl-feat-main-s {
   min-height: 0 !important;
 }
 
-/* Solutions page — LMSGEN product shots */
 .sl-hero-img-w .sl-hero-img[src*="lmsgen/"] {
   object-fit: cover;
   object-position: center top;
@@ -87,16 +84,17 @@ body.lmsgen-solutions-ready .sl-feat-main-s {
 .sl-featkey-card-img img[src*="lmsgen/"],
 .sl-features-key-banner-img-w img[src*="lmsgen/"],
 .nsl-local-graph-card-img-c img[src*="lmsgen/"] {
-  object-fit: contain;
-  object-position: center;
-  background: #0A0F0E;
-  border-radius: 1.2rem;
+  object-fit: cover;
+  object-position: center top;
+  background: #10211F;
+  border: 1px solid rgba(79, 201, 191, 0.22);
+  border-radius: 1.6rem;
   width: 100%;
   height: 100%;
-  min-height: 180px;
+  min-height: 280px;
+  box-shadow: 0 18px 40px rgba(2, 11, 14, 0.35);
 }
 
-/* Homepage platform cards — hide leftover country flags / map pins */
 body.atelora-home-refresh .hp-platf-card-inner-icon {
   display: none !important;
 }
@@ -114,12 +112,6 @@ body.atelora-home-refresh .hp-platf-card-inner-text-c > div:last-child {
   line-height: 1.35;
 }
 
-/*
- * Solutions mid-page sections sit on the dark #0A0F0E canvas, but Webflow
- * still paints them jungle #003F3A (meant for a white page). Force readable
- * platform colors on those blocks only. Hero, lemon band, footer, and the
- * cookie modal keep their own contrast.
- */
 body.lmsgen-solutions-ready .sl-feat-main-s,
 body.lmsgen-solutions-ready .sl-feat-common-s,
 body.lmsgen-solutions-ready .sl-feat-templ-s,
