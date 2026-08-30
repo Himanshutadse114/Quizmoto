@@ -1,0 +1,79 @@
+/* LMSGEN product type = marketing site type.
+ * Body / UI: Plus Jakarta Sans
+ * Large titles: Barlow Condensed
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap");
+
+html,
+body,
+#root,
+button,
+input,
+textarea,
+select {
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.scorm-auth-workbench,
+.scorm-auth-workbench .sa-display,
+.scorm-auth-workbench .sa-mono,
+.scorm-auth-workbench .sa-back,
+.scorm-auth-workbench .sa-top-note,
+.scorm-auth-workbench .sa-kicker,
+.scorm-auth-workbench .sa-point,
+.scorm-auth-workbench .sa-form-kicker,
+.scorm-auth-workbench .sa-form-title,
+.scorm-auth-workbench .sa-tab,
+.scorm-auth-workbench .sa-notice-title,
+.scorm-auth-workbench .sa-google-label,
+.scorm-auth-workbench .sa-google-face,
+.scorm-auth-workbench .sa-divider,
+.scorm-auth-workbench .sa-label,
+.scorm-auth-workbench .sa-input,
+.scorm-auth-workbench .sa-submit {
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.scorm-editorial,
+.scorm-editorial h1,
+.scorm-editorial h2,
+.scorm-editorial h3,
+.scorm-editorial h4,
+.scorm-editorial p,
+.scorm-editorial button,
+.scorm-editorial a,
+.scorm-editorial input,
+.scorm-editorial textarea,
+.scorm-editorial select,
+.scorm-editorial .scorm-micro,
+.scorm-editorial .scorm-nav-section,
+.scorm-editorial .scorm-page-title,
+.scorm-editorial .scorm-nav-item,
+.scorm-editorial .scorm-button-primary,
+.scorm-editorial .scorm-button-secondary {
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.scorm-editorial.scorm-workbench,
+.scorm-editorial.scorm-workbench p,
+.scorm-editorial.scorm-workbench button,
+.scorm-editorial.scorm-workbench a,
+.scorm-editorial.scorm-workbench input,
+.scorm-editorial.scorm-workbench textarea,
+.scorm-editorial.scorm-workbench select,
+.scorm-editorial.scorm-workbench .scorm-nav-item,
+.scorm-editorial.scorm-workbench .scorm-button-primary,
+.scorm-editorial.scorm-workbench .scorm-button-secondary,
+.scorm-editorial.scorm-workbench .scorm-metric-label,
+.scorm-editorial.scorm-workbench .scorm-metric-value {
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.scorm-editorial .scorm-display,
+.scorm-editorial.scorm-workbench .scorm-display,
+.scorm-editorial.scorm-workbench h1,
+.scorm-editorial.scorm-workbench h2,
+.scorm-auth-workbench .sa-title {
+  font-family: "Barlow Condensed", "Plus Jakarta Sans", sans-serif !important;
+}
