@@ -34,14 +34,12 @@ const pages = [
   })),
 ];
 
+const HERO_HEADING = 'Save 95% of time and budget on every custom SCORM course.';
+const HERO_DESCRIPTION =
+  'Send your brief today, get your next-level SCORM course in your LMS the next minutes. AI-powered production at a fraction of the cost and resources.';
+
 const HOME_REPLACEMENTS = [
   ['For modern L&D and security awareness teams', 'One workspace for modern learning teams'],
-  ['Save 95% of time and budget on every custom SCORM course.', 'Create, deliver and measure learning in one place.'],
-  [
-    'Send your brief today, get your next-level SCORM course in your LMS Next minute. AI-powered production',
-    'Build SCORM-ready courses with AI, run live Quizmoto sessions, manage learners and track progress',
-  ],
-  ['at a fraction of the cost and resources.', 'from one connected LMSGEN workspace.'],
   ['<div>How It Works</div>', '<div>See solutions</div>'],
 ];
 
@@ -449,10 +447,24 @@ function ensureBodyClasses(html, classes) {
   });
 }
 
+function applyHeroCopy(html) {
+  html = html.replace(
+    /<h1 class="hp-hero-h1">[\s\S]*?<\/h1>/,
+    `<h1 class="hp-hero-h1">${HERO_HEADING}</h1>`,
+  );
+  html = html.replace(
+    /<p class="hp-hero-p">[\s\S]*?<\/p>/,
+    `<p class="hp-hero-p">\n                ${HERO_DESCRIPTION}\n              </p>`,
+  );
+  return html;
+}
+
 function prepareHome(html) {
   for (const [from, to] of HOME_REPLACEMENTS) {
     html = html.split(from).join(to);
   }
+
+  html = applyHeroCopy(html);
 
   for (const [from, to] of FEATURE_CARD_TEXT_REPLACEMENTS) {
     html = html.replace(from, to);
