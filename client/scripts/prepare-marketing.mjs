@@ -96,8 +96,8 @@ const FEATURE_ASSETS = [
 const SOLUTIONS_ART = [
   {
     needles: ['/atelora-marketing/hero-dashboard.png', 'class="sl-hero-img"'],
-    src: '/landing/images/lmsgen/01-hero-course-studio.svg',
-    alt: 'LMSGEN course studio \u2014 AI authoring, SCORM delivery and learner tracking',
+    src: '/landing/images/lmsgen/01-hero-flow-diagram.svg',
+    alt: 'LMSGEN flow \u2014 brief to AI studio, SCORM, live quiz and tracking',
     className: 'sl-hero-img',
     eager: true,
   },
@@ -325,7 +325,7 @@ function replaceMatchingImgTag(html, needle, src, alt, className, eager) {
 
   const loading = eager ? 'eager' : 'lazy';
   const cls = className ? ` class="${className}"` : '';
-  const tag = `<img src="${src}?v=20260830e" alt="${alt}" loading="${loading}" decoding="async"${cls} />`;
+  const tag = `<img src="${src}?v=20260830f" alt="${alt}" loading="${loading}" decoding="async"${cls} />`;
   return { html: html.slice(0, tagStart) + tag + html.slice(tagEnd + 1), replaced: true };
 }
 
@@ -407,7 +407,7 @@ function ensureHeadAssets(html, baseHref) {
   }
 
   if (!html.includes('/landing/css/lmsgen-advantage-assets.css')) {
-    inserts.push('<link rel="stylesheet" href="/landing/css/lmsgen-advantage-assets.css?v=20260830e" />');
+    inserts.push('<link rel="stylesheet" href="/landing/css/lmsgen-advantage-assets.css?v=20260830f" />');
   }
 
   if (!html.includes('id="lmsgen-anti-fouc"')) {
