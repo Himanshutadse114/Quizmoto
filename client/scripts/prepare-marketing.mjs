@@ -43,10 +43,10 @@ const HOME_REPLACEMENTS = [
   ['For modern L&D and security awareness teams', HERO_EYEBROW],
   ['One workspace for modern learning teams', HERO_EYEBROW],
   ['Create with AI. Publish on LMSGEN. Invite your team.', HERO_EYEBROW],
-  ['Engage Learners with Quizmoto', 'Engage teams with live Quizmoto'],
-  ['Publish on LMSGEN and invite your team', 'Engage teams with live Quizmoto'],
-  ['Track Progress with Clear Analytics', 'Publish SCORM or track in LMSGEN'],
-  ['Or export SCORM to your own LMS', 'Publish SCORM or track in LMSGEN'],
+  ['Engage Learners with Quizmoto', 'Engage Teams with Quizmoto'],
+  ['Publish on LMSGEN and invite your team', 'Engage Teams with Quizmoto'],
+  ['Track Progress with Clear Analytics', 'Track Progress in LMSGEN'],
+  ['Or export SCORM to your own LMS', 'Track Progress in LMSGEN'],
   ['<div>How It Works</div>', '<div>See solutions</div>'],
 ];
 

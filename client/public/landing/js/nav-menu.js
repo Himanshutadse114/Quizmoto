@@ -257,5 +257,17 @@
 
     const following = block.nextElementSibling;
     if (following) following.classList.add("lmsgen-after-qm");
+
+    // Inserting this section after GSAP ScrollTrigger has already measured
+    // and pinned the horizontal-scroll platform section above leaves its
+    // pin-spacer sized for the old (shorter) page - refresh recalculates
+    // pin start/end and spacer height against the real, current layout.
+    // Without this the page renders far taller than its content (a stale
+    // pin-spacer can reserve thousands of extra pixels) and scrolling past
+    // the platform section jumps erratically.
+    const refresh = () => window.ScrollTrigger && window.ScrollTrigger.refresh();
+    if (window.requestAnimationFrame) requestAnimationFrame(refresh);
+    else refresh();
+    window.addEventListener("load", refresh, { once: true });
   }
 })();
