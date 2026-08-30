@@ -153,6 +153,8 @@ function workspaceAuthConfigColumns() {
             onUpdate: 'CASCADE',
             onDelete: 'CASCADE'
         },
+
+        // Learner policy.
         joiningMode: {
             type: DataTypes.STRING(32),
             allowNull: false,
@@ -184,6 +186,40 @@ function workspaceAuthConfigColumns() {
             type: DataTypes.TEXT,
             allowNull: true
         },
+
+        // Staff/Admin policy.
+        staffJoiningMode: {
+            type: DataTypes.STRING(32),
+            allowNull: false,
+            defaultValue: 'password_or_sso'
+        },
+        staffGoogleEnabled: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false
+        },
+        staffGoogleClientId: {
+            type: DataTypes.STRING(255),
+            allowNull: true
+        },
+        staffMicrosoftEnabled: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false
+        },
+        staffMicrosoftClientId: {
+            type: DataTypes.STRING(255),
+            allowNull: true
+        },
+        staffMicrosoftTenantId: {
+            type: DataTypes.STRING(128),
+            allowNull: true
+        },
+        staffAllowedDomainsJson: {
+            type: DataTypes.TEXT,
+            allowNull: true
+        },
+
         updatedByUserId: {
             type: DataTypes.INTEGER,
             allowNull: true
