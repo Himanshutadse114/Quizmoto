@@ -1,97 +1,113 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="820" viewBox="0 0 1600 820" role="img" aria-label="LMSGEN learning flow diagram">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="780" viewBox="0 0 1600 780" role="img" aria-label="LMSGEN flow from brief to publish, SCORM, live quiz and tracking">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#061614"/>
+      <stop offset="0" stop-color="#071816"/>
       <stop offset="1" stop-color="#050C0B"/>
     </linearGradient>
-    <radialGradient id="aura" cx="50%" cy="46%" r="52%">
-      <stop offset="0" stop-color="#4FC9BF" stop-opacity="0.22"/>
+    <radialGradient id="aura" cx="50%" cy="42%" r="58%">
+      <stop offset="0" stop-color="#4FC9BF" stop-opacity="0.20"/>
       <stop offset="1" stop-color="#4FC9BF" stop-opacity="0"/>
     </radialGradient>
     <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="#4FC9BF" stop-opacity="0"/>
-      <stop offset="0.18" stop-color="#4FC9BF"/>
-      <stop offset="0.82" stop-color="#9BE8E1"/>
+      <stop offset="0.2" stop-color="#4FC9BF"/>
+      <stop offset="0.8" stop-color="#9BE8E1"/>
       <stop offset="1" stop-color="#9BE8E1" stop-opacity="0"/>
     </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="6" result="b"/>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
-      <path d="M48 0H0V48" fill="none" stroke="#4FC9BF" stroke-opacity="0.06" stroke-width="1"/>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#4FC9BF" stroke-opacity="0.05" stroke-width="1"/>
     </pattern>
     <style>
-      .pulse { animation: pulse 2.8s ease-in-out infinite; }
-      .flow { stroke-dasharray: 12 18; animation: dash 2.4s linear infinite; }
-      .flow-slow { stroke-dasharray: 8 22; animation: dash 3.6s linear infinite reverse; }
-      .orbit { animation: blink 1.8s ease-in-out infinite; }
-      @keyframes dash { to { stroke-dashoffset: -120; } }
-      @keyframes pulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
-      @keyframes blink { 0%,100% { opacity: .25; } 50% { opacity: 1; } }
+      .flow { stroke-dasharray: 10 16; animation: dash 2.2s linear infinite; }
+      .flow-slow { stroke-dasharray: 6 20; animation: dash 3.4s linear infinite reverse; }
+      .pulse { animation: pulse 2.6s ease-in-out infinite; }
+      .dot { animation: blink 1.6s ease-in-out infinite; }
+      @keyframes dash { to { stroke-dashoffset: -140; } }
+      @keyframes pulse { 0%,100% { opacity:.45 } 50% { opacity:1 } }
+      @keyframes blink { 0%,100% { opacity:.2 } 50% { opacity:1 } }
     </style>
   </defs>
-  <rect width="1600" height="820" rx="28" fill="url(#bg)"/>
-  <rect width="1600" height="820" rx="28" fill="url(#grid)"/>
-  <ellipse cx="800" cy="390" rx="620" ry="260" fill="url(#aura)"/>
-  <path class="flow-slow" d="M180 430 C 280 210, 520 160, 800 150" fill="none" stroke="#4FC9BF" stroke-opacity="0.18" stroke-width="1.4"/>
-  <path class="flow-slow" d="M1420 430 C 1320 210, 1080 160, 800 150" fill="none" stroke="#4FC9BF" stroke-opacity="0.18" stroke-width="1.4"/>
-  <path class="flow-slow" d="M180 430 C 360 640, 620 700, 800 690" fill="none" stroke="#4FC9BF" stroke-opacity="0.14" stroke-width="1.2"/>
-  <path class="flow-slow" d="M1420 430 C 1240 640, 980 700, 800 690" fill="none" stroke="#4FC9BF" stroke-opacity="0.14" stroke-width="1.2"/>
-  <path class="flow" d="M310 318 C 430 250, 560 228, 690 250" fill="none" stroke="url(#beam)" stroke-width="2.4" filter="url(#glow)"/>
-  <path class="flow" d="M910 250 C 1040 228, 1170 250, 1290 318" fill="none" stroke="url(#beam)" stroke-width="2.4" filter="url(#glow)"/>
-  <path class="flow" d="M310 502 C 470 430, 620 390, 800 390" fill="none" stroke="url(#beam)" stroke-width="2.6" filter="url(#glow)"/>
-  <path class="flow" d="M800 390 C 980 390, 1130 430, 1290 502" fill="none" stroke="url(#beam)" stroke-width="2.6" filter="url(#glow)"/>
-  <path class="flow" d="M690 250 C 740 310, 770 350, 800 390" fill="none" stroke="#7BDCD3" stroke-width="2" filter="url(#glow)"/>
-  <path class="flow" d="M910 250 C 860 310, 830 350, 800 390" fill="none" stroke="#7BDCD3" stroke-width="2" filter="url(#glow)"/>
-  <path class="flow" d="M800 430 C 800 500, 800 560, 800 620" fill="none" stroke="url(#beam)" stroke-width="2.2" filter="url(#glow)"/>
-  <circle class="orbit" cx="430" cy="268" r="3.2" fill="#9BE8E1"/>
-  <circle class="orbit" cx="1170" cy="268" r="3.2" fill="#9BE8E1"/>
-  <circle class="orbit" cx="800" cy="330" r="3.2" fill="#4FC9BF"/>
-  <circle class="orbit" cx="560" cy="430" r="3.2" fill="#9BE8E1"/>
-  <circle class="orbit" cx="1040" cy="430" r="3.2" fill="#9BE8E1"/>
-  <g transform="translate(800 390)">
-    <circle r="86" fill="#0C1C1A" stroke="#4FC9BF" stroke-opacity="0.55" stroke-width="1.6"/>
-    <circle class="pulse" r="108" fill="none" stroke="#4FC9BF" stroke-opacity="0.22" stroke-width="1"/>
-    <circle class="pulse" r="128" fill="none" stroke="#4FC9BF" stroke-opacity="0.12" stroke-width="1"/>
-    <text y="-8" text-anchor="middle" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="700">LMSGEN</text>
-    <text y="18" text-anchor="middle" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="12">one workspace</text>
+
+  <rect width="1600" height="780" rx="28" fill="url(#bg)"/>
+  <rect width="1600" height="780" rx="28" fill="url(#grid)"/>
+  <ellipse cx="800" cy="330" rx="560" ry="220" fill="url(#aura)"/>
+
+  <!-- Orbit rings around hub -->
+  <circle class="pulse" cx="800" cy="300" r="92" fill="none" stroke="#4FC9BF" stroke-opacity="0.18" stroke-width="1.2"/>
+  <circle class="pulse" cx="800" cy="300" r="118" fill="none" stroke="#4FC9BF" stroke-opacity="0.10" stroke-width="1"/>
+
+  <!-- Soft background arcs -->
+  <path class="flow-slow" d="M250 300 C 420 120, 1180 120, 1350 300" fill="none" stroke="#4FC9BF" stroke-opacity="0.12" stroke-width="1.4"/>
+  <path class="flow-slow" d="M250 300 C 420 500, 1180 500, 1350 300" fill="none" stroke="#4FC9BF" stroke-opacity="0.10" stroke-width="1.2"/>
+
+  <!-- Active pivot lines: left to hub, hub to right, hub to bottom -->
+  <path class="flow" d="M330 210 C 470 150, 620 210, 710 270" fill="none" stroke="url(#beam)" stroke-width="2.8" filter="url(#glow)"/>
+  <path class="flow" d="M330 390 C 500 340, 640 310, 710 300" fill="none" stroke="url(#beam)" stroke-width="2.8" filter="url(#glow)"/>
+  <path class="flow" d="M890 270 C 980 210, 1130 150, 1270 210" fill="none" stroke="url(#beam)" stroke-width="2.8" filter="url(#glow)"/>
+  <path class="flow" d="M890 300 C 960 310, 1100 340, 1270 390" fill="none" stroke="url(#beam)" stroke-width="2.8" filter="url(#glow)"/>
+  <path class="flow" d="M800 418 C 800 470, 800 510, 800 548" fill="none" stroke="url(#beam)" stroke-width="2.6" filter="url(#glow)"/>
+
+  <circle class="dot" cx="430" cy="175" r="4" fill="#9BE8E1"/>
+  <circle class="dot" cx="1170" cy="175" r="4" fill="#9BE8E1"/>
+  <circle class="dot" cx="500" cy="350" r="3.5" fill="#4FC9BF"/>
+  <circle class="dot" cx="1100" cy="350" r="3.5" fill="#4FC9BF"/>
+  <circle class="dot" cx="800" cy="490" r="3.5" fill="#9BE8E1"/>
+
+  <!-- Center hub -->
+  <g transform="translate(800 300)">
+    <circle r="78" fill="#0C1C1A" stroke="#4FC9BF" stroke-width="2" stroke-opacity="0.7"/>
+    <text y="-6" text-anchor="middle" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">LMSGEN</text>
+    <text y="20" text-anchor="middle" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="13">one workspace</text>
   </g>
-  <g transform="translate(210 250)">
-    <rect width="200" height="76" rx="18" fill="#0C1C1A" stroke="#4FC9BF" stroke-opacity="0.35"/>
-    <circle cx="28" cy="38" r="8" fill="#4FC9BF"/>
-    <text x="48" y="34" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="15" font-weight="700">Brief</text>
-    <text x="48" y="54" fill="#8AA8A4" font-family="Inter,Arial,sans-serif" font-size="12">docs · slides · outline</text>
+
+  <!-- Left column -->
+  <g transform="translate(90 148)">
+    <rect width="240" height="92" rx="20" fill="#0C1C1A" stroke="#4FC9BF" stroke-opacity="0.4" stroke-width="1.4"/>
+    <circle cx="28" cy="46" r="8" fill="#4FC9BF"/>
+    <text x="48" y="40" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700">1  Brief</text>
+    <text x="48" y="64" fill="#8AA8A4" font-family="Inter,Arial,sans-serif" font-size="13">docs · slides · outline</text>
   </g>
-  <g transform="translate(590 198)">
-    <rect width="220" height="76" rx="18" fill="#0C1C1A" stroke="#4FC9BF" stroke-opacity="0.35"/>
-    <circle cx="28" cy="38" r="8" fill="#7BDCD3"/>
-    <text x="48" y="34" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="15" font-weight="700">AI Studio</text>
-    <text x="48" y="54" fill="#8AA8A4" font-family="Inter,Arial,sans-serif" font-size="12">slides · quiz · SCORM</text>
+  <g transform="translate(90 338)">
+    <rect width="240" height="92" rx="20" fill="#0C1C1A" stroke="#4FC9BF" stroke-opacity="0.4" stroke-width="1.4"/>
+    <circle cx="28" cy="46" r="8" fill="#7BDCD3"/>
+    <text x="48" y="40" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700">2  AI Studio</text>
+    <text x="48" y="64" fill="#8AA8A4" font-family="Inter,Arial,sans-serif" font-size="13">slides · quiz · SCORM</text>
   </g>
-  <g transform="translate(1190 250)">
-    <rect width="220" height="76" rx="18" fill="#0C1C1A" stroke="#4FC9BF" stroke-opacity="0.35"/>
-    <circle cx="28" cy="38" r="8" fill="#9BE8E1"/>
-    <text x="48" y="34" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="15" font-weight="700">Publish</text>
-    <text x="48" y="54" fill="#8AA8A4" font-family="Inter,Arial,sans-serif" font-size="12">LMSGEN LMS · invite</text>
+
+  <!-- Right column -->
+  <g transform="translate(1270 148)">
+    <rect width="240" height="92" rx="20" fill="#0C1C1A" stroke="#4FC9BF" stroke-opacity="0.4" stroke-width="1.4"/>
+    <circle cx="28" cy="46" r="8" fill="#9BE8E1"/>
+    <text x="48" y="40" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700">3  Publish</text>
+    <text x="48" y="64" fill="#8AA8A4" font-family="Inter,Arial,sans-serif" font-size="13">LMSGEN LMS · invite</text>
   </g>
-  <g transform="translate(210 494)">
-    <rect width="220" height="76" rx="18" fill="#0C1C1A" stroke="#4FC9BF" stroke-opacity="0.35"/>
-    <circle cx="28" cy="38" r="8" fill="#4FC9BF"/>
-    <text x="48" y="34" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="15" font-weight="700">SCORM export</text>
-    <text x="48" y="54" fill="#8AA8A4" font-family="Inter,Arial,sans-serif" font-size="12">1.2 · 2004 · your LMS</text>
+  <g transform="translate(1270 338)">
+    <rect width="240" height="92" rx="20" fill="#0C1C1A" stroke="#4FC9BF" stroke-opacity="0.4" stroke-width="1.4"/>
+    <circle cx="28" cy="46" r="8" fill="#4FC9BF"/>
+    <text x="48" y="40" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700">4  Live Quizmoto</text>
+    <text x="48" y="64" fill="#8AA8A4" font-family="Inter,Arial,sans-serif" font-size="13">join code · realtime</text>
   </g>
-  <g transform="translate(1170 494)">
-    <rect width="240" height="76" rx="18" fill="#0C1C1A" stroke="#4FC9BF" stroke-opacity="0.35"/>
-    <circle cx="28" cy="38" r="8" fill="#7BDCD3"/>
-    <text x="48" y="34" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="15" font-weight="700">Live Quizmoto</text>
-    <text x="48" y="54" fill="#8AA8A4" font-family="Inter,Arial,sans-serif" font-size="12">join code · realtime play</text>
+
+  <!-- Bottom row -->
+  <g transform="translate(430 560)">
+    <rect width="280" height="92" rx="20" fill="#0C1C1A" stroke="#4FC9BF" stroke-opacity="0.4" stroke-width="1.4"/>
+    <circle cx="28" cy="46" r="8" fill="#7BDCD3"/>
+    <text x="48" y="40" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700">5  SCORM export</text>
+    <text x="48" y="64" fill="#8AA8A4" font-family="Inter,Arial,sans-serif" font-size="13">1.2 · 2004 · your LMS</text>
   </g>
-  <g transform="translate(690 620)">
-    <rect width="220" height="76" rx="18" fill="#0C1C1A" stroke="#4FC9BF" stroke-opacity="0.35"/>
-    <circle cx="28" cy="38" r="8" fill="#9BE8E1"/>
-    <text x="48" y="34" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="15" font-weight="700">Track results</text>
-    <text x="48" y="54" fill="#8AA8A4" font-family="Inter,Arial,sans-serif" font-size="12">completion · PDF · Excel</text>
+  <g transform="translate(890 560)">
+    <rect width="280" height="92" rx="20" fill="#0C1C1A" stroke="#4FC9BF" stroke-opacity="0.4" stroke-width="1.4"/>
+    <circle cx="28" cy="46" r="8" fill="#9BE8E1"/>
+    <text x="48" y="40" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700">6  Track results</text>
+    <text x="48" y="64" fill="#8AA8A4" font-family="Inter,Arial,sans-serif" font-size="13">completion · PDF · Excel</text>
   </g>
+
+  <!-- Bottom connectors from hub to 5 and 6 -->
+  <path class="flow" d="M760 370 C 680 470, 620 540, 570 560" fill="none" stroke="url(#beam)" stroke-width="2.2" filter="url(#glow)"/>
+  <path class="flow" d="M840 370 C 920 470, 980 540, 1030 560" fill="none" stroke="url(#beam)" stroke-width="2.2" filter="url(#glow)"/>
 </svg>
