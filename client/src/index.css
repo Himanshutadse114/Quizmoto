@@ -20,12 +20,13 @@
   --color-quizmoto-darkPurple: #25076b;
 
   --animate-bounce-slow: bounce 3s infinite;
+  --font-sans: "Plus Jakarta Sans", sans-serif;
 }
 
 :root {
   background-color: #11100e;
   color: white;
-  font-family: 'Montserrat', sans-serif;
+  font-family: "Plus Jakarta Sans", sans-serif;
 }
 
 body {
@@ -34,6 +35,7 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   background: #11100e;
+  font-family: "Plus Jakarta Sans", sans-serif;
 }
 
 #root {
