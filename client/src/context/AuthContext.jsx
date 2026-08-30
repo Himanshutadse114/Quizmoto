@@ -153,6 +153,11 @@ export const AuthProvider = ({ children }) => {
 
     const refreshScormAccess = async () => {
         if (!token || !platformAccess) return null;
+        // Workspace SSO tokens carry a workspaceId claim and must remain intact.
+        // The old /scorm/status endpoint issues a global SCORM token and would
+        // otherwise strip the workspace binding immediately after SSO login.
+        // Protected APIs still re-check the live grant and workspace membership.
+        if (user?.staffSso && user?.workspaceId) return user;
         const res = await axios.get(`${API_URL}/scorm/status`, {
             headers: { Authorization: `Bearer ${token}` }
         });
