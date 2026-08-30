@@ -9,6 +9,7 @@
 @import "./pages/Scorm/scormNestedHeadingScale.css";
 @import "./pages/Scorm/authorVisualPolish.css";
 @import "./pages/Scorm/scormAuthGoogleButtonFix.css";
+@import "./pages/Scorm/lmsgenPlatformFont.css";
 
 @theme {
   --color-quizmoto-red: #eb1736;
@@ -25,7 +26,7 @@
 :root {
   background-color: #11100e;
   color: white;
-  font-family: 'Montserrat', sans-serif;
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
@@ -34,6 +35,7 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   background: #11100e;
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
 #root {
@@ -90,7 +92,7 @@ body {
   .scorm-auth-workbench .sa-shell {
     width: calc(100% - 28px) !important;
     max-width: 520px !important;
-    min-height: 100dvh !important;
+    min-height: unset !important;
     padding: 8px 0 14px !important;
     gap: 8px !important;
   }
@@ -189,14 +191,9 @@ body {
   }
 
   .scorm-auth-workbench .sa-google-button {
-    min-height: 40px !important;
-    padding: 2px !important;
-    border-radius: 8px !important;
-  }
-
-  .scorm-auth-workbench .sa-google-button > div {
-    width: 100% !important;
-    max-width: 100% !important;
+    min-height: 44px !important;
+    padding: 0 !important;
+    border-radius: 9px !important;
   }
 
   .scorm-auth-workbench .sa-google-hint {
