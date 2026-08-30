@@ -71,13 +71,29 @@ body.lmsgen-solutions-ready .sl-feat-main-s {
   min-height: 0 !important;
 }
 
+/* Solutions hero — large product shot, not a small diagram */
+body.lmsgen-solutions-ready .sl-hero-img-w {
+  width: min(100%, 118rem);
+  max-width: 118rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+body.lmsgen-solutions-ready .sl-hero-img-w .sl-hero-img,
 .sl-hero-img-w .sl-hero-img[src*="lmsgen/"] {
+  display: block;
   object-fit: cover;
-  object-position: center top;
-  border-radius: 1.4rem;
+  object-position: center;
+  border-radius: 2rem;
   width: 100%;
   height: auto;
-  box-shadow: 0 24px 60px rgba(2, 11, 14, 0.35);
+  min-height: 36rem;
+  max-height: 62rem;
+  background: #10211F;
+  border: 1px solid rgba(79, 201, 191, 0.28);
+  box-shadow:
+    0 40px 90px rgba(2, 11, 14, 0.55),
+    0 0 0 1px rgba(123, 220, 211, 0.08);
 }
 
 .sl-feat-common-img[src*="lmsgen/"],
