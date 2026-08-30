@@ -168,6 +168,20 @@ const startServer = async () => {
     try {
         await connectDB();
 
+        // Assignment metadata was added after the original SCORM schema shipped.
+        // sequelize.sync() intentionally does not alter long-lived production tables,
+        // so apply only the additive columns that are missing.
+        try {
+            const { ensurePlatformSchema } = require('./services/scorm/ScormPlatformMigrationService');
+            const migration = await ensurePlatformSchema();
+            if (migration.changed) {
+                logger.info('scorm_platform_schema_upgraded', { module: 'scorm', changes: migration.changes });
+            }
+        } catch (migrationErr) {
+            logger.error('scorm_platform_schema_upgrade_failed', { module: 'scorm', error: migrationErr.message });
+            throw migrationErr;
+        }
+
         // Historical admin previews used to create a new registration per click.
         // Compact them once at boot so production data is clean after deployment.
         if (process.env.NODE_ENV !== 'test') {
@@ -198,6 +212,11 @@ const startServer = async () => {
         app.use('/api/jobs', require('./routes/jobs'));
         app.use('/api/metrics', require('./routes/metrics'));
 
+        // Public learner identity/dashboard API is intentionally separate from
+        // the SCORM administrator middleware. Every learner operation has its own
+        // assignment-bound JWT checks in ScormLearnerAuthService.
+        app.use('/api/scorm-learner', require('./routes/scormLearner'));
+
         // SCORM World LMS (flag-gated inside router — returns 404 when SCORM_LMS=false)
         app.use('/api/scorm', require('./routes/scorm'));
 
@@ -217,22 +236,43 @@ const startServer = async () => {
         }
 
         // SCORM admin tracking rooms. Runtime commit/finish events are emitted by
-        // routes/scorm/runtime.js itself. Do not monkey-patch Runtime.commit here:
-        // the previous two-argument wrapper silently discarded the third
-        // buffered `values` argument containing location, score and interactions.
+        // routes/scorm/runtime.js itself. Resolve the same workspace identity used
+        // by HTTP middleware so co-admin sockets cannot fall back to a separate
+        // userId partition and tokens cannot subscribe to another workspace's course.
         try {
             const jwt = require('jsonwebtoken');
+            const User = require('./models/User');
+            const { ScormCourse } = require('./models/scorm');
+            const { getAccessRole } = require('./services/scorm/ScormAccessService');
+            const { resolveWorkspaceContext } = require('./services/scorm/ScormWorkspaceService');
             const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
             io.on('connection', (socket) => {
-                socket.on('join_scorm_course', (payload) => {
+                socket.on('join_scorm_course', async (payload) => {
                     try {
                         const courseId = payload && payload.courseId;
                         const token = payload && payload.token;
                         if (!courseId || !token) return;
                         const decoded = jwt.verify(token, JWT_SECRET);
-                        if (!decoded || !decoded.userId) return;
+                        if (!decoded?.userId || decoded.scope !== 'scorm') return;
+                        const user = await User.findByPk(decoded.userId);
+                        if (!user) return;
+                        const role = await getAccessRole(user.email);
+                        if (!role) return;
+                        const workspaceContext = await resolveWorkspaceContext({ user, role });
+                        const course = await ScormCourse.findOne({
+                            where: { id: courseId, hostId: workspaceContext.hostId },
+                            attributes: ['id']
+                        });
+                        if (!course) return;
+
                         socket.join(`scorm_course_${courseId}`);
-                        socket.data = { ...(socket.data || {}), scormCourseId: courseId, scormHostId: decoded.userId };
+                        socket.data = {
+                            ...(socket.data || {}),
+                            scormCourseId: courseId,
+                            scormHostId: workspaceContext.hostId,
+                            scormActorUserId: user.id,
+                            scormRole: workspaceContext.role
+                        };
                         socket.emit('scorm_course_joined', { courseId });
                     } catch (_) {
                         try { socket.emit('error', 'SCORM course join failed'); } catch (__) {}
