@@ -62,10 +62,25 @@ module.exports = async (req, res, next) => {
                 url
             });
 
+            // Entitlements belong to the workspace, not each individual team
+            // member. Otherwise a co-admin could accidentally receive a fresh
+            // quota and bypass the primary Admin's course/learner limits.
+            let entitlementOwner = user;
+            if (workspaceContext.workspace && workspaceContext.hostId !== user.id) {
+                entitlementOwner = await User.findByPk(workspaceContext.hostId);
+                if (!entitlementOwner) {
+                    const err = new Error('The LMSGEN workspace owner account no longer exists.');
+                    err.status = 403;
+                    err.code = 'SCORM_WORKSPACE_OWNER_REQUIRED';
+                    throw err;
+                }
+            }
+            req.scormEntitlementEmail = entitlementOwner.email || user.email || null;
+
             await enforceRequestEntitlement(req, {
-                userId: decoded.userId,
-                email: user.email,
-                role: req.scormRole
+                userId: workspaceContext.hostId,
+                email: req.scormEntitlementEmail,
+                role: req.scormRole === 'super_admin' ? 'super_admin' : 'admin'
             });
         }
 
