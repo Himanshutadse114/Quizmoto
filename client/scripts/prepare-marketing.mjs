@@ -35,7 +35,7 @@ const pages = [
 ];
 
 const HOME_REPLACEMENTS = [
-  ['For modern L&amp;D and security awareness teams', 'One workspace for modern learning teams'],
+  ['For modern L&D and security awareness teams', 'One workspace for modern learning teams'],
   ['Save 95% of time and budget on every custom SCORM course.', 'Create, deliver and measure learning in one place.'],
   [
     'Send your brief today, get your next-level SCORM course in your LMS Next minute. AI-powered production',
@@ -183,7 +183,7 @@ async function extractFeatureAssets() {
 }
 
 function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return value.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
 }
 
 function replaceFeatureCardImages(html) {
@@ -212,15 +212,10 @@ function replaceFeatureCardImages(html) {
 
 function brandMarketingHtml(html, visibleLogoVariant = 'dark') {
   return html
-    // Structured metadata should use the light-background version for broad compatibility.
     .replace(
       /\/landing\/images\/logos\/atelora-landing-logo\.svg/g,
       '/branding/lmsgen-logo-light.png',
     )
-    // Visible exported-site logos sit on the dark marketing header by default,
-    // but pages whose header keeps its bright turquoise background (no JS
-    // scroll-based swap, unlike the homepage) need the dark-text variant -
-    // the white-text "dark" logo is nearly invisible against turquoise.
     .replace(
       /(?:\.\.\/)*images\/logos\/atelora-landing-logo\.svg/g,
       `/branding/lmsgen-logo-${visibleLogoVariant}.png`,
@@ -240,12 +235,6 @@ function brandMarketingHtml(html, visibleLogoVariant = 'dark') {
 function ensureHeadAssets(html, baseHref) {
   const inserts = [];
 
-  // target="_top" matters because this page is served inside the platform
-  // app's iframe (see MarketingSite.jsx): without it, every internal link -
-  // including "Log in" and links to the other marketing pages - would
-  // navigate inside the iframe's own frame instead of the actual browser
-  // tab, leaving the user stuck looking at the outer app's chrome around a
-  // page that silently changed underneath it.
   if (!/<base\s+href=/i.test(html)) {
     inserts.push(`<base href="${baseHref}" target="_top" />`);
   }
@@ -260,6 +249,14 @@ function ensureHeadAssets(html, baseHref) {
 
   if (!inserts.length) return html;
   return html.replace(/<head>/i, `<head>\n    ${inserts.join('\n    ')}`);
+}
+
+function ensureNavMenu(html) {
+  if (html.includes('/landing/js/nav-menu.js') || html.includes('js/nav-menu.js')) return html;
+  return html.replace(
+    /<\/body>/i,
+    '    <script src="/landing/js/nav-menu.js"></script>\n  </body>',
+  );
 }
 
 function ensureBodyClasses(html, classes) {
@@ -305,9 +302,7 @@ async function preparePage(page) {
   const filePath = path.join(landingRoot, page.file);
   let html = await fs.readFile(filePath, 'utf8');
 
-  // Remove the exported-site publication marker and make the built documents
-  // self-consistent when served at their friendly public route.
-  html = html.replace(/<!--\s*Last Published:[\s\S]*?-->\s*/i, '');
+  html = html.replace(/<!--\s*Last Published:[\s\\S]*?-->\s*/i, '');
   html = ensureHeadAssets(html, page.base);
   html = ensureBodyClasses(html, [
     'atelora-site-refresh',
@@ -324,6 +319,7 @@ async function preparePage(page) {
   }
 
   html = brandMarketingHtml(html, page.visibleLogoVariant);
+  html = ensureNavMenu(html);
 
   await fs.writeFile(filePath, html, 'utf8');
   console.log(`Prepared LMSGEN marketing page: ${page.file}`);
