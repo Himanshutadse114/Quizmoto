@@ -13,11 +13,13 @@
   --qmx-quiz-accent-soft:rgba(79,201,191,.14);
   --qmx-quiz-danger:#f18f84;
 }
+.qmx-author-quiz .qmx-quiz-body{background:transparent!important;color:var(--qmx-quiz-text)!important}
 .qmx-author-quiz .qmx-quiz-editor-copy{color:var(--qmx-quiz-muted)!important}
-.qmx-author-quiz .qmx-quiz-empty{border-color:var(--qmx-quiz-border)!important;background:var(--qmx-quiz-surface)!important}
+.qmx-author-quiz .qmx-quiz-empty{border:1px dashed var(--qmx-quiz-border)!important;border-radius:16px!important;background:var(--qmx-quiz-surface)!important}
 .qmx-author-quiz .qmx-quiz-empty-title{color:var(--qmx-quiz-text)!important}
 .qmx-author-quiz .qmx-quiz-empty-copy{color:var(--qmx-quiz-muted)!important}
-.qmx-author-quiz .qmx-question-card{border:1px solid var(--qmx-quiz-border)!important;background:var(--qmx-quiz-bg)!important}
+.qmx-author-quiz .qmx-question-card{border:1px solid var(--qmx-quiz-border)!important;border-radius:16px!important;background:var(--qmx-quiz-bg)!important;color:var(--qmx-quiz-text)!important}
+.qmx-author-quiz .qmx-question-body{background:var(--qmx-quiz-bg)!important;color:var(--qmx-quiz-text)!important}
 .qmx-author-quiz .qmx-question-header{border-bottom:1px solid var(--qmx-quiz-border)!important;background:linear-gradient(90deg,rgba(79,201,191,.14),rgba(79,201,191,.035))!important}
 .qmx-author-quiz .qmx-question-index{background:var(--qmx-quiz-accent)!important;color:var(--qmx-quiz-accent-dark)!important}
 .qmx-author-quiz .qmx-question-eyebrow,.qmx-author-quiz .qmx-field-label{color:var(--qmx-quiz-muted)!important}
@@ -32,7 +34,8 @@
 .qmx-author-quiz .qmx-correct-label{color:var(--qmx-quiz-accent-strong)!important}
 .qmx-author-quiz .qmx-quiz-footnote{color:var(--qmx-quiz-subtle)!important}
 
-.scorm-theme-light .qmx-author-quiz{
+.scorm-theme-light .qmx-author-quiz,
+body.scorm-platform-light .scorm-editorial.scorm-theme-light .qmx-author-quiz{
   --qmx-quiz-bg:#ffffff;
   --qmx-quiz-surface:#f8fbfa;
   --qmx-quiz-surface-2:#eef6f4;
@@ -47,4 +50,5 @@
   --qmx-quiz-accent-soft:#e1f5f2;
   --qmx-quiz-danger:#b84d43;
 }
-.scorm-theme-light .qmx-author-quiz .qmx-question-header{background:linear-gradient(90deg,#e4f6f3,#f8fbfa)!important}
+.scorm-theme-light .qmx-author-quiz .qmx-question-header,
+body.scorm-platform-light .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-question-header{background:linear-gradient(90deg,#e4f6f3,#f8fbfa)!important}
