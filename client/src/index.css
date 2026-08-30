@@ -20,12 +20,17 @@
   --color-quizmoto-darkPurple: #25076b;
 
   --animate-bounce-slow: bounce 3s infinite;
+  --font-sans: Inter, system-ui, -apple-system, sans-serif;
 }
 
 :root {
   background-color: #11100e;
   color: white;
-  font-family: 'Montserrat', sans-serif;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+}
+
+html, body, #root, button, input, textarea, select {
+  font-family: Inter, system-ui, -apple-system, sans-serif;
 }
 
 body {
@@ -87,7 +92,6 @@ body {
 
 /* Mobile density layer: compact LMSGEN surfaces without changing desktop. */
 @media (max-width: 767px) {
-  /* Authentication */
   .scorm-auth-workbench .sa-shell {
     width: calc(100% - 28px) !important;
     max-width: 520px !important;
@@ -241,7 +245,6 @@ body {
     box-shadow: 0 5px 14px rgba(79,201,191,.12) !important;
   }
 
-  /* Logged-in LMSGEN platform */
   .scorm-editorial .scorm-topbar {
     min-height: 54px !important;
     padding: 6px 12px !important;
