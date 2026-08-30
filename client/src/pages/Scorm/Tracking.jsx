@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Activity, Search, CheckCircle2, Clock3, CircleDashed, Users, MapPin, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
+import { Activity, Search, CheckCircle2, Clock3, CircleDashed, Users, MapPin, ExternalLink, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import LearnerAuditDetail from './LearnerAuditDetail';
@@ -54,7 +54,7 @@ const TrackingSkeletonRow = () => (
 );
 
 export default function ScormTracking() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const navigate = useNavigate();
   const [data, setData] = useState({ overview: {}, courses: [], learners: [] });
   const [query, setQuery] = useState('');
@@ -63,6 +63,7 @@ export default function ScormTracking() {
   const [expandedRowId, setExpandedRowId] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const analyticsOnly = user?.role === 'analytics_viewer';
 
   useEffect(() => {
     if (!token) return navigate('/login');
@@ -118,7 +119,10 @@ export default function ScormTracking() {
     <div className="p-4 md:p-7 lg:p-9 max-w-[1500px] mx-auto">
       <div className="mb-7 pb-7 border-b border-black max-w-4xl">
         <div className="scorm-micro text-[10px] uppercase font-semibold text-[#667085]">Learning operations</div>
-        <h2 className="scorm-display text-[42px] md:text-[56px] mt-2">Learner tracking</h2>
+        <div className="flex flex-wrap items-center gap-3 mt-2">
+          <h2 className="scorm-display text-[42px] md:text-[56px]">Learner tracking</h2>
+          {analyticsOnly && <span className="inline-flex items-center gap-1.5 rounded-full border border-black bg-[#F8FAFC] px-2.5 py-1 text-[9px] uppercase tracking-[.08em] font-semibold text-[#475467]"><Eye size={11} /> Read only</span>}
+        </div>
         <p className="text-sm mt-3 leading-relaxed max-w-3xl">See completion, attempts, last known course location, score and activity. Select a learner row to inspect attempt history and every captured quiz response.</p>
       </div>
 
@@ -169,7 +173,7 @@ export default function ScormTracking() {
                           <div className="min-w-0"><div className="text-[8px] uppercase tracking-[0.1em] font-semibold text-[#98A2B3]">Learner name</div><div className="font-semibold text-black truncate">{row.learnerName || 'Learner'}</div><div className="text-[10px] text-[#667085] mt-0.5 truncate max-w-[190px]">{row.learnerEmail || 'No email'}</div></div>
                         </div>
                       </td>
-                      <td className="px-5 py-4"><div className="font-medium max-w-[220px] truncate text-black">{row.courseTitle || 'Course'}</div><Link to={`/scorm/courses/${row.courseId}`} onClick={(event) => event.stopPropagation()} className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold text-[#635BFF] hover:text-[#5145CD]">Open course <ExternalLink size={10} /></Link></td>
+                      <td className="px-5 py-4"><div className="font-medium max-w-[220px] truncate text-black">{row.courseTitle || 'Course'}</div>{!analyticsOnly && <Link to={`/scorm/courses/${row.courseId}`} onClick={(event) => event.stopPropagation()} className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold text-[#635BFF] hover:text-[#5145CD]">Open course <ExternalLink size={10} /></Link>}</td>
                       <td className="px-5 py-4"><span className="inline-flex items-center gap-2 rounded-lg border border-[#D0D5DD] bg-[#F8FAFC] px-2.5 py-1.5 text-[#344054]"><span className="text-[9px] uppercase tracking-[0.08em] font-semibold text-[#667085]">Attempts</span><strong className="text-xs text-[#101828]">{Math.max(1, Number(row.attemptCount || 1))}</strong></span></td>
                       <td className="px-5 py-4"><div className="flex items-center justify-between gap-3 mb-2"><span className="text-[12px] font-semibold text-black">{row.progressAvailable ? `${Number(row.progressPercent).toFixed(0)}%` : '—'}</span><span className="rounded-full border border-[#D0D5DD] bg-[#F8FAFC] px-2 py-1 text-[8px] uppercase tracking-[0.08em] font-semibold text-[#667085]">{statusLabel(row)}</span></div><div className="h-2 rounded-full bg-[#EAECF0] overflow-hidden">{row.progressAvailable && <div className="h-full bg-[#635BFF]" style={{ width: `${Math.max(0, Math.min(100, row.progressPercent || 0))}%` }} />}</div></td>
                       <td className="px-5 py-4"><div className="flex items-start gap-2 max-w-[180px]"><MapPin size={13} className="text-[#98A2B3] mt-0.5 shrink-0" /><span className="text-[11px] font-medium text-[#667085] break-words">{row.lastLocation || 'Not started'}</span></div></td>
@@ -178,7 +182,7 @@ export default function ScormTracking() {
                       <td className="px-5 py-4 text-[11px] leading-relaxed text-[#667085]">{row.lastCommitAt ? new Date(row.lastCommitAt).toLocaleString() : row.updatedAt ? new Date(row.updatedAt).toLocaleString() : '—'}</td>
                       <td className="px-5 py-4 text-right"><button type="button" onClick={(event) => { event.stopPropagation(); setExpandedRowId(isExpanded ? null : row.id); }} className="inline-flex items-center gap-1.5 rounded-lg border border-[#D0D5DD] bg-white px-2.5 py-1.5 text-[10px] font-semibold text-[#344054] hover:bg-[#F9FAFB]" aria-expanded={isExpanded}>{isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}{isExpanded ? 'Hide' : 'View'}</button></td>
                     </tr>
-                    {isExpanded && <tr className="bg-[#050B14] border-b border-[#243751]"><td colSpan={9} className="p-3 md:p-4"><LearnerAuditDetail learnerName={row.learnerName} learnerEmail={row.learnerEmail} entries={[row]} variant="workspace" /></td></tr>}
+                    {isExpanded && <tr className="bg-[#050B14] border-b border-[#243751]"><td colSpan={9} className="p-3 md:p-4"><LearnerAuditDetail learnerName={row.learnerName} learnerEmail={row.learnerEmail} entries={[row]} variant={analyticsOnly ? 'warm' : 'workspace'} /></td></tr>}
                   </React.Fragment>
                 );
               })}
