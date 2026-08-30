@@ -76,33 +76,32 @@ body.lmsgen-solutions-ready .sl-hero-deco,
   display: none !important;
 }
 
-/* Solutions hero image only — leave the 3 feature cards to original CSS */
-body.lmsgen-solutions-ready .sl-hero-img-w {
-  position: relative;
-  width: min(100%, 124rem);
-  max-width: 124rem;
-  margin: 2.4rem auto 0;
-  overflow: hidden;
-  border-radius: 2.4rem;
-  background: radial-gradient(ellipse at 50% 30%, rgba(79, 201, 191, 0.16), transparent 62%), #071614;
-  box-shadow:
-    0 40px 90px rgba(2, 11, 14, 0.55),
-    0 0 0 1px rgba(123, 220, 211, 0.12);
+/* Open orbit hero — no card / container around the graphic */
+body.lmsgen-solutions-ready .sl-hero-img-w,
+body.lmsgen-solutions-ready .sl-hero-img-c {
+  width: min(100%, 92rem) !important;
+  max-width: 92rem !important;
+  margin: 0.8rem auto 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
 }
 
 body.lmsgen-solutions-ready .sl-hero-img-w .sl-hero-img,
 .sl-hero-img-w .sl-hero-img[src*="lmsgen/"] {
   display: block;
-  object-fit: contain;
-  object-position: center;
-  border-radius: 2.4rem;
   width: 100%;
   height: auto;
-  min-height: 0;
   max-height: none;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
+  object-fit: contain;
+  object-position: center;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 .sl-feat-common-img[src*="lmsgen/"],
