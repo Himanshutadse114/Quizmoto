@@ -61,14 +61,14 @@
   if(aboutCarousel) aboutCarousel.remove();
 
   const ART_BASE="/landing/images/lmsgen/";
-  const ART_VER="?v=20260830g";
+  const ART_VER="?v=20260830h";
   const css=document.createElement("link");
   css.rel="stylesheet";
   css.href="/landing/css/lmsgen-advantage-assets.css"+ART_VER;
   document.head.appendChild(css);
 
   const art=[
-    [".sl-hero-img", ART_BASE+"01-hero-course-studio.svg", "LMSGEN Course Studio — author, publish, export SCORM and run live Quizmoto"],
+    [".sl-hero-img", ART_BASE+"01-hero-flow-diagram.svg", "LMSGEN flow — brief to AI studio, publish, SCORM, live quiz and tracking"],
     ["#ai-course-authoring .sl-feat-common-img", ART_BASE+"02-ai-from-documents.svg", "LMSGEN turns documents into structured courses"],
     ["#scorm-ready-delivery .sl-feat-common-img", ART_BASE+"10-scorm-package.svg", "Publish in LMSGEN or export a SCORM package"],
     ["#quizmoto-engagement .sl-feat-common-img", ART_BASE+"11-quizmoto-live.svg", "Quizmoto live quiz — separate realtime feature"],
