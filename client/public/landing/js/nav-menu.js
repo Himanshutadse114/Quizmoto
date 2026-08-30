@@ -3,8 +3,9 @@
 
   const BRAND_LOGO_BLACK = "/branding/lmsgen-logo-light.png";
   const BRAND_LOGO_WHITE = "/branding/lmsgen-logo-dark.png";
+  const STICKY_AFTER = 48;
 
-  const cssHref = "/landing/css/lmsgen-advantage-assets.css?v=20260830r";
+  const cssHref = "/landing/css/lmsgen-advantage-assets.css?v=20260830s";
   if (!document.querySelector('link[href*="lmsgen-advantage-assets.css"]')) {
     const link = document.createElement("link");
     link.rel = "stylesheet";
@@ -36,13 +37,14 @@
   const navButton = document.querySelector(".btn-primary.nav-bar.w-button.secondary");
   const navMenu = document.querySelector(".global-header-nav-w");
   const navLinks = document.querySelectorAll(".global-nav-link");
-  const stickySentinel = document.querySelector(".navbar-scroll");
   const languageToggle = document.querySelector(".local-dropdown");
   const languageMenu = document.querySelector(".local-dropdown-c");
+  const onHome = document.body.classList.contains("atelora-home-refresh");
 
   function headerIsLight(sticky) {
     if (!header) return sticky;
     if (sticky) return true;
+    if (onHome) return false;
     if (header.classList.contains("white")) return true;
     if (header.classList.contains("lemon")) return true;
     if (header.classList.contains("turquoise")) return true;
@@ -72,11 +74,8 @@
     }
 
     const menuOpen = Boolean(menuButton && menuButton.classList.contains("w--open"));
-    const sticky = stickySentinel
-      ? window.scrollY >= stickySentinel.offsetTop || menuOpen
-      : menuOpen;
+    const sticky = menuOpen || window.scrollY > STICKY_AFTER;
 
-    setMarketingLogo(headerIsLight(sticky));
     if (menuIcon) menuIcon.classList.toggle("sticky", sticky);
     if (logo) logo.classList.toggle("sticky", sticky);
     header.classList.toggle("sticky", sticky);
@@ -85,6 +84,12 @@
     if (languageMenu) languageMenu.classList.toggle("sticky", sticky);
     navLinks.forEach((navLink) => navLink.classList.toggle("sticky", sticky));
     if (navButton) navButton.classList.toggle("secondary", !sticky);
+
+    if (onHome) {
+      setMarketingLogo(sticky);
+    } else {
+      setMarketingLogo(headerIsLight(sticky));
+    }
   }
 
   if (menuButton) {
@@ -95,6 +100,7 @@
   }
 
   window.addEventListener("scroll", applyStickyState, { passive: true });
+  window.addEventListener("resize", applyStickyState);
   applyStickyState();
 
   document.querySelectorAll('[cd="close-book"]').forEach((button) => {
