@@ -39,7 +39,9 @@ const ScormLearnerRoster = lazy(() => import('./pages/Scorm/LearnerRoster'));
 const ScormAssignments = lazy(() => import('./pages/Scorm/Assignments'));
 const ScormLearnerAccessSettings = lazy(() => import('./pages/Scorm/LearnerAccessSettings'));
 const ScormLearnerPortal = lazy(() => import('./pages/Scorm/LearnerPortal'));
+const ScormCampaignPortal = lazy(() => import('./pages/Scorm/CampaignPortal'));
 const ScormMicrosoftLearnerCallback = lazy(() => import('./pages/Scorm/MicrosoftLearnerCallback'));
+const ScormMicrosoftCampaignCallback = lazy(() => import('./pages/Scorm/MicrosoftCampaignCallback'));
 const ScormMicrosoftStaffCallback = lazy(() => import('./pages/Scorm/MicrosoftStaffCallback'));
 const ScormLibrary = lazy(() => import('./pages/Scorm/Library'));
 const ScormCourseDetail = lazy(() => import('./pages/Scorm/CourseDetail'));
@@ -124,17 +126,9 @@ const BLOG_POST_TITLES = {
 
 function BlogPost() {
   const { slug } = useParams();
-  if (!Object.prototype.hasOwnProperty.call(BLOG_POST_TITLES, slug)) {
-    return <Navigate to="/blog" replace />;
-  }
+  if (!Object.prototype.hasOwnProperty.call(BLOG_POST_TITLES, slug)) return <Navigate to="/blog" replace />;
   const title = BLOG_POST_TITLES[slug];
-  return (
-    <MarketingSite
-      src={`/landing/blog/${slug}.html`}
-      title={title}
-      tabTitle={`${title} | LMSGEN Blog`}
-    />
-  );
+  return <MarketingSite src={`/landing/blog/${slug}.html`} title={title} tabTitle={`${title} | LMSGEN Blog`} />;
 }
 
 function LegacyQuizRedirect({ kind }) {
@@ -179,12 +173,10 @@ function AppRoutes() {
 
         <Route path="/scorm" element={<PlatformProtected><ScormPlatformShell /></PlatformProtected>}>
           <Route index element={<ScormHomeGate />} />
-
           <Route path="quizmoto" element={<ScormOperationalGate><QuizmotoModule /></ScormOperationalGate>} />
           <Route path="quizmoto/create" element={<ScormOperationalGate><CreateQuiz embedded /></ScormOperationalGate>} />
           <Route path="quizmoto/edit/:id" element={<ScormOperationalGate><EditQuiz embedded /></ScormOperationalGate>} />
           <Route path="quizmoto/reports" element={<ScormOperationalGate><Reports embedded /></ScormOperationalGate>} />
-
           <Route path="courses" element={<ScormFeatureGate featureId="courses"><ScormCourses /></ScormFeatureGate>} />
           <Route path="courses/:id" element={<ScormFeatureGate featureId="courses"><ScormCourseDetail /></ScormFeatureGate>} />
           <Route path="roster" element={<ScormFeatureGate featureId="tracking"><ScormLearnerRoster /></ScormFeatureGate>} />
@@ -215,6 +207,8 @@ function AppRoutes() {
 
         <Route path="/learn/:workspaceId" element={<ScormLearnerPortal />} />
         <Route path="/learn/:workspaceId/microsoft/callback" element={<ScormMicrosoftLearnerCallback />} />
+        <Route path="/campaign/:campaignId" element={<ScormCampaignPortal />} />
+        <Route path="/campaign/:campaignId/microsoft/callback" element={<ScormMicrosoftCampaignCallback />} />
         <Route path="/scorm/learn/:inviteCode" element={<ScormLearnLanding />} />
         <Route path="/scorm/player/:registrationId" element={<ScormPlayerShell />} />
 
@@ -227,9 +221,7 @@ function AppRoutes() {
 function AppSurface() {
   const { pathname } = useLocation();
   const isQuizGameStage = pathname.startsWith('/host/lobby') || pathname.startsWith('/host/game') || pathname === '/join' || pathname.startsWith('/player/');
-  const surfaceClass = isQuizGameStage
-    ? 'bg-quizmoto-darkPurple live-quiz-stage quizmoto-classic-live-stage'
-    : 'bg-[#0A0F0E]';
+  const surfaceClass = isQuizGameStage ? 'bg-quizmoto-darkPurple live-quiz-stage quizmoto-classic-live-stage' : 'bg-[#0A0F0E]';
 
   return (
     <div className={`min-h-screen text-white relative ${surfaceClass}`}>
