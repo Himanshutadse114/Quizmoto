@@ -105,11 +105,8 @@ export default function ScormHome() {
       <section className="scorm-page-hero mb-6 md:mb-7">
         <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-6">
           <div className="max-w-3xl">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="mb-3">
               <span className="scorm-eyebrow">Create · manage · track · improve</span>
-              <span className={`scorm-health-pill ${!loading && aiEnabled ? 'is-online' : ''}`}>
-                <span className="scorm-health-dot" /> {loading ? 'Loading workspace' : aiEnabled ? 'AI author online' : 'Core LMS online'}
-              </span>
             </div>
             <h2 className="scorm-display"><span>Learning</span> <span className="wb-accent">Workbench</span></h2>
             <p className="mt-3 text-sm md:text-[15px] max-w-2xl">
