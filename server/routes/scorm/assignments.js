@@ -13,6 +13,7 @@ const { getAccessRole } = require('../../services/scorm/ScormAccessService');
 const { getEntitlement } = require('../../services/scorm/ScormEntitlementService');
 
 const MAX_ASSIGNMENT_COMBINATIONS = 5000;
+const INACTIVE_ASSIGNMENT_STATUSES = ['revoked', 'superseded'];
 
 function normalizeEmail(value) {
     return String(value || '').trim().toLowerCase();
@@ -34,6 +35,7 @@ function assignmentStatus(reg) {
 function serializeAssignment(reg) {
     return {
         id: reg.id,
+        instanceId: reg.id,
         registrationId: reg.id,
         courseId: reg.courseId,
         learnerEmail: reg.learnerEmail,
@@ -73,7 +75,7 @@ async function assertBulkLearnerLimit(hostId, learnerEmails) {
             where: {
                 courseId: { [Op.in]: courseIds },
                 isPreview: false,
-                status: { [Op.ne]: 'revoked' },
+                status: { [Op.notIn]: INACTIVE_ASSIGNMENT_STATUSES },
                 learnerEmail: { [Op.ne]: null }
             },
             attributes: ['learnerEmail'],
@@ -105,7 +107,7 @@ router.get('/', auth, async (req, res) => {
                 order: [['createdAt', 'DESC']]
             }),
             ScormRegistration.findAll({
-                where: { isPreview: false, status: { [Op.ne]: 'revoked' } },
+                where: { isPreview: false, status: { [Op.notIn]: INACTIVE_ASSIGNMENT_STATUSES } },
                 include: [{
                     model: ScormCourse,
                     as: 'course',
@@ -118,6 +120,8 @@ router.get('/', auth, async (req, res) => {
 
         res.json({
             ok: true,
+            workspaceId: req.scormWorkspaceId || null,
+            learnerPortalPath: req.scormWorkspaceId ? `/learn/${req.scormWorkspaceId}` : null,
             learners: learners.map((row) => ({
                 id: row.id,
                 email: row.email,
@@ -171,21 +175,46 @@ router.post('/bulk', auth, async (req, res) => {
 
         let created = 0;
         let updated = 0;
+        let superseded = 0;
         await sequelize.transaction(async (transaction) => {
             for (const learner of learners) {
                 const email = normalizeEmail(learner.email);
                 for (const course of courses) {
+                    // Repeated edits to the same live Admin assignment should update
+                    // metadata, but a legacy invite or completed assignment must never
+                    // be recycled because its assessment/runtime state belongs to the
+                    // old learning instance.
                     let registration = await ScormRegistration.findOne({
                         where: {
                             courseId: course.id,
                             isPreview: false,
+                            assignmentSource: 'admin',
+                            status: { [Op.notIn]: ['completed', ...INACTIVE_ASSIGNMENT_STATUSES] },
                             [Op.and]: [sequelize.where(sequelize.fn('LOWER', sequelize.col('learnerEmail')), email)]
                         },
+                        order: [['createdAt', 'DESC']],
                         transaction,
                         lock: transaction.LOCK.UPDATE
                     });
 
                     if (!registration) {
+                        // Keep previous registrations for reporting, but remove them
+                        // from the learner's active dashboard. Their SCORM state remains
+                        // keyed to the old registration UUID and is never copied.
+                        const [count] = await ScormRegistration.update(
+                            { status: 'superseded' },
+                            {
+                                where: {
+                                    courseId: course.id,
+                                    isPreview: false,
+                                    status: { [Op.notIn]: INACTIVE_ASSIGNMENT_STATUSES },
+                                    [Op.and]: [sequelize.where(sequelize.fn('LOWER', sequelize.col('learnerEmail')), email)]
+                                },
+                                transaction
+                            }
+                        );
+                        superseded += Number(count || 0);
+
                         registration = await ScormRegistration.create({
                             courseId: course.id,
                             learnerEmail: email,
@@ -201,8 +230,6 @@ router.post('/bulk', auth, async (req, res) => {
                     } else {
                         registration.learnerEmail = email;
                         registration.learnerName = learner.learnerName || registration.learnerName || 'Learner';
-                        if (registration.status === 'revoked') registration.status = 'invited';
-                        if (!registration.assignedAt) registration.assignedAt = new Date();
                         registration.assignedByUserId = req.authenticatedUserId || req.userId;
                         registration.dueAt = dueAt;
                         registration.assignmentSource = 'admin';
@@ -218,9 +245,11 @@ router.post('/bulk', auth, async (req, res) => {
             ok: true,
             created,
             updated,
+            superseded,
             learners: learners.length,
             courses: courses.length,
-            combinations: learners.length * courses.length
+            combinations: learners.length * courses.length,
+            learnerPortalPath: req.scormWorkspaceId ? `/learn/${req.scormWorkspaceId}` : null
         });
     } catch (err) {
         console.error('[scorm-assignments] bulk assign failed', err);
@@ -233,7 +262,7 @@ router.patch('/:id', auth, async (req, res) => {
         const registration = await ScormRegistration.findByPk(req.params.id, {
             include: [{ model: ScormCourse, as: 'course' }]
         });
-        if (!registration || !registration.course || registration.course.hostId !== req.userId || registration.isPreview) {
+        if (!registration || !registration.course || registration.course.hostId !== req.userId || registration.isPreview || INACTIVE_ASSIGNMENT_STATUSES.includes(registration.status)) {
             return res.status(404).json({ message: 'Assignment not found.' });
         }
         if (Object.prototype.hasOwnProperty.call(req.body || {}, 'dueAt')) {
@@ -254,7 +283,7 @@ router.delete('/:id', auth, async (req, res) => {
         const registration = await ScormRegistration.findByPk(req.params.id, {
             include: [{ model: ScormCourse, as: 'course' }]
         });
-        if (!registration || !registration.course || registration.course.hostId !== req.userId || registration.isPreview) {
+        if (!registration || !registration.course || registration.course.hostId !== req.userId || registration.isPreview || registration.status === 'superseded') {
             return res.status(404).json({ message: 'Assignment not found.' });
         }
         registration.status = 'revoked';
