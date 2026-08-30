@@ -9,6 +9,11 @@ router.use((req, res, next) => {
     next();
 });
 
+// Workspace-specific staff sign-in is public by design. Each provider endpoint
+// verifies the IdP token and then requires an existing Admin/Co-admin/Analytics
+// Viewer workspace membership before a protected SCORM session is issued.
+router.use('/staff-auth', require('./staffAuthPublic'));
+
 router.use('/packages', require('./packages'));
 router.use('/courses', require('./courses'));
 router.use('/tracking', require('./tracking'));
@@ -38,6 +43,7 @@ router.get('/features', (req, res) => {
         learnerDashboard: true,
         workspaceRbac: true,
         workspaceSso: true,
+        staffSso: true,
         standards: {
             scorm12: true,
             scorm2004: true,

@@ -4,6 +4,8 @@ import {
   BookOpen,
   CalendarDays,
   CheckCircle2,
+  Copy,
+  ExternalLink,
   RefreshCw,
   Search,
   Trash2,
@@ -32,6 +34,7 @@ export default function Assignments() {
   const [courseQuery, setCourseQuery] = useState('');
   const [dueAt, setDueAt] = useState('');
   const [required, setRequired] = useState(true);
+  const [learnerPortalPath, setLearnerPortalPath] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -45,6 +48,7 @@ export default function Assignments() {
       setLearners(res.data?.learners || []);
       setCourses(res.data?.courses || []);
       setAssignments(res.data?.assignments || []);
+      setLearnerPortalPath(res.data?.learnerPortalPath || '');
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to load course assignments.');
     } finally {
@@ -64,7 +68,18 @@ export default function Assignments() {
     return !q ? courses : courses.filter((item) => `${item.title || ''} ${item.description || ''}`.toLowerCase().includes(q));
   }, [courses, courseQuery]);
 
+  const learnerPortalUrl = learnerPortalPath ? `${window.location.origin}${learnerPortalPath}` : '';
   const toggle = (setter, id) => setter((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
+
+  const copyPortal = async () => {
+    if (!learnerPortalUrl) return;
+    try {
+      await navigator.clipboard.writeText(learnerPortalUrl);
+      setMessage('Learner portal link copied. Send this one link to assigned learners.');
+    } catch (_) {
+      setError('Could not copy the learner portal link.');
+    }
+  };
 
   const assign = async () => {
     setError('');
@@ -79,7 +94,8 @@ export default function Assignments() {
         dueAt: dueAt || null,
         required
       }, { headers });
-      setMessage(`${res.data?.combinations || 0} learner-course assignment${res.data?.combinations === 1 ? '' : 's'} processed successfully.`);
+      if (res.data?.learnerPortalPath) setLearnerPortalPath(res.data.learnerPortalPath);
+      setMessage(`${res.data?.combinations || 0} learner-course assignment${res.data?.combinations === 1 ? '' : 's'} processed. Each new assignment has its own independent course/assessment instance.`);
       setSelectedLearners([]);
       setSelectedCourses([]);
       await load();
@@ -108,7 +124,7 @@ export default function Assignments() {
           <div className="scorm-micro text-[10px] uppercase font-semibold">Learner delivery</div>
           <h1 className="scorm-display text-[36px] md:text-[50px] mt-2">Assign courses</h1>
           <p className="text-sm mt-3 leading-relaxed" style={{ color: 'var(--scorm-ink-soft)' }}>
-            Select multiple learners and multiple published courses in one action. Assigned courses appear automatically on each learner's dashboard.
+            Select multiple learners and multiple published courses in one action. Every learner-course assignment gets its own registration instance, progress, assessment state and score.
           </p>
         </div>
         <button type="button" onClick={load} disabled={loading} className="scorm-button-secondary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold disabled:opacity-50">
@@ -118,6 +134,20 @@ export default function Assignments() {
 
       {message && <div className="mb-4 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(20,184,166,.28)', background: 'rgba(20,184,166,.08)' }}>{message}</div>}
       {error && <div className="mb-4 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(251,113,133,.3)', background: 'rgba(251,113,133,.08)' }}>{error}</div>}
+
+      <section className="scorm-panel rounded-2xl border p-4 md:p-5 mb-5">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          <div className="w-10 h-10 rounded-xl grid place-items-center border shrink-0" style={{ borderColor: 'var(--scorm-line)' }}><ExternalLink size={17} /></div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold">Learner portal link</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--scorm-muted)' }}>After assigning courses, send this single workspace link to learners. They sign in once and see all courses assigned to their verified email.</div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 lg:min-w-[430px]">
+            <input readOnly value={learnerPortalUrl} className="min-w-0 flex-1 px-3 py-2.5 text-[11px]" placeholder="Portal link becomes available when the workspace is ready" />
+            <button type="button" disabled={!learnerPortalUrl} onClick={copyPortal} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center justify-center gap-2"><Copy size={13} /> Copy link</button>
+          </div>
+        </div>
+      </section>
 
       <div className="grid xl:grid-cols-2 gap-5">
         <section className="scorm-panel rounded-2xl border overflow-hidden">
@@ -192,7 +222,7 @@ export default function Assignments() {
             {assignments.map((assignment) => (
               <div key={assignment.registrationId} className="p-4 md:p-5 grid lg:grid-cols-[1.15fr_1.15fr_.65fr_.65fr_auto] gap-2.5 lg:items-center">
                 <div className="min-w-0"><div className="text-sm font-semibold truncate">{assignment.learnerName || 'Learner'}</div><div className="text-xs truncate" style={{ color: 'var(--scorm-muted)' }}>{assignment.learnerEmail}</div></div>
-                <div className="min-w-0"><div className="text-sm font-semibold truncate">{assignment.course?.title || 'Course'}</div><div className="text-[10px] uppercase mt-0.5" style={{ color: 'var(--scorm-muted)' }}>{assignment.required ? 'Required' : 'Optional'}</div></div>
+                <div className="min-w-0"><div className="text-sm font-semibold truncate">{assignment.course?.title || 'Course'}</div><div className="text-[10px] uppercase mt-0.5" style={{ color: 'var(--scorm-muted)' }}>{assignment.required ? 'Required' : 'Optional'} · Instance {String(assignment.instanceId || assignment.registrationId).slice(0, 8)}</div></div>
                 <div><div className="scorm-micro text-[8px] uppercase">Progress</div><div className="text-xs font-semibold mt-1 capitalize">{String(assignment.status || '').replace('_', ' ')}</div></div>
                 <div><div className="scorm-micro text-[8px] uppercase">Due</div><div className="text-xs font-semibold mt-1">{formatDate(assignment.dueAt)}</div></div>
                 <button type="button" onClick={() => revoke(assignment)} className="w-9 h-9 rounded-lg border grid place-items-center" style={{ borderColor: 'rgba(251,113,133,.28)', color: '#fb7185' }} aria-label="Remove assignment"><Trash2 size={14} /></button>

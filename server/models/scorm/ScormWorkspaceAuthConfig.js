@@ -12,6 +12,8 @@ const ScormWorkspaceAuthConfig = sequelize.define('ScormWorkspaceAuthConfig', {
         allowNull: false,
         unique: true
     },
+
+    // Learner authentication policy.
     joiningMode: {
         type: DataTypes.STRING(32),
         allowNull: false,
@@ -43,6 +45,43 @@ const ScormWorkspaceAuthConfig = sequelize.define('ScormWorkspaceAuthConfig', {
         type: DataTypes.TEXT,
         allowNull: true
     },
+
+    // Staff authentication policy. This applies only to the workspace Admin,
+    // Co-admins and Analytics Viewers. It is intentionally independent from
+    // learner authentication so an organisation can use different providers
+    // and different access policies for staff and learners.
+    staffJoiningMode: {
+        type: DataTypes.STRING(32),
+        allowNull: false,
+        defaultValue: 'password_or_sso'
+    },
+    staffGoogleEnabled: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+    },
+    staffGoogleClientId: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    staffMicrosoftEnabled: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+    },
+    staffMicrosoftClientId: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    staffMicrosoftTenantId: {
+        type: DataTypes.STRING(128),
+        allowNull: true
+    },
+    staffAllowedDomainsJson: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+
     updatedByUserId: {
         type: DataTypes.INTEGER,
         allowNull: true

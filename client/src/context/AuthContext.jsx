@@ -14,8 +14,6 @@ const HOST_USER_BACKUP = 'quizmotoHostUser';
 
 function normalizeScormRole(role, approved = false) {
     const value = String(role || '').trim().toLowerCase();
-    // Rolling-deploy / stored-session compatibility: historical approved LMSGEN
-    // accounts were labelled `user`. They are now primary workspace Admins.
     if (value === 'user') return 'admin';
     if (['super_admin', 'admin', 'co_admin', 'analytics_viewer', 'pending'].includes(value)) return value;
     return approved ? 'admin' : 'pending';
@@ -108,7 +106,11 @@ export const AuthProvider = ({ children }) => {
             product: 'scorm-ai',
             pendingApproval: Boolean(data.pendingApproval || !approved),
             platformAccess: true,
-            scormAccess: approved
+            scormAccess: approved,
+            workspaceId: data.workspaceId || null,
+            workspaceName: data.workspaceName || null,
+            authMethod: data.authMethod || null,
+            staffSso: Boolean(data.staffSso)
         };
         setAccessFlags({ platform: true, scorm: approved });
         persistSession(data.token, scormUser);
@@ -130,6 +132,16 @@ export const AuthProvider = ({ children }) => {
         return resolveScormAuthResponse(res.data);
     };
 
+    const loginScormWorkspaceWithGoogle = async (workspaceId, credential) => {
+        const res = await axios.post(apiUrl(`/api/scorm/staff-auth/workspace/${workspaceId}/google`), { credential });
+        return resolveScormAuthResponse(res.data);
+    };
+
+    const loginScormWorkspaceWithMicrosoft = async (workspaceId, idToken) => {
+        const res = await axios.post(apiUrl(`/api/scorm/staff-auth/workspace/${workspaceId}/microsoft`), { idToken });
+        return resolveScormAuthResponse(res.data);
+    };
+
     const registerScorm = async ({ username, email, password }) => {
         const res = await axios.post(`${API_URL}/scorm/register`, {
             username,
@@ -141,6 +153,11 @@ export const AuthProvider = ({ children }) => {
 
     const refreshScormAccess = async () => {
         if (!token || !platformAccess) return null;
+        // Workspace SSO tokens carry a workspaceId claim and must remain intact.
+        // The old /scorm/status endpoint issues a global SCORM token and would
+        // otherwise strip the workspace binding immediately after SSO login.
+        // Protected APIs still re-check the live grant and workspace membership.
+        if (user?.staffSso && user?.workspaceId) return user;
         const res = await axios.get(`${API_URL}/scorm/status`, {
             headers: { Authorization: `Bearer ${token}` }
         });
@@ -182,6 +199,8 @@ export const AuthProvider = ({ children }) => {
             loginWithGoogle,
             loginScorm,
             loginScormWithGoogle,
+            loginScormWorkspaceWithGoogle,
+            loginScormWorkspaceWithMicrosoft,
             registerScorm,
             refreshScormAccess,
             prepareScormLogin,

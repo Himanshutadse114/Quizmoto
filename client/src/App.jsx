@@ -40,6 +40,7 @@ const ScormAssignments = lazy(() => import('./pages/Scorm/Assignments'));
 const ScormLearnerAccessSettings = lazy(() => import('./pages/Scorm/LearnerAccessSettings'));
 const ScormLearnerPortal = lazy(() => import('./pages/Scorm/LearnerPortal'));
 const ScormMicrosoftLearnerCallback = lazy(() => import('./pages/Scorm/MicrosoftLearnerCallback'));
+const ScormMicrosoftStaffCallback = lazy(() => import('./pages/Scorm/MicrosoftStaffCallback'));
 const ScormLibrary = lazy(() => import('./pages/Scorm/Library'));
 const ScormCourseDetail = lazy(() => import('./pages/Scorm/CourseDetail'));
 const ScormLearnLanding = lazy(() => import('./pages/Scorm/LearnLanding'));
@@ -160,6 +161,7 @@ function AppRoutes() {
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/contact" element={<MarketingSite src="/landing/contact/index.html" title="Contact LMSGEN" tabTitle="Contact LMSGEN | Learning Platform" />} />
         <Route path="/login" element={<PlatformEntry />} />
+        <Route path="/login/workspace/:workspaceId/microsoft/callback" element={<ScormMicrosoftStaffCallback />} />
         <Route path="/scorm/login" element={<Navigate to="/login" replace />} />
 
         <Route path="/player/login" element={<PlayerLogin />} />

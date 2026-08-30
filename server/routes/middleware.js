@@ -6,6 +6,7 @@ const {
 } = require('../services/scorm/ScormAccessService');
 const { enforceRequestEntitlement } = require('../services/scorm/ScormEntitlementService');
 const { resolveWorkspaceContext } = require('../services/scorm/ScormWorkspaceService');
+const { getStaffPolicyForEmail } = require('../services/scorm/ScormStaffAuthService');
 const { assertScormRouteAllowed } = require('../services/scorm/ScormRbacService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
@@ -50,6 +51,25 @@ module.exports = async (req, res, next) => {
             req.scormWorkspace = workspaceContext.workspace || null;
             req.scormWorkspaceId = workspaceContext.workspace?.id || null;
             req.scormWorkspaceMember = workspaceContext.member || null;
+
+            // When the workspace owner selects Staff SSO only, old/global
+            // password or platform-Google tokens must not bypass that policy.
+            // Workspace SSO tokens carry the authoritative workspaceId claim.
+            if (workspaceContext.workspace && workspaceContext.role !== 'super_admin') {
+                const policy = await getStaffPolicyForEmail(user.email);
+                if (policy?.publicConfig?.staffSsoRequired) {
+                    const tokenWorkspaceId = String(decoded.workspaceId || '');
+                    const expectedWorkspaceId = String(workspaceContext.workspace.id);
+                    if (tokenWorkspaceId !== expectedWorkspaceId) {
+                        return res.status(403).json({
+                            message: 'This organisation requires Admin & team SSO. Use the workspace staff login link.',
+                            code: 'SCORM_STAFF_SSO_REQUIRED',
+                            workspaceId: expectedWorkspaceId,
+                            staffLoginPath: `/login?workspace=${encodeURIComponent(expectedWorkspaceId)}`
+                        });
+                    }
+                }
+            }
 
             // Backward-compatible host identity used throughout the existing
             // SCORM codebase. Co-admins therefore work inside the owner's data
