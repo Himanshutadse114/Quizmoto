@@ -92,4 +92,98 @@
       submitButton.click();
     });
   });
+
+  applyHomePlatformCopy();
+
+  function applyHomePlatformCopy() {
+    const cards = document.querySelectorAll(".hp-platf-card-inner");
+    if (!cards.length) return;
+
+    document.querySelectorAll(".hp-platf-card-inner-icon").forEach((icon) => {
+      icon.style.display = "none";
+    });
+
+    const headingMap = {
+      "Create Training Faster with AI": "Create with AI in minutes",
+      "Engage Learners with Quizmoto": "Publish on LMSGEN and invite your team",
+      "Track Progress with Clear Analytics": "Or export SCORM to your own LMS",
+    };
+    document.querySelectorAll(".platform-h2").forEach((el) => {
+      const key = (el.textContent || "").replace(/\u2028/g, "").trim();
+      if (headingMap[key]) el.textContent = headingMap[key];
+    });
+
+    document.querySelectorAll(".hp-platf-stats-cta-c .paragraph-l").forEach((el) => {
+      el.textContent =
+        "AI creates the course. Publish on LMSGEN, send an invite, and track results — or export SCORM to your LMS.";
+    });
+
+    const buttonMap = {
+      LEARN: "PUBLISH",
+      ENGAGE: "INVITE",
+      COURSE: "EXPORT",
+    };
+    document.querySelectorAll(".nhp-platf-btn-inner div").forEach((el) => {
+      const key = (el.textContent || "").trim();
+      if (buttonMap[key]) el.textContent = buttonMap[key];
+    });
+
+    const cardCopy = {
+      "AI Course Studio": {
+        title: "AI Course Studio",
+        body: "Upload a brief or document. AI builds slides, a quiz and a SCORM course you can publish.",
+      },
+      "Learner Workspace": {
+        title: "Learner Hub",
+        body: "Share an invite link. Learners open the course and you see who started or finished.",
+      },
+      "Learner Hub": {
+        title: "Learner Hub",
+        body: "Share an invite link. Learners open the course and you see who started or finished.",
+      },
+      "Quizmoto Ready": {
+        title: "Live Quizmoto",
+        body: "Host a live quiz. Players join with a code and compete together in realtime.",
+      },
+      "Live Quizmoto": {
+        title: "Live Quizmoto",
+        body: "Host a live quiz. Players join with a code and compete together in realtime.",
+      },
+      "SCORM Course": {
+        title: "SCORM Delivery",
+        body: "Publish inside LMSGEN, or export a SCORM package to Moodle, Docebo or any LMS.",
+      },
+      "Content Library": {
+        title: "SCORM Delivery",
+        body: "Publish inside LMSGEN, or export a SCORM package to Moodle, Docebo or any LMS.",
+      },
+      "Learner Progress": {
+        title: "Invites & Access",
+        body: "Admins publish. Learners join from an invite. Progress is tracked automatically.",
+      },
+      "Access Control": {
+        title: "Invites & Access",
+        body: "Admins publish. Learners join from an invite. Progress is tracked automatically.",
+      },
+      "Learning Analytics": {
+        title: "Analytics & Reports",
+        body: "Completion, score and time on course — live dashboard plus PDF and Excel reports.",
+      },
+      "Analytics & Reports": {
+        title: "Analytics & Reports",
+        body: "Completion, score and time on course — live dashboard plus PDF and Excel reports.",
+      },
+    };
+
+    document.querySelectorAll(".hp-platf-card-inner").forEach((card) => {
+      const titleEl = card.querySelector(".hp-platf-card-inner-title");
+      if (!titleEl) return;
+      const key = (titleEl.textContent || "").replace(/\u2028/g, "").trim();
+      const next = cardCopy[key];
+      if (!next) return;
+      titleEl.textContent = next.title;
+      const bodyEl = card.querySelector(".hp-platf-card-inner-text-c > div:last-child");
+      if (bodyEl && bodyEl !== titleEl) bodyEl.textContent = next.body;
+    });
+  }
 })();
