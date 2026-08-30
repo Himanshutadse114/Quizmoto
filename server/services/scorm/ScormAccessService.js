@@ -9,8 +9,19 @@ const ADMIN_CONTACT_EMAIL = String(
     process.env.SCORM_ADMIN_CONTACT_EMAIL || SUPER_ADMIN_EMAIL
 ).trim().toLowerCase();
 
+const SCORM_ADMIN_ROLES = Object.freeze(['admin', 'co_admin', 'analytics_viewer']);
+const SCORM_ACCESS_ROLES = Object.freeze(['super_admin', ...SCORM_ADMIN_ROLES]);
+
 function normalizeEmail(value) {
     return String(value || '').trim().toLowerCase();
+}
+
+function normalizeScormRole(value) {
+    const role = String(value || '').trim().toLowerCase();
+    // Backward compatibility: every historically-approved `user` was the sole
+    // administrator of their own SCORM workspace.
+    if (!role || role === 'user') return 'admin';
+    return SCORM_ACCESS_ROLES.includes(role) ? role : 'admin';
 }
 
 function isValidEmail(email) {
@@ -19,6 +30,16 @@ function isValidEmail(email) {
 
 function isSuperAdminEmail(email) {
     return normalizeEmail(email) === SUPER_ADMIN_EMAIL;
+}
+
+function validateAssignableRole(role) {
+    const normalized = normalizeScormRole(role);
+    if (!SCORM_ADMIN_ROLES.includes(normalized)) {
+        const err = new Error('Choose admin, co-admin or analytics viewer access.');
+        err.code = 'INVALID_SCORM_ROLE';
+        throw err;
+    }
+    return normalized;
 }
 
 async function ensureSuperAdminGrant() {
@@ -56,7 +77,7 @@ async function getAccessRole(email) {
     if (!normalized) return null;
     if (isSuperAdminEmail(normalized)) return 'super_admin';
     const grant = await ScormAccessGrant.findOne({ where: { email: normalized } });
-    return grant ? grant.role || 'user' : null;
+    return grant ? normalizeScormRole(grant.role) : null;
 }
 
 async function hasAccess(email) {
@@ -128,12 +149,22 @@ async function captureAccessRequest({ userId = null, email, username = null, aut
 
 async function listGrants() {
     await ensureSuperAdminGrant();
-    return ScormAccessGrant.findAll({
+    const grants = await ScormAccessGrant.findAll({
         order: [
             ['role', 'DESC'],
             ['email', 'ASC']
         ]
     });
+
+    // Heal the legacy role label lazily. This keeps long-lived production
+    // databases compatible without a destructive migration.
+    for (const grant of grants) {
+        if (String(grant.role || '').toLowerCase() === 'user') {
+            grant.role = 'admin';
+            await grant.save();
+        }
+    }
+    return grants;
 }
 
 async function listAccessRequests({ status = null } = {}) {
@@ -156,7 +187,7 @@ async function markRequestApproved(email, { approvedByUserId = null, approvedByE
     return request;
 }
 
-async function addGrant({ email, addedByUserId = null, addedByEmail = null }) {
+async function addGrant({ email, role = 'admin', addedByUserId = null, addedByEmail = null }) {
     const normalized = normalizeEmail(email);
     if (!isValidEmail(normalized)) {
         const err = new Error('Enter a valid email address.');
@@ -168,19 +199,20 @@ async function addGrant({ email, addedByUserId = null, addedByEmail = null }) {
         return { grant: await ensureSuperAdminGrant(), request: null };
     }
 
+    const assignedRole = validateAssignableRole(role);
     const [grant] = await ScormAccessGrant.findOrCreate({
         where: { email: normalized },
         defaults: {
             email: normalized,
-            role: 'user',
+            role: assignedRole,
             addedByUserId,
             addedByEmail: normalizeEmail(addedByEmail) || null
         }
     });
 
     let changed = false;
-    if (grant.role !== 'user') {
-        grant.role = 'user';
+    if (normalizeScormRole(grant.role) !== assignedRole || grant.role !== assignedRole) {
+        grant.role = assignedRole;
         changed = true;
     }
     if (addedByEmail && normalizeEmail(grant.addedByEmail) !== normalizeEmail(addedByEmail)) {
@@ -204,6 +236,7 @@ async function approveAccessRequest(id, { approvedByUserId = null, approvedByEma
 
     const result = await addGrant({
         email: request.email,
+        role: 'admin',
         addedByUserId: approvedByUserId,
         addedByEmail: approvedByEmail
     });
@@ -213,7 +246,7 @@ async function approveAccessRequest(id, { approvedByUserId = null, approvedByEma
 async function removeGrant(id) {
     const grant = await ScormAccessGrant.findByPk(id);
     if (!grant) return { removed: false, reason: 'not_found' };
-    if (isSuperAdminEmail(grant.email) || grant.role === 'super_admin') {
+    if (isSuperAdminEmail(grant.email) || normalizeScormRole(grant.role) === 'super_admin') {
         return { removed: false, reason: 'super_admin' };
     }
 
@@ -232,10 +265,19 @@ async function removeGrant(id) {
     return { removed: true, grant, request };
 }
 
+async function removeGrantByEmail(email) {
+    const grant = await findGrant(email);
+    if (!grant) return { removed: false, reason: 'not_found' };
+    return removeGrant(grant.id);
+}
+
 module.exports = {
     SUPER_ADMIN_EMAIL,
     ADMIN_CONTACT_EMAIL,
+    SCORM_ADMIN_ROLES,
+    SCORM_ACCESS_ROLES,
     normalizeEmail,
+    normalizeScormRole,
     isValidEmail,
     isSuperAdminEmail,
     ensureSuperAdminGrant,
@@ -247,7 +289,9 @@ module.exports = {
     captureAccessRequest,
     listGrants,
     listAccessRequests,
+    markRequestApproved,
     addGrant,
     approveAccessRequest,
-    removeGrant
+    removeGrant,
+    removeGrantByEmail
 };

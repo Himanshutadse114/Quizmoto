@@ -7,7 +7,9 @@ const {
     ScormRegistration,
     ScormAttempt,
     ScormPackage,
-    ScormLearnerRoster
+    ScormLearnerRoster,
+    ScormWorkspace,
+    ScormWorkspaceAuthConfig
 } = require('../../models/scorm');
 const { ensurePackageLaunchMetadata } = require('./ScormLaunchMetadataService');
 const { assertEnrollmentAllowed } = require('./ScormEntitlementService');
@@ -98,6 +100,25 @@ async function nextAttempt(reg, transaction) {
     }, { transaction });
 }
 
+async function assertLegacyInviteAllowed(course, transaction) {
+    const workspace = await ScormWorkspace.findOne({
+        where: { ownerUserId: course.hostId, status: 'active' },
+        transaction
+    });
+    if (!workspace) return;
+    const config = await ScormWorkspaceAuthConfig.findOne({
+        where: { workspaceId: workspace.id },
+        transaction
+    });
+    if (String(config?.joiningMode || '').toLowerCase() !== 'sso_only') return;
+
+    const err = new Error('This organisation requires SSO. Open the organisation learner portal and sign in with Google or Microsoft.');
+    err.code = 'SCORM_SSO_REQUIRED';
+    err.status = 403;
+    err.workspaceId = workspace.id;
+    throw err;
+}
+
 async function acceptInvite({ inviteCode, learnerName, learnerEmail }) {
     const normalizedEmail = normalizeLearnerEmail(learnerEmail);
     if (!normalizedEmail) {
@@ -122,6 +143,11 @@ async function acceptInvite({ inviteCode, learnerName, learnerEmail }) {
             err.code = 'NOT_FOUND';
             throw err;
         }
+
+        // A workspace-wide SSO-only policy must also protect historical public
+        // invite links; otherwise a learner could bypass the configured identity
+        // provider simply by opening an older course URL and typing an email.
+        await assertLegacyInviteAllowed(course, transaction);
 
         const approvedLearner = await ScormLearnerRoster.findOne({
             where: { hostId: course.hostId, email: normalizedEmail },
@@ -177,12 +203,17 @@ async function acceptInvite({ inviteCode, learnerName, learnerEmail }) {
                 courseId: course.id,
                 learnerName: resolvedLearnerName,
                 learnerEmail: normalizedEmail,
-                status: 'invited'
+                status: 'invited',
+                assignedAt: new Date(),
+                assignmentSource: 'invite',
+                required: true
             }, { transaction });
         } else {
             reg.learnerName = resolvedLearnerName;
             reg.learnerEmail = normalizedEmail;
             if (reg.status === 'revoked') reg.status = 'invited';
+            if (!reg.assignedAt) reg.assignedAt = reg.createdAt || new Date();
+            if (!reg.assignmentSource) reg.assignmentSource = 'invite';
         }
 
         const attempt = await nextAttempt(reg, transaction);

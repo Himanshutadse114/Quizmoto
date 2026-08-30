@@ -16,6 +16,8 @@ router.use('/preview', require('./preview'));
 router.use('/slide-preview', require('./slidePreview'));
 router.use('/registrations', require('./registrations'));
 router.use('/roster', require('./roster'));
+router.use('/assignments', require('./assignments'));
+router.use('/learner-access', require('./authConfig'));
 router.use('/session', require('./session'));
 router.use('/runtime', require('./runtime'));
 router.use('/content', require('./content'));
@@ -25,6 +27,7 @@ router.use('/xapi', require('./xapi'));
 // the existing packaged visuals instead of calling image generation again.
 router.use('/author', require('./authorRebuild'));
 router.use('/author', require('./author'));
+router.use('/team', require('./team'));
 router.use('/access', require('./access'));
 
 router.get('/features', (req, res) => {
@@ -32,6 +35,9 @@ router.get('/features', (req, res) => {
         scormLms: featureFlags.scormLms,
         scormAiAuthor: featureFlags.scormAiAuthor,
         scormPublicInvites: featureFlags.scormPublicInvites,
+        learnerDashboard: true,
+        workspaceRbac: true,
+        workspaceSso: true,
         standards: {
             scorm12: true,
             scorm2004: true,

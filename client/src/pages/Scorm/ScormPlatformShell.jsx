@@ -20,7 +20,8 @@ import {
   RefreshCw,
   Sun,
   Moon,
-  UserCheck
+  UserCheck,
+  Users
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import ScormGenerationNotifier from '../../components/ScormGenerationNotifier';
@@ -36,7 +37,7 @@ import './scormLightContrastGuard.css';
 import './scormLightRoutePolish.css';
 import './courseGeneratorThemeFix.css';
 
-const NAV_GROUPS = [
+const OPERATIONAL_NAV_GROUPS = [
   {
     label: 'Platform',
     items: [
@@ -50,6 +51,7 @@ const NAV_GROUPS = [
       { to: '/scorm/author', label: 'AI Course Author', icon: Sparkles, requiresScorm: true },
       { to: '/scorm/courses', label: 'My Courses', icon: BookOpen, requiresScorm: true },
       { to: '/scorm/roster', label: 'Learner Roster', icon: UserCheck, requiresScorm: true },
+      { to: '/scorm/assignments', label: 'Course Assignments', icon: BookOpen, requiresScorm: true },
       { to: '/scorm/visual-studio', label: 'Content Editor', icon: Palette, requiresScorm: true },
       { to: '/scorm/library', label: 'SCORM Library', icon: Library, requiresScorm: true },
       { to: '/scorm/tracking', label: 'Learner Tracking', icon: Activity, requiresScorm: true },
@@ -58,18 +60,52 @@ const NAV_GROUPS = [
   }
 ];
 
-function Navigation({ onNavigate, isSuperAdmin, scormAccess }) {
-  const groups = isSuperAdmin
-    ? [
-        ...NAV_GROUPS,
-        {
-          label: 'Administration',
-          items: [
-            { to: '/scorm/access', label: 'Access Control', icon: ShieldCheck }
-          ]
-        }
-      ]
-    : NAV_GROUPS;
+const ANALYTICS_NAV_GROUPS = [
+  {
+    label: 'Analytics',
+    items: [
+      { to: '/scorm/tracking', label: 'Learner Tracking', icon: Activity, requiresScorm: true },
+      { to: '/scorm/reports', label: 'Reports & Insights', icon: BarChart3, requiresScorm: true }
+    ]
+  }
+];
+
+function displayRole(role, isSuperAdmin) {
+  if (isSuperAdmin || role === 'super_admin') return 'Super Admin';
+  if (role === 'admin') return 'Workspace Admin';
+  if (role === 'co_admin') return 'Co-admin';
+  if (role === 'analytics_viewer') return 'Analytics viewer';
+  return 'LMSGEN member';
+}
+
+function Navigation({ onNavigate, isSuperAdmin, scormAccess, role }) {
+  const analyticsOnly = scormAccess && role === 'analytics_viewer';
+  let groups = analyticsOnly ? ANALYTICS_NAV_GROUPS : OPERATIONAL_NAV_GROUPS;
+
+  if (scormAccess && role === 'admin') {
+    groups = [
+      ...groups,
+      {
+        label: 'Administration',
+        items: [
+          { to: '/scorm/team', label: 'Team & Roles', icon: Users, requiresScorm: true },
+          { to: '/scorm/learner-access', label: 'Learner Access & SSO', icon: LockKeyhole, requiresScorm: true }
+        ]
+      }
+    ];
+  }
+
+  if (isSuperAdmin) {
+    groups = [
+      ...groups,
+      {
+        label: 'Platform Administration',
+        items: [
+          { to: '/scorm/access', label: 'Access Control', icon: ShieldCheck, requiresScorm: true }
+        ]
+      }
+    ];
+  }
 
   return (
     <nav className="scorm-nav flex-1 px-3 py-5 overflow-y-auto">
@@ -133,14 +169,21 @@ function ThemeToggle({ theme, onToggle, auth = false }) {
   );
 }
 
-function MobileTabBar({ scormAccess }) {
-  const items = [
-    { to: '/scorm', end: true, label: 'Home', icon: LayoutDashboard },
-    { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2 },
-    { to: '/scorm/author', label: scormAccess ? 'Create' : 'Locked', icon: scormAccess ? Sparkles : LockKeyhole },
-    { to: '/scorm/reports', label: 'Reports', icon: BarChart3 }
-  ];
-  return <div className="scorm-mobile-tabbar lg:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40 grid grid-cols-4 p-1.5">{items.map(({ to, end, label, icon: Icon }) => <NavLink key={to} to={to} end={end} className={({ isActive }) => `scorm-mobile-tab ${isActive ? 'is-active' : ''} flex flex-col items-center justify-center gap-1 px-3 py-2`}><Icon size={17} strokeWidth={2} /><span>{label}</span></NavLink>)}</div>;
+function MobileTabBar({ scormAccess, role }) {
+  const analyticsOnly = scormAccess && role === 'analytics_viewer';
+  const items = analyticsOnly
+    ? [
+        { to: '/scorm/tracking', label: 'Tracking', icon: Activity },
+        { to: '/scorm/reports', label: 'Reports', icon: BarChart3 }
+      ]
+    : [
+        { to: '/scorm', end: true, label: 'Home', icon: LayoutDashboard },
+        { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2 },
+        { to: '/scorm/author', label: scormAccess ? 'Create' : 'Locked', icon: scormAccess ? Sparkles : LockKeyhole },
+        { to: '/scorm/reports', label: 'Reports', icon: BarChart3 }
+      ];
+  const gridClass = analyticsOnly ? 'grid-cols-2' : 'grid-cols-4';
+  return <div className={`scorm-mobile-tabbar lg:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40 grid ${gridClass} p-1.5`}>{items.map(({ to, end, label, icon: Icon }) => <NavLink key={to} to={to} end={end} className={({ isActive }) => `scorm-mobile-tab ${isActive ? 'is-active' : ''} flex flex-col items-center justify-center gap-1 px-3 py-2`}><Icon size={17} strokeWidth={2} /><span>{label}</span></NavLink>)}</div>;
 }
 
 export default function ScormPlatformShell() {
@@ -188,22 +231,37 @@ export default function ScormPlatformShell() {
   };
 
   const toggleTheme = () => setTheme((current) => current === 'light' ? 'dark' : 'light');
-  const isSuperAdmin = Boolean(scormAccess && (user?.isSuperAdmin || user?.role === 'super_admin'));
+  const role = user?.role || (scormAccess ? 'admin' : 'pending');
+  const isSuperAdmin = Boolean(scormAccess && (user?.isSuperAdmin || role === 'super_admin'));
+  const isWorkspaceAdmin = Boolean(scormAccess && role === 'admin');
+  const analyticsOnly = Boolean(scormAccess && role === 'analytics_viewer');
+  const roleName = displayRole(role, isSuperAdmin);
 
   return (
     <div className={`scorm-editorial scorm-theme-${theme} min-h-screen relative z-20`}>
       <aside className="scorm-sidebar fixed inset-y-0 left-0 z-40 hidden lg:flex w-[268px] flex-col border-r">
         <div className="scorm-brand-wrap h-[76px] px-5 flex items-center border-b"><Brand theme={theme} /></div>
-        <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} />
+        <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} />
         <div className="scorm-sidebar-footer p-3 border-t space-y-2.5">
-          {isSuperAdmin && (
+          {scormAccess && (
             <div className="rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
-              <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><ShieldCheck size={13} /> Super Admin</div>
+              <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]">
+                {analyticsOnly ? <BarChart3 size={13} /> : <ShieldCheck size={13} />} {roleName}
+              </div>
               <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae] break-all">{user?.email}</div>
             </div>
           )}
           {scormAccess ? (
-            <div className="scorm-status-card rounded-xl px-3.5 py-3"><div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />LMSGEN unlocked</div><div className="mt-1.5 text-[10px] leading-relaxed">Authoring, learner tracking, reporting and SCORM operations are active.</div></div>
+            <div className="scorm-status-card rounded-xl px-3.5 py-3">
+              <div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />LMSGEN unlocked</div>
+              <div className="mt-1.5 text-[10px] leading-relaxed">
+                {analyticsOnly
+                  ? 'Read-only learner tracking, analytics and reporting are active.'
+                  : role === 'co_admin'
+                    ? 'Course operations, learner management, assignments, tracking and reporting are active.'
+                    : 'Authoring, learner management, assignments, tracking, reporting and SCORM operations are active.'}
+              </div>
+            </div>
           ) : (
             <div className="rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
               <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={13} /> Approval pending</div>
@@ -215,24 +273,35 @@ export default function ScormPlatformShell() {
         </div>
       </aside>
 
-      {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><button aria-label="Close navigation" className="absolute inset-0 bg-[#02050b]/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)} /><div className="scorm-mobile-drawer absolute inset-y-0 left-0 w-[304px] max-w-[88vw] border-r flex flex-col"><div className="h-[72px] px-4 flex items-center justify-between border-b"><Brand theme={theme} /><button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="scorm-drawer-close w-9 h-9 grid place-items-center"><X size={17} /></button></div><Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} onNavigate={() => setMobileOpen(false)} /><div className="p-3 border-t"><button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><LogOut size={14} /> Sign out</span><ChevronRight size={13} /></button></div></div></div>}
+      {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><button aria-label="Close navigation" className="absolute inset-0 bg-[#02050b]/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)} /><div className="scorm-mobile-drawer absolute inset-y-0 left-0 w-[304px] max-w-[88vw] border-r flex flex-col"><div className="h-[72px] px-4 flex items-center justify-between border-b"><Brand theme={theme} /><button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="scorm-drawer-close w-9 h-9 grid place-items-center"><X size={17} /></button></div><Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} onNavigate={() => setMobileOpen(false)} /><div className="p-3 border-t"><button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><LogOut size={14} /> Sign out</span><ChevronRight size={13} /></button></div></div></div>}
 
       <div className="lg:pl-[268px] min-h-screen">
         <header className="scorm-topbar sticky top-0 z-30 min-h-[64px] border-b px-4 md:px-7 py-2.5 flex items-center gap-3 md:gap-4">
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open LMSGEN navigation" className="scorm-topbar-icon lg:hidden w-10 h-10 grid place-items-center shrink-0"><Menu size={18} /></button>
           {!scormAccess && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> LMSGEN approval pending · Quizmoto available</div>}
+          {analyticsOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><BarChart3 size={12} /> Read-only analytics access</div>}
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
-            <Link to="/scorm/quizmoto" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
-            {isSuperAdmin && <Link to="/scorm/access" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><ShieldCheck size={14} /> Access</Link>}
-            <Link to="/scorm/library?upload=1" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Upload size={14} /> {scormAccess ? 'Upload' : 'Library'}</Link>
-            <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold">{scormAccess ? <Plus size={14} /> : <LockKeyhole size={14} />}<span className="hidden sm:inline">{scormAccess ? 'Create course' : 'Explore AI Author'}</span><span className="sm:hidden">{scormAccess ? 'Create' : 'AI'}</span></Link>
+            {analyticsOnly ? (
+              <>
+                <Link to="/scorm/tracking" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Activity size={14} /><span>Tracking</span></Link>
+                <Link to="/scorm/reports" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold"><BarChart3 size={14} /><span>Reports</span></Link>
+              </>
+            ) : (
+              <>
+                <Link to="/scorm/quizmoto" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
+                {isWorkspaceAdmin && <Link to="/scorm/team" className="scorm-button-secondary hidden xl:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Users size={14} /> Team</Link>}
+                {isSuperAdmin && <Link to="/scorm/access" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><ShieldCheck size={14} /> Access</Link>}
+                <Link to="/scorm/library?upload=1" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Upload size={14} /> {scormAccess ? 'Upload' : 'Library'}</Link>
+                <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold">{scormAccess ? <Plus size={14} /> : <LockKeyhole size={14} />}<span className="hidden sm:inline">{scormAccess ? 'Create course' : 'Explore AI Author'}</span><span className="sm:hidden">{scormAccess ? 'Create' : 'AI'}</span></Link>
+              </>
+            )}
           </div>
         </header>
         <main className="scorm-main min-h-[calc(100vh-64px)] pb-24 lg:pb-0"><Outlet /></main>
       </div>
-      <ScormGenerationNotifier />
-      <MobileTabBar scormAccess={scormAccess} />
+      {!analyticsOnly && <ScormGenerationNotifier />}
+      <MobileTabBar scormAccess={scormAccess} role={role} />
     </div>
   );
 }

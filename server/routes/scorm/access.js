@@ -5,11 +5,13 @@ const ScormAccessGrant = require('../../models/ScormAccessGrant');
 const {
     ADMIN_CONTACT_EMAIL,
     SUPER_ADMIN_EMAIL,
+    normalizeScormRole,
     listGrants,
     listAccessRequests,
     approveAccessRequest,
     removeGrant
 } = require('../../services/scorm/ScormAccessService');
+const { serializeWorkspace } = require('../../services/scorm/ScormWorkspaceService');
 const {
     getEntitlement,
     updateEntitlement,
@@ -27,15 +29,16 @@ function requireSuperAdmin(req, res, next) {
 }
 
 async function serializeGrant(grant) {
-    const protectedGrant = grant.role === 'super_admin' || grant.email === SUPER_ADMIN_EMAIL;
+    const role = normalizeScormRole(grant.role);
+    const protectedGrant = role === 'super_admin' || grant.email === SUPER_ADMIN_EMAIL;
     const [entitlement, usage] = await Promise.all([
-        getEntitlement(grant.email, protectedGrant ? 'super_admin' : grant.role),
+        getEntitlement(grant.email, protectedGrant ? 'super_admin' : role),
         getUsageForEmail(grant.email)
     ]);
     return {
         id: grant.id,
         email: grant.email,
-        role: grant.role,
+        role,
         addedByEmail: grant.addedByEmail || null,
         createdAt: grant.createdAt,
         updatedAt: grant.updatedAt,
@@ -64,10 +67,17 @@ function serializeRequest(request) {
 router.get('/me', auth, async (req, res) => {
     res.json({
         email: req.scormEmail || null,
-        role: req.scormRole || 'user',
+        role: normalizeScormRole(req.scormRole || 'admin'),
         isSuperAdmin: req.scormRole === 'super_admin',
         adminContact: ADMIN_CONTACT_EMAIL,
-        entitlement: req.scormEntitlement || await getEntitlement(req.scormEmail, req.scormRole)
+        workspace: serializeWorkspace(req.scormWorkspace),
+        workspaceId: req.scormWorkspaceId || null,
+        hostId: req.scormHostId || req.userId || null,
+        entitlementOwnerEmail: req.scormEntitlementEmail || req.scormEmail || null,
+        entitlement: req.scormEntitlement || await getEntitlement(
+            req.scormEntitlementEmail || req.scormEmail,
+            req.scormRole === 'super_admin' ? 'super_admin' : 'admin'
+        )
     });
 });
 
@@ -92,11 +102,12 @@ router.get('/', auth, requireSuperAdmin, async (req, res) => {
 
 // Approve a captured SCORM registration/Google access request. The underlying
 // user account and password remain unchanged, so the user signs in with the
-// same credentials they registered before approval.
+// same credentials they registered before approval. An approved standalone
+// account becomes the primary Admin of its own workspace on first use.
 router.post('/requests/:id/approve', auth, requireSuperAdmin, async (req, res) => {
     try {
         const result = await approveAccessRequest(req.params.id, {
-            approvedByUserId: req.userId,
+            approvedByUserId: req.authenticatedUserId || req.userId,
             approvedByEmail: req.scormEmail
         });
         if (!result.ok && result.reason === 'not_found') {
@@ -120,12 +131,19 @@ router.patch('/:id/entitlement', auth, requireSuperAdmin, async (req, res) => {
     try {
         const grant = await ScormAccessGrant.findByPk(req.params.id);
         if (!grant) return res.status(404).json({ message: 'Access grant not found.' });
-        if (grant.role === 'super_admin' || grant.email === SUPER_ADMIN_EMAIL) {
+        const role = normalizeScormRole(grant.role);
+        if (role === 'super_admin' || grant.email === SUPER_ADMIN_EMAIL) {
             return res.status(400).json({ message: 'The super administrator always has unrestricted access.' });
+        }
+        if (role === 'co_admin' || role === 'analytics_viewer') {
+            return res.status(400).json({
+                message: 'Team members inherit workspace limits and permissions from the primary Admin.',
+                code: 'SCORM_WORKSPACE_ENTITLEMENT_INHERITED'
+            });
         }
 
         await updateEntitlement(grant.email, req.body || {}, {
-            userId: req.userId,
+            userId: req.authenticatedUserId || req.userId,
             email: req.scormEmail
         });
         res.json({

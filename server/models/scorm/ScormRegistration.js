@@ -37,6 +37,27 @@ const ScormRegistration = sequelize.define('ScormRegistration', {
         allowNull: false,
         defaultValue: false
     },
+    assignedAt: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    assignedByUserId: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    dueAt: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    assignmentSource: {
+        type: DataTypes.STRING(32),
+        allowNull: true
+    },
+    required: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true
+    },
     lastLessonStatus: {
         type: DataTypes.STRING,
         allowNull: true
@@ -55,7 +76,12 @@ const ScormRegistration = sequelize.define('ScormRegistration', {
     }
 }, {
     tableName: 'scorm_registrations',
-    indexes: [{ fields: ['courseId'] }, { fields: ['status'] }]
+    indexes: [
+        { fields: ['courseId'] },
+        { fields: ['status'] },
+        { fields: ['learnerEmail'] },
+        { fields: ['assignedAt'] }
+    ]
 });
 
 module.exports = ScormRegistration;

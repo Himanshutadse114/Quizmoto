@@ -12,6 +12,22 @@ const PLATFORM_ACCESS_KEY = 'scormPlatformAccess';
 const HOST_TOKEN_BACKUP = 'quizmotoHostToken';
 const HOST_USER_BACKUP = 'quizmotoHostUser';
 
+function normalizeScormRole(role, approved = false) {
+    const value = String(role || '').trim().toLowerCase();
+    // Rolling-deploy / stored-session compatibility: historical approved LMSGEN
+    // accounts were labelled `user`. They are now primary workspace Admins.
+    if (value === 'user') return 'admin';
+    if (['super_admin', 'admin', 'co_admin', 'analytics_viewer', 'pending'].includes(value)) return value;
+    return approved ? 'admin' : 'pending';
+}
+
+function normalizeStoredUser(value) {
+    if (!value || typeof value !== 'object') return value;
+    if (value.product !== 'scorm-ai' && !value.scormAccess && !value.pendingApproval) return value;
+    const approved = Boolean(value.scormAccess && !value.pendingApproval);
+    return { ...value, role: normalizeScormRole(value.role, approved) };
+}
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem('token'));
@@ -27,7 +43,9 @@ export const AuthProvider = ({ children }) => {
             try {
                 const storedUser = localStorage.getItem('user');
                 if (storedUser && storedUser !== 'undefined') {
-                    setUser(JSON.parse(storedUser));
+                    const parsed = normalizeStoredUser(JSON.parse(storedUser));
+                    setUser(parsed);
+                    localStorage.setItem('user', JSON.stringify(parsed));
                 }
             } catch (e) {
                 console.error('Failed to parse user from localStorage:', e);
@@ -42,11 +60,12 @@ export const AuthProvider = ({ children }) => {
     }, [token]);
 
     const persistSession = (nextToken, nextUser) => {
+        const normalizedUser = normalizeStoredUser(nextUser || null);
         setToken(nextToken || null);
-        setUser(nextUser || null);
+        setUser(normalizedUser);
         if (nextToken) localStorage.setItem('token', nextToken);
         else localStorage.removeItem('token');
-        if (nextUser) localStorage.setItem('user', JSON.stringify(nextUser));
+        if (normalizedUser) localStorage.setItem('user', JSON.stringify(normalizedUser));
         else localStorage.removeItem('user');
     };
 
@@ -78,12 +97,13 @@ export const AuthProvider = ({ children }) => {
     const enterScormSession = (data) => {
         if (!data?.token) return data;
         const approved = Boolean(data.scormAccess ?? (!data.pendingApproval && data.role && data.role !== 'pending'));
+        const role = normalizeScormRole(data.role, approved);
         const scormUser = {
             username: data.username,
             avatar: data.avatar || null,
             email: data.email || null,
-            role: data.role || (approved ? 'user' : 'pending'),
-            isSuperAdmin: Boolean(data.isSuperAdmin),
+            role,
+            isSuperAdmin: Boolean(data.isSuperAdmin || role === 'super_admin'),
             adminContact: data.adminContact || null,
             product: 'scorm-ai',
             pendingApproval: Boolean(data.pendingApproval || !approved),
@@ -92,7 +112,7 @@ export const AuthProvider = ({ children }) => {
         };
         setAccessFlags({ platform: true, scorm: approved });
         persistSession(data.token, scormUser);
-        return data;
+        return { ...data, role };
     };
 
     const resolveScormAuthResponse = (data) => {
@@ -124,8 +144,7 @@ export const AuthProvider = ({ children }) => {
         const res = await axios.get(`${API_URL}/scorm/status`, {
             headers: { Authorization: `Bearer ${token}` }
         });
-        enterScormSession(res.data);
-        return res.data;
+        return enterScormSession(res.data);
     };
 
     const leaveScorm = () => {

@@ -13,7 +13,9 @@ const ScormAccessGrant = sequelize.define('ScormAccessGrant', {
     role: {
         type: DataTypes.STRING(32),
         allowNull: false,
-        defaultValue: 'user'
+        // Historical rows used `user`; ScormAccessService normalizes those rows
+        // to admin. New grants are explicit workspace administrators by default.
+        defaultValue: 'admin'
     },
     addedByUserId: {
         type: DataTypes.INTEGER,

@@ -36,6 +36,10 @@ const QuizmotoModule = lazy(() => import('./pages/Scorm/QuizmotoModule'));
 const ScormCourses = lazy(() => import('./pages/Scorm/Courses'));
 const ScormTracking = lazy(() => import('./pages/Scorm/Tracking'));
 const ScormLearnerRoster = lazy(() => import('./pages/Scorm/LearnerRoster'));
+const ScormAssignments = lazy(() => import('./pages/Scorm/Assignments'));
+const ScormLearnerAccessSettings = lazy(() => import('./pages/Scorm/LearnerAccessSettings'));
+const ScormLearnerPortal = lazy(() => import('./pages/Scorm/LearnerPortal'));
+const ScormMicrosoftLearnerCallback = lazy(() => import('./pages/Scorm/MicrosoftLearnerCallback'));
 const ScormLibrary = lazy(() => import('./pages/Scorm/Library'));
 const ScormCourseDetail = lazy(() => import('./pages/Scorm/CourseDetail'));
 const ScormLearnLanding = lazy(() => import('./pages/Scorm/LearnLanding'));
@@ -44,6 +48,7 @@ const ScormAuthor = lazy(() => import('./pages/Scorm/CourseGenerator'));
 const ScormReports = lazy(() => import('./pages/Scorm/Reports'));
 const ScormVisualStudio = lazy(() => import('./pages/Scorm/VisualStudio'));
 const ScormAccessAdmin = lazy(() => import('./pages/Scorm/AccessAdmin'));
+const ScormTeamAccess = lazy(() => import('./pages/Scorm/TeamAccess'));
 
 function RouteFallback() {
   return (
@@ -70,13 +75,25 @@ function PlatformProtected({ children }) {
   return children;
 }
 
-function ScormFeatureGate({ featureId, children }) {
-  const { scormAccess } = useAuth();
-  return scormAccess ? children : <ScormFeatureLocked featureId={featureId} />;
+function isAnalyticsViewer(user) {
+  return user?.role === 'analytics_viewer';
+}
+
+function ScormFeatureGate({ featureId, analyticsAllowed = false, children }) {
+  const { scormAccess, user } = useAuth();
+  if (!scormAccess) return <ScormFeatureLocked featureId={featureId} />;
+  if (isAnalyticsViewer(user) && !analyticsAllowed) return <Navigate to="/scorm/tracking" replace />;
+  return children;
+}
+
+function ScormOperationalGate({ children }) {
+  const { user } = useAuth();
+  return isAnalyticsViewer(user) ? <Navigate to="/scorm/tracking" replace /> : children;
 }
 
 function ScormHomeGate() {
-  const { scormAccess } = useAuth();
+  const { scormAccess, user } = useAuth();
+  if (scormAccess && isAnalyticsViewer(user)) return <Navigate to="/scorm/tracking" replace />;
   return scormAccess ? <ScormHome /> : <PendingScormHome />;
 }
 
@@ -84,6 +101,13 @@ function AccessAdminGate() {
   const { scormAccess, user } = useAuth();
   const isSuperAdmin = Boolean(scormAccess && (user?.isSuperAdmin || user?.role === 'super_admin'));
   return isSuperAdmin ? <ScormAccessAdmin /> : <Navigate to="/scorm" replace />;
+}
+
+function WorkspaceAdminGate({ children }) {
+  const { scormAccess, user } = useAuth();
+  return scormAccess && user?.role === 'admin'
+    ? children
+    : <Navigate to={isAnalyticsViewer(user) ? '/scorm/tracking' : '/scorm'} replace />;
 }
 
 const BLOG_POST_TITLES = {
@@ -154,19 +178,22 @@ function AppRoutes() {
         <Route path="/scorm" element={<PlatformProtected><ScormPlatformShell /></PlatformProtected>}>
           <Route index element={<ScormHomeGate />} />
 
-          <Route path="quizmoto" element={<QuizmotoModule />} />
-          <Route path="quizmoto/create" element={<CreateQuiz embedded />} />
-          <Route path="quizmoto/edit/:id" element={<EditQuiz embedded />} />
-          <Route path="quizmoto/reports" element={<Reports embedded />} />
+          <Route path="quizmoto" element={<ScormOperationalGate><QuizmotoModule /></ScormOperationalGate>} />
+          <Route path="quizmoto/create" element={<ScormOperationalGate><CreateQuiz embedded /></ScormOperationalGate>} />
+          <Route path="quizmoto/edit/:id" element={<ScormOperationalGate><EditQuiz embedded /></ScormOperationalGate>} />
+          <Route path="quizmoto/reports" element={<ScormOperationalGate><Reports embedded /></ScormOperationalGate>} />
 
           <Route path="courses" element={<ScormFeatureGate featureId="courses"><ScormCourses /></ScormFeatureGate>} />
           <Route path="courses/:id" element={<ScormFeatureGate featureId="courses"><ScormCourseDetail /></ScormFeatureGate>} />
           <Route path="roster" element={<ScormFeatureGate featureId="tracking"><ScormLearnerRoster /></ScormFeatureGate>} />
-          <Route path="tracking" element={<ScormFeatureGate featureId="tracking"><ScormTracking /></ScormFeatureGate>} />
+          <Route path="assignments" element={<ScormFeatureGate featureId="tracking"><ScormAssignments /></ScormFeatureGate>} />
+          <Route path="tracking" element={<ScormFeatureGate featureId="tracking" analyticsAllowed><ScormTracking /></ScormFeatureGate>} />
           <Route path="library" element={<ScormFeatureGate featureId="library"><ScormLibrary /></ScormFeatureGate>} />
           <Route path="author" element={<ScormFeatureGate featureId="author"><ScormAuthor /></ScormFeatureGate>} />
           <Route path="visual-studio" element={<ScormFeatureGate featureId="visualStudio"><ScormVisualStudio /></ScormFeatureGate>} />
-          <Route path="reports" element={<ScormFeatureGate featureId="reports"><ScormReports /></ScormFeatureGate>} />
+          <Route path="reports" element={<ScormFeatureGate featureId="reports" analyticsAllowed><ScormReports /></ScormFeatureGate>} />
+          <Route path="team" element={<WorkspaceAdminGate><ScormTeamAccess /></WorkspaceAdminGate>} />
+          <Route path="learner-access" element={<WorkspaceAdminGate><ScormLearnerAccessSettings /></WorkspaceAdminGate>} />
           <Route path="access" element={<AccessAdminGate />} />
         </Route>
 
@@ -184,6 +211,8 @@ function AppRoutes() {
         <Route path="/host/lobby-old/:pin" element={<LegacyQuizRedirect kind="lobby" />} />
         <Route path="/host/game-old/:pin" element={<LegacyQuizRedirect kind="game" />} />
 
+        <Route path="/learn/:workspaceId" element={<ScormLearnerPortal />} />
+        <Route path="/learn/:workspaceId/microsoft/callback" element={<ScormMicrosoftLearnerCallback />} />
         <Route path="/scorm/learn/:inviteCode" element={<ScormLearnLanding />} />
         <Route path="/scorm/player/:registrationId" element={<ScormPlayerShell />} />
 

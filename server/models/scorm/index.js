@@ -7,6 +7,9 @@ const ScormRuntimeSnapshot = require('./ScormRuntimeSnapshot');
 const ScormXapiStatement = require('./ScormXapiStatement');
 const ScormLearnerRoster = require('./ScormLearnerRoster');
 const ScormUserEntitlement = require('./ScormUserEntitlement');
+const ScormWorkspace = require('./ScormWorkspace');
+const ScormWorkspaceMember = require('./ScormWorkspaceMember');
+const ScormWorkspaceAuthConfig = require('./ScormWorkspaceAuthConfig');
 const ScormAccessGrant = require('../ScormAccessGrant');
 const ScormAccessRequest = require('../ScormAccessRequest');
 
@@ -28,6 +31,26 @@ ScormRuntimeSnapshot.belongsTo(ScormRegistration, { foreignKey: 'registrationId'
 ScormRegistration.hasMany(ScormXapiStatement, { foreignKey: 'registrationId', as: 'xapiStatements' });
 ScormXapiStatement.belongsTo(ScormRegistration, { foreignKey: 'registrationId', as: 'registration' });
 
+ScormWorkspace.hasMany(ScormWorkspaceMember, {
+    foreignKey: 'workspaceId',
+    as: 'members',
+    onDelete: 'CASCADE'
+});
+ScormWorkspaceMember.belongsTo(ScormWorkspace, {
+    foreignKey: 'workspaceId',
+    as: 'workspace'
+});
+
+ScormWorkspace.hasOne(ScormWorkspaceAuthConfig, {
+    foreignKey: 'workspaceId',
+    as: 'authConfig',
+    onDelete: 'CASCADE'
+});
+ScormWorkspaceAuthConfig.belongsTo(ScormWorkspace, {
+    foreignKey: 'workspaceId',
+    as: 'workspace'
+});
+
 module.exports = {
     ScormPackage,
     ScormCourse,
@@ -38,6 +61,9 @@ module.exports = {
     ScormXapiStatement,
     ScormLearnerRoster,
     ScormUserEntitlement,
+    ScormWorkspace,
+    ScormWorkspaceMember,
+    ScormWorkspaceAuthConfig,
     ScormAccessGrant,
     ScormAccessRequest
 };
