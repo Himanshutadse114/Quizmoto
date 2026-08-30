@@ -45,7 +45,7 @@
   arrow&&arrow.addEventListener("click",()=>{const submit=document.querySelector(".btn-primary.submit");submit&&submit.click()});
 
   const hide=document.createElement("style");
-  hide.textContent=".sl-features-key-c,.sl-hero-deco{display:none!important}";
+  hide.textContent=".sl-features-key-c,.sl-hero-deco,.ab-hero-carousel-w,.ab-hero-img{display:none!important}";
   document.head.appendChild(hide);
   const keyBlock=document.querySelector(".sl-features-key-c");
   if(keyBlock){
@@ -57,16 +57,18 @@
   }
   const deco=document.querySelector(".sl-hero-deco");
   if(deco) deco.remove();
+  const aboutCarousel=document.querySelector(".ab-hero-carousel-w");
+  if(aboutCarousel) aboutCarousel.remove();
 
   const ART_BASE="/landing/images/lmsgen/";
-  const ART_VER="?v=20260830d";
+  const ART_VER="?v=20260830f";
   const css=document.createElement("link");
   css.rel="stylesheet";
   css.href="/landing/css/lmsgen-advantage-assets.css"+ART_VER;
   document.head.appendChild(css);
 
   const art=[
-    [".sl-hero-img", ART_BASE+"01-hero-course-studio.svg", "LMSGEN course studio — AI authoring, SCORM delivery and learner tracking"],
+    [".sl-hero-img", ART_BASE+"01-hero-flow-diagram.svg", "LMSGEN flow — brief to AI studio, SCORM, live quiz and tracking"],
     ["#ai-course-authoring .sl-feat-common-img", ART_BASE+"02-ai-from-documents.svg", "LMSGEN turns documents into structured courses"],
     ["#scorm-ready-delivery .sl-feat-common-img", ART_BASE+"10-scorm-package.svg", "Publish in LMSGEN or export a SCORM package"],
     ["#quizmoto-engagement .sl-feat-common-img", ART_BASE+"11-quizmoto-live.svg", "Quizmoto live quiz — separate realtime feature"],
