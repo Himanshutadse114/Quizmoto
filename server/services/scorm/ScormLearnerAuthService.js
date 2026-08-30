@@ -221,7 +221,7 @@ async function findAssignedRegistrations(hostId, email) {
     return ScormRegistration.findAll({
         where: {
             isPreview: false,
-            status: { [Op.ne]: 'revoked' },
+            status: { [Op.notIn]: ['revoked', 'superseded'] },
             [Op.and]: [
                 sequelize.where(sequelize.fn('LOWER', sequelize.col('learnerEmail')), normalized)
             ]
@@ -288,6 +288,7 @@ function serializeAssignment(registration) {
     const completed = registration.status === 'completed' || ['completed', 'passed', 'failed'].includes(String(lessonStatus).toLowerCase());
     const started = completed || registration.status === 'active' || Boolean(registration.lastCommitAt);
     return {
+        instanceId: registration.id,
         registrationId: registration.id,
         courseId: course?.id || registration.courseId,
         title: course?.title || 'Course',
@@ -356,7 +357,7 @@ async function launchLearnerCourse(context, registrationId) {
             include: [{ model: ScormPackage, as: 'package' }]
         }]
     });
-    if (!registration || registration.isPreview || registration.status === 'revoked' || !registration.course) {
+    if (!registration || registration.isPreview || ['revoked', 'superseded'].includes(registration.status) || !registration.course) {
         throw fail('Course assignment not found.', 'SCORM_ASSIGNMENT_NOT_FOUND', 404);
     }
     if (Number(registration.course.hostId) !== Number(context.hostId) || normalizeEmail(registration.learnerEmail) !== normalizeEmail(context.email)) {
@@ -376,6 +377,7 @@ async function launchLearnerCourse(context, registrationId) {
     await registration.save();
 
     return {
+        instanceId: registration.id,
         registrationId: registration.id,
         token: playToken,
         playToken,
