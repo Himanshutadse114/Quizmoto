@@ -20,17 +20,12 @@
   --color-quizmoto-darkPurple: #25076b;
 
   --animate-bounce-slow: bounce 3s infinite;
-  --font-sans: Inter, system-ui, -apple-system, sans-serif;
 }
 
 :root {
   background-color: #11100e;
   color: white;
-  font-family: Inter, system-ui, -apple-system, sans-serif;
-}
-
-html, body, #root, button, input, textarea, select {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 body {
