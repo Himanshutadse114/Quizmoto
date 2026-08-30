@@ -36,12 +36,17 @@ const pages = [
 
 const HERO_HEADING = 'Save 95% of time and budget on every custom SCORM course.';
 const HERO_DESCRIPTION =
-  'Send your brief today, get your next-level SCORM course in your LMS the next minutes. AI-powered production at a fraction of the cost and resources.';
-const HERO_EYEBROW = 'Create with AI. Publish on LMSGEN. Invite your team.';
+  'Send your brief today and get a SCORM course in minutes. Then publish on LMSGEN, invite learners, or host a live Quizmoto quiz with a join code.';
+const HERO_EYEBROW = 'Create with AI. Publish on LMSGEN. Run live Quizmoto quizzes.';
 
 const HOME_REPLACEMENTS = [
   ['For modern L&D and security awareness teams', HERO_EYEBROW],
   ['One workspace for modern learning teams', HERO_EYEBROW],
+  ['Create with AI. Publish on LMSGEN. Invite your team.', HERO_EYEBROW],
+  ['Engage Learners with Quizmoto', 'Engage teams with live Quizmoto'],
+  ['Publish on LMSGEN and invite your team', 'Engage teams with live Quizmoto'],
+  ['Track Progress with Clear Analytics', 'Publish SCORM or track in LMSGEN'],
+  ['Or export SCORM to your own LMS', 'Publish SCORM or track in LMSGEN'],
   ['<div>How It Works</div>', '<div>See solutions</div>'],
 ];
 
@@ -407,7 +412,7 @@ function ensureHeadAssets(html, baseHref) {
   }
 
   if (!html.includes('/landing/css/lmsgen-advantage-assets.css')) {
-    inserts.push('<link rel="stylesheet" href="/landing/css/lmsgen-advantage-assets.css?v=20260830f" />');
+    inserts.push('<link rel="stylesheet" href="/landing/css/lmsgen-advantage-assets.css?v=20260830v" />');
   }
 
   if (!html.includes('id="lmsgen-anti-fouc"')) {
