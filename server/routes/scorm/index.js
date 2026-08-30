@@ -25,6 +25,7 @@ router.use('/xapi', require('./xapi'));
 // the existing packaged visuals instead of calling image generation again.
 router.use('/author', require('./authorRebuild'));
 router.use('/author', require('./author'));
+router.use('/team', require('./team'));
 router.use('/access', require('./access'));
 
 router.get('/features', (req, res) => {
