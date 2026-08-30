@@ -134,11 +134,15 @@ export default function CampaignPortal() {
   };
 
   const loginMicrosoft = () => {
-    if (!config?.microsoftClientId || !config?.microsoftTenantId) return;
+    if (!config?.microsoftClientId || !config?.microsoftTenantId || !config?.workspaceId) return;
     const state = crypto.randomUUID();
     const nonce = crypto.randomUUID();
-    sessionStorage.setItem(`lmsgen_campaign_ms_state_${campaignId}`, state);
-    const redirectUri = `${window.location.origin}/campaign/${campaignId}/microsoft/callback`;
+    sessionStorage.setItem('lmsgen_ms_campaign_pending', JSON.stringify({
+      campaignId,
+      workspaceId: config.workspaceId,
+      state
+    }));
+    const redirectUri = `${window.location.origin}/learn/${config.workspaceId}/microsoft/callback`;
     const params = new URLSearchParams({
       client_id: config.microsoftClientId,
       response_type: 'id_token',
