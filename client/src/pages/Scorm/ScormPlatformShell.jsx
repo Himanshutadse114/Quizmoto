@@ -51,6 +51,7 @@ const OPERATIONAL_NAV_GROUPS = [
       { to: '/scorm/author', label: 'AI Course Author', icon: Sparkles, requiresScorm: true },
       { to: '/scorm/courses', label: 'My Courses', icon: BookOpen, requiresScorm: true },
       { to: '/scorm/roster', label: 'Learner Roster', icon: UserCheck, requiresScorm: true },
+      { to: '/scorm/assignments', label: 'Course Assignments', icon: BookOpen, requiresScorm: true },
       { to: '/scorm/visual-studio', label: 'Content Editor', icon: Palette, requiresScorm: true },
       { to: '/scorm/library', label: 'SCORM Library', icon: Library, requiresScorm: true },
       { to: '/scorm/tracking', label: 'Learner Tracking', icon: Activity, requiresScorm: true },
@@ -87,7 +88,8 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess, role }) {
       {
         label: 'Administration',
         items: [
-          { to: '/scorm/team', label: 'Team & Roles', icon: Users, requiresScorm: true }
+          { to: '/scorm/team', label: 'Team & Roles', icon: Users, requiresScorm: true },
+          { to: '/scorm/learner-access', label: 'Learner Access & SSO', icon: LockKeyhole, requiresScorm: true }
         ]
       }
     ];
@@ -256,8 +258,8 @@ export default function ScormPlatformShell() {
                 {analyticsOnly
                   ? 'Read-only learner tracking, analytics and reporting are active.'
                   : role === 'co_admin'
-                    ? 'Course operations, learner management, tracking and reporting are active.'
-                    : 'Authoring, learner management, tracking, reporting and SCORM operations are active.'}
+                    ? 'Course operations, learner management, assignments, tracking and reporting are active.'
+                    : 'Authoring, learner management, assignments, tracking, reporting and SCORM operations are active.'}
               </div>
             </div>
           ) : (
