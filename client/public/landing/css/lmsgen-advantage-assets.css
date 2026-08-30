@@ -77,7 +77,7 @@ body.lmsgen-solutions-ready .sl-hero-deco,
   display: none !important;
 }
 
-/* Solutions hero — full product composition, no crop, no template shapes */
+/* Solutions hero — flow diagram, no crop, no dashboard mock */
 body.lmsgen-solutions-ready .sl-hero-img-w {
   position: relative;
   width: min(100%, 124rem);
@@ -95,7 +95,7 @@ body.lmsgen-solutions-ready .sl-hero-img-w .sl-hero-img,
 .sl-hero-img-w .sl-hero-img[src*="lmsgen/"] {
   display: block;
   object-fit: contain;
-  object-position: center top;
+  object-position: center;
   border-radius: 2.4rem;
   width: 100%;
   height: auto;
@@ -176,4 +176,32 @@ body.lmsgen-solutions-ready .nsol-manage-s .paragraph-l,
 body.lmsgen-solutions-ready .sl-feat-common-list-item,
 body.lmsgen-solutions-ready .sl-feat-common-list-item div {
   color: #EDF4F2;
+}
+
+/* About page — readable copy on dark + drop stock person photos */
+.ab-hero-carousel-w,
+.ab-hero-carousel-slide,
+.ab-hero-img,
+.ab-hero-carousel-img-c {
+  display: none !important;
+}
+
+.ab-hero-s h1,
+.ab-team-s h2,
+.ab-team-header-title-w h2 {
+  color: #7BDCD3 !important;
+}
+
+.ab-hero-s p,
+.ab-hero-s .paragraph-l,
+.ab-team-s p,
+.ab-team-s .paragraph-m,
+.ab-team-header-text-w p {
+  color: #EDF4F2 !important;
+}
+
+.ab-hero-s .btn-primary.outline,
+.ab-team-s .btn-primary.outline {
+  color: #9BE8E1 !important;
+  border-color: #4FC9BF !important;
 }
