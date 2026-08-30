@@ -82,6 +82,7 @@ body.lmsgen-solutions-ready .sl-hero-img-c {
   max-width: 92rem !important;
   height: auto !important;
   max-height: none !important;
+  aspect-ratio: auto !important;
   margin: 1.2rem auto 0 !important;
   padding: 0 !important;
   background: transparent !important;
@@ -149,20 +150,22 @@ body.lmsgen-solutions-ready .atelora-product-media {
 }
 
 body.lmsgen-solutions-ready .atelora-product-media img,
-body.lmsgen-solutions-ready .sl-hero-img-w img.sl-hero-img {
+body.lmsgen-solutions-ready .sl-hero-img-w img.sl-hero-img,
+body.lmsgen-solutions-ready img.sl-hero-img {
   display: block !important;
-  width: 108% !important;
-  max-width: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
   height: auto !important;
   max-height: none !important;
-  margin: -2% 0 -3% -4% !important;
+  margin: 0 !important;
   padding: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
   background: #0a1a18 !important;
-  object-fit: cover !important;
+  object-fit: contain !important;
   object-position: center top !important;
+  transform: none !important;
 }
 
 @media screen and (max-width: 767px) {
