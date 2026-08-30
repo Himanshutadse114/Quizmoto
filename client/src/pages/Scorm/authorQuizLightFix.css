@@ -1,60 +1,83 @@
 /* Author quiz editor light-mode and mobile guard. Loaded after authorQuizEditor.css. */
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz {
+/*
+ * The platform has legacy dark compatibility selectors with !important.
+ * Key these rules to both theme signals (body + shell) and the exact quiz
+ * component so the knowledge-check editor always follows Light Mode.
+ */
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz {
   background:#fff!important;
   background-image:none!important;
   border-color:#d7e4e1!important;
   color:#14201e!important;
 }
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz > .scorm-panel-header {
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz > .scorm-panel-header {
   background:#f8fbfa!important;
   background-image:none!important;
   border-color:#d7e4e1!important;
-}
-
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz > div:last-child,
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-question-card,
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-question-card > div:last-child {
-  background:#fff!important;
-  background-image:none!important;
-  border-color:#cfdfdc!important;
   color:#14201e!important;
 }
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-question-header {
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-quiz-body,
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-question-card,
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-question-body {
+  background:#fff!important;
+  background-image:none!important;
+  color:#14201e!important;
+}
+
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-question-card {
+  border:1px solid #cfdfdc!important;
+  border-radius:16px!important;
+  box-shadow:0 8px 22px rgba(29,78,70,.06)!important;
+}
+
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-question-header {
   background:linear-gradient(90deg,#dff5f1 0%,#f7fbfa 100%)!important;
+  background-image:linear-gradient(90deg,#dff5f1 0%,#f7fbfa 100%)!important;
   border-color:#cfe3df!important;
 }
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-question-eyebrow,
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-field-label {
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-question-eyebrow,
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-field-label {
   color:#4f6a65!important;
 }
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-question-status,
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz h2 {
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-question-status,
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz h2,
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-quiz-empty-title {
   color:#14201e!important;
 }
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-quiz-editor-copy {
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-quiz-editor-copy,
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-quiz-empty-copy {
   color:#405a55!important;
 }
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz textarea {
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-quiz-empty {
+  background:#f8fbfa!important;
+  background-image:none!important;
+  border:1px dashed #cbded9!important;
+  border-radius:16px!important;
+  color:#14201e!important;
+}
+
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz textarea {
   background:#fff!important;
+  background-image:none!important;
   border:1px solid #cbdad7!important;
   border-radius:11px!important;
   color:#14201e!important;
 }
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz textarea:focus {
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz textarea:focus {
   border-color:#4fc9bf!important;
   outline:none!important;
   box-shadow:0 0 0 3px rgba(79,201,191,.15)!important;
 }
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-answer-option {
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-answer-option {
   background:#f9fcfb!important;
   background-image:none!important;
   border-color:#d4e2df!important;
@@ -62,43 +85,52 @@ html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-answer-option
   box-shadow:none!important;
 }
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-answer-option:hover {
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-answer-option:hover {
   background:#f1f8f6!important;
+  background-image:none!important;
   border-color:#afd7d1!important;
 }
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-answer-option.is-correct {
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-answer-option.is-correct {
   background:#e2f6f2!important;
+  background-image:none!important;
   border-color:#32afa4!important;
   box-shadow:inset 3px 0 0 #32afa4!important;
 }
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-answer-option input:not([type="radio"]) {
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-answer-option input:not([type="radio"]) {
   background:transparent!important;
   color:#14201e!important;
 }
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-answer-letter {
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-answer-letter {
   background:#edf5f3!important;
   color:#4f6a65!important;
 }
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-answer-option.is-correct .qmx-answer-letter {
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-answer-option.is-correct .qmx-answer-letter {
   background:#32afa4!important;
   color:#fff!important;
 }
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-answer-option input[type="radio"] {
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-answer-option input[type="radio"] {
   accent-color:#178c82;
 }
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-correct-label,
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-question-complete {
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-correct-label,
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-question-complete {
   color:#0b746b!important;
 }
 
-html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-quiz-footnote {
+html body.scorm-platform-light #root .scorm-editorial.scorm-theme-light main .qmx-author-quiz .qmx-quiz-footnote {
   color:#61736f!important;
+}
+
+/* Dark mode remains explicit after removing generic rounded-card utility classes. */
+html body.scorm-platform-dark #root .scorm-editorial.scorm-theme-dark main .qmx-author-quiz .qmx-question-card,
+html body.scorm-platform-dark #root .scorm-editorial.scorm-theme-dark main .qmx-author-quiz .qmx-question-body {
+  background:#07100f!important;
+  color:#eef7f5!important;
 }
 
 @media (max-width:767px){
@@ -117,7 +149,7 @@ html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-quiz-footnote
     min-height:44px!important;
   }
 
-  html body .scorm-editorial .qmx-author-quiz > div:last-child {
+  html body .scorm-editorial .qmx-author-quiz .qmx-quiz-body {
     padding:12px!important;
   }
 
@@ -140,7 +172,7 @@ html body .scorm-editorial.scorm-theme-light .qmx-author-quiz .qmx-quiz-footnote
     min-height:40px!important;
   }
 
-  html body .scorm-editorial .qmx-author-quiz .qmx-question-card > div:last-child {
+  html body .scorm-editorial .qmx-author-quiz .qmx-question-body {
     padding:13px!important;
   }
 
