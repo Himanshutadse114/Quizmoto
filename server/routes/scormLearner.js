@@ -1,5 +1,6 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const { featureFlags } = require('../config/featureFlags');
 const router = express.Router();
 const {
     getWorkspaceAndConfig,
@@ -20,6 +21,13 @@ const learnerAuthLimiter = rateLimit({
         message: 'Too many learner sign-in attempts. Please wait a few minutes and try again.',
         code: 'SCORM_LEARNER_RATE_LIMITED'
     }
+});
+
+router.use((req, res, next) => {
+    if (!featureFlags.scormLms) {
+        return res.status(404).json({ message: 'LMSGEN learner portal is not enabled.' });
+    }
+    next();
 });
 
 router.get('/workspace/:workspaceId/config', async (req, res) => {
