@@ -1,10 +1,59 @@
-/* Keep the native Google Identity Services button centered and contained.
- * Google may render an inline 400px width; these rules make the wrapper and
- * iframe obey the available card width on smaller screens.
- */
+/* Center the sign-in shell and keep the Google button aligned. */
+
+.scorm-auth-workbench {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 100dvh !important;
+  height: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+.scorm-auth-workbench .sa-shell {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  height: auto !important;
+  min-height: unset !important;
+}
+
+.scorm-auth-workbench.sa-login-only .sa-shell {
+  width: min(460px, calc(100% - 28px)) !important;
+  max-width: 460px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: stretch !important;
+  padding: 24px 0 !important;
+}
+
+.scorm-auth-workbench .sa-card,
+.scorm-auth-workbench.sa-login-only .sa-card,
+.scorm-auth-workbench.sa-login-only .sa-card-login {
+  align-self: center !important;
+  width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.scorm-auth-workbench.sa-login-only .sa-card,
+.scorm-auth-workbench.sa-login-only .sa-card-login {
+  grid-template-columns: 1fr !important;
+  min-height: 0 !important;
+  max-width: 460px !important;
+}
+
 .scorm-auth-workbench .sa-google-block {
   width: 100%;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.scorm-auth-workbench .sa-google-label {
+  width: 100%;
+  justify-content: center;
 }
 
 .scorm-auth-workbench .sa-google-button {
@@ -23,7 +72,8 @@
   justify-content: center !important;
 }
 
-.scorm-auth-workbench .sa-google-button > div {
+.scorm-auth-workbench .sa-google-button > div,
+.scorm-auth-workbench .sa-google-button > div[style] {
   width: 100% !important;
   max-width: 400px !important;
   min-width: 0 !important;
@@ -31,29 +81,37 @@
   margin-right: auto !important;
   display: flex !important;
   justify-content: center !important;
+  align-items: center !important;
 }
 
-.scorm-auth-workbench .sa-google-button iframe {
+.scorm-auth-workbench .sa-google-button iframe,
+.scorm-auth-workbench .sa-google-button span,
+.scorm-auth-workbench .sa-google-button div[role="button"] {
   display: block !important;
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
-  margin: 0 auto !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+@media (max-width: 800px) {
+  .scorm-auth-workbench .sa-shell {
+    width: min(460px, calc(100% - 24px)) !important;
+    max-width: 460px !important;
+  }
+
+  .scorm-auth-workbench .sa-card {
+    max-width: 460px !important;
+  }
 }
 
 @media (max-width: 480px) {
-  .scorm-auth-workbench .sa-google-button {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
+  .scorm-auth-workbench .sa-google-button,
   .scorm-auth-workbench .sa-google-button > div,
   .scorm-auth-workbench .sa-google-button > div[style],
   .scorm-auth-workbench .sa-google-button iframe {
     width: 100% !important;
     max-width: 100% !important;
-    min-width: 0 !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
   }
 }
