@@ -1,13 +1,8 @@
 (function () {
   "use strict";
 
-  const BRAND_LOGO_LIGHT = "/branding/lmsgen-logo-light.png";
-  const BRAND_LOGO_DARK = "/branding/lmsgen-logo-dark.png";
-
-  // Pretty URLs (/, /solutions, /about, /blog, /contact) are rewritten to
-  // their built documents by the host's static routing, so plain <a> links
-  // to those paths already work as normal full-page navigations - no
-  // client-side history rewriting or click interception needed here.
+  const BRAND_LOGO_BLACK = "/branding/lmsgen-logo-light.png";
+  const BRAND_LOGO_WHITE = "/branding/lmsgen-logo-dark.png";
 
   const menuButton = document.querySelector(".global-nav-menu-btn.w-nav-button");
   const menuIcon = document.querySelector(".global-nav-menu-icon");
@@ -20,9 +15,27 @@
   const languageToggle = document.querySelector(".local-dropdown");
   const languageMenu = document.querySelector(".local-dropdown-c");
 
-  function setMarketingLogo(sticky) {
+  function headerIsLight(sticky) {
+    if (!header) return sticky;
+    if (sticky) return true;
+    if (header.classList.contains("white")) return true;
+    if (header.classList.contains("lemon")) return true;
+    if (header.classList.contains("turquoise")) return true;
+    try {
+      const bg = window.getComputedStyle(header).backgroundColor || "";
+      const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      if (m) {
+        const r = Number(m[1]), g = Number(m[2]), b = Number(m[3]);
+        const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        return lum > 0.55;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  function setMarketingLogo(useBlack) {
     if (!logo) return;
-    const nextSrc = sticky ? BRAND_LOGO_LIGHT : BRAND_LOGO_DARK;
+    const nextSrc = useBlack ? BRAND_LOGO_BLACK : BRAND_LOGO_WHITE;
     if (logo.getAttribute("src") !== nextSrc) logo.setAttribute("src", nextSrc);
     logo.setAttribute("alt", "LMSGEN");
   }
@@ -33,12 +46,12 @@
       return;
     }
 
+    const menuOpen = Boolean(menuButton && menuButton.classList.contains("w--open"));
     const sticky = stickySentinel
-      ? window.scrollY >= stickySentinel.offsetTop ||
-        Boolean(menuButton && menuButton.classList.contains("w--open"))
-      : Boolean(menuButton && menuButton.classList.contains("w--open"));
+      ? window.scrollY >= stickySentinel.offsetTop || menuOpen
+      : menuOpen;
 
-    setMarketingLogo(sticky);
+    setMarketingLogo(headerIsLight(sticky));
     if (menuIcon) menuIcon.classList.toggle("sticky", sticky);
     if (logo) logo.classList.toggle("sticky", sticky);
     header.classList.toggle("sticky", sticky);
@@ -59,8 +72,6 @@
   window.addEventListener("scroll", applyStickyState, { passive: true });
   applyStickyState();
 
-  // The legacy demo modal is no longer used. Close controls remain harmless if
-  // an older cached document still contains the modal markup.
   document.querySelectorAll('[cd="close-book"]').forEach((button) => {
     button.addEventListener("click", () => {
       document.querySelectorAll(".book-demo-s.active").forEach((modal) => {
@@ -69,16 +80,13 @@
     });
   });
 
-  // Keep arrow-style form controls functional without relying on one global form.
   document.querySelectorAll(".btn-primary.arrow").forEach((arrowButton) => {
     const form = arrowButton.closest("form");
     if (!form) return;
-
     const submitButton = form.querySelector(
       'input[type="submit"], button[type="submit"], .btn-primary.submit',
     );
     if (!submitButton) return;
-
     arrowButton.addEventListener("click", (event) => {
       event.preventDefault();
       submitButton.click();
