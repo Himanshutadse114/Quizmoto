@@ -76,41 +76,18 @@ body.lmsgen-solutions-ready .sl-hero-deco,
   display: none !important;
 }
 
-/* Solutions hero — product studio, not a flowchart */
-body.lmsgen-solutions-ready .sl-hero-s {
-  padding-bottom: 4.8rem !important;
-}
-
-body.lmsgen-solutions-ready .nsl-hero-title-w {
-  max-width: 92rem;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-body.lmsgen-solutions-ready .nsl-hero-title-w h1 {
-  letter-spacing: -0.03em;
-}
-
-body.lmsgen-solutions-ready .nsl-hero-title-w .paragraph-l {
-  max-width: 64rem;
-  margin-left: auto;
-  margin-right: auto;
-  color: #EDF4F2 !important;
-}
-
+/* Solutions hero image only — leave the 3 feature cards to original CSS */
 body.lmsgen-solutions-ready .sl-hero-img-w {
   position: relative;
   width: min(100%, 124rem);
   max-width: 124rem;
-  margin: 3.2rem auto 0;
+  margin: 2.4rem auto 0;
   overflow: hidden;
   border-radius: 2.4rem;
-  background:
-    radial-gradient(ellipse at 50% 18%, rgba(79, 201, 191, 0.18), transparent 58%),
-    #071614;
+  background: radial-gradient(ellipse at 50% 30%, rgba(79, 201, 191, 0.16), transparent 62%), #071614;
   box-shadow:
     0 40px 90px rgba(2, 11, 14, 0.55),
-    0 0 0 1px rgba(123, 220, 211, 0.14);
+    0 0 0 1px rgba(123, 220, 211, 0.12);
 }
 
 body.lmsgen-solutions-ready .sl-hero-img-w .sl-hero-img,
@@ -126,60 +103,6 @@ body.lmsgen-solutions-ready .sl-hero-img-w .sl-hero-img,
   background: transparent;
   border: 0;
   box-shadow: none;
-}
-
-body.lmsgen-solutions-ready .sl-hero-features-c {
-  display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.6rem !important;
-  width: 100%;
-  max-width: 124rem;
-  margin: 2.4rem auto 0 !important;
-}
-
-body.lmsgen-solutions-ready .sl-hero-feature-w {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: flex-start !important;
-  text-align: left !important;
-  gap: 1.2rem !important;
-  padding: 2.4rem !important;
-  border-radius: 2rem !important;
-  background: rgba(12, 28, 26, 0.72) !important;
-  border: 1px solid rgba(123, 220, 211, 0.16) !important;
-  box-shadow: 0 16px 36px rgba(2, 11, 14, 0.28);
-  min-height: 0 !important;
-}
-
-body.lmsgen-solutions-ready .sl-hero-ft-icon {
-  width: 4.8rem !important;
-  height: 4.8rem !important;
-  margin: 0 !important;
-}
-
-body.lmsgen-solutions-ready .sl-hero-ft-icon svg {
-  width: 3.2rem !important;
-  height: 3.2rem !important;
-}
-
-body.lmsgen-solutions-ready .sl-hero-ft-content {
-  width: 100%;
-}
-
-body.lmsgen-solutions-ready .sl-hero-ft-content h2,
-body.lmsgen-solutions-ready .sl-hero-ft-content .h4 {
-  color: #EDF4F2 !important;
-  margin: 0 0 0.8rem !important;
-  font-size: 1.8rem !important;
-  line-height: 1.25 !important;
-  text-transform: none !important;
-}
-
-body.lmsgen-solutions-ready .sl-hero-ft-content p {
-  color: #C5D8D4 !important;
-  margin: 0 !important;
-  font-size: 1.5rem !important;
-  line-height: 1.45 !important;
 }
 
 .sl-feat-common-img[src*="lmsgen/"],
@@ -279,38 +202,4 @@ body.lmsgen-solutions-ready .sl-feat-common-list-item div {
 .ab-team-s .btn-primary.outline {
   color: #9BE8E1 !important;
   border-color: #4FC9BF !important;
-}
-
-@media screen and (max-width: 991px) {
-  body.lmsgen-solutions-ready .sl-hero-features-c {
-    grid-template-columns: 1fr !important;
-    gap: 1.2rem !important;
-  }
-
-  body.lmsgen-solutions-ready .sl-hero-feature-w {
-    flex-direction: row !important;
-    align-items: flex-start !important;
-    padding: 1.8rem !important;
-  }
-
-  body.lmsgen-solutions-ready .nsl-hero-title-w h1 {
-    font-size: clamp(3.2rem, 8vw, 5.6rem) !important;
-    line-height: 1.08 !important;
-  }
-
-  body.lmsgen-solutions-ready .sl-hero-img-w {
-    margin-top: 2rem;
-    border-radius: 1.8rem;
-  }
-}
-
-@media screen and (max-width: 479px) {
-  body.lmsgen-solutions-ready .sl-hero-feature-w {
-    flex-direction: column !important;
-  }
-
-  body.lmsgen-solutions-ready .sl-hero-ft-content h2,
-  body.lmsgen-solutions-ready .sl-hero-ft-content .h4 {
-    font-size: 1.7rem !important;
-  }
 }
