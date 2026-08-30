@@ -107,3 +107,15 @@
 .scorm-auth-workbench .sa-submit:hover {
   background: linear-gradient(180deg, #9BE8E1 0%, #7BDCD3 100%) !important;
 }
+
+.scorm-auth-workbench.sa-login-only .sa-shell {
+  width: min(460px, calc(100% - 28px)) !important;
+}
+
+.scorm-auth-workbench.sa-login-only .sa-card,
+.scorm-auth-workbench.sa-login-only .sa-card-login {
+  grid-template-columns: 1fr !important;
+  min-height: 0 !important;
+  max-width: 460px !important;
+  margin: 0 auto !important;
+}
