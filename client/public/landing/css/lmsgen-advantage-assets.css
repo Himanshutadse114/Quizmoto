@@ -71,29 +71,39 @@ body.lmsgen-solutions-ready .sl-feat-main-s {
   min-height: 0 !important;
 }
 
-/* Solutions hero — large product shot, not a small diagram */
+/* Hide leftover Webflow purple / yellow / coral blobs under the hero shot */
+body.lmsgen-solutions-ready .sl-hero-deco,
+.sl-hero-deco {
+  display: none !important;
+}
+
+/* Solutions hero — full product composition, no crop, no template shapes */
 body.lmsgen-solutions-ready .sl-hero-img-w {
-  width: min(100%, 118rem);
-  max-width: 118rem;
-  margin-left: auto;
-  margin-right: auto;
+  position: relative;
+  width: min(100%, 124rem);
+  max-width: 124rem;
+  margin: 2.4rem auto 0;
+  overflow: hidden;
+  border-radius: 2.4rem;
+  background: radial-gradient(ellipse at 50% 30%, rgba(79, 201, 191, 0.16), transparent 62%), #071614;
+  box-shadow:
+    0 40px 90px rgba(2, 11, 14, 0.55),
+    0 0 0 1px rgba(123, 220, 211, 0.12);
 }
 
 body.lmsgen-solutions-ready .sl-hero-img-w .sl-hero-img,
 .sl-hero-img-w .sl-hero-img[src*="lmsgen/"] {
   display: block;
-  object-fit: cover;
-  object-position: center;
-  border-radius: 2rem;
+  object-fit: contain;
+  object-position: center top;
+  border-radius: 2.4rem;
   width: 100%;
   height: auto;
-  min-height: 36rem;
-  max-height: 62rem;
-  background: #10211F;
-  border: 1px solid rgba(79, 201, 191, 0.28);
-  box-shadow:
-    0 40px 90px rgba(2, 11, 14, 0.55),
-    0 0 0 1px rgba(123, 220, 211, 0.08);
+  min-height: 0;
+  max-height: none;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .sl-feat-common-img[src*="lmsgen/"],

@@ -45,7 +45,7 @@
   arrow&&arrow.addEventListener("click",()=>{const submit=document.querySelector(".btn-primary.submit");submit&&submit.click()});
 
   const hide=document.createElement("style");
-  hide.textContent=".sl-features-key-c{display:none!important}";
+  hide.textContent=".sl-features-key-c,.sl-hero-deco{display:none!important}";
   document.head.appendChild(hide);
   const keyBlock=document.querySelector(".sl-features-key-c");
   if(keyBlock){
@@ -55,9 +55,11 @@
     if(wrap) wrap.remove();
     else keyBlock.remove();
   }
+  const deco=document.querySelector(".sl-hero-deco");
+  if(deco) deco.remove();
 
   const ART_BASE="/landing/images/lmsgen/";
-  const ART_VER="?v=20260830c";
+  const ART_VER="?v=20260830d";
   const css=document.createElement("link");
   css.rel="stylesheet";
   css.href="/landing/css/lmsgen-advantage-assets.css"+ART_VER;
