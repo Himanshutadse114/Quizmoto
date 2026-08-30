@@ -36,10 +36,12 @@ const pages = [
 
 const HERO_HEADING = 'Save 95% of time and budget on every custom SCORM course.';
 const HERO_DESCRIPTION =
-  'Send your brief today, get your next-level SCORM course in your LMS the next minutes. AI-powered production at a fraction of the cost and resources.';
+  'AI turns your brief into a SCORM course in minutes. Publish it on the LMSGEN LMS, share an invite with your learners, and start tracking — or export the package to your own LMS.';
+const HERO_EYEBROW = 'Create with AI. Publish on LMSGEN. Invite your team.';
 
 const HOME_REPLACEMENTS = [
-  ['For modern L&D and security awareness teams', 'One workspace for modern learning teams'],
+  ['For modern L&D and security awareness teams', HERO_EYEBROW],
+  ['One workspace for modern learning teams', HERO_EYEBROW],
   ['<div>How It Works</div>', '<div>See solutions</div>'],
 ];
 
@@ -365,7 +367,7 @@ function prepareSolutions(html) {
   }
 
   html = html.replace(
-    /content="\.\.\/images\/oVItWEnycNKS\.png"/g,
+    /content="\\.\\.\\/images\\/oVItWEnycNKS\\.png"/g,
     'content="/landing/images/lmsgen/08-og-banner.svg"',
   );
 
@@ -375,29 +377,29 @@ function prepareSolutions(html) {
 function brandMarketingHtml(html, visibleLogoVariant = 'dark') {
   return html
     .replace(
-      /\/landing\/images\/logos\/atelora-landing-logo\.svg/g,
+      /\\/landing\\/images\\/logos\\/atelora-landing-logo\\.svg/g,
       '/branding/lmsgen-logo-light.png',
     )
     .replace(
-      /(?:\.\.\/)*images\/logos\/atelora-landing-logo\.svg/g,
+      /(?:\\.\\.\\/)*images\\/logos\\/atelora-landing-logo\\.svg/g,
       `/branding/lmsgen-logo-${visibleLogoVariant}.png`,
     )
     .replace(
-      /(?:\.\.\/)*images\/icons\/favicon\.png/g,
+      /(?:\\.\\.\\/)*images\\/icons\\/favicon\\.png/g,
       '/branding/lmsgen-favicon.png',
     )
     .replace(
-      /(?:\.\.\/)*images\/icons\/apple-touch-icon\.png/g,
+      /(?:\\.\\.\\/)*images\\/icons\\/apple-touch-icon\\.png/g,
       '/branding/lmsgen-favicon.png',
     )
-    .replace(/\bAtelora\b/g, 'LMSGEN')
-    .replace(/\bATELORA\b/g, 'LMSGEN');
+    .replace(/\\bAtelora\\b/g, 'LMSGEN')
+    .replace(/\\bATELORA\\b/g, 'LMSGEN');
 }
 
 function ensureHeadAssets(html, baseHref) {
   const inserts = [];
 
-  if (!/<base\s+href=/i.test(html)) {
+  if (!/<base\\s+href=/i.test(html)) {
     inserts.push(`<base href="${baseHref}" target="_top" />`);
   }
 
@@ -424,17 +426,17 @@ function ensureHeadAssets(html, baseHref) {
 function ensureNavMenu(html) {
   if (html.includes('/landing/js/nav-menu.js') || html.includes('js/nav-menu.js')) return html;
   return html.replace(
-    /<\/body>/i,
+    /<\\/body>/i,
     '    <script src="/landing/js/nav-menu.js"></script>\n  </body>',
   );
 }
 
 function ensureBodyClasses(html, classes) {
   return html.replace(/<body([^>]*)>/i, (match, attrs = '') => {
-    const classMatch = attrs.match(/\sclass=(['"])(.*?)\1/i);
+    const classMatch = attrs.match(/\\sclass=(['"])(.*?)\\1/i);
 
     if (classMatch) {
-      const existing = classMatch[2].split(/\s+/).filter(Boolean);
+      const existing = classMatch[2].split(/\\s+/).filter(Boolean);
       const merged = [...new Set([...existing, ...classes])].join(' ');
       const updatedAttrs = attrs.replace(
         classMatch[0],
@@ -449,11 +451,15 @@ function ensureBodyClasses(html, classes) {
 
 function applyHeroCopy(html) {
   html = html.replace(
-    /<h1 class="hp-hero-h1">[\s\S]*?<\/h1>/,
+    /<div class="caption text-color-lemon font-weight-normal">[\\s\\S]*?<\\/div>/,
+    `<div class="caption text-color-lemon font-weight-normal">\n                ${HERO_EYEBROW}\n              </div>`,
+  );
+  html = html.replace(
+    /<h1 class="hp-hero-h1">[\\s\\S]*?<\\/h1>/,
     `<h1 class="hp-hero-h1">${HERO_HEADING}</h1>`,
   );
   html = html.replace(
-    /<p class="hp-hero-p">[\s\S]*?<\/p>/,
+    /<p class="hp-hero-p">[\\s\\S]*?<\\/p>/,
     `<p class="hp-hero-p">\n                ${HERO_DESCRIPTION}\n              </p>`,
   );
   return html;
@@ -486,7 +492,7 @@ async function preparePage(page) {
   const filePath = path.join(landingRoot, page.file);
   let html = await fs.readFile(filePath, 'utf8');
 
-  html = html.replace(/<!--\s*Last Published:[\s\S]*?-->\s*/i, '');
+  html = html.replace(/<!--\\s*Last Published:[\\s\\S]*?-->\\s*/i, '');
   html = ensureHeadAssets(html, page.base);
   html = ensureBodyClasses(html, [
     'atelora-site-refresh',
