@@ -1,7 +1,8 @@
+const assert = require('assert');
 const { parseCampaignCsv } = require('../services/scorm/ScormCampaignService');
 
 describe('SCORM campaign CSV parser', () => {
-    test('parses and deduplicates learner emails', () => {
+    it('parses and deduplicates learner emails', () => {
         const result = parseCampaignCsv([
             'Email,Name',
             'User@One.com,User One',
@@ -9,35 +10,38 @@ describe('SCORM campaign CSV parser', () => {
             'two@company.com,User Two'
         ].join('\n'));
 
-        expect(result.learners).toHaveLength(2);
-        expect(result.learners[0]).toEqual({ email: 'user@one.com', learnerName: 'User One' });
-        expect(result.learners[1]).toEqual({ email: 'two@company.com', learnerName: 'User Two' });
+        assert.strictEqual(result.learners.length, 2);
+        assert.deepStrictEqual(result.learners[0], { email: 'user@one.com', learnerName: 'User One' });
+        assert.deepStrictEqual(result.learners[1], { email: 'two@company.com', learnerName: 'User Two' });
     });
 
-    test('supports quoted CSV values and first/last name columns', () => {
+    it('supports quoted CSV values and first/last name columns', () => {
         const result = parseCampaignCsv([
             'Email,First Name,Last Name',
             'learner@company.com,"Jane, QA",Doe'
         ].join('\n'));
 
-        expect(result.learners[0].email).toBe('learner@company.com');
-        expect(result.learners[0].learnerName).toBe('Jane, QA Doe');
+        assert.strictEqual(result.learners[0].email, 'learner@company.com');
+        assert.strictEqual(result.learners[0].learnerName, 'Jane, QA Doe');
     });
 
-    test('reports invalid rows while keeping valid learners', () => {
+    it('reports invalid rows while keeping valid learners', () => {
         const result = parseCampaignCsv([
             'Email,Name',
             'not-an-email,Bad',
             'valid@company.com,Good'
         ].join('\n'));
 
-        expect(result.learners).toHaveLength(1);
-        expect(result.invalidRows).toEqual([
-            expect.objectContaining({ row: 2, reason: 'Invalid email address' })
-        ]);
+        assert.strictEqual(result.learners.length, 1);
+        assert.strictEqual(result.invalidRows.length, 1);
+        assert.strictEqual(result.invalidRows[0].row, 2);
+        assert.strictEqual(result.invalidRows[0].reason, 'Invalid email address');
     });
 
-    test('requires an email header', () => {
-        expect(() => parseCampaignCsv('Name,Department\nLearner,IT')).toThrow(/Email column/i);
+    it('requires an email header', () => {
+        assert.throws(
+            () => parseCampaignCsv('Name,Department\nLearner,IT'),
+            /Email column/i
+        );
     });
 });
