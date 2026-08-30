@@ -1,7 +1,18 @@
-/* LMSGEN topic-specific artwork — home advantage + solutions page. */
+/* LMSGEN topic-specific artwork - home advantage + solutions page. */
+
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap");
 
 html, body {
   background: #0A0F0E;
+}
+
+body.atelora-home-refresh .platform-h2,
+body.atelora-home-refresh h2.platform-h2 {
+  font-family: "Plus Jakarta Sans", sans-serif !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.03em !important;
+  text-transform: none !important;
+  line-height: 1.12 !important;
 }
 
 body.atelora-home-refresh .hp-advg-s .hp-mark-perk-expand-img,
