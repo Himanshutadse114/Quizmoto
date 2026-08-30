@@ -4,6 +4,24 @@
   const BRAND_LOGO_BLACK = "/branding/lmsgen-logo-light.png";
   const BRAND_LOGO_WHITE = "/branding/lmsgen-logo-dark.png";
 
+  const cssHref = "/landing/css/lmsgen-advantage-assets.css?v=20260830f";
+  if (!document.querySelector('link[href*="lmsgen-advantage-assets.css"]')) {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = cssHref;
+    document.head.appendChild(link);
+  } else {
+    document.querySelectorAll('link[href*="lmsgen-advantage-assets.css"]').forEach((el) => {
+      el.href = cssHref;
+    });
+  }
+
+  const hide = document.createElement("style");
+  hide.textContent = ".ab-hero-carousel-w,.ab-hero-img,.ab-hero-carousel-slide{display:none!important}";
+  document.head.appendChild(hide);
+  const aboutCarousel = document.querySelector(".ab-hero-carousel-w");
+  if (aboutCarousel) aboutCarousel.remove();
+
   const menuButton = document.querySelector(".global-nav-menu-btn.w-nav-button");
   const menuIcon = document.querySelector(".global-nav-menu-icon");
   const logo = document.querySelector(".nav-logo");
