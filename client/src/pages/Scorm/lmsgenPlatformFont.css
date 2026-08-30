@@ -1,6 +1,6 @@
 /* LMSGEN product type = marketing site type.
  * Body / UI: Plus Jakarta Sans
- * Large titles: Barlow Condensed
+ * Large titles: Barlow Condensed, sized up for impact
  */
 
 @import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap");
@@ -76,4 +76,59 @@ select {
 .scorm-editorial.scorm-workbench h2,
 .scorm-auth-workbench .sa-title {
   font-family: "Barlow Condensed", "Plus Jakarta Sans", sans-serif !important;
+}
+
+.scorm-editorial .scorm-display,
+.scorm-editorial main h1.scorm-display,
+.scorm-editorial main .scorm-display {
+  font-size: clamp(2.15rem, 5.2vw, 3.55rem) !important;
+  line-height: 0.96 !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.03em !important;
+}
+
+.scorm-editorial main h1:not(.scorm-display) {
+  font-size: clamp(1.85rem, 4.2vw, 2.7rem) !important;
+  line-height: 1.05 !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.03em !important;
+}
+
+.scorm-editorial main h2 {
+  font-size: clamp(1.55rem, 3.4vw, 2.2rem) !important;
+  line-height: 1.08 !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.025em !important;
+}
+
+.scorm-editorial .scorm-page-title {
+  font-size: 1.2rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.scorm-auth-workbench .sa-form-title {
+  font-size: clamp(1.85rem, 4vw, 2.35rem) !important;
+  line-height: 1.05 !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.03em !important;
+}
+
+@media (max-width: 767px) {
+  .scorm-editorial .scorm-display,
+  .scorm-editorial main h1.scorm-display {
+    font-size: clamp(2rem, 9vw, 2.7rem) !important;
+  }
+
+  .scorm-editorial main h1:not(.scorm-display) {
+    font-size: clamp(1.7rem, 7.5vw, 2.15rem) !important;
+  }
+
+  .scorm-editorial main h2 {
+    font-size: clamp(1.4rem, 6.2vw, 1.85rem) !important;
+  }
+
+  .scorm-auth-workbench .sa-form-title {
+    font-size: 1.7rem !important;
+  }
 }
