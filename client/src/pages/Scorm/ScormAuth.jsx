@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { readScormPlatformTheme, saveScormPlatformTheme } from './platformTheme';
 import './scormAuthWorkbench.css';
 import './scormAuthTealRestore.css';
+import './scormAuthGoogleButtonFix.css';
 import './scormLightTheme.css';
 import './scormLightContrastGuard.css';
 
@@ -26,6 +27,7 @@ export default function ScormAuth() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [theme, setTheme] = useState(readScormPlatformTheme);
+  const [googleWidth, setGoogleWidth] = useState(360);
 
   useEffect(() => {
     prepareScormLogin();
@@ -34,6 +36,17 @@ export default function ScormAuth() {
   useEffect(() => {
     saveScormPlatformTheme(theme);
   }, [theme]);
+
+  useEffect(() => {
+    const updateGoogleWidth = () => {
+      const el = document.querySelector('.sa-google-button');
+      const width = el ? Math.floor(el.getBoundingClientRect().width) : 360;
+      setGoogleWidth(Math.max(240, Math.min(400, width)));
+    };
+    updateGoogleWidth();
+    window.addEventListener('resize', updateGoogleWidth);
+    return () => window.removeEventListener('resize', updateGoogleWidth);
+  }, []);
 
   const switchMode = (nextMode) => {
     setMode(nextMode);
@@ -152,7 +165,7 @@ export default function ScormAuth() {
                   size="large"
                   shape="rectangular"
                   text="continue_with"
-                  width="400"
+                  width={String(googleWidth)}
                 />
               </div>
             </div>
