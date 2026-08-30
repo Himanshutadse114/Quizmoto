@@ -1,4 +1,4 @@
-/* Center the sign-in shell and keep the Google button aligned. */
+/* Center the sign-in shell. Custom Google face + invisible official widget. */
 
 .scorm-auth-workbench {
   display: flex !important;
@@ -44,74 +44,60 @@
 }
 
 .scorm-auth-workbench .sa-google-block {
-  width: 100%;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.scorm-auth-workbench .sa-google-label {
-  width: 100%;
-  justify-content: center;
+  width: 100% !important;
+  min-width: 0 !important;
+  display: block !important;
 }
 
 .scorm-auth-workbench .sa-google-button {
-  width: 100% !important;
-  max-width: 400px !important;
-  min-width: 0 !important;
-  min-height: 40px !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-  padding: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
-  overflow: hidden !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-.scorm-auth-workbench .sa-google-button > div,
-.scorm-auth-workbench .sa-google-button > div[style] {
-  width: 100% !important;
-  max-width: 400px !important;
-  min-width: 0 !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-}
-
-.scorm-auth-workbench .sa-google-button iframe,
-.scorm-auth-workbench .sa-google-button span,
-.scorm-auth-workbench .sa-google-button div[role="button"] {
-  display: block !important;
+  position: relative !important;
   width: 100% !important;
   max-width: 100% !important;
-  min-width: 0 !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
+  min-height: 44px !important;
+  height: 44px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1px solid #dadce0 !important;
+  border-radius: 9px !important;
+  background: #ffffff !important;
+  overflow: hidden !important;
 }
 
-@media (max-width: 800px) {
-  .scorm-auth-workbench .sa-shell {
-    width: min(460px, calc(100% - 24px)) !important;
-    max-width: 460px !important;
-  }
-
-  .scorm-auth-workbench .sa-card {
-    max-width: 460px !important;
-  }
+.scorm-auth-workbench .sa-google-face {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  pointer-events: none;
+  color: #1f1f1f;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1;
 }
 
-@media (max-width: 480px) {
-  .scorm-auth-workbench .sa-google-button,
-  .scorm-auth-workbench .sa-google-button > div,
-  .scorm-auth-workbench .sa-google-button > div[style],
-  .scorm-auth-workbench .sa-google-button iframe {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
+.scorm-auth-workbench .sa-google-face svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.scorm-auth-workbench .sa-google-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: 0.02;
+  overflow: hidden;
+}
+
+.scorm-auth-workbench .sa-google-overlay > div,
+.scorm-auth-workbench .sa-google-overlay iframe {
+  width: 100% !important;
+  height: 44px !important;
+  min-width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
 }
