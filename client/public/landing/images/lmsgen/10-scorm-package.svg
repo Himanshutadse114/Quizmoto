@@ -1,29 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620" role="img" aria-label="SCORM PACKAGE">
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="720" viewBox="0 0 980 720" role="img" aria-label="LMSGEN SCORM package">
   <defs>
-    <linearGradient id="bg10" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#06191c"/>
-      <stop offset="1" stop-color="#0A0F0E"/>
-    </linearGradient>
-    <linearGradient id="teal10" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#4FC9BF"/>
-      <stop offset="1" stop-color="#7BDCD3"/>
-    </linearGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#071614"/><stop offset="1" stop-color="#0A0F0E"/></linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4FC9BF"/><stop offset="1" stop-color="#9BE8E1"/></linearGradient>
   </defs>
-  <rect width="900" height="620" rx="24" fill="url(#bg10)"/>
-  <rect x="18" y="18" width="864" height="584" rx="18" fill="#10211F" stroke="#4FC9BF" stroke-opacity="0.22"/>
-  <text x="48" y="64" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="700">SCORM PACKAGE</text>
-  <text x="48" y="96" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="700">Export 1.2 / 2004 ready.</text>
-  <rect x="80" y="160" width="280" height="360" rx="18" fill="#0A0F0E" stroke="#4FC9BF" stroke-opacity="0.3"/>
-  <rect x="110" y="200" width="220" height="14" rx="7" fill="#4FC9BF"/>
-  <rect x="110" y="236" width="180" height="10" rx="5" fill="#2A4440"/>
-  <rect x="110" y="280" width="220" height="56" rx="10" fill="#16312E"/>
-  <rect x="110" y="352" width="220" height="56" rx="10" fill="#16312E"/>
-  <rect x="110" y="424" width="220" height="56" rx="10" fill="#16312E"/>
-  <text x="400" y="250" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="20">imsmanifest.xml</text>
-  <text x="400" y="290" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="18">index.html</text>
-  <text x="400" y="330" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="18">assets / slides</text>
-  <text x="400" y="370" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="18">quiz.xml</text>
-  <rect x="400" y="420" width="360" height="56" rx="28" fill="url(#teal10)"/>
-  <text x="490" y="455" fill="#0A0F0E" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700">Download SCORM ZIP</text>
+  <rect width="980" height="720" rx="28" fill="url(#bg)"/>
+  <rect x="24" y="24" width="932" height="672" rx="18" fill="#10211F" stroke="#4FC9BF" stroke-opacity="0.28"/>
+  <rect x="24" y="24" width="932" height="46" rx="18" fill="#16312E"/>
+  <rect x="24" y="52" width="932" height="18" fill="#16312E"/>
+  <circle cx="48" cy="47" r="6" fill="#FF6B6B"/>
+  <circle cx="68" cy="47" r="6" fill="#F7D774"/>
+  <circle cx="88" cy="47" r="6" fill="#4FC9BF"/>
+  <text x="116" y="52" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="600">LMSGEN  SCORM package</text>
+  <rect x="80" y="140" width="360" height="480" rx="20" fill="#0C1A18" stroke="#4FC9BF" stroke-opacity="0.3"/>
+  <rect x="110" y="176" width="300" height="18" rx="9" fill="#4FC9BF"/>
+  <rect x="110" y="214" width="220" height="10" rx="5" fill="#2A4440"/>
+  <rect x="110" y="250" width="300" height="70" rx="12" fill="#16312E"/>
+  <text x="130" y="292" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">imsmanifest.xml</text>
+  <rect x="110" y="338" width="300" height="70" rx="12" fill="#132826"/>
+  <text x="130" y="380" fill="#CDE7E3" font-family="Inter,Arial,sans-serif" font-size="16">index.html</text>
+  <rect x="110" y="426" width="300" height="70" rx="12" fill="#132826"/>
+  <text x="130" y="468" fill="#CDE7E3" font-family="Inter,Arial,sans-serif" font-size="16">slides / assets</text>
+  <rect x="110" y="514" width="300" height="70" rx="12" fill="#132826"/>
+  <text x="130" y="556" fill="#CDE7E3" font-family="Inter,Arial,sans-serif" font-size="16">quiz.xml</text>
+  <text x="490" y="200" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="700">STANDARDS READY</text>
+  <text x="490" y="248" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="32" font-weight="700">SCORM 1.2</text>
+  <text x="490" y="292" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="32" font-weight="700">and 2004</text>
+  <text x="490" y="340" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="16">Publish inside LMSGEN, or export a ZIP</text>
+  <text x="490" y="366" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="16">for Moodle, Docebo, Cornerstone.</text>
+  <rect x="490" y="420" width="240" height="52" rx="26" fill="url(#teal)"/>
+  <text x="526" y="452" fill="#0A0F0E" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="700">Download ZIP</text>
+  <rect x="490" y="490" width="240" height="52" rx="26" fill="#16312E" stroke="#4FC9BF" stroke-opacity="0.35"/>
+  <text x="534" y="522" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="700">Publish live</text>
 </svg>
