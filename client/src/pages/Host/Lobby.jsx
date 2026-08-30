@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
 import { QRCodeSVG } from 'qrcode.react';
-import { Users, Play, Wifi, WifiOff } from 'lucide-react';
+import { Users, Play, Wifi, WifiOff, Copy, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactionCanvas from '../../components/ReactionCanvas';
 import AvatarDisplay from '../../components/AvatarDisplay';
@@ -33,6 +33,7 @@ const Lobby = () => {
     const [players, setPlayers] = useState([]);
     const [session, setSession] = useState(null);
     const [presenceTab, setPresenceTab] = useState('active');
+    const [copied, setCopied] = useState(false);
     const joinedHostRef = useRef(null);
 
     useEffect(() => {
@@ -66,6 +67,20 @@ const Lobby = () => {
     const joinUrl = `${window.location.origin}${basename}/join?pin=${pin}`;
     const canStart = onlinePlayers.length > 0;
 
+    const copyJoinLink = async () => {
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(joinUrl);
+            } else {
+                window.prompt('Copy this join link', joinUrl);
+            }
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1800);
+        } catch (_) {
+            window.prompt('Copy this join link', joinUrl);
+        }
+    };
+
     return (
         <div className="min-h-screen flex flex-col items-center p-4 sm:p-8 relative overflow-hidden bg-quizmoto-purple">
             <header className="w-full max-w-7xl flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-10 relative z-20">
@@ -79,7 +94,27 @@ const Lobby = () => {
 
             <div className="w-full max-w-7xl flex flex-col gap-6 sm:gap-10 items-center justify-center mb-8 sm:mb-10 relative z-20">
                 <div className="w-full flex flex-col md:flex-row gap-4 sm:gap-8 items-stretch justify-center">
-                    <div className="flex flex-col gap-6 w-full max-w-md"><motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white text-gray-800 p-5 sm:p-8 rounded-[24px] sm:rounded-[32px] shadow-2xl text-center relative border-b-8 border-gray-200 h-full"><div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-quizmoto-purple text-white px-3 sm:px-4 py-1.5 rounded-xl font-black text-[9px] sm:text-[10px] tracking-widest uppercase max-w-[90%] truncate">Join at {window.location.hostname}{basename}/join</div><p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 mt-2">Game PIN</p><h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tighter mb-4 sm:mb-6 text-quizmoto-purple">{pin}</h1><div className="flex justify-center p-3 sm:p-4 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200"><QRCodeSVG value={joinUrl} size={140} className="sm:hidden" /><QRCodeSVG value={joinUrl} size={160} className="hidden sm:block" /></div></motion.div></div>
+                    <div className="flex flex-col gap-6 w-full max-w-md">
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white text-gray-800 p-5 sm:p-8 rounded-[24px] sm:rounded-[32px] shadow-2xl text-center relative border-b-8 border-gray-200 h-full">
+                            <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-quizmoto-purple text-white px-3 sm:px-4 py-1.5 rounded-xl font-black text-[9px] sm:text-[10px] tracking-widest uppercase max-w-[90%] truncate">Join at {window.location.hostname}{basename}/join</div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 mt-2">Game PIN</p>
+                            <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tighter mb-4 sm:mb-6 text-quizmoto-purple">{pin}</h1>
+                            <div className="flex justify-center p-3 sm:p-4 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                                <QRCodeSVG value={joinUrl} size={140} className="sm:hidden" />
+                                <QRCodeSVG value={joinUrl} size={160} className="hidden sm:block" />
+                            </div>
+                            <div className="mt-4 text-left">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Share link</p>
+                                <div className="flex items-stretch gap-2">
+                                    <div className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-[11px] sm:text-xs font-semibold text-gray-700 break-all leading-snug select-all">{joinUrl}</div>
+                                    <button type="button" onClick={copyJoinLink} className="shrink-0 min-h-11 px-3 rounded-xl bg-quizmoto-purple text-white font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5">
+                                        {copied ? <Check size={14} /> : <Copy size={14} />}
+                                        {copied ? 'Copied' : 'Copy'}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
                     <div className="flex flex-col items-center justify-center gap-4 sm:gap-6 w-full max-w-md"><motion.button whileHover={canStart ? { scale: 1.03, translateY: -2 } : {}} whileTap={canStart ? { scale: 0.98 } : {}} onClick={startGame} disabled={!canStart} type="button" className={`w-full min-h-[88px] sm:min-h-[112px] py-5 sm:py-8 font-black text-xl sm:text-3xl shadow-xl flex items-center justify-center gap-3 sm:gap-4 transition-all ${canStart ? 'bg-white text-quizmoto-purple shadow-[0_8px_0_0_rgba(255,255,255,0.2)] hover:shadow-none hover:translate-y-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/40' : 'bg-white/10 text-white/20 cursor-not-allowed border border-white/5'}`}><Play size={28} className="sm:w-9 sm:h-9" fill="currentColor" /> START GAME</motion.button><div className="text-center"><p className="font-black opacity-40 text-[10px] uppercase tracking-[0.3em]">{canStart ? `${onlinePlayers.length} player${onlinePlayers.length === 1 ? '' : 's'} ready` : 'Waiting for active players…'}</p><p className="mt-2 text-xs font-semibold text-white/35">{canStart ? 'Start when everyone is ready. The host controls the pace.' : 'At least one active player is required to start.'}</p></div></div>
                 </div>
 
