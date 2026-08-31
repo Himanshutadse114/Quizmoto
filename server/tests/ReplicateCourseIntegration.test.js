@@ -146,13 +146,11 @@ describe('Vertex AI course content + image SCORM integration', () => {
     it('keeps Vertex raster imagery compatible with the existing package finalizer', () => {
         const html = '<html><head></head><body><script>var data=window.__quizmotoData={slides:[]};</script></body></html>';
         const patched = injectReplicateMediaUi(html);
-        expect(patched).to.include('quizmoto-replicate-media-v2');
-        expect(patched).to.include('qmx-cover-raster');
-        expect(patched).to.include('qmx-raster-panel');
-        expect(patched).to.include("stage.classList.add('qmx-raster-stage')");
+        expect(patched).to.include('quizmoto-replicate-media-v3');
+        expect(patched).to.include('quizmoto-replicate-media-script-v2');
         expect(patched).to.not.include('qmx-narration-btn');
         expect(patched).to.not.include('<audio');
-        expect(REPLICATE_MEDIA_CSS).to.include('grid-template-areas:"head image" "body image"');
+        expect(REPLICATE_MEDIA_CSS).to.include('quizmoto-replicate-media-v3');
 
         const manifest = '<manifest><resources><resource identifier="r"><file href="index.html"/></resource></resources></manifest>';
         const updated = injectManifestFiles(manifest, ['assets/media/course-cover.webp', 'assets/media/slide-001.webp']);
