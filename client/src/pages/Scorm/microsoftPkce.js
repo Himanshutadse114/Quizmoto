@@ -22,6 +22,22 @@ function decodeJwtPayload(token) {
   }
 }
 
+export function formatMicrosoftAuthError(message, redirectUri = '') {
+  const raw = String(message || '').trim();
+  if (!raw) return 'Microsoft could not complete sign-in.';
+
+  if (raw.includes('AADSTS9002326')) {
+    const uriHelp = redirectUri ? ` Add this exact redirect URI under the Single-page application (SPA) platform: ${redirectUri}.` : '';
+    return `Microsoft Entra is treating this application as a Web client, but LMSGEN uses the secure SPA authorization-code + PKCE flow.${uriHelp} In Microsoft Entra, open App registrations → your application → Authentication → Add a platform → Single-page application (SPA). If this callback exists only under Web, move or add it under SPA and try again. You do not need to enable the legacy implicit ID-token grant.`;
+  }
+
+  if (raw.includes('AADSTS700054')) {
+    return 'This Microsoft application is configured for the legacy implicit flow. LMSGEN now uses authorization-code + PKCE. Register the LMSGEN callback URL under Microsoft Entra → App registrations → Authentication → Single-page application (SPA), then try again.';
+  }
+
+  return raw;
+}
+
 export async function createMicrosoftPkceRequest({ clientId, tenantId, redirectUri }) {
   if (!clientId || !tenantId || !redirectUri) throw new Error('Microsoft SSO configuration is incomplete.');
   if (!globalThis.crypto?.subtle) throw new Error('This browser does not support secure Microsoft sign-in.');
@@ -58,11 +74,12 @@ export async function createMicrosoftPkceRequest({ clientId, tenantId, redirectU
 export function readMicrosoftCallbackParams() {
   const search = new URLSearchParams(window.location.search || '');
   const hash = new URLSearchParams(String(window.location.hash || '').replace(/^#/, ''));
+  const providerError = search.get('error_description') || hash.get('error_description') || search.get('error') || hash.get('error') || '';
   return {
     code: search.get('code') || hash.get('code') || '',
     state: search.get('state') || hash.get('state') || '',
     idToken: search.get('id_token') || hash.get('id_token') || '',
-    error: search.get('error_description') || hash.get('error_description') || search.get('error') || hash.get('error') || ''
+    error: providerError ? formatMicrosoftAuthError(providerError) : ''
   };
 }
 
@@ -86,7 +103,7 @@ export async function exchangeMicrosoftCode({ code, clientId, tenantId, redirect
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.error_description || data.error || 'Microsoft could not complete sign-in.');
+    throw new Error(formatMicrosoftAuthError(data.error_description || data.error || 'Microsoft could not complete sign-in.', redirectUri));
   }
   if (!data.id_token) throw new Error('Microsoft did not return an identity token.');
 
