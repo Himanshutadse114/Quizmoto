@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
 import {
@@ -10,13 +11,12 @@ import {
   GraduationCap,
   LogOut,
   Mail,
-  RefreshCw,
-  ShieldCheck
+  RefreshCw
 } from 'lucide-react';
 import { apiUrl } from '../../config';
-import { createMicrosoftPkceRequest } from './microsoftPkce';
 
 const UNIVERSAL_SESSION_KEY = 'lmsgen_learner_universal';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1001652255296-695gf3vjul0fjh1oden4k2n6tvvdvncn.apps.googleusercontent.com';
 
 function workspaceSessionKey(workspaceId) {
   return `lmsgen_learner_${workspaceId}`;
@@ -35,9 +35,18 @@ function formatDate(value) {
   return date.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function GoogleButton({ clientId, onSuccess, onError }) {
+function MicrosoftMark() {
   return (
-    <GoogleOAuthProvider clientId={clientId}>
+    <span className="grid grid-cols-2 gap-[2px] w-4 h-4" aria-hidden="true">
+      <span className="bg-[#f25022]" /><span className="bg-[#7fba00]" />
+      <span className="bg-[#00a4ef]" /><span className="bg-[#ffb900]" />
+    </span>
+  );
+}
+
+function GoogleButton({ onSuccess, onError }) {
+  return (
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <div className="w-full overflow-hidden rounded-xl flex justify-center">
         <GoogleLogin onSuccess={onSuccess} onError={onError} theme="outline" size="large" shape="rectangular" text="continue_with" width="360" />
       </div>
@@ -46,12 +55,13 @@ function GoogleButton({ clientId, onSuccess, onError }) {
 }
 
 export default function UniversalLearnerPortal() {
-  const [config, setConfig] = useState(null);
+  const navigate = useNavigate();
   const [workspaceId, setWorkspaceId] = useState('');
   const [token, setToken] = useState(() => localStorage.getItem(UNIVERSAL_SESSION_KEY) || '');
   const [dashboard, setDashboard] = useState(null);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [showEmailLogin, setShowEmailLogin] = useState(false);
   const [loading, setLoading] = useState(Boolean(token));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -75,7 +85,7 @@ export default function UniversalLearnerPortal() {
       }
       try {
         await loadDashboard(token);
-      } catch (err) {
+      } catch (_) {
         localStorage.removeItem(UNIVERSAL_SESSION_KEY);
         if (!cancelled) {
           setToken('');
@@ -102,25 +112,6 @@ export default function UniversalLearnerPortal() {
     };
   }, [token, loadDashboard]);
 
-  const discover = async (event) => {
-    event?.preventDefault?.();
-    const cleanEmail = email.trim().toLowerCase();
-    setBusy(true);
-    setError('');
-    try {
-      const res = await axios.post(apiUrl('/api/scorm-learner/discover'), { email: cleanEmail });
-      const discoveredConfig = res.data?.config || null;
-      const discoveredWorkspaceId = res.data?.workspaceId || discoveredConfig?.workspaceId || '';
-      if (!discoveredConfig || !discoveredWorkspaceId) throw new Error('Your learning organisation could not be identified.');
-      setWorkspaceId(discoveredWorkspaceId);
-      setConfig(discoveredConfig);
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Unable to identify your learning organisation.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const acceptSession = async (data) => {
     if (!data?.token) throw new Error('Learner sign-in did not return a session.');
     const id = data.workspace?.id || workspaceId;
@@ -131,29 +122,15 @@ export default function UniversalLearnerPortal() {
     setDashboard({ learner: data.learner, workspace: data.workspace, courses: data.courses || [] });
   };
 
-  const loginEmail = async (event) => {
-    event.preventDefault();
-    setBusy(true);
-    setError('');
-    try {
-      const res = await axios.post(apiUrl(`/api/scorm-learner/workspace/${workspaceId}/email`), {
-        email: email.trim().toLowerCase(),
-        name: name.trim()
-      });
-      await acceptSession(res.data);
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Learner sign-in failed.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const loginGoogle = async (credentialResponse) => {
-    if (!credentialResponse?.credential) return setError('Google did not return a valid sign-in credential.');
+    if (!credentialResponse?.credential) {
+      setError('Google did not return a valid sign-in credential.');
+      return;
+    }
     setBusy(true);
     setError('');
     try {
-      const res = await axios.post(apiUrl(`/api/scorm-learner/workspace/${workspaceId}/google`), { credential: credentialResponse.credential });
+      const res = await axios.post(apiUrl('/api/scorm-learner/google'), { credential: credentialResponse.credential });
       await acceptSession(res.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Google learner sign-in failed.');
@@ -162,35 +139,26 @@ export default function UniversalLearnerPortal() {
     }
   };
 
-  const loginMicrosoft = async () => {
-    if (!workspaceId || !config?.microsoftClientId || !config?.microsoftTenantId) return;
+  const loginEmail = async (event) => {
+    event.preventDefault();
+    const cleanEmail = email.trim().toLowerCase();
     setBusy(true);
     setError('');
     try {
-      const redirectUri = `${window.location.origin}/auth/microsoft/callback`;
-      const pending = await createMicrosoftPkceRequest({
-        clientId: config.microsoftClientId,
-        tenantId: config.microsoftTenantId,
-        redirectUri
+      const discovery = await axios.post(apiUrl('/api/scorm-learner/discover'), { email: cleanEmail });
+      const id = discovery.data?.workspaceId || discovery.data?.config?.workspaceId || '';
+      if (!id) throw new Error('Your learning organisation could not be identified.');
+      const res = await axios.post(apiUrl(`/api/scorm-learner/workspace/${id}/email`), {
+        email: cleanEmail,
+        name: name.trim()
       });
-      sessionStorage.setItem('lmsgen_universal_ms_pending', JSON.stringify({
-        ...pending,
-        flow: 'learner',
-        workspaceId,
-        returnPath: '/learn'
-      }));
-      window.location.assign(pending.authorizeUrl);
+      setWorkspaceId(id);
+      await acceptSession(res.data);
     } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Learner sign-in failed.');
+    } finally {
       setBusy(false);
-      setError(err.message || 'Microsoft Sign-In could not start.');
     }
-  };
-
-  const resetDiscovery = () => {
-    setConfig(null);
-    setWorkspaceId('');
-    setName('');
-    setError('');
   };
 
   const logout = () => {
@@ -198,8 +166,10 @@ export default function UniversalLearnerPortal() {
     if (workspaceId) localStorage.removeItem(workspaceSessionKey(workspaceId));
     setToken('');
     setDashboard(null);
-    setConfig(null);
     setWorkspaceId('');
+    setEmail('');
+    setName('');
+    setShowEmailLogin(false);
   };
 
   const launch = async (course) => {
@@ -225,7 +195,6 @@ export default function UniversalLearnerPortal() {
   const courses = dashboard?.courses || [];
   const completed = courses.filter((course) => course.status === 'completed').length;
   const progress = courses.length ? Math.round((completed / courses.length) * 100) : 0;
-  const hasSso = Boolean(config?.googleEnabled || config?.microsoftEnabled);
 
   if (loading) {
     return <div className="min-h-screen bg-[#f4f8f7] text-[#102321] grid place-items-center"><div className="text-center"><RefreshCw size={22} className="animate-spin mx-auto text-[#159b91]" /><div className="mt-3 text-sm text-[#58706d]">Loading learner portal…</div></div></div>;
@@ -242,42 +211,33 @@ export default function UniversalLearnerPortal() {
 
       <main className="max-w-6xl mx-auto px-4 md:px-7 py-8 md:py-11">
         {!dashboard ? (
-          <section className="max-w-lg mx-auto bg-white border border-[#dce8e5] rounded-[26px] shadow-[0_20px_60px_rgba(16,35,33,.08)] overflow-hidden">
-            <div className="p-6 md:p-8 border-b border-[#e1ece9] bg-gradient-to-br from-[#e9f8f5] to-white">
-              <div className="w-11 h-11 rounded-2xl bg-[#c8f0eb] text-[#087b73] grid place-items-center mb-5"><GraduationCap size={21} /></div>
+          <section className="max-w-md mx-auto bg-white border border-[#dce8e5] rounded-[24px] shadow-[0_20px_60px_rgba(16,35,33,.08)] overflow-hidden">
+            <div className="p-6 md:p-7 border-b border-[#e1ece9] bg-gradient-to-br from-[#e9f8f5] to-white">
+              <div className="w-11 h-11 rounded-2xl bg-[#c8f0eb] text-[#087b73] grid place-items-center mb-4"><GraduationCap size={21} /></div>
               <div className="text-[10px] uppercase tracking-[.14em] font-bold text-[#5b7773]">Learner portal</div>
-              <h1 className="text-3xl md:text-[38px] font-semibold tracking-[-.04em] leading-tight mt-2">{config?.workspaceName || 'Open your learning'}</h1>
-              <p className="text-sm leading-relaxed text-[#617572] mt-3">Use the same LMSGEN learner link for every organisation. Your verified email identifies the correct tenant and your exact assignments control access.</p>
+              <h1 className="text-2xl md:text-[30px] font-semibold tracking-[-.035em] leading-tight mt-2">Sign in to your learning</h1>
+              <p className="text-sm leading-relaxed text-[#617572] mt-2">Use Microsoft or Google. LMSGEN will match your verified email to the correct organisation and assigned courses.</p>
             </div>
 
-            <div className="p-6 md:p-8 space-y-3">
+            <div className="p-6 md:p-7 space-y-3">
               {error && <div className="rounded-xl border border-[#f5c4cc] bg-[#fff3f5] text-[#9f3345] px-4 py-3 text-xs leading-relaxed">{error}</div>}
 
-              {!config ? (
-                <form onSubmit={discover} className="space-y-3">
-                  <label className="block"><span className="block text-[10px] uppercase tracking-[.1em] font-bold text-[#5e7773] mb-1.5">Work or assigned email</span><div className="relative"><Mail size={15} className="absolute left-3.5 top-3.5 text-[#69817d]" /><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-11 rounded-xl border border-[#cfdcda] bg-white pl-10 pr-3.5 text-sm outline-none focus:border-[#1aa99e]" placeholder="you@company.com" /></div></label>
-                  <button type="submit" disabled={busy} className="w-full h-11 rounded-xl bg-[#45c5bc] hover:bg-[#36b7ae] text-[#0d2926] text-sm font-semibold disabled:opacity-50">{busy ? 'Finding organisation…' : 'Continue'}</button>
-                  <div className="text-[11px] text-[#6d817e] leading-relaxed">Corporate domains identify the tenant. For Gmail, Yahoo, Outlook and other shared domains, LMSGEN uses the exact assigned email instead.</div>
-                </form>
+              <button type="button" onClick={() => navigate('/learn/microsoft')} disabled={busy} className="w-full h-11 rounded-xl border border-[#cfdcda] bg-white hover:bg-[#f7faf9] transition text-sm font-semibold flex items-center justify-center gap-3 disabled:opacity-50">
+                <MicrosoftMark /> Continue with Microsoft
+              </button>
+
+              <GoogleButton onSuccess={loginGoogle} onError={() => setError('Google sign-in failed. Please try again.')} />
+
+              <div className="flex items-center gap-3 py-1"><span className="h-px bg-[#dce8e5] flex-1" /><span className="text-[10px] uppercase tracking-[.12em] text-[#81928f]">or</span><span className="h-px bg-[#dce8e5] flex-1" /></div>
+
+              {!showEmailLogin ? (
+                <button type="button" onClick={() => { setShowEmailLogin(true); setError(''); }} className="w-full h-10 rounded-xl text-xs font-semibold text-[#32645f] hover:bg-[#f2f8f7]">Use assigned email instead</button>
               ) : (
-                <>
-                  <button type="button" onClick={resetDiscovery} className="text-xs underline text-[#55716d]">Use another email</button>
-                  {config.googleEnabled && config.googleClientId && <GoogleButton clientId={config.googleClientId} onSuccess={loginGoogle} onError={() => setError('Google sign-in failed. Please try again.')} />}
-                  {config.microsoftEnabled && (
-                    <button type="button" onClick={loginMicrosoft} disabled={busy} className="w-full h-11 rounded-xl border border-[#cfdcda] bg-white hover:bg-[#f7faf9] transition text-sm font-semibold flex items-center justify-center gap-3 disabled:opacity-50">
-                      <span className="grid grid-cols-2 gap-[2px] w-4 h-4"><span className="bg-[#f25022]" /><span className="bg-[#7fba00]" /><span className="bg-[#00a4ef]" /><span className="bg-[#ffb900]" /></span>
-                      Continue with Microsoft
-                    </button>
-                  )}
-                  {hasSso && config.emailEnabled && <div className="flex items-center gap-3 py-1"><span className="h-px bg-[#dce8e5] flex-1" /><span className="text-[10px] uppercase tracking-[.12em] text-[#81928f]">or assigned email</span><span className="h-px bg-[#dce8e5] flex-1" /></div>}
-                  {config.emailEnabled && (
-                    <form onSubmit={loginEmail} className="space-y-3">
-                      <label className="block"><span className="block text-[10px] uppercase tracking-[.1em] font-bold text-[#5e7773] mb-1.5">Name · optional</span><input value={name} onChange={(e) => setName(e.target.value)} className="w-full h-11 rounded-xl border border-[#cfdcda] bg-white px-3.5 text-sm outline-none focus:border-[#1aa99e]" placeholder="Your name" /></label>
-                      <button type="submit" disabled={busy} className="w-full h-11 rounded-xl bg-[#45c5bc] hover:bg-[#36b7ae] text-[#0d2926] text-sm font-semibold disabled:opacity-50">{busy ? 'Checking assignment…' : 'Open my dashboard'}</button>
-                    </form>
-                  )}
-                  {config.ssoRequired && <div className="rounded-xl bg-[#f0f7f6] border border-[#d7e7e4] px-3.5 py-3 text-[11px] leading-relaxed text-[#607572] flex gap-2"><ShieldCheck size={15} className="text-[#159b91] shrink-0" />Your organisation requires verified SSO. LMSGEN will still check your exact email against active assignments after sign-in.</div>}
-                </>
+                <form onSubmit={loginEmail} className="space-y-3 rounded-xl border border-[#dce8e5] p-4 bg-[#fbfdfd]">
+                  <label className="block"><span className="block text-[10px] uppercase tracking-[.1em] font-bold text-[#5e7773] mb-1.5">Assigned email</span><div className="relative"><Mail size={15} className="absolute left-3.5 top-3.5 text-[#69817d]" /><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-11 rounded-xl border border-[#cfdcda] bg-white pl-10 pr-3.5 text-sm outline-none focus:border-[#1aa99e]" placeholder="you@company.com" /></div></label>
+                  <label className="block"><span className="block text-[10px] uppercase tracking-[.1em] font-bold text-[#5e7773] mb-1.5">Name · optional</span><input value={name} onChange={(e) => setName(e.target.value)} className="w-full h-11 rounded-xl border border-[#cfdcda] bg-white px-3.5 text-sm outline-none focus:border-[#1aa99e]" placeholder="Your name" /></label>
+                  <button type="submit" disabled={busy} className="w-full h-11 rounded-xl bg-[#45c5bc] hover:bg-[#36b7ae] text-[#0d2926] text-sm font-semibold disabled:opacity-50">{busy ? 'Checking assignment…' : 'Open my dashboard'}</button>
+                </form>
               )}
             </div>
           </section>
