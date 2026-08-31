@@ -115,6 +115,22 @@ function workspaceAuthConfigColumns() {
     };
 }
 
+function entitlementColumns() {
+    return {
+        id: { type: DataTypes.UUID, allowNull: false, primaryKey: true },
+        email: { type: DataTypes.STRING(320), allowNull: false, unique: true },
+        maxCourses: { type: DataTypes.INTEGER, allowNull: true },
+        maxLearners: { type: DataTypes.INTEGER, allowNull: true },
+        maxStaff: { type: DataTypes.INTEGER, allowNull: true },
+        maxCampaigns: { type: DataTypes.INTEGER, allowNull: true },
+        maxAssignments: { type: DataTypes.INTEGER, allowNull: true },
+        permissions: { type: DataTypes.JSON, allowNull: false, defaultValue: {} },
+        updatedByUserId: { type: DataTypes.INTEGER, allowNull: true },
+        updatedByEmail: { type: DataTypes.STRING(320), allowNull: true },
+        ...timestampColumns()
+    };
+}
+
 function campaignColumns() {
     return {
         id: { type: DataTypes.UUID, allowNull: false, primaryKey: true },
@@ -192,6 +208,17 @@ async function ensureWorkspaceSchema() {
     return changes;
 }
 
+async function ensureEntitlementSchema() {
+    const changes = [];
+    const columns = entitlementColumns();
+    if (await ensureTable('scorm_user_entitlements', columns)) changes.push('scorm_user_entitlements');
+    else changes.push(...await ensureColumns('scorm_user_entitlements', columns));
+    if (await ensureIndex('scorm_user_entitlements', ['email'], { name: 'scorm_user_entitlements_email_uq', unique: true })) {
+        changes.push('scorm_user_entitlements_email_uq');
+    }
+    return changes;
+}
+
 async function ensureCampaignSchema() {
     const changes = [];
     const tables = [
@@ -219,6 +246,7 @@ async function ensureCampaignSchema() {
 async function ensurePlatformSchema() {
     const changes = [];
     changes.push(...await ensureWorkspaceSchema());
+    changes.push(...await ensureEntitlementSchema());
     changes.push(...await ensureCampaignSchema());
 
     const registrationColumns = [
