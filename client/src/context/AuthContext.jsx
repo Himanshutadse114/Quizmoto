@@ -15,13 +15,13 @@ const HOST_USER_BACKUP = 'quizmotoHostUser';
 function normalizeScormRole(role, approved = false) {
     const value = String(role || '').trim().toLowerCase();
     if (value === 'user') return 'admin';
-    if (['super_admin', 'admin', 'co_admin', 'analytics_viewer', 'pending'].includes(value)) return value;
+    if (['super_admin', 'admin', 'co_admin', 'analytics_viewer', 'pending', 'quizmoto'].includes(value)) return value;
     return approved ? 'admin' : 'pending';
 }
 
 function normalizeStoredUser(value) {
     if (!value || typeof value !== 'object') return value;
-    if (value.product !== 'scorm-ai' && !value.scormAccess && !value.pendingApproval) return value;
+    if (!value.product && !value.scormAccess && !value.pendingApproval && !value.quizmotoOnly) return value;
     const approved = Boolean(value.scormAccess && !value.pendingApproval);
     return { ...value, role: normalizeScormRole(value.role, approved) };
 }
@@ -110,11 +110,35 @@ export const AuthProvider = ({ children }) => {
             workspaceId: data.workspaceId || null,
             workspaceName: data.workspaceName || null,
             authMethod: data.authMethod || null,
-            staffSso: Boolean(data.staffSso)
+            staffSso: Boolean(data.staffSso),
+            quizmotoOnly: false
         };
         setAccessFlags({ platform: true, scorm: approved });
         persistSession(data.token, scormUser);
         return { ...data, role };
+    };
+
+    const enterQuizmotoOnlySession = (data) => {
+        if (!data?.token) return data;
+        const quizmotoUser = {
+            username: data.username,
+            avatar: data.avatar || null,
+            email: data.email || null,
+            role: 'quizmoto',
+            isSuperAdmin: false,
+            product: 'quizmoto',
+            pendingApproval: false,
+            platformAccess: true,
+            scormAccess: false,
+            workspaceId: null,
+            workspaceName: null,
+            authMethod: 'google',
+            staffSso: false,
+            quizmotoOnly: true
+        };
+        setAccessFlags({ platform: true, scorm: false });
+        persistSession(data.token, quizmotoUser);
+        return { ...data, role: 'quizmoto', platformAccess: true, scormAccess: false, quizmotoOnly: true };
     };
 
     const resolveScormAuthResponse = (data) => {
@@ -132,6 +156,11 @@ export const AuthProvider = ({ children }) => {
         return resolveScormAuthResponse(res.data);
     };
 
+    const loginQuizmotoOnlyWithGoogle = async (credential) => {
+        const res = await axios.post(`${API_URL}/google`, { credential });
+        return enterQuizmotoOnlySession(res.data);
+    };
+
     const loginScormWorkspaceWithGoogle = async (workspaceId, credential) => {
         const res = await axios.post(apiUrl(`/api/scorm/staff-auth/workspace/${workspaceId}/google`), { credential });
         return resolveScormAuthResponse(res.data);
@@ -143,20 +172,13 @@ export const AuthProvider = ({ children }) => {
     };
 
     const registerScorm = async ({ username, email, password }) => {
-        const res = await axios.post(`${API_URL}/scorm/register`, {
-            username,
-            email,
-            password
-        });
+        const res = await axios.post(`${API_URL}/scorm/register`, { username, email, password });
         return resolveScormAuthResponse(res.data);
     };
 
     const refreshScormAccess = async () => {
         if (!token || !platformAccess) return null;
-        // Workspace SSO tokens carry a workspaceId claim and must remain intact.
-        // The old /scorm/status endpoint issues a global SCORM token and would
-        // otherwise strip the workspace binding immediately after SSO login.
-        // Protected APIs still re-check the live grant and workspace membership.
+        if (user?.quizmotoOnly) return user;
         if (user?.staffSso && user?.workspaceId) return user;
         const res = await axios.get(`${API_URL}/scorm/status`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -199,6 +221,7 @@ export const AuthProvider = ({ children }) => {
             loginWithGoogle,
             loginScorm,
             loginScormWithGoogle,
+            loginQuizmotoOnlyWithGoogle,
             loginScormWorkspaceWithGoogle,
             loginScormWorkspaceWithMicrosoft,
             registerScorm,
@@ -210,9 +233,7 @@ export const AuthProvider = ({ children }) => {
             logout,
             loading
         }}>
-            <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-                {children}
-            </GoogleOAuthProvider>
+            <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>{children}</GoogleOAuthProvider>
         </AuthContext.Provider>
     );
 };

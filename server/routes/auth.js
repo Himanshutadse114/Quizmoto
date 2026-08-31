@@ -81,11 +81,32 @@ function pendingResponse(user, captured = true) {
     };
 }
 
+function quizmotoOnlyResponse(user) {
+    return publicUser(user, issueToken(user, 'quizmoto'), {
+        role: 'quizmoto',
+        isSuperAdmin: false,
+        product: 'quizmoto',
+        platformAccess: true,
+        scormAccess: false,
+        pendingApproval: false,
+        quizmotoOnly: true,
+        authMethod: 'google'
+    });
+}
+
 // A pending platform token can call this endpoint because it is intentionally
-// outside /api/scorm/*. Once the Super Admin grants access, the same signed-in
-// account receives a full SCORM token without needing to register again.
+// outside /api/scorm/*. Quizmoto-scoped Google tokens are deliberately excluded:
+// Google on the common staff login is a Quizmoto-only authentication method and
+// must never be exchangeable for a full LMSGEN token through a refresh call.
 router.get('/scorm/status', auth, async (req, res) => {
     try {
+        if (req.authScope === 'quizmoto') {
+            return res.status(403).json({
+                message: 'This Google session is limited to Quizmoto. Use password or Microsoft organisation sign-in for LMSGEN.',
+                code: 'SCORM_GOOGLE_QUIZMOTO_ONLY'
+            });
+        }
+
         const user = await User.findByPk(req.userId);
         if (!user) {
             return res.status(401).json({ message: 'Platform account no longer exists.', code: 'PLATFORM_AUTH_REQUIRED' });
@@ -104,8 +125,7 @@ router.get('/scorm/status', auth, async (req, res) => {
 // refresh endpoint above.
 router.use('/scorm', scormAuthLimiter);
 
-// Google Sign-In for legacy Quizmoto host access. Kept for rolling-deploy
-// compatibility; the main product entry now uses SCORM AI platform auth.
+// Google Sign-In is intentionally Quizmoto-only on the common staff entry.
 router.post('/google', async (req, res) => {
     try {
         const { credential } = req.body;
@@ -144,16 +164,16 @@ router.post('/google', async (req, res) => {
             await user.save();
         }
 
-        res.json(publicUser(user, issueToken(user, 'quizmoto')));
+        res.json(quizmotoOnlyResponse(user));
     } catch (err) {
         console.error('Google Auth Error:', err);
         res.status(500).json({ message: 'Authentication failed' });
     }
 });
 
-// Google Sign-In for the SCORM AI platform. Unapproved identities receive a
-// limited platform session: Quizmoto works, while /api/scorm/* stays locked by
-// the shared auth middleware until a live access grant exists.
+// Legacy SCORM Google entry is kept for rolling-deploy compatibility but now
+// follows the same policy as the common Google button: Google can authenticate
+// a Quizmoto session, never a full LMSGEN administrator workspace session.
 router.post('/scorm/google', async (req, res) => {
     try {
         const credential = String(req.body?.credential || '');
@@ -205,20 +225,10 @@ router.post('/scorm/google', async (req, res) => {
             });
         }
 
-        await captureAccessRequest({
-            userId: user.id,
-            email,
-            username: user.username,
-            authMethod: 'google'
-        });
-
-        const role = await getAccessRole(email);
-        if (!role) return res.status(202).json(pendingResponse(user, true));
-
-        res.json(await scormAuthResponse(user, role));
+        res.json(quizmotoOnlyResponse(user));
     } catch (err) {
         console.error('SCORM AI Google auth error:', err);
-        res.status(500).json({ message: 'SCORM AI Google authentication failed.' });
+        res.status(500).json({ message: 'Google authentication failed.' });
     }
 });
 
@@ -244,8 +254,8 @@ router.post('/scorm/register', async (req, res) => {
         const role = await getAccessRole(email);
         if (role === 'super_admin') {
             return res.status(403).json({
-                message: 'The SCORM AI super administrator must sign in with Google.',
-                code: 'SCORM_SUPER_ADMIN_GOOGLE_REQUIRED',
+                message: 'The Super Admin account already exists. Sign in with its existing password or configured Microsoft organisation account.',
+                code: 'SCORM_SUPER_ADMIN_ACCOUNT_MANAGED',
                 adminContact: ADMIN_CONTACT_EMAIL
             });
         }
@@ -323,13 +333,6 @@ router.post('/scorm/login', async (req, res) => {
         }
 
         const role = await getAccessRole(user.email);
-        if (role === 'super_admin') {
-            return res.status(403).json({
-                message: 'The SCORM AI super administrator must sign in with Google.',
-                code: 'SCORM_SUPER_ADMIN_GOOGLE_REQUIRED',
-                adminContact: ADMIN_CONTACT_EMAIL
-            });
-        }
 
         if (!role) {
             await captureAccessRequest({

@@ -6,6 +6,8 @@ const {
     getWorkspaceAndConfig,
     serializeAuthConfig,
     createLearnerSession,
+    createLearnerSessionFromIdentity,
+    verifyGlobalGoogleCredential,
     learnerAuthMiddleware,
     getLearnerDashboard,
     launchLearnerCourse
@@ -47,6 +49,28 @@ router.post('/discover', learnerAuthLimiter, async (req, res) => {
     } catch (err) {
         res.status(err.status || 500).json({
             message: err.message || 'Unable to identify your learning organisation.',
+            code: err.code
+        });
+    }
+});
+
+// Common learner Google entry. Google proves the identity first. LMSGEN then
+// finds the exact tenant from the verified email's active assignments and still
+// requires that exact email to own at least one course instance before issuing
+// a learner session. This common Google entry therefore does not depend on a
+// tenant-specific Google client configuration.
+router.post('/google', learnerAuthLimiter, async (req, res) => {
+    try {
+        const identity = await verifyGlobalGoogleCredential(req.body?.credential);
+        const policy = await discoverLearnerPolicy(identity.email);
+        const result = await createLearnerSessionFromIdentity({
+            workspaceId: policy.workspace.id,
+            identity
+        });
+        res.json(result);
+    } catch (err) {
+        res.status(err.status || 500).json({
+            message: err.message || 'Google learner sign-in failed.',
             code: err.code
         });
     }
