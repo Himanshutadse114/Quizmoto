@@ -9,6 +9,7 @@ const {
     startCampaign,
     deleteDraftCampaign
 } = require('../../services/scorm/ScormCampaignService');
+const { getCampaignAnalytics } = require('../../services/scorm/ScormCampaignAnalyticsService');
 
 function workspaceRequired(req) {
     if (!req.scormWorkspaceId) {
@@ -61,6 +62,25 @@ router.post('/', auth, async (req, res) => {
         res.status(201).json({ ok: true, ...result });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to create campaign.', code: err.code });
+    }
+});
+
+router.get('/:campaignId/analytics', auth, async (req, res) => {
+    try {
+        workspaceRequired(req);
+        const analytics = await getCampaignAnalytics({
+            campaignId: req.params.campaignId,
+            hostId: req.userId,
+            workspaceId: req.scormWorkspaceId
+        });
+        res.json({ ok: true, ...analytics });
+    } catch (err) {
+        console.error('[scorm-campaign-analytics] load failed', {
+            campaignId: req.params.campaignId,
+            message: err?.message,
+            code: err?.code
+        });
+        res.status(err.status || 500).json({ message: err.message || 'Unable to load campaign analytics.', code: err.code });
     }
 });
 
