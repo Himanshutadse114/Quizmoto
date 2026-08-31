@@ -10,7 +10,8 @@ const {
 } = require('../../services/scorm/ScormWorkspaceService');
 
 function requireWorkspaceAdmin(req, res, next) {
-    if (req.scormRole !== 'admin' || !req.scormWorkspace) {
+    const canManageWorkspace = req.scormRole === 'admin' || req.scormRole === 'super_admin';
+    if (!canManageWorkspace || !req.scormWorkspace) {
         return res.status(403).json({
             message: 'Workspace Admin access is required to manage team roles.',
             code: 'SCORM_WORKSPACE_ADMIN_REQUIRED'
