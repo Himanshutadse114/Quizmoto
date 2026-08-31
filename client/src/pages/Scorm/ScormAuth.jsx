@@ -37,7 +37,7 @@ function GoogleButton({ width, onSuccess, onError }) {
     <div className="sa-google-button">
       <div className="sa-google-face" aria-hidden="true">
         <GoogleMark />
-        <span>Continue with Google</span>
+        <span>Sign in with Google</span>
       </div>
       <div className="sa-google-overlay">
         <GoogleLogin
@@ -184,7 +184,7 @@ export default function ScormAuth() {
               )}
 
               <label>
-                <span className="sa-label">{isLogin ? 'Email or username' : 'Email address'}</span>
+                <span className="sa-label">Email address</span>
                 <div className="sa-input-wrap">
                   <Mail size={15} />
                   <input
@@ -192,7 +192,7 @@ export default function ScormAuth() {
                     value={isLogin ? identifier : email}
                     onChange={(event) => isLogin ? setIdentifier(event.target.value) : setEmail(event.target.value)}
                     required
-                    placeholder={isLogin ? 'you@company.com' : 'you@company.com'}
+                    placeholder="you@company.com"
                     className="sa-input"
                     autoComplete={isLogin ? 'username' : 'email'}
                   />
@@ -220,10 +220,10 @@ export default function ScormAuth() {
                   type="button"
                   onClick={() => navigate('/login/microsoft')}
                   disabled={busy}
-                  className="sa-submit flex items-center justify-center gap-3"
-                  style={{ background: 'transparent', border: '1px solid var(--sa-border, rgba(255,255,255,.16))' }}
+                  className="w-full min-h-[45px] mt-3 rounded-[9px] border text-[11px] font-semibold flex items-center justify-center gap-3 transition hover:opacity-90 disabled:opacity-50"
+                  style={{ borderColor: 'var(--sa-border)', background: 'var(--sa-panel-2)', color: 'var(--sa-cream)' }}
                 >
-                  <MicrosoftMark /> Continue with Microsoft
+                  <MicrosoftMark /> Sign in with Microsoft
                 </button>
 
                 <div className="sa-google-block" style={{ marginTop: 10 }}>
