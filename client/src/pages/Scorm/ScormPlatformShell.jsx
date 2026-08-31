@@ -80,7 +80,7 @@ const QUIZMOTO_ONLY_GROUPS = [
 function displayRole(role, isSuperAdmin, quizmotoOnly) {
   if (quizmotoOnly) return 'Quizmoto user';
   if (isSuperAdmin || role === 'super_admin') return 'Super Admin';
-  if (role === 'admin') return 'Workspace Admin';
+  if (role === 'admin') return 'Tenant Admin';
   if (role === 'co_admin') return 'Co-admin';
   if (role === 'analytics_viewer') return 'Analytics viewer';
   return 'LMSGEN member';
@@ -94,10 +94,10 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess, role, quizmotoOnly 
     groups = [
       ...groups,
       {
-        label: 'Administration',
+        label: 'Tenant Administration',
         items: [
           { to: '/scorm/team', label: 'Team & Roles', icon: Users, requiresScorm: true },
-          { to: '/scorm/learner-access', label: 'Learner Access & SSO', icon: LockKeyhole, requiresScorm: true }
+          { to: '/scorm/learner-access', label: 'Authentication & SSO', icon: LockKeyhole, requiresScorm: true }
         ]
       }
     ];
@@ -108,7 +108,7 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess, role, quizmotoOnly 
       ...groups,
       {
         label: 'Platform Administration',
-        items: [{ to: '/scorm/access', label: 'Access Control', icon: ShieldCheck, requiresScorm: true }]
+        items: [{ to: '/scorm/access', label: 'Tenant Management', icon: ShieldCheck, requiresScorm: true }]
       }
     ];
   }
@@ -244,7 +244,7 @@ export default function ScormPlatformShell() {
           {quizmotoOnly ? (
             <div className="scorm-status-card rounded-xl px-3.5 py-3">
               <div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />Quizmoto access</div>
-              <div className="mt-1.5 text-[10px] leading-relaxed">This Google session is limited to Quizmoto. Use password or Microsoft organisation sign-in for LMSGEN.</div>
+              <div className="mt-1.5 text-[10px] leading-relaxed">This Google account is not assigned to an LMSGEN tenant. The Super Admin can assign this exact email to a tenant if LMSGEN access is required.</div>
             </div>
           ) : scormAccess ? (
             <div className="scorm-status-card rounded-xl px-3.5 py-3">
@@ -260,7 +260,7 @@ export default function ScormPlatformShell() {
           ) : (
             <div className="rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
               <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={13} /> Approval pending</div>
-              <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae]">Quizmoto is unlocked. LMSGEN features unlock after administrator approval.</div>
+              <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae]">Quizmoto is unlocked. LMSGEN features unlock after administrator approval and tenant assignment.</div>
               <button type="button" onClick={refreshApproval} disabled={checkingAccess} className="mt-2 inline-flex items-center gap-1.5 text-[9px] font-semibold text-[#60a5fa] disabled:opacity-50"><RefreshCw size={11} className={checkingAccess ? 'animate-spin' : ''} /> Refresh access</button>
             </div>
           )}
@@ -273,8 +273,8 @@ export default function ScormPlatformShell() {
       <div className="lg:pl-[268px] min-h-screen">
         <header className="scorm-topbar sticky top-0 z-30 min-h-[64px] border-b px-4 md:px-7 py-2.5 flex items-center gap-3 md:gap-4">
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open LMSGEN navigation" className="scorm-topbar-icon lg:hidden w-10 h-10 grid place-items-center shrink-0"><Menu size={18} /></button>
-          {!scormAccess && !quizmotoOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> LMSGEN approval pending · Quizmoto available</div>}
-          {quizmotoOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><Gamepad2 size={12} /> Google session · Quizmoto only</div>}
+          {!scormAccess && !quizmotoOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> LMSGEN approval / tenant assignment pending · Quizmoto available</div>}
+          {quizmotoOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><Gamepad2 size={12} /> Google account not assigned to a tenant · Quizmoto available</div>}
           {analyticsOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><BarChart3 size={12} /> Read-only analytics access</div>}
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
@@ -289,7 +289,7 @@ export default function ScormPlatformShell() {
               <>
                 <Link to="/scorm/quizmoto" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
                 {isWorkspaceAdmin && <Link to="/scorm/team" className="scorm-button-secondary hidden xl:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Users size={14} /> Team</Link>}
-                {isSuperAdmin && <Link to="/scorm/access" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><ShieldCheck size={14} /> Access</Link>}
+                {isSuperAdmin && <Link to="/scorm/access" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><ShieldCheck size={14} /> Tenants</Link>}
                 <Link to="/scorm/library?upload=1" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Upload size={14} /> {scormAccess ? 'Upload' : 'Library'}</Link>
                 <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold">{scormAccess ? <Plus size={14} /> : <LockKeyhole size={14} />}<span className="hidden sm:inline">{scormAccess ? 'Create course' : 'Explore AI Author'}</span><span className="sm:hidden">{scormAccess ? 'Create' : 'AI'}</span></Link>
               </>
