@@ -4,7 +4,8 @@ const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const {
     getPublicStaffAuthConfig,
-    verifyStaffIdentity
+    verifyStaffIdentity,
+    discoverStaffPolicy
 } = require('../../services/scorm/ScormStaffAuthService');
 const {
     addGrant
@@ -53,6 +54,25 @@ function responseFor(result) {
     };
 }
 
+router.post('/discover', staffSsoLimiter, async (req, res) => {
+    try {
+        const result = await discoverStaffPolicy(req.body?.email);
+        res.setHeader('Cache-Control', 'no-store');
+        res.json({
+            ok: true,
+            workspaceId: result.workspace.id,
+            workspaceName: result.workspace.name,
+            discoverySource: result.source,
+            config: result.publicConfig
+        });
+    } catch (err) {
+        res.status(err.status || 500).json({
+            message: err.message || 'Unable to identify your organisation.',
+            code: err.code
+        });
+    }
+});
+
 router.get('/workspace/:workspaceId/config', async (req, res) => {
     try {
         const config = await getPublicStaffAuthConfig(req.params.workspaceId);
@@ -76,9 +96,6 @@ async function login(req, res, provider) {
                 : req.body?.credential
         });
 
-        // Keep the legacy access-grant layer aligned with the authoritative
-        // workspace membership because the mature SCORM middleware still checks
-        // both while the platform transitions to workspace-first authorization.
         await addGrant({
             email: result.user.email,
             role: result.role,
