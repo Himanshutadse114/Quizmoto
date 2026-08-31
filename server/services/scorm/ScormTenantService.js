@@ -14,7 +14,15 @@ const {
 const {
     getEntitlement,
     updateEntitlement,
-    getUsageForHost,
+    getUsageForHost = async () => ({
+        courseCreations: 0,
+        activeCourses: 0,
+        learners: 0,
+        rosterLearners: 0,
+        staff: 0,
+        campaigns: 0,
+        assignments: 0
+    }),
     normalizeLimit
 } = require('./ScormEntitlementService');
 
