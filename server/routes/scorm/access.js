@@ -13,6 +13,12 @@ const {
 } = require('../../services/scorm/ScormAccessService');
 const { serializeWorkspace } = require('../../services/scorm/ScormWorkspaceService');
 const {
+    listTenants,
+    createTenant,
+    changeTenantAdmin,
+    setTenantStatus
+} = require('../../services/scorm/ScormTenantService');
+const {
     getEntitlement,
     updateEntitlement,
     getUsageForEmail
@@ -71,7 +77,9 @@ router.get('/me', auth, async (req, res) => {
         isSuperAdmin: req.scormRole === 'super_admin',
         adminContact: ADMIN_CONTACT_EMAIL,
         workspace: serializeWorkspace(req.scormWorkspace),
+        tenant: serializeWorkspace(req.scormWorkspace),
         workspaceId: req.scormWorkspaceId || null,
+        tenantId: req.scormWorkspaceId || null,
         hostId: req.scormHostId || req.userId || null,
         entitlementOwnerEmail: req.scormEntitlementEmail || req.scormEmail || null,
         entitlement: req.scormEntitlement || await getEntitlement(
@@ -81,29 +89,85 @@ router.get('/me', auth, async (req, res) => {
     });
 });
 
+// Primary Super Admin control surface: tenants are first-class entities and the
+// human Admin is an explicit member, not the data-partition owner.
+router.get('/tenants', auth, requireSuperAdmin, async (req, res) => {
+    try {
+        res.json({ tenants: await listTenants() });
+    } catch (err) {
+        console.error('[scorm-access] tenant list failed', err);
+        res.status(err.status || 500).json({ message: err.message || 'Could not load tenants.', code: err.code });
+    }
+});
+
+router.post('/tenants', auth, requireSuperAdmin, async (req, res) => {
+    try {
+        const tenant = await createTenant({
+            name: req.body?.name,
+            adminEmail: req.body?.adminEmail,
+            adminName: req.body?.adminName,
+            actorUserId: req.authenticatedUserId || req.userId,
+            actorEmail: req.scormEmail
+        });
+        res.status(201).json({ tenant });
+    } catch (err) {
+        console.error('[scorm-access] tenant create failed', err);
+        res.status(err.status || 500).json({ message: err.message || 'Could not create tenant.', code: err.code });
+    }
+});
+
+router.patch('/tenants/:workspaceId/admin', auth, requireSuperAdmin, async (req, res) => {
+    try {
+        const tenant = await changeTenantAdmin({
+            workspaceId: req.params.workspaceId,
+            adminEmail: req.body?.adminEmail,
+            adminName: req.body?.adminName,
+            actorUserId: req.authenticatedUserId || req.userId,
+            actorEmail: req.scormEmail
+        });
+        res.json({ tenant });
+    } catch (err) {
+        console.error('[scorm-access] tenant admin change failed', err);
+        res.status(err.status || 500).json({ message: err.message || 'Could not change Tenant Admin.', code: err.code });
+    }
+});
+
+router.patch('/tenants/:workspaceId/status', auth, requireSuperAdmin, async (req, res) => {
+    try {
+        const tenant = await setTenantStatus({
+            workspaceId: req.params.workspaceId,
+            status: req.body?.status
+        });
+        res.json({ tenant });
+    } catch (err) {
+        console.error('[scorm-access] tenant status change failed', err);
+        res.status(err.status || 500).json({ message: err.message || 'Could not update tenant status.', code: err.code });
+    }
+});
+
+// Legacy account-grant data remains readable during the migration period. New
+// customer administration should use /tenants above.
 router.get('/', auth, requireSuperAdmin, async (req, res) => {
     try {
-        const [grants, requests] = await Promise.all([
+        const [grants, requests, tenants] = await Promise.all([
             listGrants(),
-            listAccessRequests()
+            listAccessRequests(),
+            listTenants()
         ]);
         res.json({
             superAdminEmail: SUPER_ADMIN_EMAIL,
             adminContact: ADMIN_CONTACT_EMAIL,
+            tenants,
             grants: await Promise.all(grants.map(serializeGrant)),
             requests: requests.map(serializeRequest),
             pendingRequests: requests.filter((request) => request.status === 'pending').map(serializeRequest)
         });
     } catch (err) {
         console.error('[scorm-access] list failed', err);
-        res.status(500).json({ message: 'Could not load SCORM AI access control data.' });
+        res.status(500).json({ message: 'Could not load LMSGEN access control data.' });
     }
 });
 
-// Approve a captured SCORM registration/Google access request. The underlying
-// user account and password remain unchanged, so the user signs in with the
-// same credentials they registered before approval. An approved standalone
-// account becomes the primary Admin of its own workspace on first use.
 router.post('/requests/:id/approve', auth, requireSuperAdmin, async (req, res) => {
     try {
         const result = await approveAccessRequest(req.params.id, {
@@ -111,19 +175,20 @@ router.post('/requests/:id/approve', auth, requireSuperAdmin, async (req, res) =
             approvedByEmail: req.scormEmail
         });
         if (!result.ok && result.reason === 'not_found') {
-            return res.status(404).json({ message: 'Pending SCORM AI registration not found.' });
+            return res.status(404).json({ message: 'Pending LMSGEN registration not found.' });
         }
         if (!result.ok && result.reason === 'super_admin') {
-            return res.status(400).json({ message: 'The SCORM AI super administrator is already authorised.' });
+            return res.status(400).json({ message: 'The LMSGEN Super Admin is already authorised.' });
         }
         res.json({
             approved: true,
             grant: await serializeGrant(result.grant),
-            request: serializeRequest(result.request)
+            request: serializeRequest(result.request),
+            warning: 'Account approval does not create a tenant. Assign this email through Tenant Management before LMSGEN access is available.'
         });
     } catch (err) {
         console.error('[scorm-access] approve request failed', err);
-        res.status(500).json({ message: 'Could not approve this SCORM AI registration.' });
+        res.status(500).json({ message: 'Could not approve this LMSGEN registration.' });
     }
 });
 
@@ -133,11 +198,11 @@ router.patch('/:id/entitlement', auth, requireSuperAdmin, async (req, res) => {
         if (!grant) return res.status(404).json({ message: 'Access grant not found.' });
         const role = normalizeScormRole(grant.role);
         if (role === 'super_admin' || grant.email === SUPER_ADMIN_EMAIL) {
-            return res.status(400).json({ message: 'The super administrator always has unrestricted access.' });
+            return res.status(400).json({ message: 'The Super Admin always has unrestricted access.' });
         }
         if (role === 'co_admin' || role === 'analytics_viewer') {
             return res.status(400).json({
-                message: 'Team members inherit workspace limits and permissions from the primary Admin.',
+                message: 'Team members inherit tenant limits and permissions.',
                 code: 'SCORM_WORKSPACE_ENTITLEMENT_INHERITED'
             });
         }
@@ -146,13 +211,10 @@ router.patch('/:id/entitlement', auth, requireSuperAdmin, async (req, res) => {
             userId: req.authenticatedUserId || req.userId,
             email: req.scormEmail
         });
-        res.json({
-            ok: true,
-            grant: await serializeGrant(grant)
-        });
+        res.json({ ok: true, grant: await serializeGrant(grant) });
     } catch (err) {
         console.error('[scorm-access] entitlement update failed', err);
-        res.status(500).json({ message: 'Could not update this user’s limits and permissions.' });
+        res.status(500).json({ message: 'Could not update limits and permissions.' });
     }
 });
 
@@ -163,7 +225,7 @@ router.delete('/:id', auth, requireSuperAdmin, async (req, res) => {
             return res.status(404).json({ message: 'Access grant not found.' });
         }
         if (!result.removed && result.reason === 'super_admin') {
-            return res.status(400).json({ message: 'The SCORM AI super administrator cannot be removed.' });
+            return res.status(400).json({ message: 'The LMSGEN Super Admin cannot be removed.' });
         }
         res.json({
             removed: true,
@@ -172,7 +234,7 @@ router.delete('/:id', auth, requireSuperAdmin, async (req, res) => {
         });
     } catch (err) {
         console.error('[scorm-access] remove failed', err);
-        res.status(500).json({ message: 'Could not remove SCORM AI access.' });
+        res.status(500).json({ message: 'Could not remove LMSGEN access.' });
     }
 });
 
