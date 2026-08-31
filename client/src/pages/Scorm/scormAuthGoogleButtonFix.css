@@ -125,3 +125,143 @@
   max-width: none !important;
   margin: 0 !important;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Authentication & SSO admin route — authoritative light-mode layer.         */
+/*                                                                            */
+/* scormModernDark.css intentionally has broad legacy selectors for           */
+/* rounded-2xl.border cards. The SSO settings screen contains nested cards     */
+/* with that utility shape, so those legacy rules can otherwise paint them    */
+/* black even when the platform is in light mode.                              */
+/*                                                                            */
+/* The allowed-domain input is unique to this route and keeps this override    */
+/* from changing cards on unrelated SCORM screens.                             */
+/* -------------------------------------------------------------------------- */
+
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) section.scorm-panel {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  border-color: #D7E4E1 !important;
+  color: #13211E !important;
+  box-shadow: 0 8px 24px rgba(29, 78, 70, .07) !important;
+}
+
+/* Workspace-link cards and Google/Microsoft provider cards. */
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) section.scorm-panel > .grid > div.rounded-2xl.border {
+  background: #F8FBFA !important;
+  background-image: none !important;
+  border-color: #D7E4E1 !important;
+  color: #13211E !important;
+  box-shadow: 0 3px 10px rgba(29, 78, 70, .045) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) section.scorm-panel > .grid > div.rounded-2xl.border:hover {
+  border-color: #B8D8D3 !important;
+  box-shadow: 0 6px 16px rgba(29, 78, 70, .065) !important;
+}
+
+/* Sign-in method selector cards. */
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) section.scorm-panel > .grid > button.rounded-2xl.border {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  border-color: #D7E4E1 !important;
+  color: #13211E !important;
+  box-shadow: none !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) section.scorm-panel > .grid > button.rounded-2xl.border:hover {
+  background: #F3FAF8 !important;
+  border-color: #AFCFC9 !important;
+}
+
+/* Only the active ModeCard renders the CheckCircle SVG. */
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) section.scorm-panel > .grid > button.rounded-2xl.border:has(svg) {
+  background: #E4F7F4 !important;
+  border-color: #4FC9BF !important;
+  color: #123A35 !important;
+  box-shadow: 0 0 0 1px rgba(79, 201, 191, .13), 0 5px 14px rgba(29, 78, 70, .055) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) section.scorm-panel > .grid > button.rounded-2xl.border:has(svg) p {
+  color: #405A55 !important;
+}
+
+/* Small icon tile used in workspace-link cards. */
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) section.scorm-panel > .grid > div.rounded-2xl.border .rounded-xl.border {
+  background: #E9F7F4 !important;
+  border-color: #C8E7E1 !important;
+  color: #178C82 !important;
+  box-shadow: none !important;
+}
+
+/* Keep all configuration fields readable and visibly editable. */
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) input:not([type="checkbox"]) {
+  background: #FFFFFF !important;
+  border-color: #CADAD7 !important;
+  color: #172522 !important;
+  box-shadow: 0 1px 2px rgba(30, 72, 66, .035) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) input[readonly] {
+  background: #F1F6F5 !important;
+  border-color: #D4E1DE !important;
+  color: #536A66 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) input:not([type="checkbox"]):hover {
+  border-color: #A8CFC9 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) input:not([type="checkbox"]):focus {
+  background: #FFFFFF !important;
+  border-color: #4FC9BF !important;
+  box-shadow: 0 0 0 3px rgba(79, 201, 191, .16) !important;
+  outline: none !important;
+}
+
+/* Undo the generic recessed-input treatment for native enable/disable boxes. */
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) input[type="checkbox"] {
+  appearance: auto !important;
+  -webkit-appearance: checkbox !important;
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
+  border-radius: 3px !important;
+  accent-color: #32AFA4;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) label {
+  color: #253D38 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) strong {
+  color: #173C37 !important;
+}
+
+/* Secondary copy buttons must stay light even when nested in legacy dark cards. */
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) .scorm-button-secondary {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  border-color: #C9DCD8 !important;
+  color: #31534E !important;
+  box-shadow: 0 1px 2px rgba(30, 72, 66, .035) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) .scorm-button-secondary:hover:not(:disabled) {
+  background: #EAF7F5 !important;
+  border-color: #9DD6CF !important;
+  color: #176F67 !important;
+}
+
+@media (max-width: 640px) {
+  html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) section.scorm-panel {
+    padding: 16px !important;
+  }
+
+  html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) section.scorm-panel > .grid > div.rounded-2xl.border,
+  html body .scorm-editorial.scorm-theme-light main:has(input[placeholder="company.com, subsidiary.com"]) section.scorm-panel > .grid > button.rounded-2xl.border {
+    padding: 14px !important;
+  }
+}
