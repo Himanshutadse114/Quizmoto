@@ -37,6 +37,7 @@ const ScormCourses = lazy(() => import('./pages/Scorm/Courses'));
 const ScormTracking = lazy(() => import('./pages/Scorm/Tracking'));
 const ScormLearnerRoster = lazy(() => import('./pages/Scorm/LearnerRoster'));
 const ScormAssignments = lazy(() => import('./pages/Scorm/Assignments'));
+const ScormCampaignAnalytics = lazy(() => import('./pages/Scorm/CampaignAnalytics'));
 const ScormLearnerAccessSettings = lazy(() => import('./pages/Scorm/LearnerAccessSettings'));
 const ScormLearnerPortal = lazy(() => import('./pages/Scorm/LearnerPortal'));
 const ScormCampaignPortal = lazy(() => import('./pages/Scorm/CampaignPortal'));
@@ -181,6 +182,7 @@ function AppRoutes() {
           <Route path="courses/:id" element={<ScormFeatureGate featureId="courses"><ScormCourseDetail /></ScormFeatureGate>} />
           <Route path="roster" element={<ScormFeatureGate featureId="tracking"><ScormLearnerRoster /></ScormFeatureGate>} />
           <Route path="assignments" element={<ScormFeatureGate featureId="tracking"><ScormAssignments /></ScormFeatureGate>} />
+          <Route path="campaigns/:campaignId/analytics" element={<ScormFeatureGate featureId="reports" analyticsAllowed><ScormCampaignAnalytics /></ScormFeatureGate>} />
           <Route path="tracking" element={<ScormFeatureGate featureId="tracking" analyticsAllowed><ScormTracking /></ScormFeatureGate>} />
           <Route path="library" element={<ScormFeatureGate featureId="library"><ScormLibrary /></ScormFeatureGate>} />
           <Route path="author" element={<ScormFeatureGate featureId="author"><ScormAuthor /></ScormFeatureGate>} />
