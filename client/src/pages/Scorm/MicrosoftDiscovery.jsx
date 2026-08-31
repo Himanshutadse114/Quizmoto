@@ -7,6 +7,7 @@ import { createMicrosoftPkceRequest } from './microsoftPkce';
 import { readScormPlatformTheme, saveScormPlatformTheme } from './platformTheme';
 import './scormAuthWorkbench.css';
 import './scormAuthTealRestore.css';
+import './scormAuthAutofillFix.css';
 import './scormLightTheme.css';
 import './scormLightContrastGuard.css';
 
