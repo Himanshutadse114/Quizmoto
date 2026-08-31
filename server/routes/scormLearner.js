@@ -54,17 +54,18 @@ router.post('/discover', learnerAuthLimiter, async (req, res) => {
     }
 });
 
-// Common learner Google entry. Google proves the email first, then LMSGEN finds
-// the exact tenant from active assignments and applies that workspace's learner
-// access policy. No workspace id is exposed in the public URL.
+// Common learner Google entry. Google proves the identity first. LMSGEN then
+// finds the exact tenant from the verified email's active assignments and still
+// requires that exact email to own at least one course instance before issuing
+// a learner session. This common Google entry therefore does not depend on a
+// tenant-specific Google client configuration.
 router.post('/google', learnerAuthLimiter, async (req, res) => {
     try {
         const identity = await verifyGlobalGoogleCredential(req.body?.credential);
         const policy = await discoverLearnerPolicy(identity.email);
         const result = await createLearnerSessionFromIdentity({
             workspaceId: policy.workspace.id,
-            identity,
-            requireGoogleEnabled: true
+            identity
         });
         res.json(result);
     } catch (err) {
