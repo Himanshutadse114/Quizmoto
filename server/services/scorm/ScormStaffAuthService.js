@@ -1,6 +1,8 @@
 const User = require('../../models/User');
 const {
-    ScormWorkspaceMember
+    ScormWorkspace,
+    ScormWorkspaceMember,
+    ScormWorkspaceAuthConfig
 } = require('../../models/scorm');
 const {
     getWorkspaceAndConfig,
@@ -12,6 +14,10 @@ const {
 
 const STAFF_JOINING_MODES = Object.freeze(['password_or_sso', 'sso_only']);
 const STAFF_ROLES = Object.freeze(['admin', 'co_admin', 'analytics_viewer']);
+const SHARED_PUBLIC_DOMAINS = new Set([
+    'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.co.in', 'outlook.com',
+    'hotmail.com', 'live.com', 'icloud.com', 'me.com', 'proton.me', 'protonmail.com'
+]);
 
 function fail(message, code, status = 400) {
     const err = new Error(message);
@@ -32,6 +38,10 @@ function parseJsonDomains(value) {
     } catch (_) {
         return normalizeDomains(value);
     }
+}
+
+function emailDomain(email) {
+    return normalizeEmail(email).split('@')[1] || '';
 }
 
 function staffProviderConfig(config) {
@@ -187,6 +197,64 @@ async function getStaffPolicyForEmail(email) {
     };
 }
 
+async function discoverStaffPolicy(email) {
+    const normalized = normalizeEmail(email);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+        throw fail('Enter your work email address.', 'SCORM_STAFF_EMAIL_REQUIRED', 400);
+    }
+
+    const direct = await getStaffPolicyForEmail(normalized);
+    if (direct) return { ...direct, source: 'membership' };
+
+    const domain = emailDomain(normalized);
+    if (!domain || SHARED_PUBLIC_DOMAINS.has(domain)) {
+        throw fail(
+            'We could not identify an organisation from this email. Ask your administrator to invite this exact address.',
+            'SCORM_STAFF_WORKSPACE_NOT_FOUND',
+            404
+        );
+    }
+
+    const configs = await ScormWorkspaceAuthConfig.findAll();
+    const matchingConfigs = configs.filter((config) => {
+        const domains = new Set([
+            ...parseJsonDomains(config.staffAllowedDomainsJson),
+            ...parseJsonDomains(config.allowedDomainsJson)
+        ]);
+        return domains.has(domain);
+    });
+
+    const matches = [];
+    for (const config of matchingConfigs) {
+        const workspace = await ScormWorkspace.findByPk(config.workspaceId);
+        if (workspace?.status === 'active') matches.push({ workspace, config });
+    }
+
+    if (matches.length > 1) {
+        throw fail(
+            'This email domain is configured for more than one organisation. Ask an administrator to invite your exact email address.',
+            'SCORM_STAFF_WORKSPACE_AMBIGUOUS',
+            409
+        );
+    }
+    if (!matches.length) {
+        throw fail(
+            'No LMSGEN organisation is configured for this work email domain.',
+            'SCORM_STAFF_WORKSPACE_NOT_FOUND',
+            404
+        );
+    }
+
+    const { workspace, config } = matches[0];
+    return {
+        workspace,
+        member: null,
+        config,
+        publicConfig: serializeStaffAuthConfig(config, { workspace, publicView: true }),
+        source: 'domain'
+    };
+}
+
 module.exports = {
     STAFF_JOINING_MODES,
     normalizeStaffJoiningMode,
@@ -194,5 +262,6 @@ module.exports = {
     saveStaffAuthConfig,
     getPublicStaffAuthConfig,
     verifyStaffIdentity,
-    getStaffPolicyForEmail
+    getStaffPolicyForEmail,
+    discoverStaffPolicy
 };
