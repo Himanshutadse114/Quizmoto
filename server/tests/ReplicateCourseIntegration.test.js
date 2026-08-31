@@ -139,7 +139,8 @@ describe('Vertex AI course content + image SCORM integration', () => {
         expect(prompt.toLowerCase()).to.include('16:9');
         expect(prompt).to.include('NON-HUMAN VISUAL ONLY');
         expect(prompt).to.include('ABSOLUTELY NO TEXT IN THE IMAGE');
-        expect(prompt).to.include('premium modern semi-realistic 3D');
+        expect(prompt).to.include('modern semi-realistic 3D render');
+        expect(prompt).to.include('premium studio lighting');
     });
 
     it('keeps Vertex raster imagery compatible with the existing package finalizer', () => {
