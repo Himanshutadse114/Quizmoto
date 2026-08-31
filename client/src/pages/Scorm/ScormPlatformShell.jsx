@@ -246,24 +246,13 @@ export default function ScormPlatformShell() {
               <div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />Quizmoto access</div>
               <div className="mt-1.5 text-[10px] leading-relaxed">This Google account is not assigned to an LMSGEN tenant. The Super Admin can assign this exact email to a tenant if LMSGEN access is required.</div>
             </div>
-          ) : scormAccess ? (
-            <div className="scorm-status-card rounded-xl px-3.5 py-3">
-              <div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />LMSGEN unlocked</div>
-              <div className="mt-1.5 text-[10px] leading-relaxed">
-                {analyticsOnly
-                  ? 'Read-only learner tracking, analytics and reporting are active.'
-                  : role === 'co_admin'
-                    ? 'Course operations, learner management, assignments, tracking and reporting are active.'
-                    : 'Authoring, learner management, assignments, tracking, reporting and SCORM operations are active.'}
-              </div>
-            </div>
-          ) : (
+          ) : !scormAccess ? (
             <div className="rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
               <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={13} /> Approval pending</div>
               <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae]">Quizmoto is unlocked. LMSGEN features unlock after administrator approval and tenant assignment.</div>
               <button type="button" onClick={refreshApproval} disabled={checkingAccess} className="mt-2 inline-flex items-center gap-1.5 text-[9px] font-semibold text-[#60a5fa] disabled:opacity-50"><RefreshCw size={11} className={checkingAccess ? 'animate-spin' : ''} /> Refresh access</button>
             </div>
-          )}
+          ) : null}
           <button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><LogOut size={14} /> Sign out</span><ChevronRight size={13} /></button>
         </div>
       </aside>
