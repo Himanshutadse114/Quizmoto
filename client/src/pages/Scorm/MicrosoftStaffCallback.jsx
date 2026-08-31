@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { RefreshCw, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { exchangeMicrosoftCode, readMicrosoftCallbackParams } from './microsoftPkce';
 
 export default function MicrosoftStaffCallback() {
   const { workspaceId } = useParams();
@@ -12,24 +13,46 @@ export default function MicrosoftStaffCallback() {
   useEffect(() => {
     let cancelled = false;
     const finish = async () => {
+      const pendingKey = `lmsgen_staff_ms_pending_${workspaceId}`;
+      const legacyStateKey = `lmsgen_staff_ms_state_${workspaceId}`;
       try {
-        const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-        const returnedState = params.get('state') || '';
-        const expectedState = sessionStorage.getItem(`lmsgen_staff_ms_state_${workspaceId}`) || '';
-        const idToken = params.get('id_token') || '';
-        const providerError = params.get('error_description') || params.get('error') || '';
-        sessionStorage.removeItem(`lmsgen_staff_ms_state_${workspaceId}`);
+        const callback = readMicrosoftCallbackParams();
+        let pending = null;
+        try {
+          const raw = sessionStorage.getItem(pendingKey);
+          if (raw) pending = JSON.parse(raw);
+        } catch (_) {
+          pending = null;
+        }
+        const expectedState = String(pending?.state || sessionStorage.getItem(legacyStateKey) || '');
 
-        if (providerError) throw new Error(providerError);
-        if (!returnedState || !expectedState || returnedState !== expectedState) {
+        if (callback.error) throw new Error(callback.error);
+        if (!callback.state || !expectedState || callback.state !== expectedState) {
           throw new Error('Microsoft sign-in state did not match. Please start sign-in again.');
         }
+
+        let idToken = callback.idToken;
+        if (!idToken && callback.code) {
+          idToken = await exchangeMicrosoftCode({
+            code: callback.code,
+            clientId: pending?.clientId,
+            tenantId: pending?.tenantId,
+            redirectUri: pending?.redirectUri,
+            verifier: pending?.verifier,
+            nonce: pending?.nonce
+          });
+        }
         if (!idToken) throw new Error('Microsoft did not return an identity token.');
+
+        sessionStorage.removeItem(pendingKey);
+        sessionStorage.removeItem(legacyStateKey);
 
         const result = await loginScormWorkspaceWithMicrosoft(workspaceId, idToken);
         if (!result?.token) throw new Error('Microsoft staff sign-in did not return a session.');
         if (!cancelled) navigate('/scorm', { replace: true });
       } catch (err) {
+        sessionStorage.removeItem(pendingKey);
+        sessionStorage.removeItem(legacyStateKey);
         if (!cancelled) setError(err.response?.data?.message || err.message || 'Microsoft staff sign-in failed.');
       }
     };
