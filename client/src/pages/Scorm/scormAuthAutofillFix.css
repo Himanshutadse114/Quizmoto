@@ -1,0 +1,22 @@
+.scorm-auth-workbench .sa-input:-webkit-autofill,
+.scorm-auth-workbench .sa-input:-webkit-autofill:hover,
+.scorm-auth-workbench .sa-input:-webkit-autofill:focus,
+.scorm-auth-workbench .sa-input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--sa-cream) !important;
+  caret-color: var(--sa-cream) !important;
+  -webkit-box-shadow: 0 0 0 1000px #0D1413 inset !important;
+  box-shadow: 0 0 0 1000px #0D1413 inset !important;
+  border-color: rgba(255,255,255,.10) !important;
+  transition: background-color 9999s ease-out 0s;
+}
+
+body .scorm-auth-workbench.scorm-theme-light .sa-input:-webkit-autofill,
+body .scorm-auth-workbench.scorm-theme-light .sa-input:-webkit-autofill:hover,
+body .scorm-auth-workbench.scorm-theme-light .sa-input:-webkit-autofill:focus,
+body .scorm-auth-workbench.scorm-theme-light .sa-input:-webkit-autofill:active {
+  -webkit-text-fill-color: #14201E !important;
+  caret-color: #14201E !important;
+  -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+  box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+  border-color: #CCDCD8 !important;
+}
