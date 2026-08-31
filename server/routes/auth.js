@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const { Op } = require('sequelize');
 const User = require('../models/User');
+const { ScormWorkspace, ScormWorkspaceMember } = require('../models/scorm');
 const auth = require('./middleware');
 const {
     ADMIN_CONTACT_EMAIL,
@@ -33,7 +34,7 @@ const scormAuthLimiter = rateLimit({
         return credential ? `google:${credential.slice(-48)}` : 'scorm-auth-anonymous';
     },
     message: {
-        message: 'Too many SCORM AI authentication attempts. Please wait a few minutes and try again.',
+        message: 'Too many LMSGEN authentication attempts. Please wait a few minutes and try again.',
         code: 'SCORM_AUTH_RATE_LIMITED'
     }
 });
@@ -52,9 +53,35 @@ function publicUser(user, token, extras = {}) {
     };
 }
 
-async function scormAuthResponse(user, role) {
+async function tenantForUser(user, role) {
+    if (role === 'super_admin') return { member: null, workspace: null };
+    const email = normalizeEmail(user?.email);
+    const member = email ? await ScormWorkspaceMember.findOne({ where: { email } }) : null;
+    if (!member || member.status === 'disabled') {
+        const err = new Error('Your LMSGEN account is authorised but has not been assigned to a tenant. Contact the Super Admin.');
+        err.status = 403;
+        err.code = 'SCORM_TENANT_MEMBERSHIP_REQUIRED';
+        throw err;
+    }
+    const workspace = await ScormWorkspace.findByPk(member.workspaceId);
+    if (!workspace || workspace.status !== 'active') {
+        const err = new Error('Your LMSGEN tenant is not active.');
+        err.status = 403;
+        err.code = 'SCORM_TENANT_INACTIVE';
+        throw err;
+    }
+    return { member, workspace };
+}
+
+async function scormAuthResponse(user, role, { authMethod = 'password' } = {}) {
     if (role === 'super_admin') await ensureSuperAdminGrant();
-    const token = issueToken(user, 'scorm', { scormRole: role });
+    const { workspace } = await tenantForUser(user, role);
+    const workspaceId = workspace?.id || null;
+    const token = issueToken(user, 'scorm', {
+        scormRole: role,
+        workspaceId,
+        authMethod
+    });
     return publicUser(user, token, {
         role,
         isSuperAdmin: role === 'super_admin',
@@ -62,7 +89,12 @@ async function scormAuthResponse(user, role) {
         product: 'scorm-ai',
         platformAccess: true,
         scormAccess: true,
-        pendingApproval: false
+        pendingApproval: false,
+        workspaceId,
+        workspaceName: workspace?.name || null,
+        tenantId: workspaceId,
+        tenantName: workspace?.name || null,
+        authMethod
     });
 }
 
@@ -82,7 +114,7 @@ function pendingResponse(user, captured = true) {
 }
 
 function quizmotoOnlyResponse(user) {
-    return publicUser(user, issueToken(user, 'quizmoto'), {
+    return publicUser(user, issueToken(user, 'quizmoto', { authMethod: 'google' }), {
         role: 'quizmoto',
         isSuperAdmin: false,
         product: 'quizmoto',
@@ -94,19 +126,14 @@ function quizmotoOnlyResponse(user) {
     });
 }
 
-// A pending platform token can call this endpoint because it is intentionally
-// outside /api/scorm/*. Quizmoto-scoped Google tokens are deliberately excluded:
-// Google on the common staff login is a Quizmoto-only authentication method and
-// must never be exchangeable for a full LMSGEN token through a refresh call.
+async function platformGoogleResponse(user) {
+    const role = await getAccessRole(user.email);
+    if (!role) return quizmotoOnlyResponse(user);
+    return scormAuthResponse(user, role, { authMethod: 'google' });
+}
+
 router.get('/scorm/status', auth, async (req, res) => {
     try {
-        if (req.authScope === 'quizmoto') {
-            return res.status(403).json({
-                message: 'This Google session is limited to Quizmoto. Use password or Microsoft organisation sign-in for LMSGEN.',
-                code: 'SCORM_GOOGLE_QUIZMOTO_ONLY'
-            });
-        }
-
         const user = await User.findByPk(req.userId);
         if (!user) {
             return res.status(401).json({ message: 'Platform account no longer exists.', code: 'PLATFORM_AUTH_REQUIRED' });
@@ -114,127 +141,80 @@ router.get('/scorm/status', auth, async (req, res) => {
 
         const role = await getAccessRole(user.email);
         if (!role) return res.json(pendingResponse(user, false));
-        return res.json(await scormAuthResponse(user, role));
+        return res.json(await scormAuthResponse(user, role, { authMethod: req.authMethod || 'password' }));
     } catch (err) {
-        console.error('SCORM AI access status error:', err);
-        return res.status(500).json({ message: 'Could not refresh SCORM AI access status.' });
+        console.error('LMSGEN access status error:', err);
+        return res.status(err.status || 500).json({
+            message: err.message || 'Could not refresh LMSGEN access status.',
+            code: err.code
+        });
     }
 });
 
-// Protect authentication attempts without rate-limiting the signed-in status
-// refresh endpoint above.
 router.use('/scorm', scormAuthLimiter);
 
-// Google Sign-In is intentionally Quizmoto-only on the common staff entry.
-router.post('/google', async (req, res) => {
-    try {
-        const { credential } = req.body;
-
-        if (!credential) {
-            return res.status(400).json({ message: 'Google credential missing' });
-        }
-
-        const ticket = await client.verifyIdToken({
-            idToken: credential,
-            audience: GOOGLE_CLIENT_ID
-        });
-
-        const payload = ticket.getPayload();
-        const { sub: googleId, email, name, picture } = payload;
-
-        let user = await User.findOne({ where: { googleId } });
-
-        if (!user) {
-            user = await User.findOne({ where: { email } });
-
-            if (user) {
-                user.googleId = googleId;
-                user.avatar = picture;
-                await user.save();
-            } else {
-                user = await User.create({
-                    username: name || email.split('@')[0],
-                    email,
-                    googleId,
-                    avatar: picture
-                });
-            }
-        } else if (user.avatar !== picture) {
-            user.avatar = picture;
-            await user.save();
-        }
-
-        res.json(quizmotoOnlyResponse(user));
-    } catch (err) {
-        console.error('Google Auth Error:', err);
-        res.status(500).json({ message: 'Authentication failed' });
+async function ensureGoogleUser(payload) {
+    const googleId = String(payload?.sub || '');
+    const email = normalizeEmail(payload?.email);
+    const name = String(payload?.name || '').trim();
+    const picture = payload?.picture || null;
+    if (!googleId || !email || payload?.email_verified !== true) {
+        const err = new Error('A verified Google email address is required.');
+        err.status = 401;
+        throw err;
     }
-});
 
-// Legacy SCORM Google entry is kept for rolling-deploy compatibility but now
-// follows the same policy as the common Google button: Google can authenticate
-// a Quizmoto session, never a full LMSGEN administrator workspace session.
-router.post('/scorm/google', async (req, res) => {
+    let user = await User.findOne({ where: { googleId } });
+    if (user && normalizeEmail(user.email) !== email) {
+        const emailOwner = await User.findOne({ where: { email } });
+        if (emailOwner && emailOwner.id !== user.id) {
+            const err = new Error('This Google email is already linked to another account.');
+            err.status = 409;
+            throw err;
+        }
+        user.email = email;
+    }
+    if (!user) user = await User.findOne({ where: { email } });
+
+    if (user) {
+        user.googleId = googleId;
+        if (picture) user.avatar = picture;
+        if (!user.username) user.username = name || email.split('@')[0];
+        await user.save();
+        return user;
+    }
+
+    const baseUsername = name || email.split('@')[0];
+    const usernameTaken = await User.findOne({ where: { username: baseUsername } });
+    return User.create({
+        username: usernameTaken ? `${baseUsername}-${Math.floor(1000 + Math.random() * 9000)}` : baseUsername,
+        email,
+        googleId,
+        avatar: picture
+    });
+}
+
+async function googleLogin(req, res) {
     try {
         const credential = String(req.body?.credential || '');
-        if (!credential) {
-            return res.status(400).json({ message: 'Google credential missing' });
-        }
-
-        const ticket = await client.verifyIdToken({
-            idToken: credential,
-            audience: GOOGLE_CLIENT_ID
-        });
-        const payload = ticket.getPayload() || {};
-        const googleId = String(payload.sub || '');
-        const email = normalizeEmail(payload.email);
-        const name = String(payload.name || '').trim();
-        const picture = payload.picture || null;
-
-        if (!googleId || !email || payload.email_verified !== true) {
-            return res.status(401).json({ message: 'A verified Google email address is required.' });
-        }
-
-        let user = await User.findOne({ where: { googleId } });
-        if (user && normalizeEmail(user.email) !== email) {
-            const emailOwner = await User.findOne({ where: { email } });
-            if (emailOwner && emailOwner.id !== user.id) {
-                return res.status(409).json({ message: 'This Google email is already linked to another account.' });
-            }
-            user.email = email;
-        }
-
-        if (!user) user = await User.findOne({ where: { email } });
-
-        if (user) {
-            user.googleId = googleId;
-            if (picture) user.avatar = picture;
-            if (!user.username) user.username = name || email.split('@')[0];
-            await user.save();
-        } else {
-            const baseUsername = name || email.split('@')[0];
-            const usernameTaken = await User.findOne({ where: { username: baseUsername } });
-            const safeUsername = usernameTaken
-                ? `${baseUsername}-${Math.floor(1000 + Math.random() * 9000)}`
-                : baseUsername;
-            user = await User.create({
-                username: safeUsername,
-                email,
-                googleId,
-                avatar: picture
-            });
-        }
-
-        res.json(quizmotoOnlyResponse(user));
+        if (!credential) return res.status(400).json({ message: 'Google credential missing' });
+        const ticket = await client.verifyIdToken({ idToken: credential, audience: GOOGLE_CLIENT_ID });
+        const user = await ensureGoogleUser(ticket.getPayload() || {});
+        res.json(await platformGoogleResponse(user));
     } catch (err) {
-        console.error('SCORM AI Google auth error:', err);
-        res.status(500).json({ message: 'Google authentication failed.' });
+        console.error('Google Auth Error:', err);
+        res.status(err.status || 500).json({
+            message: err.message || 'Google authentication failed.',
+            code: err.code
+        });
     }
-});
+}
 
-// SCORM AI account registration captures the account first. Pending users can
-// enter the platform immediately with Quizmoto unlocked, but protected SCORM AI
-// capabilities remain unavailable until the Super Admin approves the email.
+// Common Google sign-in: authorised tenant staff and the protected Super Admin
+// receive full LMSGEN access. Unassigned Google identities remain Quizmoto-only.
+router.post('/google', googleLogin);
+router.post('/scorm/google', googleLogin);
+
 router.post('/scorm/register', async (req, res) => {
     try {
         const username = String(req.body?.username || '').trim();
@@ -254,7 +234,7 @@ router.post('/scorm/register', async (req, res) => {
         const role = await getAccessRole(email);
         if (role === 'super_admin') {
             return res.status(403).json({
-                message: 'The Super Admin account already exists. Sign in with its existing password or configured Microsoft organisation account.',
+                message: 'The Super Admin account already exists. Sign in with its existing password or Google account.',
                 code: 'SCORM_SUPER_ADMIN_ACCOUNT_MANAGED',
                 adminContact: ADMIN_CONTACT_EMAIL
             });
@@ -272,13 +252,13 @@ router.post('/scorm/register', async (req, res) => {
             if (!role) {
                 return res.status(409).json({
                     ...pendingResponse(user, false),
-                    message: `This SCORM AI account is already registered and is still waiting for administrator approval. Please contact ${ADMIN_CONTACT_EMAIL}. Sign in with the same credentials to use Quizmoto while approval is pending.`,
+                    message: `This account is already registered but has not been assigned to an LMSGEN tenant. Please contact ${ADMIN_CONTACT_EMAIL}.`,
                     code: 'SCORM_ACCOUNT_EXISTS_PENDING'
                 });
             }
 
             return res.status(409).json({
-                message: 'This SCORM AI account is already registered and approved. Please log in with the same credentials.',
+                message: 'This LMSGEN account is already registered. Please sign in with the same credentials.',
                 code: 'SCORM_ACCOUNT_EXISTS',
                 pendingApproval: false,
                 adminContact: ADMIN_CONTACT_EMAIL
@@ -303,11 +283,10 @@ router.post('/scorm/register', async (req, res) => {
         });
 
         if (!role) return res.status(202).json(pendingResponse(user, true));
-
-        res.status(201).json(await scormAuthResponse(user, role));
+        res.status(201).json(await scormAuthResponse(user, role, { authMethod: 'password' }));
     } catch (err) {
-        console.error('SCORM AI registration error:', err);
-        res.status(500).json({ message: 'Could not create the SCORM AI account.' });
+        console.error('LMSGEN registration error:', err);
+        res.status(err.status || 500).json({ message: err.message || 'Could not create the LMSGEN account.', code: err.code });
     }
 });
 
@@ -333,7 +312,6 @@ router.post('/scorm/login', async (req, res) => {
         }
 
         const role = await getAccessRole(user.email);
-
         if (!role) {
             await captureAccessRequest({
                 userId: user.id,
@@ -344,15 +322,14 @@ router.post('/scorm/login', async (req, res) => {
             return res.json(pendingResponse(user, false));
         }
 
-        res.json(await scormAuthResponse(user, role));
+        res.json(await scormAuthResponse(user, role, { authMethod: 'password' }));
     } catch (err) {
-        console.error('SCORM AI login error:', err);
-        res.status(500).json({ message: 'SCORM AI login failed.' });
+        console.error('LMSGEN login error:', err);
+        res.status(err.status || 500).json({ message: err.message || 'LMSGEN login failed.', code: err.code });
     }
 });
 
-// Test Auth for E2E
-router.post('/test-login', async (req, res, next) => {
+router.post('/test-login', async (req, res) => {
     if (process.env.NODE_ENV !== 'test') {
         return res.status(404).json({ message: 'Not found' });
     }
@@ -363,9 +340,7 @@ router.post('/test-login', async (req, res, next) => {
         const email = `test${testRunId}@example.com`;
 
         let user = await User.findOne({ where: { username } });
-        if (!user) {
-            user = await User.create({ username, email });
-        }
+        if (!user) user = await User.create({ username, email });
         const token = jwt.sign({ userId: user.id, scope: 'quizmoto' }, JWT_SECRET, { expiresIn: '1d' });
         res.json({ token, username: user.username, avatar: user.avatar });
     } catch (err) {
