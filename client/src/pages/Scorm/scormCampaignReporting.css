@@ -1,246 +1,124 @@
-/* Campaign delivery, campaign analytics and Reports share the LMSGEN teal system. */
-.scorm-campaigns-page,
-.scorm-campaign-analytics-page,
-.scorm-reports-page {
-  --cr-accent: #4FC9BF;
-  --cr-accent-strong: #24A99D;
-  --cr-accent-soft: rgba(79,201,191,.11);
-  --cr-success: #46D6A0;
-  --cr-danger: #FB7185;
-  --cr-warning: #FBBF24;
-}
+/* LMSGEN campaign delivery + reporting theme. Scoped to new routes. */
+.scorm-campaigns-page,.scorm-campaign-analytics-page,.scorm-reports-page{--cr-accent:#4FC9BF;--cr-accent-strong:#24A99D;--cr-accent-soft:rgba(79,201,191,.11);--cr-success:#46D6A0;--cr-danger:#FB7185;--cr-warning:#FBBF24}
 
 /* Campaign delivery ------------------------------------------------------- */
-.scorm-campaigns-page .campaign-upload-zone,
-.scorm-campaigns-page .campaign-course-list,
-.scorm-campaigns-page .campaign-detail-list,
-.scorm-campaigns-page .campaign-soft-card,
-.scorm-campaigns-page .campaign-required-toggle { border-color: var(--scorm-line) !important; }
-.scorm-campaigns-page .campaign-course-row,
-.scorm-campaigns-page .campaign-list-row { transition: background-color 150ms ease, border-color 150ms ease; }
-.scorm-campaigns-page .campaign-course-row:hover,
-.scorm-campaigns-page .campaign-list-row:hover { background: rgba(79,201,191,.045) !important; }
-.scorm-campaigns-page input[type="checkbox"] { accent-color: var(--cr-accent-strong); }
+.scorm-campaigns-page .campaign-upload-zone,.scorm-campaigns-page .campaign-course-list,.scorm-campaigns-page .campaign-detail-list,.scorm-campaigns-page .campaign-soft-card,.scorm-campaigns-page .campaign-required-toggle{border-color:var(--scorm-line)!important}
+.scorm-campaigns-page .campaign-course-row,.scorm-campaigns-page .campaign-list-row{transition:background-color 150ms ease,border-color 150ms ease}
+.scorm-campaigns-page .campaign-course-row:hover,.scorm-campaigns-page .campaign-list-row:hover{background:rgba(79,201,191,.045)!important}
+.scorm-campaigns-page input[type="checkbox"]{accent-color:var(--cr-accent-strong)}
 
-/* Beat the legacy rounded-2xl dark !important rule on this route. */
 html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-upload-zone,
 html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-course-list,
 html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-detail-list,
 html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-soft-card,
 html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-required-toggle,
-html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-csv-preview {
-  background: #fff !important;
-  background-image: none !important;
-  border-color: #D7E4E1 !important;
-  color: #13211E !important;
-  box-shadow: none !important;
-}
-html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-upload-zone {
-  background: #F7FBFA !important;
-  border-color: #BFDCD7 !important;
-}
-html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-upload-zone:hover {
-  background: #EDF8F6 !important;
-  border-color: #8ED1C8 !important;
-}
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-csv-preview{background:#fff!important;background-image:none!important;border-color:#D7E4E1!important;color:#13211E!important;box-shadow:none!important}
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-upload-zone{background:#F7FBFA!important;border-color:#BFDCD7!important}
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-upload-zone:hover{background:#EDF8F6!important;border-color:#8ED1C8!important}
 html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-course-row,
 html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-list-row,
-html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-detail-row {
-  background: #fff !important;
-  color: #13211E !important;
-  border-color: #E0EAE8 !important;
-}
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-detail-row{background:#fff!important;color:#13211E!important;border-color:#E0EAE8!important}
 html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-course-row:hover,
-html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-list-row:hover { background: #F1F9F7 !important; }
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-list-row:hover{background:#F1F9F7!important}
 html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page input:not([type="checkbox"]),
 html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page select,
-html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page textarea {
-  background: #fff !important;
-  border-color: #C9DAD6 !important;
-  color: #172522 !important;
-}
-html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page input[type="checkbox"] {
-  appearance: auto !important;
-  -webkit-appearance: checkbox !important;
-  width: 15px !important;
-  height: 15px !important;
-  min-width: 15px !important;
-  box-shadow: none !important;
-  accent-color: #24A99D;
-}
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page textarea{background:#fff!important;border-color:#C9DAD6!important;color:#172522!important}
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page input[type="checkbox"]{appearance:auto!important;-webkit-appearance:checkbox!important;width:15px!important;height:15px!important;min-width:15px!important;box-shadow:none!important;accent-color:#24A99D}
 
 /* Campaign analytics ------------------------------------------------------ */
-.campaign-analytics-metric,
-.campaign-analytics-panel,
-.campaign-analytics-table,
-.campaign-analytics-learner-detail {
-  border: 1px solid rgba(79,201,191,.15);
-  background: #071311;
-  color: #F4FBFA;
-}
-.campaign-analytics-metric { border-radius: 14px; padding: 15px; }
-.campaign-analytics-panel,
-.campaign-analytics-table,
-.campaign-analytics-learner-detail { border-radius: 16px; overflow: hidden; }
-.campaign-analytics-table table { width: 100%; border-collapse: collapse; }
-.campaign-analytics-table thead { background: #0A1A17 !important; }
-.campaign-analytics-table th {
-  color: #7EAAA3 !important;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: .1em;
-  font-weight: 700;
-}
-.campaign-analytics-table td { color: #DCEBE8; }
-.campaign-analytics-table tr { border-color: rgba(79,201,191,.10) !important; }
-.campaign-analytics-table tbody tr:hover { background: rgba(79,201,191,.055) !important; }
-.campaign-analytics-progress {
-  height: 6px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(148,163,184,.14);
-}
-.campaign-analytics-progress > span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg,#24A99D,#72D6CD);
-}
+html body .scorm-editorial .scorm-campaign-analytics-page .campaign-analytics-metric,
+html body .scorm-editorial .scorm-campaign-analytics-page .campaign-analytics-panel,
+html body .scorm-editorial .scorm-campaign-analytics-page .campaign-analytics-table,
+html body .scorm-editorial .scorm-campaign-analytics-page .campaign-analytics-learner-detail{border:1px solid rgba(79,201,191,.15)!important;background:#071311!important;background-image:none!important;color:#F4FBFA!important;box-shadow:none!important}
+.campaign-analytics-metric{border-radius:14px;padding:15px}
+.campaign-analytics-panel,.campaign-analytics-table,.campaign-analytics-learner-detail{border-radius:16px;overflow:hidden}
+.campaign-analytics-table table{width:100%;border-collapse:collapse}
+html body .scorm-editorial .scorm-campaign-analytics-page .campaign-analytics-table thead{background:#0A1A17!important}
+html body .scorm-editorial .scorm-campaign-analytics-page .campaign-analytics-table th{color:#7EAAA3!important;font-size:9px;text-transform:uppercase;letter-spacing:.1em;font-weight:700}
+html body .scorm-editorial .scorm-campaign-analytics-page .campaign-analytics-table td{color:#DCEBE8!important}
+html body .scorm-editorial .scorm-campaign-analytics-page .campaign-analytics-table tr{border-color:rgba(79,201,191,.10)!important}
+html body .scorm-editorial .scorm-campaign-analytics-page .campaign-analytics-table tbody tr:hover{background:rgba(79,201,191,.055)!important}
+.campaign-analytics-progress{height:6px;border-radius:999px;overflow:hidden;background:rgba(148,163,184,.14)}
+.campaign-analytics-progress>span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#24A99D,#72D6CD)}
 html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-metric,
 html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-panel,
 html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-table,
-html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-learner-detail {
-  background: #fff !important;
-  background-image: none !important;
-  border-color: #D7E4E1 !important;
-  color: #13211E !important;
-  box-shadow: 0 6px 18px rgba(29,78,70,.045) !important;
-}
-html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-table thead { background: #F2F8F7 !important; }
-html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-table th { color: #5A726D !important; }
-html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-table td { color: #20332F !important; }
-html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-table tr { background: #fff !important; border-color: #E1EBE9 !important; }
-html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-table tbody tr:hover { background: #F1F9F7 !important; }
-html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-progress { background: #DFEAE8 !important; }
+html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-learner-detail{background:#fff!important;background-image:none!important;border-color:#D7E4E1!important;color:#13211E!important;box-shadow:0 6px 18px rgba(29,78,70,.045)!important}
+html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-table thead{background:#F2F8F7!important}
+html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-table th{color:#5A726D!important}
+html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-table td{color:#20332F!important}
+html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-table tr{background:#fff!important;border-color:#E1EBE9!important}
+html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-table tbody tr:hover{background:#F1F9F7!important}
+html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page .campaign-analytics-progress{background:#DFEAE8!important}
 
-/* Reports ---------------------------------------------------------------- */
-.scorm-reports-page { color: #EAF5F2; }
-.scorm-reports-page .reports-section,
-.scorm-reports-page .reports-course-card,
-.scorm-reports-page .reports-soft-card {
-  background: #071311 !important;
-  background-image: none !important;
-  border-color: rgba(79,201,191,.16) !important;
-  color: #F4FBFA !important;
-  box-shadow: none !important;
-}
-.scorm-reports-page .reports-section-header,
-.scorm-reports-page .reports-table-head {
-  background: #0A1A17 !important;
-  border-color: rgba(79,201,191,.13) !important;
-}
-.scorm-reports-page .reports-accent,
-.scorm-reports-page a:hover { color: #4FC9BF !important; }
-.scorm-reports-page .reports-muted { color: #8AA39E !important; }
-.scorm-reports-page .reports-title {
-  font-size: clamp(25px,3vw,34px) !important;
-  line-height: 1.08 !important;
-  letter-spacing: -.025em !important;
-}
-.scorm-reports-page .reports-section-title {
-  font-size: clamp(16px,1.8vw,20px) !important;
-  line-height: 1.15 !important;
-  letter-spacing: -.015em !important;
-}
-.scorm-reports-page input {
-  background: #04100E !important;
-  border-color: rgba(79,201,191,.18) !important;
-  color: #F4FBFA !important;
-}
-.scorm-reports-page input:focus {
-  border-color: #4FC9BF !important;
-  box-shadow: 0 0 0 3px rgba(79,201,191,.12) !important;
-}
-.scorm-reports-page .reports-table tbody tr:hover { background: rgba(79,201,191,.045) !important; }
+/* Reports — authoritative teal dark mode --------------------------------- */
+html body .scorm-editorial .scorm-reports-page{color:#EAF5F2!important}
+html body .scorm-editorial .scorm-reports-page .reports-section,
+html body .scorm-editorial .scorm-reports-page .reports-course-card,
+html body .scorm-editorial .scorm-reports-page .reports-soft-card{background:#071311!important;background-image:none!important;border-color:rgba(79,201,191,.16)!important;color:#F4FBFA!important;box-shadow:none!important}
+html body .scorm-editorial .scorm-reports-page .reports-section-header,
+html body .scorm-editorial .scorm-reports-page .reports-table-head{background:#0A1A17!important;background-image:none!important;border-color:rgba(79,201,191,.13)!important;color:#F4FBFA!important}
+html body .scorm-editorial .scorm-reports-page .reports-accent,
+html body .scorm-editorial .scorm-reports-page a:hover{color:#4FC9BF!important}
+html body .scorm-editorial .scorm-reports-page .reports-muted{color:#8AA39E!important}
+.scorm-reports-page .reports-title{font-size:clamp(25px,3vw,34px)!important;line-height:1.08!important;letter-spacing:-.025em!important}
+.scorm-reports-page .reports-section-title{font-size:clamp(16px,1.8vw,20px)!important;line-height:1.15!important;letter-spacing:-.015em!important}
+html body .scorm-editorial .scorm-reports-page input{background:#04100E!important;border-color:rgba(79,201,191,.18)!important;color:#F4FBFA!important}
+html body .scorm-editorial .scorm-reports-page input:focus{border-color:#4FC9BF!important;box-shadow:0 0 0 3px rgba(79,201,191,.12)!important}
+html body .scorm-editorial .scorm-reports-page .reports-table tbody tr{background:#071311!important;border-color:rgba(79,201,191,.09)!important}
+html body .scorm-editorial .scorm-reports-page .reports-table tbody tr:hover{background:#0B1B18!important}
 
-html body .scorm-editorial.scorm-theme-light .scorm-reports-page { color: #13211E !important; }
+/* Light reporting surfaces. */
+html body .scorm-editorial.scorm-theme-light .scorm-reports-page{color:#13211E!important}
 html body .scorm-editorial.scorm-theme-light .scorm-reports-page .reports-section,
 html body .scorm-editorial.scorm-theme-light .scorm-reports-page .reports-course-card,
-html body .scorm-editorial.scorm-theme-light .scorm-reports-page .reports-soft-card {
-  background: #fff !important;
-  background-image: none !important;
-  border-color: #D7E4E1 !important;
-  color: #13211E !important;
-  box-shadow: 0 6px 18px rgba(29,78,70,.045) !important;
-}
+html body .scorm-editorial.scorm-theme-light .scorm-reports-page .reports-soft-card{background:#fff!important;background-image:none!important;border-color:#D7E4E1!important;color:#13211E!important;box-shadow:0 6px 18px rgba(29,78,70,.045)!important}
 html body .scorm-editorial.scorm-theme-light .scorm-reports-page .reports-section-header,
-html body .scorm-editorial.scorm-theme-light .scorm-reports-page .reports-table-head {
-  background: #F4F9F8 !important;
-  border-color: #DDE8E5 !important;
-}
-html body .scorm-editorial.scorm-theme-light .scorm-reports-page .reports-muted { color: #5E746F !important; }
-html body .scorm-editorial.scorm-theme-light .scorm-reports-page input {
-  background: #fff !important;
-  border-color: #C9DAD6 !important;
-  color: #172522 !important;
-}
-html body .scorm-editorial.scorm-theme-light .scorm-reports-page .reports-table tbody tr { background: #fff !important; border-color: #E1EBE9 !important; }
-html body .scorm-editorial.scorm-theme-light .scorm-reports-page .reports-table tbody tr:hover { background: #F1F9F7 !important; }
+html body .scorm-editorial.scorm-theme-light .scorm-reports-page .reports-table-head{background:#F4F9F8!important;border-color:#DDE8E5!important;color:#13211E!important}
+html body .scorm-editorial.scorm-theme-light .scorm-reports-page .reports-muted{color:#5E746F!important}
+html body .scorm-editorial.scorm-theme-light .scorm-reports-page input{background:#fff!important;border-color:#C9DAD6!important;color:#172522!important}
+html body .scorm-editorial.scorm-theme-light .scorm-reports-page .reports-table tbody tr{background:#fff!important;border-color:#E1EBE9!important}
+html body .scorm-editorial.scorm-theme-light .scorm-reports-page .reports-table tbody tr:hover{background:#F1F9F7!important}
+html body .scorm-editorial.scorm-theme-light .scorm-reports-page .campaign-analytics-progress{background:#DFEAE8!important}
 
-/* LearnerAuditDetail is shared with older routes and still emits historical
-   warm classes. Scope-remap those classes to teal only inside the new report
-   surfaces, keeping the older tracking screens untouched. */
-.scorm-reports-page [class*="bg-[#12100e]"],
-.scorm-campaign-analytics-page [class*="bg-[#12100e]"] { background: #071311 !important; border-color: rgba(79,201,191,.16) !important; }
-.scorm-reports-page [class*="bg-[#191611]"],
-.scorm-campaign-analytics-page [class*="bg-[#191611]"] { background: #0A1815 !important; border-color: rgba(79,201,191,.14) !important; }
-.scorm-reports-page [class*="bg-[#17140f]"],
-.scorm-campaign-analytics-page [class*="bg-[#17140f]"] { background: #081512 !important; border-color: rgba(79,201,191,.12) !important; }
-.scorm-reports-page [class*="border-[#4b3f33]"],
-.scorm-reports-page [class*="border-[#3e352c]"],
-.scorm-reports-page [class*="border-[#3b3229]"],
-.scorm-reports-page [class*="border-[#332C24]"],
-.scorm-campaign-analytics-page [class*="border-[#4b3f33]"],
-.scorm-campaign-analytics-page [class*="border-[#3e352c]"],
-.scorm-campaign-analytics-page [class*="border-[#3b3229]"],
-.scorm-campaign-analytics-page [class*="border-[#332C24]"] { border-color: rgba(79,201,191,.13) !important; }
-.scorm-reports-page [class*="text-[#F1E8D4]"],
-.scorm-campaign-analytics-page [class*="text-[#F1E8D4]"] { color: #F4FBFA !important; }
-.scorm-reports-page [class*="text-[#9D8568]"],
-.scorm-campaign-analytics-page [class*="text-[#9D8568]"] { color: #8AA39E !important; }
-.scorm-reports-page [class*="text-[#FF9A37]"],
-.scorm-campaign-analytics-page [class*="text-[#FF9A37]"] { color: #4FC9BF !important; }
-.scorm-reports-page [class*="border-[#5b4937]"],
-.scorm-campaign-analytics-page [class*="border-[#5b4937]"] { border-color: rgba(79,201,191,.20) !important; }
-.scorm-reports-page [class*="bg-[#251d15]"],
-.scorm-campaign-analytics-page [class*="bg-[#251d15]"] { background: rgba(79,201,191,.10) !important; color: #72D6CD !important; }
+/* LearnerAuditDetail still emits historical warm classes. Remap them only
+   inside campaign/reporting pages; older tracking pages keep their styling. */
+html body .scorm-editorial .scorm-reports-page [class*="bg-[#12100e]"],
+html body .scorm-editorial .scorm-campaign-analytics-page [class*="bg-[#12100e]"]{background:#071311!important;background-image:none!important;border-color:rgba(79,201,191,.16)!important}
+html body .scorm-editorial .scorm-reports-page [class*="bg-[#191611]"],
+html body .scorm-editorial .scorm-campaign-analytics-page [class*="bg-[#191611]"]{background:#0A1815!important;background-image:none!important;border-color:rgba(79,201,191,.14)!important}
+html body .scorm-editorial .scorm-reports-page [class*="bg-[#17140f]"],
+html body .scorm-editorial .scorm-campaign-analytics-page [class*="bg-[#17140f]"]{background:#081512!important;background-image:none!important;border-color:rgba(79,201,191,.12)!important}
+html body .scorm-editorial .scorm-reports-page [class*="border-[#4b3f33]"],
+html body .scorm-editorial .scorm-reports-page [class*="border-[#3e352c]"],
+html body .scorm-editorial .scorm-reports-page [class*="border-[#3b3229]"],
+html body .scorm-editorial .scorm-reports-page [class*="border-[#332C24]"],
+html body .scorm-editorial .scorm-campaign-analytics-page [class*="border-[#4b3f33]"],
+html body .scorm-editorial .scorm-campaign-analytics-page [class*="border-[#3e352c]"],
+html body .scorm-editorial .scorm-campaign-analytics-page [class*="border-[#3b3229]"],
+html body .scorm-editorial .scorm-campaign-analytics-page [class*="border-[#332C24]"]{border-color:rgba(79,201,191,.13)!important}
+html body .scorm-editorial .scorm-reports-page [class*="text-[#F1E8D4]"],
+html body .scorm-editorial .scorm-campaign-analytics-page [class*="text-[#F1E8D4]"]{color:#F4FBFA!important}
+html body .scorm-editorial .scorm-reports-page [class*="text-[#9D8568]"],
+html body .scorm-editorial .scorm-campaign-analytics-page [class*="text-[#9D8568]"]{color:#8AA39E!important}
+html body .scorm-editorial .scorm-reports-page [class*="text-[#FF9A37]"],
+html body .scorm-editorial .scorm-campaign-analytics-page [class*="text-[#FF9A37]"]{color:#4FC9BF!important}
+html body .scorm-editorial .scorm-reports-page [class*="bg-[#251d15]"],
+html body .scorm-editorial .scorm-campaign-analytics-page [class*="bg-[#251d15]"]{background:rgba(79,201,191,.10)!important;border-color:rgba(79,201,191,.20)!important;color:#72D6CD!important}
 
 html body .scorm-editorial.scorm-theme-light .scorm-reports-page [class*="bg-[#12100e]"],
 html body .scorm-editorial.scorm-theme-light .scorm-reports-page [class*="bg-[#191611]"],
 html body .scorm-editorial.scorm-theme-light .scorm-reports-page [class*="bg-[#17140f]"],
 html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page [class*="bg-[#12100e]"],
 html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page [class*="bg-[#191611]"],
-html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page [class*="bg-[#17140f]"] {
-  background: #fff !important;
-  background-image: none !important;
-  border-color: #D7E4E1 !important;
-  color: #13211E !important;
-}
+html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page [class*="bg-[#17140f]"]{background:#fff!important;background-image:none!important;border-color:#D7E4E1!important;color:#13211E!important}
 html body .scorm-editorial.scorm-theme-light .scorm-reports-page [class*="text-[#F1E8D4]"],
-html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page [class*="text-[#F1E8D4]"] { color: #13211E !important; }
+html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page [class*="text-[#F1E8D4]"]{color:#13211E!important}
 html body .scorm-editorial.scorm-theme-light .scorm-reports-page [class*="text-[#9D8568]"],
-html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page [class*="text-[#9D8568]"] { color: #5E746F !important; }
+html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page [class*="text-[#9D8568]"]{color:#5E746F!important}
 html body .scorm-editorial.scorm-theme-light .scorm-reports-page [class*="text-[#FF9A37]"],
-html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page [class*="text-[#FF9A37]"] { color: #178C82 !important; }
+html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page [class*="text-[#FF9A37]"]{color:#178C82!important}
 html body .scorm-editorial.scorm-theme-light .scorm-reports-page [class*="bg-[#251d15]"],
-html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page [class*="bg-[#251d15]"] {
-  background: #E5F7F4 !important;
-  border-color: #B8E5DF !important;
-  color: #178C82 !important;
-}
+html body .scorm-editorial.scorm-theme-light .scorm-campaign-analytics-page [class*="bg-[#251d15]"]{background:#E5F7F4!important;border-color:#B8E5DF!important;color:#178C82!important}
 
-@media (max-width: 767px) {
-  .scorm-reports-page .reports-title { font-size: 25px !important; }
-  .scorm-reports-page .reports-section-title { font-size: 16px !important; }
-  .scorm-campaigns-page .campaign-actions { justify-content: flex-start !important; }
-}
+@media(max-width:767px){.scorm-reports-page .reports-title{font-size:25px!important}.scorm-reports-page .reports-section-title{font-size:16px!important}.scorm-campaigns-page .campaign-actions{justify-content:flex-start!important}}
