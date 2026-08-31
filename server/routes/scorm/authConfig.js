@@ -12,7 +12,8 @@ const {
 } = require('../../services/scorm/ScormStaffAuthService');
 
 function requireWorkspaceAdmin(req, res, next) {
-    if (req.scormRole !== 'admin') {
+    const canManageWorkspace = req.scormRole === 'admin' || req.scormRole === 'super_admin';
+    if (!canManageWorkspace) {
         return res.status(403).json({
             message: 'Only the primary workspace Admin can change authentication settings.',
             code: 'SCORM_WORKSPACE_ADMIN_REQUIRED'

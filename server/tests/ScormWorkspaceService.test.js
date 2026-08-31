@@ -106,6 +106,44 @@ describe('ScormWorkspaceService', () => {
         });
     });
 
+    it('gives the platform Super Admin an owner workspace without losing the global role', async () => {
+        const superAdmin = { id: 1, email: 'super@example.com', username: 'Super Admin' };
+        const workspaceRow = {
+            id: 'super-workspace',
+            ownerUserId: 1,
+            name: 'Super Admin workspace',
+            status: 'active'
+        };
+        const ownerMember = activeMember({
+            id: 'super-owner-member',
+            workspaceId: workspaceRow.id,
+            userId: superAdmin.id,
+            email: superAdmin.email,
+            role: 'admin',
+            displayName: superAdmin.username
+        });
+        const { service, ScormWorkspace, ScormWorkspaceMember } = loadService();
+        ScormWorkspace.findOrCreate.resolves([workspaceRow]);
+        ScormWorkspaceMember.findOne.resolves(null);
+        ScormWorkspaceMember.create.resolves(ownerMember);
+
+        const context = await service.resolveWorkspaceContext({ user: superAdmin, role: 'super_admin' });
+
+        expect(context.workspace).to.equal(workspaceRow);
+        expect(context.member).to.equal(ownerMember);
+        expect(context.hostId).to.equal(superAdmin.id);
+        expect(context.role).to.equal('super_admin');
+        expect(context.member.role).to.equal('admin');
+        expect(ScormWorkspace.findOrCreate.calledOnce).to.equal(true);
+        expect(ScormWorkspaceMember.create.firstCall.args[0]).to.include({
+            workspaceId: 'super-workspace',
+            userId: 1,
+            email: 'super@example.com',
+            role: 'admin',
+            status: 'active'
+        });
+    });
+
     it('resolves a co-admin to the primary admin workspace hostId', async () => {
         const coAdmin = { id: 22, email: 'coadmin@example.com', username: 'Co Admin' };
         const memberRow = activeMember();

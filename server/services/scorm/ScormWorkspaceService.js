@@ -139,11 +139,16 @@ async function resolveWorkspaceContext({ user, role }) {
         throw fail('SCORM account no longer exists.', 'SCORM_AUTH_REQUIRED', 401);
     }
 
+    // The platform Super Admin is also a first-class LMSGEN workspace owner.
+    // Keep the global `super_admin` runtime role so platform-wide controls stay
+    // available, while attaching a normal owner workspace so campaigns, SSO,
+    // team management, learner delivery and reporting use the same tenant model
+    // as every other administrator. The workspace hostId remains the existing
+    // Super Admin user id, so historical courses and learner data stay in place.
     if (accessRole === 'super_admin') {
+        const context = await ensureOwnerWorkspace(user);
         return {
-            workspace: null,
-            member: null,
-            hostId: user.id,
+            ...context,
             role: 'super_admin'
         };
     }
