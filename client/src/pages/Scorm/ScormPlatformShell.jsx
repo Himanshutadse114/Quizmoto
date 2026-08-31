@@ -82,7 +82,7 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess, role }) {
   const analyticsOnly = scormAccess && role === 'analytics_viewer';
   let groups = analyticsOnly ? ANALYTICS_NAV_GROUPS : OPERATIONAL_NAV_GROUPS;
 
-  if (scormAccess && role === 'admin') {
+  if (scormAccess && (role === 'admin' || isSuperAdmin)) {
     groups = [
       ...groups,
       {
@@ -233,7 +233,7 @@ export default function ScormPlatformShell() {
   const toggleTheme = () => setTheme((current) => current === 'light' ? 'dark' : 'light');
   const role = user?.role || (scormAccess ? 'admin' : 'pending');
   const isSuperAdmin = Boolean(scormAccess && (user?.isSuperAdmin || role === 'super_admin'));
-  const isWorkspaceAdmin = Boolean(scormAccess && role === 'admin');
+  const isWorkspaceAdmin = Boolean(scormAccess && (role === 'admin' || isSuperAdmin));
   const analyticsOnly = Boolean(scormAccess && role === 'analytics_viewer');
   const roleName = displayRole(role, isSuperAdmin);
 
