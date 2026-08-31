@@ -15,11 +15,29 @@ const ScormUserEntitlement = sequelize.define('ScormUserEntitlement', {
             this.setDataValue('email', String(value || '').trim().toLowerCase());
         }
     },
+    // Lifetime course-creation allowance. Deleting/archiving a course does not
+    // refund this allowance because historical ScormCourse rows remain counted.
     maxCourses: {
         type: DataTypes.INTEGER,
         allowNull: true
     },
+    // Maximum distinct learners that can be actively assigned learning.
     maxLearners: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    // Maximum current staff members in the tenant, including the primary Admin.
+    maxStaff: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    // Maximum campaigns stored for the tenant.
+    maxCampaigns: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    // Maximum active learner-course assignment pairs.
+    maxAssignments: {
         type: DataTypes.INTEGER,
         allowNull: true
     },
