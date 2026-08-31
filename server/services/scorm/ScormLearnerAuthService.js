@@ -220,7 +220,6 @@ async function findAssignedRegistrations(hostId, email) {
     const normalized = normalizeEmail(email);
     return ScormRegistration.findAll({
         where: {
-            campaignId: null,
             isPreview: false,
             status: { [Op.notIn]: ['revoked', 'superseded'] },
             [Op.and]: [
@@ -360,9 +359,6 @@ async function launchLearnerCourse(context, registrationId) {
     });
     if (!registration || registration.isPreview || ['revoked', 'superseded'].includes(registration.status) || !registration.course) {
         throw fail('Course assignment not found.', 'SCORM_ASSIGNMENT_NOT_FOUND', 404);
-    }
-    if (registration.campaignId && context.typ !== 'scorm_campaign_learner') {
-        throw fail('This course can only be launched from its campaign portal.', 'SCORM_CAMPAIGN_PORTAL_REQUIRED', 403);
     }
     if (registration.campaignId && context.typ === 'scorm_campaign_learner' && String(registration.campaignId) !== String(context.campaignId || '')) {
         throw fail('This course belongs to a different campaign.', 'SCORM_CAMPAIGN_ASSIGNMENT_FORBIDDEN', 403);
