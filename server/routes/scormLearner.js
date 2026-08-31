@@ -6,6 +6,8 @@ const {
     getWorkspaceAndConfig,
     serializeAuthConfig,
     createLearnerSession,
+    createLearnerSessionFromIdentity,
+    verifyGlobalGoogleCredential,
     learnerAuthMiddleware,
     getLearnerDashboard,
     launchLearnerCourse
@@ -47,6 +49,27 @@ router.post('/discover', learnerAuthLimiter, async (req, res) => {
     } catch (err) {
         res.status(err.status || 500).json({
             message: err.message || 'Unable to identify your learning organisation.',
+            code: err.code
+        });
+    }
+});
+
+// Common learner Google entry. Google proves the email first, then LMSGEN finds
+// the exact tenant from active assignments and applies that workspace's learner
+// access policy. No workspace id is exposed in the public URL.
+router.post('/google', learnerAuthLimiter, async (req, res) => {
+    try {
+        const identity = await verifyGlobalGoogleCredential(req.body?.credential);
+        const policy = await discoverLearnerPolicy(identity.email);
+        const result = await createLearnerSessionFromIdentity({
+            workspaceId: policy.workspace.id,
+            identity,
+            requireGoogleEnabled: true
+        });
+        res.json(result);
+    } catch (err) {
+        res.status(err.status || 500).json({
+            message: err.message || 'Google learner sign-in failed.',
             code: err.code
         });
     }
