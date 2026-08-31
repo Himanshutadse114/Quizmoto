@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import { readScormPlatformTheme, saveScormPlatformTheme } from './platformTheme';
+import { createMicrosoftPkceRequest } from './microsoftPkce';
 import './scormAuthWorkbench.css';
 import './scormAuthTealRestore.css';
 import './scormAuthGoogleButtonFix.css';
@@ -174,23 +175,31 @@ export default function ScormAuth() {
     }
   };
 
-  const loginMicrosoft = () => {
+  const loginMicrosoft = async () => {
     if (!workspaceId || !staffConfig?.staffMicrosoftClientId || !staffConfig?.staffMicrosoftTenantId) return;
-    const state = crypto.randomUUID();
-    const nonce = crypto.randomUUID();
-    sessionStorage.setItem(`lmsgen_staff_ms_state_${workspaceId}`, state);
-    const redirectUri = `${window.location.origin}/login/workspace/${workspaceId}/microsoft/callback`;
-    const params = new URLSearchParams({
-      client_id: staffConfig.staffMicrosoftClientId,
-      response_type: 'id_token',
-      redirect_uri: redirectUri,
-      response_mode: 'fragment',
-      scope: 'openid profile email',
-      state,
-      nonce,
-      prompt: 'select_account'
-    });
-    window.location.assign(`https://login.microsoftonline.com/${encodeURIComponent(staffConfig.staffMicrosoftTenantId)}/oauth2/v2.0/authorize?${params.toString()}`);
+    setBusy(true);
+    setError('');
+    try {
+      const redirectUri = `${window.location.origin}/login/workspace/${workspaceId}/microsoft/callback`;
+      const pending = await createMicrosoftPkceRequest({
+        clientId: staffConfig.staffMicrosoftClientId,
+        tenantId: staffConfig.staffMicrosoftTenantId,
+        redirectUri
+      });
+      sessionStorage.setItem(`lmsgen_staff_ms_pending_${workspaceId}`, JSON.stringify({
+        state: pending.state,
+        nonce: pending.nonce,
+        verifier: pending.verifier,
+        clientId: pending.clientId,
+        tenantId: pending.tenantId,
+        redirectUri: pending.redirectUri
+      }));
+      sessionStorage.setItem(`lmsgen_staff_ms_state_${workspaceId}`, pending.state);
+      window.location.assign(pending.authorizeUrl);
+    } catch (err) {
+      setBusy(false);
+      setError(err.message || 'Microsoft Sign-In could not start.');
+    }
   };
 
   const isLogin = mode === 'login';
@@ -280,7 +289,7 @@ export default function ScormAuth() {
 
             {!staffConfigLoading && showWorkspaceMicrosoft && (
               <button type="button" onClick={loginMicrosoft} disabled={busy} className="sa-submit" style={{ marginTop: 10 }}>
-                Continue with Microsoft
+                {busy ? 'Opening Microsoft…' : 'Continue with Microsoft'}
               </button>
             )}
 

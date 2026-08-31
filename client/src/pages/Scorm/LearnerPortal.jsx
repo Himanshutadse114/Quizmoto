@@ -14,6 +14,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { apiUrl } from '../../config';
+import { createMicrosoftPkceRequest } from './microsoftPkce';
 
 function sessionKey(workspaceId) {
   return `lmsgen_learner_${workspaceId}`;
@@ -154,23 +155,31 @@ export default function LearnerPortal() {
     }
   };
 
-  const loginMicrosoft = () => {
+  const loginMicrosoft = async () => {
     if (!config?.microsoftClientId || !config?.microsoftTenantId) return;
-    const state = crypto.randomUUID();
-    const nonce = crypto.randomUUID();
-    sessionStorage.setItem(`lmsgen_ms_state_${workspaceId}`, state);
-    const redirectUri = `${window.location.origin}/learn/${workspaceId}/microsoft/callback`;
-    const params = new URLSearchParams({
-      client_id: config.microsoftClientId,
-      response_type: 'id_token',
-      redirect_uri: redirectUri,
-      response_mode: 'fragment',
-      scope: 'openid profile email',
-      state,
-      nonce,
-      prompt: 'select_account'
-    });
-    window.location.assign(`https://login.microsoftonline.com/${encodeURIComponent(config.microsoftTenantId)}/oauth2/v2.0/authorize?${params.toString()}`);
+    setBusy(true);
+    setError('');
+    try {
+      const redirectUri = `${window.location.origin}/learn/${workspaceId}/microsoft/callback`;
+      const pending = await createMicrosoftPkceRequest({
+        clientId: config.microsoftClientId,
+        tenantId: config.microsoftTenantId,
+        redirectUri
+      });
+      sessionStorage.setItem(`lmsgen_ms_pending_${workspaceId}`, JSON.stringify({
+        state: pending.state,
+        nonce: pending.nonce,
+        verifier: pending.verifier,
+        clientId: pending.clientId,
+        tenantId: pending.tenantId,
+        redirectUri: pending.redirectUri
+      }));
+      sessionStorage.setItem(`lmsgen_ms_state_${workspaceId}`, pending.state);
+      window.location.assign(pending.authorizeUrl);
+    } catch (err) {
+      setBusy(false);
+      setError(err.message || 'Microsoft sign-in could not start.');
+    }
   };
 
   const logout = () => {
@@ -244,7 +253,7 @@ export default function LearnerPortal() {
                 {config?.microsoftEnabled && (
                   <button type="button" onClick={loginMicrosoft} disabled={busy} className="w-full h-11 rounded-xl border border-[#cfdcda] bg-white hover:bg-[#f7faf9] transition text-sm font-semibold flex items-center justify-center gap-3 disabled:opacity-50">
                     <span className="grid grid-cols-2 gap-[2px] w-4 h-4"><span className="bg-[#f25022]" /><span className="bg-[#7fba00]" /><span className="bg-[#00a4ef]" /><span className="bg-[#ffb900]" /></span>
-                    Continue with Microsoft
+                    {busy ? 'Opening Microsoft…' : 'Continue with Microsoft'}
                   </button>
                 )}
 

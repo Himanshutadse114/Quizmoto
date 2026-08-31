@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { RefreshCw, ShieldAlert } from 'lucide-react';
 import { apiUrl } from '../../config';
+import { exchangeMicrosoftCode, readMicrosoftCallbackParams } from './microsoftPkce';
 
 export default function MicrosoftLearnerCallback() {
   const { workspaceId } = useParams();
@@ -13,18 +14,20 @@ export default function MicrosoftLearnerCallback() {
   useEffect(() => {
     let cancelled = false;
     const finish = async () => {
+      const learnerPendingKey = `lmsgen_ms_pending_${workspaceId}`;
+      const learnerLegacyStateKey = `lmsgen_ms_state_${workspaceId}`;
       try {
-        const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-        const returnedState = params.get('state') || '';
-        const idToken = params.get('id_token') || '';
-        const providerError = params.get('error_description') || params.get('error') || '';
-
+        const callback = readMicrosoftCallbackParams();
         let campaignPending = null;
+        let learnerPending = null;
         try {
-          const raw = sessionStorage.getItem('lmsgen_ms_campaign_pending');
-          if (raw) campaignPending = JSON.parse(raw);
+          const campaignRaw = sessionStorage.getItem('lmsgen_ms_campaign_pending');
+          if (campaignRaw) campaignPending = JSON.parse(campaignRaw);
+          const learnerRaw = sessionStorage.getItem(learnerPendingKey);
+          if (learnerRaw) learnerPending = JSON.parse(learnerRaw);
         } catch (_) {
           campaignPending = null;
+          learnerPending = null;
         }
 
         const isCampaign = Boolean(
@@ -32,20 +35,34 @@ export default function MicrosoftLearnerCallback() {
           campaignPending?.workspaceId === workspaceId &&
           campaignPending?.state
         );
-        const expectedState = isCampaign
-          ? String(campaignPending.state)
-          : (sessionStorage.getItem(`lmsgen_ms_state_${workspaceId}`) || '');
+        const pending = isCampaign ? campaignPending : learnerPending;
+        const expectedState = String(
+          pending?.state || (!isCampaign ? sessionStorage.getItem(learnerLegacyStateKey) : '') || ''
+        );
         const destination = isCampaign ? `/campaign/${campaignPending.campaignId}` : `/learn/${workspaceId}`;
         setReturnPath(destination);
 
-        sessionStorage.removeItem(`lmsgen_ms_state_${workspaceId}`);
-        sessionStorage.removeItem('lmsgen_ms_campaign_pending');
-
-        if (providerError) throw new Error(providerError);
-        if (!returnedState || !expectedState || returnedState !== expectedState) {
+        if (callback.error) throw new Error(callback.error);
+        if (!callback.state || !expectedState || callback.state !== expectedState) {
           throw new Error('Microsoft sign-in state did not match. Please start sign-in again.');
         }
+
+        let idToken = callback.idToken;
+        if (!idToken && callback.code) {
+          idToken = await exchangeMicrosoftCode({
+            code: callback.code,
+            clientId: pending?.clientId,
+            tenantId: pending?.tenantId,
+            redirectUri: pending?.redirectUri,
+            verifier: pending?.verifier,
+            nonce: pending?.nonce
+          });
+        }
         if (!idToken) throw new Error('Microsoft did not return an identity token.');
+
+        sessionStorage.removeItem(learnerPendingKey);
+        sessionStorage.removeItem(learnerLegacyStateKey);
+        sessionStorage.removeItem('lmsgen_ms_campaign_pending');
 
         if (isCampaign) {
           const res = await axios.post(apiUrl(`/api/scorm-learner/campaign/${campaignPending.campaignId}/microsoft`), { idToken });
@@ -59,6 +76,9 @@ export default function MicrosoftLearnerCallback() {
 
         if (!cancelled) navigate(destination, { replace: true });
       } catch (err) {
+        sessionStorage.removeItem(learnerPendingKey);
+        sessionStorage.removeItem(learnerLegacyStateKey);
+        sessionStorage.removeItem('lmsgen_ms_campaign_pending');
         if (!cancelled) setError(err.response?.data?.message || err.message || 'Microsoft learner sign-in failed.');
       }
     };

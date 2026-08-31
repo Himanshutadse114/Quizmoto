@@ -14,6 +14,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { apiUrl } from '../../config';
+import { createMicrosoftPkceRequest } from './microsoftPkce';
 
 function sessionKey(campaignId) {
   return `lmsgen_campaign_${campaignId}`;
@@ -133,27 +134,32 @@ export default function CampaignPortal() {
     }
   };
 
-  const loginMicrosoft = () => {
+  const loginMicrosoft = async () => {
     if (!config?.microsoftClientId || !config?.microsoftTenantId || !config?.workspaceId) return;
-    const state = crypto.randomUUID();
-    const nonce = crypto.randomUUID();
-    sessionStorage.setItem('lmsgen_ms_campaign_pending', JSON.stringify({
-      campaignId,
-      workspaceId: config.workspaceId,
-      state
-    }));
-    const redirectUri = `${window.location.origin}/learn/${config.workspaceId}/microsoft/callback`;
-    const params = new URLSearchParams({
-      client_id: config.microsoftClientId,
-      response_type: 'id_token',
-      redirect_uri: redirectUri,
-      response_mode: 'fragment',
-      scope: 'openid profile email',
-      state,
-      nonce,
-      prompt: 'select_account'
-    });
-    window.location.assign(`https://login.microsoftonline.com/${encodeURIComponent(config.microsoftTenantId)}/oauth2/v2.0/authorize?${params.toString()}`);
+    setBusy(true);
+    setError('');
+    try {
+      const redirectUri = `${window.location.origin}/learn/${config.workspaceId}/microsoft/callback`;
+      const pending = await createMicrosoftPkceRequest({
+        clientId: config.microsoftClientId,
+        tenantId: config.microsoftTenantId,
+        redirectUri
+      });
+      sessionStorage.setItem('lmsgen_ms_campaign_pending', JSON.stringify({
+        campaignId,
+        workspaceId: config.workspaceId,
+        state: pending.state,
+        nonce: pending.nonce,
+        verifier: pending.verifier,
+        clientId: pending.clientId,
+        tenantId: pending.tenantId,
+        redirectUri: pending.redirectUri
+      }));
+      window.location.assign(pending.authorizeUrl);
+    } catch (err) {
+      setBusy(false);
+      setError(err.message || 'Microsoft sign-in could not start.');
+    }
   };
 
   const logout = () => {
@@ -218,7 +224,7 @@ export default function CampaignPortal() {
               {config?.microsoftEnabled && (
                 <button type="button" onClick={loginMicrosoft} disabled={busy} className="w-full h-11 rounded-xl border border-[#cfdcda] bg-white hover:bg-[#f7faf9] transition text-sm font-semibold flex items-center justify-center gap-3 disabled:opacity-50">
                   <span className="grid grid-cols-2 gap-[2px] w-4 h-4"><span className="bg-[#f25022]" /><span className="bg-[#7fba00]" /><span className="bg-[#00a4ef]" /><span className="bg-[#ffb900]" /></span>
-                  Continue with Microsoft
+                  {busy ? 'Opening Microsoft…' : 'Continue with Microsoft'}
                 </button>
               )}
               <div className="rounded-xl bg-[#f0f7f6] border border-[#d7e7e4] px-3.5 py-3 text-[11px] leading-relaxed text-[#607572] flex gap-2"><ShieldCheck size={15} className="text-[#159b91] shrink-0" />Manual email entry is disabled. LMSGEN verifies your Google or Microsoft identity and then checks that exact email against the campaign CSV.</div>
