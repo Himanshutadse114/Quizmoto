@@ -59,7 +59,7 @@ export default function ScormAuth() {
   const navigate = useNavigate();
   const {
     loginScorm,
-    loginQuizmotoOnlyWithGoogle,
+    loginScormWithGoogle,
     registerScorm,
     prepareScormLogin
   } = useAuth();
@@ -87,12 +87,12 @@ export default function ScormAuth() {
     return () => window.removeEventListener('resize', updateGoogleWidth);
   }, [mode]);
 
-  const finishPlatformLogin = (result, destination = '/scorm') => {
+  const finishPlatformLogin = (result) => {
     if (!result?.token) {
       setError(result?.message || 'Sign in failed.');
       return;
     }
-    navigate(destination, { replace: true });
+    navigate(result.quizmotoOnly ? '/scorm/quizmoto' : '/scorm', { replace: true });
   };
 
   const submit = async (event) => {
@@ -124,8 +124,7 @@ export default function ScormAuth() {
     setBusy(true);
     setError('');
     try {
-      const result = await loginQuizmotoOnlyWithGoogle(credentialResponse.credential);
-      finishPlatformLogin(result, '/scorm/quizmoto');
+      finishPlatformLogin(await loginScormWithGoogle(credentialResponse.credential));
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Google Sign-In failed.');
     } finally {
@@ -166,8 +165,8 @@ export default function ScormAuth() {
             <h2 className="sa-form-title">{isLogin ? 'Sign in' : 'Create account'}</h2>
             <p className="mt-2 mb-5 text-xs opacity-70 leading-relaxed">
               {isLogin
-                ? 'Use your LMSGEN account or choose an identity provider below.'
-                : 'Create an account for Quizmoto and LMSGEN access approval.'}
+                ? 'Use your account or sign in with the Google or Microsoft identity assigned to your LMSGEN tenant.'
+                : 'Create an account. The Super Admin must assign it to a tenant before LMSGEN access is available.'}
             </p>
 
             {error && <div className="sa-error">{error}</div>}
@@ -235,7 +234,7 @@ export default function ScormAuth() {
                 </div>
 
                 <p className="mt-3 text-[10px] opacity-60 leading-relaxed text-center">
-                  Google sign-in opens Quizmoto only. Use password or Microsoft organisation sign-in for LMSGEN tenant access.
+                  Google and Microsoft identities open the tenant and role assigned to that exact email. Unassigned Google accounts can use Quizmoto only.
                 </p>
               </>
             )}
