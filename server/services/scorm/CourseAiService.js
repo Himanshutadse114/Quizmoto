@@ -1,9 +1,27 @@
 const logger = require('../../utils/logger');
 const GeminiPolicyAnalysisService = require('./PolicyAnalysisService');
-const { generateCourseVisualPrompts } = require('./GeminiSlideVisualPromptService');
+const VertexPolicyAnalysisService = require('./VertexPolicyAnalysisService');
+const GeminiVisualPromptService = require('./GeminiSlideVisualPromptService');
+const VertexVisualPromptService = require('./VertexSlideVisualPromptService');
+const { isVertexConfigured, vertexConfig } = require('./VertexAiClient');
 
 function selectedProvider() {
-    return 'gemini';
+    return isVertexConfigured() ? 'vertex_ai' : 'gemini';
+}
+
+function providerServices() {
+    if (selectedProvider() === 'vertex_ai') {
+        return {
+            policy: VertexPolicyAnalysisService,
+            visuals: VertexVisualPromptService,
+            provider: 'vertex_ai'
+        };
+    }
+    return {
+        policy: GeminiPolicyAnalysisService,
+        visuals: GeminiVisualPromptService,
+        provider: 'gemini'
+    };
 }
 
 function emit(onProgress, patch) {
@@ -19,9 +37,8 @@ function positiveInt(value, fallback, min = 1000, max = 600000) {
 
 /**
  * Course authoring can legitimately spend tens of seconds inside one model
- * request. Previously the UI received a single 8% update and then nothing
- * until every content/refinement pass had finished, which made healthy jobs
- * look frozen. Keep a bounded, honest heartbeat while the promise is active.
+ * request. Keep a bounded progress heartbeat while the provider request is
+ * active so a healthy Vertex/Gemini job never looks frozen to the learner.
  */
 async function runWithProgressHeartbeat({
     task,
@@ -72,54 +89,76 @@ async function runWithProgressHeartbeat({
 }
 
 async function analyzePolicy(args = {}) {
+    const services = providerServices();
     const requested = String(process.env.SCORM_AI_PROVIDER || '').trim().toLowerCase();
-    if (requested && requested !== 'gemini') {
-        logger.info('scorm_content_provider_forced_gemini', {
+    if (requested && requested !== services.provider && !(requested === 'gemini' && services.provider === 'vertex_ai')) {
+        logger.info('scorm_content_provider_selected', {
             module: 'scorm',
             requestedProvider: requested,
-            reason: 'Replicate is image-only for SCORM authoring'
+            selectedProvider: services.provider
         });
     }
 
-    const contentTimeoutMs = positiveInt(process.env.GEMINI_SCORM_CONTENT_TIMEOUT_MS, 180000, 30000, 600000);
-    const visualPlanTimeoutMs = positiveInt(process.env.GEMINI_SCORM_VISUAL_PLAN_TIMEOUT_MS, 90000, 20000, 300000);
+    const contentTimeoutMs = positiveInt(
+        process.env.VERTEX_SCORM_CONTENT_TIMEOUT_MS || process.env.GEMINI_SCORM_CONTENT_TIMEOUT_MS,
+        180000,
+        30000,
+        600000
+    );
+    const visualPlanTimeoutMs = positiveInt(
+        process.env.VERTEX_SCORM_VISUAL_PLAN_TIMEOUT_MS || process.env.GEMINI_SCORM_VISUAL_PLAN_TIMEOUT_MS,
+        90000,
+        20000,
+        300000
+    );
 
     let analysis;
     try {
         analysis = await runWithProgressHeartbeat({
-            task: () => GeminiPolicyAnalysisService.analyzePolicy(args),
+            task: () => services.policy.analyzePolicy(args),
             onProgress: args.onProgress,
             startPercent: 8,
             maxPercent: 26,
             stage: 'Creating course content',
-            detail: 'Writing the learning structure, slide content and knowledge checks.',
+            detail: services.provider === 'vertex_ai'
+                ? 'Writing the learning structure, slide content and knowledge checks with Vertex AI.'
+                : 'Writing the learning structure, slide content and knowledge checks.',
             timeoutMs: contentTimeoutMs
         });
     } catch (error) {
         logger.error('scorm_content_generation_failed', {
             module: 'scorm',
+            provider: services.provider,
             error: error.message,
             code: error.code || null
         });
         throw error;
     }
-    analysis.aiProvider = 'gemini';
+
+    analysis.aiProvider = services.provider;
+    if (services.provider === 'vertex_ai') {
+        analysis.aiModel = analysis.aiModel || vertexConfig().textModel;
+        analysis.aiPlatform = 'google_cloud_vertex_ai';
+    }
 
     let visualPlan;
     try {
         visualPlan = await runWithProgressHeartbeat({
-            task: () => generateCourseVisualPrompts(analysis),
+            task: () => services.visuals.generateCourseVisualPrompts(analysis),
             onProgress: args.onProgress,
             startPercent: 28,
             maxPercent: 34,
             stage: 'Planning course visuals',
-            detail: 'Preparing slide-specific visual directions for the course.',
+            detail: services.provider === 'vertex_ai'
+                ? 'Preparing slide-specific visual directions with Vertex AI.'
+                : 'Preparing slide-specific visual directions for the course.',
             timeoutMs: visualPlanTimeoutMs,
             timeoutCode: 'GEMINI_VISUAL_PLAN_TIMEOUT'
         });
     } catch (error) {
         logger.error('scorm_visual_plan_generation_failed', {
             module: 'scorm',
+            provider: services.provider,
             error: error.message,
             code: error.code || null
         });
@@ -129,15 +168,15 @@ async function analyzePolicy(args = {}) {
     analysis = {
         ...analysis,
         coverImagePrompt: visualPlan.coverPrompt,
-        coverImagePromptProvider: 'gemini',
+        coverImagePromptProvider: services.provider,
         coverImagePromptModel: visualPlan.model,
-        visualPromptProvider: 'gemini',
+        visualPromptProvider: services.provider,
         visualPromptModel: visualPlan.model,
         visualPromptsReady: true,
         slides: (Array.isArray(analysis.slides) ? analysis.slides : []).map((slide, index) => ({
             ...(slide || {}),
             imagePrompt: visualPlan.slidePrompts[index] || '',
-            imagePromptProvider: 'gemini',
+            imagePromptProvider: services.provider,
             imagePromptModel: visualPlan.model
         }))
     };
@@ -149,8 +188,10 @@ async function analyzePolicy(args = {}) {
         modelStatus: 'succeeded'
     });
 
-    logger.info('scorm_gemini_content_and_visual_plan_ready', {
+    logger.info('scorm_content_and_visual_plan_ready', {
         module: 'scorm',
+        provider: services.provider,
+        textModel: analysis.aiModel || null,
         slides: Array.isArray(analysis.slides) ? analysis.slides.length : 0,
         quiz: Array.isArray(analysis.quiz) ? analysis.quiz.length : 0,
         visualPromptModel: visualPlan.model,
@@ -163,6 +204,7 @@ async function analyzePolicy(args = {}) {
 module.exports = {
     analyzePolicy,
     selectedProvider,
+    providerServices,
     runWithProgressHeartbeat,
     positiveInt
 };
