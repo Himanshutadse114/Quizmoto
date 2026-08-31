@@ -157,8 +157,8 @@ async function generateImage({ prompt, model, aspectRatio = '16:9' }) {
             maxOutputTokens: 4096,
             imageConfig: {
                 aspectRatio,
-                imageOutputOptions: { mimeType: 'image/webp' },
-                personGeneration: 'ALLOW_NONE'
+                imageSize: '1K',
+                imageOutputOptions: { mimeType: 'image/webp' }
             }
         }
     });
