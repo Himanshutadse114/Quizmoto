@@ -8,6 +8,7 @@ import { readScormPlatformTheme, saveScormPlatformTheme } from './platformTheme'
 import './scormAuthWorkbench.css';
 import './scormAuthTealRestore.css';
 import './scormAuthGoogleButtonFix.css';
+import './scormAuthAutofillFix.css';
 import './scormLightTheme.css';
 import './scormLightContrastGuard.css';
 
