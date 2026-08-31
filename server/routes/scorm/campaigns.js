@@ -20,11 +20,23 @@ function workspaceRequired(req) {
     }
 }
 
+function universalPortal(campaign) {
+    if (!campaign) return campaign;
+    return {
+        ...campaign,
+        portalPath: campaign.status === 'active' ? '/learn' : null
+    };
+}
+
 router.get('/', auth, async (req, res) => {
     try {
         workspaceRequired(req);
         const result = await listCampaigns({ hostId: req.userId, workspaceId: req.scormWorkspaceId });
-        res.json({ ok: true, ...result });
+        res.json({
+            ok: true,
+            ...result,
+            campaigns: (result.campaigns || []).map(universalPortal)
+        });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to load campaigns.', code: err.code });
     }
@@ -59,7 +71,7 @@ router.post('/', auth, async (req, res) => {
             dueAt: req.body?.dueAt,
             required: req.body?.required !== false
         });
-        res.status(201).json({ ok: true, ...result });
+        res.status(201).json({ ok: true, ...result, campaign: universalPortal(result.campaign) });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to create campaign.', code: err.code });
     }
@@ -92,7 +104,7 @@ router.get('/:campaignId', auth, async (req, res) => {
             hostId: req.userId,
             workspaceId: req.scormWorkspaceId
         });
-        res.json({ ok: true, campaign });
+        res.json({ ok: true, campaign: universalPortal(campaign) });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to load campaign.', code: err.code });
     }
@@ -107,7 +119,7 @@ router.post('/:campaignId/start', auth, async (req, res) => {
             workspaceId: req.scormWorkspaceId,
             actorUserId: req.authenticatedUserId || req.userId
         });
-        res.json({ ok: true, campaign });
+        res.json({ ok: true, campaign: universalPortal(campaign) });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to start campaign.', code: err.code });
     }

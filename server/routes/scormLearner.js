@@ -10,6 +10,7 @@ const {
     getLearnerDashboard,
     launchLearnerCourse
 } = require('../services/scorm/ScormLearnerAuthService');
+const { discoverLearnerPolicy } = require('../services/scorm/ScormLearnerDiscoveryService');
 
 const learnerAuthLimiter = rateLimit({
     windowMs: 10 * 60 * 1000,
@@ -30,10 +31,26 @@ router.use((req, res, next) => {
     next();
 });
 
-// Campaign delivery is the preferred organisation flow. It is mounted under
-// the learner API so campaign SSO shares the same public feature gate/CORS
-// surface as the existing workspace learner portal.
 router.use('/campaign', require('./scormCampaignLearner'));
+
+router.post('/discover', learnerAuthLimiter, async (req, res) => {
+    try {
+        const result = await discoverLearnerPolicy(req.body?.email);
+        res.setHeader('Cache-Control', 'no-store');
+        res.json({
+            ok: true,
+            workspaceId: result.workspace.id,
+            workspaceName: result.workspace.name,
+            discoverySource: result.source,
+            config: result.publicConfig
+        });
+    } catch (err) {
+        res.status(err.status || 500).json({
+            message: err.message || 'Unable to identify your learning organisation.',
+            code: err.code
+        });
+    }
+});
 
 router.get('/workspace/:workspaceId/config', async (req, res) => {
     try {

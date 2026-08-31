@@ -40,10 +40,12 @@ const ScormAssignments = lazy(() => import('./pages/Scorm/Assignments'));
 const ScormCampaignAnalytics = lazy(() => import('./pages/Scorm/CampaignAnalytics'));
 const ScormLearnerAccessSettings = lazy(() => import('./pages/Scorm/LearnerAccessSettings'));
 const ScormLearnerPortal = lazy(() => import('./pages/Scorm/LearnerPortal'));
+const ScormUniversalLearnerPortal = lazy(() => import('./pages/Scorm/UniversalLearnerPortal'));
 const ScormCampaignPortal = lazy(() => import('./pages/Scorm/CampaignPortal'));
 const ScormMicrosoftLearnerCallback = lazy(() => import('./pages/Scorm/MicrosoftLearnerCallback'));
 const ScormMicrosoftCampaignCallback = lazy(() => import('./pages/Scorm/MicrosoftCampaignCallback'));
 const ScormMicrosoftStaffCallback = lazy(() => import('./pages/Scorm/MicrosoftStaffCallback'));
+const ScormMicrosoftUniversalCallback = lazy(() => import('./pages/Scorm/MicrosoftUniversalCallback'));
 const ScormLibrary = lazy(() => import('./pages/Scorm/Library'));
 const ScormCourseDetail = lazy(() => import('./pages/Scorm/CourseDetail'));
 const ScormLearnLanding = lazy(() => import('./pages/Scorm/LearnLanding'));
@@ -109,7 +111,7 @@ function AccessAdminGate() {
 
 function WorkspaceAdminGate({ children }) {
   const { scormAccess, user } = useAuth();
-  return scormAccess && user?.role === 'admin'
+  return scormAccess && (user?.role === 'admin' || user?.role === 'super_admin')
     ? children
     : <Navigate to={isAnalyticsViewer(user) ? '/scorm/tracking' : '/scorm'} replace />;
 }
@@ -156,6 +158,7 @@ function AppRoutes() {
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/contact" element={<MarketingSite src="/landing/contact/index.html" title="Contact LMSGEN" tabTitle="Contact LMSGEN | Learning Platform" />} />
         <Route path="/login" element={<PlatformEntry />} />
+        <Route path="/auth/microsoft/callback" element={<ScormMicrosoftUniversalCallback />} />
         <Route path="/login/workspace/:workspaceId/microsoft/callback" element={<ScormMicrosoftStaffCallback />} />
         <Route path="/scorm/login" element={<Navigate to="/login" replace />} />
 
@@ -207,6 +210,7 @@ function AppRoutes() {
         <Route path="/host/lobby-old/:pin" element={<LegacyQuizRedirect kind="lobby" />} />
         <Route path="/host/game-old/:pin" element={<LegacyQuizRedirect kind="game" />} />
 
+        <Route path="/learn" element={<ScormUniversalLearnerPortal />} />
         <Route path="/learn/:workspaceId" element={<ScormLearnerPortal />} />
         <Route path="/learn/:workspaceId/microsoft/callback" element={<ScormMicrosoftLearnerCallback />} />
         <Route path="/campaign/:campaignId" element={<ScormCampaignPortal />} />

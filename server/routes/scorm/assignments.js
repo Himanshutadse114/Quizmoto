@@ -121,7 +121,7 @@ router.get('/', auth, async (req, res) => {
         res.json({
             ok: true,
             workspaceId: req.scormWorkspaceId || null,
-            learnerPortalPath: req.scormWorkspaceId ? `/learn/${req.scormWorkspaceId}` : null,
+            learnerPortalPath: '/learn',
             learners: learners.map((row) => ({
                 id: row.id,
                 email: row.email,
@@ -180,10 +180,6 @@ router.post('/bulk', auth, async (req, res) => {
             for (const learner of learners) {
                 const email = normalizeEmail(learner.email);
                 for (const course of courses) {
-                    // Repeated edits to the same live Admin assignment should update
-                    // metadata, but a legacy invite or completed assignment must never
-                    // be recycled because its assessment/runtime state belongs to the
-                    // old learning instance.
                     let registration = await ScormRegistration.findOne({
                         where: {
                             courseId: course.id,
@@ -198,9 +194,6 @@ router.post('/bulk', auth, async (req, res) => {
                     });
 
                     if (!registration) {
-                        // Keep previous registrations for reporting, but remove them
-                        // from the learner's active dashboard. Their SCORM state remains
-                        // keyed to the old registration UUID and is never copied.
                         const [count] = await ScormRegistration.update(
                             { status: 'superseded' },
                             {
@@ -249,7 +242,7 @@ router.post('/bulk', auth, async (req, res) => {
             learners: learners.length,
             courses: courses.length,
             combinations: learners.length * courses.length,
-            learnerPortalPath: req.scormWorkspaceId ? `/learn/${req.scormWorkspaceId}` : null
+            learnerPortalPath: '/learn'
         });
     } catch (err) {
         console.error('[scorm-assignments] bulk assign failed', err);

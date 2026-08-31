@@ -46,16 +46,13 @@ function GoogleButton({ clientId, width, onSuccess, onError }) {
       </div>
     </div>
   );
-
-  return clientId
-    ? <GoogleOAuthProvider clientId={clientId}>{content}</GoogleOAuthProvider>
-    : content;
+  return clientId ? <GoogleOAuthProvider clientId={clientId}>{content}</GoogleOAuthProvider> : content;
 }
 
 export default function ScormAuth() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const workspaceId = String(searchParams.get('workspace') || '').trim();
+  const legacyWorkspaceId = String(searchParams.get('workspace') || '').trim();
   const {
     loginScorm,
     loginScormWithGoogle,
@@ -73,40 +70,27 @@ export default function ScormAuth() {
   const [theme, setTheme] = useState(readScormPlatformTheme);
   const [googleWidth, setGoogleWidth] = useState(360);
   const [staffConfig, setStaffConfig] = useState(null);
-  const [staffConfigLoading, setStaffConfigLoading] = useState(Boolean(workspaceId));
+  const [resolvedWorkspaceId, setResolvedWorkspaceId] = useState(legacyWorkspaceId);
+  const [staffConfigLoading, setStaffConfigLoading] = useState(Boolean(legacyWorkspaceId));
 
-  const workspaceMode = Boolean(workspaceId);
+  const workspaceMode = Boolean(resolvedWorkspaceId);
 
-  useEffect(() => {
-    prepareScormLogin();
-  }, []);
-
-  useEffect(() => {
-    saveScormPlatformTheme(theme);
-  }, [theme]);
+  useEffect(() => { prepareScormLogin(); }, []);
+  useEffect(() => { saveScormPlatformTheme(theme); }, [theme]);
 
   useEffect(() => {
     let cancelled = false;
-    if (!workspaceId) {
-      setStaffConfig(null);
-      setStaffConfigLoading(false);
-      return () => {};
-    }
+    if (!legacyWorkspaceId) return () => {};
+    setResolvedWorkspaceId(legacyWorkspaceId);
     setMode('login');
     setStaffConfigLoading(true);
     setError('');
-    axios.get(apiUrl(`/api/scorm/staff-auth/workspace/${workspaceId}/config`))
-      .then((res) => {
-        if (!cancelled) setStaffConfig(res.data?.config || null);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.response?.data?.message || 'This staff login link is not available.');
-      })
-      .finally(() => {
-        if (!cancelled) setStaffConfigLoading(false);
-      });
+    axios.get(apiUrl(`/api/scorm/staff-auth/workspace/${legacyWorkspaceId}/config`))
+      .then((res) => { if (!cancelled) setStaffConfig(res.data?.config || null); })
+      .catch((err) => { if (!cancelled) setError(err.response?.data?.message || 'This staff login link is not available.'); })
+      .finally(() => { if (!cancelled) setStaffConfigLoading(false); });
     return () => { cancelled = true; };
-  }, [workspaceId]);
+  }, [legacyWorkspaceId]);
 
   useEffect(() => {
     const updateGoogleWidth = () => {
@@ -126,11 +110,39 @@ export default function ScormAuth() {
   };
 
   const finishPlatformLogin = (result) => {
-    if (!result?.token) {
-      setError(result?.message || 'Sign in failed.');
+    if (!result?.token) return setError(result?.message || 'Sign in failed.');
+    navigate('/scorm', { replace: true });
+  };
+
+  const discoverOrganisation = async () => {
+    const workEmail = String(identifier || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(workEmail)) {
+      setError('Enter your work email to find your organisation sign-in.');
       return;
     }
-    navigate('/scorm', { replace: true });
+    setBusy(true);
+    setError('');
+    try {
+      const res = await axios.post(apiUrl('/api/scorm/staff-auth/discover'), { email: workEmail });
+      const config = res.data?.config || null;
+      const workspaceId = res.data?.workspaceId || config?.workspaceId || '';
+      if (!workspaceId || !config) throw new Error('Organisation sign-in configuration was not found.');
+      setResolvedWorkspaceId(workspaceId);
+      setStaffConfig(config);
+      setMode('login');
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Unable to identify your organisation.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resetOrganisation = () => {
+    if (legacyWorkspaceId) return;
+    setResolvedWorkspaceId('');
+    setStaffConfig(null);
+    setError('');
+    setPassword('');
   };
 
   const submit = async (event) => {
@@ -138,63 +150,48 @@ export default function ScormAuth() {
     setBusy(true);
     setError('');
     try {
-      if (mode === 'login') {
-        finishPlatformLogin(await loginScorm({ identifier: identifier.trim(), password }));
-      } else {
-        finishPlatformLogin(await registerScorm({
-          username: username.trim(),
-          email: email.trim().toLowerCase(),
-          password
-        }));
-      }
+      if (mode === 'login') finishPlatformLogin(await loginScorm({ identifier: identifier.trim(), password }));
+      else finishPlatformLogin(await registerScorm({ username: username.trim(), email: email.trim().toLowerCase(), password }));
     } catch (err) {
-      const data = err.response?.data;
-      setError(data?.message || err.message || 'Authentication failed.');
+      setError(err.response?.data?.message || err.message || 'Authentication failed.');
     } finally {
       setBusy(false);
     }
   };
 
   const handleGoogleSuccess = async (credentialResponse) => {
-    if (!credentialResponse?.credential) {
-      setError('Google Sign-In did not return a valid credential.');
-      return;
-    }
+    if (!credentialResponse?.credential) return setError('Google Sign-In did not return a valid credential.');
     setBusy(true);
     setError('');
     try {
       const result = workspaceMode
-        ? await loginScormWorkspaceWithGoogle(workspaceId, credentialResponse.credential)
+        ? await loginScormWorkspaceWithGoogle(resolvedWorkspaceId, credentialResponse.credential)
         : await loginScormWithGoogle(credentialResponse.credential);
       finishPlatformLogin(result);
     } catch (err) {
-      const data = err.response?.data;
-      setError(data?.message || err.message || 'Google Sign-In failed.');
+      setError(err.response?.data?.message || err.message || 'Google Sign-In failed.');
     } finally {
       setBusy(false);
     }
   };
 
   const loginMicrosoft = async () => {
-    if (!workspaceId || !staffConfig?.staffMicrosoftClientId || !staffConfig?.staffMicrosoftTenantId) return;
+    if (!resolvedWorkspaceId || !staffConfig?.staffMicrosoftClientId || !staffConfig?.staffMicrosoftTenantId) return;
     setBusy(true);
     setError('');
     try {
-      const redirectUri = `${window.location.origin}/login/workspace/${workspaceId}/microsoft/callback`;
+      const redirectUri = `${window.location.origin}/auth/microsoft/callback`;
       const pending = await createMicrosoftPkceRequest({
         clientId: staffConfig.staffMicrosoftClientId,
         tenantId: staffConfig.staffMicrosoftTenantId,
         redirectUri
       });
-      sessionStorage.setItem(`lmsgen_staff_ms_pending_${workspaceId}`, JSON.stringify({
-        state: pending.state,
-        nonce: pending.nonce,
-        verifier: pending.verifier,
-        clientId: pending.clientId,
-        tenantId: pending.tenantId,
-        redirectUri: pending.redirectUri
+      sessionStorage.setItem('lmsgen_universal_ms_pending', JSON.stringify({
+        ...pending,
+        flow: 'staff',
+        workspaceId: resolvedWorkspaceId,
+        returnPath: '/login'
       }));
-      sessionStorage.setItem(`lmsgen_staff_ms_state_${workspaceId}`, pending.state);
       window.location.assign(pending.authorizeUrl);
     } catch (err) {
       setBusy(false);
@@ -209,11 +206,11 @@ export default function ScormAuth() {
   const showWorkspaceGoogle = workspaceMode && Boolean(staffConfig?.staffGoogleEnabled && staffConfig?.staffGoogleClientId);
   const showWorkspaceMicrosoft = workspaceMode && Boolean(staffConfig?.staffMicrosoftEnabled);
   const showPassword = !workspaceMode || Boolean(staffConfig?.staffPasswordEnabled);
-  const showGlobalGoogle = !workspaceMode;
+  const showGlobalGoogle = !workspaceMode && !isLogin;
   const hasSso = showGlobalGoogle || showWorkspaceGoogle || showWorkspaceMicrosoft;
 
   const workspaceSubtitle = useMemo(() => {
-    if (!workspaceMode) return null;
+    if (!workspaceMode) return 'One sign-in link for every LMSGEN organisation';
     if (staffConfigLoading) return 'Loading organisation sign-in…';
     return staffConfig?.workspaceName ? `${staffConfig.workspaceName} staff access` : 'Organisation staff access';
   }, [workspaceMode, staffConfigLoading, staffConfig]);
@@ -223,74 +220,36 @@ export default function ScormAuth() {
       <div className="sa-shell">
         <div className="sa-topbar">
           <img src={logoSrc} alt="LMSGEN" className="sa-logo" style={{ width: 132, height: 'auto' }} />
-          <button
-            type="button"
-            className="sa-theme-toggle"
-            onClick={() => setTheme((current) => current === 'light' ? 'dark' : 'light')}
-            aria-label={isLight ? 'Switch to dark theme' : 'Switch to light theme'}
-            aria-pressed={isLight}
-            title={isLight ? 'Switch to dark theme' : 'Switch to light theme'}
-          >
+          <button type="button" className="sa-theme-toggle" onClick={() => setTheme((current) => current === 'light' ? 'dark' : 'light')} aria-label={isLight ? 'Switch to dark theme' : 'Switch to light theme'} aria-pressed={isLight}>
             <ThemeIcon size={15} strokeWidth={2} />
             <span className="scorm-theme-toggle-label">{isLight ? 'Dark' : 'Light'}</span>
             <span className="scorm-theme-toggle-track" aria-hidden="true"><span className="scorm-theme-toggle-knob" /></span>
           </button>
         </div>
 
-        <motion.main
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.22 }}
-          className="sa-card sa-card-login"
-        >
+        <motion.main initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }} className="sa-card sa-card-login">
           <section className="sa-form-panel">
             <h2 className="sa-form-title">{workspaceMode ? 'Staff sign in' : isLogin ? 'Sign in' : 'Create account'}</h2>
-            {workspaceSubtitle && (
-              <div className="mt-2 mb-4 flex items-center gap-2 text-xs opacity-70">
-                <Building2 size={14} /> {workspaceSubtitle}
-              </div>
-            )}
+            <div className="mt-2 mb-4 flex items-center gap-2 text-xs opacity-70"><Building2 size={14} /> {workspaceSubtitle}</div>
 
             {!workspaceMode && (
               <div className="sa-tabs" role="tablist" aria-label="Authentication mode">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={isLogin}
-                  onClick={() => switchMode('login')}
-                  className={`sa-tab ${isLogin ? 'is-active' : ''}`}
-                >
-                  Log in
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={!isLogin}
-                  onClick={() => switchMode('register')}
-                  className={`sa-tab ${!isLogin ? 'is-active' : ''}`}
-                >
-                  Register
-                </button>
+                <button type="button" role="tab" aria-selected={isLogin} onClick={() => switchMode('login')} className={`sa-tab ${isLogin ? 'is-active' : ''}`}>Log in</button>
+                <button type="button" role="tab" aria-selected={!isLogin} onClick={() => switchMode('register')} className={`sa-tab ${!isLogin ? 'is-active' : ''}`}>Register</button>
               </div>
             )}
 
+            {workspaceMode && !legacyWorkspaceId && <button type="button" onClick={resetOrganisation} className="text-xs underline opacity-70 mb-3">Use another work email</button>}
             {error && <div className="sa-error">{error}</div>}
 
             {!staffConfigLoading && (showGlobalGoogle || showWorkspaceGoogle) && (
               <div className="sa-google-block">
-                <GoogleButton
-                  clientId={showWorkspaceGoogle ? staffConfig.staffGoogleClientId : null}
-                  width={googleWidth}
-                  onSuccess={handleGoogleSuccess}
-                  onError={() => setError('Google Sign-In failed. Please try again.')}
-                />
+                <GoogleButton clientId={showWorkspaceGoogle ? staffConfig.staffGoogleClientId : null} width={googleWidth} onSuccess={handleGoogleSuccess} onError={() => setError('Google Sign-In failed. Please try again.')} />
               </div>
             )}
 
             {!staffConfigLoading && showWorkspaceMicrosoft && (
-              <button type="button" onClick={loginMicrosoft} disabled={busy} className="sa-submit" style={{ marginTop: 10 }}>
-                {busy ? 'Opening Microsoft…' : 'Continue with Microsoft'}
-              </button>
+              <button type="button" onClick={loginMicrosoft} disabled={busy} className="sa-submit" style={{ marginTop: 10 }}>{busy ? 'Opening Microsoft…' : 'Continue with Microsoft'}</button>
             )}
 
             {hasSso && showPassword && <div className="sa-divider" aria-hidden="true"><span>or</span></div>}
@@ -298,67 +257,21 @@ export default function ScormAuth() {
             {!staffConfigLoading && showPassword && (
               <form onSubmit={submit} className="sa-form">
                 {!isLogin && !workspaceMode && (
-                  <label>
-                    <span className="sa-label">Name</span>
-                    <div className="sa-input-wrap">
-                      <UserRound size={15} />
-                      <input
-                        value={username}
-                        onChange={(event) => setUsername(event.target.value)}
-                        required
-                        minLength={2}
-                        placeholder="Your name"
-                        className="sa-input"
-                        autoComplete="name"
-                      />
-                    </div>
-                  </label>
+                  <label><span className="sa-label">Name</span><div className="sa-input-wrap"><UserRound size={15} /><input value={username} onChange={(event) => setUsername(event.target.value)} required minLength={2} placeholder="Your name" className="sa-input" autoComplete="name" /></div></label>
                 )}
-
                 <label>
                   <span className="sa-label">{isLogin ? 'Email or username' : 'Email'}</span>
-                  <div className="sa-input-wrap">
-                    <Mail size={15} />
-                    <input
-                      type={isLogin ? 'text' : 'email'}
-                      value={isLogin ? identifier : email}
-                      onChange={(event) => isLogin ? setIdentifier(event.target.value) : setEmail(event.target.value)}
-                      required
-                      placeholder={isLogin ? 'you@company.com or username' : 'you@company.com'}
-                      className="sa-input"
-                      autoComplete={isLogin ? 'username' : 'email'}
-                    />
-                  </div>
+                  <div className="sa-input-wrap"><Mail size={15} /><input type={isLogin ? 'text' : 'email'} value={isLogin ? identifier : email} onChange={(event) => isLogin ? setIdentifier(event.target.value) : setEmail(event.target.value)} required placeholder={isLogin ? 'you@company.com or username' : 'you@company.com'} className="sa-input" autoComplete={isLogin ? 'username' : 'email'} /></div>
                 </label>
-
-                <label>
-                  <span className="sa-label">Password</span>
-                  <div className="sa-input-wrap">
-                    <LockKeyhole size={15} />
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      required
-                      minLength={8}
-                      placeholder="Password"
-                      className="sa-input"
-                      autoComplete={isLogin ? 'current-password' : 'new-password'}
-                    />
-                  </div>
-                </label>
-
-                <button type="submit" disabled={busy} className="sa-submit">
-                  {busy ? 'Please wait...' : isLogin ? 'Sign in' : 'Create account'}
-                </button>
+                {isLogin && !workspaceMode && (
+                  <button type="button" onClick={discoverOrganisation} disabled={busy} className="sa-submit" style={{ background: 'transparent', border: '1px solid currentColor' }}>{busy ? 'Finding organisation…' : 'Find organisation sign-in'}</button>
+                )}
+                <label><span className="sa-label">Password</span><div className="sa-input-wrap"><LockKeyhole size={15} /><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} placeholder="Password" className="sa-input" autoComplete={isLogin ? 'current-password' : 'new-password'} /></div></label>
+                <button type="submit" disabled={busy} className="sa-submit">{busy ? 'Please wait...' : isLogin ? 'Sign in with password' : 'Create account'}</button>
               </form>
             )}
 
-            {workspaceMode && staffConfig?.staffSsoRequired && (
-              <div className="mt-4 text-xs opacity-70 leading-relaxed">
-                This organisation requires verified SSO for Admin, Co-admin and Analytics Viewer access. Password sign-in is disabled for this workspace.
-              </div>
-            )}
+            {workspaceMode && staffConfig?.staffSsoRequired && <div className="mt-4 text-xs opacity-70 leading-relaxed">This organisation requires verified SSO for Admin, Co-admin and Analytics Viewer access. Password sign-in is disabled.</div>}
           </section>
         </motion.main>
       </div>
