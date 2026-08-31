@@ -1,9 +1,9 @@
 const { expect } = require('chai');
 const {
     modelEndpoint,
-    outputUrl,
-    notifyStatus
-} = require('../services/scorm/ReplicateClient');
+    firstImagePart,
+    vertexConfig
+} = require('../services/scorm/VertexAiClient');
 const {
     imageSlideIndexes,
     sentenceExcerpt,
@@ -20,32 +20,91 @@ const { setProgress, getProgress } = require('../services/scorm/ScormGenerationP
 const { planExperienceV5 } = require('../services/scorm/ScormExperiencePlanner');
 const { repairQuizExplanations, explanationWordCount } = require('../services/scorm/ScormQuizQualityService');
 
-describe('Hybrid Gemini content + Replicate image SCORM integration', () => {
-    it('uses Gemini for course content even when a legacy Replicate provider variable remains set', () => {
-        const previous = process.env.SCORM_AI_PROVIDER;
-        process.env.SCORM_AI_PROVIDER = 'replicate';
+describe('Vertex AI course content + image SCORM integration', () => {
+    it('selects Vertex AI when the Google Cloud project and ADC credentials are configured', () => {
+        const previousProject = process.env.GOOGLE_CLOUD_PROJECT;
+        const previousCredentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
         try {
-            expect(selectedProvider()).to.equal('gemini');
+            process.env.GOOGLE_CLOUD_PROJECT = 'test-project';
+            process.env.GOOGLE_APPLICATION_CREDENTIALS = '/etc/secrets/google-vertex-service-account.json';
+            expect(selectedProvider()).to.equal('vertex_ai');
         } finally {
-            if (previous == null) delete process.env.SCORM_AI_PROVIDER;
-            else process.env.SCORM_AI_PROVIDER = previous;
+            if (previousProject == null) delete process.env.GOOGLE_CLOUD_PROJECT;
+            else process.env.GOOGLE_CLOUD_PROJECT = previousProject;
+            if (previousCredentials == null) delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+            else process.env.GOOGLE_APPLICATION_CREDENTIALS = previousCredentials;
         }
     });
 
-    it('builds the official FLUX prediction endpoint safely', () => {
-        expect(modelEndpoint('black-forest-labs/flux-schnell')).to.equal(
-            'https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions'
-        );
-        expect(() => modelEndpoint('invalid')).to.throw('Invalid Replicate model identifier');
+    it('keeps the legacy Gemini Developer API fallback when Vertex is not configured', () => {
+        const previousProject = process.env.GOOGLE_CLOUD_PROJECT;
+        const previousGcloudProject = process.env.GCLOUD_PROJECT;
+        const previousCredentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+        try {
+            delete process.env.GOOGLE_CLOUD_PROJECT;
+            delete process.env.GCLOUD_PROJECT;
+            delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+            expect(selectedProvider()).to.equal('gemini');
+        } finally {
+            if (previousProject == null) delete process.env.GOOGLE_CLOUD_PROJECT;
+            else process.env.GOOGLE_CLOUD_PROJECT = previousProject;
+            if (previousGcloudProject == null) delete process.env.GCLOUD_PROJECT;
+            else process.env.GCLOUD_PROJECT = previousGcloudProject;
+            if (previousCredentials == null) delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+            else process.env.GOOGLE_APPLICATION_CREDENTIALS = previousCredentials;
+        }
     });
 
-    it('normalizes image URLs returned by Replicate predictions', () => {
-        expect(outputUrl(['https://replicate.delivery/course.webp'])).to.equal('https://replicate.delivery/course.webp');
+    it('builds the official global Vertex publisher model endpoint safely', () => {
+        expect(modelEndpoint('gemini-2.5-flash', 'global', 'test-project')).to.equal(
+            'https://aiplatform.googleapis.com/v1/projects/test-project/locations/global/publishers/google/models/gemini-2.5-flash:generateContent'
+        );
+        expect(modelEndpoint('gemini-3.1-flash-lite-image', 'us-central1', 'test-project')).to.equal(
+            'https://us-central1-aiplatform.googleapis.com/v1/projects/test-project/locations/us-central1/publishers/google/models/gemini-3.1-flash-lite-image:generateContent'
+        );
+    });
+
+    it('reads the selected Vertex models from environment variables', () => {
+        const previousText = process.env.VERTEX_TEXT_MODEL;
+        const previousImage = process.env.VERTEX_IMAGE_MODEL;
+        try {
+            process.env.VERTEX_TEXT_MODEL = 'gemini-2.5-flash';
+            process.env.VERTEX_IMAGE_MODEL = 'gemini-3.1-flash-lite-image';
+            const config = vertexConfig();
+            expect(config.textModel).to.equal('gemini-2.5-flash');
+            expect(config.imageModel).to.equal('gemini-3.1-flash-lite-image');
+        } finally {
+            if (previousText == null) delete process.env.VERTEX_TEXT_MODEL;
+            else process.env.VERTEX_TEXT_MODEL = previousText;
+            if (previousImage == null) delete process.env.VERTEX_IMAGE_MODEL;
+            else process.env.VERTEX_IMAGE_MODEL = previousImage;
+        }
+    });
+
+    it('extracts inline image data from a Vertex Gemini image response', () => {
+        const image = firstImagePart({
+            candidates: [{
+                content: {
+                    parts: [{
+                        inlineData: {
+                            mimeType: 'image/webp',
+                            data: Buffer.from('image-bytes').toString('base64')
+                        }
+                    }]
+                }
+            }]
+        });
+        expect(image.mimeType).to.equal('image/webp');
+        expect(Buffer.from(image.data, 'base64').toString()).to.equal('image-bytes');
     });
 
     it('uses an image-rich default budget with a minimum visual quality gate', () => {
-        const previousMax = process.env.REPLICATE_SCORM_MAX_IMAGES;
-        const previousMin = process.env.REPLICATE_SCORM_MIN_IMAGES;
+        const previousMax = process.env.VERTEX_SCORM_MAX_IMAGES;
+        const previousMin = process.env.VERTEX_SCORM_MIN_IMAGES;
+        const oldReplicateMax = process.env.REPLICATE_SCORM_MAX_IMAGES;
+        const oldReplicateMin = process.env.REPLICATE_SCORM_MIN_IMAGES;
+        delete process.env.VERTEX_SCORM_MAX_IMAGES;
+        delete process.env.VERTEX_SCORM_MIN_IMAGES;
         delete process.env.REPLICATE_SCORM_MAX_IMAGES;
         delete process.env.REPLICATE_SCORM_MIN_IMAGES;
         try {
@@ -53,10 +112,14 @@ describe('Hybrid Gemini content + Replicate image SCORM integration', () => {
             expect(mediaConfig().minImages).to.equal(6);
             expect(imageSlideIndexes(new Array(10).fill({}), 7)).to.deep.equal([0, 2, 3, 5, 6, 8, 9]);
         } finally {
-            if (previousMax == null) delete process.env.REPLICATE_SCORM_MAX_IMAGES;
-            else process.env.REPLICATE_SCORM_MAX_IMAGES = previousMax;
-            if (previousMin == null) delete process.env.REPLICATE_SCORM_MIN_IMAGES;
-            else process.env.REPLICATE_SCORM_MIN_IMAGES = previousMin;
+            if (previousMax == null) delete process.env.VERTEX_SCORM_MAX_IMAGES;
+            else process.env.VERTEX_SCORM_MAX_IMAGES = previousMax;
+            if (previousMin == null) delete process.env.VERTEX_SCORM_MIN_IMAGES;
+            else process.env.VERTEX_SCORM_MIN_IMAGES = previousMin;
+            if (oldReplicateMax == null) delete process.env.REPLICATE_SCORM_MAX_IMAGES;
+            else process.env.REPLICATE_SCORM_MAX_IMAGES = oldReplicateMax;
+            if (oldReplicateMin == null) delete process.env.REPLICATE_SCORM_MIN_IMAGES;
+            else process.env.REPLICATE_SCORM_MIN_IMAGES = oldReplicateMin;
         }
     });
 
@@ -68,24 +131,26 @@ describe('Hybrid Gemini content + Replicate image SCORM integration', () => {
         expect(excerpt).to.match(/[.!?…]$/);
     });
 
-    it('asks FLUX for a photographic cover with no generated typography', () => {
-        const prompt = coverImagePrompt({ title: 'Phishing Awareness', summary: 'Learn how to recognise suspicious requests and verify them safely.' });
-        expect(prompt).to.include('Wide 16:9');
-        expect(prompt).to.include('No words');
-        expect(prompt).to.include('no vector art');
-        expect(prompt).to.include('believable workplace scene');
+    it('asks the image model for a wide modern visual with no people or generated typography', () => {
+        const prompt = coverImagePrompt({
+            title: 'Phishing Awareness',
+            summary: 'Learn how to recognise suspicious requests and verify them safely.'
+        });
+        expect(prompt.toLowerCase()).to.include('16:9');
+        expect(prompt).to.include('NON-HUMAN VISUAL ONLY');
+        expect(prompt).to.include('ABSOLUTELY NO TEXT IN THE IMAGE');
+        expect(prompt).to.include('modern semi-realistic 3D render');
+        expect(prompt).to.include('premium studio lighting');
     });
 
-    it('injects packaged raster imagery into every layout without audio controls', () => {
+    it('keeps Vertex raster imagery compatible with the existing package finalizer', () => {
         const html = '<html><head></head><body><script>var data=window.__quizmotoData={slides:[]};</script></body></html>';
         const patched = injectReplicateMediaUi(html);
-        expect(patched).to.include('quizmoto-replicate-media-v2');
-        expect(patched).to.include('qmx-cover-raster');
-        expect(patched).to.include('qmx-raster-panel');
-        expect(patched).to.include("stage.classList.add('qmx-raster-stage')");
+        expect(patched).to.include('quizmoto-replicate-media-v3');
+        expect(patched).to.include('quizmoto-replicate-media-script-v2');
         expect(patched).to.not.include('qmx-narration-btn');
         expect(patched).to.not.include('<audio');
-        expect(REPLICATE_MEDIA_CSS).to.include('grid-template-areas:"head image" "body image"');
+        expect(REPLICATE_MEDIA_CSS).to.include('quizmoto-replicate-media-v3');
 
         const manifest = '<manifest><resources><resource identifier="r"><file href="index.html"/></resource></resources></manifest>';
         const updated = injectManifestFiles(manifest, ['assets/media/course-cover.webp', 'assets/media/slide-001.webp']);
@@ -141,16 +206,9 @@ describe('Hybrid Gemini content + Replicate image SCORM integration', () => {
     });
 
     it('keeps server-side progress associated with the requesting user', () => {
-        const id = 'progress-test-1234';
-        setProgress(id, 'user-a', { task: 'analyze', percent: 8, stage: 'Creating course content with Gemini' });
+        const id = 'progress-test-vertex-1234';
+        setProgress(id, 'user-a', { task: 'analyze', percent: 8, stage: 'Creating course content with Vertex AI' });
         expect(getProgress(id, 'user-a').percent).to.equal(8);
         expect(getProgress(id, 'user-b')).to.equal(null);
-    });
-
-    it('still surfaces live Replicate status for image generation', () => {
-        const states = [];
-        notifyStatus({ onStatus: (state) => states.push(state) }, { id: 'p1', status: 'starting' }, 'black-forest-labs/flux-schnell');
-        expect(states).to.have.length(1);
-        expect(states[0]).to.include({ status: 'starting', predictionId: 'p1' });
     });
 });

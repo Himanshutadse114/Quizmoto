@@ -1,21 +1,20 @@
 const logger = require('../../utils/logger');
-const {
-    hasReplicateToken,
-    runReplicateModel,
-    outputUrl,
-    downloadReplicateAsset,
-    predictionRequestsPerMinute
-} = require('./ReplicateClient');
+const { generateImage: generateVertexImage, isVertexConfigured, vertexConfig } = require('./VertexAiClient');
 const {
     generateCoverVisualPrompt,
-    generateSlideVisualPrompt,
+    generateSlideVisualPrompt
+} = require('./VertexSlideVisualPromptService');
+const {
     coverInstruction,
     slideInstruction,
     sharedVisualRules
 } = require('./GeminiSlideVisualPromptService');
 
-const DEFAULT_IMAGE_MODEL = 'black-forest-labs/flux-schnell';
-const IMAGE_UNIT_USD = 0.003;
+// The filename and exported prepareReplicateCourseMedia symbol are retained as
+// compatibility shims because the author route and older tests import them.
+// Actual course image generation is now performed by Google Vertex AI.
+const DEFAULT_IMAGE_MODEL = 'gemini-3.1-flash-lite-image';
+const IMAGE_UNIT_USD = 0.034;
 
 function clean(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -29,15 +28,13 @@ function clampInt(value, fallback, min, max) {
 
 function mediaConfig() {
     return {
-        enabled: String(process.env.REPLICATE_SCORM_MEDIA || 'true').trim().toLowerCase() !== 'false',
-        imageModel: DEFAULT_IMAGE_MODEL,
-        maxImages: clampInt(process.env.REPLICATE_SCORM_MAX_IMAGES, 8, 1, 8),
-        minImages: clampInt(process.env.REPLICATE_SCORM_MIN_IMAGES, 6, 1, 8),
-        imageMegapixels: String(process.env.REPLICATE_SCORM_IMAGE_MEGAPIXELS || '1').trim(),
-        imageQuality: clampInt(process.env.REPLICATE_SCORM_IMAGE_QUALITY, 82, 50, 100),
-        imageRetries: clampInt(process.env.REPLICATE_SCORM_IMAGE_RETRIES, 2, 2, 4),
-        imageConcurrency: 1,
-        retryBaseMs: clampInt(process.env.REPLICATE_SCORM_IMAGE_RETRY_BASE_MS, 1400, 700, 5000)
+        enabled: String(process.env.VERTEX_SCORM_MEDIA || 'true').trim().toLowerCase() !== 'false',
+        imageModel: clean(process.env.VERTEX_IMAGE_MODEL || vertexConfig().imageModel || DEFAULT_IMAGE_MODEL),
+        maxImages: clampInt(process.env.VERTEX_SCORM_MAX_IMAGES || process.env.REPLICATE_SCORM_MAX_IMAGES, 8, 1, 8),
+        minImages: clampInt(process.env.VERTEX_SCORM_MIN_IMAGES || process.env.REPLICATE_SCORM_MIN_IMAGES, 6, 1, 8),
+        imageRetries: clampInt(process.env.VERTEX_SCORM_IMAGE_RETRIES, 2, 0, 4),
+        retryBaseMs: clampInt(process.env.VERTEX_SCORM_IMAGE_RETRY_BASE_MS, 1200, 300, 10000),
+        imageUnitUsd: Number(process.env.VERTEX_IMAGE_UNIT_USD || IMAGE_UNIT_USD)
     };
 }
 
@@ -50,8 +47,6 @@ function emit(onProgress, patch) {
     try {
         onProgress(patch);
     } catch (err) {
-        // Progress callbacks are normally best-effort, but cancellation must be
-        // allowed to unwind the media pipeline instead of being swallowed.
         if (isGenerationCancelled(err)) throw err;
     }
 }
@@ -88,83 +83,26 @@ function imageSlideIndexes(slides, count) {
 
 function isRetryableImageError(err) {
     const code = String(err?.code || '');
-    if (code === 'REPLICATE_API_ERROR') return Number(err?.status || 0) >= 500;
     return [
-        'REPLICATE_NETWORK',
-        'REPLICATE_TIMEOUT',
-        'REPLICATE_RATE_LIMIT',
-        'REPLICATE_PREDICTION_FAILED',
-        'REPLICATE_CANCELED',
-        'REPLICATE_MEDIA_DOWNLOAD',
-        'REPLICATE_IMAGE_EMPTY',
-        'REPLICATE_OUTPUT_INVALID'
-    ].includes(code);
+        'VERTEX_QUOTA',
+        'VERTEX_UNAVAILABLE',
+        'VERTEX_API_ERROR',
+        'VERTEX_IMAGE_EMPTY',
+        'VERTEX_IMAGE_INVALID',
+        'ECONNRESET',
+        'ETIMEDOUT',
+        'ENOTFOUND'
+    ].includes(code) || Number(err?.status || 0) >= 500;
 }
 
 function retryDelayMs(err, attempt, config) {
-    const rateLimited = String(err?.code || '') === 'REPLICATE_RATE_LIMIT';
-    const base = rateLimited ? Math.max(3000, config.retryBaseMs * 2) : config.retryBaseMs;
-    const exponential = Math.min(30000, base * Math.pow(2, Math.max(0, attempt)));
-    const serverWait = Math.max(0, Number(err?.retryAfterMs || 0));
-    return Math.min(60000, Math.max(exponential, serverWait > 0 ? serverWait + 500 : 0));
+    const rateLimited = String(err?.code || '') === 'VERTEX_QUOTA' || Number(err?.status || 0) === 429;
+    const base = rateLimited ? Math.max(2500, config.retryBaseMs * 2) : config.retryBaseMs;
+    return Math.min(30000, base * Math.pow(2, Math.max(0, attempt)));
 }
 
-function rateLimitDetail(state) {
-    const seconds = Math.max(1, Math.ceil(Number(state?.waitMs || 0) / 1000));
-    const rpm = Number(state?.rateLimitPerMinute || predictionRequestsPerMinute());
-    return `Replicate allows ${rpm} new prediction request(s) per minute. The next image request will start in about ${seconds}s.`;
-}
-
-async function generateImage(prompt, path, config, onStatus, checkCancelled = null) {
-    let lastError = null;
-    const attempts = 1 + config.imageRetries;
-    for (let attempt = 0; attempt < attempts; attempt += 1) {
-        try {
-            if (typeof checkCancelled === 'function') checkCancelled();
-            if (attempt > 0 && typeof onStatus === 'function') onStatus({ status: 'retrying', attempt: attempt + 1, lastError });
-            const output = await runReplicateModel(config.imageModel, {
-                prompt,
-                go_fast: true,
-                megapixels: config.imageMegapixels,
-                num_outputs: 1,
-                aspect_ratio: '16:9',
-                output_format: 'webp',
-                output_quality: config.imageQuality,
-                num_inference_steps: 4,
-                disable_safety_checker: false
-            }, {
-                timeoutMs: Number(process.env.REPLICATE_SCORM_IMAGE_TIMEOUT_MS || 180000),
-                onStatus
-            });
-            if (typeof checkCancelled === 'function') checkCancelled();
-            const url = outputUrl(output);
-            if (!url) {
-                const err = new Error('Replicate image model returned no output URL.');
-                err.code = 'REPLICATE_IMAGE_EMPTY';
-                throw err;
-            }
-            const body = await downloadReplicateAsset(url);
-            if (typeof checkCancelled === 'function') checkCancelled();
-            if (!body || body.length < 512) {
-                const err = new Error('Replicate image download was empty or incomplete.');
-                err.code = 'REPLICATE_IMAGE_EMPTY';
-                throw err;
-            }
-            return { path, body, contentType: 'image/webp' };
-        } catch (err) {
-            if (isGenerationCancelled(err)) throw err;
-            lastError = err;
-            if (attempt >= attempts - 1 || !isRetryableImageError(err)) break;
-            if (typeof checkCancelled === 'function') checkCancelled();
-            const delayMs = retryDelayMs(err, attempt, config);
-            logger.warn('scorm_replicate_image_retry', {
-                module: 'scorm', path, attempt: attempt + 1, nextAttempt: attempt + 2,
-                delayMs, code: err.code, status: err.status || null, error: err.message
-            });
-            await new Promise((resolve) => setTimeout(resolve, delayMs));
-        }
-    }
-    throw lastError || new Error('Replicate image generation failed.');
+function rateLimitDetail() {
+    return 'Vertex AI is temporarily rate-limited. The image request will retry automatically.';
 }
 
 function warningSummary(warnings, max = 3) {
@@ -197,15 +135,67 @@ function assignRasterVisual(slide, path, promptInfo) {
     slide.visualSource = 'ai_raster';
     slide.visualAssetType = 'image/webp';
     slide.imagePrompt = promptInfo.prompt;
-    slide.imagePromptProvider = 'gemini';
+    slide.imagePromptProvider = 'vertex_ai';
     slide.imagePromptModel = promptInfo.model;
     return slide;
+}
+
+async function sleep(ms) {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function generateImage(prompt, path, config, onProgress, checkCancelled) {
+    let lastError = null;
+    const attempts = 1 + config.imageRetries;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+        try {
+            checkCancelled();
+            if (attempt > 0) {
+                emit(onProgress, {
+                    stage: 'Retrying course image',
+                    detail: `Retrying a temporary Vertex AI image failure (attempt ${attempt + 1} of ${attempts}).`
+                });
+            }
+            const result = await generateVertexImage({
+                prompt,
+                model: config.imageModel,
+                aspectRatio: '16:9'
+            });
+            checkCancelled();
+            return {
+                path,
+                body: result.body,
+                contentType: result.contentType || 'image/webp'
+            };
+        } catch (error) {
+            if (isGenerationCancelled(error)) throw error;
+            lastError = error;
+            if (attempt >= attempts - 1 || !isRetryableImageError(error)) break;
+            const delayMs = retryDelayMs(error, attempt, config);
+            if (String(error?.code || '') === 'VERTEX_QUOTA' || Number(error?.status || 0) === 429) {
+                emit(onProgress, { stage: 'Waiting for Vertex AI capacity', detail: rateLimitDetail() });
+            }
+            logger.warn('scorm_vertex_image_retry', {
+                module: 'scorm',
+                path,
+                attempt: attempt + 1,
+                nextAttempt: attempt + 2,
+                delayMs,
+                code: error.code || null,
+                status: error.status || null,
+                error: error.message
+            });
+            await sleep(delayMs);
+        }
+    }
+    throw lastError || new Error('Vertex AI image generation failed.');
 }
 
 async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     const onProgress = opts.onProgress;
     const checkCancelled = typeof opts.checkCancelled === 'function' ? opts.checkCancelled : () => {};
     checkCancelled();
+
     const analysis = rawAnalysis && typeof rawAnalysis === 'object' ? { ...rawAnalysis } : {};
     const slides = Array.isArray(analysis.slides) ? analysis.slides.map(clearLegacyVisuals) : [];
 
@@ -215,18 +205,21 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     delete analysis.coverVisualAsset;
     delete analysis.coverMobileVisualAsset;
 
-    // This flag is consumed by the canonical course builder. It explicitly
-    // disables the legacy SVG generator so it cannot overwrite FLUX WebPs.
     analysis.visualMode = 'raster';
-    analysis.visualProvider = 'replicate';
-    analysis.visualPromptProvider = 'gemini';
+    analysis.visualProvider = 'vertex_ai';
+    analysis.visualPromptProvider = 'vertex_ai';
 
     const config = mediaConfig();
-    if (!config.enabled || !hasReplicateToken()) {
-        emit(onProgress, { percent: 42, stage: 'Image generation unavailable', detail: 'Replicate image generation is not configured.' });
-        const err = new Error('Replicate image generation is required. Configure REPLICATE_API_TOKEN and keep REPLICATE_SCORM_MEDIA enabled.');
-        err.code = 'REPLICATE_IMAGES_REQUIRED';
-        throw err;
+    if (!config.enabled || !isVertexConfigured()) {
+        emit(onProgress, {
+            percent: 42,
+            stage: 'Image generation unavailable',
+            detail: 'Google Vertex AI image generation is not configured.'
+        });
+        const error = new Error('Vertex AI image generation is required. Configure GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_CLOUD_PROJECT and VERTEX_IMAGE_MODEL on the backend.');
+        // Keep the legacy code for route compatibility until the route is renamed.
+        error.code = 'REPLICATE_IMAGES_REQUIRED';
+        throw error;
     }
 
     const files = [];
@@ -234,49 +227,51 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     const successfulSlideIndexes = new Set();
     let coverGenerated = false;
     let slideImagesGenerated = 0;
-    let promptModel = null;
+    let promptModel = analysis.visualPromptModel || null;
 
-    const selectedIndexes = imageSlideIndexes(slides, Math.min(Math.max(0, config.maxImages - 1), slides.length));
+    const selectedIndexes = imageSlideIndexes(
+        slides,
+        Math.min(Math.max(0, config.maxImages - 1), slides.length)
+    );
     const availableImageSlots = 1 + selectedIndexes.length;
     const requiredImages = Math.min(availableImageSlots, config.maxImages, config.minImages);
     const requiredSlideImages = Math.max(0, requiredImages - 1);
 
-    checkCancelled();
     emit(onProgress, {
-        percent: 7,
-        stage: 'Planning course visuals with Gemini',
-        detail: `Gemini will create a dedicated visual prompt for the cover and each of ${selectedIndexes.length} selected learning slides. FLUX Schnell will render those prompts.`
+        percent: 38,
+        stage: 'Generating course images with Vertex AI',
+        detail: `Creating one 16:9 cover and up to ${selectedIndexes.length} slide visuals with ${config.imageModel}.`
     });
 
     try {
         checkCancelled();
-        emit(onProgress, { percent: 9, stage: 'Writing cover image prompt with Gemini', detail: 'Gemini is translating the overall course meaning into a non-human, no-text cover concept.' });
         const coverPrompt = await generateCoverVisualPrompt({ ...analysis, slides });
-        checkCancelled();
-        promptModel = coverPrompt.model;
+        promptModel = promptModel || coverPrompt.model;
         analysis.coverImagePrompt = coverPrompt.prompt;
-        analysis.coverImagePromptProvider = 'gemini';
+        analysis.coverImagePromptProvider = 'vertex_ai';
         analysis.coverImagePromptModel = coverPrompt.model;
 
+        emit(onProgress, {
+            percent: 40,
+            stage: 'Generating course cover image',
+            detail: 'Vertex AI is rendering the course cover in a wide 16:9 format.'
+        });
         const coverPath = 'assets/media/course-cover.webp';
-        const coverFile = await generateImage(coverPrompt.prompt, coverPath, config, (state) => {
-            checkCancelled();
-            const status = String(state?.status || '').toLowerCase();
-            if (status === 'rate_limit_wait') emit(onProgress, { percent: 11, stage: 'Waiting for Replicate rate-limit slot', detail: rateLimitDetail(state), modelStatus: status });
-            if (status === 'starting') emit(onProgress, { percent: 12, stage: 'Starting cover image', detail: 'FLUX Schnell accepted Gemini’s cover prompt.', modelStatus: status, predictionId: state.predictionId || '' });
-            if (status === 'processing') emit(onProgress, { percent: 16, stage: 'Generating course cover image', detail: 'Rendering the Gemini-directed 16:9 cover image.', modelStatus: status, predictionId: state.predictionId || '' });
-            if (status === 'retrying') emit(onProgress, { percent: 13, stage: 'Retrying course cover image', detail: 'Retrying the cover after a temporary image-service issue.' });
-        }, checkCancelled);
-        checkCancelled();
+        const coverFile = await generateImage(coverPrompt.prompt, coverPath, config, onProgress, checkCancelled);
         files.push(coverFile);
         analysis.coverImageAsset = coverPath;
         analysis.coverVisualAsset = coverPath;
         analysis.coverMobileVisualAsset = coverPath;
         coverGenerated = true;
-    } catch (err) {
-        if (isGenerationCancelled(err)) throw err;
-        warnings.push(`Cover image: ${err.message}`);
-        logger.warn('scorm_course_cover_failed', { module: 'scorm', error: err.message, code: err.code, status: err.status || null });
+    } catch (error) {
+        if (isGenerationCancelled(error)) throw error;
+        warnings.push(`Cover image: ${error.message}`);
+        logger.warn('scorm_vertex_course_cover_failed', {
+            module: 'scorm',
+            code: error.code || null,
+            status: error.status || null,
+            error: error.message
+        });
     }
 
     let completedJobs = 0;
@@ -284,57 +279,40 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
         checkCancelled();
         const path = `assets/media/slide-${String(slideIndex + 1).padStart(3, '0')}.webp`;
         try {
-            const basePercent = 22 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 40);
+            const basePercent = 44 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 24);
             emit(onProgress, {
                 percent: basePercent,
-                stage: `Writing slide ${slideIndex + 1} image prompt with Gemini`,
-                detail: `Gemini is reading only slide ${slideIndex + 1}'s lesson, title and key points to design the correct visual.`
+                stage: `Generating slide ${slideIndex + 1} image`,
+                detail: `Vertex AI is rendering a slide-specific 16:9 visual (${completedJobs + 1} of ${selectedIndexes.length}).`
             });
-            const promptInfo = await generateSlideVisualPrompt(slides[slideIndex], { ...analysis, slides }, slideIndex);
-            checkCancelled();
+            const promptInfo = await generateSlideVisualPrompt(
+                slides[slideIndex],
+                { ...analysis, slides },
+                slideIndex
+            );
             promptModel = promptModel || promptInfo.model;
-
-            const file = await generateImage(promptInfo.prompt, path, config, (state) => {
-                checkCancelled();
-                const status = String(state?.status || '').toLowerCase();
-                if (status === 'rate_limit_wait') emit(onProgress, {
-                    percent: basePercent,
-                    stage: `Waiting to generate slide ${slideIndex + 1} image`,
-                    detail: rateLimitDetail(state),
-                    modelStatus: status
-                });
-                if (status === 'starting' || status === 'processing') emit(onProgress, {
-                    percent: Math.min(68, basePercent + 2),
-                    stage: `Generating slide ${slideIndex + 1} image`,
-                    detail: 'FLUX Schnell is rendering the Gemini-generated slide-specific prompt.',
-                    modelStatus: status,
-                    predictionId: state.predictionId || ''
-                });
-                if (status === 'retrying') emit(onProgress, {
-                    percent: basePercent,
-                    stage: `Retrying slide ${slideIndex + 1} image`,
-                    detail: 'Retrying this image after a temporary Replicate failure.'
-                });
-            }, checkCancelled);
-
-            checkCancelled();
+            const file = await generateImage(promptInfo.prompt, path, config, onProgress, checkCancelled);
             files.push(file);
             assignRasterVisual(slides[slideIndex], path, promptInfo);
             successfulSlideIndexes.add(slideIndex);
             slideImagesGenerated += 1;
-        } catch (err) {
-            if (isGenerationCancelled(err)) throw err;
-            warnings.push(`Slide ${slideIndex + 1} image: ${err.message}`);
-            logger.warn('scorm_slide_image_failed', { module: 'scorm', slideIndex, error: err.message, code: err.code, status: err.status || null });
+        } catch (error) {
+            if (isGenerationCancelled(error)) throw error;
+            warnings.push(`Slide ${slideIndex + 1} image: ${error.message}`);
+            logger.warn('scorm_vertex_slide_image_failed', {
+                module: 'scorm',
+                slideIndex,
+                code: error.code || null,
+                status: error.status || null,
+                error: error.message
+            });
         } finally {
-            if (!isGenerationCancelled(null)) {
-                completedJobs += 1;
-                emit(onProgress, {
-                    percent: 24 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 44),
-                    stage: 'Generating learning-slide images',
-                    detail: `${completedJobs} of ${selectedIndexes.length} slide image jobs completed.`
-                });
-            }
+            completedJobs += 1;
+            emit(onProgress, {
+                percent: 44 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 24),
+                stage: 'Generating learning-slide images',
+                detail: `${completedJobs} of ${selectedIndexes.length} slide image jobs completed.`
+            });
         }
     }
 
@@ -344,32 +322,35 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
             ...selectedIndexes.filter((index) => !successfulSlideIndexes.has(index)),
             ...slides.map((_, index) => index).filter((index) => !successfulSlideIndexes.has(index) && !selectedIndexes.includes(index))
         ];
-        emit(onProgress, { percent: 69, stage: 'Recovering missing course images', detail: 'Regenerating slide-specific Gemini prompts for any missing visual slots.' });
+        emit(onProgress, {
+            percent: 69,
+            stage: 'Recovering missing course images',
+            detail: 'Vertex AI is retrying missing visual slots before packaging the course.'
+        });
         for (const slideIndex of recoveryCandidates) {
             checkCancelled();
             if (slideImagesGenerated >= requiredSlideImages) break;
             const path = `assets/media/slide-${String(slideIndex + 1).padStart(3, '0')}.webp`;
             try {
-                const promptInfo = await generateSlideVisualPrompt(slides[slideIndex], { ...analysis, slides }, slideIndex);
-                checkCancelled();
-                const file = await generateImage(promptInfo.prompt, path, config, (state) => {
-                    checkCancelled();
-                    if (String(state?.status || '').toLowerCase() === 'rate_limit_wait') emit(onProgress, {
-                        percent: 70,
-                        stage: `Waiting to recover slide ${slideIndex + 1} image`,
-                        detail: rateLimitDetail(state),
-                        modelStatus: 'rate_limit_wait'
-                    });
-                }, checkCancelled);
-                checkCancelled();
+                const promptInfo = await generateSlideVisualPrompt(
+                    slides[slideIndex],
+                    { ...analysis, slides },
+                    slideIndex
+                );
+                const file = await generateImage(promptInfo.prompt, path, config, onProgress, checkCancelled);
                 files.push(file);
                 assignRasterVisual(slides[slideIndex], path, promptInfo);
                 successfulSlideIndexes.add(slideIndex);
                 slideImagesGenerated += 1;
-            } catch (err) {
-                if (isGenerationCancelled(err)) throw err;
-                warnings.push(`Recovery slide ${slideIndex + 1}: ${err.message}`);
-                logger.warn('scorm_slide_image_recovery_failed', { module: 'scorm', slideIndex, error: err.message, code: err.code, status: err.status || null });
+            } catch (error) {
+                if (isGenerationCancelled(error)) throw error;
+                warnings.push(`Recovery slide ${slideIndex + 1}: ${error.message}`);
+                logger.warn('scorm_vertex_slide_image_recovery_failed', {
+                    module: 'scorm',
+                    slideIndex,
+                    code: error.code || null,
+                    error: error.message
+                });
             }
         }
     }
@@ -378,71 +359,79 @@ async function prepareReplicateCourseMedia(rawAnalysis, opts = {}) {
     if (!coverGenerated || slideImagesGenerated < requiredSlideImages) {
         const totalGenerated = (coverGenerated ? 1 : 0) + slideImagesGenerated;
         const reason = warningSummary(warnings);
-        const err = new Error(`Course image generation was incomplete. Generated ${totalGenerated} image(s), but at least ${requiredImages} including the front cover are required.${reason ? ` Provider reported: ${reason}` : ''}`);
-        err.code = 'REPLICATE_IMAGES_INCOMPLETE';
-        err.imageWarnings = warnings;
-        emit(onProgress, { percent: 72, stage: 'Image generation incomplete', detail: err.message });
-        throw err;
+        const error = new Error(`Course image generation was incomplete. Generated ${totalGenerated} image(s), but at least ${requiredImages} including the front cover are required.${reason ? ` Vertex AI reported: ${reason}` : ''}`);
+        error.code = 'REPLICATE_IMAGES_INCOMPLETE';
+        error.imageWarnings = warnings;
+        emit(onProgress, { percent: 72, stage: 'Image generation incomplete', detail: error.message });
+        throw error;
     }
 
     const totalImagesGenerated = (coverGenerated ? 1 : 0) + slideImagesGenerated;
+    const estimatedUnit = Number.isFinite(config.imageUnitUsd) ? config.imageUnitUsd : IMAGE_UNIT_USD;
+    const mediaMetadata = {
+        provider: 'vertex_ai',
+        imageModel: config.imageModel,
+        visualPromptProvider: 'vertex_ai',
+        visualPromptModel: promptModel,
+        estimatedImageUnitUsd: estimatedUnit,
+        coverGenerated,
+        slideImagesGenerated,
+        totalImagesGenerated,
+        estimatedImageCostUsd: Number((totalImagesGenerated * estimatedUnit).toFixed(4)),
+        maxImages: config.maxImages,
+        minImages: requiredImages,
+        selectedSlideIndexes: selectedIndexes,
+        successfulSlideIndexes: Array.from(successfulSlideIndexes).sort((a, b) => a - b),
+        imageStyle: 'vertex_directed_simple_non_human_no_text',
+        canonicalVisualAssets: true,
+        legacySvgFallback: false,
+        audio: false,
+        warnings
+    };
+
     const updated = {
         ...analysis,
         slides,
         visualMode: 'raster',
-        visualProvider: 'replicate',
-        visualPromptProvider: 'gemini',
-        mediaProvider: 'replicate',
-        replicateMedia: {
-            imageModel: config.imageModel,
-            visualPromptProvider: 'gemini',
-            visualPromptModel: promptModel,
-            imageMegapixels: config.imageMegapixels,
-            estimatedImageUnitUsd: IMAGE_UNIT_USD,
-            coverGenerated,
-            slideImagesGenerated,
-            totalImagesGenerated,
-            estimatedImageCostUsd: Number((totalImagesGenerated * IMAGE_UNIT_USD).toFixed(4)),
-            maxImages: config.maxImages,
-            minImages: requiredImages,
-            predictionRequestsPerMinute: predictionRequestsPerMinute(),
-            selectedSlideIndexes: selectedIndexes,
-            successfulSlideIndexes: Array.from(successfulSlideIndexes).sort((a, b) => a - b),
-            imageStyle: 'gemini_directed_simple_non_human_no_text',
-            canonicalVisualAssets: true,
-            legacySvgFallback: false,
-            audio: false,
-            warnings
-        }
+        visualProvider: 'vertex_ai',
+        visualPromptProvider: 'vertex_ai',
+        mediaProvider: 'vertex_ai',
+        vertexMedia: mediaMetadata,
+        // Retain this alias temporarily because existing package/UI code may
+        // still read replicateMedia metadata. Its provider field is explicit.
+        replicateMedia: mediaMetadata
     };
 
-    checkCancelled();
     emit(onProgress, {
         percent: 76,
-        stage: 'Canonical course images ready',
-        detail: `${totalImagesGenerated} Gemini-directed FLUX images are now attached directly to the course data. Legacy SVG generation is disabled for this course.`
+        stage: 'Course images ready',
+        detail: `${totalImagesGenerated} Vertex AI images are attached to the course. Legacy SVG generation remains disabled.`
     });
-    logger.info('scorm_raster_media_ready', {
-        module: 'scorm', imageModel: config.imageModel, promptModel, coverGenerated, slideImagesGenerated,
-        totalImagesGenerated, requiredImages, predictionRequestsPerMinute: predictionRequestsPerMinute(),
-        files: files.length, warnings: warnings.length
+    logger.info('scorm_vertex_raster_media_ready', {
+        module: 'scorm',
+        imageModel: config.imageModel,
+        promptModel,
+        coverGenerated,
+        slideImagesGenerated,
+        totalImagesGenerated,
+        requiredImages,
+        files: files.length,
+        warnings: warnings.length
     });
 
-    return { analysis: updated, files, metadata: updated.replicateMedia };
+    return { analysis: updated, files, metadata: mediaMetadata };
 }
 
-// Deprecated prompt helpers are retained only for tests/debugging. They now
-// expose the Gemini instructions, not a hard-coded FLUX prompt.
 function coverImagePrompt(analysis) {
-    return coverInstruction(analysis);
+    return coverInstruction(analysis).replace(/FLUX/gi, 'the image model');
 }
 
 function slideImagePrompt(slide, courseTitle) {
-    return slideInstruction(slide, { title: courseTitle }, 0);
+    return slideInstruction(slide, { title: courseTitle }, 0).replace(/FLUX/gi, 'the image model');
 }
 
 function recoverySlideImagePrompt(slide, courseTitle) {
-    return slideInstruction(slide, { title: courseTitle }, 0);
+    return slideImagePrompt(slide, courseTitle);
 }
 
 function noHumanNoTextRules() {
