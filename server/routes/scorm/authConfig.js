@@ -25,12 +25,12 @@ function requireWorkspaceAdmin(req, res, next) {
     next();
 }
 
-function linkPayload(workspaceId) {
+function linkPayload() {
     return {
-        learnerPortalPath: `/learn/${workspaceId}`,
-        staffLoginPath: `/login?workspace=${encodeURIComponent(workspaceId)}`,
-        staffMicrosoftCallbackPath: `/login/workspace/${workspaceId}/microsoft/callback`,
-        learnerMicrosoftCallbackPath: `/learn/${workspaceId}/microsoft/callback`
+        learnerPortalPath: '/learn',
+        staffLoginPath: '/login',
+        staffMicrosoftCallbackPath: '/auth/microsoft/callback',
+        learnerMicrosoftCallbackPath: '/auth/microsoft/callback'
     };
 }
 
@@ -43,7 +43,7 @@ router.get('/', auth, requireWorkspaceAdmin, async (req, res) => {
                 ...serializeAuthConfig(config, { workspace }),
                 ...serializeStaffAuthConfig(config, { workspace })
             },
-            ...linkPayload(workspace.id)
+            ...linkPayload()
         });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to load authentication settings.', code: err.code });
@@ -65,7 +65,7 @@ router.put('/', auth, requireWorkspaceAdmin, async (req, res) => {
         res.json({
             ok: true,
             config: { ...learnerConfig, ...staffConfig },
-            ...linkPayload(req.scormWorkspaceId)
+            ...linkPayload()
         });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to save authentication settings.', code: err.code });
