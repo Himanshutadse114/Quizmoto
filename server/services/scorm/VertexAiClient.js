@@ -130,7 +130,7 @@ function firstImagePart(raw) {
             if (inlineData?.data && String(inlineData?.mimeType || inlineData?.mime_type || '').startsWith('image/')) {
                 return {
                     data: String(inlineData.data),
-                    mimeType: String(inlineData.mimeType || inlineData.mime_type || 'image/png')
+                    mimeType: String(inlineData.mimeType || inlineData.mime_type || 'image/jpeg')
                 };
             }
         }
@@ -154,11 +154,13 @@ async function generateImage({ prompt, model, aspectRatio = '16:9' }) {
         contents: [{ role: 'user', parts: [{ text: clean(prompt) }] }],
         generationConfig: {
             responseModalities: ['TEXT', 'IMAGE'],
-            maxOutputTokens: 4096,
             imageConfig: {
                 aspectRatio,
                 imageSize: '1K',
-                imageOutputOptions: { mimeType: 'image/webp' }
+                imageOutputOptions: {
+                    mimeType: 'image/jpeg',
+                    compressionQuality: 88
+                }
             }
         }
     });
