@@ -14,6 +14,8 @@ function isAnalyticsReadRoute(url) {
     if (path === '/api/scorm/courses/reports/all') return true;
     if (path === '/api/scorm/courses/reports/learner') return true;
     if (/^\/api\/scorm\/courses\/[^/]+\/report$/.test(path)) return true;
+    if (path === '/api/scorm/campaigns') return true;
+    if (/^\/api\/scorm\/campaigns\/[^/]+\/analytics$/.test(path)) return true;
     return false;
 }
 
