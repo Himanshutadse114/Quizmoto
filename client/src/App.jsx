@@ -28,6 +28,7 @@ const PlayerLogin = lazy(() => import('./pages/Player/PlayerLogin'));
 const PlayerDashboard = lazy(() => import('./pages/Player/PlayerDashboard'));
 
 const ScormAuth = lazy(() => import('./pages/Scorm/ScormAuth'));
+const MicrosoftDiscovery = lazy(() => import('./pages/Scorm/MicrosoftDiscovery'));
 const ScormPlatformShell = lazy(() => import('./pages/Scorm/ScormPlatformShell'));
 const ScormHome = lazy(() => import('./pages/Scorm/Home'));
 const PendingScormHome = lazy(() => import('./pages/Scorm/PendingHome'));
@@ -68,9 +69,9 @@ function RouteFallback() {
 }
 
 function PlatformEntry() {
-  const { token, platformAccess, loading } = useAuth();
+  const { token, platformAccess, loading, user } = useAuth();
   if (loading) return <RouteFallback />;
-  if (token && platformAccess) return <Navigate to="/scorm" replace />;
+  if (token && platformAccess) return <Navigate to={user?.quizmotoOnly ? '/scorm/quizmoto' : '/scorm'} replace />;
   return <ScormAuth />;
 }
 
@@ -87,6 +88,7 @@ function isAnalyticsViewer(user) {
 
 function ScormFeatureGate({ featureId, analyticsAllowed = false, children }) {
   const { scormAccess, user } = useAuth();
+  if (user?.quizmotoOnly) return <Navigate to="/scorm/quizmoto" replace />;
   if (!scormAccess) return <ScormFeatureLocked featureId={featureId} />;
   if (isAnalyticsViewer(user) && !analyticsAllowed) return <Navigate to="/scorm/tracking" replace />;
   return children;
@@ -99,6 +101,7 @@ function ScormOperationalGate({ children }) {
 
 function ScormHomeGate() {
   const { scormAccess, user } = useAuth();
+  if (user?.quizmotoOnly) return <Navigate to="/scorm/quizmoto" replace />;
   if (scormAccess && isAnalyticsViewer(user)) return <Navigate to="/scorm/tracking" replace />;
   return scormAccess ? <ScormHome /> : <PendingScormHome />;
 }
@@ -158,6 +161,7 @@ function AppRoutes() {
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/contact" element={<MarketingSite src="/landing/contact/index.html" title="Contact LMSGEN" tabTitle="Contact LMSGEN | Learning Platform" />} />
         <Route path="/login" element={<PlatformEntry />} />
+        <Route path="/login/microsoft" element={<MicrosoftDiscovery />} />
         <Route path="/auth/microsoft/callback" element={<ScormMicrosoftUniversalCallback />} />
         <Route path="/login/workspace/:workspaceId/microsoft/callback" element={<ScormMicrosoftStaffCallback />} />
         <Route path="/scorm/login" element={<Navigate to="/login" replace />} />
@@ -211,6 +215,7 @@ function AppRoutes() {
         <Route path="/host/game-old/:pin" element={<LegacyQuizRedirect kind="game" />} />
 
         <Route path="/learn" element={<ScormUniversalLearnerPortal />} />
+        <Route path="/learn/microsoft" element={<MicrosoftDiscovery />} />
         <Route path="/learn/:workspaceId" element={<ScormLearnerPortal />} />
         <Route path="/learn/:workspaceId/microsoft/callback" element={<ScormMicrosoftLearnerCallback />} />
         <Route path="/campaign/:campaignId" element={<ScormCampaignPortal />} />
