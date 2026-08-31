@@ -17,6 +17,7 @@ const {
 const { ensurePackageLaunchMetadata } = require('./ScormLaunchMetadataService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const GLOBAL_GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1001652255296-695gf3vjul0fjh1oden4k2n6tvvdvncn.apps.googleusercontent.com';
 const JOINING_MODES = Object.freeze(['assigned_email', 'sso_preferred', 'sso_only']);
 const microsoftKeyCache = new Map();
 
@@ -166,6 +167,24 @@ async function verifyGoogleCredential(config, credential) {
     return identity;
 }
 
+async function verifyGlobalGoogleCredential(credential) {
+    const client = new OAuth2Client(GLOBAL_GOOGLE_CLIENT_ID);
+    let ticket;
+    try {
+        ticket = await client.verifyIdToken({
+            idToken: String(credential || ''),
+            audience: GLOBAL_GOOGLE_CLIENT_ID
+        });
+    } catch (_) {
+        throw fail('Google sign-in could not be verified.', 'SCORM_GOOGLE_SSO_INVALID', 401);
+    }
+    const payload = ticket.getPayload() || {};
+    if (payload.email_verified !== true) {
+        throw fail('A verified Google email address is required.', 'SCORM_GOOGLE_EMAIL_UNVERIFIED', 401);
+    }
+    return extractIdentity(payload, 'google');
+}
+
 async function getMicrosoftSigningKey(tenantId, kid) {
     const cacheKey = String(tenantId || '').toLowerCase();
     let cached = microsoftKeyCache.get(cacheKey);
@@ -304,8 +323,25 @@ function serializeAssignment(registration) {
     };
 }
 
-async function createLearnerSession({ workspaceId, provider, credential, email, name }) {
+async function createLearnerSessionFromIdentity({ workspaceId, identity, requireGoogleEnabled = false }) {
     const { workspace, config } = await getWorkspaceAndConfig(workspaceId);
+    if (requireGoogleEnabled && identity?.provider === 'google' && !config?.googleEnabled) {
+        throw fail('Google learner sign-in is not enabled for this organisation.', 'SCORM_GOOGLE_SSO_DISABLED', 403);
+    }
+    if (!identity?.email) throw fail('Learner identity is missing an email address.', 'SCORM_LEARNER_EMAIL_REQUIRED', 400);
+    assertDomainAllowed(identity.email, config);
+    const assignments = await assertLearnerAssigned(workspace, identity);
+    const token = issueLearnerToken({ workspace, identity });
+    return {
+        token,
+        learner: { email: identity.email, name: identity.name, provider: identity.provider },
+        workspace: { id: workspace.id, name: workspace.name },
+        courses: assignments.map(serializeAssignment)
+    };
+}
+
+async function createLearnerSession({ workspaceId, provider, credential, email, name }) {
+    const { config } = await getWorkspaceAndConfig(workspaceId);
     let identity;
     if (provider === 'google') {
         identity = await verifyGoogleCredential(config, credential);
@@ -323,17 +359,9 @@ async function createLearnerSession({ workspaceId, provider, credential, email, 
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identity.email)) {
             throw fail('Enter your assigned learner email.', 'SCORM_LEARNER_EMAIL_REQUIRED', 400);
         }
-        assertDomainAllowed(identity.email, config);
     }
 
-    const assignments = await assertLearnerAssigned(workspace, identity);
-    const token = issueLearnerToken({ workspace, identity });
-    return {
-        token,
-        learner: { email: identity.email, name: identity.name, provider: identity.provider },
-        workspace: { id: workspace.id, name: workspace.name },
-        courses: assignments.map(serializeAssignment)
-    };
+    return createLearnerSessionFromIdentity({ workspaceId, identity });
 }
 
 async function getLearnerDashboard(context) {
@@ -405,6 +433,7 @@ module.exports = {
     getWorkspaceAndConfig,
     saveAuthConfig,
     verifyGoogleCredential,
+    verifyGlobalGoogleCredential,
     verifyMicrosoftCredential,
     findAssignedRegistrations,
     assertLearnerAssigned,
@@ -412,6 +441,7 @@ module.exports = {
     verifyLearnerToken,
     learnerAuthMiddleware,
     createLearnerSession,
+    createLearnerSessionFromIdentity,
     getLearnerDashboard,
     launchLearnerCourse
 };
