@@ -15,6 +15,7 @@ const { serializeWorkspace } = require('../../services/scorm/ScormWorkspaceServi
 const {
     listTenants,
     createTenant,
+    updateTenantEntitlement,
     changeTenantAdmin,
     setTenantStatus
 } = require('../../services/scorm/ScormTenantService');
@@ -89,8 +90,6 @@ router.get('/me', auth, async (req, res) => {
     });
 });
 
-// Primary Super Admin control surface: tenants are first-class entities and the
-// human Admin is an explicit member, not the data-partition owner.
 router.get('/tenants', auth, requireSuperAdmin, async (req, res) => {
     try {
         res.json({ tenants: await listTenants() });
@@ -106,6 +105,7 @@ router.post('/tenants', auth, requireSuperAdmin, async (req, res) => {
             name: req.body?.name,
             adminEmail: req.body?.adminEmail,
             adminName: req.body?.adminName,
+            entitlement: req.body?.entitlement || {},
             actorUserId: req.authenticatedUserId || req.userId,
             actorEmail: req.scormEmail
         });
@@ -113,6 +113,21 @@ router.post('/tenants', auth, requireSuperAdmin, async (req, res) => {
     } catch (err) {
         console.error('[scorm-access] tenant create failed', err);
         res.status(err.status || 500).json({ message: err.message || 'Could not create tenant.', code: err.code });
+    }
+});
+
+router.patch('/tenants/:workspaceId/entitlement', auth, requireSuperAdmin, async (req, res) => {
+    try {
+        const tenant = await updateTenantEntitlement({
+            workspaceId: req.params.workspaceId,
+            patch: req.body || {},
+            actorUserId: req.authenticatedUserId || req.userId,
+            actorEmail: req.scormEmail
+        });
+        res.json({ tenant });
+    } catch (err) {
+        console.error('[scorm-access] tenant entitlement update failed', err);
+        res.status(err.status || 500).json({ message: err.message || 'Could not update tenant limits and features.', code: err.code });
     }
 });
 
@@ -134,10 +149,7 @@ router.patch('/tenants/:workspaceId/admin', auth, requireSuperAdmin, async (req,
 
 router.patch('/tenants/:workspaceId/status', auth, requireSuperAdmin, async (req, res) => {
     try {
-        const tenant = await setTenantStatus({
-            workspaceId: req.params.workspaceId,
-            status: req.body?.status
-        });
+        const tenant = await setTenantStatus({ workspaceId: req.params.workspaceId, status: req.body?.status });
         res.json({ tenant });
     } catch (err) {
         console.error('[scorm-access] tenant status change failed', err);
@@ -145,15 +157,11 @@ router.patch('/tenants/:workspaceId/status', auth, requireSuperAdmin, async (req
     }
 });
 
-// Legacy account-grant data remains readable during the migration period. New
-// customer administration should use /tenants above.
+// Legacy account-grant data remains readable during migration. New customer
+// administration uses the first-class tenant endpoints above.
 router.get('/', auth, requireSuperAdmin, async (req, res) => {
     try {
-        const [grants, requests, tenants] = await Promise.all([
-            listGrants(),
-            listAccessRequests(),
-            listTenants()
-        ]);
+        const [grants, requests, tenants] = await Promise.all([listGrants(), listAccessRequests(), listTenants()]);
         res.json({
             superAdminEmail: SUPER_ADMIN_EMAIL,
             adminContact: ADMIN_CONTACT_EMAIL,
@@ -174,12 +182,8 @@ router.post('/requests/:id/approve', auth, requireSuperAdmin, async (req, res) =
             approvedByUserId: req.authenticatedUserId || req.userId,
             approvedByEmail: req.scormEmail
         });
-        if (!result.ok && result.reason === 'not_found') {
-            return res.status(404).json({ message: 'Pending LMSGEN registration not found.' });
-        }
-        if (!result.ok && result.reason === 'super_admin') {
-            return res.status(400).json({ message: 'The LMSGEN Super Admin is already authorised.' });
-        }
+        if (!result.ok && result.reason === 'not_found') return res.status(404).json({ message: 'Pending LMSGEN registration not found.' });
+        if (!result.ok && result.reason === 'super_admin') return res.status(400).json({ message: 'The LMSGEN Super Admin is already authorised.' });
         res.json({
             approved: true,
             grant: await serializeGrant(result.grant),
@@ -201,10 +205,7 @@ router.patch('/:id/entitlement', auth, requireSuperAdmin, async (req, res) => {
             return res.status(400).json({ message: 'The Super Admin always has unrestricted access.' });
         }
         if (role === 'co_admin' || role === 'analytics_viewer') {
-            return res.status(400).json({
-                message: 'Team members inherit tenant limits and permissions.',
-                code: 'SCORM_WORKSPACE_ENTITLEMENT_INHERITED'
-            });
+            return res.status(400).json({ message: 'Team members inherit tenant limits and permissions.', code: 'SCORM_WORKSPACE_ENTITLEMENT_INHERITED' });
         }
 
         await updateEntitlement(grant.email, req.body || {}, {
@@ -221,17 +222,9 @@ router.patch('/:id/entitlement', auth, requireSuperAdmin, async (req, res) => {
 router.delete('/:id', auth, requireSuperAdmin, async (req, res) => {
     try {
         const result = await removeGrant(req.params.id);
-        if (!result.removed && result.reason === 'not_found') {
-            return res.status(404).json({ message: 'Access grant not found.' });
-        }
-        if (!result.removed && result.reason === 'super_admin') {
-            return res.status(400).json({ message: 'The LMSGEN Super Admin cannot be removed.' });
-        }
-        res.json({
-            removed: true,
-            id: Number(req.params.id) || req.params.id,
-            pendingAgain: Boolean(result.request)
-        });
+        if (!result.removed && result.reason === 'not_found') return res.status(404).json({ message: 'Access grant not found.' });
+        if (!result.removed && result.reason === 'super_admin') return res.status(400).json({ message: 'The LMSGEN Super Admin cannot be removed.' });
+        res.json({ removed: true, id: Number(req.params.id) || req.params.id, pendingAgain: Boolean(result.request) });
     } catch (err) {
         console.error('[scorm-access] remove failed', err);
         res.status(500).json({ message: 'Could not remove LMSGEN access.' });
