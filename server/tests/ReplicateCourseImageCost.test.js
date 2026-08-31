@@ -11,28 +11,44 @@ const {
     rateLimitDetail
 } = require('../services/scorm/ReplicateCourseMediaService');
 const {
-    predictionRequestsPerMinute,
-    predictionSpacingMs,
-    parseRetryAfterMs
-} = require('../services/scorm/ReplicateClient');
-const {
     buildEmbeddedMediaMap,
     injectReplicateMediaUi
 } = require('../services/scorm/ScormReplicateMediaFinalizer');
 
-describe('SCORM Replicate image generation', () => {
-    it('uses the requested FLUX Schnell model and keeps one-megapixel output by default', () => {
-        const previous = process.env.REPLICATE_SCORM_IMAGE_MEGAPIXELS;
-        delete process.env.REPLICATE_SCORM_IMAGE_MEGAPIXELS;
+describe('SCORM Vertex AI image generation', () => {
+    it('uses the configured Gemini image model and current 1K image cost estimate by default', () => {
+        const previousModel = process.env.VERTEX_IMAGE_MODEL;
+        const previousUnit = process.env.VERTEX_IMAGE_UNIT_USD;
+        delete process.env.VERTEX_IMAGE_MODEL;
+        delete process.env.VERTEX_IMAGE_UNIT_USD;
         try {
             const config = mediaConfig();
-            expect(DEFAULT_IMAGE_MODEL).to.equal('black-forest-labs/flux-schnell');
+            expect(DEFAULT_IMAGE_MODEL).to.equal('gemini-3.1-flash-lite-image');
             expect(config.imageModel).to.equal(DEFAULT_IMAGE_MODEL);
-            expect(config.imageMegapixels).to.equal('1');
-            expect(IMAGE_UNIT_USD).to.equal(0.003);
+            expect(IMAGE_UNIT_USD).to.equal(0.034);
+            expect(config.imageUnitUsd).to.equal(0.034);
         } finally {
-            if (previous == null) delete process.env.REPLICATE_SCORM_IMAGE_MEGAPIXELS;
-            else process.env.REPLICATE_SCORM_IMAGE_MEGAPIXELS = previous;
+            if (previousModel == null) delete process.env.VERTEX_IMAGE_MODEL;
+            else process.env.VERTEX_IMAGE_MODEL = previousModel;
+            if (previousUnit == null) delete process.env.VERTEX_IMAGE_UNIT_USD;
+            else process.env.VERTEX_IMAGE_UNIT_USD = previousUnit;
+        }
+    });
+
+    it('allows the production image model and cost estimate to be changed without a code deployment', () => {
+        const previousModel = process.env.VERTEX_IMAGE_MODEL;
+        const previousUnit = process.env.VERTEX_IMAGE_UNIT_USD;
+        try {
+            process.env.VERTEX_IMAGE_MODEL = 'future-image-model';
+            process.env.VERTEX_IMAGE_UNIT_USD = '0.02';
+            const config = mediaConfig();
+            expect(config.imageModel).to.equal('future-image-model');
+            expect(config.imageUnitUsd).to.equal(0.02);
+        } finally {
+            if (previousModel == null) delete process.env.VERTEX_IMAGE_MODEL;
+            else process.env.VERTEX_IMAGE_MODEL = previousModel;
+            if (previousUnit == null) delete process.env.VERTEX_IMAGE_UNIT_USD;
+            else process.env.VERTEX_IMAGE_UNIT_USD = previousUnit;
         }
     });
 
@@ -51,66 +67,56 @@ describe('SCORM Replicate image generation', () => {
 
     it('keeps the cover and recovery prompts non-human and text-free too', () => {
         const cover = coverImagePrompt({ title: 'Phishing Awareness', summary: 'Recognise suspicious requests and verify them safely.' });
-        const recovery = recoverySlideImagePrompt({ title: 'Report suspicious messages', content: 'Report suspicious messages through the approved channel.' }, 'Phishing Awareness');
+        const recovery = recoverySlideImagePrompt({
+            title: 'Report suspicious messages',
+            content: 'Report suspicious messages through the approved channel.'
+        }, 'Phishing Awareness');
         for (const prompt of [cover, recovery]) {
             expect(prompt).to.include('NON-HUMAN VISUAL ONLY');
             expect(prompt).to.include('ABSOLUTELY NO TEXT IN THE IMAGE');
         }
     });
 
-    it('defaults prediction creation to six requests per minute with safe rolling-window spacing', () => {
-        const previous = process.env.REPLICATE_PREDICTIONS_PER_MINUTE;
-        delete process.env.REPLICATE_PREDICTIONS_PER_MINUTE;
+    it('uses an image-rich default budget with a six-image minimum quality gate', () => {
+        const previousMax = process.env.VERTEX_SCORM_MAX_IMAGES;
+        const previousMin = process.env.VERTEX_SCORM_MIN_IMAGES;
+        delete process.env.VERTEX_SCORM_MAX_IMAGES;
+        delete process.env.VERTEX_SCORM_MIN_IMAGES;
         try {
-            expect(predictionRequestsPerMinute()).to.equal(6);
-            expect(predictionSpacingMs()).to.be.at.least(10250);
+            const config = mediaConfig();
+            expect(config.maxImages).to.equal(8);
+            expect(config.minImages).to.equal(6);
         } finally {
-            if (previous == null) delete process.env.REPLICATE_PREDICTIONS_PER_MINUTE;
-            else process.env.REPLICATE_PREDICTIONS_PER_MINUTE = previous;
+            if (previousMax == null) delete process.env.VERTEX_SCORM_MAX_IMAGES;
+            else process.env.VERTEX_SCORM_MAX_IMAGES = previousMax;
+            if (previousMin == null) delete process.env.VERTEX_SCORM_MIN_IMAGES;
+            else process.env.VERTEX_SCORM_MIN_IMAGES = previousMin;
         }
     });
 
-    it('allows an explicitly lower Replicate prediction limit but never drops below one request per minute', () => {
-        const previous = process.env.REPLICATE_PREDICTIONS_PER_MINUTE;
-        try {
-            process.env.REPLICATE_PREDICTIONS_PER_MINUTE = '4';
-            expect(predictionRequestsPerMinute()).to.equal(4);
-            expect(predictionSpacingMs()).to.be.at.least(15250);
-            process.env.REPLICATE_PREDICTIONS_PER_MINUTE = '0';
-            expect(predictionRequestsPerMinute()).to.equal(1);
-        } finally {
-            if (previous == null) delete process.env.REPLICATE_PREDICTIONS_PER_MINUTE;
-            else process.env.REPLICATE_PREDICTIONS_PER_MINUTE = previous;
-        }
+    it('treats Vertex quota, transient service errors and incomplete images as retryable', () => {
+        expect(isRetryableImageError({ code: 'VERTEX_QUOTA' })).to.equal(true);
+        expect(isRetryableImageError({ code: 'VERTEX_UNAVAILABLE', status: 503 })).to.equal(true);
+        expect(isRetryableImageError({ code: 'VERTEX_API_ERROR', status: 503 })).to.equal(true);
+        expect(isRetryableImageError({ code: 'VERTEX_API_ERROR', status: 400 })).to.equal(false);
+        expect(isRetryableImageError({ code: 'VERTEX_IMAGE_EMPTY' })).to.equal(true);
     });
 
-    it('extracts Replicate reset time from a 429 response detail', () => {
-        const response = { headers: { get: () => '' } };
-        expect(parseRetryAfterMs(response, { detail: 'Request was throttled. Your rate limit resets in ~30s.' })).to.equal(30000);
-        expect(parseRetryAfterMs(response, { detail: 'Request was throttled. Expected available in 1 second.' })).to.equal(1000);
-    });
-
-    it('treats rate limits, transient server errors and incomplete image downloads as retryable', () => {
-        expect(isRetryableImageError({ code: 'REPLICATE_RATE_LIMIT' })).to.equal(true);
-        expect(isRetryableImageError({ code: 'REPLICATE_API_ERROR', status: 503 })).to.equal(true);
-        expect(isRetryableImageError({ code: 'REPLICATE_API_ERROR', status: 400 })).to.equal(false);
-        expect(isRetryableImageError({ code: 'REPLICATE_MEDIA_DOWNLOAD' })).to.equal(true);
-    });
-
-    it('respects Replicate reset timing when rate limited', () => {
-        const config = { retryBaseMs: 1400 };
-        expect(retryDelayMs({ code: 'REPLICATE_RATE_LIMIT', retryAfterMs: 30000 }, 0, config)).to.be.at.least(30500);
-        expect(retryDelayMs({ code: 'REPLICATE_NETWORK' }, 1, config)).to.be.greaterThan(1400);
+    it('backs off more aggressively after a Vertex quota error', () => {
+        const config = { retryBaseMs: 1200 };
+        expect(retryDelayMs({ code: 'VERTEX_QUOTA', status: 429 }, 0, config)).to.be.at.least(2500);
+        expect(retryDelayMs({ code: 'VERTEX_UNAVAILABLE', status: 503 }, 1, config)).to.be.greaterThan(1200);
     });
 
     it('shows why an image request is intentionally waiting', () => {
-        const detail = rateLimitDetail({ waitMs: 10250, rateLimitPerMinute: 6 });
-        expect(detail).to.include('6 new prediction request(s) per minute');
-        expect(detail).to.include('about 11s');
+        expect(rateLimitDetail()).to.include('Vertex AI');
+        expect(rateLimitDetail()).to.include('retry');
     });
 
-    it('embeds packaged WebP bytes into the learner HTML as a data URI fallback', () => {
-        const map = buildEmbeddedMediaMap([{ path: 'assets/media/slide-001.webp', body: Buffer.from('image-bytes'), contentType: 'image/webp' }]);
+    it('keeps packaged WebP bytes compatible with the existing learner HTML media injector', () => {
+        const map = buildEmbeddedMediaMap([
+            { path: 'assets/media/slide-001.webp', body: Buffer.from('image-bytes'), contentType: 'image/webp' }
+        ]);
         expect(map['assets/media/slide-001.webp']).to.match(/^data:image\/webp;base64,/);
         const html = injectReplicateMediaUi('<html><head></head><body></body></html>', map);
         expect(html).to.include('quizmoto-replicate-media-script-v2');
