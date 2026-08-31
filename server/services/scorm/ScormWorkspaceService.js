@@ -32,14 +32,17 @@ function normalizeTeamRole(value) {
 
 function defaultWorkspaceName(user) {
     const label = String(user?.username || '').trim() || normalizeEmail(user?.email).split('@')[0] || 'LMSGEN';
-    return `${label} workspace`.slice(0, 160);
+    return `${label} tenant`.slice(0, 160);
 }
 
 function serializeWorkspace(workspace) {
     if (!workspace) return null;
     return {
         id: workspace.id,
+        // ownerUserId is retained as the internal SCORM host/data-partition id.
+        // It is not the human Tenant Admin identity for newly-created tenants.
         ownerUserId: workspace.ownerUserId,
+        hostId: workspace.ownerUserId,
         name: workspace.name,
         status: workspace.status,
         createdAt: workspace.createdAt,
@@ -64,9 +67,12 @@ function serializeMember(member) {
     };
 }
 
+// Compatibility bootstrap for historical installations and for the protected
+// Super Admin's own LMSGEN space. New customer tenants are created explicitly
+// by ScormTenantService and are not owned by a human Admin user.
 async function ensureOwnerWorkspace(user) {
     if (!user?.id || !isValidEmail(user.email)) {
-        throw fail('A valid administrator account is required to create a workspace.', 'SCORM_WORKSPACE_OWNER_INVALID', 403);
+        throw fail('A valid administrator account is required to create a tenant.', 'SCORM_WORKSPACE_OWNER_INVALID', 403);
     }
 
     const email = normalizeEmail(user.email);
@@ -82,7 +88,7 @@ async function ensureOwnerWorkspace(user) {
     let member = await ScormWorkspaceMember.findOne({ where: { email } });
     if (member && String(member.workspaceId) !== String(workspace.id)) {
         throw fail(
-            'This administrator is already attached to another LMSGEN workspace.',
+            'This administrator is already attached to another LMSGEN tenant.',
             'SCORM_WORKSPACE_MEMBERSHIP_CONFLICT',
             409
         );
@@ -139,12 +145,8 @@ async function resolveWorkspaceContext({ user, role }) {
         throw fail('SCORM account no longer exists.', 'SCORM_AUTH_REQUIRED', 401);
     }
 
-    // The platform Super Admin is also a first-class LMSGEN workspace owner.
-    // Keep the global `super_admin` runtime role so platform-wide controls stay
-    // available, while attaching a normal owner workspace so campaigns, SSO,
-    // team management, learner delivery and reporting use the same tenant model
-    // as every other administrator. The workspace hostId remains the existing
-    // Super Admin user id, so historical courses and learner data stay in place.
+    // Super Admin retains a private first-class tenant for platform operations
+    // while also holding global Tenant Management privileges.
     if (accessRole === 'super_admin') {
         const context = await ensureOwnerWorkspace(user);
         return {
@@ -154,26 +156,24 @@ async function resolveWorkspaceContext({ user, role }) {
     }
 
     const email = normalizeEmail(user.email);
-    let member = email ? await ScormWorkspaceMember.findOne({ where: { email } }) : null;
+    const member = email ? await ScormWorkspaceMember.findOne({ where: { email } }) : null;
 
-    if (!member && accessRole === 'admin') {
-        return ensureOwnerWorkspace(user);
-    }
-
+    // New architecture: a platform grant alone never creates a customer tenant.
+    // Super Admin must explicitly create the tenant and assign its Admin email.
     if (!member) {
         throw fail(
-            'Your LMSGEN team access is no longer attached to an active workspace.',
-            'SCORM_WORKSPACE_MEMBERSHIP_REQUIRED',
+            'Your LMSGEN account is authorised but has not been assigned to a tenant. Contact the Super Admin.',
+            'SCORM_TENANT_MEMBERSHIP_REQUIRED',
             403
         );
     }
     if (member.status === 'disabled') {
-        throw fail('Your LMSGEN workspace membership is disabled.', 'SCORM_WORKSPACE_MEMBER_DISABLED', 403);
+        throw fail('Your LMSGEN tenant membership is disabled.', 'SCORM_WORKSPACE_MEMBER_DISABLED', 403);
     }
 
     const workspace = await ScormWorkspace.findByPk(member.workspaceId);
     if (!workspace || workspace.status !== 'active') {
-        throw fail('This LMSGEN workspace is not active.', 'SCORM_WORKSPACE_INACTIVE', 403);
+        throw fail('This LMSGEN tenant is not active.', 'SCORM_WORKSPACE_INACTIVE', 403);
     }
 
     let changed = false;
@@ -195,16 +195,14 @@ async function resolveWorkspaceContext({ user, role }) {
     }
     if (changed) await member.save();
 
-    const memberRole = normalizeScormRole(member.role);
-    if (memberRole === 'admin' && workspace.ownerUserId !== user.id) {
-        throw fail('Only the workspace owner can hold the Admin role.', 'SCORM_WORKSPACE_OWNER_MISMATCH', 403);
-    }
-
+    // Role authority comes from the tenant membership. The workspace host id is
+    // only an internal data partition and is deliberately independent from the
+    // human Admin user.
     return {
         workspace,
         member,
         hostId: workspace.ownerUserId,
-        role: memberRole
+        role: normalizeScormRole(member.role)
     };
 }
 
@@ -220,37 +218,37 @@ async function listWorkspaceMembers(workspaceId) {
 }
 
 async function inviteWorkspaceMember({ workspace, actorUserId, actorEmail, email, displayName = null, role }) {
-    if (!workspace?.id) throw fail('Workspace not found.', 'SCORM_WORKSPACE_REQUIRED', 404);
+    if (!workspace?.id) throw fail('Tenant not found.', 'SCORM_WORKSPACE_REQUIRED', 404);
     const normalized = normalizeEmail(email);
     const assignedRole = normalizeTeamRole(role);
 
     if (!isValidEmail(normalized)) throw fail('Enter a valid email address.', 'INVALID_EMAIL', 400);
     if (isSuperAdminEmail(normalized)) {
-        throw fail('The platform Super Admin cannot be added as a workspace member.', 'SCORM_TEAM_SUPER_ADMIN_PROTECTED', 400);
+        throw fail('The platform Super Admin cannot be added as a tenant member.', 'SCORM_TEAM_SUPER_ADMIN_PROTECTED', 400);
     }
     if (normalized === normalizeEmail(actorEmail)) {
-        throw fail('You are already the Admin of this workspace.', 'SCORM_TEAM_SELF_INVITE', 400);
-    }
-
-    const existingAccessRole = await getAccessRole(normalized);
-    if (existingAccessRole === 'super_admin' || existingAccessRole === 'admin') {
-        throw fail(
-            'This email already owns administrator access to another LMSGEN workspace.',
-            'SCORM_TEAM_EMAIL_ALREADY_ADMIN',
-            409
-        );
+        throw fail('You are already the Admin of this tenant.', 'SCORM_TEAM_SELF_INVITE', 400);
     }
 
     let member = await ScormWorkspaceMember.findOne({ where: { email: normalized } });
     if (member && String(member.workspaceId) !== String(workspace.id)) {
         throw fail(
-            'This email is already attached to another LMSGEN workspace.',
+            'This email is already attached to another LMSGEN tenant.',
             'SCORM_TEAM_EMAIL_IN_OTHER_WORKSPACE',
             409
         );
     }
     if (member && normalizeScormRole(member.role) === 'admin') {
-        throw fail('The workspace Admin cannot be changed here.', 'SCORM_TEAM_OWNER_PROTECTED', 400);
+        throw fail('The Tenant Admin cannot be changed here. The Super Admin controls primary Tenant Admin assignment.', 'SCORM_TEAM_OWNER_PROTECTED', 400);
+    }
+
+    const existingAccessRole = await getAccessRole(normalized);
+    if (!member && (existingAccessRole === 'super_admin' || existingAccessRole === 'admin')) {
+        throw fail(
+            'This email already has administrator access outside this tenant.',
+            'SCORM_TEAM_EMAIL_ALREADY_ADMIN',
+            409
+        );
     }
 
     const linkedUser = await User.findOne({ where: { email: normalized } });
@@ -292,7 +290,7 @@ async function changeWorkspaceMemberRole({ workspaceId, memberId, actorUserId, a
     const member = await ScormWorkspaceMember.findOne({ where: { id: memberId, workspaceId } });
     if (!member) throw fail('Team member not found.', 'SCORM_TEAM_MEMBER_NOT_FOUND', 404);
     if (normalizeScormRole(member.role) === 'admin') {
-        throw fail('The workspace Admin role cannot be changed.', 'SCORM_TEAM_OWNER_PROTECTED', 400);
+        throw fail('The Tenant Admin role can only be changed by the Super Admin.', 'SCORM_TEAM_OWNER_PROTECTED', 400);
     }
 
     member.role = assignedRole;
@@ -310,7 +308,7 @@ async function removeWorkspaceMember({ workspaceId, memberId }) {
     const member = await ScormWorkspaceMember.findOne({ where: { id: memberId, workspaceId } });
     if (!member) throw fail('Team member not found.', 'SCORM_TEAM_MEMBER_NOT_FOUND', 404);
     if (normalizeScormRole(member.role) === 'admin') {
-        throw fail('The workspace Admin cannot be removed.', 'SCORM_TEAM_OWNER_PROTECTED', 400);
+        throw fail('The Tenant Admin cannot be removed here.', 'SCORM_TEAM_OWNER_PROTECTED', 400);
     }
 
     const email = member.email;

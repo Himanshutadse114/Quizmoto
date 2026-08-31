@@ -76,14 +76,6 @@ export const AuthProvider = ({ children }) => {
         else localStorage.removeItem(SCORM_ACCESS_KEY);
     };
 
-    const loginWithGoogle = async (credential) => {
-        const res = await axios.post(`${API_URL}/google`, { credential });
-        const userData = { username: res.data.username, avatar: res.data.avatar, email: res.data.email };
-        setAccessFlags({ platform: false, scorm: false });
-        persistSession(res.data.token, userData);
-        return res.data;
-    };
-
     const prepareScormLogin = () => {
         if (!platformAccess && token && !localStorage.getItem(HOST_TOKEN_BACKUP)) {
             localStorage.setItem(HOST_TOKEN_BACKUP, token);
@@ -96,6 +88,8 @@ export const AuthProvider = ({ children }) => {
         if (!data?.token) return data;
         const approved = Boolean(data.scormAccess ?? (!data.pendingApproval && data.role && data.role !== 'pending'));
         const role = normalizeScormRole(data.role, approved);
+        const workspaceId = data.workspaceId || data.tenantId || null;
+        const workspaceName = data.workspaceName || data.tenantName || null;
         const scormUser = {
             username: data.username,
             avatar: data.avatar || null,
@@ -107,15 +101,17 @@ export const AuthProvider = ({ children }) => {
             pendingApproval: Boolean(data.pendingApproval || !approved),
             platformAccess: true,
             scormAccess: approved,
-            workspaceId: data.workspaceId || null,
-            workspaceName: data.workspaceName || null,
+            workspaceId,
+            workspaceName,
+            tenantId: workspaceId,
+            tenantName: workspaceName,
             authMethod: data.authMethod || null,
             staffSso: Boolean(data.staffSso),
             quizmotoOnly: false
         };
         setAccessFlags({ platform: true, scorm: approved });
         persistSession(data.token, scormUser);
-        return { ...data, role };
+        return { ...data, role, workspaceId, workspaceName, tenantId: workspaceId, tenantName: workspaceName };
     };
 
     const enterQuizmotoOnlySession = (data) => {
@@ -132,6 +128,8 @@ export const AuthProvider = ({ children }) => {
             scormAccess: false,
             workspaceId: null,
             workspaceName: null,
+            tenantId: null,
+            tenantName: null,
             authMethod: 'google',
             staffSso: false,
             quizmotoOnly: true
@@ -143,7 +141,13 @@ export const AuthProvider = ({ children }) => {
 
     const resolveScormAuthResponse = (data) => {
         if (!data?.token) return data;
+        if (data.quizmotoOnly) return enterQuizmotoOnlySession(data);
         return enterScormSession(data);
+    };
+
+    const loginWithGoogle = async (credential) => {
+        const res = await axios.post(`${API_URL}/google`, { credential });
+        return resolveScormAuthResponse(res.data);
     };
 
     const loginScorm = async ({ identifier, password }) => {
@@ -152,13 +156,13 @@ export const AuthProvider = ({ children }) => {
     };
 
     const loginScormWithGoogle = async (credential) => {
-        const res = await axios.post(`${API_URL}/scorm/google`, { credential });
+        const res = await axios.post(`${API_URL}/google`, { credential });
         return resolveScormAuthResponse(res.data);
     };
 
     const loginQuizmotoOnlyWithGoogle = async (credential) => {
         const res = await axios.post(`${API_URL}/google`, { credential });
-        return enterQuizmotoOnlySession(res.data);
+        return resolveScormAuthResponse(res.data);
     };
 
     const loginScormWorkspaceWithGoogle = async (workspaceId, credential) => {
@@ -183,7 +187,7 @@ export const AuthProvider = ({ children }) => {
         const res = await axios.get(`${API_URL}/scorm/status`, {
             headers: { Authorization: `Bearer ${token}` }
         });
-        return enterScormSession(res.data);
+        return resolveScormAuthResponse(res.data);
     };
 
     const leaveScorm = () => {

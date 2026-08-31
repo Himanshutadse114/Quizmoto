@@ -7,9 +7,7 @@ const {
     verifyStaffIdentity,
     discoverStaffPolicy
 } = require('../../services/scorm/ScormStaffAuthService');
-const {
-    addGrant
-} = require('../../services/scorm/ScormAccessService');
+const { addGrant } = require('../../services/scorm/ScormAccessService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
@@ -25,17 +23,19 @@ const staffSsoLimiter = rateLimit({
     }
 });
 
-function issueScormToken(user, role, workspaceId) {
+function issueScormToken(user, role, workspaceId, authMethod) {
     return jwt.sign({
         userId: user.id,
         scope: 'scorm',
         scormRole: role,
-        workspaceId
+        workspaceId,
+        authMethod
     }, JWT_SECRET, { expiresIn: '30d' });
 }
 
 function responseFor(result) {
-    const token = issueScormToken(result.user, result.role, result.workspace.id);
+    const authMethod = result.identity.provider;
+    const token = issueScormToken(result.user, result.role, result.workspace.id, authMethod);
     return {
         token,
         username: result.user.username,
@@ -49,7 +49,9 @@ function responseFor(result) {
         pendingApproval: false,
         workspaceId: result.workspace.id,
         workspaceName: result.workspace.name,
-        authMethod: result.identity.provider,
+        tenantId: result.workspace.id,
+        tenantName: result.workspace.name,
+        authMethod,
         staffSso: true
     };
 }
@@ -62,12 +64,14 @@ router.post('/discover', staffSsoLimiter, async (req, res) => {
             ok: true,
             workspaceId: result.workspace.id,
             workspaceName: result.workspace.name,
+            tenantId: result.workspace.id,
+            tenantName: result.workspace.name,
             discoverySource: result.source,
             config: result.publicConfig
         });
     } catch (err) {
         res.status(err.status || 500).json({
-            message: err.message || 'Unable to identify your organisation.',
+            message: err.message || 'Unable to identify your tenant.',
             code: err.code
         });
     }
@@ -80,7 +84,7 @@ router.get('/workspace/:workspaceId/config', async (req, res) => {
         res.json({ ok: true, config });
     } catch (err) {
         res.status(err.status || 500).json({
-            message: err.message || 'Unable to load workspace staff sign-in.',
+            message: err.message || 'Unable to load tenant staff sign-in.',
             code: err.code
         });
     }
@@ -99,7 +103,7 @@ async function login(req, res, provider) {
         await addGrant({
             email: result.user.email,
             role: result.role,
-            addedByUserId: result.workspace.ownerUserId,
+            addedByUserId: req.authenticatedUserId || null,
             addedByEmail: null
         });
 

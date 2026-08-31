@@ -19,9 +19,18 @@ function makeUser(overrides = {}) {
     };
 }
 
-function buildApp({ role = null, existingUser = null, googlePayload = null } = {}) {
+function buildApp({ role = null, existingUser = null, googlePayload = null, tenantAssigned = true } = {}) {
     const captured = [];
     const created = [];
+    const workspace = { id: 'tenant-1', ownerUserId: 900, name: 'Acme Tenant', status: 'active' };
+    const member = {
+        id: 'member-1',
+        workspaceId: workspace.id,
+        userId: existingUser?.id || 50,
+        email: existingUser?.email || googlePayload?.email || 'approved@example.com',
+        role: role || 'admin',
+        status: 'active'
+    };
 
     const User = {
         async findOne({ where }) {
@@ -65,8 +74,8 @@ function buildApp({ role = null, existingUser = null, googlePayload = null } = {
         pendingApprovalPayload({ captured: wasCaptured = true } = {}) {
             return {
                 message: wasCaptured
-                    ? `Your registration has been captured, but your SCORM AI account is not authorised yet. Please contact the administrator at ${ADMIN} to unlock access. After approval, you can sign in using the same credentials you just registered.`
-                    : `Your SCORM AI account is registered but not authorised yet. Please contact the administrator at ${ADMIN} to unlock access. After approval, use the same registered credentials to sign in.`,
+                    ? `Your registration has been captured, but your LMSGEN account is not authorised yet. Please contact ${ADMIN}.`
+                    : `Your LMSGEN account is registered but not authorised yet. Please contact ${ADMIN}.`,
                 code: 'SCORM_APPROVAL_PENDING',
                 pendingApproval: true,
                 registrationCaptured: wasCaptured,
@@ -77,16 +86,23 @@ function buildApp({ role = null, existingUser = null, googlePayload = null } = {
 
     class OAuth2Client {
         async verifyIdToken() {
-            return {
-                getPayload() {
-                    return googlePayload;
-                }
-            };
+            return { getPayload() { return googlePayload; } };
         }
     }
 
     const authRouter = proxyquire('../routes/auth', {
         '../models/User': User,
+        '../models/scorm': {
+            ScormWorkspace: {
+                async findByPk(id) { return tenantAssigned && id === workspace.id ? workspace : null; }
+            },
+            ScormWorkspaceMember: {
+                async findOne({ where }) {
+                    if (!tenantAssigned || !role || role === 'super_admin') return null;
+                    return { ...member, email: where?.email || member.email, role };
+                }
+            }
+        },
         '../services/scorm/ScormAccessService': access,
         './middleware': (req, _res, next) => {
             req.userId = existingUser?.id || 50;
@@ -104,36 +120,20 @@ function buildApp({ role = null, existingUser = null, googlePayload = null } = {
     return { app, captured, created };
 }
 
-describe('SCORM pending approval authentication', () => {
-    it('stores a normal registration and returns a limited platform session while SCORM access is pending', async () => {
+describe('LMSGEN authentication and tenant assignment', () => {
+    it('stores a normal registration and returns a limited platform session while access is pending', async () => {
         const { app, captured, created } = buildApp({ role: null });
-
-        const res = await request(app)
-            .post('/scorm/register')
-            .send({
-                username: 'Pending User',
-                email: 'PENDING@example.com',
-                password: 'Password123!'
-            });
-
+        const res = await request(app).post('/scorm/register').send({
+            username: 'Pending User', email: 'PENDING@example.com', password: 'Password123!'
+        });
         expect(res.status).to.equal(202);
         expect(res.body.pendingApproval).to.equal(true);
-        expect(res.body.registrationCaptured).to.equal(true);
-        expect(res.body.code).to.equal('SCORM_APPROVAL_PENDING');
-        expect(res.body.token).to.equal('signed-scorm-token');
-        expect(res.body.platformAccess).to.equal(true);
         expect(res.body.scormAccess).to.equal(false);
-        expect(res.body.role).to.equal('pending');
-        expect(res.body.message).to.include('registration has been captured');
-        expect(res.body.message).to.include(ADMIN);
         expect(created).to.have.length(1);
-        expect(created[0].email).to.equal('pending@example.com');
         expect(captured).to.have.length(1);
-        expect(captured[0].email).to.equal('pending@example.com');
-        expect(captured[0].authMethod).to.equal('password');
     });
 
-    it('captures an unapproved Google identity and gives it limited platform access', async () => {
+    it('keeps an unassigned Google identity in Quizmoto instead of creating LMSGEN tenant access', async () => {
         const googlePayload = {
             sub: 'google-user-1',
             email: 'google.pending@example.com',
@@ -142,109 +142,74 @@ describe('SCORM pending approval authentication', () => {
             picture: 'https://example.com/avatar.png'
         };
         const { app, captured, created } = buildApp({ role: null, googlePayload });
-
-        const res = await request(app)
-            .post('/scorm/google')
-            .send({ credential: 'google-credential' });
-
-        expect(res.status).to.equal(202);
-        expect(res.body.pendingApproval).to.equal(true);
-        expect(res.body.registrationCaptured).to.equal(true);
-        expect(res.body.token).to.equal('signed-scorm-token');
-        expect(res.body.platformAccess).to.equal(true);
+        const res = await request(app).post('/scorm/google').send({ credential: 'google-credential' });
+        expect(res.status).to.equal(200);
+        expect(res.body.quizmotoOnly).to.equal(true);
         expect(res.body.scormAccess).to.equal(false);
+        expect(res.body.role).to.equal('quizmoto');
         expect(created).to.have.length(1);
-        expect(created[0].email).to.equal('google.pending@example.com');
-        expect(created[0].googleId).to.equal('google-user-1');
-        expect(captured).to.have.length(1);
-        expect(captured[0].authMethod).to.equal('google');
-        expect(captured[0].email).to.equal('google.pending@example.com');
+        expect(captured).to.have.length(0);
     });
 
-    it('allows registration immediately when the Super Admin pre-approved that email', async () => {
-        const { app, captured } = buildApp({ role: 'user' });
-
-        const res = await request(app)
-            .post('/scorm/register')
-            .send({
-                username: 'Approved User',
-                email: 'approved@example.com',
-                password: 'Password123!'
-            });
-
+    it('allows a tenant Admin to register when the email is pre-assigned to a tenant', async () => {
+        const { app, captured } = buildApp({ role: 'admin', tenantAssigned: true });
+        const res = await request(app).post('/scorm/register').send({
+            username: 'Approved User', email: 'approved@example.com', password: 'Password123!'
+        });
         expect(res.status).to.equal(201);
-        expect(res.body.token).to.equal('signed-scorm-token');
-        expect(res.body.role).to.equal('user');
-        expect(res.body.isSuperAdmin).to.equal(false);
-        expect(res.body.platformAccess).to.equal(true);
         expect(res.body.scormAccess).to.equal(true);
+        expect(res.body.role).to.equal('admin');
+        expect(res.body.tenantId).to.equal('tenant-1');
         expect(captured).to.have.length(1);
     });
 
-    it('lets a registered pending user enter the platform while SCORM features remain locked', async () => {
+    it('rejects an authorised account that has not actually been assigned to a tenant', async () => {
+        const existingUser = makeUser({ email: 'orphan@example.com' });
+        const { app } = buildApp({ role: 'admin', existingUser, tenantAssigned: false });
+        const res = await request(app).post('/scorm/login').send({
+            identifier: existingUser.email, password: 'Password123!'
+        });
+        expect(res.status).to.equal(403);
+        expect(res.body.code).to.equal('SCORM_TENANT_MEMBERSHIP_REQUIRED');
+    });
+
+    it('lets a registered pending user enter the limited platform while tenant access remains locked', async () => {
         const existingUser = makeUser();
         const { app, captured } = buildApp({ role: null, existingUser });
-
-        const res = await request(app)
-            .post('/scorm/login')
-            .send({ identifier: existingUser.email, password: 'Password123!' });
-
+        const res = await request(app).post('/scorm/login').send({ identifier: existingUser.email, password: 'Password123!' });
         expect(res.status).to.equal(200);
         expect(res.body.pendingApproval).to.equal(true);
-        expect(res.body.registrationCaptured).to.equal(false);
-        expect(res.body.token).to.equal('signed-scorm-token');
-        expect(res.body.platformAccess).to.equal(true);
         expect(res.body.scormAccess).to.equal(false);
-        expect(res.body.role).to.equal('pending');
         expect(captured).to.have.length(1);
-        expect(captured[0].userId).to.equal(existingUser.id);
     });
 
-    it('upgrades a signed-in pending account when the access grant is approved', async () => {
-        const existingUser = makeUser();
-        const { app } = buildApp({ role: 'user', existingUser });
-
-        const res = await request(app)
-            .get('/scorm/status')
-            .set('Authorization', 'Bearer platform-token');
-
+    it('returns the assigned tenant when an authorised session refreshes', async () => {
+        const existingUser = makeUser({ email: 'approved@example.com' });
+        const { app } = buildApp({ role: 'admin', existingUser, tenantAssigned: true });
+        const res = await request(app).get('/scorm/status').set('Authorization', 'Bearer platform-token');
         expect(res.status).to.equal(200);
-        expect(res.body.token).to.equal('signed-scorm-token');
-        expect(res.body.pendingApproval).to.equal(false);
-        expect(res.body.platformAccess).to.equal(true);
         expect(res.body.scormAccess).to.equal(true);
-        expect(res.body.role).to.equal('user');
+        expect(res.body.role).to.equal('admin');
+        expect(res.body.tenantId).to.equal('tenant-1');
     });
 
-    it('keeps a signed-in pending account limited when approval has not been granted yet', async () => {
+    it('keeps a signed-in pending account limited when no tenant grant exists', async () => {
         const existingUser = makeUser();
         const { app } = buildApp({ role: null, existingUser });
-
-        const res = await request(app)
-            .get('/scorm/status')
-            .set('Authorization', 'Bearer platform-token');
-
+        const res = await request(app).get('/scorm/status').set('Authorization', 'Bearer platform-token');
         expect(res.status).to.equal(200);
-        expect(res.body.token).to.equal('signed-scorm-token');
         expect(res.body.pendingApproval).to.equal(true);
-        expect(res.body.platformAccess).to.equal(true);
         expect(res.body.scormAccess).to.equal(false);
-        expect(res.body.role).to.equal('pending');
     });
 
-    it('accepts the exact same registered password after approval', async () => {
-        const existingUser = makeUser();
-        const { app, captured } = buildApp({ role: 'user', existingUser });
-
-        const res = await request(app)
-            .post('/scorm/login')
-            .send({ identifier: existingUser.email, password: 'Password123!' });
-
+    it('accepts the same password after the account is assigned to a tenant', async () => {
+        const existingUser = makeUser({ email: 'approved@example.com' });
+        const { app, captured } = buildApp({ role: 'admin', existingUser, tenantAssigned: true });
+        const res = await request(app).post('/scorm/login').send({ identifier: existingUser.email, password: 'Password123!' });
         expect(res.status).to.equal(200);
-        expect(res.body.token).to.equal('signed-scorm-token');
         expect(res.body.email).to.equal(existingUser.email);
-        expect(res.body.username).to.equal(existingUser.username);
         expect(res.body.scormAccess).to.equal(true);
+        expect(res.body.tenantName).to.equal('Acme Tenant');
         expect(captured).to.have.length(0);
     });
 });

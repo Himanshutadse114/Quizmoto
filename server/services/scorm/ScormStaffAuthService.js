@@ -1,8 +1,6 @@
 const User = require('../../models/User');
 const {
-    ScormWorkspace,
-    ScormWorkspaceMember,
-    ScormWorkspaceAuthConfig
+    ScormWorkspaceMember
 } = require('../../models/scorm');
 const {
     getWorkspaceAndConfig,
@@ -14,10 +12,6 @@ const {
 
 const STAFF_JOINING_MODES = Object.freeze(['password_or_sso', 'sso_only']);
 const STAFF_ROLES = Object.freeze(['admin', 'co_admin', 'analytics_viewer']);
-const SHARED_PUBLIC_DOMAINS = new Set([
-    'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.co.in', 'outlook.com',
-    'hotmail.com', 'live.com', 'icloud.com', 'me.com', 'proton.me', 'protonmail.com'
-]);
 
 function fail(message, code, status = 400) {
     const err = new Error(message);
@@ -40,10 +34,6 @@ function parseJsonDomains(value) {
     }
 }
 
-function emailDomain(email) {
-    return normalizeEmail(email).split('@')[1] || '';
-}
-
 function staffProviderConfig(config) {
     return {
         googleEnabled: Boolean(config?.staffGoogleEnabled),
@@ -63,7 +53,9 @@ function serializeStaffAuthConfig(config, { workspace = null, publicView = false
     );
     const data = {
         workspaceId: config?.workspaceId || workspace?.id || null,
+        tenantId: config?.workspaceId || workspace?.id || null,
         workspaceName: workspace?.name || null,
+        tenantName: workspace?.name || null,
         staffJoiningMode,
         staffPasswordEnabled: staffJoiningMode !== 'sso_only',
         staffSsoRequired: staffJoiningMode === 'sso_only',
@@ -135,7 +127,7 @@ async function verifyStaffIdentity({ workspaceId, provider, credential }) {
     });
     if (!member || member.status === 'disabled' || !STAFF_ROLES.includes(String(member.role || '').toLowerCase())) {
         throw fail(
-            'This account is not an authorised Admin, Co-admin or Analytics Viewer for this workspace.',
+            'This account is not an authorised Admin, Co-admin or Analytics Viewer for this tenant.',
             'SCORM_STAFF_NOT_AUTHORISED',
             403
         );
@@ -189,6 +181,7 @@ async function getStaffPolicyForEmail(email) {
     const member = await ScormWorkspaceMember.findOne({ where: { email: normalized } });
     if (!member || member.status === 'disabled') return null;
     const { workspace, config } = await getWorkspaceAndConfig(member.workspaceId);
+    if (workspace.status !== 'active') return null;
     return {
         workspace,
         member,
@@ -203,56 +196,17 @@ async function discoverStaffPolicy(email) {
         throw fail('Enter your work email address.', 'SCORM_STAFF_EMAIL_REQUIRED', 400);
     }
 
+    // Tenant selection is explicit. A domain never grants or chooses staff
+    // access; the Super Admin / Tenant Admin must have assigned this exact email.
     const direct = await getStaffPolicyForEmail(normalized);
-    if (direct) return { ...direct, source: 'membership' };
-
-    const domain = emailDomain(normalized);
-    if (!domain || SHARED_PUBLIC_DOMAINS.has(domain)) {
+    if (!direct) {
         throw fail(
-            'We could not identify an organisation from this email. Ask your administrator to invite this exact address.',
-            'SCORM_STAFF_WORKSPACE_NOT_FOUND',
+            'This email has not been assigned to an LMSGEN tenant. Ask the Super Admin or Tenant Admin to add this exact address.',
+            'SCORM_STAFF_TENANT_NOT_FOUND',
             404
         );
     }
-
-    const configs = await ScormWorkspaceAuthConfig.findAll();
-    const matchingConfigs = configs.filter((config) => {
-        const domains = new Set([
-            ...parseJsonDomains(config.staffAllowedDomainsJson),
-            ...parseJsonDomains(config.allowedDomainsJson)
-        ]);
-        return domains.has(domain);
-    });
-
-    const matches = [];
-    for (const config of matchingConfigs) {
-        const workspace = await ScormWorkspace.findByPk(config.workspaceId);
-        if (workspace?.status === 'active') matches.push({ workspace, config });
-    }
-
-    if (matches.length > 1) {
-        throw fail(
-            'This email domain is configured for more than one organisation. Ask an administrator to invite your exact email address.',
-            'SCORM_STAFF_WORKSPACE_AMBIGUOUS',
-            409
-        );
-    }
-    if (!matches.length) {
-        throw fail(
-            'No LMSGEN organisation is configured for this work email domain.',
-            'SCORM_STAFF_WORKSPACE_NOT_FOUND',
-            404
-        );
-    }
-
-    const { workspace, config } = matches[0];
-    return {
-        workspace,
-        member: null,
-        config,
-        publicConfig: serializeStaffAuthConfig(config, { workspace, publicView: true }),
-        source: 'domain'
-    };
+    return { ...direct, source: 'membership' };
 }
 
 module.exports = {

@@ -23,22 +23,16 @@ module.exports = async (req, res, next) => {
         req.userId = decoded.userId;
         req.authenticatedUserId = decoded.userId;
         req.authScope = decoded.scope || null;
+        req.authMethod = decoded.authMethod || null;
 
-        // SCORM AI is a separately gated workspace. Protected administrator
-        // endpoints must carry a SCORM token, a live access grant and (for team
-        // roles) a live workspace membership. The compatibility assignment of
-        // req.userId to the workspace owner means the existing hostId-based
-        // course/roster/tracking code automatically becomes multi-admin without
-        // rewriting every mature SCORM route at once. The signed-in actor remains
-        // available as req.authenticatedUserId for audit fields.
         if (isScormAdminRequest && process.env.NODE_ENV !== 'test') {
             if (decoded.scope !== 'scorm') {
-                return res.status(401).json({ message: 'SCORM AI login required', code: 'SCORM_AUTH_REQUIRED' });
+                return res.status(401).json({ message: 'LMSGEN login required', code: 'SCORM_AUTH_REQUIRED' });
             }
 
             const user = await User.findByPk(decoded.userId);
             if (!user) {
-                return res.status(401).json({ message: 'SCORM AI account no longer exists.', code: 'SCORM_AUTH_REQUIRED' });
+                return res.status(401).json({ message: 'LMSGEN account no longer exists.', code: 'SCORM_AUTH_REQUIRED' });
             }
 
             const accessRole = await getAccessRole(user.email);
@@ -52,28 +46,33 @@ module.exports = async (req, res, next) => {
             req.scormWorkspaceId = workspaceContext.workspace?.id || null;
             req.scormWorkspaceMember = workspaceContext.member || null;
 
-            // When the workspace owner selects Staff SSO only, old/global
-            // password or platform-Google tokens must not bypass that policy.
-            // Workspace SSO tokens carry the authoritative workspaceId claim.
+            // Tenant SSO policy belongs to the tenant. Exact membership chooses
+            // the tenant; domains are only optional provider restrictions.
             if (workspaceContext.workspace && workspaceContext.role !== 'super_admin') {
                 const policy = await getStaffPolicyForEmail(user.email);
                 if (policy?.publicConfig?.staffSsoRequired) {
                     const tokenWorkspaceId = String(decoded.workspaceId || '');
                     const expectedWorkspaceId = String(workspaceContext.workspace.id);
-                    if (tokenWorkspaceId !== expectedWorkspaceId) {
+                    const authMethod = String(decoded.authMethod || '').toLowerCase();
+                    const providerAllowed =
+                        (authMethod === 'google' && policy.publicConfig.staffGoogleEnabled) ||
+                        (authMethod === 'microsoft' && policy.publicConfig.staffMicrosoftEnabled);
+
+                    if (tokenWorkspaceId !== expectedWorkspaceId || !providerAllowed) {
                         return res.status(403).json({
-                            message: 'This organisation requires Admin & team SSO. Use the workspace staff login link.',
+                            message: 'This tenant requires an enabled organisation SSO provider. Use the tenant Staff SSO sign-in.',
                             code: 'SCORM_STAFF_SSO_REQUIRED',
                             workspaceId: expectedWorkspaceId,
-                            staffLoginPath: `/login?workspace=${encodeURIComponent(expectedWorkspaceId)}`
+                            tenantId: expectedWorkspaceId,
+                            staffLoginPath: '/login'
                         });
                     }
                 }
             }
 
-            // Backward-compatible host identity used throughout the existing
-            // SCORM codebase. Co-admins therefore work inside the owner's data
-            // partition, while authenticatedUserId still identifies the actor.
+            // Existing SCORM tables are partitioned by hostId. New tenants use
+            // a non-login internal host user, so human Admin changes do not move
+            // or duplicate course/learner data.
             req.userId = workspaceContext.hostId;
 
             assertScormRouteAllowed({
@@ -82,16 +81,13 @@ module.exports = async (req, res, next) => {
                 url
             });
 
-            // Entitlements belong to the workspace, not each individual team
-            // member. Otherwise a co-admin could accidentally receive a fresh
-            // quota and bypass the primary Admin's course/learner limits.
             let entitlementOwner = user;
             if (workspaceContext.workspace && workspaceContext.hostId !== user.id) {
                 entitlementOwner = await User.findByPk(workspaceContext.hostId);
                 if (!entitlementOwner) {
-                    const err = new Error('The LMSGEN workspace owner account no longer exists.');
+                    const err = new Error('The LMSGEN tenant data host no longer exists.');
                     err.status = 403;
-                    err.code = 'SCORM_WORKSPACE_OWNER_REQUIRED';
+                    err.code = 'SCORM_TENANT_HOST_REQUIRED';
                     throw err;
                 }
             }
