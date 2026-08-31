@@ -4,8 +4,13 @@ const ScormUserEntitlement = require('../../models/scorm/ScormUserEntitlement');
 const {
     ScormCourse,
     ScormLearnerRoster,
-    ScormRegistration
+    ScormRegistration,
+    ScormCampaign,
+    ScormWorkspace,
+    ScormWorkspaceMember
 } = require('../../models/scorm');
+
+const INACTIVE_ASSIGNMENT_STATUSES = ['revoked', 'superseded'];
 
 const DEFAULT_PERMISSIONS = Object.freeze({
     courseAuthoring: true,
@@ -13,9 +18,13 @@ const DEFAULT_PERMISSIONS = Object.freeze({
     coursePreview: true,
     learnerRoster: true,
     learnerTracking: true,
+    assignments: true,
+    campaigns: true,
     reports: true,
     library: true,
-    contentEditor: true
+    contentEditor: true,
+    teamManagement: true,
+    ssoManagement: true
 });
 
 function normalizeEmail(value) {
@@ -44,6 +53,9 @@ function serializeEntitlement(row, role = 'user') {
         return {
             maxCourses: null,
             maxLearners: null,
+            maxStaff: null,
+            maxCampaigns: null,
+            maxAssignments: null,
             permissions: { ...DEFAULT_PERMISSIONS },
             unlimited: true,
             protected: true
@@ -53,9 +65,24 @@ function serializeEntitlement(row, role = 'user') {
     return {
         maxCourses: normalizeLimit(row?.maxCourses),
         maxLearners: normalizeLimit(row?.maxLearners),
+        maxStaff: normalizeLimit(row?.maxStaff),
+        maxCampaigns: normalizeLimit(row?.maxCampaigns),
+        maxAssignments: normalizeLimit(row?.maxAssignments),
         permissions: normalizePermissions(row?.permissions),
         unlimited: false,
         protected: false
+    };
+}
+
+function entitlementDefaults(email) {
+    return {
+        email,
+        maxCourses: null,
+        maxLearners: null,
+        maxStaff: null,
+        maxCampaigns: null,
+        maxAssignments: null,
+        permissions: { ...DEFAULT_PERMISSIONS }
     };
 }
 
@@ -66,12 +93,7 @@ async function getEntitlement(email, role = 'user') {
 
     const [row] = await ScormUserEntitlement.findOrCreate({
         where: { email: normalized },
-        defaults: {
-            email: normalized,
-            maxCourses: null,
-            maxLearners: null,
-            permissions: { ...DEFAULT_PERMISSIONS }
-        }
+        defaults: entitlementDefaults(normalized)
     });
 
     const normalizedPermissions = normalizePermissions(row.permissions);
@@ -86,24 +108,19 @@ async function getEntitlement(email, role = 'user') {
 
 async function updateEntitlement(email, patch = {}, actor = {}) {
     const normalized = normalizeEmail(email);
-    if (!normalized) throw new Error('User email is required.');
+    if (!normalized) throw new Error('Entitlement owner email is required.');
 
     const [row] = await ScormUserEntitlement.findOrCreate({
         where: { email: normalized },
-        defaults: {
-            email: normalized,
-            maxCourses: null,
-            maxLearners: null,
-            permissions: { ...DEFAULT_PERMISSIONS }
-        }
+        defaults: entitlementDefaults(normalized)
     });
 
-    if (Object.prototype.hasOwnProperty.call(patch, 'maxCourses')) {
-        row.maxCourses = normalizeLimit(patch.maxCourses);
+    for (const field of ['maxCourses', 'maxLearners', 'maxStaff', 'maxCampaigns', 'maxAssignments']) {
+        if (Object.prototype.hasOwnProperty.call(patch, field)) {
+            row[field] = normalizeLimit(patch[field]);
+        }
     }
-    if (Object.prototype.hasOwnProperty.call(patch, 'maxLearners')) {
-        row.maxLearners = normalizeLimit(patch.maxLearners);
-    }
+
     if (patch.permissions && typeof patch.permissions === 'object') {
         row.permissions = normalizePermissions({
             ...normalizePermissions(row.permissions),
@@ -118,13 +135,13 @@ async function updateEntitlement(email, patch = {}, actor = {}) {
     return serializeEntitlement(row, 'user');
 }
 
+async function courseIdsForHost(hostId) {
+    const courses = await ScormCourse.findAll({ where: { hostId }, attributes: ['id'], raw: true });
+    return courses.map((course) => course.id);
+}
+
 async function enrolledLearnerCount(hostId) {
-    const courses = await ScormCourse.findAll({
-        where: { hostId },
-        attributes: ['id'],
-        raw: true
-    });
-    const courseIds = courses.map((course) => course.id);
+    const courseIds = await courseIdsForHost(hostId);
     if (!courseIds.length) return 0;
     return ScormRegistration.count({
         distinct: true,
@@ -132,27 +149,55 @@ async function enrolledLearnerCount(hostId) {
         where: {
             courseId: { [Op.in]: courseIds },
             isPreview: false,
+            status: { [Op.notIn]: INACTIVE_ASSIGNMENT_STATUSES },
             learnerEmail: { [Op.ne]: null }
         }
     });
 }
 
+async function activeAssignmentCount(hostId) {
+    const courseIds = await courseIdsForHost(hostId);
+    if (!courseIds.length) return 0;
+    return ScormRegistration.count({
+        where: {
+            courseId: { [Op.in]: courseIds },
+            isPreview: false,
+            status: { [Op.notIn]: INACTIVE_ASSIGNMENT_STATUSES }
+        }
+    });
+}
+
+async function getUsageForHost(hostId, workspaceId = null) {
+    if (!hostId) {
+        return { courseCreations: 0, activeCourses: 0, learners: 0, rosterLearners: 0, staff: 0, campaigns: 0, assignments: 0 };
+    }
+    let resolvedWorkspaceId = workspaceId;
+    if (!resolvedWorkspaceId) {
+        const workspace = await ScormWorkspace.findOne({ where: { ownerUserId: hostId }, attributes: ['id'], raw: true });
+        resolvedWorkspaceId = workspace?.id || null;
+    }
+
+    const [courseCreations, activeCourses, learners, rosterLearners, staff, campaigns, assignments] = await Promise.all([
+        // IMPORTANT: lifetime course creation usage. Archived/deleted courses are
+        // deliberately included so deleting a course never refunds the quota.
+        ScormCourse.count({ where: { hostId } }),
+        ScormCourse.count({ where: { hostId, status: { [Op.ne]: 'archived' } } }),
+        enrolledLearnerCount(hostId),
+        ScormLearnerRoster.count({ where: { hostId } }),
+        resolvedWorkspaceId ? ScormWorkspaceMember.count({ where: { workspaceId: resolvedWorkspaceId } }) : 0,
+        resolvedWorkspaceId ? ScormCampaign.count({ where: { workspaceId: resolvedWorkspaceId } }) : 0,
+        activeAssignmentCount(hostId)
+    ]);
+
+    return { courseCreations, activeCourses, learners, rosterLearners, staff, campaigns, assignments };
+}
+
 async function getUsageForEmail(email) {
     const normalized = normalizeEmail(email);
     const user = normalized ? await User.findOne({ where: { email: normalized } }) : null;
-    if (!user) return { courses: 0, learners: 0, rosterLearners: 0 };
-
-    const [courses, learners, rosterLearners] = await Promise.all([
-        ScormCourse.count({
-            where: {
-                hostId: user.id,
-                status: { [Op.ne]: 'archived' }
-            }
-        }),
-        enrolledLearnerCount(user.id),
-        ScormLearnerRoster.count({ where: { hostId: user.id } })
-    ]);
-    return { courses, learners, rosterLearners };
+    if (!user) return { courses: 0, courseCreations: 0, activeCourses: 0, learners: 0, rosterLearners: 0, staff: 0, campaigns: 0, assignments: 0 };
+    const usage = await getUsageForHost(user.id);
+    return { ...usage, courses: usage.activeCourses };
 }
 
 function deny(message, code) {
@@ -170,6 +215,10 @@ function capabilityForRequest(req) {
     if (path.startsWith('/api/scorm/content') || path.startsWith('/api/scorm/slide-preview')) return 'contentEditor';
     if (path.startsWith('/api/scorm/roster')) return 'learnerRoster';
     if (path.startsWith('/api/scorm/tracking')) return 'learnerTracking';
+    if (path.startsWith('/api/scorm/assignments')) return 'assignments';
+    if (path.startsWith('/api/scorm/campaigns')) return 'campaigns';
+    if (path.startsWith('/api/scorm/team')) return 'teamManagement';
+    if (path.startsWith('/api/scorm/learner-access')) return 'ssoManagement';
     if (path.startsWith('/api/scorm/packages')) return 'library';
     if (path.startsWith('/api/scorm/courses/reports') || /\/api\/scorm\/courses\/[^/]+\/report$/.test(path)) return 'reports';
     if (/\/api\/scorm\/courses\/[^/]+\/preview$/.test(path) && method === 'POST') return 'coursePreview';
@@ -177,20 +226,35 @@ function capabilityForRequest(req) {
     return null;
 }
 
-async function assertCourseLimit(userId, entitlement) {
+async function assertCourseLimit(hostId, entitlement) {
     const max = normalizeLimit(entitlement?.maxCourses);
     if (max === null) return;
-    const current = await ScormCourse.count({
-        where: {
-            hostId: userId,
-            status: { [Op.ne]: 'archived' }
-        }
-    });
-    if (current >= max) {
+    // Count every course row ever created for this tenant. Package deletion only
+    // archives the course, so this is a non-refundable lifetime creation quota.
+    const consumed = await ScormCourse.count({ where: { hostId } });
+    if (consumed >= max) {
         throw deny(
-            `Course creation limit reached (${current}/${max}). Contact the super administrator to increase your limit.`,
+            `Course creation allowance reached (${consumed}/${max}). Deleted or archived courses still count towards the tenant's lifetime allowance.`,
             'SCORM_COURSE_LIMIT_REACHED'
         );
+    }
+}
+
+async function assertStaffLimit(workspaceId, entitlement) {
+    const max = normalizeLimit(entitlement?.maxStaff);
+    if (max === null || !workspaceId) return;
+    const current = await ScormWorkspaceMember.count({ where: { workspaceId } });
+    if (current >= max) {
+        throw deny(`Tenant staff limit reached (${current}/${max}).`, 'SCORM_STAFF_LIMIT_REACHED');
+    }
+}
+
+async function assertCampaignLimit(workspaceId, entitlement) {
+    const max = normalizeLimit(entitlement?.maxCampaigns);
+    if (max === null || !workspaceId) return;
+    const current = await ScormCampaign.count({ where: { workspaceId } });
+    if (current >= max) {
+        throw deny(`Tenant campaign limit reached (${current}/${max}).`, 'SCORM_CAMPAIGN_LIMIT_REACHED');
     }
 }
 
@@ -200,20 +264,13 @@ async function assertEnrollmentAllowed(hostId, learnerEmail) {
     const host = await User.findByPk(hostId);
     if (!host) return;
 
-    const { getAccessRole } = require('./ScormAccessService');
-    const role = await getAccessRole(host.email);
-    const entitlement = await getEntitlement(host.email, role || 'user');
+    const entitlement = await getEntitlement(host.email, 'admin');
     const max = normalizeLimit(entitlement.maxLearners);
     if (max === null) return;
 
-    const courses = await ScormCourse.findAll({
-        where: { hostId },
-        attributes: ['id'],
-        raw: true
-    });
-    const courseIds = courses.map((course) => course.id);
+    const courseIds = await courseIdsForHost(hostId);
     if (!courseIds.length) {
-        if (max === 0) throw deny('Learner enrollment is disabled for this account.', 'SCORM_LEARNER_LIMIT_REACHED');
+        if (max === 0) throw deny('Learner assignment is disabled for this tenant.', 'SCORM_LEARNER_LIMIT_REACHED');
         return;
     }
 
@@ -221,6 +278,7 @@ async function assertEnrollmentAllowed(hostId, learnerEmail) {
         where: {
             courseId: { [Op.in]: courseIds },
             isPreview: false,
+            status: { [Op.notIn]: INACTIVE_ASSIGNMENT_STATUSES },
             learnerEmail: email
         }
     });
@@ -228,10 +286,7 @@ async function assertEnrollmentAllowed(hostId, learnerEmail) {
 
     const current = await enrolledLearnerCount(hostId);
     if (current >= max) {
-        throw deny(
-            `Learner enrollment limit reached (${current}/${max}). Contact the course administrator.`,
-            'SCORM_LEARNER_LIMIT_REACHED'
-        );
+        throw deny(`Learner assignment limit reached (${current}/${max}).`, 'SCORM_LEARNER_LIMIT_REACHED');
     }
 }
 
@@ -242,7 +297,7 @@ function requestedRosterEmails(req) {
     return [...new Set(emails)];
 }
 
-async function assertLearnerLimit(req, userId, entitlement) {
+async function assertLearnerLimit(req, hostId, entitlement) {
     const max = normalizeLimit(entitlement?.maxLearners);
     if (max === null) return;
 
@@ -252,14 +307,11 @@ async function assertLearnerLimit(req, userId, entitlement) {
     if (method === 'POST') {
         const email = normalizeEmail(req.body?.email);
         if (!email) return;
-        const exists = await ScormLearnerRoster.findOne({ where: { hostId: userId, email } });
+        const exists = await ScormLearnerRoster.findOne({ where: { hostId, email } });
         if (exists) return;
-        const current = await ScormLearnerRoster.count({ where: { hostId: userId } });
+        const current = await ScormLearnerRoster.count({ where: { hostId } });
         if (current + 1 > max) {
-            throw deny(
-                `Learner roster limit reached (${current}/${max}). Contact the super administrator to increase your limit.`,
-                'SCORM_LEARNER_LIMIT_REACHED'
-            );
+            throw deny(`Learner roster limit reached (${current}/${max}).`, 'SCORM_LEARNER_LIMIT_REACHED');
         }
         return;
     }
@@ -267,27 +319,15 @@ async function assertLearnerLimit(req, userId, entitlement) {
     const emails = requestedRosterEmails(req);
     const mode = String(req.body?.mode || 'append').toLowerCase() === 'replace' ? 'replace' : 'append';
     if (mode === 'replace') {
-        if (emails.length > max) {
-            throw deny(
-                `This roster contains ${emails.length} learners, but your limit is ${max}.`,
-                'SCORM_LEARNER_LIMIT_REACHED'
-            );
-        }
+        if (emails.length > max) throw deny(`This roster contains ${emails.length} learners, but the tenant limit is ${max}.`, 'SCORM_LEARNER_LIMIT_REACHED');
         return;
     }
 
-    const current = await ScormLearnerRoster.count({ where: { hostId: userId } });
+    const current = await ScormLearnerRoster.count({ where: { hostId } });
     if (!emails.length) return;
-    const existing = await ScormLearnerRoster.count({
-        where: { hostId: userId, email: { [Op.in]: emails } }
-    });
+    const existing = await ScormLearnerRoster.count({ where: { hostId, email: { [Op.in]: emails } } });
     const projected = current + Math.max(0, emails.length - existing);
-    if (projected > max) {
-        throw deny(
-            `Adding these learners would exceed your limit (${projected}/${max}).`,
-            'SCORM_LEARNER_LIMIT_REACHED'
-        );
-    }
+    if (projected > max) throw deny(`Adding these learners would exceed the tenant limit (${projected}/${max}).`, 'SCORM_LEARNER_LIMIT_REACHED');
 }
 
 async function enforceRequestEntitlement(req, { userId, email, role }) {
@@ -297,24 +337,19 @@ async function enforceRequestEntitlement(req, { userId, email, role }) {
 
     const capability = capabilityForRequest(req);
     if (capability && entitlement.permissions[capability] === false) {
-        throw deny(
-            'This capability has been disabled for your account by the super administrator.',
-            'SCORM_CAPABILITY_DISABLED'
-        );
+        throw deny('This capability has been disabled for this tenant by the Super Admin.', 'SCORM_CAPABILITY_DISABLED');
     }
 
     const path = String(req.originalUrl || '').split('?')[0];
     const method = String(req.method || 'GET').toUpperCase();
 
-    if (method === 'POST' && path === '/api/scorm/courses') {
-        await assertCourseLimit(userId, entitlement);
-    }
+    if (method === 'POST' && path === '/api/scorm/courses') await assertCourseLimit(userId, entitlement);
     if (method === 'POST' && path === '/api/scorm/author/generate' && !req.body?.replacePackageId && !req.body?.packageId) {
         await assertCourseLimit(userId, entitlement);
     }
-    if (path.startsWith('/api/scorm/roster')) {
-        await assertLearnerLimit(req, userId, entitlement);
-    }
+    if (path.startsWith('/api/scorm/roster')) await assertLearnerLimit(req, userId, entitlement);
+    if (method === 'POST' && path === '/api/scorm/team') await assertStaffLimit(req.scormWorkspaceId, entitlement);
+    if (method === 'POST' && path === '/api/scorm/campaigns') await assertCampaignLimit(req.scormWorkspaceId, entitlement);
 
     return entitlement;
 }
@@ -326,6 +361,8 @@ module.exports = {
     getEntitlement,
     updateEntitlement,
     getUsageForEmail,
+    getUsageForHost,
+    activeAssignmentCount,
     assertEnrollmentAllowed,
     enforceRequestEntitlement
 };
