@@ -51,7 +51,7 @@ function neutralOtpResponse() {
     };
 }
 
-async function requestLearnerEmailOtp({ workspaceId, email, name }) {
+async function requestLearnerEmailOtp({ workspaceId, email }) {
     // Fail consistently for every address when SMTP itself is unavailable. This
     // prevents assignment membership from being inferred from a 503 response.
     MailService.assertConfigured();
@@ -75,7 +75,6 @@ async function requestLearnerEmailOtp({ workspaceId, email, name }) {
 
     const learnerName = String(
         assignments.find((row) => row.learnerName)?.learnerName ||
-        name ||
         normalized.split('@')[0] ||
         'Learner'
     ).trim().slice(0, 255);
@@ -94,18 +93,32 @@ async function requestLearnerEmailOtp({ workspaceId, email, name }) {
     };
 }
 
-async function verifyLearnerEmailOtp({ workspaceId, email, code, name }) {
+async function verifyLearnerEmailOtp({ workspaceId, email, code }) {
     const normalized = normalizeEmail(email);
     if (!validEmail(normalized)) {
         throw fail('Enter your assigned learner email.', 'SCORM_LEARNER_EMAIL_REQUIRED', 400);
     }
 
     await verifyOtp({ workspaceId, email: normalized, code });
+
+    // Resolve the display identity from the committed assignment after email
+    // ownership has been proved. The browser cannot override the learner name.
+    const { workspace } = await getWorkspaceAndConfig(workspaceId);
+    const assignments = await findAssignedRegistrations(workspace.ownerUserId, normalized);
+    if (!assignments.length) {
+        throw fail('No active training is assigned to this email.', 'SCORM_LEARNER_NOT_ASSIGNED', 403);
+    }
+    const learnerName = String(
+        assignments.find((row) => row.learnerName)?.learnerName ||
+        normalized.split('@')[0] ||
+        'Learner'
+    ).trim().slice(0, 255);
+
     return createLearnerSessionFromIdentity({
         workspaceId,
         identity: {
             email: normalized,
-            name: String(name || '').trim().slice(0, 255) || normalized.split('@')[0] || 'Learner',
+            name: learnerName,
             provider: 'email_otp'
         }
     });
