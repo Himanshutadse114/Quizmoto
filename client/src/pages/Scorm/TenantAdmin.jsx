@@ -33,10 +33,12 @@ const DEFAULT_PERMISSIONS = {
   library: true,
   contentEditor: true,
   teamManagement: true,
-  ssoManagement: true
+  ssoManagement: true,
+  geometryPhysicsFullAccess: false
 };
 
 const PERMISSION_LABELS = [
+  ['geometryPhysicsFullAccess', 'Geometry Physics full access (Levels 26–132)'],
   ['courseAuthoring', 'AI course authoring'],
   ['contentEditor', 'Course content editor'],
   ['coursePublishing', 'Course publishing'],
@@ -236,7 +238,7 @@ function TenantCard({ tenant, onRefresh }) {
           <p className="mt-1 text-[10px] opacity-55">Leave a limit blank for unlimited. Setting a limit below current usage blocks new usage without deleting existing data.</p>
           <div className="mt-3"><LimitInputs value={entitlement} onChange={setEntitlement} /></div>
           <div className="mt-5 text-xs font-semibold">Enabled tenant features</div>
-          <p className="mt-1 text-[10px] opacity-55">Disabled features are enforced by the backend, not only hidden in the interface.</p>
+          <p className="mt-1 text-[10px] opacity-55">The first 25 Geometry Physics levels stay free for every tenant. Enable Geometry Physics full access here to unlock Levels 26–132. Other disabled features are enforced by the backend.</p>
           <div className="mt-3"><PermissionGrid permissions={entitlement.permissions} onChange={(permissions) => setEntitlement((current) => ({ ...current, permissions }))} /></div>
           {error && <div className="mt-3 text-xs text-rose-400">{error}</div>}
           <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => { setEditingEntitlement(false); setEntitlement(entitlementForm(tenant.entitlement)); }} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold">Cancel</button><button type="button" onClick={saveEntitlement} disabled={busy} className="scorm-button-primary min-h-9 px-3 text-[10px] font-semibold disabled:opacity-50">{busy ? 'Saving…' : 'Save limits & features'}</button></div>
@@ -296,7 +298,7 @@ export default function TenantAdmin() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl grid place-items-center bg-[#4FC9BF]/10 text-[#4FC9BF] border border-[#4FC9BF]/20"><Plus size={18} /></div><div><h2 className="text-base font-semibold">Create Tenant</h2><p className="mt-0.5 text-[10px] opacity-55">Define the tenant, Admin, capacity and enabled features before it goes live.</p></div></div><button type="button" onClick={() => setAdvanced((value) => !value)} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2"><Settings2 size={13} /> {advanced ? 'Hide advanced configuration' : 'Show advanced configuration'}</button></div>
         <form onSubmit={create} className="mt-4">
           <div className="grid md:grid-cols-3 gap-3"><label className="block"><span className="text-[9px] uppercase tracking-[.08em] opacity-55">Tenant name</span><input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required minLength={2} placeholder="Acme Corporation" className="mt-1.5 w-full rounded-lg border px-3 py-2.5 text-xs bg-transparent outline-none focus:border-[#4FC9BF]" /></label><label className="block"><span className="text-[9px] uppercase tracking-[.08em] opacity-55">Tenant Admin email</span><input type="email" value={form.adminEmail} onChange={(event) => setForm((current) => ({ ...current, adminEmail: event.target.value }))} required placeholder="admin@company.com" className="mt-1.5 w-full rounded-lg border px-3 py-2.5 text-xs bg-transparent outline-none focus:border-[#4FC9BF]" /></label><label className="block"><span className="text-[9px] uppercase tracking-[.08em] opacity-55">Admin name (optional)</span><input value={form.adminName} onChange={(event) => setForm((current) => ({ ...current, adminName: event.target.value }))} placeholder="Admin name" className="mt-1.5 w-full rounded-lg border px-3 py-2.5 text-xs bg-transparent outline-none focus:border-[#4FC9BF]" /></label></div>
-          {advanced && <div className="mt-5 border-t pt-5"><div className="flex items-center gap-2"><Gauge size={15} className="text-[#4FC9BF]" /><div className="text-xs font-semibold">Capacity limits</div></div><p className="mt-1 text-[10px] opacity-55">Blank means unlimited. Course creation is a lifetime allowance and is not restored by deleting a course.</p><div className="mt-3"><LimitInputs value={form} onChange={(next) => setForm((current) => ({ ...current, ...next }))} /></div><div className="mt-5 text-xs font-semibold">Enabled tenant features</div><p className="mt-1 text-[10px] opacity-55">Turn modules on or off per tenant. These controls are enforced on the server.</p><div className="mt-3"><PermissionGrid permissions={form.permissions} onChange={(permissions) => setForm((current) => ({ ...current, permissions }))} /></div></div>}
+          {advanced && <div className="mt-5 border-t pt-5"><div className="flex items-center gap-2"><Gauge size={15} className="text-[#4FC9BF]" /><div className="text-xs font-semibold">Capacity limits</div></div><p className="mt-1 text-[10px] opacity-55">Blank means unlimited. Course creation is a lifetime allowance and is not restored by deleting a course.</p><div className="mt-3"><LimitInputs value={form} onChange={(next) => setForm((current) => ({ ...current, ...next }))} /></div><div className="mt-5 text-xs font-semibold">Enabled tenant features</div><p className="mt-1 text-[10px] opacity-55">The first 25 Geometry Physics levels are always free. Enable full access only for tenants that should receive Levels 26–132.</p><div className="mt-3"><PermissionGrid permissions={form.permissions} onChange={(permissions) => setForm((current) => ({ ...current, permissions }))} /></div></div>}
           <div className="mt-4 flex justify-end"><button type="submit" disabled={creating} className="scorm-button-primary min-h-10 px-4 text-[10px] font-semibold inline-flex items-center gap-2 disabled:opacity-50"><Building2 size={14} /> {creating ? 'Creating…' : 'Create Tenant'}</button></div>
         </form>
       </section>
