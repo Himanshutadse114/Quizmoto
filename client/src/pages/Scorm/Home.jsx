@@ -17,7 +17,6 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import { fetchScormData, peekScormData } from '../../services/scormDataCache';
-import FreeGamesSection from './FreeGamesSection';
 
 const StatCard = ({ label, value, icon: Icon, tone = 'neutral', loading = false }) => (
   <div className={`scorm-metric-card scorm-metric-${tone}`}>
@@ -139,8 +138,6 @@ export default function ScormHome() {
         <StatCard label="In progress" value={overview.inProgress || 0} icon={Clock3} tone="amber" loading={loading} />
         <StatCard label="Completed" value={overview.completed || 0} icon={CheckCircle2} tone="green" loading={loading} />
       </div>
-
-      <FreeGamesSection />
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_.85fr] gap-5">
         <section className="scorm-panel overflow-hidden">
