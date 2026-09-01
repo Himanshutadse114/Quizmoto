@@ -3,13 +3,13 @@ const router = express.Router();
 const auth = require('../middleware');
 const {
     parseCampaignCsv,
-    listCampaigns,
     createCampaign,
     getCampaignDetail,
     getCampaignAccessSheet,
     startCampaign,
     deleteDraftCampaign
 } = require('../../services/scorm/ScormCampaignService');
+const { listCampaigns } = require('../../services/scorm/ScormCampaignListService');
 const { getCampaignAnalytics } = require('../../services/scorm/ScormCampaignAnalyticsService');
 
 function workspaceRequired(req) {
