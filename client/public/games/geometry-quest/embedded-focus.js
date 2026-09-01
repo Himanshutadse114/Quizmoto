@@ -3,6 +3,9 @@
 
   if (window.top === window.self) return;
 
+  let focusRequested = false;
+  let fullscreenActive = false;
+
   const style = document.createElement('style');
   style.id = 'geometryEmbeddedFocusStyles';
   style.textContent = `
@@ -33,16 +36,37 @@
   `;
   document.head.appendChild(style);
 
-  function setFocus(active) {
-    document.body.classList.toggle('geometry-focus', Boolean(active));
-    window.requestAnimationFrame(() => {
-      window.dispatchEvent(new Event('resize'));
+  function applyFocus() {
+    const active = focusRequested || fullscreenActive;
+    document.body.classList.toggle('geometry-focus', active);
+    window.requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+  }
+
+  function pauseRunningGame() {
+    const action = document.getElementById('actionBtn');
+    const label = String(action?.textContent || '').trim().toLowerCase();
+    if (action && label.includes('pause')) {
+      try { action.click(); } catch (_) {}
+    }
+
+    document.querySelectorAll('audio, video').forEach((media) => {
+      try { media.pause(); } catch (_) {}
     });
   }
 
   window.addEventListener('message', (event) => {
     if (event.origin !== window.location.origin) return;
-    if (event.data?.type !== 'lmsgen:geometry-focus') return;
-    setFocus(event.data.active);
+
+    if (event.data?.type === 'lmsgen:geometry-focus') {
+      focusRequested = Boolean(event.data.active);
+      applyFocus();
+      return;
+    }
+
+    if (event.data?.type === 'lmsgen:geometry-fullscreen') {
+      fullscreenActive = Boolean(event.data.active);
+      if (!fullscreenActive) pauseRunningGame();
+      applyFocus();
+    }
   });
 })();
