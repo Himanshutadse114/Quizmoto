@@ -127,7 +127,19 @@ async function loadCanonicalStates(registrations) {
         .filter(Boolean)
         .map(String)));
     if (!ids.length) return new Map();
-    return LearningState.listByRegistrationIds(ids);
+    try {
+        return await LearningState.listByRegistrationIds(ids);
+    } catch (err) {
+        // Never break an admin or learner dashboard just because the canonical
+        // state table is temporarily unavailable. Projection fields remain a
+        // safe fallback while the database issue is logged for operations.
+        console.error('[scorm-progress] canonical state read failed; using registration projection', {
+            registrations: ids.length,
+            error: err?.message || String(err),
+            dbCode: err?.original?.code || err?.parent?.code || null
+        });
+        return new Map();
+    }
 }
 
 function enrichCourse(course, state) {
