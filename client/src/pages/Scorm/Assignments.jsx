@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Trash2,
   Upload,
+  UserPlus,
   Users
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -48,6 +49,17 @@ function csvCell(value) {
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim().toLowerCase());
+}
+
+function manualLearnersToCsv(learners) {
+  return [
+    ['Email', 'Name'].map(csvCell).join(','),
+    ...learners.map((learner) => [learner.email, learner.learnerName || ''].map(csvCell).join(','))
+  ].join('\n');
+}
+
 export default function Assignments() {
   const { token } = useAuth();
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
@@ -58,9 +70,13 @@ export default function Assignments() {
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [campaignDetail, setCampaignDetail] = useState(null);
   const [name, setName] = useState('');
+  const [learnerEntryMode, setLearnerEntryMode] = useState('csv');
   const [csvText, setCsvText] = useState('');
   const [csvFileName, setCsvFileName] = useState('');
   const [csvPreview, setCsvPreview] = useState(null);
+  const [manualLearners, setManualLearners] = useState([]);
+  const [manualName, setManualName] = useState('');
+  const [manualEmail, setManualEmail] = useState('');
   const [selectedCourses, setSelectedCourses] = useState([]);
   const [dueAt, setDueAt] = useState('');
   const [required, setRequired] = useState(true);
@@ -89,6 +105,7 @@ export default function Assignments() {
 
   const publishedCourses = courses.filter((course) => course.status === 'published');
   const toggleCourse = (id) => setSelectedCourses((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
+  const learnerCount = learnerEntryMode === 'manual' ? manualLearners.length : Number(csvPreview?.validLearners || 0);
 
   const readCsv = async (file) => {
     if (!file) return;
@@ -118,19 +135,54 @@ export default function Assignments() {
     URL.revokeObjectURL(url);
   };
 
+  const addManualLearner = (event) => {
+    event?.preventDefault?.();
+    setError('');
+    setMessage('');
+    const email = String(manualEmail || '').trim().toLowerCase();
+    const learnerName = String(manualName || '').trim().slice(0, 180);
+    if (!isValidEmail(email)) {
+      setError('Enter a valid learner email address.');
+      return;
+    }
+    if (manualLearners.some((learner) => learner.email === email)) {
+      setError('This learner email has already been added.');
+      return;
+    }
+    setManualLearners((current) => [...current, { email, learnerName: learnerName || email.split('@')[0] }]);
+    setManualName('');
+    setManualEmail('');
+  };
+
+  const removeManualLearner = (email) => {
+    setManualLearners((current) => current.filter((learner) => learner.email !== email));
+  };
+
+  const resetLearnerInputs = () => {
+    setLearnerEntryMode('csv');
+    setCsvText('');
+    setCsvFileName('');
+    setCsvPreview(null);
+    setManualLearners([]);
+    setManualName('');
+    setManualEmail('');
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
   const createCampaign = async () => {
     setError('');
     setMessage('');
     if (name.trim().length < 2) return setError('Enter a campaign name.');
-    if (!csvText || !csvPreview?.validLearners) return setError('Upload a learner CSV first.');
+    if (!learnerCount) return setError(learnerEntryMode === 'manual' ? 'Add at least one learner.' : 'Upload a learner CSV first.');
     if (!selectedCourses.length) return setError('Select at least one published course.');
     if (authMode === 'google' && !authOptions.googleConfigured) return setError('Google SSO is not configured for this tenant.');
     if (authMode === 'microsoft' && !authOptions.microsoftConfigured) return setError('Microsoft SSO is not configured for this tenant.');
     setBusy(true);
     try {
+      const learnerCsvText = learnerEntryMode === 'manual' ? manualLearnersToCsv(manualLearners) : csvText;
       const res = await axios.post(apiUrl('/api/scorm/campaigns'), {
         name: name.trim(),
-        csvText,
+        csvText: learnerCsvText,
         courseIds: selectedCourses,
         dueAt: dueAt || null,
         required,
@@ -140,14 +192,11 @@ export default function Assignments() {
       const modeText = authLabel(campaign?.authMode || authMode);
       setMessage(`Campaign “${campaign?.name || name.trim()}” created as a draft with ${modeText}. Review it, then start the campaign.`);
       setName('');
-      setCsvText('');
-      setCsvFileName('');
-      setCsvPreview(null);
+      resetLearnerInputs();
       setSelectedCourses([]);
       setDueAt('');
       setRequired(true);
       setAuthMode('email_code');
-      if (fileRef.current) fileRef.current.value = '';
       await load();
       if (campaign?.id) await viewCampaign(campaign.id);
     } catch (err) {
@@ -217,7 +266,7 @@ export default function Assignments() {
       if (campaign.authMode === 'email_code') {
         setMessage('Campaign learner link copied. Send each learner the link together with their unique access code from the access list.');
       } else {
-        setMessage(`Campaign learner link copied. Learners must sign in with ${authLabel(campaign.authMode)} using the email included in the CSV.`);
+        setMessage(`Campaign learner link copied. Learners must sign in with ${authLabel(campaign.authMode)} using the email assigned to this campaign.`);
       }
     } catch (_) {
       setError('Could not copy the campaign portal link.');
@@ -253,7 +302,7 @@ export default function Assignments() {
     {
       id: 'email_code',
       title: 'Email + access code',
-      description: 'Works without tenant SSO. Each CSV learner gets a unique campaign access code.',
+      description: 'Works without tenant SSO. Each assigned learner gets a unique campaign access code.',
       enabled: true,
       icon: <KeyRound size={16} />
     },
@@ -280,7 +329,7 @@ export default function Assignments() {
           <div className="scorm-micro text-[10px] uppercase font-semibold">Learner delivery</div>
           <h1 className="scorm-display text-[32px] md:text-[42px] mt-2">Campaigns</h1>
           <p className="text-sm mt-3 leading-relaxed" style={{ color: 'var(--scorm-ink-soft)' }}>
-            Upload the learner CSV, choose published courses and decide how learners will authenticate for this campaign. SSO is optional — campaigns can also use a secure email + access code flow.
+            Add learners individually or upload a CSV, choose published courses and decide how learners will authenticate for this campaign. SSO is optional — campaigns can also use a secure email + access code flow.
           </p>
         </div>
         <button type="button" onClick={load} disabled={loading} className="scorm-button-secondary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold disabled:opacity-50">
@@ -306,17 +355,78 @@ export default function Assignments() {
 
             <div>
               <div className="flex items-center justify-between gap-3 mb-2">
-                <span className="scorm-micro text-[9px] uppercase font-semibold">Learner CSV</span>
-                <button type="button" onClick={downloadTemplate} className="text-[10px] font-semibold inline-flex items-center gap-1.5" style={{ color: 'var(--scorm-accent-strong)' }}><Download size={12} /> Download template</button>
+                <span className="scorm-micro text-[9px] uppercase font-semibold">Add learners</span>
+                <span className="text-[10px]" style={{ color: 'var(--scorm-muted)' }}>{learnerCount} learner{learnerCount === 1 ? '' : 's'} ready</span>
               </div>
-              <button type="button" onClick={() => fileRef.current?.click()} className="campaign-upload-zone w-full rounded-2xl border border-dashed p-5 text-left transition hover:opacity-90" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
-                <div className="flex items-center gap-3"><span className="w-10 h-10 rounded-xl border grid place-items-center" style={{ borderColor: 'var(--scorm-line)' }}><Upload size={16} /></span><span><span className="block text-sm font-semibold">{csvFileName || 'Upload CSV file'}</span><span className="block text-[11px] mt-1" style={{ color: 'var(--scorm-muted)' }}>Required column: Email · Optional: Name, First Name, Last Name</span></span></div>
-              </button>
-              <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => readCsv(e.target.files?.[0])} />
-              {csvPreview && (
-                <div className="campaign-csv-preview mt-3 rounded-xl border px-3.5 py-3 text-xs" style={{ borderColor: 'var(--scorm-line)' }}>
-                  <div className="flex flex-wrap gap-x-5 gap-y-2"><span><strong>{csvPreview.validLearners}</strong> valid learners</span><span><strong>{csvPreview.invalidRows?.length || 0}</strong> invalid rows</span></div>
-                  {csvPreview.invalidRows?.length > 0 && <div className="mt-2 text-[11px]" style={{ color: 'var(--scorm-muted)' }}>Invalid rows are excluded. Fix the CSV before launch if those users should be included.</div>}
+
+              <div className="grid grid-cols-2 gap-2 p-1 rounded-xl border mb-3" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
+                <button
+                  type="button"
+                  onClick={() => setLearnerEntryMode('csv')}
+                  className="rounded-lg px-3 py-2.5 text-xs font-semibold inline-flex items-center justify-center gap-2 transition"
+                  style={{
+                    border: learnerEntryMode === 'csv' ? '1px solid var(--scorm-accent-strong)' : '1px solid transparent',
+                    background: learnerEntryMode === 'csv' ? 'rgba(79,201,191,.08)' : 'transparent',
+                    color: learnerEntryMode === 'csv' ? 'var(--scorm-accent-strong)' : 'var(--scorm-ink)'
+                  }}
+                >
+                  <Upload size={14} /> Upload CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLearnerEntryMode('manual')}
+                  className="rounded-lg px-3 py-2.5 text-xs font-semibold inline-flex items-center justify-center gap-2 transition"
+                  style={{
+                    border: learnerEntryMode === 'manual' ? '1px solid var(--scorm-accent-strong)' : '1px solid transparent',
+                    background: learnerEntryMode === 'manual' ? 'rgba(79,201,191,.08)' : 'transparent',
+                    color: learnerEntryMode === 'manual' ? 'var(--scorm-accent-strong)' : 'var(--scorm-ink)'
+                  }}
+                >
+                  <UserPlus size={14} /> Add manually
+                </button>
+              </div>
+
+              {learnerEntryMode === 'csv' ? (
+                <div>
+                  <div className="flex items-center justify-end mb-2">
+                    <button type="button" onClick={downloadTemplate} className="text-[10px] font-semibold inline-flex items-center gap-1.5" style={{ color: 'var(--scorm-accent-strong)' }}><Download size={12} /> Download template</button>
+                  </div>
+                  <button type="button" onClick={() => fileRef.current?.click()} className="campaign-upload-zone w-full rounded-2xl border border-dashed p-5 text-left transition hover:opacity-90" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
+                    <div className="flex items-center gap-3"><span className="w-10 h-10 rounded-xl border grid place-items-center" style={{ borderColor: 'var(--scorm-line)' }}><Upload size={16} /></span><span><span className="block text-sm font-semibold">{csvFileName || 'Upload CSV file'}</span><span className="block text-[11px] mt-1" style={{ color: 'var(--scorm-muted)' }}>Required column: Email · Optional: Name, First Name, Last Name</span></span></div>
+                  </button>
+                  <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => readCsv(e.target.files?.[0])} />
+                  {csvPreview && (
+                    <div className="campaign-csv-preview mt-3 rounded-xl border px-3.5 py-3 text-xs" style={{ borderColor: 'var(--scorm-line)' }}>
+                      <div className="flex flex-wrap gap-x-5 gap-y-2"><span><strong>{csvPreview.validLearners}</strong> valid learners</span><span><strong>{csvPreview.invalidRows?.length || 0}</strong> invalid rows</span></div>
+                      {csvPreview.invalidRows?.length > 0 && <div className="mt-2 text-[11px]" style={{ color: 'var(--scorm-muted)' }}>Invalid rows are excluded. Fix the CSV before launch if those users should be included.</div>}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-2xl border p-3.5 md:p-4" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
+                  <form onSubmit={addManualLearner} className="grid sm:grid-cols-[1fr_1.2fr_auto] gap-2.5 items-end">
+                    <label className="block">
+                      <span className="scorm-micro block text-[8px] uppercase font-semibold mb-1.5">Name · optional</span>
+                      <input value={manualName} onChange={(e) => setManualName(e.target.value)} className="w-full px-3 py-2.5 text-sm" placeholder="Learner name" maxLength={180} />
+                    </label>
+                    <label className="block">
+                      <span className="scorm-micro block text-[8px] uppercase font-semibold mb-1.5">Email address</span>
+                      <input value={manualEmail} onChange={(e) => setManualEmail(e.target.value)} className="w-full px-3 py-2.5 text-sm" placeholder="learner@company.com" type="email" autoComplete="off" />
+                    </label>
+                    <button type="submit" className="scorm-button-secondary h-[42px] px-3.5 inline-flex items-center justify-center gap-2 text-xs font-semibold whitespace-nowrap"><UserPlus size={14} /> Add learner</button>
+                  </form>
+
+                  {manualLearners.length > 0 ? (
+                    <div className="mt-3 rounded-xl border overflow-hidden divide-y max-h-[260px] overflow-y-auto" style={{ borderColor: 'var(--scorm-line)' }}>
+                      {manualLearners.map((learner, index) => (
+                        <div key={learner.email} className="px-3 py-2.5 flex items-center gap-3" style={{ borderColor: 'var(--scorm-line)' }}>
+                          <span className="w-7 h-7 rounded-lg border grid place-items-center shrink-0 text-[10px] font-semibold" style={{ borderColor: 'var(--scorm-line)' }}>{index + 1}</span>
+                          <span className="min-w-0 flex-1"><span className="block text-xs font-semibold truncate">{learner.learnerName || 'Learner'}</span><span className="block text-[10px] truncate mt-0.5" style={{ color: 'var(--scorm-muted)' }}>{learner.email}</span></span>
+                          <button type="button" onClick={() => removeManualLearner(learner.email)} className="w-8 h-8 rounded-lg border grid place-items-center shrink-0" style={{ borderColor: 'var(--scorm-line)' }} title="Remove learner"><Trash2 size={13} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <div className="text-[11px] mt-3" style={{ color: 'var(--scorm-muted)' }}>Add learners one at a time. Duplicate email addresses are blocked automatically.</div>}
                 </div>
               )}
             </div>
@@ -374,9 +484,9 @@ export default function Assignments() {
         <div className="p-4 md:p-5 border-t flex flex-col lg:flex-row lg:items-center justify-between gap-3" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
           <div className="text-[11px] leading-relaxed flex gap-2" style={{ color: 'var(--scorm-muted)' }}>
             <ShieldCheck size={14} className="shrink-0 mt-0.5" />
-            <span>{authMode === 'email_code' ? 'No tenant SSO is required. Learners use their CSV email plus a unique campaign access code.' : <>{authLabel(authMode)} will be required for this campaign. Provider settings are managed in <Link to="/scorm/learner-access" className="font-semibold underline">Authentication & SSO</Link>.</>}</span>
+            <span>{authMode === 'email_code' ? 'No tenant SSO is required. Learners use their assigned email plus a unique campaign access code.' : <>{authLabel(authMode)} will be required for this campaign. Provider settings are managed in <Link to="/scorm/learner-access" className="font-semibold underline">Authentication & SSO</Link>.</>}</span>
           </div>
-          <button type="button" disabled={busy || !name.trim() || !csvPreview?.validLearners || !selectedCourses.length} onClick={createCampaign} className="scorm-button-primary px-5 py-3 text-xs font-semibold disabled:opacity-50 inline-flex items-center justify-center gap-2"><CheckCircle2 size={15} />{busy ? 'Creating…' : 'Create draft campaign'}</button>
+          <button type="button" disabled={busy || !name.trim() || !learnerCount || !selectedCourses.length} onClick={createCampaign} className="scorm-button-primary px-5 py-3 text-xs font-semibold disabled:opacity-50 inline-flex items-center justify-center gap-2"><CheckCircle2 size={15} />{busy ? 'Creating…' : 'Create draft campaign'}</button>
         </div>
       </section>
 
@@ -384,7 +494,7 @@ export default function Assignments() {
         <div className="p-4 md:p-5 border-b flex items-center justify-between gap-3" style={{ borderColor: 'var(--scorm-line)' }}>
           <div><h2 className="font-semibold">Campaigns</h2><div className="scorm-micro text-[9px] mt-1">{campaigns.length} campaign{campaigns.length === 1 ? '' : 's'}</div></div>
         </div>
-        {loading ? <div className="p-10 text-center text-sm" style={{ color: 'var(--scorm-muted)' }}>Loading campaigns…</div> : campaigns.length === 0 ? <div className="p-10 text-center text-sm" style={{ color: 'var(--scorm-muted)' }}>No campaigns yet. Upload a CSV and create your first campaign.</div> : (
+        {loading ? <div className="p-10 text-center text-sm" style={{ color: 'var(--scorm-muted)' }}>Loading campaigns…</div> : campaigns.length === 0 ? <div className="p-10 text-center text-sm" style={{ color: 'var(--scorm-muted)' }}>No campaigns yet. Add learners and create your first campaign.</div> : (
           <div className="divide-y" style={{ borderColor: 'var(--scorm-line)' }}>
             {campaigns.map((campaign) => (
               <div key={campaign.id} className="campaign-list-row p-4 md:p-5 grid xl:grid-cols-[1.2fr_.55fr_.55fr_.7fr_auto] gap-4 xl:items-center">
@@ -418,7 +528,7 @@ export default function Assignments() {
           {!campaignDetail ? <div className="p-8 text-sm" style={{ color: 'var(--scorm-muted)' }}>Loading campaign…</div> : (
             <div className="p-4 md:p-5 grid lg:grid-cols-2 gap-5">
               <div>
-                <div className="font-semibold text-sm mb-3">CSV learners · {campaignDetail.learners?.length || 0}</div>
+                <div className="font-semibold text-sm mb-3">Learners · {campaignDetail.learners?.length || 0}</div>
                 <div className="campaign-detail-list rounded-xl border max-h-[310px] overflow-y-auto divide-y" style={{ borderColor: 'var(--scorm-line)' }}>
                   {(campaignDetail.learners || []).map((learner) => <div key={learner.id} className="campaign-detail-row px-3.5 py-3"><div className="text-xs font-semibold">{learner.learnerName || 'Learner'}</div><div className="text-[11px] mt-0.5" style={{ color: 'var(--scorm-muted)' }}>{learner.email}</div></div>)}
                 </div>
