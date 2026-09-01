@@ -13,47 +13,40 @@ function requireAdmin(req, res, next) {
     next();
 }
 
-function diagnostics() {
-    const cfg = MailService.smtpConfig();
-    return {
-        enabled: Boolean(cfg.enabled),
-        host: cfg.host || null,
-        port: cfg.port || null,
-        secure: Boolean(cfg.secure),
-        userSet: Boolean(cfg.user),
-        passwordSet: Boolean(cfg.pass),
-        fromAddress: cfg.fromAddress || null,
-        adminRecipientSet: Boolean(cfg.adminTo)
-    };
-}
-
 router.get('/status', auth, requireAdmin, async (req, res) => {
     const configured = MailService.isConfigured();
+    const diagnostics = MailService.diagnostics();
+
     if (!configured) {
         return res.json({
             ok: true,
             configured: false,
             verified: false,
-            diagnostics: diagnostics()
+            provider: diagnostics.provider,
+            diagnostics
         });
     }
 
     try {
-        await MailService.verifyConnection();
+        const result = await MailService.verifyConnection();
         return res.json({
             ok: true,
             configured: true,
             verified: true,
-            diagnostics: diagnostics()
+            provider: result.provider || diagnostics.provider,
+            diagnostics
         });
     } catch (error) {
         return res.status(503).json({
             ok: false,
             configured: true,
             verified: false,
-            diagnostics: diagnostics(),
-            message: 'SMTP is configured but the server could not authenticate or connect.',
-            code: error.code || 'MAIL_SMTP_VERIFY_FAILED'
+            provider: diagnostics.provider,
+            diagnostics,
+            message: diagnostics.provider === 'brevo'
+                ? 'Brevo is configured but the API key could not be verified.'
+                : 'SMTP is configured but the server could not authenticate or connect.',
+            code: error.code || 'MAIL_PROVIDER_VERIFY_FAILED'
         });
     }
 });
@@ -66,7 +59,7 @@ router.post('/test', auth, requireAdmin, async (req, res) => {
             MailService.adminRecipient() ||
             ''
         ).trim().toLowerCase();
-        const kind = String(req.body?.kind || 'smtp').trim().toLowerCase();
+        const kind = String(req.body?.kind || 'email').trim().toLowerCase();
         const campaignTest = kind === 'campaign';
 
         const result = await MailService.send({
@@ -75,13 +68,13 @@ router.post('/test', auth, requireAdmin, async (req, res) => {
             required: true,
             data: campaignTest ? {
                 learnerName: 'LMSGEN Test Recipient',
-                campaignId: 'smtp-test',
+                campaignId: 'email-test',
                 campaignName: 'LMSGEN Campaign Email Test',
                 accessCode: 'TEST-123456',
                 path: '/login'
             } : {
                 title: 'LMSGEN email delivery test',
-                message: 'Your LMSGEN SMTP configuration is working correctly.',
+                message: 'Your LMSGEN email delivery configuration is working correctly.',
                 actionLabel: 'Open LMSGEN',
                 actionUrl: '/'
             }
@@ -91,7 +84,8 @@ router.post('/test', auth, requireAdmin, async (req, res) => {
             ok: true,
             sent: result.sent,
             recipient,
-            kind: campaignTest ? 'campaign' : 'smtp',
+            kind: campaignTest ? 'campaign' : 'email',
+            provider: result.provider || MailService.mailProvider(),
             messageId: result.messageId || null
         });
     } catch (error) {
@@ -99,7 +93,8 @@ router.post('/test', auth, requireAdmin, async (req, res) => {
             ok: false,
             message: error.message || 'Could not send the test email.',
             code: error.code || 'MAIL_TEST_FAILED',
-            diagnostics: diagnostics()
+            provider: MailService.mailProvider(),
+            diagnostics: MailService.diagnostics()
         });
     }
 });
