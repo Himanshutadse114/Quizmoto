@@ -31,6 +31,7 @@
     "jsonwebtoken": "^9.0.3",
     "jszip": "^3.10.1",
     "mysql2": "^3.17.4",
+    "nodemailer": "^7.0.6",
     "pdfkit": "^0.15.2",
     "pg": "^8.22.0",
     "pg-hstore": "^2.3.4",
@@ -57,32 +58,52 @@
     "functions": 0,
     "statements": 0,
     "watermarks": {
-      "lines": [80, 95],
-      "functions": [80, 95],
-      "branches": [80, 95],
-      "statements": [80, 95]
+      "lines": [
+        80,
+        95
+      ],
+      "functions": [
+        80,
+        95
+      ],
+      "branches": [
+        80,
+        95
+      ],
+      "statements": [
+        80,
+        95
+      ]
     },
     "report-dir": "./coverage",
     "temp-dir": "./.nyc_output",
     "overrides": [
       {
-        "include": ["services/ScoringService.js"],
+        "include": [
+          "services/ScoringService.js"
+        ],
         "branches": 90
       },
       {
-        "include": ["services/SessionTokenService.js", "routes/auth.js"],
+        "include": [
+          "services/SessionTokenService.js",
+          "routes/auth.js"
+        ],
         "lines": 90,
         "statements": 90
       },
       {
-        "include": ["services/SessionRecoveryService.js"],
+        "include": [
+          "services/SessionRecoveryService.js"
+        ],
         "branches": 85,
         "lines": 85
       },
       {
-        "include": ["validators/socketSchemas.js"],
-        "branches": 90,
-        "lines": 90
+        "include": [
+          "validators/socketSchemas.js"
+        ],
+        "branches": 90
       }
     ]
   }

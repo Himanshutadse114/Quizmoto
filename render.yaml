@@ -40,7 +40,25 @@ services:
       - key: REPLICATE_API_TOKEN
         sync: false
       - key: CORS_ORIGIN
-        value: "https://quizmoto-frontend.onrender.com,https://kahoot-awareness-frontend.onrender.com"
+        value: "https://lmsgen.in,https://www.lmsgen.in,https://quizmoto-frontend.onrender.com,https://kahoot-awareness-frontend.onrender.com"
+      - key: APP_BASE_URL
+        value: "https://lmsgen.in"
+      - key: PUBLIC_FRONTEND_URL
+        value: "https://lmsgen.in"
+      - key: MAIL_ENABLED
+        value: "true"
+      - key: MAIL_HOST
+        value: "smtpout.secureserver.net"
+      - key: MAIL_PORT
+        value: "465"
+      - key: MAIL_SECURE
+        value: "true"
+      - key: MAIL_USER
+        sync: false
+      - key: MAIL_PASS
+        sync: false
+      - key: MAIL_ADMIN_TO
+        sync: false
 
   - type: web
     name: kahoot-awareness-frontend

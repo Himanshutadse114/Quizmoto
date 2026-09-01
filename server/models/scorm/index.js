@@ -15,6 +15,7 @@ const ScormCampaignLearner = require('./ScormCampaignLearner');
 const ScormCampaignCourse = require('./ScormCampaignCourse');
 const ScormAccessGrant = require('../ScormAccessGrant');
 const ScormAccessRequest = require('../ScormAccessRequest');
+const MailOtp = require('../MailOtp');
 
 ScormPackage.hasMany(ScormCourse, { foreignKey: 'packageId', as: 'courses' });
 ScormCourse.belongsTo(ScormPackage, { foreignKey: 'packageId', as: 'package' });
@@ -68,7 +69,7 @@ ScormCourse.hasMany(ScormCampaignCourse, { foreignKey: 'courseId', as: 'campaign
 ScormCampaign.hasMany(ScormRegistration, { foreignKey: 'campaignId', as: 'registrations' });
 ScormRegistration.belongsTo(ScormCampaign, { foreignKey: 'campaignId', as: 'campaign' });
 
-module.exports = {
+const models = {
     ScormPackage,
     ScormCourse,
     ScormRegistration,
@@ -85,5 +86,12 @@ module.exports = {
     ScormCampaignLearner,
     ScormCampaignCourse,
     ScormAccessGrant,
-    ScormAccessRequest
+    ScormAccessRequest,
+    MailOtp
 };
+
+module.exports = models;
+
+// Register non-blocking email notifications after every model exists. The hook
+// service receives the models directly to avoid circular model imports.
+require('../../services/mail/MailNotificationHooks').register(models);

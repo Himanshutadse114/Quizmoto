@@ -9,6 +9,10 @@ router.use((req, res, next) => {
     next();
 });
 
+// Public email verification endpoints. Rate limits and one-time hashing are
+// enforced inside the router; verification codes are never stored in plaintext.
+router.use('/otp', require('./mailOtp'));
+
 // Workspace-specific staff sign-in is public by design. Each provider endpoint
 // verifies the IdP token and then requires an existing Admin/Co-admin/Analytics
 // Viewer workspace membership before a protected SCORM session is issued.
@@ -46,6 +50,8 @@ router.get('/features', (req, res) => {
         workspaceSso: true,
         staffSso: true,
         campaignDelivery: true,
+        emailDelivery: true,
+        emailOtp: true,
         standards: {
             scorm12: true,
             scorm2004: true,
