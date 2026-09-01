@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#050817" />
-  <meta name="description" content="Geometry Physics — build shapes with equations, then turn formulas into gravity-powered ramps." />
+  <meta name="theme-color" content="#07101d" />
+  <meta name="description" content="Geometry Physics — learn formulas, construct shapes and turn equations into gravity-powered ramps." />
   <title>Geometry Physics | Quizmoto Add-on</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -12,14 +12,17 @@
   <div class="app-shell">
     <header class="topbar">
       <div class="brand-wrap">
-        <button id="backToQuizmoto" class="back-btn" type="button">← QUIZMOTO</button>
+        <button id="backToQuizmoto" class="back-btn" type="button" aria-label="Back to Quizmoto">← <span>Quizmoto</span></button>
         <div class="brand-mark">∑</div>
-        <div class="brand-copy"><strong>GEOMETRY PHYSICS</strong><small>BUILD THE MATH · RUN THE PHYSICS</small></div>
+        <div class="brand-copy">
+          <strong>Geometry Physics</strong>
+          <small>Learn the formula. Build the path. Run the physics.</small>
+        </div>
       </div>
-      <div class="top-stats">
-        <div><span>PROGRESS</span><strong id="totalProgress">0/36</strong></div>
-        <div><span>LEVEL</span><strong id="levelCounter">1 / 36</strong></div>
-        <div class="star-stat"><span>BEST</span><strong id="savedStars">☆☆☆</strong></div>
+      <div class="top-stats" aria-label="Game progress">
+        <div><span>Progress</span><strong id="totalProgress">0/36</strong></div>
+        <div><span>Mission</span><strong id="levelCounter">1 / 36</strong></div>
+        <div class="star-stat"><span>Best</span><strong id="savedStars">☆☆☆</strong></div>
       </div>
     </header>
 
@@ -28,52 +31,73 @@
     <main class="game-layout">
       <aside class="mission-sidebar">
         <div class="sidebar-head">
-          <span>MISSIONS</span>
-          <small>Start by constructing shapes, then use formulas as real ramps in the gravity campaign.</small>
+          <span>Mission path</span>
+          <small>Build the foundations first. Gravity missions unlock the same maths as physical ramps.</small>
         </div>
         <div id="missionList" class="mission-list"></div>
       </aside>
 
       <section class="game-stage">
+        <div class="journey-stepper" aria-label="Mission learning flow">
+          <div class="journey-step" id="stepLearn"><span>1</span><div><strong>Learn</strong><small>Understand the idea</small></div></div>
+          <div class="journey-line"></div>
+          <div class="journey-step" id="stepBuild"><span>2</span><div><strong>Build</strong><small>Write the formula</small></div></div>
+          <div class="journey-line"></div>
+          <div class="journey-step" id="stepTest"><span>3</span><div><strong>Test</strong><small>Check or run physics</small></div></div>
+        </div>
+
         <div class="mission-header">
           <div>
-            <div class="mission-meta"><span id="missionPhase">SHAPE ACADEMY</span><b id="missionFamily">Basic Lines</b></div>
+            <div class="mission-meta"><span id="missionPhase">Shape Academy</span><b id="missionFamily">Basic Lines</b></div>
             <h1 id="missionTitle">Horizontal Line</h1>
             <p id="missionDescription"></p>
           </div>
-          <div class="mode-badge" id="modeBadge">CONSTRUCTION MODE</div>
+          <div class="mode-badge" id="modeBadge">Construction</div>
+        </div>
+
+        <div class="concept-strip">
+          <div class="concept-icon">ƒ</div>
+          <div class="concept-copy">
+            <span>Concept for this mission</span>
+            <strong id="conceptSummary">A horizontal line keeps the same y-value for every x-value.</strong>
+          </div>
+          <button id="reviewLessonBtn" type="button">Review lesson</button>
         </div>
 
         <div class="canvas-shell">
           <canvas id="gameCanvas" width="1000" height="650" aria-label="Interactive coordinate plane"></canvas>
           <div class="physics-hud hidden" id="physicsHud">
-            <div><span>STARS</span><strong id="starHud">0 / 3</strong></div>
-            <div><span>TIME</span><strong id="timeHud">18s</strong></div>
+            <div><span>Stars</span><strong id="starHud">0 / 3</strong></div>
+            <div><span>Time</span><strong id="timeHud">18s</strong></div>
           </div>
         </div>
 
-        <div id="statusMessage" class="status-message" data-type="info">Match the glowing target using your own equations.</div>
+        <div id="statusMessage" class="status-message" data-type="info">Learn the concept first, then build the target with your own equation.</div>
       </section>
 
       <aside class="formula-panel">
         <div class="panel-head">
-          <div><span>FORMULA LAB</span><h2>Write it. See it. Test it.</h2></div>
-          <div class="budget"><small>USED</small><strong id="budgetValue">0 / 1</strong></div>
+          <div><span>Formula lab</span><h2>Build your solution</h2></div>
+          <div class="budget"><small>Equations</small><strong id="budgetValue">0 / 1</strong></div>
         </div>
 
         <div class="objective-card">
-          <span>MISSION OBJECTIVE</span>
-          <p id="objectiveText"></p>
+          <div class="objective-number">01</div>
+          <div><span>Your mission</span><p id="objectiveText"></p></div>
         </div>
 
         <form id="formulaForm" class="formula-form">
-          <label for="formulaInput">Equation</label>
-          <div class="formula-input-row">
-            <input id="formulaInput" autocomplete="off" spellcheck="false" placeholder="e.g. -0.5*x + 2; [-6, 5]" />
-            <button id="addFormulaBtn" type="button">ADD</button>
+          <div class="field-head">
+            <label for="formulaInput">Write an equation</label>
+            <span>Live preview appears on the grid</span>
           </div>
-          <div id="formulaError" class="formula-error"></div>
+          <div class="formula-input-row">
+            <input id="formulaInput" autocomplete="off" spellcheck="false" aria-describedby="formulaHelp" placeholder="Example: y = -0.5*x + 2" />
+            <button id="addFormulaBtn" type="button">Add</button>
+          </div>
+          <div id="formulaError" class="formula-error" aria-live="polite"></div>
           <p id="formulaHelp" class="formula-help"></p>
+          <div class="shortcut-label">Math shortcuts</div>
           <div class="math-keys" aria-label="Math shortcuts">
             <button type="button" class="math-key" data-key="x">x</button>
             <button type="button" class="math-key" data-key="y">y</button>
@@ -86,35 +110,68 @@
           </div>
         </form>
 
-        <div class="equations-head"><span>YOUR EQUATIONS</span><button id="clearEquationsBtn" type="button">Clear all</button></div>
+        <div class="equations-head"><span>Your equations</span><button id="clearEquationsBtn" type="button">Clear all</button></div>
         <div id="equationList" class="equation-list"></div>
 
         <div id="hintPanel" class="hint-panel hidden">
-          <span>PERFECT-SOLUTION HINT</span>
+          <span>Hint</span>
           <p id="hintText"></p>
           <div id="hintFormula" class="hint-formulas"></div>
         </div>
 
         <div class="panel-actions">
-          <button id="hintBtn" class="secondary-action" type="button">💡 HINT</button>
-          <button id="actionBtn" class="primary-action" type="button">✓ CHECK SHAPE</button>
-          <button id="resetBtn" class="ghost-action" type="button">RESET CONSTRUCTION</button>
+          <button id="hintBtn" class="secondary-action" type="button">Get a hint</button>
+          <button id="actionBtn" class="primary-action" type="button">Check shape</button>
+          <button id="resetBtn" class="ghost-action" type="button">Reset construction</button>
         </div>
       </aside>
     </main>
   </div>
 
+  <div id="lessonOverlay" class="lesson-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="lessonTitle">
+    <div class="lesson-card">
+      <div class="lesson-topline">
+        <span id="lessonKicker">Learn before you build</span>
+        <span class="lesson-duration">About 30 seconds</span>
+      </div>
+      <div class="lesson-grid">
+        <div class="lesson-main">
+          <div class="lesson-badge">New concept</div>
+          <h2 id="lessonTitle">Horizontal lines</h2>
+          <p id="lessonBody"></p>
+          <div class="lesson-formula-wrap">
+            <span>Core formula</span>
+            <code id="lessonFormula">y = c</code>
+          </div>
+          <div class="lesson-example">
+            <span>Worked example</span>
+            <p id="lessonExample"></p>
+          </div>
+        </div>
+        <div class="lesson-points">
+          <div class="lesson-point"><span>1</span><div><strong id="lessonPointTitle1">Read the formula</strong><p id="lessonPoint1"></p></div></div>
+          <div class="lesson-point"><span>2</span><div><strong id="lessonPointTitle2">Watch what changes</strong><p id="lessonPoint2"></p></div></div>
+          <div class="lesson-point"><span>3</span><div><strong id="lessonPointTitle3">Use it in the game</strong><p id="lessonPoint3"></p></div></div>
+        </div>
+      </div>
+      <div class="lesson-footer">
+        <p>Nothing is auto-filled. The challenge still requires you to write the equation yourself.</p>
+        <button id="startChallengeBtn" type="button">Start challenge →</button>
+      </div>
+    </div>
+  </div>
+
   <div id="resultModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
     <div class="modal-card">
       <button id="closeResultBtn" class="modal-close" type="button" aria-label="Close">×</button>
-      <div class="result-icon">∑</div>
-      <span id="resultPhase" class="result-phase">SHAPE MASTERED</span>
+      <div class="result-icon">✓</div>
+      <span id="resultPhase" class="result-phase">Shape mastered</span>
       <h2 id="resultTitle">Horizontal Line</h2>
       <div id="resultStars" class="result-stars">★★★</div>
       <p id="resultText"></p>
       <div class="modal-actions">
         <button id="replayBtn" type="button">Replay</button>
-        <button id="nextBtn" type="button">Next Mission</button>
+        <button id="nextBtn" type="button">Next mission</button>
       </div>
     </div>
   </div>
