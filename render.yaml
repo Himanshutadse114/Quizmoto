@@ -42,21 +42,19 @@ services:
       - key: CORS_ORIGIN
         value: "https://lmsgen.in,https://www.lmsgen.in,https://quizmoto-frontend.onrender.com,https://kahoot-awareness-frontend.onrender.com"
       - key: APP_BASE_URL
-        value: "https://lmsgen.in"
+        value: "https://www.lmsgen.in"
       - key: PUBLIC_FRONTEND_URL
-        value: "https://lmsgen.in"
+        value: "https://www.lmsgen.in"
       - key: MAIL_ENABLED
         value: "true"
-      - key: MAIL_HOST
-        value: "smtpout.secureserver.net"
-      - key: MAIL_PORT
-        value: "465"
-      - key: MAIL_SECURE
-        value: "true"
-      - key: MAIL_USER
+      - key: MAIL_PROVIDER
+        value: "brevo"
+      - key: BREVO_API_KEY
         sync: false
-      - key: MAIL_PASS
-        sync: false
+      - key: MAIL_FROM
+        value: "training@lmsgen.in"
+      - key: MAIL_FROM_NAME
+        value: "LMSGen"
       - key: MAIL_ADMIN_TO
         sync: false
 
