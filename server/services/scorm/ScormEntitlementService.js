@@ -24,7 +24,8 @@ const DEFAULT_PERMISSIONS = Object.freeze({
     library: true,
     contentEditor: true,
     teamManagement: true,
-    ssoManagement: true
+    ssoManagement: true,
+    geometryPhysicsFullAccess: false
 });
 
 function normalizeEmail(value) {
@@ -56,7 +57,7 @@ function serializeEntitlement(row, role = 'user') {
             maxStaff: null,
             maxCampaigns: null,
             maxAssignments: null,
-            permissions: { ...DEFAULT_PERMISSIONS },
+            permissions: { ...DEFAULT_PERMISSIONS, geometryPhysicsFullAccess: true },
             unlimited: true,
             protected: true
         };
