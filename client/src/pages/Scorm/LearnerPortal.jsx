@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { apiUrl } from '../../config';
 import { createMicrosoftPkceRequest } from './microsoftPkce';
+import LearnerEmailOtpLogin from './LearnerEmailOtpLogin';
 
 function sessionKey(workspaceId) {
   return `lmsgen_learner_${workspaceId}`;
@@ -56,8 +57,6 @@ export default function LearnerPortal() {
   const [config, setConfig] = useState(null);
   const [learnerToken, setLearnerToken] = useState(() => localStorage.getItem(sessionKey(workspaceId)) || '');
   const [dashboard, setDashboard] = useState(null);
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -120,23 +119,6 @@ export default function LearnerPortal() {
     localStorage.setItem(sessionKey(workspaceId), data.token);
     setLearnerToken(data.token);
     setDashboard({ learner: data.learner, workspace: data.workspace, courses: data.courses || [] });
-  };
-
-  const loginEmail = async (event) => {
-    event.preventDefault();
-    setBusy(true);
-    setError('');
-    try {
-      const res = await axios.post(apiUrl(`/api/scorm-learner/workspace/${workspaceId}/email`), {
-        email: email.trim().toLowerCase(),
-        name: name.trim()
-      });
-      acceptSession(res.data);
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Learner sign-in failed.');
-    } finally {
-      setBusy(false);
-    }
   };
 
   const loginGoogle = async (credentialResponse) => {
@@ -240,7 +222,7 @@ export default function LearnerPortal() {
                 <div className="w-11 h-11 rounded-2xl bg-[#c8f0eb] text-[#087b73] grid place-items-center mb-5"><GraduationCap size={21} /></div>
                 <div className="text-[10px] uppercase tracking-[.14em] font-bold text-[#5b7773]">Learner portal</div>
                 <h1 className="text-3xl md:text-[38px] font-semibold tracking-[-.04em] leading-tight mt-2">{config?.workspaceName || 'Your learning workspace'}</h1>
-                <p className="text-sm leading-relaxed text-[#617572] mt-3">Sign in with the method your administrator configured. Only identities with assigned courses can enter.</p>
+                <p className="text-sm leading-relaxed text-[#617572] mt-3">Sign in with the method your administrator configured. Email access requires a one-time verification code before training is shown.</p>
               </div>
 
               <div className="p-6 md:p-8 space-y-3">
@@ -260,11 +242,7 @@ export default function LearnerPortal() {
                 {(config?.googleEnabled || config?.microsoftEnabled) && config?.emailEnabled && <div className="flex items-center gap-3 py-1"><span className="h-px bg-[#dce8e5] flex-1" /><span className="text-[10px] uppercase tracking-[.12em] text-[#81928f]">or assigned email</span><span className="h-px bg-[#dce8e5] flex-1" /></div>}
 
                 {config?.emailEnabled && (
-                  <form onSubmit={loginEmail} className="space-y-3">
-                    <label className="block"><span className="block text-[10px] uppercase tracking-[.1em] font-bold text-[#5e7773] mb-1.5">Email assigned by your administrator</span><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-11 rounded-xl border border-[#cfdcda] bg-white px-3.5 text-sm outline-none focus:border-[#1aa99e]" placeholder="you@company.com" /></label>
-                    <label className="block"><span className="block text-[10px] uppercase tracking-[.1em] font-bold text-[#5e7773] mb-1.5">Name · optional</span><input value={name} onChange={(e) => setName(e.target.value)} className="w-full h-11 rounded-xl border border-[#cfdcda] bg-white px-3.5 text-sm outline-none focus:border-[#1aa99e]" placeholder="Your name" /></label>
-                    <button type="submit" disabled={busy} className="w-full h-11 rounded-xl bg-[#45c5bc] hover:bg-[#36b7ae] text-[#0d2926] text-sm font-semibold disabled:opacity-50">{busy ? 'Checking assignment…' : 'Open my dashboard'}</button>
-                  </form>
+                  <LearnerEmailOtpLogin workspaceId={workspaceId} onAuthenticated={acceptSession} />
                 )}
 
                 {config?.ssoRequired && <div className="rounded-xl bg-[#f0f7f6] border border-[#d7e7e4] px-3.5 py-3 text-[11px] leading-relaxed text-[#607572] flex gap-2"><ShieldCheck size={15} className="text-[#159b91] shrink-0" />Your organisation requires verified SSO. There is no manual learner-email login on this workspace.</div>}
