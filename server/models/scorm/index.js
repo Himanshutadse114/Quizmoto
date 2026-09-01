@@ -6,6 +6,7 @@ const ScormCmiState = require('./ScormCmiState');
 const ScormRuntimeSnapshot = require('./ScormRuntimeSnapshot');
 const ScormXapiStatement = require('./ScormXapiStatement');
 const ScormLearnerRoster = require('./ScormLearnerRoster');
+const ScormLearnerEmailOtp = require('./ScormLearnerEmailOtp');
 const ScormUserEntitlement = require('./ScormUserEntitlement');
 const ScormWorkspace = require('./ScormWorkspace');
 const ScormWorkspaceMember = require('./ScormWorkspaceMember');
@@ -77,6 +78,7 @@ module.exports = {
     ScormRuntimeSnapshot,
     ScormXapiStatement,
     ScormLearnerRoster,
+    ScormLearnerEmailOtp,
     ScormUserEntitlement,
     ScormWorkspace,
     ScormWorkspaceMember,
