@@ -11,6 +11,7 @@ const {
 } = require('../../services/scorm/ScormCampaignService');
 const { listCampaigns } = require('../../services/scorm/ScormCampaignListService');
 const { getCampaignAnalytics } = require('../../services/scorm/ScormCampaignAnalyticsService');
+const { sendCampaignLaunchEmails } = require('../../services/mail/TransactionalMailService');
 
 function workspaceRequired(req) {
     if (!req.scormWorkspaceId) {
@@ -123,7 +124,22 @@ router.post('/:campaignId/start', auth, async (req, res) => {
             workspaceId: req.scormWorkspaceId,
             actorUserId: req.authenticatedUserId || req.userId
         });
-        res.json({ ok: true, campaign });
+
+        // Campaign start commits first. Notifications are then generated from the
+        // committed campaign detail so SMTP issues cannot leave the campaign half-started.
+        const detail = await getCampaignDetail({
+            campaignId: req.params.campaignId,
+            hostId: req.userId,
+            workspaceId: req.scormWorkspaceId
+        });
+        const mail = await sendCampaignLaunchEmails({
+            campaign: detail,
+            learners: detail.learners,
+            courses: detail.courses,
+            workspaceName: req.scormWorkspace?.name || 'Your organisation'
+        });
+
+        res.json({ ok: true, campaign, mail });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to start campaign.', code: err.code });
     }
