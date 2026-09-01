@@ -25,6 +25,7 @@ router.get('/', auth, async (req, res) => {
     try {
         workspaceRequired(req);
         const result = await listCampaigns({ hostId: req.userId, workspaceId: req.scormWorkspaceId });
+        res.setHeader('Cache-Control', 'no-store');
         res.json({ ok: true, ...result });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to load campaigns.', code: err.code });
@@ -75,6 +76,7 @@ router.get('/:campaignId/analytics', auth, async (req, res) => {
             hostId: req.userId,
             workspaceId: req.scormWorkspaceId
         });
+        res.setHeader('Cache-Control', 'no-store');
         res.json({ ok: true, ...analytics });
     } catch (err) {
         console.error('[scorm-campaign-analytics] load failed', {
@@ -94,6 +96,7 @@ router.get('/:campaignId/access-sheet', auth, async (req, res) => {
             hostId: req.userId,
             workspaceId: req.scormWorkspaceId
         });
+        res.setHeader('Cache-Control', 'no-store');
         res.json({ ok: true, ...result });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to prepare learner access codes.', code: err.code });
@@ -108,6 +111,7 @@ router.get('/:campaignId', auth, async (req, res) => {
             hostId: req.userId,
             workspaceId: req.scormWorkspaceId
         });
+        res.setHeader('Cache-Control', 'no-store');
         res.json({ ok: true, campaign });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to load campaign.', code: err.code });
