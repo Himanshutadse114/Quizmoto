@@ -1,5 +1,68 @@
-/* Remove the bright Tailwind divide-y separator from the campaign rows in dark mode. */
-html body .scorm-editorial .scorm-campaigns-page .divide-y > .campaign-list-row:not([hidden]) ~ .campaign-list-row:not([hidden]) {
-  border-top-color: transparent !important;
-  border-bottom-color: transparent !important;
+/* Campaign list polish.
+   Keep this file loaded after the SCORM page styles so these overrides are final. */
+
+/* Dark mode: campaign rows must not render any Tailwind/global divider border. */
+html body .scorm-editorial:not(.scorm-theme-light) .scorm-campaigns-page .campaign-list-row,
+html body .scorm-editorial:not(.scorm-theme-light) .scorm-campaigns-page .divide-y > .campaign-list-row,
+html body .scorm-editorial:not(.scorm-theme-light) .scorm-campaigns-page .divide-y > .campaign-list-row:not([hidden]) ~ .campaign-list-row:not([hidden]) {
+  border-top: 0 !important;
+  border-bottom: 0 !important;
+  border-top-width: 0 !important;
+  border-bottom-width: 0 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+/* Keep action controls in the same horizontal positions before and after a
+   campaign is started. The old flex group shrank/grow based on Start/Portal,
+   Codes and Delete which shifted the entire group from row to row. */
+@media (min-width: 1280px) {
+  html body .scorm-editorial .scorm-campaigns-page .campaign-actions {
+    width: 420px !important;
+    min-width: 420px !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+
+  html body .scorm-editorial .scorm-campaigns-page .campaign-actions > :first-child {
+    width: 50px !important;
+    min-width: 50px !important;
+  }
+
+  html body .scorm-editorial .scorm-campaigns-page .campaign-actions > a {
+    width: 124px !important;
+    min-width: 124px !important;
+    justify-content: center !important;
+  }
+
+  html body .scorm-editorial .scorm-campaigns-page .campaign-actions > .scorm-button-primary {
+    width: 100px !important;
+    min-width: 100px !important;
+    justify-content: center !important;
+  }
+
+  html body .scorm-editorial .scorm-campaigns-page .campaign-actions > button[title="Download learner access list"] {
+    width: 96px !important;
+    min-width: 96px !important;
+    justify-content: center !important;
+  }
+
+  html body .scorm-editorial .scorm-campaigns-page .campaign-actions > button[title="Delete draft"] {
+    width: 50px !important;
+    min-width: 50px !important;
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 1279px) {
+  html body .scorm-editorial .scorm-campaigns-page .campaign-actions {
+    width: auto !important;
+    min-width: 0 !important;
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+  }
 }
