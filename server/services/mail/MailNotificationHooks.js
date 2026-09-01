@@ -33,6 +33,14 @@ async function sendInBatches(items, sender, batchSize = 10) {
     }
 }
 
+function memberNotification(member) {
+    const email = String(member.email || '').trim().toLowerCase();
+    const superAdminEmail = String(process.env.SCORM_SUPER_ADMIN_EMAIL || 'tadsehimanshu@gmail.com').trim().toLowerCase();
+    if (!email || email === superAdminEmail || email.endsWith('@lmsgen.internal')) return null;
+    const role = String(member.role || '').toLowerCase();
+    return { email, role };
+}
+
 function register(models = {}) {
     if (registered) return;
     const {
@@ -91,20 +99,43 @@ function register(models = {}) {
     });
 
     ScormWorkspaceMember.addHook('afterCreate', 'mail-workspace-member-invite', (member, options) => {
-        const email = String(member.email || '').trim().toLowerCase();
-        const superAdminEmail = String(process.env.SCORM_SUPER_ADMIN_EMAIL || 'tadsehimanshu@gmail.com').trim().toLowerCase();
-        if (!email || email === superAdminEmail || email.endsWith('@lmsgen.internal')) return;
+        const notification = memberNotification(member);
+        if (!notification) return;
         runLater(options, async () => {
             const workspace = await ScormWorkspace.findByPk(member.workspaceId);
             if (!workspace) return;
-            const role = String(member.role || '').toLowerCase();
             await MailService.safeSend({
-                to: email,
-                template: role === 'admin' ? 'tenant_admin_invitation' : 'team_invitation',
+                to: notification.email,
+                template: notification.role === 'admin' ? 'tenant_admin_invitation' : 'team_invitation',
                 data: {
-                    email,
+                    email: notification.email,
                     displayName: member.displayName,
-                    role,
+                    role: notification.role,
+                    workspaceName: workspace.name
+                }
+            });
+        });
+    });
+
+    // A member can already exist in the tenant and later be promoted to Tenant
+    // Admin or changed between Co-admin and Analytics Viewer. Treat that role
+    // transition as a fresh access notification as well as first-time creation.
+    ScormWorkspaceMember.addHook('afterUpdate', 'mail-workspace-member-role-change', (member, options) => {
+        const roleChanged = member.changed('role');
+        const statusChangedToInvited = member.changed('status') && String(member.status || '').toLowerCase() === 'invited';
+        if (!roleChanged && !statusChangedToInvited) return;
+        const notification = memberNotification(member);
+        if (!notification) return;
+        runLater(options, async () => {
+            const workspace = await ScormWorkspace.findByPk(member.workspaceId);
+            if (!workspace) return;
+            await MailService.safeSend({
+                to: notification.email,
+                template: notification.role === 'admin' ? 'tenant_admin_invitation' : 'team_invitation',
+                data: {
+                    email: notification.email,
+                    displayName: member.displayName,
+                    role: notification.role,
                     workspaceName: workspace.name
                 }
             });
