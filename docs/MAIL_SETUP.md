@@ -58,6 +58,25 @@ If LMSGEN is later hosted somewhere that permits outbound SMTP and SMTP is prefe
 - `MAIL_PASS=<smtp password>`
 - `MAIL_FROM=<verified sender>`
 
+## BIMI brand logo
+
+A BIMI-compatible SVG Tiny P/S brand asset is hosted by the LMSGEN frontend at:
+
+`https://www.lmsgen.in/branding/lmsgen-bimi.svg`
+
+After the frontend deployment containing this file is live, add this DNS record in GoDaddy:
+
+- Type: `TXT`
+- Name: `default._bimi`
+- Value: `v=BIMI1; l=https://www.lmsgen.in/branding/lmsgen-bimi.svg;`
+- TTL: default / 30 minutes
+
+The BIMI logo file is square, uses a solid background, declares `version="1.2"` and `baseProfile="tiny-ps"`, includes title/description metadata and has no scripts, animation or external references.
+
+BIMI also requires the visible From domain to pass DMARC alignment. The `_dmarc.lmsgen.in` record must use `p=quarantine` or `p=reject` and `pct=100`; `p=none` is not sufficient for BIMI.
+
+Important for Gmail: Google requires a VMC or CMC certificate for Gmail to display a BIMI logo. The standalone SVG + BIMI TXT record prepares the domain and can work with providers that support self-asserted BIMI, but Gmail will generally keep showing the generic avatar until a VMC/CMC is obtained. When a certificate is issued, host the PEM file on `lmsgen.in` and add its HTTPS URL to the `a=` tag in the BIMI TXT record.
+
 ## DNS note
 
 Brevo domain authentication uses its own verification and DKIM records. Existing inbound-mail MX records do not need to be moved to Brevo. Keep only one DMARC TXT record at `_dmarc` and keep the authenticated Brevo DKIM selectors in place.
