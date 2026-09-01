@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import FreeGamesSection, { GeometryPhysicsWorkspace } from './FreeGamesSection';
 
 const TERMINAL_SESSION_STATES = new Set(['FINISHED', 'CANCELLED']);
 
@@ -27,6 +28,7 @@ export default function QuizmotoModule() {
   const [message, setMessage] = useState('');
   const [query, setQuery] = useState('');
   const [sortBy, setSortBy] = useState('newest');
+  const [geometryOpen, setGeometryOpen] = useState(false);
   const API_BASE_URL = apiUrl('/api/quizzes');
 
   const fetchQuizzes = async () => {
@@ -95,6 +97,10 @@ export default function QuizmotoModule() {
     }
   };
 
+  if (geometryOpen) {
+    return <GeometryPhysicsWorkspace onClose={() => setGeometryOpen(false)} />;
+  }
+
   return (
     <div className="p-4 md:p-7 lg:p-8 max-w-[1440px] mx-auto">
       <section className="scorm-page-hero mb-6">
@@ -102,7 +108,7 @@ export default function QuizmotoModule() {
           <div className="max-w-3xl">
             <div className="scorm-eyebrow inline-flex items-center gap-2"><Gamepad2 size={13} /> Live engagement · Unlocked</div>
             <h1 className="scorm-display mt-2"><span>Quizmoto</span> <span className="text-blue-400">Live Quiz</span></h1>
-            <p className="mt-3 text-sm md:text-[15px] max-w-2xl">Create quizzes, generate questions with AI, run real-time sessions and review engagement from inside the SCORM AI platform.</p>
+            <p className="mt-3 text-sm md:text-[15px] max-w-2xl">Create quizzes, generate questions with AI, run real-time sessions and access interactive learning games from inside LMSGEN.</p>
           </div>
           <div className="flex flex-wrap gap-2.5">
             <button type="button" onClick={importDefaults} className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold"><Download size={14} /> Import starters</button>
@@ -113,6 +119,8 @@ export default function QuizmotoModule() {
       </section>
 
       {message && <div className="rounded-xl border border-[#29405f] bg-[#081321] px-4 py-3 mb-5 text-xs text-[#cbd5e1] flex items-center justify-between gap-3"><span>{message}</span><button type="button" onClick={() => setMessage('')} className="font-semibold text-[#60a5fa]">Dismiss</button></div>}
+
+      <FreeGamesSection onLaunch={() => setGeometryOpen(true)} />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <div className="scorm-metric-card"><div className="flex items-start justify-between"><div><div className="scorm-metric-value">{quizzes.length}</div><div className="scorm-metric-label">Quizzes</div></div><div className="scorm-metric-icon"><BookOpenCheck size={17} /></div></div></div>
