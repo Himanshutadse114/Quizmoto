@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { ArrowLeft, Gamepad2, LockKeyhole, Play, Shapes, Sparkles } from 'lucide-react';
+import { ArrowLeft, Gamepad2, LockKeyhole, Maximize2, Minimize2, Play, Shapes, Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 
@@ -45,6 +45,16 @@ function useGeometryAccess() {
 
 export function GeometryPhysicsWorkspace({ onClose }) {
   const { fullAccess, checking } = useGeometryAccess();
+  const [focusMode, setFocusMode] = useState(false);
+  const iframeRef = useRef(null);
+
+  const sendFocusState = (active) => {
+    const frame = iframeRef.current;
+    if (!frame?.contentWindow) return;
+    try {
+      frame.contentWindow.postMessage({ type: 'lmsgen:geometry-focus', active: Boolean(active) }, window.location.origin);
+    } catch (_) {}
+  };
 
   useEffect(() => {
     const handleMessage = (event) => {
@@ -55,41 +65,89 @@ export function GeometryPhysicsWorkspace({ onClose }) {
     return () => window.removeEventListener('message', handleMessage);
   }, [onClose]);
 
+  useEffect(() => {
+    sendFocusState(focusMode);
+  }, [focusMode]);
+
+  useEffect(() => {
+    if (!focusMode) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setFocusMode(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [focusMode]);
+
   return (
     <div
-      className="h-[calc(100vh-64px)] min-h-[620px] w-full overflow-hidden flex flex-col bg-[#F4F8F7]"
+      className="relative h-[calc(100dvh-64px)] min-h-0 w-full overflow-hidden flex flex-col bg-[#F4F8F7]"
       style={{ isolation: 'isolate', filter: 'none', opacity: 1 }}
     >
-      <div
-        className="h-[68px] shrink-0 border-b border-[#D7E5E2] px-4 md:px-6 flex items-center justify-between gap-4 text-[#14201E]"
-        style={{ backgroundColor: '#FFFFFF', backdropFilter: 'none', WebkitBackdropFilter: 'none', filter: 'none', opacity: 1 }}
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl grid place-items-center shrink-0 border border-[#B8E5DF] bg-[#E7F8F5] text-[#178C82]"><Shapes size={19} /></div>
-          <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-[.1em] font-semibold text-[#6F817E]">Quizmoto · Learning Games</div>
-            <div className="mt-0.5 text-[15px] font-semibold text-[#14201E] truncate">Geometry Physics</div>
-            <div className="mt-0.5 text-[10px] text-[#6F817E] truncate">
-              {checking ? 'Checking access…' : fullAccess ? `All ${TOTAL_LEVELS} levels unlocked` : `Levels 1–${FREE_LEVELS} free`}
+      {!focusMode && (
+        <div
+          className="h-[68px] shrink-0 border-b border-[#D7E5E2] px-4 md:px-6 flex items-center justify-between gap-4 text-[#14201E]"
+          style={{ backgroundColor: '#FFFFFF', backdropFilter: 'none', WebkitBackdropFilter: 'none', filter: 'none', opacity: 1 }}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl grid place-items-center shrink-0 border border-[#B8E5DF] bg-[#E7F8F5] text-[#178C82]"><Shapes size={19} /></div>
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-[.1em] font-semibold text-[#6F817E]">Quizmoto · Learning Games</div>
+              <div className="mt-0.5 text-[15px] font-semibold text-[#14201E] truncate">Geometry Physics</div>
+              <div className="mt-0.5 text-[10px] text-[#6F817E] truncate">
+                {checking ? 'Checking access…' : fullAccess ? `All ${TOTAL_LEVELS} levels unlocked` : `Levels 1–${FREE_LEVELS} free`}
+              </div>
             </div>
           </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setFocusMode(true)}
+              className="min-h-10 px-3.5 rounded-xl border border-[#B8D4CF] bg-[#F7FBFA] text-[#315B55] hover:bg-[#ECF7F5] inline-flex items-center gap-2 text-[11px] font-semibold"
+              title="Hide game headers and maximise the play area"
+            >
+              <Maximize2 size={14} /> Focus mode
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-10 px-3.5 rounded-xl border border-[#B8D4CF] bg-white text-[#315B55] hover:bg-[#ECF7F5] inline-flex items-center gap-2 text-[11px] font-semibold"
+            >
+              <ArrowLeft size={14} /> Back to Quizmoto
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="min-h-10 px-3.5 rounded-xl border border-[#B8D4CF] bg-white text-[#315B55] hover:bg-[#ECF7F5] inline-flex items-center gap-2 text-[11px] font-semibold shrink-0"
-        >
-          <ArrowLeft size={14} /> Back to Quizmoto
-        </button>
-      </div>
+      )}
+
+      {focusMode && (
+        <div className="absolute top-3 right-3 z-20 flex items-center gap-2 rounded-xl border border-[#C8DDD9] bg-white/95 p-1.5 shadow-[0_8px_24px_rgba(30,72,66,.12)]">
+          <button
+            type="button"
+            onClick={() => setFocusMode(false)}
+            className="h-9 px-3 rounded-lg text-[#315B55] hover:bg-[#ECF7F5] inline-flex items-center gap-2 text-[10px] font-semibold"
+            title="Restore the game header"
+          >
+            <Minimize2 size={13} /> Show header
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-9 px-3 rounded-lg bg-[#07111F] text-white hover:bg-[#102033] inline-flex items-center gap-2 text-[10px] font-semibold"
+          >
+            <ArrowLeft size={13} /> Quizmoto
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 min-h-0 bg-[#F4F8F7]">
         <iframe
+          ref={iframeRef}
           src={GAME_SRC}
           title="Geometry Physics"
           className="block w-full h-full border-0 bg-[#F4F8F7]"
           style={{ filter: 'none', opacity: 1 }}
           allow="autoplay"
+          onLoad={() => sendFocusState(focusMode)}
         />
       </div>
     </div>
