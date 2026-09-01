@@ -58,6 +58,13 @@
     });
   }
 
+  function setKeyboardOpen(open) {
+    document.body.classList.toggle('mobile-keyboard-open', Boolean(open));
+    if (!nav) return;
+    if (open) nav.hidden = true;
+    else if (isMobile()) nav.hidden = false;
+  }
+
   function setView(view, scrollTop = false) {
     if (!views.includes(view)) return;
     currentView = view;
@@ -83,11 +90,12 @@
     if (mobile) {
       ensureNav();
       ensureBoardFormulaButton();
-      nav.hidden = false;
+      if (!document.body.classList.contains('mobile-keyboard-open')) nav.hidden = false;
       boardFormulaButton.hidden = currentView !== 'board';
       setView(currentView || 'board');
     } else {
       document.body.classList.remove(...views.map((item) => `mobile-view-${item}`));
+      document.body.classList.remove('mobile-keyboard-open');
       if (nav) nav.hidden = true;
       if (boardFormulaButton) boardFormulaButton.hidden = true;
       redrawBoard();
@@ -119,6 +127,18 @@
     if (event.target.closest('#replayBtn') || event.target.closest('#nextBtn')) {
       window.setTimeout(() => setView('board', true), 0);
     }
+  });
+
+  document.addEventListener('focusin', (event) => {
+    if (!isMobile()) return;
+    if (event.target?.matches?.('#formulaInput')) setKeyboardOpen(true);
+  });
+
+  document.addEventListener('focusout', (event) => {
+    if (!isMobile() || !event.target?.matches?.('#formulaInput')) return;
+    window.setTimeout(() => {
+      if (!document.activeElement?.matches?.('#formulaInput')) setKeyboardOpen(false);
+    }, 120);
   });
 
   document.addEventListener('keydown', (event) => {
