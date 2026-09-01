@@ -52,8 +52,6 @@ function learnerRows(course) {
         .filter((reg) => !reg.isPreview)
         .map((reg) => registrationRow(reg, course));
 
-    // New joins reuse one canonical registration. This grouping also cleans up
-    // old duplicate rows that may already exist from before email deduplication.
     const grouped = new Map();
     for (const row of rows) {
         const email = String(row.learnerEmail || '').trim().toLowerCase();
@@ -77,14 +75,26 @@ function learnerRows(course) {
     return Array.from(grouped.values());
 }
 
+function isCompletedRow(row) {
+    return (row.progressAvailable && Number(row.progressPercent) >= 100)
+        || row.status === 'completed'
+        || ['completed', 'passed', 'failed'].includes(String(row.lastLessonStatus || '').toLowerCase());
+}
+
+function isStartedRow(row) {
+    if (isCompletedRow(row)) return true;
+    return (row.progressAvailable && Number(row.progressPercent) > 0)
+        || ['active', 'in_progress', 'launched', 'started'].includes(String(row.status || ''))
+        || Boolean(row.lastCommitAt)
+        || Number(row.stateVersion || 0) > 0
+        || ['incomplete', 'browsed'].includes(String(row.lastLessonStatus || '').toLowerCase());
+}
+
 function summarizeRows(rows) {
-    const completed = rows.filter((row) => row.progressAvailable && row.progressPercent >= 100).length;
-    const inProgress = rows.filter((row) => (
-        (row.progressAvailable && row.progressPercent > 0 && row.progressPercent < 100) ||
-        (!row.progressAvailable && row.status === 'active')
-    )).length;
-    const notStarted = rows.filter((row) => row.progressAvailable && row.progressPercent <= 0 && row.status !== 'active').length;
-    const unavailable = rows.filter((row) => !row.progressAvailable).length;
+    const completed = rows.filter(isCompletedRow).length;
+    const inProgress = rows.filter((row) => !isCompletedRow(row) && isStartedRow(row)).length;
+    const notStarted = rows.filter((row) => !isStartedRow(row)).length;
+    const unavailable = rows.filter((row) => row.progressAvailable === false && !isStartedRow(row)).length;
     const measurable = rows.filter((row) => row.progressAvailable);
     const averageProgress = measurable.length
         ? Math.round((measurable.reduce((sum, row) => sum + Number(row.progressPercent || 0), 0) / measurable.length) * 10) / 10
