@@ -1,0 +1,143 @@
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap");
+
+:root{
+  color-scheme:light;
+  --bg:#F4F8F7;
+  --bg-deep:#EDF5F3;
+  --surface:#FFFFFF;
+  --surface-2:#F8FBFA;
+  --surface-3:#F0F6F4;
+  --line:#D7E5E2;
+  --line-soft:#D7E5E2;
+  --text:#14201E;
+  --text-2:#425854;
+  --muted:#6E817D;
+  --cyan:#4FC9BF;
+  --cyan-bright:#178C82;
+  --blue:#32AFA4;
+  --violet:#6F63BE;
+  --gold:#B98208;
+  --green:#238B68;
+  --red:#B94D59;
+  --shadow:0 10px 28px rgba(30,72,66,.065);
+}
+
+html,body{
+  background:#F4F8F7!important;
+  color:#14201E!important;
+  font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif!important;
+}
+body{
+  background:
+    radial-gradient(circle at 88% -5%,rgba(79,201,191,.10),transparent 29rem),
+    linear-gradient(180deg,#F8FBFA 0%,#F4F8F7 100%)!important;
+}
+button,input,code{font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif}
+.mission-header h1,.panel-head h2,.lesson-main h2,.modal-card h2{
+  font-family:"Barlow Condensed","Plus Jakarta Sans",sans-serif!important;
+}
+
+.topbar{
+  background:rgba(255,255,255,.95)!important;
+  border-color:#D7E5E2!important;
+  box-shadow:0 8px 24px rgba(30,72,66,.045)!important;
+}
+.back-btn{
+  background:#fff!important;border-color:#C8DAD6!important;color:#31534E!important;
+  box-shadow:0 3px 10px rgba(30,72,66,.03)!important;
+}
+.back-btn:hover{background:#EAF7F5!important;border-color:#9ED7D0!important;color:#176F67!important}
+.brand-mark{background:#E8F7F4!important;border-color:#C2E5DF!important;color:#178C82!important;box-shadow:none!important}
+.brand-copy strong{color:#14201E!important}
+.brand-copy small{color:#6E817D!important}
+.top-stats>div{background:#fff!important;border-color:#D7E5E2!important}
+.top-stats span{color:#6E817D!important}.top-stats strong{color:#14201E!important}.top-stats .star-stat strong{color:#B98208!important}
+
+.phase-tabs{background:#F8FBFA!important;border-color:#D7E5E2!important}
+.phase-tab{background:transparent!important;border-color:#D7E5E2!important;color:#6E817D!important}
+.phase-tab span{color:#31534E!important}.phase-tab small{color:#6E817D!important}
+.phase-tab b{color:#178C82!important;background:#EEF7F5!important;padding:3px 7px;border-radius:999px}
+.phase-tab:hover{background:#F1F8F6!important}
+.phase-tab.active{background:#fff!important}.phase-tab.active span{color:#178C82!important}
+.phase-tab.active:after{background:#4FC9BF!important}
+
+.game-layout{background:#F4F8F7!important}
+.mission-sidebar{background:#F8FBFA!important;border-color:#D7E5E2!important}
+.sidebar-head span{color:#14201E!important}.sidebar-head small{color:#6E817D!important}
+.mission-item{color:#425854!important}
+.mission-item:hover{background:#fff!important;border-color:#D7E5E2!important}
+.mission-item.active{background:#EAF7F5!important;border-color:#A9DDD6!important;box-shadow:inset 3px 0 0 #32AFA4!important}
+.mission-item.complete .mission-num{background:#ECF8F5!important;border-color:#BCE2DB!important;color:#238B68!important}
+.mission-num{background:#fff!important;border-color:#D7E5E2!important;color:#526662!important}
+.mission-copy strong{color:#14201E!important}.mission-copy small{color:#6E817D!important}.mission-state{color:#B98208!important}
+.game-stage{background:#F4F8F7!important}
+
+.journey-stepper{background:#fff!important;border-color:#D7E5E2!important;box-shadow:0 5px 16px rgba(30,72,66,.035)!important}
+.journey-step{color:#6E817D!important}.journey-step>span{background:#F8FBFA!important;border-color:#D7E5E2!important;color:#6E817D!important}
+.journey-step strong{color:#526662!important}.journey-step small{color:#6E817D!important}.journey-line{background:#D7E5E2!important}
+.journey-step.active>span{background:#DDF3EF!important;border-color:#9ED7D0!important;color:#145F58!important}.journey-step.active strong{color:#178C82!important}
+.journey-step.complete>span{background:#32AFA4!important;border-color:#32AFA4!important;color:#fff!important}
+
+.mission-meta span{color:#178C82!important}.mission-meta b{color:#6E817D!important;border-color:#D7E5E2!important}
+.mission-header h1{color:#14201E!important;font-size:clamp(32px,3.2vw,44px)!important}
+.mission-header p{color:#425854!important}
+.mode-badge{background:#fff!important;border-color:#C8DAD6!important;color:#526662!important}
+.concept-strip{background:linear-gradient(90deg,#EEF8F6,#F8FBFA)!important;border-color:#C9E4E0!important}
+.concept-icon{background:#DDF3EF!important;color:#178C82!important}
+.concept-copy span{color:#6E817D!important}.concept-copy strong{color:#31534E!important}
+.concept-strip button{background:#fff!important;border-color:#C8DAD6!important;color:#31534E!important}
+.concept-strip button:hover{background:#EAF7F5!important;border-color:#9ED7D0!important;color:#176F67!important}
+
+.canvas-shell{background:#fff!important;border-color:#C9DBD7!important;box-shadow:0 10px 28px rgba(30,72,66,.065)!important}
+#gameCanvas{background:#fff!important}
+.physics-hud>div{background:rgba(255,255,255,.94)!important;border-color:#C9E4E0!important;box-shadow:0 6px 18px rgba(30,72,66,.07)!important}
+.physics-hud span{color:#6E817D!important}.physics-hud strong{color:#178C82!important}
+.status-message{background:#fff!important;border-color:#D7E5E2!important;color:#425854!important}
+.status-message[data-type="success"]{background:#ECF8F5!important;border-color:#BCE2DB!important;color:#35635B!important}
+.status-message[data-type="warn"]{background:#FFF5F6!important;border-color:#F1C9CD!important;color:#8D3B46!important}
+
+.formula-panel{background:#fff!important;border-color:#D7E5E2!important}
+.panel-head span,.objective-card span,.hint-panel>span,.equations-head>span{color:#6E817D!important}
+.panel-head h2{color:#14201E!important;font-size:25px!important}
+.budget{background:#F8FBFA!important;border-color:#D7E5E2!important}.budget small{color:#6E817D!important}.budget strong{color:#178C82!important}
+.objective-card{background:#F6FAF9!important;border-color:#D1E5E1!important}
+.objective-number{background:#E8F7F4!important;border-color:#BCE2DB!important;color:#178C82!important}
+.objective-card p{color:#425854!important}
+.formula-form label{color:#14201E!important}.field-head span{color:#6E817D!important}
+.formula-input-row input{background:#fff!important;border-color:#C8DAD6!important;color:#172522!important;box-shadow:none!important}
+.formula-input-row input::placeholder{color:#91A19D!important}
+.formula-input-row input:focus{border-color:#4FC9BF!important;box-shadow:0 0 0 3px rgba(79,201,191,.14)!important}
+.formula-input-row button{background:#4FC9BF!important;border-color:#35B6AB!important;color:#083C37!important;box-shadow:0 5px 14px rgba(41,151,139,.12)!important}
+.formula-error{color:#A73F4C!important}.formula-help{color:#6E817D!important}.shortcut-label{color:#526662!important}
+.math-key{background:#fff!important;border-color:#C8DAD6!important;color:#31534E!important}
+.math-key:hover{background:#EAF7F5!important;border-color:#9ED7D0!important;color:#176F67!important}
+.equations-head>span{color:#526662!important}.equations-head button{color:#6E817D!important}
+.empty-equations{background:#FBFDFC!important;border-color:#C8DAD6!important;color:#7B8D89!important}
+.equation-row{background:#F8FBFA!important;border-color:#D7E5E2!important}
+.equation-index{background:#DDF3EF!important;color:#178C82!important}.equation-row code{color:#214842!important}.equation-row button{color:#8CA09B!important}.equation-row button:hover{color:#B94D59!important}
+.hint-panel{background:#FFFBEB!important;border-color:#E9D99E!important}.hint-panel>span{color:#8A670B!important}.hint-panel p{color:#72570F!important}.hint-formulas code{background:#fff!important;border-color:#E9D99E!important;color:#684F0D!important}
+.secondary-action{background:#fff!important;border-color:#C8DAD6!important;color:#31534E!important}.secondary-action:hover{background:#F2F8F6!important}
+.secondary-action.active{background:#FFFBEB!important;border-color:#E3CA78!important;color:#87620A!important}
+.primary-action{background:#4FC9BF!important;border-color:#35B6AB!important;color:#083C37!important;box-shadow:0 7px 18px rgba(41,151,139,.15)!important}
+.primary-action.physics-action{background:#48C29B!important;border-color:#2FA77F!important;color:#073A2B!important}
+.ghost-action{background:#F8FBFA!important;border-color:#C8DAD6!important;color:#526662!important}
+
+.lesson-overlay,.modal{background:rgba(34,56,52,.28)!important;backdrop-filter:blur(6px)!important}
+.lesson-card,.modal-card{background:#fff!important;border-color:#C8DAD6!important;box-shadow:0 24px 60px rgba(30,72,66,.13)!important}
+.lesson-topline,.lesson-footer{background:#F8FBFA!important;border-color:#D7E5E2!important}
+.lesson-topline>span:first-child{color:#178C82!important}.lesson-duration{color:#6E817D!important}
+.lesson-main{border-color:#D7E5E2!important}.lesson-badge{background:#E8F7F4!important;color:#178C82!important}
+.lesson-main h2,.modal-card h2{color:#14201E!important}.lesson-main>p,.modal-card p{color:#425854!important}
+.lesson-formula-wrap,.lesson-example{background:#F8FBFA!important;border-color:#D1E5E1!important}
+.lesson-formula-wrap span,.lesson-example span{color:#6E817D!important}.lesson-formula-wrap code{color:#145F58!important}.lesson-example p{color:#31534E!important}
+.lesson-points{background:#FBFDFC!important}.lesson-point>span{background:#DDF3EF!important;color:#178C82!important}.lesson-point strong{color:#14201E!important}.lesson-point p{color:#6E817D!important}
+.lesson-footer p{color:#6E817D!important}.lesson-footer button{background:#4FC9BF!important;border-color:#35B6AB!important;color:#083C37!important}
+.modal-close{color:#6E817D!important}.result-icon{background:#E8F7F4!important;border-color:#BCE2DB!important;color:#178C82!important}.result-phase{color:#178C82!important}.result-stars{color:#B98208!important}
+.modal-actions button:first-child{background:#fff!important;border-color:#C8DAD6!important;color:#31534E!important}.modal-actions button:last-child{background:#4FC9BF!important;border-color:#35B6AB!important;color:#083C37!important}
+
+@media(max-width:1180px){.formula-panel{background:#fff!important;border-color:#D7E5E2!important}}
+@media(max-width:760px){
+  .mission-sidebar{background:#F8FBFA!important;border-color:#D7E5E2!important}
+  .formula-panel{background:#fff!important;border-color:#D7E5E2!important}
+  .lesson-card{background:#fff!important}
+}
