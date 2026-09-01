@@ -1,0 +1,91 @@
+/* Mobile play layout: Board + Formula Lab share one screen. Loaded last. */
+
+body.geometry-mobile .mobile-board-formula-button{display:none!important}
+body.geometry-mobile .mobile-game-nav{grid-template-columns:repeat(2,minmax(0,1fr))!important;max-width:440px!important;left:50%!important;right:auto!important;width:calc(100% - 14px)!important;transform:translateX(-50%)!important}
+
+/* Play is one continuous workspace: board first, formula immediately below. */
+body.geometry-mobile.mobile-view-board .mission-sidebar{display:none!important}
+body.geometry-mobile.mobile-view-board .game-stage{display:block!important}
+body.geometry-mobile.mobile-view-board .formula-panel{display:flex!important;flex-direction:column!important}
+body.geometry-mobile.mobile-view-missions .mission-sidebar{display:block!important}
+body.geometry-mobile.mobile-view-missions .game-stage,
+body.geometry-mobile.mobile-view-missions .formula-panel{display:none!important}
+
+body.geometry-mobile.mobile-view-board .game-layout{display:block!important;overflow:visible!important}
+body.geometry-mobile.mobile-view-board .game-stage{padding:9px 9px 8px!important}
+body.geometry-mobile.mobile-view-board .formula-panel{
+  position:static!important;top:auto!important;max-height:none!important;overflow:visible!important;
+  border-left:0!important;border-top:1px solid #D7E5E2!important;
+  padding:10px 10px calc(82px + env(safe-area-inset-bottom,0px))!important;background:#fff!important
+}
+
+/* Put the equation composer before secondary explanatory content on phones. */
+body.geometry-mobile .formula-panel>.panel-head{order:0!important;position:static!important;margin:0!important;padding:4px 2px 8px!important;border-bottom:0!important}
+body.geometry-mobile .formula-panel>.formula-form{order:1!important;margin-top:2px!important}
+body.geometry-mobile .formula-panel>.objective-card{order:2!important;margin-top:10px!important}
+body.geometry-mobile .formula-panel>.formula-reference-card{order:3!important}
+body.geometry-mobile .formula-panel>.equations-head{order:4!important}
+body.geometry-mobile .formula-panel>.equation-list{order:5!important}
+body.geometry-mobile .formula-panel>.hint-panel{order:6!important}
+body.geometry-mobile .formula-panel>.panel-actions{order:7!important}
+
+body.geometry-mobile .panel-head h2{font-size:21px!important}
+body.geometry-mobile .panel-head>div>span{font-size:9px!important}
+body.geometry-mobile .formula-form{padding:10px!important;border-radius:12px!important}
+body.geometry-mobile .formula-form:before{content:'Live graph preview';display:block;margin-bottom:8px;color:#178C82;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+body.geometry-mobile .field-head{margin-bottom:6px!important}
+body.geometry-mobile .formula-input-row input{min-height:48px!important}
+body.geometry-mobile .formula-input-row button{min-height:48px!important}
+
+/* Keep enough of the graph visible before the formula composer starts. */
+body.geometry-mobile #gameCanvas{height:min(68vw,39dvh)!important;min-height:230px!important;max-height:360px!important}
+body.geometry-mobile .mission-header p{-webkit-line-clamp:2!important}
+body.geometry-mobile .status-message{margin-bottom:0!important}
+
+/* The old dedicated formula state is no longer part of mobile navigation. */
+body.geometry-mobile.mobile-view-formula .game-stage,
+body.geometry-mobile.mobile-view-formula .formula-panel{display:block!important}
+body.geometry-mobile.mobile-view-formula .mission-sidebar{display:none!important}
+
+@media (max-width:480px){
+  body.geometry-mobile #gameCanvas{height:min(72vw,37dvh)!important;min-height:220px!important;max-height:320px!important}
+  body.geometry-mobile .formula-panel{padding-left:8px!important;padding-right:8px!important}
+  body.geometry-mobile .formula-form{padding:9px!important}
+  body.geometry-mobile .objective-card{padding:9px!important}
+  body.geometry-mobile .mobile-game-nav{width:calc(100% - 12px)!important}
+}
+
+/* In landscape, show the actual graph and formula editor side-by-side. */
+@media (max-width:1100px) and (orientation:landscape) and (max-height:680px){
+  body.geometry-mobile.mobile-view-board{overflow:hidden!important;padding-bottom:0!important}
+  body.geometry-mobile.mobile-view-board .game-layout{
+    display:grid!important;grid-template-columns:minmax(0,1.18fr) minmax(300px,.82fr)!important;
+    height:calc(100dvh - 46px)!important;min-height:0!important;overflow:hidden!important
+  }
+  body.geometry-mobile.mobile-view-board .game-stage{
+    grid-column:1!important;height:100%!important;min-height:0!important;overflow-y:auto!important;
+    padding:8px 8px 62px!important;border-right:1px solid #D7E5E2!important
+  }
+  body.geometry-mobile.mobile-view-board .formula-panel{
+    grid-column:2!important;height:100%!important;min-height:0!important;max-height:none!important;overflow-y:auto!important;
+    border-top:0!important;padding:8px 8px 62px!important
+  }
+  body.geometry-mobile .journey-stepper{display:none!important}
+  body.geometry-mobile .mission-header{margin-bottom:5px!important}
+  body.geometry-mobile .mission-header p{display:none!important}
+  body.geometry-mobile .mission-header h1{font-size:22px!important;margin:3px 0!important}
+  body.geometry-mobile .concept-strip{padding:6px 7px!important;margin-bottom:6px!important}
+  body.geometry-mobile #gameCanvas{height:calc(100dvh - 150px)!important;min-height:205px!important;max-height:none!important}
+  body.geometry-mobile .formula-panel>.panel-head{position:sticky!important;top:0!important;z-index:5!important;background:#fff!important;padding:7px 2px!important}
+  body.geometry-mobile .formula-form{margin-top:4px!important}
+  body.geometry-mobile .mobile-game-nav{width:min(360px,calc(100vw - 20px))!important;bottom:5px!important}
+}
+
+@media (hover:none) and (pointer:coarse) and (orientation:landscape) and (max-height:680px){
+  body.geometry-mobile.mobile-view-board .game-layout{
+    display:grid!important;grid-template-columns:minmax(0,1.18fr) minmax(300px,.82fr)!important;
+    height:calc(100dvh - 46px)!important;overflow:hidden!important
+  }
+  body.geometry-mobile.mobile-view-board .game-stage,
+  body.geometry-mobile.mobile-view-board .formula-panel{height:100%!important;min-height:0!important;overflow-y:auto!important}
+}
