@@ -214,6 +214,27 @@ function campaignCourseColumns() {
     };
 }
 
+function learnerOtpColumns() {
+    return {
+        id: { type: DataTypes.UUID, allowNull: false, primaryKey: true },
+        workspaceId: {
+            type: DataTypes.UUID,
+            allowNull: false,
+            references: { model: 'scorm_workspaces', key: 'id' },
+            onUpdate: 'CASCADE',
+            onDelete: 'CASCADE'
+        },
+        email: { type: DataTypes.STRING(320), allowNull: false },
+        purpose: { type: DataTypes.STRING(64), allowNull: false, defaultValue: 'learner_signin' },
+        codeHash: { type: DataTypes.STRING(64), allowNull: false },
+        expiresAt: { type: DataTypes.DATE, allowNull: false },
+        consumedAt: { type: DataTypes.DATE, allowNull: true },
+        attempts: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        sentAt: { type: DataTypes.DATE, allowNull: false },
+        ...timestampColumns()
+    };
+}
+
 async function ensureWorkspaceSchema() {
     const changes = [];
     const tables = [
@@ -273,12 +294,30 @@ async function ensureCampaignSchema() {
     return changes;
 }
 
+async function ensureLearnerOtpSchema() {
+    const changes = [];
+    const tableName = 'scorm_learner_email_otps';
+    const columns = learnerOtpColumns();
+    if (await ensureTable(tableName, columns)) changes.push(tableName);
+    else changes.push(...await ensureColumns(tableName, columns));
+    const indexes = [
+        [['workspaceId', 'email', 'purpose'], { name: 'scorm_learner_email_otps_lookup_idx' }],
+        [['expiresAt'], { name: 'scorm_learner_email_otps_expiry_idx' }],
+        [['consumedAt'], { name: 'scorm_learner_email_otps_consumed_idx' }]
+    ];
+    for (const [fields, options] of indexes) {
+        if (await ensureIndex(tableName, fields, options)) changes.push(options.name);
+    }
+    return changes;
+}
+
 async function ensurePlatformSchema() {
     resetSchemaCache();
     const changes = [];
     changes.push(...await ensureWorkspaceSchema());
     changes.push(...await ensureEntitlementSchema());
     changes.push(...await ensureCampaignSchema());
+    changes.push(...await ensureLearnerOtpSchema());
 
     const registrationColumns = [
         ['assignedAt', { type: DataTypes.DATE, allowNull: true }],
