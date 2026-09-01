@@ -1,130 +1,126 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#060617" />
-  <meta name="description" content="Math Flow Geometry Quest — a browser-based formula learning game inside Quizmoto." />
-  <title>Geometry Quest | Quizmoto</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#050817" />
+  <meta name="description" content="Geometry Physics — build shapes with equations, then turn formulas into gravity-powered ramps." />
+  <title>Geometry Physics | Quizmoto Add-on</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="app-shell" id="app">
+  <div class="app-shell">
     <header class="topbar">
-      <div class="topbar-brand-group">
-        <a class="back-link" href="/scorm/quizmoto" aria-label="Back to Quizmoto">← QUIZMOTO</a>
-        <button class="brand" id="homeBtn" type="button" aria-label="Open mission map">
-          <span class="brand-mark">∑</span>
-          <span><strong>MATH FLOW</strong><small>GEOMETRY QUEST · QUIZMOTO ADD-ON</small></span>
-        </button>
+      <div class="brand-wrap">
+        <button id="backToQuizmoto" class="back-btn" type="button">← QUIZMOTO</button>
+        <div class="brand-mark">∑</div>
+        <div class="brand-copy"><strong>GEOMETRY PHYSICS</strong><small>BUILD THE MATH · RUN THE PHYSICS</small></div>
       </div>
-      <div class="hud" aria-label="Player progress">
-        <div class="hud-item"><span>XP</span><strong id="xpValue">0</strong></div>
-        <div class="hud-item"><span>STREAK</span><strong id="streakValue">0</strong></div>
-        <div class="hud-item hearts" id="heartsValue" aria-label="3 hearts">♥ ♥ ♥</div>
-        <button class="icon-btn" id="vaultBtn" type="button" title="Formula Vault" aria-label="Open Formula Vault">ƒx</button>
+      <div class="top-stats">
+        <div><span>PROGRESS</span><strong id="totalProgress">0/36</strong></div>
+        <div><span>LEVEL</span><strong id="levelCounter">1 / 36</strong></div>
+        <div class="star-stat"><span>BEST</span><strong id="savedStars">☆☆☆</strong></div>
       </div>
     </header>
 
-    <main class="layout">
-      <aside class="chapter-nav" aria-label="Formula worlds">
-        <div class="chapter-nav-head"><span>FORMULA WORLDS</span><strong id="progressText">0/32</strong></div>
-        <div id="chapterList" class="chapter-list"></div>
+    <div class="phase-tabs" id="phaseTabs"></div>
+
+    <main class="game-layout">
+      <aside class="mission-sidebar">
+        <div class="sidebar-head">
+          <span>MISSIONS</span>
+          <small>Start by constructing shapes, then use formulas as real ramps in the gravity campaign.</small>
+        </div>
+        <div id="missionList" class="mission-list"></div>
       </aside>
 
-      <section class="game-panel">
-        <div class="mission-head">
+      <section class="game-stage">
+        <div class="mission-header">
           <div>
-            <div class="eyebrow" id="missionEyebrow">WORLD 1 · MISSION 1</div>
-            <h1 id="missionTitle">Slope Signal</h1>
+            <div class="mission-meta"><span id="missionPhase">SHAPE ACADEMY</span><b id="missionFamily">Basic Lines</b></div>
+            <h1 id="missionTitle">Horizontal Line</h1>
             <p id="missionDescription"></p>
           </div>
-          <div class="mission-stars" id="missionStars" aria-label="Mission stars">☆ ☆ ☆</div>
+          <div class="mode-badge" id="modeBadge">CONSTRUCTION MODE</div>
         </div>
 
-        <div class="formula-strip">
-          <span class="formula-label">TODAY'S FORMULA</span>
-          <strong id="formulaDisplay">m = (y₂ − y₁) / (x₂ − x₁)</strong>
-          <button class="tiny-btn" id="formulaInfoBtn" type="button">WHY?</button>
-        </div>
-
-        <div class="play-area" id="playArea">
-          <canvas id="gameCanvas" width="1000" height="620" aria-label="Interactive coordinate game board"></canvas>
-          <div class="canvas-note" id="canvasNote">Tune the formula, then launch the orb.</div>
-          <div class="quiz-card hidden" id="quizCard">
-            <div class="quiz-badge">FORMULA CHALLENGE</div>
-            <h2 id="quizPrompt"></h2>
-            <div id="quizDiagram" class="quiz-diagram"></div>
-            <div id="quizOptions" class="quiz-options"></div>
-            <div id="quizFeedback" class="quiz-feedback" aria-live="polite"></div>
+        <div class="canvas-shell">
+          <canvas id="gameCanvas" width="1000" height="650" aria-label="Interactive coordinate plane"></canvas>
+          <div class="physics-hud hidden" id="physicsHud">
+            <div><span>STARS</span><strong id="starHud">0 / 3</strong></div>
+            <div><span>TIME</span><strong id="timeHud">18s</strong></div>
           </div>
         </div>
 
-        <div class="mobile-actions">
-          <button class="secondary-btn" id="mobileHintBtn" type="button">Hint</button>
-          <button class="primary-btn" id="mobileRunBtn" type="button">Test Run</button>
-        </div>
+        <div id="statusMessage" class="status-message" data-type="info">Match the glowing target using your own equations.</div>
       </section>
 
-      <aside class="lab-panel">
-        <div class="lab-head">
-          <div><span class="eyebrow">FORMULA LAB</span><h2>Build it. Test it. Learn it.</h2></div>
-          <div class="budget-pill" id="attemptPill">0 attempts</div>
+      <aside class="formula-panel">
+        <div class="panel-head">
+          <div><span>FORMULA LAB</span><h2>Write it. See it. Test it.</h2></div>
+          <div class="budget"><small>USED</small><strong id="budgetValue">0 / 1</strong></div>
         </div>
 
-        <div id="curveControls" class="curve-controls"></div>
-
-        <div class="learning-card">
-          <span>MISSION GOAL</span>
-          <p id="learningGoal"></p>
+        <div class="objective-card">
+          <span>MISSION OBJECTIVE</span>
+          <p id="objectiveText"></p>
         </div>
 
-        <div class="hint-box hidden" id="hintBox">
-          <span>HINT</span>
+        <form id="formulaForm" class="formula-form">
+          <label for="formulaInput">Equation</label>
+          <div class="formula-input-row">
+            <input id="formulaInput" autocomplete="off" spellcheck="false" placeholder="e.g. -0.5*x + 2; [-6, 5]" />
+            <button id="addFormulaBtn" type="button">ADD</button>
+          </div>
+          <div id="formulaError" class="formula-error"></div>
+          <p id="formulaHelp" class="formula-help"></p>
+          <div class="math-keys" aria-label="Math shortcuts">
+            <button type="button" class="math-key" data-key="x">x</button>
+            <button type="button" class="math-key" data-key="y">y</button>
+            <button type="button" class="math-key" data-key="^2">x²</button>
+            <button type="button" class="math-key" data-key="sqrt(">√</button>
+            <button type="button" class="math-key" data-key="sin(">sin</button>
+            <button type="button" class="math-key" data-key="cos(">cos</button>
+            <button type="button" class="math-key" data-key="abs(">|x|</button>
+            <button type="button" class="math-key domain-key" data-key="; [-5, 5]">domain</button>
+          </div>
+        </form>
+
+        <div class="equations-head"><span>YOUR EQUATIONS</span><button id="clearEquationsBtn" type="button">Clear all</button></div>
+        <div id="equationList" class="equation-list"></div>
+
+        <div id="hintPanel" class="hint-panel hidden">
+          <span>PERFECT-SOLUTION HINT</span>
           <p id="hintText"></p>
+          <div id="hintFormula" class="hint-formulas"></div>
         </div>
 
-        <div class="lab-actions">
-          <button class="secondary-btn" id="hintBtn" type="button">Use Hint</button>
-          <button class="primary-btn" id="runBtn" type="button">Test Run</button>
-          <button class="ghost-btn" id="resetBtn" type="button">Reset Mission</button>
+        <div class="panel-actions">
+          <button id="hintBtn" class="secondary-action" type="button">💡 HINT</button>
+          <button id="actionBtn" class="primary-action" type="button">✓ CHECK SHAPE</button>
+          <button id="resetBtn" class="ghost-action" type="button">RESET CONSTRUCTION</button>
         </div>
-
-        <div class="key-lesson" id="keyLesson"></div>
       </aside>
     </main>
   </div>
 
-  <div class="modal hidden" id="missionModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div id="resultModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
     <div class="modal-card">
-      <div class="result-orb" id="resultOrb">★</div>
-      <span class="eyebrow" id="modalEyebrow">MISSION COMPLETE</span>
-      <h2 id="modalTitle">Formula mastered</h2>
-      <p id="modalText"></p>
-      <div class="result-stats">
-        <div><span>STARS</span><strong id="modalStars">★★★</strong></div>
-        <div><span>XP</span><strong id="modalXp">+100</strong></div>
-      </div>
+      <button id="closeResultBtn" class="modal-close" type="button" aria-label="Close">×</button>
+      <div class="result-icon">∑</div>
+      <span id="resultPhase" class="result-phase">SHAPE MASTERED</span>
+      <h2 id="resultTitle">Horizontal Line</h2>
+      <div id="resultStars" class="result-stars">★★★</div>
+      <p id="resultText"></p>
       <div class="modal-actions">
-        <button class="secondary-btn" id="replayBtn" type="button">Replay</button>
-        <button class="primary-btn" id="nextBtn" type="button">Next Mission</button>
+        <button id="replayBtn" type="button">Replay</button>
+        <button id="nextBtn" type="button">Next Mission</button>
       </div>
     </div>
   </div>
 
-  <div class="modal hidden" id="vaultModal" role="dialog" aria-modal="true" aria-labelledby="vaultTitle">
-    <div class="modal-card vault-card">
-      <div class="vault-head">
-        <div><span class="eyebrow">FORMULA VAULT</span><h2 id="vaultTitle">Your geometry toolkit</h2></div>
-        <button class="icon-btn" id="closeVaultBtn" type="button" aria-label="Close Formula Vault">×</button>
-      </div>
-      <p class="vault-copy">Formulas unlock as you clear missions. Revisit any unlocked card before a challenge.</p>
-      <div class="vault-grid" id="vaultGrid"></div>
-    </div>
-  </div>
-
-  <div class="toast" id="toast" aria-live="polite"></div>
   <script src="data.js"></script>
+  <script src="engine.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
