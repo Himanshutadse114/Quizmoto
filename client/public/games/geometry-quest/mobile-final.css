@@ -1,0 +1,80 @@
+/* Hardened mobile overrides. Loaded after mobile-audit.css. */
+
+body.geometry-mobile .mobile-game-nav{
+  position:fixed!important;
+  left:7px!important;right:7px!important;bottom:calc(7px + env(safe-area-inset-bottom,0px))!important;
+  z-index:80!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:4px!important;
+  padding:5px!important;border:1px solid #C8DDD9!important;border-radius:16px!important;
+  background:rgba(255,255,255,.97)!important;box-shadow:0 10px 30px rgba(30,72,66,.18)!important;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)
+}
+body.geometry-mobile .mobile-game-nav[hidden]{display:none!important}
+body.geometry-mobile .mobile-game-nav button{
+  min-width:0!important;min-height:46px!important;border:0!important;border-radius:11px!important;background:transparent!important;
+  color:#667A76!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;
+  padding:0 6px!important;font-size:10px!important;font-weight:800!important;touch-action:manipulation
+}
+body.geometry-mobile .mobile-game-nav button svg{width:17px!important;height:17px!important;flex:0 0 auto!important}
+body.geometry-mobile .mobile-game-nav button.is-active{background:#E3F5F2!important;color:#126F67!important;box-shadow:inset 0 0 0 1px #B9E5DF!important}
+
+/* Fallback popup/nav hiding for browsers where :has() is unavailable. */
+body.geometry-mobile .lesson-overlay:not(.hidden) ~ .mobile-game-nav,
+body.geometry-mobile .lesson-overlay:not(.hidden) ~ .mobile-board-formula-button,
+body.geometry-mobile .modal:not(.hidden) ~ .mobile-game-nav,
+body.geometry-mobile .modal:not(.hidden) ~ .mobile-board-formula-button,
+body.geometry-mobile .geometry-access-modal:not(.hidden) ~ .mobile-game-nav,
+body.geometry-mobile .geometry-access-modal:not(.hidden) ~ .mobile-board-formula-button{
+  visibility:hidden!important;pointer-events:none!important
+}
+
+@media (max-width:480px){
+  body.geometry-mobile .brand-mark{display:none!important}
+  body.geometry-mobile .top-stats .star-stat{display:none!important}
+  body.geometry-mobile #gameCanvas{height:min(78vw,44dvh)!important;min-height:235px!important}
+  body.geometry-mobile .concept-strip{grid-template-columns:30px minmax(0,1fr)!important}
+  body.geometry-mobile .concept-strip button{grid-column:1/-1!important;width:100%!important}
+  body.geometry-mobile .formula-input-row{grid-template-columns:1fr!important}
+  body.geometry-mobile .formula-input-row button{width:100%!important}
+  body.geometry-mobile .math-keys{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  body.geometry-mobile .domain-key{grid-column:span 3!important}
+  body.geometry-mobile .panel-actions{grid-template-columns:1fr!important}
+  body.geometry-mobile .ghost-action{grid-column:1!important}
+  body.geometry-mobile .mission-list{grid-template-columns:1fr!important}
+  body.geometry-mobile .modal-actions{grid-template-columns:1fr!important}
+  body.geometry-mobile .mobile-board-formula-button{min-width:164px!important;bottom:calc(70px + env(safe-area-inset-bottom,0px))!important}
+}
+
+@media (hover:none) and (pointer:coarse) and (max-width:600px){
+  body.geometry-mobile .formula-input-row{grid-template-columns:1fr!important}
+  body.geometry-mobile .formula-input-row button{width:100%!important}
+  body.geometry-mobile .mission-list{grid-template-columns:1fr!important}
+}
+
+@media (max-width:1100px) and (orientation:landscape) and (max-height:600px){
+  body.geometry-mobile{padding-bottom:58px!important}
+  body.geometry-mobile .journey-stepper{display:none!important}
+  body.geometry-mobile .mission-header p{display:none!important}
+  body.geometry-mobile .mission-header h1{font-size:23px!important}
+  body.geometry-mobile .concept-strip{padding:6px 8px!important;margin-bottom:6px!important}
+  body.geometry-mobile #gameCanvas{height:calc(100dvh - 142px)!important;min-height:190px!important;max-height:350px!important}
+  body.geometry-mobile .game-stage{padding-bottom:68px!important}
+  body.geometry-mobile .mobile-game-nav{left:50%!important;right:auto!important;width:min(430px,calc(100vw - 110px))!important;transform:translateX(-50%)!important;bottom:5px!important}
+  body.geometry-mobile .mobile-game-nav button{min-height:42px!important}
+  body.geometry-mobile .mobile-board-formula-button{left:10px!important;bottom:7px!important;transform:none!important;min-width:0!important;width:92px!important;height:46px!important;padding:0 8px!important;border-radius:13px!important}
+  body.geometry-mobile .mobile-board-formula-button span{font-size:0!important}
+  body.geometry-mobile .mobile-board-formula-button span:after{content:'Formula';font-size:10px!important}
+  body.geometry-mobile .lesson-card,
+  body.geometry-mobile .lesson-card.guided-mode,
+  body.geometry-mobile .modal-card{max-height:calc(100dvh - 8px)!important;border-radius:12px!important}
+  body.geometry-mobile .lesson-grid{padding:9px 11px!important}
+  body.geometry-mobile .lesson-main h2{font-size:23px!important}
+  body.geometry-mobile .lesson-points{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important}
+  body.geometry-mobile .lesson-point{display:block!important;padding:8px!important;border:1px solid #D7E5E2!important;border-radius:10px!important}
+  body.geometry-mobile .lesson-point>span{margin-bottom:6px!important}
+}
+
+@media (hover:none) and (pointer:coarse) and (orientation:landscape) and (max-height:600px){
+  body.geometry-mobile .journey-stepper{display:none!important}
+  body.geometry-mobile .mission-header p{display:none!important}
+  body.geometry-mobile #gameCanvas{height:calc(100dvh - 142px)!important;min-height:190px!important;max-height:350px!important}
+}
