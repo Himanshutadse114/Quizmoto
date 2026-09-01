@@ -1,467 +1,333 @@
 (() => {
   'use strict';
 
-  const $ = (sel) => document.querySelector(sel);
-  const canvas = $('#gameCanvas');
-  const ctx = canvas.getContext('2d');
+  const { levels, phases } = window.GeometryGameData;
+  const E = window.GeometryEngine;
+  const $ = (s) => document.querySelector(s);
+  const STORAGE_KEY = 'quizmoto.geometry.physics.v2';
 
-  const { FAMILY, chapters, levels, fmt } = window.MathFlowContent;
-
-  const STORAGE_KEY = 'mathFlowGeometryQuest.v1';
-  let saved = loadProgress();
-  let currentLevelIndex = Math.max(0, Math.min(levels.length-1, saved.lastLevel || 0));
-  let currentChapter = levels[currentLevelIndex].chapter;
-  let params = {};
+  let saved = loadSaved();
+  let currentIndex = clamp(saved.lastIndex || 0, 0, levels.length - 1);
+  let userSurfaces = [];
+  let preview = null;
+  let physics = null;
+  let raf = 0;
+  let lastTs = 0;
+  let accumulator = 0;
+  let hintUsed = false;
   let attempts = 0;
-  let hinted = false;
-  let animFrame = null;
-  let isAnimating = false;
+  let starBeepIndex = 0;
+  const renderer = new E.Renderer($('#gameCanvas'));
 
-  function loadProgress(){
+  function loadSaved() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : {completed:{}, xp:0, streak:0, lastLevel:0};
-    } catch { return {completed:{}, xp:0, streak:0, lastLevel:0}; }
+      const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      return { completed: data.completed || {}, lastIndex: data.lastIndex || 0 };
+    } catch {
+      return { completed: {}, lastIndex: 0 };
+    }
   }
 
-  function persist(){
-    saved.lastLevel = currentLevelIndex;
+  function persist() {
+    saved.lastIndex = currentIndex;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(saved)); } catch {}
   }
 
-  function init(){
-    renderChapters();
-    bindEvents();
-    loadLevel(currentLevelIndex);
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function current() { return levels[currentIndex]; }
+  function phaseLevels(phaseId) { return levels.filter((l) => l.phase === phaseId); }
+  function completedCount(phaseId) { return phaseLevels(phaseId).filter((l) => saved.completed[l.id]).length; }
+
+  function init() {
+    bind();
+    renderPhaseTabs();
+    loadLevel(currentIndex);
+    requestAnimationFrame(() => { renderer.resize(); draw(); });
+    window.addEventListener('resize', () => { renderer.resize(); draw(); });
   }
 
-  function bindEvents(){
-    $('#runBtn').addEventListener('click', runMission);
-    $('#mobileRunBtn').addEventListener('click', runMission);
-    $('#hintBtn').addEventListener('click', useHint);
-    $('#mobileHintBtn').addEventListener('click', useHint);
-    $('#resetBtn').addEventListener('click', () => loadLevel(currentLevelIndex, true));
-    $('#nextBtn').addEventListener('click', nextMission);
-    $('#replayBtn').addEventListener('click', () => { hideModal('#missionModal'); loadLevel(currentLevelIndex,true); });
-    $('#vaultBtn').addEventListener('click', openVault);
-    $('#closeVaultBtn').addEventListener('click', () => hideModal('#vaultModal'));
-    $('#homeBtn').addEventListener('click', () => { document.querySelector('.chapter-nav').scrollIntoView({behavior:'smooth'}); });
-    $('#formulaInfoBtn').addEventListener('click', () => toast(levels[currentLevelIndex].goal));
-    $('#missionModal').addEventListener('click', e => { if(e.target.id==='missionModal') hideModal('#missionModal'); });
-    $('#vaultModal').addEventListener('click', e => { if(e.target.id==='vaultModal') hideModal('#vaultModal'); });
-  }
-
-  function renderChapters(){
-    const list = $('#chapterList');
-    list.innerHTML = '';
-    chapters.forEach((ch,i)=>{
-      const num=i+1;
-      const chapterLevels = levels.filter(l=>l.chapter===num);
-      const done = chapterLevels.filter(l=>saved.completed[l.id]).length;
-      const btn=document.createElement('button');
-      btn.type='button';
-      btn.className='chapter-btn'+(num===currentChapter?' active':'');
-      btn.innerHTML=`<span class="chapter-num">${String(num).padStart(2,'0')}</span><span class="chapter-copy"><strong>${ch.name}</strong><small>${ch.subtitle}</small></span><span class="chapter-progress">${done}/${chapterLevels.length}</span>`;
-      btn.addEventListener('click',()=>{
-        const idx=levels.findIndex(l=>l.chapter===num && !saved.completed[l.id]);
-        currentChapter=num;
-        currentLevelIndex=idx>=0?idx:levels.findIndex(l=>l.chapter===num);
-        renderChapters();
-        loadLevel(currentLevelIndex);
-      });
-      list.appendChild(btn);
+  function bind() {
+    $('#backToQuizmoto').addEventListener('click', () => { location.href = '/scorm/quizmoto'; });
+    $('#addFormulaBtn').addEventListener('click', addFormula);
+    $('#formulaForm').addEventListener('submit', (e) => { e.preventDefault(); addFormula(); });
+    $('#formulaInput').addEventListener('input', onFormulaInput);
+    $('#clearEquationsBtn').addEventListener('click', () => {
+      if (physics?.running) return;
+      userSurfaces = [];
+      preview = null;
+      $('#formulaInput').value = '';
+      $('#formulaError').textContent = '';
+      renderEquationList(); draw(); updateBudget();
+      status('Equations cleared. Build the mission again.', 'info');
     });
-    const completedCount = Object.keys(saved.completed).filter(k=>saved.completed[k]).length;
-    $('#progressText').textContent=`${completedCount}/${levels.length}`;
+    $('.math-keys').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-key]'); if (!btn) return;
+      insertAtCursor($('#formulaInput'), btn.dataset.key);
+      onFormulaInput();
+    });
+    $('#hintBtn').addEventListener('click', toggleHint);
+    $('#actionBtn').addEventListener('click', runAction);
+    $('#resetBtn').addEventListener('click', resetRun);
+    $('#closeResultBtn').addEventListener('click', closeModal);
+    $('#replayBtn').addEventListener('click', () => { closeModal(); loadLevel(currentIndex); });
+    $('#nextBtn').addEventListener('click', nextMission);
+    $('#resultModal').addEventListener('click', (e) => { if (e.target.id === 'resultModal') closeModal(); });
   }
 
-  function loadLevel(index, reset=false){
-    if(animFrame){ cancelAnimationFrame(animFrame); animFrame=null; }
-    isAnimating=false;
-    currentLevelIndex=Math.max(0,Math.min(levels.length-1,index));
-    const level=levels[currentLevelIndex];
-    currentChapter=level.chapter;
-    attempts=0;
-    hinted=false;
-    params={};
-    if(level.type==='curve') params={...level.start};
-    $('#missionEyebrow').textContent=`WORLD ${level.chapter} · MISSION ${String(level.id).padStart(2,'0')}`;
-    $('#missionTitle').textContent=level.title;
-    $('#missionDescription').textContent=level.description;
-    $('#formulaDisplay').textContent=level.type==='curve'?FAMILY[level.family].formula(params):level.formula;
-    $('#learningGoal').textContent=level.goal;
-    $('#keyLesson').innerHTML=`<strong>KEY IDEA</strong><br>${level.type==='curve'?FAMILY[level.family].lesson:level.goal}`;
-    $('#hintText').textContent=level.hint;
-    $('#hintBox').classList.add('hidden');
-    $('#attemptPill').textContent='0 attempts';
-    $('#canvasNote').textContent=level.type==='curve'?'Tune the formula, then launch the orb.':'Choose the formula answer that completes the mission.';
-    updateMissionStars();
-    updateHud();
-    renderChapters();
-    if(level.type==='curve'){
-      $('#quizCard').classList.add('hidden');
-      canvas.classList.remove('hidden');
-      $('#curveControls').classList.remove('hidden');
-      $('#runBtn').textContent='Test Run';
-      $('#mobileRunBtn').textContent='Test Run';
-      renderCurveControls();
-      drawBoard();
-    } else {
-      canvas.classList.add('hidden');
-      $('#quizCard').classList.remove('hidden');
-      $('#curveControls').classList.add('hidden');
-      $('#runBtn').textContent='Check Answer';
-      $('#mobileRunBtn').textContent='Check Answer';
-      renderQuiz();
+  function renderPhaseTabs() {
+    const wrap = $('#phaseTabs'); wrap.innerHTML = '';
+    for (const phase of phases) {
+      const list = phaseLevels(phase.id);
+      const done = completedCount(phase.id);
+      const active = current().phase === phase.id;
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = `phase-tab${active ? ' active' : ''}`;
+      btn.innerHTML = `<span>${phase.name.toUpperCase()}</span><small>${phase.subtitle}</small><b>${done}/${list.length}</b>`;
+      btn.addEventListener('click', () => {
+        const firstIncomplete = list.find((l) => !saved.completed[l.id]) || list[0];
+        loadLevel(levels.indexOf(firstIncomplete));
+      });
+      wrap.appendChild(btn);
     }
-    if(reset) toast('Mission reset');
-    persist();
   }
 
-  function updateHud(){
-    $('#xpValue').textContent=saved.xp||0;
-    $('#streakValue').textContent=saved.streak||0;
-    const hearts=Math.max(0,3-Math.min(3,attempts));
-    $('#heartsValue').textContent='♥ '.repeat(hearts)+'♡ '.repeat(3-hearts);
-    $('#heartsValue').setAttribute('aria-label',`${hearts} hearts`);
+  function renderMissionList() {
+    const phase = current().phase;
+    const list = phaseLevels(phase);
+    const wrap = $('#missionList'); wrap.innerHTML = '';
+    list.forEach((level) => {
+      const idx = levels.indexOf(level);
+      const done = saved.completed[level.id];
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `mission-item${idx === currentIndex ? ' active' : ''}${done ? ' complete' : ''}`;
+      btn.innerHTML = `<span class="mission-num">${String(level.id).padStart(2, '0')}</span><span class="mission-copy"><strong>${level.title}</strong><small>${level.family}</small></span><span class="mission-state">${done ? '★'.repeat(done.stars || 1) : '○'}</span>`;
+      btn.addEventListener('click', () => loadLevel(idx));
+      wrap.appendChild(btn);
+    });
   }
 
-  function updateMissionStars(){
-    const data=saved.completed[levels[currentLevelIndex].id];
-    const stars=data?.stars||0;
-    $('#missionStars').textContent='★ '.repeat(stars)+'☆ '.repeat(3-stars);
+  function loadLevel(index) {
+    stopAnimation();
+    currentIndex = clamp(index, 0, levels.length - 1);
+    const level = current();
+    userSurfaces = []; preview = null; physics = null; hintUsed = false; attempts = 0;
+    $('#formulaInput').value = ''; $('#formulaError').textContent = '';
+    $('#hintPanel').classList.add('hidden'); $('#hintBtn').classList.remove('active');
+    $('#missionPhase').textContent = level.phase === 'shape' ? 'SHAPE ACADEMY' : 'GRAVITY CAMPAIGN';
+    $('#missionFamily').textContent = level.family;
+    $('#missionTitle').textContent = level.title;
+    $('#missionDescription').textContent = level.description;
+    $('#modeBadge').textContent = level.phase === 'shape' ? 'CONSTRUCTION MODE' : 'PHYSICS MODE';
+    $('#objectiveText').textContent = level.phase === 'shape'
+      ? 'Recreate the glowing hologram by entering the required equation or equations. The shape must match in both form and domain.'
+      : `Create up to ${level.budget} formula ramp${level.budget > 1 ? 's' : ''}. Press DROP BALL and use gravity to collect every star before reaching the basket.`;
+    $('#formulaHelp').textContent = level.phase === 'shape'
+      ? 'Examples: 2*x + 1 · x = 2 · 1; [-5,3] · x^2 + y^2 = 9'
+      : 'Every equation you add becomes a solid ramp. Add ; [min, max] to restrict a curve to part of the board.';
+    $('#hintText').textContent = level.hint || '';
+    $('#hintFormula').innerHTML = (level.target || level.solution || []).map((f) => `<code>${escapeHtml(f)}</code>`).join('');
+    $('#physicsHud').classList.toggle('hidden', level.phase !== 'gravity');
+    $('#actionBtn').classList.toggle('physics-action', level.phase === 'gravity');
+    setAction(level.phase === 'shape' ? '✓ CHECK SHAPE' : '● DROP BALL');
+    $('#resetBtn').textContent = level.phase === 'shape' ? 'RESET CONSTRUCTION' : 'RESET BALL / VIEW';
+    renderMissionList(); renderPhaseTabs(); renderEquationList(); updateBudget(); updateTopStats(); updatePhysicsHud();
+    status(level.phase === 'shape'
+      ? 'Match the glowing target using equations you type yourself.'
+      : 'Write your ramp formula(s), then drop the ball. Gravity and curve collisions are live.', 'info');
+    persist(); draw();
   }
 
-  function renderCurveControls(){
-    const level=levels[currentLevelIndex];
-    const family=FAMILY[level.family];
-    const wrap=$('#curveControls');
-    wrap.innerHTML='';
-    family.params.forEach(def=>{
-      const row=document.createElement('div');
-      row.className='param-row';
-      row.innerHTML=`<div class="param-head"><label for="param_${def.key}">${def.label}</label><output id="out_${def.key}">${fmt(params[def.key])}</output></div><input id="param_${def.key}" type="range" min="${def.min}" max="${def.max}" step="${def.step}" value="${params[def.key]}">`;
-      const input=row.querySelector('input');
-      input.addEventListener('input',()=>{
-        params[def.key]=Number(input.value);
-        row.querySelector('output').textContent=fmt(params[def.key]);
-        $('#formulaDisplay').textContent=family.formula(params);
-        drawBoard();
+  function onFormulaInput() {
+    const raw = $('#formulaInput').value.trim();
+    if (!raw) { preview = null; $('#formulaError').textContent = ''; draw(); return; }
+    try {
+      preview = E.parseEquation(raw, true);
+      $('#formulaError').textContent = '';
+    } catch (err) {
+      preview = null;
+      $('#formulaError').textContent = err.message || 'Invalid equation';
+    }
+    draw();
+  }
+
+  function addFormula() {
+    if (physics?.running) return;
+    const level = current();
+    if (userSurfaces.length >= level.budget) { status(`This mission allows ${level.budget} equation${level.budget === 1 ? '' : 's'}. Remove one before adding another.`, 'warn'); return; }
+    const raw = $('#formulaInput').value.trim();
+    if (!raw) { $('#formulaError').textContent = 'Type an equation first.'; return; }
+    try {
+      const eq = E.parseEquation(raw);
+      userSurfaces.push(eq);
+      preview = null; $('#formulaInput').value = ''; $('#formulaError').textContent = '';
+      renderEquationList(); updateBudget(); draw(); beep(420, .035);
+      status(current().phase === 'gravity' ? 'Ramp added. Add another if needed, then drop the ball.' : 'Equation added. Keep building until the hologram is matched.', 'info');
+    } catch (err) { $('#formulaError').textContent = err.message || 'Invalid equation'; }
+  }
+
+  function renderEquationList() {
+    const wrap = $('#equationList'); wrap.innerHTML = '';
+    if (!userSurfaces.length) { wrap.innerHTML = '<div class="empty-equations">No equations added yet.</div>'; return; }
+    userSurfaces.forEach((eq, i) => {
+      const row = document.createElement('div'); row.className = 'equation-row';
+      row.innerHTML = `<span class="equation-index">${i + 1}</span><code>${escapeHtml(eq.raw)}</code><button type="button" aria-label="Remove equation">×</button>`;
+      row.querySelector('button').addEventListener('click', () => {
+        if (physics?.running) return;
+        userSurfaces.splice(i, 1); renderEquationList(); updateBudget(); draw();
       });
       wrap.appendChild(row);
     });
   }
 
-  function renderQuiz(){
-    const level=levels[currentLevelIndex];
-    $('#quizPrompt').textContent=level.prompt;
-    $('#quizDiagram').textContent=level.formula;
-    $('#quizFeedback').textContent='';
-    const options=$('#quizOptions');
-    options.innerHTML='';
-    level.options.forEach((opt,i)=>{
-      const btn=document.createElement('button');
-      btn.type='button';
-      btn.className='quiz-option';
-      btn.textContent=opt;
-      btn.dataset.index=i;
-      btn.addEventListener('click',()=>selectQuizAnswer(i));
-      options.appendChild(btn);
-    });
+  function updateBudget() { $('#budgetValue').textContent = `${userSurfaces.length} / ${current().budget}`; }
+
+  function toggleHint() {
+    const panel = $('#hintPanel');
+    const opening = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden'); $('#hintBtn').classList.toggle('active', opening);
+    if (opening) hintUsed = true;
   }
 
-  function selectQuizAnswer(i){
-    const options=[...document.querySelectorAll('.quiz-option')];
-    options.forEach(o=>o.classList.remove('selected'));
-    options[i].classList.add('selected');
-    options.forEach(o=>o.dataset.selected='false');
-    options[i].dataset.selected='true';
-    $('#quizFeedback').textContent='Answer selected. Press Check Answer.';
+  function runAction() {
+    const level = current();
+    if (level.phase === 'shape') checkShape();
+    else if (physics?.running) stopRun();
+    else startGravity();
   }
 
-  function runMission(){
-    const level=levels[currentLevelIndex];
-    if(level.type==='quiz') runQuiz(); else runCurve();
-  }
-
-  function runQuiz(){
-    const level=levels[currentLevelIndex];
-    const selected=document.querySelector('.quiz-option[data-selected="true"]');
-    if(!selected){ toast('Choose an answer first'); return; }
+  function checkShape() {
     attempts++;
-    updateAttemptUi();
-    const idx=Number(selected.dataset.index);
-    const options=[...document.querySelectorAll('.quiz-option')];
-    if(idx===level.correct){
-      selected.classList.add('correct');
-      $('#quizFeedback').textContent=level.explanation;
-      options.forEach(b=>b.disabled=true);
-      setTimeout(()=>completeMission(calculateStars()),420);
+    if (!userSurfaces.length) { status('Add at least one equation before checking the construction.', 'warn'); return; }
+    const targets = levelEquations(current().target);
+    const result = E.compareGeometry(userSurfaces, targets);
+    if (result.pass) {
+      const stars = hintUsed ? 2 : attempts === 1 ? 3 : 2;
+      status(`Shape match ${(result.score * 100).toFixed(0)}% — construction accepted.`, 'success');
+      completeLevel(stars, `You recreated the target using ${userSurfaces.length} manually written equation${userSurfaces.length === 1 ? '' : 's'}.`);
     } else {
-      selected.classList.add('wrong');
-      $('#quizFeedback').textContent='Not quite. Re-read the formula and try again.';
-      saved.streak=0;
-      updateHud();
+      status(`Shape match ${(result.score * 100).toFixed(0)}%. Check the formula, signs and domain limits, then try again.`, 'warn');
+      beep(150, .06);
     }
   }
 
-  function runCurve(){
-    if(isAnimating) return;
-    attempts++;
-    updateAttemptUi();
-    const level=levels[currentLevelIndex];
-    const fam=FAMILY[level.family];
-    const starXs=getStarXs(level);
-    const starYs=starXs.map(x=>FAMILY[level.family].fn(x,level.target));
-    const collected=new Set();
-    let start=null;
-    isAnimating=true;
-
-    const duration=2200;
-    const animate=(ts)=>{
-      if(!start) start=ts;
-      const t=Math.min(1,(ts-start)/duration);
-      const x=level.xMin+(level.xMax-level.xMin)*t;
-      const y=fam.fn(x,params);
-      drawBoard({ball:{x,y},collected});
-      if(y!=null && Number.isFinite(y)){
-        starXs.forEach((sx,i)=>{
-          const sy=starYs[i];
-          if(sy!=null && Math.hypot(x-sx,y-sy)<.42) collected.add(i);
-        });
-      }
-      if(t<1){ animFrame=requestAnimationFrame(animate); }
-      else {
-        isAnimating=false;
-        const quality=curveQuality(level);
-        const targetEnd=fam.fn(level.xMax,level.target);
-        const playerEnd=fam.fn(level.xMax,params);
-        const goalOk=targetEnd!=null && playerEnd!=null && Math.abs(targetEnd-playerEnd)<.65;
-        if(collected.size===3 && goalOk && quality>.84){
-          setTimeout(()=>completeMission(calculateStars()),240);
-        } else {
-          saved.streak=0;
-          updateHud();
-          const msg=collected.size<3?`Collected ${collected.size}/3 stars. Adjust the formula and retry.`:'The portal alignment is still off. Fine-tune your parameters.';
-          toast(msg);
-          $('#canvasNote').textContent=msg;
-        }
-      }
-    };
-    animFrame=requestAnimationFrame(animate);
-  }
-
-  function updateAttemptUi(){
-    $('#attemptPill').textContent=`${attempts} attempt${attempts===1?'':'s'}`;
-    updateHud();
-  }
-
-  function curveQuality(level){
-    const fam=FAMILY[level.family];
-    let good=0,total=0;
-    for(let i=0;i<=30;i++){
-      const x=level.xMin+(level.xMax-level.xMin)*(i/30);
-      const a=fam.fn(x,params), b=fam.fn(x,level.target);
-      if(a==null||b==null||!Number.isFinite(a)||!Number.isFinite(b)) continue;
-      total++;
-      if(Math.abs(a-b)<.7) good++;
-    }
-    return total?good/total:0;
-  }
-
-  function calculateStars(){
-    if(attempts<=1 && !hinted) return 3;
-    if(attempts<=2 && !hinted) return 2;
-    return 1;
-  }
-
-  function completeMission(stars){
-    const level=levels[currentLevelIndex];
-    const previous=saved.completed[level.id];
-    const gainedXp=previous?0:100+stars*20;
-    const bestStars=Math.max(previous?.stars||0,stars);
-    saved.completed[level.id]={stars:bestStars};
-    saved.xp=(saved.xp||0)+gainedXp;
-    saved.streak=(saved.streak||0)+1;
-    persist();
-    updateHud();
-    renderChapters();
-    updateMissionStars();
-    $('#modalStars').textContent='★'.repeat(stars)+'☆'.repeat(3-stars);
-    $('#modalXp').textContent=gainedXp?`+${gainedXp}`:'BEST SAVED';
-    $('#modalTitle').textContent=`${level.title} mastered`;
-    $('#modalText').textContent=level.type==='curve'?`You turned ${FAMILY[level.family].formula(params)} into a working path. ${FAMILY[level.family].lesson}`:level.explanation;
-    $('#nextBtn').textContent=currentLevelIndex===levels.length-1?'Finish Quest':'Next Mission';
-    showModal('#missionModal');
-  }
-
-  function nextMission(){
-    hideModal('#missionModal');
-    if(currentLevelIndex<levels.length-1) loadLevel(currentLevelIndex+1);
-    else { toast('Geometry Quest complete — Formula Vault fully unlocked!'); openVault(); }
-  }
-
-  function useHint(){
-    const level=levels[currentLevelIndex];
-    hinted=true;
-    $('#hintBox').classList.remove('hidden');
-    if(level.type==='curve'){
-      const keys=Object.keys(level.target);
-      if(keys.length){
-        const key=keys[0];
-        params[key]=level.target[key];
-        const input=$(`#param_${key}`);
-        const out=$(`#out_${key}`);
-        if(input){ input.value=params[key]; out.textContent=fmt(params[key]); }
-        $('#formulaDisplay').textContent=FAMILY[level.family].formula(params);
-        drawBoard();
-      }
-    }
-    toast('Hint used — one parameter clue revealed');
-  }
-
-  function getStarXs(level){
-    if(level.family==='sqrt') return [-3.2,.2,3.8];
-    if(level.family==='reciprocal') return [-4,-2.2,2.6];
-    return [-3.7,0,3.5];
-  }
-
-  function resizeCanvas(){
-    const rect=canvas.getBoundingClientRect();
-    if(!rect.width) return;
-    const ratio=Math.min(window.devicePixelRatio||1,2);
-    canvas.width=Math.round(rect.width*ratio);
-    canvas.height=Math.round(rect.width*(620/1000)*ratio);
-    ctx.setTransform(ratio,0,0,ratio,0,0);
-    drawBoard();
-  }
-
-  function drawBoard(extra={}){
-    const level=levels[currentLevelIndex];
-    if(!level || level.type!=='curve' || canvas.classList.contains('hidden')) return;
-    const w=canvas.getBoundingClientRect().width || 900;
-    const h=w*(620/1000);
-    ctx.clearRect(0,0,w,h);
-    const map={xMin:-6,xMax:6,yMin:-5,yMax:5};
-    const sx=x=>((x-map.xMin)/(map.xMax-map.xMin))*w;
-    const sy=y=>h-((y-map.yMin)/(map.yMax-map.yMin))*h;
-
-    ctx.fillStyle='#080820';
-    ctx.fillRect(0,0,w,h);
-    ctx.lineWidth=1;
-    for(let x=-6;x<=6;x++){
-      ctx.strokeStyle=x===0?'rgba(255,255,255,.22)':'rgba(255,255,255,.07)';
-      ctx.beginPath();
-      ctx.moveTo(sx(x),0);
-      ctx.lineTo(sx(x),h);
-      ctx.stroke();
-    }
-    for(let y=-5;y<=5;y++){
-      ctx.strokeStyle=y===0?'rgba(255,255,255,.22)':'rgba(255,255,255,.07)';
-      ctx.beginPath();
-      ctx.moveTo(0,sy(y));
-      ctx.lineTo(w,sy(y));
-      ctx.stroke();
-    }
-    ctx.fillStyle='rgba(155,163,197,.75)';
-    ctx.font='10px system-ui';
-    for(let x=-5;x<=5;x+=2) ctx.fillText(String(x),sx(x)+4,sy(0)+13);
-    for(let y=-4;y<=4;y+=2) if(y!==0) ctx.fillText(String(y),sx(0)+5,sy(y)-4);
-
-    drawFunction(FAMILY[level.family].fn,level.target,'rgba(157,124,255,.22)',2,true);
-    drawFunction(FAMILY[level.family].fn,params,'#4ce6f3',3,false);
-
-    const starXs=getStarXs(level);
-    starXs.forEach((x,i)=>{
-      const y=FAMILY[level.family].fn(x,level.target);
-      if(y==null) return;
-      drawStar(sx(x),sy(y),extra.collected?.has(i));
+  function startGravity() {
+    const level = current();
+    if (!userSurfaces.length) { status('Add at least one formula ramp before dropping the ball.', 'warn'); return; }
+    stopAnimation(); attempts++;
+    physics = new E.PhysicsRun(level, userSurfaces, () => {
+      starBeepIndex++; beep(600 + starBeepIndex * 80, .04); updatePhysicsHud();
     });
+    starBeepIndex = 0; lastTs = 0; accumulator = 0;
+    setAction('Ⅱ PAUSE RUN');
+    status('Ball released. Gravity is active — the cyan equations are now physical ramps.', 'info');
+    draw(); raf = requestAnimationFrame(frame);
+  }
 
-    const gy=FAMILY[level.family].fn(level.xMax,level.target);
-    if(gy!=null){
-      ctx.strokeStyle='#57e39b';
-      ctx.lineWidth=3;
-      ctx.beginPath();
-      ctx.arc(sx(level.xMax),sy(gy),14,0,Math.PI*2);
-      ctx.stroke();
-      ctx.fillStyle='rgba(87,227,155,.16)';
-      ctx.fill();
-    }
-
-    if(extra.ball && extra.ball.y!=null && Number.isFinite(extra.ball.y)){
-      const bx=sx(extra.ball.x), by=sy(extra.ball.y);
-      const grd=ctx.createRadialGradient(bx-3,by-4,2,bx,by,13);
-      grd.addColorStop(0,'#fff');
-      grd.addColorStop(.2,'#ffd65a');
-      grd.addColorStop(1,'#ff5ca8');
-      ctx.fillStyle=grd;
-      ctx.beginPath();
-      ctx.arc(bx,by,10,0,Math.PI*2);
-      ctx.fill();
-    }
-
-    function drawFunction(fn,p,color,width,dashed){
-      ctx.save();
-      ctx.strokeStyle=color;
-      ctx.lineWidth=width;
-      ctx.setLineDash(dashed?[7,6]:[]);
-      ctx.beginPath();
-      let pen=false;
-      for(let i=0;i<=260;i++){
-        const x=map.xMin+(map.xMax-map.xMin)*(i/260);
-        const y=fn(x,p);
-        if(y==null||!Number.isFinite(y)||y<map.yMin-2||y>map.yMax+2){ pen=false; continue; }
-        if(!pen){ ctx.moveTo(sx(x),sy(y)); pen=true; }
-        else ctx.lineTo(sx(x),sy(y));
+  function frame(ts) {
+    if (!physics?.running) return;
+    if (!lastTs) lastTs = ts;
+    let elapsed = Math.min(.05, (ts - lastTs) / 1000); lastTs = ts; accumulator += elapsed;
+    let result = null;
+    while (accumulator >= 1 / 120 && !result) { result = physics.step(1 / 120); accumulator -= 1 / 120; }
+    updatePhysicsHud(); draw();
+    if (result) {
+      setAction('↻ TRY AGAIN');
+      if (result.won) {
+        beep(880, .08); setTimeout(() => beep(1100, .08), 90);
+        const ratio = Math.max(0, 1 - physics.time / current().timeLimit);
+        const stars = hintUsed ? 2 : ratio > .55 ? 3 : ratio > .25 ? 2 : 1;
+        status(`Success — ${result.collected}/${physics.stars.length} stars collected and the ball reached the basket.`, 'success');
+        completeLevel(stars, `Your formula ramps carried the ball through all ${physics.stars.length} stars and into the basket under free gravity.`);
+      } else {
+        status(`Run ended with ${result.collected}/${physics.stars.length} stars. Adjust the equation or domain and try again.`, 'warn');
+        beep(140, .06);
       }
-      ctx.stroke();
-      ctx.restore();
+      return;
     }
+    raf = requestAnimationFrame(frame);
   }
 
-  function drawStar(x,y,collected){
-    ctx.save();
-    ctx.translate(x,y);
-    ctx.beginPath();
-    for(let i=0;i<10;i++){
-      const r=i%2===0?10:4.5;
-      const a=-Math.PI/2+i*Math.PI/5;
-      const px=Math.cos(a)*r, py=Math.sin(a)*r;
-      i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  function stopRun() {
+    if (!physics) return;
+    physics.running = false;
+    cancelAnimationFrame(raf); raf = 0;
+    setAction('▶ RESUME');
+    status('Physics paused. Reset the ball to edit equations, or press Resume to continue this run.', 'info');
+  }
+
+  function resetRun() {
+    stopAnimation();
+    if (current().phase === 'shape') {
+      userSurfaces = []; preview = null; $('#formulaInput').value = ''; renderEquationList(); updateBudget();
+      status('Construction cleared. The hologram remains as your target.', 'info');
+    } else {
+      physics = null;
+      status('Ball reset. Your formula ramps are still available for editing.', 'info');
     }
-    ctx.closePath();
-    ctx.fillStyle=collected?'#57e39b':'#ffd65a';
-    ctx.fill();
-    ctx.restore();
+    setAction(current().phase === 'shape' ? '✓ CHECK SHAPE' : '● DROP BALL');
+    updatePhysicsHud(); draw();
   }
 
-  function openVault(){
-    const grid=$('#vaultGrid');
-    grid.innerHTML='';
-    levels.forEach((level,i)=>{
-      const unlocked=i===0 || !!saved.completed[level.id] || !!saved.completed[levels[Math.max(0,i-1)].id];
-      const formula=level.type==='curve'?FAMILY[level.family].formula(level.target):level.formula;
-      const item=document.createElement('div');
-      item.className='vault-item'+(unlocked?'':' locked');
-      item.innerHTML=`<span>${unlocked?`MISSION ${level.id}`:'LOCKED'}</span><strong>${unlocked?formula:'???'}</strong><p>${unlocked?(level.type==='curve'?FAMILY[level.family].lesson:level.goal):'Complete earlier missions to reveal this formula.'}</p>`;
-      grid.appendChild(item);
-    });
-    showModal('#vaultModal');
+  function completeLevel(stars, text) {
+    const level = current();
+    const prev = saved.completed[level.id]?.stars || 0;
+    saved.completed[level.id] = { stars: Math.max(prev, stars) };
+    persist(); updateTopStats(); renderMissionList(); renderPhaseTabs();
+    $('#resultPhase').textContent = level.phase === 'shape' ? 'SHAPE MASTERED' : 'GRAVITY RUN COMPLETE';
+    $('#resultTitle').textContent = level.title;
+    $('#resultStars').textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+    $('#resultText').textContent = text;
+    $('#nextBtn').textContent = currentIndex === levels.length - 1 ? 'Finish' : 'Next Mission';
+    $('#resultModal').classList.remove('hidden');
   }
 
-  function showModal(sel){ $(sel).classList.remove('hidden'); }
-  function hideModal(sel){ $(sel).classList.add('hidden'); }
+  function nextMission() {
+    closeModal();
+    if (currentIndex < levels.length - 1) loadLevel(currentIndex + 1);
+    else status('All Geometry Physics missions completed. Replay any mission to improve your stars.', 'success');
+  }
 
-  let toastTimer;
-  function toast(msg){
-    const el=$('#toast');
-    el.textContent=msg;
-    el.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer=setTimeout(()=>el.classList.remove('show'),2600);
+  function closeModal() { $('#resultModal').classList.add('hidden'); }
+
+  function updateTopStats() {
+    const done = Object.keys(saved.completed).filter((id) => saved.completed[id]).length;
+    $('#totalProgress').textContent = `${done}/${levels.length}`;
+    $('#levelCounter').textContent = `${currentIndex + 1} / ${levels.length}`;
+    const best = saved.completed[current().id]?.stars || 0;
+    $('#savedStars').textContent = '★'.repeat(best) + '☆'.repeat(3 - best);
+  }
+
+  function updatePhysicsHud() {
+    const level = current(); if (level.phase !== 'gravity') return;
+    const count = physics ? physics.stars.filter((s) => s.collected).length : 0;
+    $('#starHud').textContent = `${count} / ${level.stars.length}`;
+    const remain = physics ? Math.max(0, level.timeLimit - physics.time) : level.timeLimit;
+    $('#timeHud').textContent = `${remain.toFixed(remain < 10 ? 1 : 0)}s`;
+  }
+
+  function draw() { renderer.render(current(), userSurfaces, preview, physics); }
+  function levelEquations(items) { return (items || []).map((raw) => E.parseEquation(raw)); }
+  function setAction(text) { $('#actionBtn').textContent = text; }
+  function status(message, type = 'info') { const el = $('#statusMessage'); el.textContent = message; el.dataset.type = type; }
+  function stopAnimation() { if (raf) cancelAnimationFrame(raf); raf = 0; if (physics) physics.running = false; lastTs = 0; accumulator = 0; }
+
+  function insertAtCursor(input, text) {
+    const start = input.selectionStart ?? input.value.length, end = input.selectionEnd ?? start;
+    input.value = input.value.slice(0, start) + text + input.value.slice(end);
+    const pos = start + text.length; input.focus(); input.setSelectionRange(pos, pos);
+  }
+
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  let audioCtx;
+  function beep(freq, duration) {
+    try {
+      audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.frequency.value = freq; o.type = 'sine'; g.gain.setValueAtTime(.035, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(.001, audioCtx.currentTime + duration);
+      o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + duration);
+    } catch {}
   }
 
   init();
