@@ -12,6 +12,7 @@ const {
     launchLearnerCourse
 } = require('../services/scorm/ScormLearnerAuthService');
 const { getLearnerDashboard } = require('../services/scorm/ScormLearnerProgressFacade');
+const { enrichDashboardCourses } = require('../services/scorm/ScormCanonicalProgressService');
 const { discoverLearnerPolicy } = require('../services/scorm/ScormLearnerDiscoveryService');
 
 const learnerAuthLimiter = rateLimit({
@@ -67,7 +68,8 @@ router.post('/google', learnerAuthLimiter, async (req, res) => {
             workspaceId: policy.workspace.id,
             identity
         });
-        res.json(result);
+        res.setHeader('Cache-Control', 'no-store');
+        res.json(await enrichDashboardCourses(result));
     } catch (err) {
         res.status(err.status || 500).json({
             message: err.message || 'Google learner sign-in failed.',
@@ -96,7 +98,8 @@ router.post('/workspace/:workspaceId/email', learnerAuthLimiter, async (req, res
             email: req.body?.email,
             name: req.body?.name
         });
-        res.json(result);
+        res.setHeader('Cache-Control', 'no-store');
+        res.json(await enrichDashboardCourses(result));
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Learner sign-in failed.', code: err.code });
     }
@@ -109,7 +112,8 @@ router.post('/workspace/:workspaceId/google', learnerAuthLimiter, async (req, re
             provider: 'google',
             credential: req.body?.credential
         });
-        res.json(result);
+        res.setHeader('Cache-Control', 'no-store');
+        res.json(await enrichDashboardCourses(result));
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Google learner sign-in failed.', code: err.code });
     }
@@ -122,7 +126,8 @@ router.post('/workspace/:workspaceId/microsoft', learnerAuthLimiter, async (req,
             provider: 'microsoft',
             credential: req.body?.idToken || req.body?.credential
         });
-        res.json(result);
+        res.setHeader('Cache-Control', 'no-store');
+        res.json(await enrichDashboardCourses(result));
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Microsoft learner sign-in failed.', code: err.code });
     }
