@@ -1,12 +1,43 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { ArrowLeft, Gamepad2, LockKeyhole, Maximize2, Minimize2, Play, Shapes, Sparkles } from 'lucide-react';
+import { ArrowLeft, Gamepad2, LockKeyhole, Maximize2, Play, Shapes, Sparkles, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 
 const FREE_LEVELS = 25;
 const TOTAL_LEVELS = 132;
 const GAME_SRC = '/games/geometry-quest/index.html?embedded=1';
+
+function isFullscreen() {
+  return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+async function requestElementFullscreen(element) {
+  if (!element) return false;
+  try {
+    if (element.requestFullscreen) {
+      await element.requestFullscreen({ navigationUI: 'hide' });
+      return true;
+    }
+    if (element.webkitRequestFullscreen) {
+      element.webkitRequestFullscreen();
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+async function leaveFullscreen() {
+  try {
+    if (document.exitFullscreen && document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+    if (document.webkitExitFullscreen && document.webkitFullscreenElement) {
+      document.webkitExitFullscreen();
+    }
+  } catch (_) {}
+}
 
 function useGeometryAccess() {
   const { token, user } = useAuth();
@@ -44,17 +75,38 @@ function useGeometryAccess() {
 }
 
 export function GeometryPhysicsWorkspace({ onClose }) {
-  const { fullAccess, checking } = useGeometryAccess();
-  const [focusMode, setFocusMode] = useState(false);
+  const { fullAccess } = useGeometryAccess();
+  const rootRef = useRef(null);
   const iframeRef = useRef(null);
+  const [fullscreenActive, setFullscreenActive] = useState(() => isFullscreen());
+  const [resumeError, setResumeError] = useState('');
 
-  const sendFocusState = (active) => {
+  const notifyGame = (active) => {
     const frame = iframeRef.current;
     if (!frame?.contentWindow) return;
     try {
       frame.contentWindow.postMessage({ type: 'lmsgen:geometry-focus', active: Boolean(active) }, window.location.origin);
+      frame.contentWindow.postMessage({ type: 'lmsgen:geometry-fullscreen', active: Boolean(active) }, window.location.origin);
     } catch (_) {}
   };
+
+  useEffect(() => {
+    const syncFullscreen = () => {
+      const active = isFullscreen();
+      setFullscreenActive(active);
+      notifyGame(active);
+      if (!active && document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    };
+
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    document.addEventListener('webkitfullscreenchange', syncFullscreen);
+    syncFullscreen();
+
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreen);
+      document.removeEventListener('webkitfullscreenchange', syncFullscreen);
+    };
+  }, []);
 
   useEffect(() => {
     const handleMessage = (event) => {
@@ -65,95 +117,82 @@ export function GeometryPhysicsWorkspace({ onClose }) {
     return () => window.removeEventListener('message', handleMessage);
   }, [onClose]);
 
-  useEffect(() => {
-    sendFocusState(focusMode);
-  }, [focusMode]);
+  const resumeFullscreen = async () => {
+    setResumeError('');
+    const ok = await requestElementFullscreen(rootRef.current || document.documentElement);
+    if (!ok) setResumeError('Fullscreen could not be started. Please allow fullscreen in your browser and try again.');
+  };
 
-  useEffect(() => {
-    if (!focusMode) return undefined;
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') setFocusMode(false);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [focusMode]);
+  const exitGame = async () => {
+    if (isFullscreen()) await leaveFullscreen();
+    onClose?.();
+  };
 
   return (
     <div
-      className="relative h-[calc(100dvh-64px)] min-h-0 w-full overflow-hidden flex flex-col bg-[#F4F8F7]"
+      ref={rootRef}
+      className="fixed inset-0 z-[9999] h-[100dvh] w-screen overflow-hidden bg-[#F4F8F7]"
       style={{ isolation: 'isolate', filter: 'none', opacity: 1 }}
+      aria-label="Geometry Physics fullscreen game"
     >
-      {!focusMode && (
-        <div
-          className="h-[56px] sm:h-[64px] md:h-[68px] shrink-0 border-b border-[#D7E5E2] px-2.5 sm:px-4 md:px-6 flex items-center justify-between gap-2 sm:gap-4 text-[#14201E]"
-          style={{ backgroundColor: '#FFFFFF', backdropFilter: 'none', WebkitBackdropFilter: 'none', filter: 'none', opacity: 1 }}
+      <iframe
+        ref={iframeRef}
+        src={GAME_SRC}
+        title="Geometry Physics"
+        className="block w-full h-full border-0 bg-[#F4F8F7]"
+        style={{
+          filter: 'none',
+          opacity: fullscreenActive ? 1 : 0,
+          visibility: fullscreenActive ? 'visible' : 'hidden',
+          pointerEvents: fullscreenActive ? 'auto' : 'none'
+        }}
+        allow="autoplay; fullscreen"
+        allowFullScreen
+        tabIndex={fullscreenActive ? 0 : -1}
+        onLoad={() => notifyGame(fullscreenActive)}
+      />
+
+      {fullscreenActive && (
+        <button
+          type="button"
+          onClick={exitGame}
+          className="absolute top-[max(10px,env(safe-area-inset-top))] right-[max(10px,env(safe-area-inset-right))] z-30 h-10 px-3 rounded-xl border border-[#D7E5E2] bg-white/95 text-[#315B55] shadow-[0_8px_24px_rgba(30,72,66,.14)] inline-flex items-center gap-2 text-[11px] font-semibold hover:bg-[#ECF7F5]"
+          title="Exit Geometry Physics"
         >
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl grid place-items-center shrink-0 border border-[#B8E5DF] bg-[#E7F8F5] text-[#178C82]"><Shapes size={17} className="sm:w-[19px] sm:h-[19px]" /></div>
-            <div className="min-w-0">
-              <div className="hidden sm:block text-[9px] md:text-[10px] uppercase tracking-[.1em] font-semibold text-[#6F817E]">Quizmoto · Learning Games</div>
-              <div className="text-[13px] sm:text-[15px] font-semibold text-[#14201E] truncate">Geometry Physics</div>
-              <div className="mt-0.5 text-[9px] sm:text-[10px] text-[#6F817E] truncate">
-                {checking ? 'Checking access…' : fullAccess ? `All ${TOTAL_LEVELS} levels unlocked` : `Levels 1–${FREE_LEVELS} free`}
-              </div>
+          <X size={14} /> Exit game
+        </button>
+      )}
+
+      {!fullscreenActive && (
+        <div className="absolute inset-0 z-40 grid place-items-center p-5 bg-[#F4F8F7] text-[#14201E]">
+          <div className="w-full max-w-[460px] rounded-3xl border border-[#D7E5E2] bg-white p-6 sm:p-8 text-center shadow-[0_24px_70px_rgba(30,72,66,.14)]">
+            <div className="mx-auto w-14 h-14 rounded-2xl grid place-items-center border border-[#B8E5DF] bg-[#E7F8F5] text-[#178C82]"><Shapes size={24} /></div>
+            <div className="mt-5 text-[10px] uppercase tracking-[.12em] font-semibold text-[#6F817E]">Geometry Physics</div>
+            <h2 className="mt-2 text-[24px] sm:text-[28px] font-semibold tracking-[-.025em]">Fullscreen required</h2>
+            <p className="mt-2 text-[12px] sm:text-[13px] leading-relaxed text-[#5D706C]">
+              Geometry Physics can only be played in fullscreen. Your game is paused while fullscreen is closed.
+            </p>
+            <div className="mt-5 rounded-xl border border-[#D7E5E2] bg-[#F8FBFA] px-4 py-3 text-[10px] text-[#526662]">
+              {fullAccess ? `All ${TOTAL_LEVELS} levels are available for this tenant.` : `Levels 1–${FREE_LEVELS} are available on the free tier.`}
             </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {resumeError && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700">{resumeError}</div>}
             <button
               type="button"
-              onClick={() => setFocusMode(true)}
-              className="min-h-10 min-w-10 px-2.5 sm:px-3.5 rounded-xl border border-[#B8D4CF] bg-[#F7FBFA] text-[#315B55] hover:bg-[#ECF7F5] inline-flex items-center justify-center gap-2 text-[10px] sm:text-[11px] font-semibold"
-              title="Hide game headers and maximise the play area"
-              aria-label="Enter focus mode"
+              onClick={resumeFullscreen}
+              className="mt-6 w-full min-h-12 rounded-xl bg-[#07111F] text-white inline-flex items-center justify-center gap-2 text-[12px] font-semibold hover:bg-[#102033]"
             >
-              <Maximize2 size={14} /><span className="hidden sm:inline">Focus mode</span>
+              <Maximize2 size={15} /> Resume Fullscreen
             </button>
             <button
               type="button"
-              onClick={onClose}
-              className="min-h-10 min-w-10 px-2.5 sm:px-3.5 rounded-xl border border-[#B8D4CF] bg-white text-[#315B55] hover:bg-[#ECF7F5] inline-flex items-center justify-center gap-2 text-[10px] sm:text-[11px] font-semibold"
-              aria-label="Back to Quizmoto"
+              onClick={exitGame}
+              className="mt-3 min-h-10 px-3 text-[11px] font-semibold text-[#526662] hover:text-[#178C82] inline-flex items-center gap-2"
             >
-              <ArrowLeft size={14} /><span className="hidden md:inline">Back to Quizmoto</span><span className="hidden sm:inline md:hidden">Back</span>
+              <ArrowLeft size={13} /> Exit game and return to Quizmoto
             </button>
           </div>
         </div>
       )}
-
-      {focusMode && (
-        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20 flex items-center gap-1 sm:gap-2 rounded-xl border border-[#C8DDD9] bg-white/95 p-1 shadow-[0_8px_24px_rgba(30,72,66,.12)]">
-          <button
-            type="button"
-            onClick={() => setFocusMode(false)}
-            className="h-9 min-w-9 px-2 sm:px-3 rounded-lg text-[#315B55] hover:bg-[#ECF7F5] inline-flex items-center justify-center gap-2 text-[10px] font-semibold"
-            title="Restore the game header"
-            aria-label="Show game header"
-          >
-            <Minimize2 size={13} /><span className="hidden sm:inline">Show header</span>
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-9 min-w-9 px-2 sm:px-3 rounded-lg bg-[#07111F] text-white hover:bg-[#102033] inline-flex items-center justify-center gap-2 text-[10px] font-semibold"
-            aria-label="Back to Quizmoto"
-          >
-            <ArrowLeft size={13} /><span className="hidden sm:inline">Quizmoto</span>
-          </button>
-        </div>
-      )}
-
-      <div className="flex-1 min-h-0 bg-[#F4F8F7]">
-        <iframe
-          ref={iframeRef}
-          src={GAME_SRC}
-          title="Geometry Physics"
-          className="block w-full h-full border-0 bg-[#F4F8F7]"
-          style={{ filter: 'none', opacity: 1 }}
-          allow="autoplay"
-          onLoad={() => sendFocusState(focusMode)}
-        />
-      </div>
     </div>
   );
 }
@@ -187,6 +226,7 @@ export default function FreeGamesSection({ onLaunch }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <h4 className="text-[15px] sm:text-[17px] font-semibold">Geometry Physics</h4>
                   <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[8px] sm:text-[9px] uppercase tracking-[.1em] font-bold text-emerald-500">Free game</span>
+                  <span className="rounded-full border border-[#4FC9BF]/30 bg-[#4FC9BF]/10 px-2.5 py-1 text-[8px] sm:text-[9px] uppercase tracking-[.1em] font-bold text-[#238E85]">Fullscreen only</span>
                   {!checking && fullAccess && <span className="rounded-full border border-[#4FC9BF]/30 bg-[#4FC9BF]/10 px-2.5 py-1 text-[8px] sm:text-[9px] uppercase tracking-[.1em] font-bold text-[#238E85]">Full access</span>}
                 </div>
                 <p className="text-[11px] sm:text-xs md:text-[13px] opacity-65 mt-2 leading-relaxed max-w-3xl">
@@ -209,7 +249,7 @@ export default function FreeGamesSection({ onLaunch }) {
                 </div>
               </div>
             </div>
-            <span className="scorm-button-primary w-full lg:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 lg:py-2.5 text-xs font-semibold whitespace-nowrap">{fullAccess ? 'Play game' : 'Play free'} <Play size={13} /></span>
+            <span className="scorm-button-primary w-full lg:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 lg:py-2.5 text-xs font-semibold whitespace-nowrap">{fullAccess ? 'Play fullscreen' : 'Play free fullscreen'} <Play size={13} /></span>
           </div>
         </button>
       </div>
