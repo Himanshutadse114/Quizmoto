@@ -12,6 +12,7 @@ import {
   Plus,
   Radio,
   Search,
+  Shapes,
   Trash2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -113,6 +114,39 @@ export default function QuizmotoModule() {
       </section>
 
       {message && <div className="rounded-xl border border-[#29405f] bg-[#081321] px-4 py-3 mb-5 text-xs text-[#cbd5e1] flex items-center justify-between gap-3"><span>{message}</span><button type="button" onClick={() => setMessage('')} className="font-semibold text-[#60a5fa]">Dismiss</button></div>}
+
+      <section className="scorm-panel overflow-hidden mb-5">
+        <div className="scorm-panel-header flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <div className="scorm-eyebrow">Quizmoto add-ons</div>
+            <h2 className="text-[18px] mt-1">Learning games</h2>
+            <p className="scorm-meta mt-1.5">Standalone gamified learning experiences that run directly in the browser.</p>
+          </div>
+        </div>
+        <div className="p-4 md:p-5">
+          <a href="/games/geometry-quest/index.html" className="group block rounded-2xl border border-[#263950] bg-[#07111f] hover:border-[#4ce6f3]/60 transition-colors overflow-hidden">
+            <div className="grid lg:grid-cols-[1fr_auto] gap-5 items-center p-5 md:p-6">
+              <div className="flex items-start gap-4 min-w-0">
+                <div className="w-12 h-12 rounded-xl grid place-items-center shrink-0 border border-[#4ce6f3]/30 bg-[#4ce6f3]/10 text-[#4ce6f3]"><Shapes size={22} /></div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-[17px] font-semibold">Geometry Quest</h3>
+                    <span className="rounded-full border border-[#9d7cff]/30 bg-[#9d7cff]/10 px-2.5 py-1 text-[9px] uppercase tracking-[.12em] font-bold text-[#b9a5ff]">New add-on</span>
+                  </div>
+                  <p className="text-xs md:text-[13px] text-[#8295ae] mt-2 leading-relaxed max-w-3xl">Teach geometry and maths formulas through 32 gamified missions covering coordinate geometry, triangles, polygons, circles, curves, trigonometry, 3D geometry and advanced functions.</p>
+                  <div className="flex flex-wrap gap-2 mt-3 text-[10px] text-[#93a4bb]">
+                    <span className="rounded-lg border border-[#263950] px-2.5 py-1.5">32 missions</span>
+                    <span className="rounded-lg border border-[#263950] px-2.5 py-1.5">8 formula worlds</span>
+                    <span className="rounded-lg border border-[#263950] px-2.5 py-1.5">XP · Stars · Streaks</span>
+                    <span className="rounded-lg border border-[#263950] px-2.5 py-1.5">Formula Vault</span>
+                  </div>
+                </div>
+              </div>
+              <span className="scorm-button-primary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold whitespace-nowrap">Launch game <Play size={13} /></span>
+            </div>
+          </a>
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <div className="scorm-metric-card"><div className="flex items-start justify-between"><div><div className="scorm-metric-value">{quizzes.length}</div><div className="scorm-metric-label">Quizzes</div></div><div className="scorm-metric-icon"><BookOpenCheck size={17} /></div></div></div>
