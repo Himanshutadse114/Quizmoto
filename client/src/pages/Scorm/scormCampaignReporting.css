@@ -5,6 +5,7 @@
 .scorm-campaigns-page .campaign-upload-zone,.scorm-campaigns-page .campaign-course-list,.scorm-campaigns-page .campaign-detail-list,.scorm-campaigns-page .campaign-soft-card,.scorm-campaigns-page .campaign-required-toggle{border-color:var(--scorm-line)!important}
 .scorm-campaigns-page .campaign-course-row,.scorm-campaigns-page .campaign-list-row{transition:background-color 150ms ease,border-color 150ms ease}
 .scorm-campaigns-page .campaign-course-row:hover,.scorm-campaigns-page .campaign-list-row:hover{background:rgba(79,201,191,.045)!important}
+.scorm-campaigns-page .divide-y>:not([hidden])~:not([hidden]){border-color:var(--scorm-line)!important}
 .scorm-campaigns-page input[type="checkbox"]{accent-color:var(--cr-accent-strong)}
 
 html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-upload-zone,
