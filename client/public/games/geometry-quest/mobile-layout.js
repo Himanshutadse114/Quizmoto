@@ -50,7 +50,7 @@
       });
     }
     if (scrollTop) {
-      try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch { window.scrollTo(0, 0); }
+      try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch { window.scrollTo(0, 0); }
     }
     if (view === 'board') redrawBoard();
   }
