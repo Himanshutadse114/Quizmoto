@@ -9,9 +9,9 @@ const {
     createLearnerSessionFromIdentity,
     verifyGlobalGoogleCredential,
     learnerAuthMiddleware,
-    getLearnerDashboard,
     launchLearnerCourse
 } = require('../services/scorm/ScormLearnerAuthService');
+const { getLearnerDashboard } = require('../services/scorm/ScormLearnerProgressFacade');
 const { discoverLearnerPolicy } = require('../services/scorm/ScormLearnerDiscoveryService');
 
 const learnerAuthLimiter = rateLimit({
@@ -130,6 +130,7 @@ router.post('/workspace/:workspaceId/microsoft', learnerAuthLimiter, async (req,
 
 router.get('/dashboard', learnerAuthMiddleware, async (req, res) => {
     try {
+        res.setHeader('Cache-Control', 'no-store');
         res.json(await getLearnerDashboard(req.scormLearner));
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to load learner dashboard.', code: err.code });
