@@ -83,11 +83,60 @@ function liveScoreProgress(cmiState, map) {
 
     const normalized = clampPercent(percent);
     if (normalized == null) return null;
-
-    // A running SCO can report a perfect provisional score before it has actually
-    // completed. Keep score-derived progress below 100 until SCORM itself reports
-    // completed/passed/failed.
     return Math.min(99.9, normalized);
+}
+
+function liveInteractionScore(cmiState, packageRow = null) {
+    const map = stateValues(cmiState);
+    if (!map || typeof map !== 'object' || Array.isArray(map)) return null;
+
+    const results = new Map();
+    for (const [key, rawValue] of Object.entries(map)) {
+        let match = String(key).match(/^cmi\.interactions\.(\d+)\.result$/i);
+        if (!match) match = String(key).match(/^quizmoto\.quiz\.(\d+)\.result$/i);
+        if (!match) continue;
+        const value = String(rawValue || '').trim().toLowerCase();
+        if (!value) continue;
+        if (['correct', 'passed', 'true', 'right'].includes(value)) results.set(Number(match[1]), true);
+        else if (['wrong', 'incorrect', 'failed', 'false'].includes(value)) results.set(Number(match[1]), false);
+    }
+    if (!results.size) return null;
+
+    const analysis = packageAnalysis(packageRow);
+    const quizCount = analysis && Array.isArray(analysis.quiz) ? analysis.quiz.length : 0;
+    const highestInteraction = Math.max(...Array.from(results.keys())) + 1;
+    const denominator = Math.max(1, quizCount || highestInteraction || results.size);
+    const correct = Array.from(results.values()).filter(Boolean).length;
+    return Math.max(0, Math.min(100, Math.round((correct / denominator) * 1000) / 10));
+}
+
+function explicitScoreRaw(cmiState, fallback = null) {
+    const map = stateValues(cmiState);
+    const fromMap = map['cmi.core.score.raw'] ?? map['cmi.score.raw'];
+    if (fromMap != null && String(fromMap).trim() !== '') {
+        const number = Number(fromMap);
+        if (Number.isFinite(number)) return number;
+    }
+    if (cmiState?.scoreRaw != null && Number.isFinite(Number(cmiState.scoreRaw))) {
+        return Number(cmiState.scoreRaw);
+    }
+    if (fallback != null && String(fallback).trim() !== '') {
+        const number = Number(fallback);
+        if (Number.isFinite(number)) return number;
+    }
+    return null;
+}
+
+function resolvedScoreRaw(cmiState, fallback = null, packageRow = null) {
+    const explicit = explicitScoreRaw(cmiState, fallback);
+    const map = stateValues(cmiState);
+    const hasExplicitKey = (map['cmi.core.score.raw'] != null && String(map['cmi.core.score.raw']).trim() !== '')
+        || (map['cmi.score.raw'] != null && String(map['cmi.score.raw']).trim() !== '');
+    if (hasExplicitKey && explicit != null) return explicit;
+
+    const fromInteractions = liveInteractionScore(cmiState, packageRow);
+    if (fromInteractions != null) return fromInteractions;
+    return explicit;
 }
 
 function deriveProgress({ registration, cmiState, packageRow }) {
@@ -96,10 +145,6 @@ function deriveProgress({ registration, cmiState, packageRow }) {
 
     if (isFinished(lessonStatus) || registration?.status === 'completed') return 100;
 
-    // Preserve zero-valued progress signals as a final fallback, but do not let a
-    // stale zero hide other live activity such as a changing score. Several third-
-    // party SCORM packages continuously update score/interactions while leaving
-    // their completion/progress fields at zero until the very end.
     let zeroSignal = null;
 
     const suspendProgress = progressFromSuspendData(
@@ -130,11 +175,11 @@ function deriveProgress({ registration, cmiState, packageRow }) {
         zeroSignal = 0;
     }
 
-    // Last-resort live proxy: if the SCO is actively changing a normalized score,
-    // surface that percentage rather than showing a misleading permanent 0%.
-    // Exact SCORM completion signals still take precedence above.
     const fromScore = liveScoreProgress(cmiState, map);
     if (fromScore != null && fromScore > 0) return fromScore;
+
+    const fromInteractions = liveInteractionScore(cmiState, packageRow);
+    if (fromInteractions != null && fromInteractions > 0) return Math.min(99.9, fromInteractions);
 
     if (zeroSignal != null) return zeroSignal;
     if (!lessonStatus || String(lessonStatus).toLowerCase() === 'not attempted') return 0;
@@ -194,6 +239,7 @@ function serializeRegistration(registration, course = null) {
 
     const progressPercent = deriveProgress({ registration: plain, cmiState, packageRow });
     const lastLocation = locationLabel({ registration: plain, cmiState, packageRow });
+    const lastScoreRaw = resolvedScoreRaw(cmiState, plain.lastScoreRaw, packageRow);
 
     delete plain.learningStateV2;
     return {
@@ -204,7 +250,8 @@ function serializeRegistration(registration, course = null) {
         stateVersion: cmiState?.sequence ?? null,
         lastLocationRaw: cmiState?.lessonLocation || null,
         lastLessonStatus: cmiState?.lessonStatus || plain.lastLessonStatus || null,
-        lastScoreRaw: cmiState?.scoreRaw != null ? cmiState.scoreRaw : plain.lastScoreRaw,
+        lastScoreRaw,
+        score: lastScoreRaw,
         lastTotalTime: cmiState?.totalTime || plain.lastTotalTime || null,
         courseTitle,
         courseStatus,
@@ -219,6 +266,8 @@ module.exports = {
     progressFromLocation,
     progressFromSuspendData,
     liveScoreProgress,
+    liveInteractionScore,
+    resolvedScoreRaw,
     authoredPartCount,
     packageAnalysis
 };
