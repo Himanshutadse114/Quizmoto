@@ -7,7 +7,7 @@ const {
     ScormRegistration,
     ScormAttempt
 } = require('../../models/scorm');
-const LearningState = require('../../services/scorm/ScormLearningStateService');
+const { attachCanonicalState } = require('../../services/scorm/ScormCanonicalProgressService');
 const { serializeRegistration } = require('../../services/scorm/ScormProgressService');
 const { extractInteractions, answerSummary } = require('../../services/scorm/ScormInteractionReportService');
 const { resolveCourseOrPackageId } = require('../../services/scorm/ScormCourseWorkspaceService');
@@ -122,12 +122,7 @@ async function attachLearningState(courses) {
     const registrations = courses.flatMap((course) => (
         Array.isArray(course.registrations) ? course.registrations : []
     ));
-    const states = await LearningState.listByRegistrationIds(registrations.map((reg) => reg.id));
-    for (const reg of registrations) {
-        const state = states.get(String(reg.id)) || null;
-        if (typeof reg.setDataValue === 'function') reg.setDataValue('learningStateV2', state);
-        else reg.learningStateV2 = state;
-    }
+    await attachCanonicalState(registrations);
     return courses;
 }
 
