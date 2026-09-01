@@ -11,6 +11,10 @@ const {
     normalizeStoredAuthMode,
     authModeLabel
 } = require('./ScormCampaignAuthPolicy');
+const {
+    registrationProgress,
+    loadCanonicalStates
+} = require('./ScormCanonicalProgressService');
 
 const ACTIVE_REGISTRATION_STATUSES = { [Op.notIn]: ['revoked', 'superseded'] };
 
@@ -22,11 +26,8 @@ function authOptions(config) {
     };
 }
 
-function registrationStatus(registration) {
-    const lesson = String(registration.lastLessonStatus || '').toLowerCase();
-    if (registration.status === 'completed' || ['completed', 'passed', 'failed'].includes(lesson)) return 'completed';
-    if (registration.status === 'active' || registration.lastCommitAt) return 'in_progress';
-    return 'not_started';
+function registrationStatus(registration, state = null) {
+    return registrationProgress(registration, state).status;
 }
 
 function countMap(rows) {
@@ -82,11 +83,16 @@ async function listCampaigns({ hostId, workspaceId }) {
                     isPreview: false,
                     status: ACTIVE_REGISTRATION_STATUSES
                 },
-                attributes: ['campaignId', 'status', 'lastLessonStatus', 'lastCommitAt'],
+                attributes: ['id', 'campaignId', 'status', 'lastLessonStatus', 'lastScoreRaw', 'lastTotalTime', 'lastCommitAt'],
                 raw: true
             })
         ])
         : [[], [], []];
+
+    // The learner player persists to scorm_learning_state_v2 first. Registration
+    // summary columns are only a denormalized projection and may lag or fail to
+    // project. Campaign summaries therefore read the canonical state directly.
+    const canonicalStates = await loadCanonicalStates(registrations);
 
     const learnerCounts = countMap(learnerRows);
     const courseCounts = countMap(courseRows);
@@ -103,7 +109,10 @@ async function listCampaigns({ hostId, workspaceId }) {
             let completedCount = 0;
             let inProgressCount = 0;
             for (const registration of rows) {
-                const status = registrationStatus(registration);
+                const status = registrationStatus(
+                    registration,
+                    canonicalStates.get(String(registration.id)) || null
+                );
                 if (status === 'completed') completedCount += 1;
                 else if (status === 'in_progress') inProgressCount += 1;
             }
