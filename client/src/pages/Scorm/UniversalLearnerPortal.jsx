@@ -10,10 +10,10 @@ import {
   ExternalLink,
   GraduationCap,
   LogOut,
-  Mail,
   RefreshCw
 } from 'lucide-react';
 import { apiUrl } from '../../config';
+import LearnerEmailOtpLogin from './LearnerEmailOtpLogin';
 
 const UNIVERSAL_SESSION_KEY = 'lmsgen_learner_universal';
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1001652255296-695gf3vjul0fjh1oden4k2n6tvvdvncn.apps.googleusercontent.com';
@@ -59,8 +59,6 @@ export default function UniversalLearnerPortal() {
   const [workspaceId, setWorkspaceId] = useState('');
   const [token, setToken] = useState(() => localStorage.getItem(UNIVERSAL_SESSION_KEY) || '');
   const [dashboard, setDashboard] = useState(null);
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
   const [showEmailLogin, setShowEmailLogin] = useState(false);
   const [loading, setLoading] = useState(Boolean(token));
   const [busy, setBusy] = useState(false);
@@ -139,36 +137,12 @@ export default function UniversalLearnerPortal() {
     }
   };
 
-  const loginEmail = async (event) => {
-    event.preventDefault();
-    const cleanEmail = email.trim().toLowerCase();
-    setBusy(true);
-    setError('');
-    try {
-      const discovery = await axios.post(apiUrl('/api/scorm-learner/discover'), { email: cleanEmail });
-      const id = discovery.data?.workspaceId || discovery.data?.config?.workspaceId || '';
-      if (!id) throw new Error('Your learning organisation could not be identified.');
-      const res = await axios.post(apiUrl(`/api/scorm-learner/workspace/${id}/email`), {
-        email: cleanEmail,
-        name: name.trim()
-      });
-      setWorkspaceId(id);
-      await acceptSession(res.data);
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Learner sign-in failed.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const logout = () => {
     localStorage.removeItem(UNIVERSAL_SESSION_KEY);
     if (workspaceId) localStorage.removeItem(workspaceSessionKey(workspaceId));
     setToken('');
     setDashboard(null);
     setWorkspaceId('');
-    setEmail('');
-    setName('');
     setShowEmailLogin(false);
   };
 
@@ -216,7 +190,7 @@ export default function UniversalLearnerPortal() {
               <div className="w-11 h-11 rounded-2xl bg-[#c8f0eb] text-[#087b73] grid place-items-center mb-4"><GraduationCap size={21} /></div>
               <div className="text-[10px] uppercase tracking-[.14em] font-bold text-[#5b7773]">Learner portal</div>
               <h1 className="text-2xl md:text-[30px] font-semibold tracking-[-.035em] leading-tight mt-2">Sign in to your learning</h1>
-              <p className="text-sm leading-relaxed text-[#617572] mt-2">Use Microsoft or Google. LMSGEN will match your verified email to the correct organisation and assigned courses.</p>
+              <p className="text-sm leading-relaxed text-[#617572] mt-2">Use Microsoft, Google or your assigned work email. Email sign-in is protected by a one-time verification code.</p>
             </div>
 
             <div className="p-6 md:p-7 space-y-3">
@@ -233,11 +207,13 @@ export default function UniversalLearnerPortal() {
               {!showEmailLogin ? (
                 <button type="button" onClick={() => { setShowEmailLogin(true); setError(''); }} className="w-full h-10 rounded-xl text-xs font-semibold text-[#32645f] hover:bg-[#f2f8f7]">Use assigned email instead</button>
               ) : (
-                <form onSubmit={loginEmail} className="space-y-3 rounded-xl border border-[#dce8e5] p-4 bg-[#fbfdfd]">
-                  <label className="block"><span className="block text-[10px] uppercase tracking-[.1em] font-bold text-[#5e7773] mb-1.5">Assigned email</span><div className="relative"><Mail size={15} className="absolute left-3.5 top-3.5 text-[#69817d]" /><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-11 rounded-xl border border-[#cfdcda] bg-white pl-10 pr-3.5 text-sm outline-none focus:border-[#1aa99e]" placeholder="you@company.com" /></div></label>
-                  <label className="block"><span className="block text-[10px] uppercase tracking-[.1em] font-bold text-[#5e7773] mb-1.5">Name · optional</span><input value={name} onChange={(e) => setName(e.target.value)} className="w-full h-11 rounded-xl border border-[#cfdcda] bg-white px-3.5 text-sm outline-none focus:border-[#1aa99e]" placeholder="Your name" /></label>
-                  <button type="submit" disabled={busy} className="w-full h-11 rounded-xl bg-[#45c5bc] hover:bg-[#36b7ae] text-[#0d2926] text-sm font-semibold disabled:opacity-50">{busy ? 'Checking assignment…' : 'Open my dashboard'}</button>
-                </form>
+                <div className="rounded-xl border border-[#dce8e5] p-4 bg-[#fbfdfd]">
+                  <LearnerEmailOtpLogin
+                    compact
+                    onWorkspaceResolved={setWorkspaceId}
+                    onAuthenticated={acceptSession}
+                  />
+                </div>
               )}
             </div>
           </section>
