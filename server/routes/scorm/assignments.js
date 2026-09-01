@@ -11,6 +11,7 @@ const {
 } = require('../../models/scorm');
 const { getAccessRole } = require('../../services/scorm/ScormAccessService');
 const { getEntitlement } = require('../../services/scorm/ScormEntitlementService');
+const { sendDirectAssignmentEmails } = require('../../services/mail/TransactionalMailService');
 
 const MAX_ASSIGNMENT_COMBINATIONS = 5000;
 const INACTIVE_ASSIGNMENT_STATUSES = ['revoked', 'superseded'];
@@ -234,6 +235,20 @@ router.post('/bulk', auth, async (req, res) => {
             }
         });
 
+        // Email happens after the transaction commits. SMTP failure is reported as
+        // notification metadata and never rolls back a valid course assignment.
+        const mail = await sendDirectAssignmentEmails({
+            learners: learners.map((learner) => ({
+                email: normalizeEmail(learner.email),
+                learnerName: learner.learnerName || null
+            })),
+            courses: courses.map((course) => ({ id: course.id, title: course.title })),
+            workspaceName: req.scormWorkspace?.name || 'Your organisation',
+            dueAt,
+            required,
+            portalPath: '/learn'
+        });
+
         res.status(created ? 201 : 200).json({
             ok: true,
             created,
@@ -242,7 +257,8 @@ router.post('/bulk', auth, async (req, res) => {
             learners: learners.length,
             courses: courses.length,
             combinations: learners.length * courses.length,
-            learnerPortalPath: '/learn'
+            learnerPortalPath: '/learn',
+            mail
         });
     } catch (err) {
         console.error('[scorm-assignments] bulk assign failed', err);
