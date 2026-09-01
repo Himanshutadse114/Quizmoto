@@ -4,151 +4,158 @@
   const data = window.GeometryGameData;
   if (!data?.levels) return;
 
-  const shapeRampLevels = [
+  const variedRampLevels = [
     {
-      id: 37, phase: 'gravity', title: 'V-Valley Ramp', family: 'Linear Shape Ramps',
-      description: 'Build two bounded lines that meet in a V. Let gravity pull the ball into the valley, then use its momentum to climb the other side.',
-      solution: ['y = -0.8*x; [-6, 0]', 'y = 0.8*x; [0, 5]'], budget: 2,
-      hint: 'A V uses opposite slopes. Try y = -0.8*x on the left and y = 0.8*x on the right, with domains that meet at x = 0.',
-      spawn: { x: -5.7, y: 5.5 }, basket: { x: 4, y: 3.2 },
-      stars: [{ x: -4, y: 3.2 }, { x: -1, y: 0.8 }, { x: 2, y: 1.6 }],
-      gravity: 9.81, initialVx: 1.2, initialVy: 0, timeLimit: 20,
-      blueprint: ['y = -0.8*x; [-6, 0]', 'y = 0.8*x; [0, 5]']
+      id: 37, phase: 'gravity', title: 'Absolute V-Valley', family: 'Absolute Value',
+      description: 'Build a V-shaped valley with one absolute-value equation. Gravity pulls the ball into the vertex and momentum carries it up the other side.',
+      solution: ['y = 0.7*abs(x) - 2; [-5.5, 5]'], budget: 1,
+      hint: 'Use the absolute-value form y = a|x-h| + k. For this centred V, try y = 0.7*abs(x) - 2.',
+      spawn: { x: -5.3, y: 2.6 }, basket: { x: 4.2, y: 1.0 },
+      stars: [{ x: -3, y: 0.1 }, { x: 0, y: -2 }, { x: 2.5, y: -0.25 }],
+      gravity: 9.81, initialVx: 2.5, initialVy: 0, timeLimit: 18,
+      blueprint: ['y = 0.7*abs(x) - 2; [-5.5, 5]']
     },
     {
-      id: 38, phase: 'gravity', title: 'Roof Ridge', family: 'Linear Shape Ramps',
-      description: 'Construct an inverted V like a roof. Give the ball enough momentum to climb the first side, cross the ridge and descend the second.',
-      solution: ['y = 0.3*x + 1.5; [-5, 0]', 'y = -0.3*x + 1.5; [0, 5.5]'], budget: 2,
-      hint: 'A symmetric roof uses equal and opposite slopes. Use +0.3 on the left and -0.3 on the right so both lines meet at the ridge.',
-      spawn: { x: -5.3, y: 0.2 }, basket: { x: 5, y: 0 },
-      stars: [{ x: -3, y: 0.7 }, { x: 0, y: 1.6 }, { x: 3, y: 0.7 }],
-      gravity: 9.81, initialVx: 7, initialVy: 0, timeLimit: 12,
-      blueprint: ['y = 0.3*x + 1.5; [-5, 0]', 'y = -0.3*x + 1.5; [0, 5.5]']
+      id: 38, phase: 'gravity', title: 'Absolute Roof Ridge', family: 'Absolute Value',
+      description: 'Create an inverted V using one transformed absolute-value function. The ball must climb the roof, cross the ridge and descend.',
+      solution: ['y = -0.3*abs(x) + 1.5; [-5, 5]'], budget: 1,
+      hint: 'A negative coefficient flips the V upside down. Try y = -0.3*abs(x) + 1.5.',
+      spawn: { x: -5.2, y: 0.4 }, basket: { x: 4.7, y: 0.2 },
+      stars: [{ x: -3, y: 0.6 }, { x: 0, y: 1.5 }, { x: 3, y: 0.6 }],
+      gravity: 9.81, initialVx: 7.0, initialVy: 0, timeLimit: 13,
+      blueprint: ['y = -0.3*abs(x) + 1.5; [-5, 5]']
     },
     {
-      id: 39, phase: 'gravity', title: 'Triangle Traverse', family: 'Polygon Shape Ramps',
-      description: 'Build a complete triangle from three bounded lines. The ball must climb one side, cross the apex, descend the other and finish near the base.',
+      id: 39, phase: 'gravity', title: 'Triangle Traverse', family: 'Polygon Lines',
+      description: 'Build a complete triangle from three bounded straight lines. Use domains to make the edges meet exactly at the vertices.',
       solution: ['y = 0.5*x + 1; [-4, 0]', 'y = -0.5*x + 1; [0, 4]', 'y = -1; [-4, 4]'], budget: 3,
-      hint: 'Use two opposite slopes for the sides and one horizontal line for the base. Restrict every edge so the three lines form a closed triangle.',
+      hint: 'Use one rising side, one falling side and one horizontal base. Every line needs a domain so it stops at the correct corner.',
       spawn: { x: -4.4, y: -0.7 }, basket: { x: 3.5, y: -0.8 },
       stars: [{ x: -2.5, y: -0.15 }, { x: 0, y: 1.1 }, { x: 2.6, y: -0.2 }],
       gravity: 9.81, initialVx: 8, initialVy: 0, timeLimit: 15,
       blueprint: ['y = 0.5*x + 1; [-4, 0]', 'y = -0.5*x + 1; [0, 4]', 'y = -1; [-4, 4]']
     },
     {
-      id: 40, phase: 'gravity', title: 'Trapezium Bridge', family: 'Polygon Shape Ramps',
-      description: 'Create a trapezium-style bridge: rise onto a flat deck, travel across it and descend through the final side.',
+      id: 40, phase: 'gravity', title: 'Trapezium Bridge', family: 'Polygon Lines',
+      description: 'Create a trapezium-style bridge with sloped connectors and a horizontal deck. Practise slope, intercept and domains together.',
       solution: ['y = 0.5*x + 3; [-6, -4]', 'y = 1; [-4, 1]', 'y = -0.67*x + 1.67; [1, 4]'], budget: 3,
-      hint: 'Think of three pieces: an upward connector, a horizontal top and a descending connector. Domains make the pieces meet at the corners.',
+      hint: 'Build an upward connector, a flat top and a descending connector. Use domains so the three pieces meet at the corners.',
       spawn: { x: -5.8, y: 0.4 }, basket: { x: 3.6, y: -0.8 },
       stars: [{ x: -4.5, y: 0.75 }, { x: -1, y: 1.2 }, { x: 2.5, y: 0 }],
-      gravity: 9.81, initialVx: 5, initialVy: 0, timeLimit: 12,
+      gravity: 9.81, initialVx: 5, initialVy: 0, timeLimit: 13,
       blueprint: ['y = 0.5*x + 3; [-6, -4]', 'y = 1; [-4, 1]', 'y = -0.67*x + 1.67; [1, 4]']
     },
     {
-      id: 41, phase: 'gravity', title: 'U-Channel', family: 'Polygon Shape Ramps',
-      description: 'Build a polygonal U-shaped channel with two sloped walls and a flat floor. Momentum must carry the ball back up the exit side.',
-      solution: ['y = -x - 3; [-6, -3]', 'y = 0; [-3, 1]', 'y = 0.67*x - 0.67; [1, 4]'], budget: 3,
-      hint: 'Make a descending left wall, a horizontal floor and an ascending right wall. The domains should meet cleanly at the two bottom corners.',
-      spawn: { x: -5.8, y: 3.4 }, basket: { x: 3.7, y: 1.8 },
-      stars: [{ x: -4, y: 1 }, { x: 0, y: 0.2 }, { x: 2.5, y: 1 }],
-      gravity: 9.81, initialVx: 3, initialVy: 0, timeLimit: 12,
-      blueprint: ['y = -x - 3; [-6, -3]', 'y = 0; [-3, 1]', 'y = 0.67*x - 0.67; [1, 4]']
+      id: 41, phase: 'gravity', title: 'Parabola Bowl', family: 'Quadratic Functions',
+      description: 'Replace three line segments with one smooth quadratic bowl. Observe how a continuously changing slope changes the ball motion.',
+      solution: ['y = 0.18*x^2 - 2; [-5, 5]'], budget: 1,
+      hint: 'Use y = ax^2 + c with a positive a to open upward. Try y = 0.18*x^2 - 2.',
+      spawn: { x: -5.0, y: 3.0 }, basket: { x: 4.0, y: 1.0 },
+      stars: [{ x: -3, y: -0.38 }, { x: 0, y: -2 }, { x: 2, y: -1.28 }],
+      gravity: 9.81, initialVx: 2.6, initialVy: 0, timeLimit: 18,
+      blueprint: ['y = 0.18*x^2 - 2; [-5, 5]']
     },
     {
-      id: 42, phase: 'gravity', title: 'Staircase Drop', family: 'Piecewise Shape Ramps',
-      description: 'Construct four separate horizontal steps. The ball must leave each platform, fall under gravity and land on the next lower step.',
+      id: 42, phase: 'gravity', title: 'Staircase Drop', family: 'Piecewise Lines',
+      description: 'Construct four horizontal platforms. The ball must leave each domain, fall freely and land on the next step.',
       solution: ['y = 3; [-6, -3.8]', 'y = 1.5; [-3.2, -1]', 'y = 0; [-0.4, 1.8]', 'y = -1.5; [2.4, 4.8]'], budget: 4,
-      hint: 'A staircase is a set of horizontal equations at different y-values. Leave controlled gaps between their domains so gravity creates each drop.',
-      spawn: { x: -5.8, y: 3.5 }, basket: { x: 4, y: -1.3 },
+      hint: 'A staircase uses several y = constant equations. The domain gaps create the free-fall sections between steps.',
+      spawn: { x: -5.8, y: 3.5 }, basket: { x: 4.0, y: -1.3 },
       stars: [{ x: -4.5, y: 3.2 }, { x: -2, y: 1.7 }, { x: 0.7, y: 0.2 }],
-      gravity: 9.81, initialVx: 2, initialVy: 0, timeLimit: 20,
+      gravity: 9.81, initialVx: 2.0, initialVy: 0, timeLimit: 20,
       blueprint: ['y = 3; [-6, -3.8]', 'y = 1.5; [-3.2, -1]', 'y = 0; [-0.4, 1.8]', 'y = -1.5; [2.4, 4.8]']
     },
     {
-      id: 43, phase: 'gravity', title: 'W-Ramp', family: 'Linear Shape Ramps',
-      description: 'Build a six-segment W-style track. The ball must survive repeated changes between descending and rising line segments.',
-      solution: ['y = -0.75*x - 2.5; [-6, -4]', 'y = 0.25*x + 1.5; [-4, -2]', 'y = -0.75*x - 0.5; [-2, 0]', 'y = 0.25*x - 0.5; [0, 2]', 'y = -0.75*x + 1.5; [2, 4]', 'y = 0.33*x - 2.83; [4, 5.5]'], budget: 6,
-      hint: 'A W is a sequence of alternating negative and positive slopes. Keep the upward segments shallower so the ball has enough momentum to cross them.',
-      spawn: { x: -5.8, y: 2.4 }, basket: { x: 5.18, y: -0.895 },
-      stars: [{ x: -3.74, y: 2.07 }, { x: 0.18, y: -0.24 }, { x: 4.04, y: -0.095 }],
-      gravity: 9.81, initialVx: 8, initialVy: 0, timeLimit: 12,
-      blueprint: ['y = -0.75*x - 2.5; [-6, -4]', 'y = 0.25*x + 1.5; [-4, -2]', 'y = -0.75*x - 0.5; [-2, 0]', 'y = 0.25*x - 0.5; [0, 2]', 'y = -0.75*x + 1.5; [2, 4]', 'y = 0.33*x - 2.83; [4, 5.5]']
+      id: 43, phase: 'gravity', title: 'Sine Roller', family: 'Trigonometry',
+      description: 'Build rolling terrain from a sine wave plus a gentle downhill trend. Watch the ball accelerate and slow across crests and troughs.',
+      solution: ['y = 0.45*sin(1.2*x) - 0.38*x + 0.2; [-6, 5.5]'], budget: 1,
+      hint: 'The sine term creates the wave and the linear term keeps the whole track trending downhill. Try 0.45*sin(1.2*x) - 0.38*x + 0.2.',
+      spawn: { x: -5.8, y: 3.1 }, basket: { x: 5.0, y: -1.7 },
+      stars: [{ x: -4, y: 1.96 }, { x: 0, y: 0.2 }, { x: 3, y: -1.14 }],
+      gravity: 9.81, initialVx: 2.6, initialVy: 0, timeLimit: 18,
+      blueprint: ['y = 0.45*sin(1.2*x) - 0.38*x + 0.2; [-6, 5.5]']
     },
     {
-      id: 44, phase: 'gravity', title: 'Diamond Run', family: 'Polygon Shape Ramps',
-      description: 'Construct a complete diamond with four bounded lines. The ball travels over the upper two edges while the lower pair completes the shape.',
-      solution: ['y = 0.4*x + 1.6; [-4, 0]', 'y = -0.4*x + 1.6; [0, 4]', 'y = -0.4*x - 1.6; [-4, 0]', 'y = 0.4*x - 1.6; [0, 4]'], budget: 4,
-      hint: 'All four diamond edges use the same slope magnitude. Alternate +0.4 and -0.4 and choose intercepts that create matching top and bottom vertices.',
-      spawn: { x: -4.2, y: 0.2 }, basket: { x: 3.7, y: 0.2 },
-      stars: [{ x: -2, y: 0.8 }, { x: 0, y: 1.8 }, { x: 2, y: 0.8 }],
-      gravity: 9.81, initialVx: 6, initialVy: 0, timeLimit: 12,
-      blueprint: ['y = 0.4*x + 1.6; [-4, 0]', 'y = -0.4*x + 1.6; [0, 4]', 'y = -0.4*x - 1.6; [-4, 0]', 'y = 0.4*x - 1.6; [0, 4]']
+      id: 44, phase: 'gravity', title: 'Semicircle Halfpipe', family: 'Circular Arcs',
+      description: 'Use a lower semicircle as a true halfpipe. The square-root formula creates the curved bowl the ball rolls through.',
+      solution: ['y = -sqrt(16 - x^2); [-4, 4]'], budget: 1,
+      hint: 'Solve x^2 + y^2 = 16 for the lower half: y = -sqrt(16 - x^2).',
+      spawn: { x: -4.1, y: 1.5 }, basket: { x: 3.6, y: -1.7 },
+      stars: [{ x: -2.5, y: -3.12 }, { x: 0, y: -4 }, { x: 2.5, y: -3.12 }],
+      gravity: 9.81, initialVx: 4.5, initialVy: 0, timeLimit: 18,
+      blueprint: ['y = -sqrt(16 - x^2); [-4, 4]']
     },
     {
-      id: 45, phase: 'gravity', title: 'Multi-Deck Bridge', family: 'Piecewise Shape Ramps',
-      description: 'Combine sloped connectors and flat decks into a long bridge. The ball must transfer cleanly between five separate line segments.',
-      solution: ['y = -0.5*x; [-6, -4]', 'y = 2; [-4, -1]', 'y = -x + 1; [-1, 1]', 'y = 0; [1, 4]', 'y = -x + 4; [4, 5.5]'], budget: 5,
-      hint: 'Alternate between a connector and a deck. Horizontal lines create stable platforms; negative slopes move the ball to the next lower level.',
-      spawn: { x: -5.8, y: 3.4 }, basket: { x: 5.33, y: -0.07 },
-      stars: [{ x: -4.14, y: 2.29 }, { x: -0.23, y: 2.15 }, { x: 4.07, y: 0.26 }],
-      gravity: 9.81, initialVx: 2, initialVy: 0, timeLimit: 12,
-      blueprint: ['y = -0.5*x; [-6, -4]', 'y = 2; [-4, -1]', 'y = -x + 1; [-1, 1]', 'y = 0; [1, 4]', 'y = -x + 4; [4, 5.5]']
+      id: 45, phase: 'gravity', title: 'Shifted Arc Bowl', family: 'Circular Arcs',
+      description: 'Move the semicircle away from the origin. This challenge teaches horizontal and vertical shifts inside a square-root arc.',
+      solution: ['y = 0.5 - sqrt(12.25 - (x+0.5)^2); [-4, 3]'], budget: 1,
+      hint: 'Use y = k - sqrt(r^2 - (x-h)^2). Here the centre is shifted left by 0.5 and up by 0.5.',
+      spawn: { x: -4.1, y: 2.0 }, basket: { x: 2.8, y: -0.7 },
+      stars: [{ x: -2.5, y: -2.37 }, { x: -0.5, y: -3.0 }, { x: 2.0, y: -1.95 }],
+      gravity: 9.81, initialVx: 4.6, initialVy: 0, timeLimit: 18,
+      blueprint: ['y = 0.5 - sqrt(12.25 - (x+0.5)^2); [-4, 3]']
     },
     {
-      id: 46, phase: 'gravity', title: 'Sloped Staircase', family: 'Piecewise Shape Ramps',
-      description: 'Build three separated diagonal steps. Each segment has the same slope but a different intercept, teaching how c shifts a line without changing its angle.',
-      solution: ['y = -0.3*x + 1; [-6, -3]', 'y = -0.3*x; [-2.5, 0.5]', 'y = -0.3*x - 1; [1, 4.5]'], budget: 3,
-      hint: 'Keep the slope at -0.3 for every step. Change only the intercept and domain to move each parallel ramp lower and farther right.',
-      spawn: { x: -5.8, y: 3.2 }, basket: { x: 4, y: -2 },
-      stars: [{ x: -4.5, y: 2.55 }, { x: -1, y: 0.3 }, { x: 2.5, y: -1.75 }],
-      gravity: 9.81, initialVx: 2, initialVy: 0, timeLimit: 20,
-      blueprint: ['y = -0.3*x + 1; [-6, -3]', 'y = -0.3*x; [-2.5, 0.5]', 'y = -0.3*x - 1; [1, 4.5]']
+      id: 46, phase: 'gravity', title: 'Square-Root Chute', family: 'Square Root Functions',
+      description: 'Create a one-sided curved chute with a square-root function. Notice how the ramp begins at a fixed endpoint and gradually flattens.',
+      solution: ['y = -1.05*sqrt(x+6) + 3.8; [-6, 5.5]'], budget: 1,
+      hint: 'A square-root path starts where the expression inside sqrt becomes zero. Try y = -1.05*sqrt(x+6) + 3.8.',
+      spawn: { x: -5.8, y: 4.5 }, basket: { x: 5.0, y: 0.3 },
+      stars: [{ x: -4, y: 2.31 }, { x: 0, y: 1.23 }, { x: 3, y: 0.65 }],
+      gravity: 9.81, initialVx: 1.6, initialVy: 0, timeLimit: 18,
+      blueprint: ['y = -1.05*sqrt(x+6) + 3.8; [-6, 5.5]']
     },
     {
-      id: 47, phase: 'gravity', title: 'Pentagon Ridge', family: 'Polygon Shape Ramps',
-      description: 'Construct a five-sided polygon. The ball must climb the upper-left edge, cross the flat top and descend the upper-right edge.',
-      solution: ['y = x + 4; [-4, -2]', 'y = 2; [-2, 2]', 'y = -x + 4; [2, 4]', 'y = 0.5*x - 2; [0, 4]', 'y = -0.5*x - 2; [-4, 0]'], budget: 5,
-      hint: 'Build the pentagon as a flat top, two upper diagonal edges and two lower diagonal edges. The upper slopes are steeper than the lower pair.',
-      spawn: { x: -4.2, y: 0.2 }, basket: { x: 3.7, y: 0.2 },
-      stars: [{ x: -3, y: 1 }, { x: 0, y: 2.2 }, { x: 3, y: 1 }],
-      gravity: 9.81, initialVx: 10, initialVy: 0, timeLimit: 12,
-      blueprint: ['y = x + 4; [-4, -2]', 'y = 2; [-2, 2]', 'y = -x + 4; [2, 4]', 'y = 0.5*x - 2; [0, 4]', 'y = -0.5*x - 2; [-4, 0]']
+      id: 47, phase: 'gravity', title: 'Cubic S-Chute', family: 'Cubic Functions',
+      description: 'Use a cubic to create a smooth S-shaped descent. The changing curvature is different from both a line and a parabola.',
+      solution: ['y = -0.012*(x+1)^3 - 0.45*x + 1; [-6, 4.5]'], budget: 1,
+      hint: 'A small cubic coefficient keeps the S-curve controllable. Try y = -0.012*(x+1)^3 - 0.45*x + 1.',
+      spawn: { x: -5.8, y: 5.8 }, basket: { x: 4.0, y: -2.3 },
+      stars: [{ x: -4, y: 3.12 }, { x: -1, y: 1.45 }, { x: 2, y: -0.22 }],
+      gravity: 9.81, initialVx: 1.7, initialVy: 0, timeLimit: 18,
+      blueprint: ['y = -0.012*(x+1)^3 - 0.45*x + 1; [-6, 4.5]']
     },
     {
-      id: 48, phase: 'gravity', title: 'Hexagon Ridge', family: 'Polygon Shape Ramps',
-      description: 'Build a complete six-sided hexagon from bounded lines and guide the ball across its upper three edges.',
-      solution: ['y = 0.75*x + 3; [-4, -2]', 'y = 1.5; [-2, 2]', 'y = -0.75*x + 3; [2, 4]', 'y = 0.75*x - 3; [2, 4]', 'y = -1.5; [-2, 2]', 'y = -0.75*x - 3; [-4, -2]'], budget: 6,
-      hint: 'A horizontal hexagon has flat top and bottom edges plus four matching diagonal sides. Use symmetric domains on the left and right.',
-      spawn: { x: -4.2, y: 0.2 }, basket: { x: 3.7, y: 0.2 },
-      stars: [{ x: -3, y: 0.75 }, { x: 0, y: 1.7 }, { x: 3, y: 0.75 }],
-      gravity: 9.81, initialVx: 8, initialVy: 0, timeLimit: 12,
-      blueprint: ['y = 0.75*x + 3; [-4, -2]', 'y = 1.5; [-2, 2]', 'y = -0.75*x + 3; [2, 4]', 'y = 0.75*x - 3; [2, 4]', 'y = -1.5; [-2, 2]', 'y = -0.75*x - 3; [-4, -2]']
+      id: 48, phase: 'gravity', title: 'Exponential Decay Ramp', family: 'Exponential Functions',
+      description: 'Build a ramp whose steepness changes exponentially. The beginning falls quickly and the track gradually becomes flatter.',
+      solution: ['y = 4.5*(0.8^(x+6)) - 1.5; [-6, 5.5]'], budget: 1,
+      hint: 'Use a base between 0 and 1 for exponential decay. Try y = 4.5*(0.8^(x+6)) - 1.5.',
+      spawn: { x: -5.8, y: 4.0 }, basket: { x: 5.0, y: -1.1 },
+      stars: [{ x: -4, y: 1.38 }, { x: 0, y: -0.32 }, { x: 3, y: -0.90 }],
+      gravity: 9.81, initialVx: 3.5, initialVy: 0, timeLimit: 18,
+      blueprint: ['y = 4.5*(0.8^(x+6)) - 1.5; [-6, 5.5]']
     },
     {
-      id: 49, phase: 'gravity', title: 'Sawtooth Descent', family: 'Linear Shape Ramps',
-      description: 'Create a seven-segment sawtooth path with repeated drops and short recovery slopes. Each corner changes the ball’s direction.',
-      solution: ['y = -x - 3; [-6, -4]', 'y = 0.3*x + 2.2; [-4, -3]', 'y = -0.9*x - 1.4; [-3, -1]', 'y = 0.3*x - 0.2; [-1, 0]', 'y = -0.9*x - 0.2; [0, 2]', 'y = 0.3*x - 2.6; [2, 3]', 'y = -0.65*x + 0.25; [3, 5]'], budget: 7,
-      hint: 'Sawteeth alternate steep negative slopes with short shallow positive slopes. The overall path still needs to trend downward.',
-      spawn: { x: -5.8, y: 3.4 }, basket: { x: 4.58, y: 0.18 },
-      stars: [{ x: -4.1, y: 2.82 }, { x: -1.41, y: 0.14 }, { x: 2.32, y: 0.44 }],
-      gravity: 9.81, initialVx: 5, initialVy: 0, timeLimit: 12,
-      blueprint: ['y = -x - 3; [-6, -4]', 'y = 0.3*x + 2.2; [-4, -3]', 'y = -0.9*x - 1.4; [-3, -1]', 'y = 0.3*x - 0.2; [-1, 0]', 'y = -0.9*x - 0.2; [0, 2]', 'y = 0.3*x - 2.6; [2, 3]', 'y = -0.65*x + 0.25; [3, 5]']
+      id: 49, phase: 'gravity', title: 'Reciprocal Curve', family: 'Rational Functions',
+      description: 'Use a reciprocal term to create a ramp whose curvature is strongest near one side and gradually settles into a long descent.',
+      solution: ['y = 1/(x+7) - 0.4*x; [-6, 5.5]'], budget: 1,
+      hint: 'Combine a reciprocal with a linear trend: y = 1/(x+7) - 0.4*x. The x+7 keeps the vertical asymptote outside the playable domain.',
+      spawn: { x: -5.8, y: 4.4 }, basket: { x: 5.0, y: -1.9 },
+      stars: [{ x: -4, y: 1.93 }, { x: 0, y: 0.14 }, { x: 3, y: -1.10 }],
+      gravity: 9.81, initialVx: 2.3, initialVy: 0, timeLimit: 18,
+      blueprint: ['y = 1/(x+7) - 0.4*x; [-6, 5.5]']
     },
     {
-      id: 50, phase: 'gravity', title: 'Shape Master Circuit', family: 'Mixed Polygon Ramps',
-      description: 'Final line-shape challenge: combine seven bounded segments into a long polygonal circuit with slopes, decks, corners and controlled drops.',
-      solution: ['y = -0.75*x - 1; [-6, -4]', 'y = 2; [-4, -2]', 'y = -0.75*x + 0.5; [-2, 0]', 'y = 0.5; [0, 1.5]', 'y = -x + 2; [1.5, 3]', 'y = -1; [3, 4.5]', 'y = -x + 3.5; [4.5, 5.5]'], budget: 7,
-      hint: 'Solve the circuit one section at a time. Identify whether each part is a horizontal deck or a descending connector, then use domains to join them.',
-      spawn: { x: -5.8, y: 3.9 }, basket: { x: 5.14, y: -1.07 },
-      stars: [{ x: -4.3, y: 2.47 }, { x: 1.14, y: 0.9 }, { x: 3.66, y: 0.12 }],
-      gravity: 9.81, initialVx: 2, initialVy: 0, timeLimit: 12,
-      blueprint: ['y = -0.75*x - 1; [-6, -4]', 'y = 2; [-4, -2]', 'y = -0.75*x + 0.5; [-2, 0]', 'y = 0.5; [0, 1.5]', 'y = -x + 2; [1.5, 3]', 'y = -1; [3, 4.5]', 'y = -x + 3.5; [4.5, 5.5]']
+      id: 50, phase: 'gravity', title: 'Mixed Formula Circuit', family: 'Mixed Functions',
+      description: 'Final challenge: connect three different formula families into one physical course — a quadratic, a sine section and a square-root finish.',
+      solution: [
+        'y = 0.05*x^2 - 0.65*x - 0.2; [-6, -1]',
+        'y = 0.35*sin(1.2*x) - 0.35*x + 0.15; [-1, 2.5]',
+        'y = -0.8*sqrt(x-2.5) - 0.65; [2.5, 5.5]'
+      ], budget: 3,
+      hint: 'Solve the route in three sections. Use a quadratic for the opening descent, sine for the middle terrain and a square-root chute for the finish.',
+      spawn: { x: -5.8, y: 6.0 }, basket: { x: 5.2, y: -2.0 },
+      stars: [{ x: -4, y: 3.20 }, { x: 0, y: 0.15 }, { x: 4, y: -1.63 }],
+      gravity: 9.81, initialVx: 1.7, initialVy: 0, timeLimit: 22,
+      blueprint: [
+        'y = 0.05*x^2 - 0.65*x - 0.2; [-6, -1]',
+        'y = 0.35*sin(1.2*x) - 0.35*x + 0.15; [-1, 2.5]',
+        'y = -0.8*sqrt(x-2.5) - 0.65; [2.5, 5.5]'
+      ]
     }
   ];
 
-  const existingIds = new Set(data.levels.map((level) => level.id));
-  for (const level of shapeRampLevels) {
-    if (!existingIds.has(level.id)) data.levels.push(level);
-  }
+  const replacedIds = new Set(variedRampLevels.map((level) => level.id));
+  data.levels = data.levels.filter((level) => !replacedIds.has(level.id));
+  data.levels.push(...variedRampLevels);
 })();
