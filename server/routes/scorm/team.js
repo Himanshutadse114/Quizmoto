@@ -8,6 +8,7 @@ const {
     changeWorkspaceMemberRole,
     removeWorkspaceMember
 } = require('../../services/scorm/ScormWorkspaceService');
+const { sendTeamInviteEmail } = require('../../services/mail/TransactionalMailService');
 
 function requireWorkspaceAdmin(req, res, next) {
     const canManageWorkspace = req.scormRole === 'admin' || req.scormRole === 'super_admin';
@@ -52,7 +53,12 @@ router.post('/', auth, requireWorkspaceAdmin, async (req, res) => {
             displayName: req.body?.displayName || req.body?.name || null,
             role: req.body?.role
         });
-        res.status(201).json({ ok: true, member });
+        const mail = await sendTeamInviteEmail({
+            member,
+            workspaceName: req.scormWorkspace.name,
+            invitedByEmail: req.scormEmail
+        });
+        res.status(201).json({ ok: true, member, mail });
     } catch (err) {
         console.error('[scorm-team] invite failed', err);
         sendError(res, err, 'Could not add this team member.');
