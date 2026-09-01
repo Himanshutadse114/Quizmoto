@@ -39,7 +39,7 @@ const learnerOtpVerifyLimiter = rateLimit({
     keyGenerator: (req) => {
         const workspace = String(req.params?.workspaceId || 'workspace');
         const email = String(req.body?.email || '').trim().toLowerCase();
-        return `${workspace}:${email || req.ip || 'anonymous'}`;
+        return `${workspace}:${email || 'anonymous'}`;
     },
     message: {
         message: 'Too many verification attempts. Please wait a few minutes and request a new code.',
@@ -115,8 +115,7 @@ router.post('/workspace/:workspaceId/email', learnerAuthLimiter, async (req, res
     try {
         const result = await requestLearnerEmailOtp({
             workspaceId: req.params.workspaceId,
-            email: req.body?.email,
-            name: req.body?.name
+            email: req.body?.email
         });
         res.setHeader('Cache-Control', 'no-store');
         res.json(result);
@@ -135,8 +134,7 @@ router.post('/workspace/:workspaceId/email/verify', learnerOtpVerifyLimiter, asy
         const result = await verifyLearnerEmailOtp({
             workspaceId: req.params.workspaceId,
             email: req.body?.email,
-            code: req.body?.code,
-            name: req.body?.name
+            code: req.body?.code
         });
         res.setHeader('Cache-Control', 'no-store');
         res.json(result);
