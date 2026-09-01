@@ -12,6 +12,10 @@ const {
     getLearnerDashboard,
     launchLearnerCourse
 } = require('../services/scorm/ScormLearnerAuthService');
+const {
+    requestLearnerEmailOtp,
+    verifyLearnerEmailOtp
+} = require('../services/scorm/ScormLearnerEmailAuthService');
 const { discoverLearnerPolicy } = require('../services/scorm/ScormLearnerDiscoveryService');
 
 const learnerAuthLimiter = rateLimit({
@@ -23,6 +27,23 @@ const learnerAuthLimiter = rateLimit({
     message: {
         message: 'Too many learner sign-in attempts. Please wait a few minutes and try again.',
         code: 'SCORM_LEARNER_RATE_LIMITED'
+    }
+});
+
+const learnerOtpVerifyLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    limit: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => process.env.NODE_ENV === 'test',
+    keyGenerator: (req) => {
+        const workspace = String(req.params?.workspaceId || 'workspace');
+        const email = String(req.body?.email || '').trim().toLowerCase();
+        return `${workspace}:${email || req.ip || 'anonymous'}`;
+    },
+    message: {
+        message: 'Too many verification attempts. Please wait a few minutes and request a new code.',
+        code: 'SCORM_LEARNER_OTP_RATE_LIMITED'
     }
 });
 
@@ -88,17 +109,43 @@ router.get('/workspace/:workspaceId/config', async (req, res) => {
     }
 });
 
+// Email sign-in is deliberately a two-step proof-of-ownership flow. This route
+// no longer issues a learner JWT from a typed email address.
 router.post('/workspace/:workspaceId/email', learnerAuthLimiter, async (req, res) => {
     try {
-        const result = await createLearnerSession({
+        const result = await requestLearnerEmailOtp({
             workspaceId: req.params.workspaceId,
-            provider: 'email',
             email: req.body?.email,
             name: req.body?.name
         });
+        res.setHeader('Cache-Control', 'no-store');
         res.json(result);
     } catch (err) {
-        res.status(err.status || 500).json({ message: err.message || 'Learner sign-in failed.', code: err.code });
+        if (err.retryAfter) res.setHeader('Retry-After', String(err.retryAfter));
+        res.status(err.status || 500).json({
+            message: err.message || 'Unable to send a verification code.',
+            code: err.code,
+            retryAfter: err.retryAfter || undefined
+        });
+    }
+});
+
+router.post('/workspace/:workspaceId/email/verify', learnerOtpVerifyLimiter, async (req, res) => {
+    try {
+        const result = await verifyLearnerEmailOtp({
+            workspaceId: req.params.workspaceId,
+            email: req.body?.email,
+            code: req.body?.code,
+            name: req.body?.name
+        });
+        res.setHeader('Cache-Control', 'no-store');
+        res.json(result);
+    } catch (err) {
+        res.status(err.status || 500).json({
+            message: err.message || 'Verification failed.',
+            code: err.code,
+            attemptsRemaining: err.attemptsRemaining
+        });
     }
 });
 
