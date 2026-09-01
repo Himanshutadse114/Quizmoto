@@ -1,16 +1,87 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 const {
+    getAccessRole,
     accessDeniedPayload
 } = require('../services/scorm/ScormAccessService');
 const { enforceRequestEntitlement } = require('../services/scorm/ScormEntitlementService');
+const { resolveWorkspaceContext } = require('../services/scorm/ScormWorkspaceService');
+const { getStaffPolicyForEmail } = require('../services/scorm/ScormStaffAuthService');
 const { assertScormRouteAllowed } = require('../services/scorm/ScormRbacService');
-const {
-    getScormRequestContext,
-    invalidateScormRequestContext
-} = require('../services/scorm/ScormRequestContextCache');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const requestContextCache = new Map();
+
+function requestContextCacheMs() {
+    const configured = Number(process.env.SCORM_AUTH_CONTEXT_CACHE_MS);
+    if (!Number.isFinite(configured)) return 5000;
+    return Math.max(0, Math.min(30000, Math.floor(configured)));
+}
+
+function invalidateContext({ userId = null, workspaceId = null } = {}) {
+    if (!userId && !workspaceId) {
+        requestContextCache.clear();
+        return;
+    }
+    for (const [key, entry] of requestContextCache.entries()) {
+        if (userId && String(entry?.userId || key) === String(userId)) {
+            requestContextCache.delete(key);
+            continue;
+        }
+        if (workspaceId && String(entry?.workspaceId || '') === String(workspaceId)) {
+            requestContextCache.delete(key);
+        }
+    }
+}
+
+async function resolveRequestContext(userId, { bypassCache = false } = {}) {
+    const key = String(userId || '');
+    const ttl = requestContextCacheMs();
+    const now = Date.now();
+    const cached = requestContextCache.get(key);
+    if (!bypassCache && ttl > 0 && cached?.value && cached.expiresAt > now) return cached.value;
+    if (!bypassCache && ttl > 0 && cached?.promise) return cached.promise;
+
+    const loader = (async () => {
+        const user = await User.findByPk(userId);
+        if (!user) return { user: null, accessRole: null, workspaceContext: null, staffPolicy: null, entitlementOwner: null };
+
+        const accessRole = await getAccessRole(user.email);
+        if (!accessRole) return { user, accessRole: null, workspaceContext: null, staffPolicy: null, entitlementOwner: user };
+
+        const workspaceContext = await resolveWorkspaceContext({ user, role: accessRole });
+        const [staffPolicy, entitlementOwner] = await Promise.all([
+            workspaceContext.workspace && workspaceContext.role !== 'super_admin'
+                ? getStaffPolicyForEmail(user.email)
+                : Promise.resolve(null),
+            workspaceContext.workspace && workspaceContext.hostId !== user.id
+                ? User.findByPk(workspaceContext.hostId)
+                : Promise.resolve(user)
+        ]);
+        return { user, accessRole, workspaceContext, staffPolicy, entitlementOwner };
+    })();
+
+    if (!bypassCache && ttl > 0) {
+        requestContextCache.set(key, { promise: loader, expiresAt: now + ttl, userId, workspaceId: null });
+    }
+
+    try {
+        const value = await loader;
+        if (!bypassCache && ttl > 0) {
+            requestContextCache.set(key, {
+                value,
+                expiresAt: Date.now() + ttl,
+                userId,
+                workspaceId: value?.workspaceContext?.workspace?.id || null
+            });
+        }
+        return value;
+    } catch (err) {
+        if (!bypassCache) requestContextCache.delete(key);
+        throw err;
+    }
+}
 
 module.exports = async (req, res, next) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -32,11 +103,8 @@ module.exports = async (req, res, next) => {
             }
 
             const mutatingRequest = !SAFE_METHODS.has(String(req.method || 'GET').toUpperCase());
-            if (mutatingRequest) invalidateScormRequestContext({ userId: decoded.userId });
-
-            const context = await getScormRequestContext(decoded.userId, {
-                bypassCache: mutatingRequest
-            });
+            if (mutatingRequest) invalidateContext({ userId: decoded.userId });
+            const context = await resolveRequestContext(decoded.userId, { bypassCache: mutatingRequest });
             const user = context.user;
             if (!user) {
                 return res.status(401).json({ message: 'LMSGEN account no longer exists.', code: 'SCORM_AUTH_REQUIRED' });
@@ -53,8 +121,6 @@ module.exports = async (req, res, next) => {
             req.scormWorkspaceId = workspaceContext.workspace?.id || null;
             req.scormWorkspaceMember = workspaceContext.member || null;
 
-            // Tenant SSO policy belongs to the tenant. Exact membership chooses
-            // the tenant; domains are only optional provider restrictions.
             if (workspaceContext.workspace && workspaceContext.role !== 'super_admin') {
                 const policy = context.staffPolicy;
                 if (policy?.publicConfig?.staffSsoRequired) {
@@ -77,9 +143,6 @@ module.exports = async (req, res, next) => {
                 }
             }
 
-            // Existing SCORM tables are partitioned by hostId. New tenants use
-            // a non-login internal host user, so human Admin changes do not move
-            // or duplicate course/learner data.
             req.userId = workspaceContext.hostId;
 
             assertScormRouteAllowed({
@@ -103,15 +166,9 @@ module.exports = async (req, res, next) => {
                 role: req.scormRole === 'super_admin' ? 'super_admin' : 'admin'
             });
 
-            // Any write may change tenant membership, SSO settings or routing
-            // metadata. Clear the whole tenant cache after the response so the
-            // next request observes the committed database state immediately.
-            if (mutatingRequest) {
+            if (mutatingRequest && typeof res.once === 'function') {
                 const workspaceId = req.scormWorkspaceId;
-                res.once('finish', () => invalidateScormRequestContext({
-                    userId: decoded.userId,
-                    workspaceId
-                }));
+                res.once('finish', () => invalidateContext({ userId: decoded.userId, workspaceId }));
             }
         }
 
