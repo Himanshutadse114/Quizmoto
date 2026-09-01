@@ -10,6 +10,8 @@ import {
   Download,
   Eye,
   FileSpreadsheet,
+  KeyRound,
+  Mail,
   Play,
   RefreshCw,
   ShieldCheck,
@@ -34,12 +36,25 @@ function statusLabel(status) {
   return 'Draft';
 }
 
+function authLabel(mode) {
+  if (mode === 'google') return 'Google SSO';
+  if (mode === 'microsoft') return 'Microsoft SSO';
+  if (mode === 'sso_any') return 'Google or Microsoft SSO';
+  return 'Email + access code';
+}
+
+function csvCell(value) {
+  const text = String(value ?? '');
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
 export default function Assignments() {
   const { token } = useAuth();
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
   const fileRef = useRef(null);
   const [campaigns, setCampaigns] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [authOptions, setAuthOptions] = useState({ emailCode: true, googleConfigured: false, microsoftConfigured: false });
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [campaignDetail, setCampaignDetail] = useState(null);
   const [name, setName] = useState('');
@@ -49,6 +64,7 @@ export default function Assignments() {
   const [selectedCourses, setSelectedCourses] = useState([]);
   const [dueAt, setDueAt] = useState('');
   const [required, setRequired] = useState(true);
+  const [authMode, setAuthMode] = useState('email_code');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -61,6 +77,7 @@ export default function Assignments() {
       const res = await axios.get(apiUrl('/api/scorm/campaigns'), { headers });
       setCampaigns(res.data?.campaigns || []);
       setCourses(res.data?.courses || []);
+      setAuthOptions(res.data?.authOptions || { emailCode: true, googleConfigured: false, microsoftConfigured: false });
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to load campaigns.');
     } finally {
@@ -107,6 +124,8 @@ export default function Assignments() {
     if (name.trim().length < 2) return setError('Enter a campaign name.');
     if (!csvText || !csvPreview?.validLearners) return setError('Upload a learner CSV first.');
     if (!selectedCourses.length) return setError('Select at least one published course.');
+    if (authMode === 'google' && !authOptions.googleConfigured) return setError('Google SSO is not configured for this tenant.');
+    if (authMode === 'microsoft' && !authOptions.microsoftConfigured) return setError('Microsoft SSO is not configured for this tenant.');
     setBusy(true);
     try {
       const res = await axios.post(apiUrl('/api/scorm/campaigns'), {
@@ -114,10 +133,12 @@ export default function Assignments() {
         csvText,
         courseIds: selectedCourses,
         dueAt: dueAt || null,
-        required
+        required,
+        authMode
       }, { headers });
       const campaign = res.data?.campaign;
-      setMessage(`Campaign “${campaign?.name || name.trim()}” created as a draft. Review it, then start the campaign to create learner-course instances and activate the SSO portal.`);
+      const modeText = authLabel(campaign?.authMode || authMode);
+      setMessage(`Campaign “${campaign?.name || name.trim()}” created as a draft with ${modeText}. Review it, then start the campaign.`);
       setName('');
       setCsvText('');
       setCsvFileName('');
@@ -125,6 +146,7 @@ export default function Assignments() {
       setSelectedCourses([]);
       setDueAt('');
       setRequired(true);
+      setAuthMode('email_code');
       if (fileRef.current) fileRef.current.value = '';
       await load();
       if (campaign?.id) await viewCampaign(campaign.id);
@@ -148,14 +170,18 @@ export default function Assignments() {
   };
 
   const startCampaign = async (campaign) => {
-    if (!window.confirm(`Start “${campaign.name}”? This will create a separate course instance for every learner-course combination and activate the SSO portal.`)) return;
+    const method = authLabel(campaign.authMode);
+    const extra = campaign.authMode === 'email_code'
+      ? 'Learners will use their assigned email and unique access code.'
+      : `Learners will be required to use ${method}.`;
+    if (!window.confirm(`Start “${campaign.name}”? This will create a separate course instance for every learner-course combination. ${extra}`)) return;
     setBusy(true);
     setError('');
     setMessage('');
     try {
       const res = await axios.post(apiUrl(`/api/scorm/campaigns/${campaign.id}/start`), {}, { headers });
       const started = res.data?.campaign;
-      setMessage(`Campaign “${started?.name || campaign.name}” is active. Copy the campaign portal link and send the same link to everyone in the CSV.`);
+      setMessage(`Campaign “${started?.name || campaign.name}” is active. Copy the learner portal link${started?.authMode === 'email_code' ? ' and download the access list' : ''}.`);
       await load();
       await viewCampaign(campaign.id);
     } catch (err) {
@@ -188,11 +214,64 @@ export default function Assignments() {
     const url = `${window.location.origin}${campaign.portalPath}`;
     try {
       await navigator.clipboard.writeText(url);
-      setMessage('Campaign portal link copied. Only verified Google/Microsoft emails included in this campaign CSV can enter.');
+      if (campaign.authMode === 'email_code') {
+        setMessage('Campaign learner link copied. Send each learner the link together with their unique access code from the access list.');
+      } else {
+        setMessage(`Campaign learner link copied. Learners must sign in with ${authLabel(campaign.authMode)} using the email included in the CSV.`);
+      }
     } catch (_) {
       setError('Could not copy the campaign portal link.');
     }
   };
+
+  const downloadAccessList = async (campaign) => {
+    setError('');
+    setMessage('');
+    try {
+      const res = await axios.get(apiUrl(`/api/scorm/campaigns/${campaign.id}/access-sheet`), { headers });
+      const rows = res.data?.learners || [];
+      const portalPath = res.data?.campaign?.portalPath || `/campaign/${campaign.id}`;
+      const portalUrl = `${window.location.origin}${portalPath}`;
+      const csv = [
+        ['Name', 'Email', 'Access Code', 'Campaign Link'].map(csvCell).join(','),
+        ...rows.map((learner) => [learner.learnerName || '', learner.email, learner.accessCode, portalUrl].map(csvCell).join(','))
+      ].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${String(campaign.name || 'campaign').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'campaign'}-learner-access.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setMessage('Learner access list downloaded. Each code is unique to that learner email and this campaign.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to download learner access codes.');
+    }
+  };
+
+  const authCards = [
+    {
+      id: 'email_code',
+      title: 'Email + access code',
+      description: 'Works without tenant SSO. Each CSV learner gets a unique campaign access code.',
+      enabled: true,
+      icon: <KeyRound size={16} />
+    },
+    {
+      id: 'google',
+      title: 'Google SSO',
+      description: authOptions.googleConfigured ? 'Learners verify the exact assigned email with Google.' : 'Configure Google learner SSO first.',
+      enabled: authOptions.googleConfigured,
+      icon: <Mail size={16} />
+    },
+    {
+      id: 'microsoft',
+      title: 'Microsoft SSO',
+      description: authOptions.microsoftConfigured ? 'Learners verify the exact assigned email with Microsoft.' : 'Configure Microsoft learner SSO first.',
+      enabled: authOptions.microsoftConfigured,
+      icon: <ShieldCheck size={16} />
+    }
+  ];
 
   return (
     <div className="scorm-campaigns-page p-4 md:p-7 lg:p-9 max-w-7xl mx-auto">
@@ -201,7 +280,7 @@ export default function Assignments() {
           <div className="scorm-micro text-[10px] uppercase font-semibold">Learner delivery</div>
           <h1 className="scorm-display text-[32px] md:text-[42px] mt-2">Campaigns</h1>
           <p className="text-sm mt-3 leading-relaxed" style={{ color: 'var(--scorm-ink-soft)' }}>
-            Upload the approved learner CSV, choose one or more published courses, name the campaign and start it. Learners receive one campaign link and must verify the exact CSV email with Google or Microsoft SSO.
+            Upload the learner CSV, choose published courses and decide how learners will authenticate for this campaign. SSO is optional — campaigns can also use a secure email + access code flow.
           </p>
         </div>
         <button type="button" onClick={load} disabled={loading} className="scorm-button-secondary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold disabled:opacity-50">
@@ -242,6 +321,36 @@ export default function Assignments() {
               )}
             </div>
 
+            <div>
+              <div className="scorm-micro text-[9px] uppercase font-semibold mb-2">Learner sign-in for this campaign</div>
+              <div className="grid gap-2">
+                {authCards.map((option) => {
+                  const selected = authMode === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      disabled={!option.enabled}
+                      onClick={() => option.enabled && setAuthMode(option.id)}
+                      className="w-full rounded-xl border px-3.5 py-3 text-left transition disabled:opacity-45 disabled:cursor-not-allowed"
+                      style={{
+                        borderColor: selected ? 'var(--scorm-accent-strong)' : 'var(--scorm-line)',
+                        background: selected ? 'rgba(79,201,191,.08)' : 'var(--scorm-surface-soft)'
+                      }}
+                    >
+                      <span className="flex items-start gap-3">
+                        <span className="w-8 h-8 rounded-lg border grid place-items-center shrink-0" style={{ borderColor: 'var(--scorm-line)' }}>{option.icon}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center justify-between gap-3"><span className="text-xs font-semibold">{option.title}</span><span className="text-[9px] uppercase font-semibold" style={{ color: selected ? 'var(--scorm-accent-strong)' : 'var(--scorm-muted)' }}>{selected ? 'Selected' : option.enabled ? 'Available' : 'Not configured'}</span></span>
+                          <span className="block text-[10px] leading-relaxed mt-1" style={{ color: 'var(--scorm-muted)' }}>{option.description}</span>
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="grid sm:grid-cols-2 gap-3">
               <label><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Due date · optional</span><div className="relative"><CalendarDays size={14} className="absolute left-3 top-1/2 -translate-y-1/2" /><input type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-sm" /></div></label>
               <label className="flex items-end"><span className="campaign-required-toggle w-full min-h-[42px] flex items-center gap-2 rounded-xl border px-3" style={{ borderColor: 'var(--scorm-line)' }}><input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} /><span className="text-sm">Required courses</span></span></label>
@@ -263,7 +372,10 @@ export default function Assignments() {
         </div>
 
         <div className="p-4 md:p-5 border-t flex flex-col lg:flex-row lg:items-center justify-between gap-3" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
-          <div className="text-[11px] leading-relaxed flex gap-2" style={{ color: 'var(--scorm-muted)' }}><ShieldCheck size={14} className="shrink-0 mt-0.5" />Starting a campaign requires Google or Microsoft learner SSO to be enabled in <Link to="/scorm/learner-access" className="font-semibold underline">Authentication & SSO</Link>.</div>
+          <div className="text-[11px] leading-relaxed flex gap-2" style={{ color: 'var(--scorm-muted)' }}>
+            <ShieldCheck size={14} className="shrink-0 mt-0.5" />
+            <span>{authMode === 'email_code' ? 'No tenant SSO is required. Learners use their CSV email plus a unique campaign access code.' : <>{authLabel(authMode)} will be required for this campaign. Provider settings are managed in <Link to="/scorm/learner-access" className="font-semibold underline">Authentication & SSO</Link>.</>}</span>
+          </div>
           <button type="button" disabled={busy || !name.trim() || !csvPreview?.validLearners || !selectedCourses.length} onClick={createCampaign} className="scorm-button-primary px-5 py-3 text-xs font-semibold disabled:opacity-50 inline-flex items-center justify-center gap-2"><CheckCircle2 size={15} />{busy ? 'Creating…' : 'Create draft campaign'}</button>
         </div>
       </section>
@@ -276,7 +388,7 @@ export default function Assignments() {
           <div className="divide-y" style={{ borderColor: 'var(--scorm-line)' }}>
             {campaigns.map((campaign) => (
               <div key={campaign.id} className="campaign-list-row p-4 md:p-5 grid xl:grid-cols-[1.2fr_.55fr_.55fr_.7fr_auto] gap-4 xl:items-center">
-                <div className="min-w-0"><div className="flex items-center gap-2"><div className="text-sm font-semibold truncate">{campaign.name}</div><span className="px-2 py-1 rounded-full text-[8px] uppercase tracking-[.08em] font-bold border" style={{ borderColor: 'var(--scorm-line)' }}>{statusLabel(campaign.status)}</span></div><div className="text-[11px] mt-1" style={{ color: 'var(--scorm-muted)' }}>Created {formatDate(campaign.createdAt)} · {formatDate(campaign.dueAt)}</div></div>
+                <div className="min-w-0"><div className="flex items-center gap-2"><div className="text-sm font-semibold truncate">{campaign.name}</div><span className="px-2 py-1 rounded-full text-[8px] uppercase tracking-[.08em] font-bold border" style={{ borderColor: 'var(--scorm-line)' }}>{statusLabel(campaign.status)}</span></div><div className="text-[11px] mt-1" style={{ color: 'var(--scorm-muted)' }}>Created {formatDate(campaign.createdAt)} · {formatDate(campaign.dueAt)} · {campaign.authModeLabel || authLabel(campaign.authMode)}</div></div>
                 <div><div className="scorm-micro text-[8px] uppercase">Learners</div><div className="text-sm font-semibold mt-1 flex items-center gap-1.5"><Users size={13} />{campaign.learnerCount}</div></div>
                 <div><div className="scorm-micro text-[8px] uppercase">Courses</div><div className="text-sm font-semibold mt-1 flex items-center gap-1.5"><BookOpen size={13} />{campaign.courseCount}</div></div>
                 <div><div className="flex items-center justify-between text-[9px] mb-1"><span className="scorm-micro uppercase">Completion</span><span>{campaign.completionPercent}%</span></div><div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--scorm-line)' }}><div className="h-full rounded-full" style={{ width: `${campaign.completionPercent}%`, background: '#4FC9BF' }} /></div><div className="text-[9px] mt-1" style={{ color: 'var(--scorm-muted)' }}>{campaign.completedCount}/{campaign.assignmentCount} instances completed</div></div>
@@ -284,6 +396,7 @@ export default function Assignments() {
                   <button type="button" onClick={() => viewCampaign(campaign.id)} className="scorm-button-secondary w-10 h-10 grid place-items-center" title="View campaign"><Eye size={14} /></button>
                   <Link to={`/scorm/campaigns/${campaign.id}/analytics`} className="scorm-button-secondary h-10 px-3 inline-flex items-center gap-2 text-xs font-semibold"><BarChart3 size={13} /> Analytics</Link>
                   {campaign.status === 'draft' ? <button type="button" disabled={busy} onClick={() => startCampaign(campaign)} className="scorm-button-primary h-10 px-3 inline-flex items-center gap-2 text-xs font-semibold"><Play size={13} /> Start</button> : <button type="button" onClick={() => copyPortal(campaign)} className="scorm-button-primary h-10 px-3 inline-flex items-center gap-2 text-xs font-semibold"><Copy size={13} /> Portal</button>}
+                  {campaign.authMode === 'email_code' && <button type="button" disabled={busy} onClick={() => downloadAccessList(campaign)} className="scorm-button-secondary h-10 px-3 inline-flex items-center gap-2 text-xs font-semibold" title="Download learner access list"><KeyRound size={13} /> Codes</button>}
                   {campaign.status === 'draft' && <button type="button" disabled={busy} onClick={() => deleteCampaign(campaign)} className="scorm-button-secondary w-10 h-10 grid place-items-center" title="Delete draft"><Trash2 size={14} /></button>}
                 </div>
               </div>
@@ -295,9 +408,10 @@ export default function Assignments() {
       {selectedCampaign && (
         <section className="scorm-panel rounded-2xl border overflow-hidden mt-7">
           <div className="p-4 md:p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--scorm-line)' }}>
-            <div><div className="scorm-micro text-[9px] uppercase">Campaign detail</div><h2 className="font-semibold mt-1">{campaignDetail?.name || 'Loading…'}</h2></div>
+            <div><div className="scorm-micro text-[9px] uppercase">Campaign detail</div><h2 className="font-semibold mt-1">{campaignDetail?.name || 'Loading…'}</h2>{campaignDetail && <div className="text-[10px] mt-1" style={{ color: 'var(--scorm-muted)' }}>{campaignDetail.authModeLabel || authLabel(campaignDetail.authMode)}</div>}</div>
             {campaignDetail && <div className="flex flex-wrap gap-2">
               <Link to={`/scorm/campaigns/${campaignDetail.id}/analytics`} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center gap-2"><BarChart3 size={13} /> View analytics</Link>
+              {campaignDetail.authMode === 'email_code' && <button type="button" onClick={() => downloadAccessList(campaignDetail)} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center gap-2"><Download size={13} /> Download access list</button>}
               {campaignDetail.status === 'active' && <button type="button" onClick={() => copyPortal(campaignDetail)} className="scorm-button-primary px-4 py-2.5 text-xs font-semibold inline-flex items-center gap-2"><Copy size={13} /> Copy learner portal</button>}
             </div>}
           </div>
@@ -314,7 +428,7 @@ export default function Assignments() {
                 <div className="campaign-detail-list rounded-xl border divide-y" style={{ borderColor: 'var(--scorm-line)' }}>
                   {(campaignDetail.courses || []).map((course) => <div key={course.id} className="campaign-detail-row px-3.5 py-3 flex items-center gap-3"><BookOpen size={14} /><span className="text-xs font-semibold">{course.title}</span></div>)}
                 </div>
-                {campaignDetail.status === 'active' && <div className="campaign-soft-card mt-4 rounded-xl border p-4" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}><div className="scorm-micro text-[8px] uppercase">Learner portal</div><div className="text-[11px] break-all mt-2" style={{ color: 'var(--scorm-muted)' }}>{`${window.location.origin}${campaignDetail.portalPath}`}</div></div>}
+                {campaignDetail.status === 'active' && <div className="campaign-soft-card mt-4 rounded-xl border p-4" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}><div className="scorm-micro text-[8px] uppercase">Learner portal</div><div className="text-[11px] break-all mt-2" style={{ color: 'var(--scorm-muted)' }}>{`${window.location.origin}${campaignDetail.portalPath}`}</div>{campaignDetail.authMode === 'email_code' && <div className="text-[10px] leading-relaxed mt-2" style={{ color: 'var(--scorm-muted)' }}>Share this link with learners and provide each person only their own access code from the downloaded access list.</div>}</div>}
               </div>
             </div>
           )}
