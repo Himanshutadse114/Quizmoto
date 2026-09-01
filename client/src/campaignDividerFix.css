@@ -1,0 +1,5 @@
+/* Remove the bright Tailwind divide-y separator from the campaign rows in dark mode. */
+html body .scorm-editorial .scorm-campaigns-page .divide-y > .campaign-list-row:not([hidden]) ~ .campaign-list-row:not([hidden]) {
+  border-top-color: transparent !important;
+  border-bottom-color: transparent !important;
+}
