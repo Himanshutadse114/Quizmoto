@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LockKeyhole, Mail, UserRound, Sun, Moon } from 'lucide-react';
+import { LockKeyhole, Mail, UserRound, Sun, Moon, ShieldCheck, KeyRound } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -55,21 +55,33 @@ function GoogleButton({ width, onSuccess, onError }) {
   );
 }
 
+function messageFromError(err, fallback) {
+  return err?.response?.data?.message || err?.message || fallback;
+}
+
 export default function ScormAuth() {
   const navigate = useNavigate();
   const {
     loginScorm,
     loginScormWithGoogle,
+    requestMailOtp,
+    verifyMailOtp,
     registerScorm,
+    resetScormPassword,
     prepareScormLogin
   } = useAuth();
+
   const [mode, setMode] = useState('login');
   const [username, setUsername] = useState('');
   const [identifier, setIdentifier] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [verificationToken, setVerificationToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [theme, setTheme] = useState(readScormPlatformTheme);
   const [googleWidth, setGoogleWidth] = useState(360);
 
@@ -95,22 +107,122 @@ export default function ScormAuth() {
     navigate(result.quizmotoOnly ? '/scorm/quizmoto' : '/scorm', { replace: true });
   };
 
+  const switchMode = (nextMode) => {
+    setMode(nextMode);
+    setError('');
+    setNotice('');
+    setOtp('');
+    setVerificationToken('');
+    setConfirmPassword('');
+    if (nextMode === 'login') setPassword('');
+  };
+
+  const submitLogin = async () => {
+    finishPlatformLogin(await loginScorm({ identifier: identifier.trim(), password }));
+  };
+
+  const requestRegistrationOtp = async () => {
+    if (username.trim().length < 2) throw new Error('Enter your name before continuing.');
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) throw new Error('Enter a valid email address.');
+    if (password.length < 8) throw new Error('Password must be at least 8 characters.');
+    if (password !== confirmPassword) throw new Error('Passwords do not match.');
+
+    await requestMailOtp({
+      email: email.trim().toLowerCase(),
+      purpose: 'email_verification',
+      name: username.trim()
+    });
+    setOtp('');
+    setNotice(`We sent a 6-digit verification code to ${email.trim().toLowerCase()}.`);
+    setMode('register-otp');
+  };
+
+  const completeRegistration = async () => {
+    const verified = await verifyMailOtp({
+      email: email.trim().toLowerCase(),
+      purpose: 'email_verification',
+      code: otp
+    });
+    if (!verified?.verificationToken) throw new Error('Email verification failed. Request a new code.');
+
+    const result = await registerScorm({
+      username: username.trim(),
+      email: email.trim().toLowerCase(),
+      password,
+      verificationToken: verified.verificationToken
+    });
+    finishPlatformLogin(result);
+  };
+
+  const requestPasswordResetOtp = async () => {
+    const resetEmail = email.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(resetEmail)) throw new Error('Enter a valid email address.');
+    await requestMailOtp({ email: resetEmail, purpose: 'password_reset' });
+    setOtp('');
+    setNotice(`We sent a 6-digit password reset code to ${resetEmail}.`);
+    setMode('forgot-otp');
+  };
+
+  const verifyPasswordResetOtp = async () => {
+    const verified = await verifyMailOtp({
+      email: email.trim().toLowerCase(),
+      purpose: 'password_reset',
+      code: otp
+    });
+    if (!verified?.verificationToken) throw new Error('Verification failed. Request a new code.');
+    setVerificationToken(verified.verificationToken);
+    setPassword('');
+    setConfirmPassword('');
+    setNotice('Email verified. Choose a new password.');
+    setMode('reset-password');
+  };
+
+  const completePasswordReset = async () => {
+    if (password.length < 8) throw new Error('Password must be at least 8 characters.');
+    if (password !== confirmPassword) throw new Error('Passwords do not match.');
+    const result = await resetScormPassword({
+      email: email.trim().toLowerCase(),
+      newPassword: password,
+      verificationToken
+    });
+    setIdentifier(email.trim().toLowerCase());
+    setPassword('');
+    setConfirmPassword('');
+    setNotice(result?.message || 'Password reset complete. Sign in with your new password.');
+    setMode('login');
+  };
+
   const submit = async (event) => {
     event.preventDefault();
     setBusy(true);
     setError('');
     try {
-      if (mode === 'login') {
-        finishPlatformLogin(await loginScorm({ identifier: identifier.trim(), password }));
-      } else {
-        finishPlatformLogin(await registerScorm({
-          username: username.trim(),
-          email: email.trim().toLowerCase(),
-          password
-        }));
-      }
+      if (mode === 'login') await submitLogin();
+      else if (mode === 'register') await requestRegistrationOtp();
+      else if (mode === 'register-otp') await completeRegistration();
+      else if (mode === 'forgot') await requestPasswordResetOtp();
+      else if (mode === 'forgot-otp') await verifyPasswordResetOtp();
+      else if (mode === 'reset-password') await completePasswordReset();
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Authentication failed.');
+      setError(messageFromError(err, 'Authentication failed.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resendOtp = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      if (mode === 'register-otp') {
+        await requestMailOtp({ email: email.trim().toLowerCase(), purpose: 'email_verification', name: username.trim() });
+      } else {
+        await requestMailOtp({ email: email.trim().toLowerCase(), purpose: 'password_reset' });
+      }
+      setNotice(`A new verification code was sent to ${email.trim().toLowerCase()}.`);
+      setOtp('');
+    } catch (err) {
+      setError(messageFromError(err, 'Could not resend the verification code.'));
     } finally {
       setBusy(false);
     }
@@ -126,16 +238,44 @@ export default function ScormAuth() {
     try {
       finishPlatformLogin(await loginScormWithGoogle(credentialResponse.credential));
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Google Sign-In failed.');
+      setError(messageFromError(err, 'Google Sign-In failed.'));
     } finally {
       setBusy(false);
     }
   };
 
   const isLogin = mode === 'login';
+  const isRegister = mode === 'register';
+  const isOtp = mode === 'register-otp' || mode === 'forgot-otp';
+  const isForgot = mode === 'forgot';
+  const isResetPassword = mode === 'reset-password';
   const isLight = theme === 'light';
   const ThemeIcon = isLight ? Moon : Sun;
   const logoSrc = isLight ? '/branding/lmsgen-logo-light.png' : '/branding/lmsgen-logo-dark.png';
+
+  const title = isLogin
+    ? 'Sign in'
+    : isRegister
+      ? 'Create account'
+      : mode === 'register-otp'
+        ? 'Verify your email'
+        : isForgot
+          ? 'Forgot password'
+          : mode === 'forgot-otp'
+            ? 'Verify reset code'
+            : 'Set new password';
+
+  const description = isLogin
+    ? 'Use your account or sign in with the Google or Microsoft identity assigned to your LMSGEN tenant.'
+    : isRegister
+      ? 'Create your account and verify your email before registration is completed.'
+      : mode === 'register-otp'
+        ? `Enter the 6-digit code sent to ${email || 'your email address'}.`
+        : isForgot
+          ? 'Enter the email address linked to your LMSGEN account. We will send a password reset code.'
+          : mode === 'forgot-otp'
+            ? `Enter the 6-digit code sent to ${email || 'your email address'}.`
+            : 'Choose a new password for your LMSGEN account.';
 
   return (
     <div className={`scorm-auth-workbench scorm-theme-${theme} sa-login-only`}>
@@ -162,17 +302,18 @@ export default function ScormAuth() {
           className="sa-card sa-card-login"
         >
           <section className="sa-form-panel">
-            <h2 className="sa-form-title">{isLogin ? 'Sign in' : 'Create account'}</h2>
-            <p className="mt-2 mb-5 text-xs opacity-70 leading-relaxed">
-              {isLogin
-                ? 'Use your account or sign in with the Google or Microsoft identity assigned to your LMSGEN tenant.'
-                : 'Create an account. The Super Admin must assign it to a tenant before LMSGEN access is available.'}
-            </p>
+            <h2 className="sa-form-title">{title}</h2>
+            <p className="mt-2 mb-5 text-xs opacity-70 leading-relaxed">{description}</p>
 
             {error && <div className="sa-error">{error}</div>}
+            {notice && !error && (
+              <div className="mb-4 rounded-[8px] border px-3 py-2 text-[11px] leading-relaxed" style={{ borderColor: 'rgba(71,199,193,.35)', background: 'rgba(71,199,193,.08)' }}>
+                {notice}
+              </div>
+            )}
 
             <form onSubmit={submit} className="sa-form">
-              {!isLogin && (
+              {isRegister && (
                 <label>
                   <span className="sa-label">Name</span>
                   <div className="sa-input-wrap">
@@ -182,34 +323,113 @@ export default function ScormAuth() {
                 </label>
               )}
 
-              <label>
-                <span className="sa-label">Email address</span>
-                <div className="sa-input-wrap">
-                  <Mail size={15} />
-                  <input
-                    type={isLogin ? 'text' : 'email'}
-                    value={isLogin ? identifier : email}
-                    onChange={(event) => isLogin ? setIdentifier(event.target.value) : setEmail(event.target.value)}
-                    required
-                    placeholder="you@company.com"
-                    className="sa-input"
-                    autoComplete={isLogin ? 'username' : 'email'}
-                  />
-                </div>
-              </label>
+              {(isLogin || isRegister || isForgot) && (
+                <label>
+                  <span className="sa-label">Email address</span>
+                  <div className="sa-input-wrap">
+                    <Mail size={15} />
+                    <input
+                      type={isLogin ? 'text' : 'email'}
+                      value={isLogin ? identifier : email}
+                      onChange={(event) => isLogin ? setIdentifier(event.target.value) : setEmail(event.target.value)}
+                      required
+                      placeholder="you@company.com"
+                      className="sa-input"
+                      autoComplete={isLogin ? 'username' : 'email'}
+                    />
+                  </div>
+                </label>
+              )}
 
-              <label>
-                <span className="sa-label">Password</span>
-                <div className="sa-input-wrap">
-                  <LockKeyhole size={15} />
-                  <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} placeholder="Password" className="sa-input" autoComplete={isLogin ? 'current-password' : 'new-password'} />
+              {(isLogin || isRegister || isResetPassword) && (
+                <label>
+                  <span className="sa-label">{isResetPassword ? 'New password' : 'Password'}</span>
+                  <div className="sa-input-wrap">
+                    <LockKeyhole size={15} />
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      required
+                      minLength={8}
+                      placeholder={isResetPassword ? 'New password' : 'Password'}
+                      className="sa-input"
+                      autoComplete={isLogin ? 'current-password' : 'new-password'}
+                    />
+                  </div>
+                </label>
+              )}
+
+              {(isRegister || isResetPassword) && (
+                <label>
+                  <span className="sa-label">Confirm password</span>
+                  <div className="sa-input-wrap">
+                    <KeyRound size={15} />
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      required
+                      minLength={8}
+                      placeholder="Confirm password"
+                      className="sa-input"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </label>
+              )}
+
+              {isOtp && (
+                <label>
+                  <span className="sa-label">Verification code</span>
+                  <div className="sa-input-wrap">
+                    <ShieldCheck size={15} />
+                    <input
+                      inputMode="numeric"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      value={otp}
+                      onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                      required
+                      placeholder="6-digit code"
+                      className="sa-input"
+                      autoComplete="one-time-code"
+                    />
+                  </div>
+                </label>
+              )}
+
+              {isLogin && (
+                <div className="-mt-1 text-right">
+                  <button type="button" className="text-[11px] underline opacity-75 hover:opacity-100" onClick={() => { setEmail(identifier.includes('@') ? identifier.trim().toLowerCase() : ''); switchMode('forgot'); }}>
+                    Forgot password?
+                  </button>
                 </div>
-              </label>
+              )}
 
               <button type="submit" disabled={busy} className="sa-submit">
-                {busy ? 'Please wait…' : isLogin ? 'Sign in' : 'Create account'}
+                {busy
+                  ? 'Please wait…'
+                  : isLogin
+                    ? 'Sign in'
+                    : isRegister
+                      ? 'Send verification code'
+                      : mode === 'register-otp'
+                        ? 'Verify & create account'
+                        : isForgot
+                          ? 'Send reset code'
+                          : mode === 'forgot-otp'
+                            ? 'Verify code'
+                            : 'Reset password'}
               </button>
             </form>
+
+            {isOtp && (
+              <div className="mt-4 text-center text-[11px] opacity-75">
+                Didn&apos;t receive the code?{' '}
+                <button type="button" disabled={busy} onClick={resendOtp} className="underline font-semibold disabled:opacity-50">Resend code</button>
+              </div>
+            )}
 
             {isLogin && (
               <>
@@ -240,10 +460,21 @@ export default function ScormAuth() {
             )}
 
             <div className="mt-5 text-center text-xs opacity-75">
-              {isLogin ? 'Need an account?' : 'Already have an account?'}{' '}
-              <button type="button" className="underline font-semibold" onClick={() => { setMode(isLogin ? 'register' : 'login'); setError(''); setPassword(''); }}>
-                {isLogin ? 'Register' : 'Sign in'}
-              </button>
+              {isLogin ? (
+                <>
+                  Need an account?{' '}
+                  <button type="button" className="underline font-semibold" onClick={() => switchMode('register')}>Register</button>
+                </>
+              ) : isRegister ? (
+                <>
+                  Already have an account?{' '}
+                  <button type="button" className="underline font-semibold" onClick={() => switchMode('login')}>Sign in</button>
+                </>
+              ) : (
+                <button type="button" className="underline font-semibold" onClick={() => switchMode(mode.startsWith('register') ? 'register' : 'login')}>
+                  {mode.startsWith('register') ? 'Back to registration' : 'Back to sign in'}
+                </button>
+              )}
             </div>
           </section>
         </motion.main>
