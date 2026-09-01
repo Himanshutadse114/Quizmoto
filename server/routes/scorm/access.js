@@ -24,6 +24,10 @@ const {
     updateEntitlement,
     getUsageForEmail
 } = require('../../services/scorm/ScormEntitlementService');
+const {
+    sendTenantAdminEmail,
+    sendAccessApprovedEmail
+} = require('../../services/mail/TransactionalMailService');
 
 function requireSuperAdmin(req, res, next) {
     if (req.scormRole !== 'super_admin') {
@@ -109,7 +113,15 @@ router.post('/tenants', auth, requireSuperAdmin, async (req, res) => {
             actorUserId: req.authenticatedUserId || req.userId,
             actorEmail: req.scormEmail
         });
-        res.status(201).json({ tenant });
+        const mail = tenant?.admin?.email
+            ? await sendTenantAdminEmail({
+                adminEmail: tenant.admin.email,
+                adminName: tenant.admin.displayName,
+                workspaceName: tenant.name,
+                changed: false
+            })
+            : { sent: 0, failed: 0, skipped: 1 };
+        res.status(201).json({ tenant, mail });
     } catch (err) {
         console.error('[scorm-access] tenant create failed', err);
         res.status(err.status || 500).json({ message: err.message || 'Could not create tenant.', code: err.code });
@@ -140,7 +152,15 @@ router.patch('/tenants/:workspaceId/admin', auth, requireSuperAdmin, async (req,
             actorUserId: req.authenticatedUserId || req.userId,
             actorEmail: req.scormEmail
         });
-        res.json({ tenant });
+        const mail = tenant?.admin?.email
+            ? await sendTenantAdminEmail({
+                adminEmail: tenant.admin.email,
+                adminName: tenant.admin.displayName,
+                workspaceName: tenant.name,
+                changed: true
+            })
+            : { sent: 0, failed: 0, skipped: 1 };
+        res.json({ tenant, mail });
     } catch (err) {
         console.error('[scorm-access] tenant admin change failed', err);
         res.status(err.status || 500).json({ message: err.message || 'Could not change Tenant Admin.', code: err.code });
@@ -184,10 +204,15 @@ router.post('/requests/:id/approve', auth, requireSuperAdmin, async (req, res) =
         });
         if (!result.ok && result.reason === 'not_found') return res.status(404).json({ message: 'Pending LMSGEN registration not found.' });
         if (!result.ok && result.reason === 'super_admin') return res.status(400).json({ message: 'The LMSGEN Super Admin is already authorised.' });
+        const mail = await sendAccessApprovedEmail({
+            email: result.request.email,
+            name: result.request.username || null
+        });
         res.json({
             approved: true,
             grant: await serializeGrant(result.grant),
             request: serializeRequest(result.request),
+            mail,
             warning: 'Account approval does not create a tenant. Assign this email through Tenant Management before LMSGEN access is available.'
         });
     } catch (err) {
