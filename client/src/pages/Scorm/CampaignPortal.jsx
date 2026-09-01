@@ -35,6 +35,13 @@ function formatDate(value) {
   return date.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function courseProgress(course) {
+  if (course?.status === 'completed') return 100;
+  const value = Number(course?.progressPercent);
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
 function GoogleButton({ clientId, onSuccess, onError }) {
   return (
     <GoogleOAuthProvider clientId={clientId}>
@@ -232,7 +239,9 @@ export default function CampaignPortal() {
 
   const courses = dashboard?.courses || [];
   const completed = courses.filter((course) => course.status === 'completed').length;
-  const progress = courses.length ? Math.round((completed / courses.length) * 100) : 0;
+  const progress = courses.length
+    ? Math.round(courses.reduce((total, course) => total + courseProgress(course), 0) / courses.length)
+    : 0;
   const selectedSsoUnavailable = !dashboard && config && !config.emailEnabled && !config.googleEnabled && !config.microsoftEnabled;
 
   return (
@@ -294,11 +303,13 @@ export default function CampaignPortal() {
             <div className="mt-5 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {courses.map((course) => {
                 const complete = course.status === 'completed';
+                const currentProgress = courseProgress(course);
                 return (
                   <article key={course.registrationId} className="bg-white border border-[#dce8e5] rounded-2xl p-5 flex flex-col min-h-[265px] shadow-[0_8px_30px_rgba(16,35,33,.04)]">
                     <div className="flex items-start justify-between gap-3"><div className={`w-10 h-10 rounded-xl grid place-items-center ${complete ? 'bg-[#ddf6ed] text-[#187a59]' : 'bg-[#e3f5f3] text-[#117f77]'}`}>{complete ? <CheckCircle2 size={18} /> : <BookOpen size={18} />}</div><span className="px-2.5 py-1 rounded-full text-[9px] uppercase tracking-[.08em] font-bold bg-[#eff4f3] text-[#647a76]">{statusLabel(course.status)}</span></div>
                     <h3 className="text-lg font-semibold tracking-[-.02em] mt-5 leading-snug">{course.title}</h3>
                     <p className="text-xs leading-relaxed text-[#6d817e] mt-2 line-clamp-3">{course.description || 'Assigned learning course'}</p>
+                    <div className="mt-4"><div className="flex items-center justify-between text-[10px] text-[#647a76] mb-1.5"><span>Course progress</span><strong>{currentProgress}%</strong></div><div className="h-1.5 rounded-full bg-[#e5efed] overflow-hidden"><div className="h-full bg-[#45c5bc] rounded-full transition-[width]" style={{ width: `${currentProgress}%` }} /></div></div>
                     <div className="mt-auto pt-5 space-y-2 text-[11px] text-[#647a76]">
                       {course.dueAt && <div className="flex items-center gap-2"><CalendarDays size={13} /> Due {formatDate(course.dueAt)}</div>}
                       {course.lastActivityAt && <div className="flex items-center gap-2"><Clock3 size={13} /> Last activity {formatDate(course.lastActivityAt)}</div>}
