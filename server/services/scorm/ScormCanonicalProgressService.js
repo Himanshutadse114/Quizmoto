@@ -1,5 +1,6 @@
 const LearningState = require('./ScormLearningStateService');
-const { deriveProgress } = require('./ScormProgressService');
+const RuntimeSnapshots = require('./ScormRuntimeSnapshotReader');
+const { deriveProgress, liveInteractionScore } = require('./ScormProgressService');
 
 const FINISHED_STATUSES = new Set(['completed', 'passed', 'failed']);
 const EMPTY_STATUSES = new Set(['', 'unknown', 'not attempted', 'not_attempted']);
@@ -26,6 +27,55 @@ function stateValues(state) {
         : {};
 }
 
+function snapshotToLearningState(snapshot) {
+    if (!snapshot) return null;
+    let values = {};
+    try {
+        values = snapshot.rawMapJson ? JSON.parse(snapshot.rawMapJson) : {};
+    } catch (_) {
+        values = {};
+    }
+    if (!values || typeof values !== 'object' || Array.isArray(values)) values = {};
+    return {
+        values,
+        lessonStatus: snapshot.lessonStatus || null,
+        scoreRaw: snapshot.scoreRaw != null ? Number(snapshot.scoreRaw) : null,
+        lessonLocation: snapshot.lessonLocation || null,
+        suspendData: snapshot.suspendData || '',
+        totalTime: snapshot.totalTime || null,
+        progressPercent: null,
+        sequence: Number(snapshot.stateVersion || 0),
+        clientRevision: 0,
+        updatedAt: snapshot.updatedAt || null
+    };
+}
+
+function mergeCanonicalState(v2, snapshot) {
+    const fromSnap = snapshotToLearningState(snapshot);
+    if (!v2) return fromSnap;
+    if (!fromSnap) return v2;
+
+    return {
+        ...fromSnap,
+        ...v2,
+        values: { ...(fromSnap.values || {}), ...(v2.values || {}) },
+        lessonStatus: (!EMPTY_STATUSES.has(cleanStatus(v2.lessonStatus))
+            ? v2.lessonStatus
+            : (fromSnap.lessonStatus || v2.lessonStatus)),
+        scoreRaw: v2.scoreRaw != null ? v2.scoreRaw : fromSnap.scoreRaw,
+        lessonLocation: v2.lessonLocation || fromSnap.lessonLocation,
+        suspendData: (v2.suspendData && String(v2.suspendData).length)
+            ? v2.suspendData
+            : fromSnap.suspendData,
+        totalTime: (v2.totalTime && v2.totalTime !== '00:00:00.00')
+            ? v2.totalTime
+            : (fromSnap.totalTime || v2.totalTime),
+        progressPercent: v2.progressPercent != null ? v2.progressPercent : fromSnap.progressPercent,
+        sequence: Math.max(Number(v2.sequence || 0), Number(fromSnap.sequence || 0)),
+        updatedAt: v2.updatedAt || fromSnap.updatedAt
+    };
+}
+
 function effectiveLessonStatus(state, fallbackStatus = null) {
     const values = stateValues(state);
     const successStatus = cleanStatus(values['cmi.success_status']);
@@ -34,10 +84,6 @@ function effectiveLessonStatus(state, fallbackStatus = null) {
     const derivedStatus = cleanStatus(state?.lessonStatus);
     const fallback = cleanStatus(fallbackStatus);
 
-    // Completion must win over the player's cross-standard placeholder defaults.
-    // The player exposes both SCORM 1.2 and 2004 APIs, so a valid 2004
-    // cmi.completion_status can otherwise be masked by the untouched
-    // cmi.core.lesson_status="not attempted" default (and vice versa).
     if (FINISHED_STATUSES.has(successStatus)) return successStatus;
     if (FINISHED_STATUSES.has(scorm12Status)) return scorm12Status;
     if (FINISHED_STATUSES.has(completionStatus)) return completionStatus;
@@ -108,6 +154,21 @@ function hasCanonicalActivity(state, progressPercent = null, lessonStatus = null
     return status && !EMPTY_STATUSES.has(status);
 }
 
+function resolvedScore(state, registration, packageRow) {
+    if (state?.scoreRaw != null && Number(state.scoreRaw) !== 0) return Number(state.scoreRaw);
+    const values = stateValues(state);
+    const explicit = finiteNumber(values['cmi.core.score.raw'] ?? values['cmi.score.raw']);
+    if (explicit != null && (values['cmi.core.score.raw'] != null || values['cmi.score.raw'] != null)) {
+        return explicit;
+    }
+    const fromInteractions = liveInteractionScore(state, packageRow);
+    if (fromInteractions != null) return fromInteractions;
+    if (state?.scoreRaw != null) return Number(state.scoreRaw);
+    if (registration?.lastScoreRaw != null) return Number(registration.lastScoreRaw);
+    if (registration?.score != null) return Number(registration.score);
+    return null;
+}
+
 function registrationProgress(registration, state = null) {
     const fallbackLesson = registration?.lastLessonStatus || registration?.lessonStatus || null;
     const lessonStatus = effectiveLessonStatus(state, fallbackLesson);
@@ -128,11 +189,7 @@ function registrationProgress(registration, state = null) {
         status: completed ? 'completed' : started ? 'in_progress' : 'not_started',
         lessonStatus,
         progressPercent: completed ? 100 : (progressPercent ?? 0),
-        score: state?.scoreRaw != null
-            ? Number(state.scoreRaw)
-            : (registration?.lastScoreRaw != null
-                ? Number(registration.lastScoreRaw)
-                : (registration?.score != null ? Number(registration.score) : null)),
+        score: resolvedScore(state, registration, packageRowFor(registration)),
         totalTime: state?.totalTime || registration?.lastTotalTime || registration?.totalTime || null,
         lastActivityAt: state?.updatedAt || registration?.lastCommitAt || registration?.lastActivityAt || null
     };
@@ -144,16 +201,34 @@ async function loadCanonicalStates(registrations) {
         .filter(Boolean)
         .map(String)));
     if (!ids.length) return new Map();
+
+    let states = new Map();
     try {
-        return await LearningState.listByRegistrationIds(ids);
+        states = await LearningState.listByRegistrationIds(ids);
     } catch (err) {
         console.error('[scorm-progress] canonical state read failed; using registration projection', {
             registrations: ids.length,
             error: err?.message || String(err),
             dbCode: err?.original?.code || err?.parent?.code || null
         });
-        return new Map();
+        states = new Map();
     }
+
+    let snapshots = new Map();
+    try {
+        snapshots = await RuntimeSnapshots.listByRegistrationIds(ids);
+    } catch (err) {
+        console.warn('[scorm-progress] runtime snapshot fallback skipped', {
+            registrations: ids.length,
+            error: err?.message || String(err)
+        });
+    }
+
+    const merged = new Map();
+    for (const id of ids) {
+        merged.set(id, mergeCanonicalState(states.get(id) || null, snapshots.get(id) || null));
+    }
+    return merged;
 }
 
 function enrichCourse(course, state) {
@@ -201,12 +276,27 @@ async function enrichDashboardCourses(dashboard) {
     };
 }
 
+async function attachCanonicalState(registrations) {
+    const list = Array.isArray(registrations) ? registrations : [];
+    if (!list.length) return list;
+    const states = await loadCanonicalStates(list);
+    for (const reg of list) {
+        const state = states.get(String(reg.id || reg.registrationId || '')) || null;
+        if (typeof reg.setDataValue === 'function') reg.setDataValue('learningStateV2', state);
+        else reg.learningStateV2 = state;
+    }
+    return list;
+}
+
 module.exports = {
     FINISHED_STATUSES,
     effectiveLessonStatus,
     effectiveProgressPercent,
     registrationProgress,
     loadCanonicalStates,
+    mergeCanonicalState,
+    snapshotToLearningState,
+    attachCanonicalState,
     enrichCourse,
     enrichDashboardCourses,
     summarizeProgressRows
