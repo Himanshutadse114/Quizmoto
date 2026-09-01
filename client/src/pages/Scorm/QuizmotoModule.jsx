@@ -120,6 +120,12 @@ export default function QuizmotoModule() {
 
       {message && <div className="rounded-xl border border-[#29405f] bg-[#081321] px-4 py-3 mb-5 text-xs text-[#cbd5e1] flex items-center justify-between gap-3"><span>{message}</span><button type="button" onClick={() => setMessage('')} className="font-semibold text-[#60a5fa]">Dismiss</button></div>}
 
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <div className="scorm-metric-card"><div className="flex items-start justify-between"><div><div className="scorm-metric-value">{quizzes.length}</div><div className="scorm-metric-label">Quizzes</div></div><div className="scorm-metric-icon"><BookOpenCheck size={17} /></div></div></div>
+        <div className="scorm-metric-card"><div className="flex items-start justify-between"><div><div className="scorm-metric-value">{totalQuestions}</div><div className="scorm-metric-label">Questions ready</div></div><div className="scorm-metric-icon"><BarChart3 size={17} /></div></div></div>
+        <div className="scorm-metric-card"><div className="flex items-start justify-between"><div><div className="scorm-metric-value">{activeSessions.length}</div><div className="scorm-metric-label">Live sessions</div></div><div className="scorm-metric-icon"><Radio size={17} /></div></div></div>
+      </div>
+
       <section className="scorm-panel overflow-hidden mb-6">
         <div className="scorm-panel-header flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div><div className="scorm-eyebrow">Quiz management</div><h2 className="text-[18px] mt-1">Quiz library</h2></div>
@@ -147,12 +153,6 @@ export default function QuizmotoModule() {
       </section>
 
       <FreeGamesSection onLaunch={() => setGeometryOpen(true)} />
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-        <div className="scorm-metric-card"><div className="flex items-start justify-between"><div><div className="scorm-metric-value">{quizzes.length}</div><div className="scorm-metric-label">Quizzes</div></div><div className="scorm-metric-icon"><BookOpenCheck size={17} /></div></div></div>
-        <div className="scorm-metric-card"><div className="flex items-start justify-between"><div><div className="scorm-metric-value">{totalQuestions}</div><div className="scorm-metric-label">Questions ready</div></div><div className="scorm-metric-icon"><BarChart3 size={17} /></div></div></div>
-        <div className="scorm-metric-card"><div className="flex items-start justify-between"><div><div className="scorm-metric-value">{activeSessions.length}</div><div className="scorm-metric-label">Live sessions</div></div><div className="scorm-metric-icon"><Radio size={17} /></div></div></div>
-      </div>
 
       {activeSessions.length > 0 && (
         <section className="scorm-panel overflow-hidden mb-5">
