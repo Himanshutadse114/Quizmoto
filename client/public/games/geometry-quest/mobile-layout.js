@@ -1,16 +1,22 @@
 (() => {
   'use strict';
 
-  const mq = window.matchMedia('(max-width: 900px)');
+  const widthMq = window.matchMedia('(max-width: 1100px)');
+  const coarseMq = window.matchMedia('(hover: none) and (pointer: coarse)');
   const views = ['board', 'formula', 'missions'];
   let currentView = 'board';
   let nav = null;
+  let boardFormulaButton = null;
 
   const icons = {
     board: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 17V9m4 8V6m4 11v-5"/></svg>',
     formula: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 12h7M4 19h10"/><path d="M17 8l3 4-3 4"/></svg>',
     missions: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>'
   };
+
+  function isMobile() {
+    return widthMq.matches || coarseMq.matches;
+  }
 
   function ensureNav() {
     if (nav) return nav;
@@ -31,6 +37,21 @@
     return nav;
   }
 
+  function ensureBoardFormulaButton() {
+    if (boardFormulaButton) return boardFormulaButton;
+    boardFormulaButton = document.createElement('button');
+    boardFormulaButton.type = 'button';
+    boardFormulaButton.id = 'mobileBoardFormulaButton';
+    boardFormulaButton.className = 'mobile-board-formula-button';
+    boardFormulaButton.innerHTML = `${icons.formula}<span>Open Formula Lab</span>`;
+    boardFormulaButton.addEventListener('click', () => {
+      setView('formula', true);
+      window.setTimeout(() => document.getElementById('formulaInput')?.focus({ preventScroll: true }), 80);
+    });
+    document.body.appendChild(boardFormulaButton);
+    return boardFormulaButton;
+  }
+
   function redrawBoard() {
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
@@ -49,6 +70,7 @@
         button.setAttribute('aria-selected', String(active));
       });
     }
+    if (boardFormulaButton) boardFormulaButton.hidden = view !== 'board';
     if (scrollTop) {
       try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch { window.scrollTo(0, 0); }
     }
@@ -56,33 +78,71 @@
   }
 
   function syncMode() {
-    const mobile = mq.matches;
+    const mobile = isMobile();
     document.body.classList.toggle('geometry-mobile', mobile);
     if (mobile) {
       ensureNav();
+      ensureBoardFormulaButton();
       nav.hidden = false;
+      boardFormulaButton.hidden = currentView !== 'board';
       setView(currentView || 'board');
     } else {
       document.body.classList.remove(...views.map((item) => `mobile-view-${item}`));
       if (nav) nav.hidden = true;
+      if (boardFormulaButton) boardFormulaButton.hidden = true;
       redrawBoard();
     }
   }
 
   document.addEventListener('click', (event) => {
-    if (!mq.matches) return;
+    if (!isMobile()) return;
+
     const mission = event.target.closest('#missionList .mission-item');
-    if (!mission || mission.classList.contains('access-locked')) return;
-    window.setTimeout(() => setView('board', true), 0);
+    if (mission && !mission.classList.contains('access-locked')) {
+      window.setTimeout(() => setView('board', true), 0);
+      return;
+    }
+
+    if (event.target.closest('#startChallengeBtn')) {
+      window.setTimeout(() => {
+        setView('formula', true);
+        window.setTimeout(() => document.getElementById('formulaInput')?.focus({ preventScroll: true }), 80);
+      }, 0);
+      return;
+    }
+
+    if (event.target.closest('#actionBtn')) {
+      window.setTimeout(() => setView('board', true), 0);
+      return;
+    }
+
+    if (event.target.closest('#replayBtn') || event.target.closest('#nextBtn')) {
+      window.setTimeout(() => setView('board', true), 0);
+    }
   });
 
   document.addEventListener('keydown', (event) => {
-    if (!mq.matches || event.key !== 'Escape') return;
-    if (currentView !== 'board') setView('board', true);
+    if (!isMobile() || event.key !== 'Escape') return;
+    const lessonOpen = !document.getElementById('lessonOverlay')?.classList.contains('hidden');
+    const resultOpen = !document.getElementById('resultModal')?.classList.contains('hidden');
+    if (!lessonOpen && !resultOpen && currentView !== 'board') setView('board', true);
   });
 
-  if (typeof mq.addEventListener === 'function') mq.addEventListener('change', syncMode);
-  else mq.addListener(syncMode);
+  const listen = (mq) => {
+    if (typeof mq.addEventListener === 'function') mq.addEventListener('change', syncMode);
+    else mq.addListener(syncMode);
+  };
+  listen(widthMq);
+  listen(coarseMq);
+
+  window.GeometryMobileUI = {
+    isMobile,
+    setView,
+    openBoard: () => setView('board', true),
+    openFormula: () => setView('formula', true),
+    openMissions: () => setView('missions', true),
+    get currentView() { return currentView; }
+  };
 
   syncMode();
 })();
