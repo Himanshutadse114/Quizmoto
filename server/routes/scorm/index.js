@@ -13,6 +13,10 @@ router.use((req, res, next) => {
 // enforced inside the router; verification codes are never stored in plaintext.
 router.use('/otp', require('./mailOtp'));
 
+// SMTP connection and delivery test endpoints are protected by the normal SCORM
+// Admin middleware and never expose mailbox credentials.
+router.use('/mail', require('./mailAdmin'));
+
 // Workspace-specific staff sign-in is public by design. Each provider endpoint
 // verifies the IdP token and then requires an existing Admin/Co-admin/Analytics
 // Viewer workspace membership before a protected SCORM session is issued.
@@ -52,6 +56,7 @@ router.get('/features', (req, res) => {
         campaignDelivery: true,
         emailDelivery: true,
         emailOtp: true,
+        emailHealthCheck: true,
         standards: {
             scorm12: true,
             scorm2004: true,
