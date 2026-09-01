@@ -1,6 +1,14 @@
 (() => {
   'use strict';
 
+  if (!document.getElementById('geometryMobilePlayCss')) {
+    const link = document.createElement('link');
+    link.id = 'geometryMobilePlayCss';
+    link.rel = 'stylesheet';
+    link.href = 'mobile-play.css';
+    document.head.appendChild(link);
+  }
+
   const widthMq = window.matchMedia('(max-width: 1100px)');
   const coarseMq = window.matchMedia('(hover: none) and (pointer: coarse)');
   const views = ['board', 'missions'];
