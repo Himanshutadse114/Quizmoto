@@ -6,9 +6,9 @@ const {
     getPublicCampaign,
     campaignAuthMiddleware,
     createCampaignSession,
-    getCampaignDashboard,
     launchCampaignCourse
 } = require('../services/scorm/ScormCampaignService');
+const { getCampaignDashboard } = require('../services/scorm/ScormLearnerProgressFacade');
 
 const authLimiter = rateLimit({
     windowMs: 10 * 60 * 1000,
@@ -76,6 +76,7 @@ router.post('/:campaignId/microsoft', authLimiter, async (req, res) => {
 
 router.get('/session/dashboard', campaignAuthMiddleware, async (req, res) => {
     try {
+        res.setHeader('Cache-Control', 'no-store');
         res.json(await getCampaignDashboard(req.scormCampaignLearner));
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to load campaign dashboard.', code: err.code });
