@@ -9,7 +9,9 @@ import {
   Clock3,
   ExternalLink,
   GraduationCap,
+  KeyRound,
   LogOut,
+  Mail,
   RefreshCw,
   ShieldCheck
 } from 'lucide-react';
@@ -51,11 +53,21 @@ function GoogleButton({ clientId, onSuccess, onError }) {
   );
 }
 
+function authIntro(config) {
+  if (config?.authMode === 'email_code') return 'Use the email assigned by your administrator and the unique access code issued for this campaign.';
+  if (config?.authMode === 'google') return 'Continue with Google using the exact email included in this campaign.';
+  if (config?.authMode === 'microsoft') return 'Continue with Microsoft using the exact email included in this campaign.';
+  return 'Sign in with your organisation account. Access is limited to verified emails included in the campaign learner CSV.';
+}
+
 export default function CampaignPortal() {
   const { campaignId } = useParams();
   const [config, setConfig] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem(sessionKey(campaignId)) || '');
   const [dashboard, setDashboard] = useState(null);
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [accessCode, setAccessCode] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -84,9 +96,13 @@ export default function CampaignPortal() {
         await loadConfig();
         if (token) await loadDashboard(token);
       } catch (err) {
-        if (err.response?.status === 401) {
+        if (err.response?.status === 401 || err.response?.status === 403) {
           localStorage.removeItem(sessionKey(campaignId));
-          if (!cancelled) setToken('');
+          if (!cancelled) {
+            setToken('');
+            setDashboard(null);
+            if (err.response?.status === 403) setError(err.response?.data?.message || 'Please sign in again using the authentication method required for this campaign.');
+          }
         } else if (!cancelled) {
           setError(err.response?.data?.message || 'Unable to open this campaign.');
         }
@@ -112,10 +128,28 @@ export default function CampaignPortal() {
   }, [token, loadDashboard]);
 
   const acceptSession = async (data) => {
-    if (!data?.token) throw new Error('SSO did not return a campaign session.');
+    if (!data?.token) throw new Error('Sign-in did not return a campaign session.');
     localStorage.setItem(sessionKey(campaignId), data.token);
     setToken(data.token);
     await loadDashboard(data.token);
+  };
+
+  const loginEmailCode = async (event) => {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const res = await axios.post(apiUrl(`/api/scorm-learner/campaign/${campaignId}/email-code`), {
+        email: email.trim().toLowerCase(),
+        name: name.trim(),
+        accessCode: accessCode.trim()
+      });
+      await acceptSession(res.data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Email and access code could not be verified.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const loginGoogle = async (credentialResponse) => {
@@ -199,6 +233,7 @@ export default function CampaignPortal() {
   const courses = dashboard?.courses || [];
   const completed = courses.filter((course) => course.status === 'completed').length;
   const progress = courses.length ? Math.round((completed / courses.length) * 100) : 0;
+  const selectedSsoUnavailable = !dashboard && config && !config.emailEnabled && !config.googleEnabled && !config.microsoftEnabled;
 
   return (
     <div className="min-h-screen bg-[#f4f8f7] text-[#102321]">
@@ -216,10 +251,23 @@ export default function CampaignPortal() {
               <div className="w-11 h-11 rounded-2xl bg-[#c8f0eb] text-[#087b73] grid place-items-center mb-5"><GraduationCap size={21} /></div>
               <div className="text-[10px] uppercase tracking-[.14em] font-bold text-[#5b7773]">Learning campaign</div>
               <h1 className="text-3xl md:text-[38px] font-semibold tracking-[-.04em] leading-tight mt-2">{config?.campaignName || 'Assigned learning'}</h1>
-              <p className="text-sm leading-relaxed text-[#617572] mt-3">Sign in with your organisation account. Access is limited to verified emails included in the campaign learner CSV.</p>
+              <p className="text-sm leading-relaxed text-[#617572] mt-3">{authIntro(config)}</p>
+              {config?.authModeLabel && <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#cfe3df] bg-white/70 px-3 py-1.5 text-[10px] font-semibold text-[#496a66]"><ShieldCheck size={12} /> {config.authModeLabel}</div>}
             </div>
             <div className="p-6 md:p-8 space-y-3">
               {error && <div className="rounded-xl border border-[#f5c4cc] bg-[#fff3f5] text-[#9f3345] px-4 py-3 text-xs leading-relaxed">{error}</div>}
+              {selectedSsoUnavailable && <div className="rounded-xl border border-[#f1d4a6] bg-[#fff9ed] text-[#8a5b18] px-4 py-3 text-xs leading-relaxed">The sign-in method selected for this campaign is currently unavailable. Please contact your administrator.</div>}
+
+              {config?.emailEnabled && (
+                <form onSubmit={loginEmailCode} className="space-y-3">
+                  <label className="block"><span className="block text-[10px] uppercase tracking-[.1em] font-bold text-[#5e7773] mb-1.5">Assigned email</span><div className="relative"><Mail size={15} className="absolute left-3.5 top-3.5 text-[#69817d]" /><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-11 rounded-xl border border-[#cfdcda] bg-white pl-10 pr-3.5 text-sm outline-none focus:border-[#1aa99e]" placeholder="you@company.com" /></div></label>
+                  <label className="block"><span className="block text-[10px] uppercase tracking-[.1em] font-bold text-[#5e7773] mb-1.5">Access code</span><div className="relative"><KeyRound size={15} className="absolute left-3.5 top-3.5 text-[#69817d]" /><input required value={accessCode} onChange={(e) => setAccessCode(e.target.value.toUpperCase())} className="w-full h-11 rounded-xl border border-[#cfdcda] bg-white pl-10 pr-3.5 text-sm font-mono tracking-[.08em] outline-none focus:border-[#1aa99e]" placeholder="AB12-CD34-EF56" autoComplete="one-time-code" /></div></label>
+                  <label className="block"><span className="block text-[10px] uppercase tracking-[.1em] font-bold text-[#5e7773] mb-1.5">Name · optional</span><input value={name} onChange={(e) => setName(e.target.value)} className="w-full h-11 rounded-xl border border-[#cfdcda] bg-white px-3.5 text-sm outline-none focus:border-[#1aa99e]" placeholder="Your name" /></label>
+                  <button type="submit" disabled={busy} className="w-full h-11 rounded-xl bg-[#45c5bc] hover:bg-[#36b7ae] text-[#0d2926] text-sm font-semibold disabled:opacity-50">{busy ? 'Verifying…' : 'Open my learning dashboard'}</button>
+                  <div className="rounded-xl bg-[#f0f7f6] border border-[#d7e7e4] px-3.5 py-3 text-[11px] leading-relaxed text-[#607572] flex gap-2"><ShieldCheck size={15} className="text-[#159b91] shrink-0" />Your access code is unique to this campaign and assigned email. It does not create a platform password.</div>
+                </form>
+              )}
+
               {config?.googleEnabled && config?.googleClientId && <GoogleButton clientId={config.googleClientId} onSuccess={loginGoogle} onError={() => setError('Google sign-in failed.')} />}
               {config?.microsoftEnabled && (
                 <button type="button" onClick={loginMicrosoft} disabled={busy} className="w-full h-11 rounded-xl border border-[#cfdcda] bg-white hover:bg-[#f7faf9] transition text-sm font-semibold flex items-center justify-center gap-3 disabled:opacity-50">
@@ -227,7 +275,7 @@ export default function CampaignPortal() {
                   {busy ? 'Opening Microsoft…' : 'Continue with Microsoft'}
                 </button>
               )}
-              <div className="rounded-xl bg-[#f0f7f6] border border-[#d7e7e4] px-3.5 py-3 text-[11px] leading-relaxed text-[#607572] flex gap-2"><ShieldCheck size={15} className="text-[#159b91] shrink-0" />Manual email entry is disabled. LMSGEN verifies your Google or Microsoft identity and then checks that exact email against the campaign CSV.</div>
+              {!config?.emailEnabled && (config?.googleEnabled || config?.microsoftEnabled) && <div className="rounded-xl bg-[#f0f7f6] border border-[#d7e7e4] px-3.5 py-3 text-[11px] leading-relaxed text-[#607572] flex gap-2"><ShieldCheck size={15} className="text-[#159b91] shrink-0" />Your identity provider verifies your email. LMSGEN then checks that exact email against this campaign learner list.</div>}
             </div>
           </section>
         ) : (
