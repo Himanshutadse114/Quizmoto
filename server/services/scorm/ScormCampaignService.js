@@ -18,6 +18,14 @@ const {
     verifyMicrosoftCredential,
     launchLearnerCourse
 } = require('./ScormLearnerAuthService');
+const {
+    normalizeRequestedAuthMode,
+    normalizeStoredAuthMode,
+    providerAllowedForCampaign,
+    authModeLabel,
+    campaignAccessCode,
+    verifyCampaignAccessCode
+} = require('./ScormCampaignAuthPolicy');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const MAX_CAMPAIGN_COMBINATIONS = 5000;
@@ -38,6 +46,31 @@ function parseDate(value) {
     if (!value) return null;
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function authOptions(config) {
+    const googleConfigured = Boolean(config?.googleEnabled && config?.googleClientId);
+    const microsoftConfigured = Boolean(config?.microsoftEnabled && config?.microsoftClientId && config?.microsoftTenantId);
+    return {
+        emailCode: true,
+        googleConfigured,
+        microsoftConfigured
+    };
+}
+
+function assertAuthModeAvailable(authMode, config, { legacy = false } = {}) {
+    const mode = legacy ? normalizeStoredAuthMode(authMode) : normalizeRequestedAuthMode(authMode);
+    const options = authOptions(config);
+    if (mode === 'google' && !options.googleConfigured) {
+        throw fail('Google SSO is not configured for this tenant. Choose Email + access code or configure Google SSO.', 'SCORM_CAMPAIGN_GOOGLE_NOT_CONFIGURED', 409);
+    }
+    if (mode === 'microsoft' && !options.microsoftConfigured) {
+        throw fail('Microsoft SSO is not configured for this tenant. Choose Email + access code or configure Microsoft SSO.', 'SCORM_CAMPAIGN_MICROSOFT_NOT_CONFIGURED', 409);
+    }
+    if (mode === 'sso_any' && !options.googleConfigured && !options.microsoftConfigured) {
+        throw fail('This existing campaign requires Google or Microsoft SSO, but neither provider is configured.', 'SCORM_CAMPAIGN_SSO_REQUIRED', 409);
+    }
+    return mode;
 }
 
 function parseCsvRows(text) {
@@ -187,10 +220,13 @@ async function campaignSummary(campaign) {
     ]);
     const completed = registrations.filter((registration) => registrationStatus(registration) === 'completed').length;
     const inProgress = registrations.filter((registration) => registrationStatus(registration) === 'in_progress').length;
+    const authMode = normalizeStoredAuthMode(campaign.authMode);
     return {
         id: campaign.id,
         name: campaign.name,
         status: campaign.status,
+        authMode,
+        authModeLabel: authModeLabel(authMode),
         dueAt: campaign.dueAt || null,
         required: campaign.required !== false,
         createdAt: campaign.createdAt,
@@ -216,8 +252,10 @@ async function listCampaigns({ hostId, workspaceId }) {
         where: { hostId, status: { [Op.ne]: 'archived' } },
         order: [['createdAt', 'DESC']]
     });
+    const { config } = await getWorkspaceAndConfig(workspaceId);
     return {
         campaigns,
+        authOptions: authOptions(config),
         courses: courses.map((course) => ({
             id: course.id,
             title: course.title,
@@ -228,13 +266,15 @@ async function listCampaigns({ hostId, workspaceId }) {
     };
 }
 
-async function createCampaign({ workspaceId, hostId, actorUserId, name, csvText, courseIds, dueAt, required = true }) {
+async function createCampaign({ workspaceId, hostId, actorUserId, name, csvText, courseIds, dueAt, required = true, authMode }) {
     const cleanName = String(name || '').trim().slice(0, 180);
     if (cleanName.length < 2) throw fail('Enter a campaign name.', 'SCORM_CAMPAIGN_NAME_REQUIRED', 400);
     if (!workspaceId) throw fail('Workspace is required.', 'SCORM_WORKSPACE_REQUIRED', 400);
     const parsedDueAt = parseDate(dueAt);
     if (dueAt && !parsedDueAt) throw fail('Enter a valid due date.', 'SCORM_CAMPAIGN_DUE_DATE_INVALID', 400);
 
+    const { config } = await getWorkspaceAndConfig(workspaceId);
+    const selectedAuthMode = assertAuthModeAvailable(authMode, config);
     const parsed = parseCampaignCsv(csvText);
     const selectedCourseIds = [...new Set((Array.isArray(courseIds) ? courseIds : []).map(String).filter(Boolean))];
     if (!selectedCourseIds.length) throw fail('Select at least one published course.', 'SCORM_CAMPAIGN_COURSE_REQUIRED', 400);
@@ -255,6 +295,7 @@ async function createCampaign({ workspaceId, hostId, actorUserId, name, csvText,
             hostId,
             name: cleanName,
             status: 'draft',
+            authMode: selectedAuthMode,
             dueAt: parsedDueAt,
             required: required !== false,
             createdByUserId: actorUserId || hostId
@@ -319,14 +360,36 @@ async function getCampaignDetail({ campaignId, hostId, workspaceId }) {
     };
 }
 
+async function getCampaignAccessSheet({ campaignId, hostId, workspaceId }) {
+    const campaign = await ScormCampaign.findOne({ where: { id: campaignId, hostId, workspaceId } });
+    if (!campaign) throw fail('Campaign not found.', 'SCORM_CAMPAIGN_NOT_FOUND', 404);
+    const mode = normalizeStoredAuthMode(campaign.authMode);
+    if (mode !== 'email_code') {
+        throw fail('Access codes are only available for Email + access code campaigns.', 'SCORM_CAMPAIGN_ACCESS_CODES_NOT_AVAILABLE', 409);
+    }
+    const learners = await ScormCampaignLearner.findAll({
+        where: { campaignId: campaign.id },
+        order: [['learnerName', 'ASC'], ['email', 'ASC']]
+    });
+    return {
+        campaign: {
+            id: campaign.id,
+            name: campaign.name,
+            status: campaign.status,
+            authMode: mode,
+            authModeLabel: authModeLabel(mode),
+            portalPath: `/campaign/${campaign.id}`
+        },
+        learners: learners.map((learner) => ({
+            learnerName: learner.learnerName || null,
+            email: learner.email,
+            accessCode: campaignAccessCode(campaign.id, learner.email)
+        }))
+    };
+}
+
 async function startCampaign({ campaignId, hostId, workspaceId, actorUserId }) {
     const { config } = await getWorkspaceAndConfig(workspaceId);
-    const googleEnabled = Boolean(config.googleEnabled && config.googleClientId);
-    const microsoftEnabled = Boolean(config.microsoftEnabled && config.microsoftClientId && config.microsoftTenantId);
-    if (!googleEnabled && !microsoftEnabled) {
-        throw fail('Configure Google or Microsoft learner SSO before starting a campaign.', 'SCORM_CAMPAIGN_SSO_REQUIRED', 409);
-    }
-
     let campaign;
     await sequelize.transaction(async (transaction) => {
         campaign = await ScormCampaign.findOne({
@@ -336,6 +399,7 @@ async function startCampaign({ campaignId, hostId, workspaceId, actorUserId }) {
         });
         if (!campaign) throw fail('Campaign not found.', 'SCORM_CAMPAIGN_NOT_FOUND', 404);
         if (campaign.status !== 'draft') throw fail('Only a draft campaign can be started.', 'SCORM_CAMPAIGN_ALREADY_STARTED', 409);
+        assertAuthModeAvailable(campaign.authMode, config, { legacy: true });
 
         const [learners, courseLinks] = await Promise.all([
             ScormCampaignLearner.findAll({ where: { campaignId }, transaction }),
@@ -387,9 +451,11 @@ async function getPublicCampaign(campaignId) {
     const campaign = await ScormCampaign.findByPk(campaignId);
     if (!campaign || campaign.status !== 'active') throw fail('Campaign is not active.', 'SCORM_CAMPAIGN_NOT_ACTIVE', 404);
     const { workspace, config } = await getWorkspaceAndConfig(campaign.workspaceId);
-    const googleEnabled = Boolean(config.googleEnabled && config.googleClientId);
-    const microsoftEnabled = Boolean(config.microsoftEnabled && config.microsoftClientId && config.microsoftTenantId);
-    if (!googleEnabled && !microsoftEnabled) throw fail('Campaign SSO is not configured.', 'SCORM_CAMPAIGN_SSO_REQUIRED', 409);
+    const mode = normalizeStoredAuthMode(campaign.authMode);
+    const options = authOptions(config);
+    const googleEnabled = (mode === 'google' || mode === 'sso_any') && options.googleConfigured;
+    const microsoftEnabled = (mode === 'microsoft' || mode === 'sso_any') && options.microsoftConfigured;
+    const emailEnabled = mode === 'email_code';
     return {
         campaign,
         workspace,
@@ -399,13 +465,16 @@ async function getPublicCampaign(campaignId) {
             campaignName: campaign.name,
             workspaceId: workspace.id,
             workspaceName: workspace.name,
+            authMode: mode,
+            authModeLabel: authModeLabel(mode),
             googleEnabled,
             googleClientId: googleEnabled ? config.googleClientId : null,
             microsoftEnabled,
             microsoftClientId: microsoftEnabled ? config.microsoftClientId : null,
             microsoftTenantId: microsoftEnabled ? config.microsoftTenantId : null,
-            ssoRequired: true,
-            emailEnabled: false
+            emailEnabled,
+            accessCodeRequired: emailEnabled,
+            ssoRequired: mode !== 'email_code'
         }
     };
 }
@@ -442,28 +511,59 @@ function campaignAuthMiddleware(req, res, next) {
     }
 }
 
-async function createCampaignSession({ campaignId, provider, credential }) {
+async function createCampaignSession({ campaignId, provider, credential, email, name, accessCode }) {
     const { campaign, workspace, config } = await getPublicCampaign(campaignId);
-    let identity;
-    if (provider === 'google') identity = await verifyGoogleCredential(config, credential);
-    else if (provider === 'microsoft') identity = await verifyMicrosoftCredential(config, credential);
-    else throw fail('Use Google or Microsoft SSO to enter this campaign.', 'SCORM_CAMPAIGN_SSO_REQUIRED', 403);
+    const mode = normalizeStoredAuthMode(campaign.authMode);
+    const requestedProvider = String(provider || '').trim().toLowerCase();
+    if (!providerAllowedForCampaign(mode, requestedProvider)) {
+        throw fail(`This campaign requires ${authModeLabel(mode)}.`, 'SCORM_CAMPAIGN_AUTH_METHOD_REQUIRED', 403);
+    }
 
-    const learner = await ScormCampaignLearner.findOne({ where: { campaignId: campaign.id, email: normalizeEmail(identity.email) } });
+    let identity;
+    let learner;
+    if (requestedProvider === 'email_code') {
+        const learnerEmail = normalizeEmail(email);
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(learnerEmail)) {
+            throw fail('Enter the email address assigned to you for this campaign.', 'SCORM_CAMPAIGN_EMAIL_REQUIRED', 400);
+        }
+        learner = await ScormCampaignLearner.findOne({ where: { campaignId: campaign.id, email: learnerEmail } });
+        if (!learner || !verifyCampaignAccessCode(campaign.id, learnerEmail, accessCode)) {
+            throw fail('The email address or access code is not valid for this campaign.', 'SCORM_CAMPAIGN_ACCESS_CODE_INVALID', 401);
+        }
+        identity = {
+            email: learnerEmail,
+            name: learner.learnerName || String(name || '').trim().slice(0, 180) || learnerEmail.split('@')[0],
+            provider: 'email_code'
+        };
+    } else if (requestedProvider === 'google') {
+        identity = await verifyGoogleCredential(config, credential);
+    } else if (requestedProvider === 'microsoft') {
+        identity = await verifyMicrosoftCredential(config, credential);
+    } else {
+        throw fail('Choose the authentication method configured for this campaign.', 'SCORM_CAMPAIGN_AUTH_METHOD_REQUIRED', 403);
+    }
+
+    if (!learner) {
+        learner = await ScormCampaignLearner.findOne({ where: { campaignId: campaign.id, email: normalizeEmail(identity.email) } });
+    }
     if (!learner) {
         throw fail('Your verified email is not included in this campaign CSV.', 'SCORM_CAMPAIGN_LEARNER_NOT_INCLUDED', 403);
     }
-    const token = issueCampaignToken({ campaign, workspace, identity });
+    const token = issueCampaignToken({ campaign, workspace, identity: { ...identity, name: learner.learnerName || identity.name } });
     return {
         token,
         learner: { email: identity.email, name: learner.learnerName || identity.name, provider: identity.provider },
-        campaign: { id: campaign.id, name: campaign.name },
+        campaign: { id: campaign.id, name: campaign.name, authMode: mode },
         workspace: { id: workspace.id, name: workspace.name }
     };
 }
 
 async function getCampaignDashboard(context) {
     const { campaign, workspace } = await getPublicCampaign(context.campaignId);
+    const mode = normalizeStoredAuthMode(campaign.authMode);
+    if (!providerAllowedForCampaign(mode, context.provider)) {
+        throw fail(`This campaign now requires ${authModeLabel(mode)}. Sign in again using the required method.`, 'SCORM_CAMPAIGN_AUTH_METHOD_REQUIRED', 403);
+    }
     if (Number(campaign.hostId) !== Number(context.hostId)) throw fail('Campaign access is no longer valid.', 'SCORM_CAMPAIGN_FORBIDDEN', 403);
     const learner = await ScormCampaignLearner.findOne({ where: { campaignId: campaign.id, email: normalizeEmail(context.email) } });
     if (!learner) throw fail('You are no longer included in this campaign.', 'SCORM_CAMPAIGN_LEARNER_NOT_INCLUDED', 403);
@@ -479,7 +579,7 @@ async function getCampaignDashboard(context) {
     });
     return {
         learner: { email: context.email, name: learner.learnerName || context.name || context.email, provider: context.provider },
-        campaign: { id: campaign.id, name: campaign.name, dueAt: campaign.dueAt || null, required: campaign.required !== false },
+        campaign: { id: campaign.id, name: campaign.name, authMode: mode, authModeLabel: authModeLabel(mode), dueAt: campaign.dueAt || null, required: campaign.required !== false },
         workspace: { id: workspace.id, name: workspace.name },
         courses: registrations.map(serializeRegistration)
     };
@@ -498,11 +598,14 @@ module.exports = {
     listCampaigns,
     createCampaign,
     getCampaignDetail,
+    getCampaignAccessSheet,
     startCampaign,
     deleteDraftCampaign,
     getPublicCampaign,
     campaignAuthMiddleware,
     createCampaignSession,
     getCampaignDashboard,
-    launchCampaignCourse
+    launchCampaignCourse,
+    authOptions,
+    assertAuthModeAvailable
 };

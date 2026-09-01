@@ -24,6 +24,11 @@ const ScormCampaign = sequelize.define('ScormCampaign', {
         allowNull: false,
         defaultValue: 'draft'
     },
+    authMode: {
+        type: DataTypes.STRING(32),
+        allowNull: false,
+        defaultValue: 'sso_any'
+    },
     dueAt: {
         type: DataTypes.DATE,
         allowNull: true

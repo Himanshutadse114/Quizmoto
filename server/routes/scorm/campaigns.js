@@ -6,6 +6,7 @@ const {
     listCampaigns,
     createCampaign,
     getCampaignDetail,
+    getCampaignAccessSheet,
     startCampaign,
     deleteDraftCampaign
 } = require('../../services/scorm/ScormCampaignService');
@@ -20,23 +21,11 @@ function workspaceRequired(req) {
     }
 }
 
-function universalPortal(campaign) {
-    if (!campaign) return campaign;
-    return {
-        ...campaign,
-        portalPath: campaign.status === 'active' ? '/learn' : null
-    };
-}
-
 router.get('/', auth, async (req, res) => {
     try {
         workspaceRequired(req);
         const result = await listCampaigns({ hostId: req.userId, workspaceId: req.scormWorkspaceId });
-        res.json({
-            ok: true,
-            ...result,
-            campaigns: (result.campaigns || []).map(universalPortal)
-        });
+        res.json({ ok: true, ...result });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to load campaigns.', code: err.code });
     }
@@ -69,9 +58,10 @@ router.post('/', auth, async (req, res) => {
             csvText: req.body?.csvText,
             courseIds: req.body?.courseIds,
             dueAt: req.body?.dueAt,
-            required: req.body?.required !== false
+            required: req.body?.required !== false,
+            authMode: req.body?.authMode
         });
-        res.status(201).json({ ok: true, ...result, campaign: universalPortal(result.campaign) });
+        res.status(201).json({ ok: true, ...result });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to create campaign.', code: err.code });
     }
@@ -96,6 +86,20 @@ router.get('/:campaignId/analytics', auth, async (req, res) => {
     }
 });
 
+router.get('/:campaignId/access-sheet', auth, async (req, res) => {
+    try {
+        workspaceRequired(req);
+        const result = await getCampaignAccessSheet({
+            campaignId: req.params.campaignId,
+            hostId: req.userId,
+            workspaceId: req.scormWorkspaceId
+        });
+        res.json({ ok: true, ...result });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message || 'Unable to prepare learner access codes.', code: err.code });
+    }
+});
+
 router.get('/:campaignId', auth, async (req, res) => {
     try {
         workspaceRequired(req);
@@ -104,7 +108,7 @@ router.get('/:campaignId', auth, async (req, res) => {
             hostId: req.userId,
             workspaceId: req.scormWorkspaceId
         });
-        res.json({ ok: true, campaign: universalPortal(campaign) });
+        res.json({ ok: true, campaign });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to load campaign.', code: err.code });
     }
@@ -119,7 +123,7 @@ router.post('/:campaignId/start', auth, async (req, res) => {
             workspaceId: req.scormWorkspaceId,
             actorUserId: req.authenticatedUserId || req.userId
         });
-        res.json({ ok: true, campaign: universalPortal(campaign) });
+        res.json({ ok: true, campaign });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to start campaign.', code: err.code });
     }

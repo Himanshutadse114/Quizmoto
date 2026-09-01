@@ -36,6 +36,20 @@ router.get('/:campaignId/config', async (req, res) => {
     }
 });
 
+router.post('/:campaignId/email-code', authLimiter, async (req, res) => {
+    try {
+        res.json(await createCampaignSession({
+            campaignId: req.params.campaignId,
+            provider: 'email_code',
+            email: req.body?.email,
+            name: req.body?.name,
+            accessCode: req.body?.accessCode
+        }));
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message || 'Campaign sign-in failed.', code: err.code });
+    }
+});
+
 router.post('/:campaignId/google', authLimiter, async (req, res) => {
     try {
         res.json(await createCampaignSession({
