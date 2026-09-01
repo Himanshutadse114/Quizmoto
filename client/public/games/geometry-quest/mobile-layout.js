@@ -3,14 +3,12 @@
 
   const widthMq = window.matchMedia('(max-width: 1100px)');
   const coarseMq = window.matchMedia('(hover: none) and (pointer: coarse)');
-  const views = ['board', 'formula', 'missions'];
+  const views = ['board', 'missions'];
   let currentView = 'board';
   let nav = null;
-  let boardFormulaButton = null;
 
   const icons = {
-    board: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 17V9m4 8V6m4 11v-5"/></svg>',
-    formula: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10M4 12h7M4 19h10"/><path d="M17 8l3 4-3 4"/></svg>',
+    board: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10M7 12h6M7 16h8"/></svg>',
     missions: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>'
   };
 
@@ -24,10 +22,13 @@
     nav.id = 'mobileGameNav';
     nav.className = 'mobile-game-nav';
     nav.setAttribute('aria-label', 'Geometry Physics mobile sections');
-    nav.innerHTML = views.map((view) => `
-      <button type="button" data-mobile-view="${view}" aria-selected="${view === 'board'}">
-        ${icons[view]}<span>${view === 'board' ? 'Board' : view === 'formula' ? 'Formula' : 'Missions'}</span>
-      </button>`).join('');
+    nav.innerHTML = `
+      <button type="button" data-mobile-view="board" aria-selected="true">
+        ${icons.board}<span>Play</span>
+      </button>
+      <button type="button" data-mobile-view="missions" aria-selected="false">
+        ${icons.missions}<span>Missions</span>
+      </button>`;
     document.body.appendChild(nav);
     nav.addEventListener('click', (event) => {
       const button = event.target.closest('[data-mobile-view]');
@@ -35,21 +36,6 @@
       setView(button.dataset.mobileView, true);
     });
     return nav;
-  }
-
-  function ensureBoardFormulaButton() {
-    if (boardFormulaButton) return boardFormulaButton;
-    boardFormulaButton = document.createElement('button');
-    boardFormulaButton.type = 'button';
-    boardFormulaButton.id = 'mobileBoardFormulaButton';
-    boardFormulaButton.className = 'mobile-board-formula-button';
-    boardFormulaButton.innerHTML = `${icons.formula}<span>Open Formula Lab</span>`;
-    boardFormulaButton.addEventListener('click', () => {
-      setView('formula', true);
-      window.setTimeout(() => document.getElementById('formulaInput')?.focus({ preventScroll: true }), 80);
-    });
-    document.body.appendChild(boardFormulaButton);
-    return boardFormulaButton;
   }
 
   function redrawBoard() {
@@ -68,8 +54,9 @@
   function setView(view, scrollTop = false) {
     if (!views.includes(view)) return;
     currentView = view;
-    document.body.classList.remove(...views.map((item) => `mobile-view-${item}`));
+    document.body.classList.remove('mobile-view-board', 'mobile-view-formula', 'mobile-view-missions');
     document.body.classList.add(`mobile-view-${view}`);
+
     if (nav) {
       nav.querySelectorAll('[data-mobile-view]').forEach((button) => {
         const active = button.dataset.mobileView === view;
@@ -77,11 +64,30 @@
         button.setAttribute('aria-selected', String(active));
       });
     }
-    if (boardFormulaButton) boardFormulaButton.hidden = view !== 'board';
+
     if (scrollTop) {
       try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch { window.scrollTo(0, 0); }
     }
     if (view === 'board') redrawBoard();
+  }
+
+  function focusFormula() {
+    setView('board', false);
+    window.setTimeout(() => {
+      const input = document.getElementById('formulaInput');
+      input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.setTimeout(() => input?.focus({ preventScroll: true }), 220);
+    }, 40);
+  }
+
+  function showBoardResult() {
+    setKeyboardOpen(false);
+    document.getElementById('formulaInput')?.blur();
+    setView('board', false);
+    window.setTimeout(() => {
+      document.querySelector('.canvas-shell')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      redrawBoard();
+    }, 40);
   }
 
   function syncMode() {
@@ -89,15 +95,11 @@
     document.body.classList.toggle('geometry-mobile', mobile);
     if (mobile) {
       ensureNav();
-      ensureBoardFormulaButton();
       if (!document.body.classList.contains('mobile-keyboard-open')) nav.hidden = false;
-      boardFormulaButton.hidden = currentView !== 'board';
       setView(currentView || 'board');
     } else {
-      document.body.classList.remove(...views.map((item) => `mobile-view-${item}`));
-      document.body.classList.remove('mobile-keyboard-open');
+      document.body.classList.remove('mobile-view-board', 'mobile-view-formula', 'mobile-view-missions', 'mobile-keyboard-open');
       if (nav) nav.hidden = true;
-      if (boardFormulaButton) boardFormulaButton.hidden = true;
       redrawBoard();
     }
   }
@@ -112,15 +114,12 @@
     }
 
     if (event.target.closest('#startChallengeBtn')) {
-      window.setTimeout(() => {
-        setView('formula', true);
-        window.setTimeout(() => document.getElementById('formulaInput')?.focus({ preventScroll: true }), 80);
-      }, 0);
+      window.setTimeout(focusFormula, 0);
       return;
     }
 
     if (event.target.closest('#actionBtn')) {
-      window.setTimeout(() => setView('board', true), 0);
+      window.setTimeout(showBoardResult, 0);
       return;
     }
 
@@ -145,7 +144,7 @@
     if (!isMobile() || event.key !== 'Escape') return;
     const lessonOpen = !document.getElementById('lessonOverlay')?.classList.contains('hidden');
     const resultOpen = !document.getElementById('resultModal')?.classList.contains('hidden');
-    if (!lessonOpen && !resultOpen && currentView !== 'board') setView('board', true);
+    if (!lessonOpen && !resultOpen && currentView === 'missions') setView('board', true);
   });
 
   const listen = (mq) => {
@@ -159,7 +158,7 @@
     isMobile,
     setView,
     openBoard: () => setView('board', true),
-    openFormula: () => setView('formula', true),
+    openFormula: focusFormula,
     openMissions: () => setView('missions', true),
     get currentView() { return currentView; }
   };
