@@ -2,15 +2,32 @@ const { DataTypes } = require('sequelize');
 const { sequelize } = require('../../config/database');
 
 const queryInterface = () => sequelize.getQueryInterface();
+const tableDescriptionCache = new Map();
+const tableIndexCache = new Map();
+
+function resetSchemaCache() {
+    tableDescriptionCache.clear();
+    tableIndexCache.clear();
+}
 
 async function describeTableOrNull(tableName) {
-    try { return await queryInterface().describeTable(tableName); } catch (_) { return null; }
+    if (tableDescriptionCache.has(tableName)) return tableDescriptionCache.get(tableName);
+    try {
+        const description = await queryInterface().describeTable(tableName);
+        tableDescriptionCache.set(tableName, description);
+        return description;
+    } catch (_) {
+        tableDescriptionCache.set(tableName, null);
+        return null;
+    }
 }
 
 async function ensureTable(tableName, definition) {
     const existing = await describeTableOrNull(tableName);
     if (existing) return false;
     await queryInterface().createTable(tableName, definition);
+    tableDescriptionCache.set(tableName, { ...definition });
+    tableIndexCache.delete(tableName);
     return true;
 }
 
@@ -18,6 +35,7 @@ async function ensureColumn(tableName, columnName, definition) {
     const description = await describeTableOrNull(tableName);
     if (!description || description[columnName]) return false;
     await queryInterface().addColumn(tableName, columnName, definition);
+    description[columnName] = definition;
     return true;
 }
 
@@ -29,9 +47,15 @@ async function ensureColumns(tableName, definitions) {
     return changes;
 }
 
+async function indexesForTable(tableName) {
+    if (tableIndexCache.has(tableName)) return tableIndexCache.get(tableName);
+    const indexes = await queryInterface().showIndex(tableName);
+    tableIndexCache.set(tableName, indexes);
+    return indexes;
+}
+
 async function ensureIndex(tableName, fields, options = {}) {
-    const qi = queryInterface();
-    const indexes = await qi.showIndex(tableName);
+    const indexes = await indexesForTable(tableName);
     const name = options.name;
     const exists = name
         ? indexes.some((index) => index.name === name)
@@ -42,7 +66,12 @@ async function ensureIndex(tableName, fields, options = {}) {
                 && Boolean(index.unique) === Boolean(options.unique);
         });
     if (exists) return false;
-    await qi.addIndex(tableName, fields, options);
+    await queryInterface().addIndex(tableName, fields, options);
+    indexes.push({
+        name: options.name || null,
+        unique: Boolean(options.unique),
+        fields: fields.map((field) => ({ attribute: field, name: field }))
+    });
     return true;
 }
 
@@ -245,6 +274,7 @@ async function ensureCampaignSchema() {
 }
 
 async function ensurePlatformSchema() {
+    resetSchemaCache();
     const changes = [];
     changes.push(...await ensureWorkspaceSchema());
     changes.push(...await ensureEntitlementSchema());
@@ -261,9 +291,15 @@ async function ensurePlatformSchema() {
     for (const [name, definition] of registrationColumns) {
         if (await ensureColumn('scorm_registrations', name, definition)) changes.push(`scorm_registrations.${name}`);
     }
-    if (await ensureIndex('scorm_registrations', ['campaignId'], { name: 'scorm_registrations_campaign_idx' })) {
-        changes.push('scorm_registrations_campaign_idx');
+
+    const registrationIndexes = [
+        [['campaignId'], { name: 'scorm_registrations_campaign_idx' }],
+        [['campaignId', 'isPreview', 'status'], { name: 'scorm_registrations_campaign_runtime_idx' }]
+    ];
+    for (const [fields, options] of registrationIndexes) {
+        if (await ensureIndex('scorm_registrations', fields, options)) changes.push(options.name);
     }
+
     return { changed: changes.length > 0, changes };
 }
 
