@@ -1,0 +1,193 @@
+/* Final mobile audit layer for Geometry Physics.
+   Loaded last so phone/tablet behaviour wins over desktop and legacy mobile rules. */
+
+.mobile-board-formula-button{display:none}
+
+@media (max-width:1100px), (hover:none) and (pointer:coarse){
+  html,body{width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:hidden!important}
+  body.geometry-mobile{padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))!important}
+  body.geometry-mobile *{max-width:100%}
+  body.geometry-mobile input,body.geometry-mobile textarea,body.geometry-mobile select{font-size:16px!important}
+
+  /* Fullscreen mobile should never fall back to the desktop three-column layout. */
+  body.geometry-mobile .game-layout{display:block!important;width:100%!important;min-width:0!important;min-height:0!important;overflow:visible!important}
+  body.geometry-mobile .game-stage,
+  body.geometry-mobile .formula-panel,
+  body.geometry-mobile .mission-sidebar{position:static!important;top:auto!important;width:100%!important;min-width:0!important;max-width:none!important;max-height:none!important;overflow:visible!important}
+
+  body.geometry-mobile.mobile-view-board .mission-sidebar,
+  body.geometry-mobile.mobile-view-board .formula-panel{display:none!important}
+  body.geometry-mobile.mobile-view-board .game-stage{display:block!important}
+  body.geometry-mobile.mobile-view-formula .mission-sidebar,
+  body.geometry-mobile.mobile-view-formula .game-stage{display:none!important}
+  body.geometry-mobile.mobile-view-formula .formula-panel{display:block!important}
+  body.geometry-mobile.mobile-view-missions .formula-panel,
+  body.geometry-mobile.mobile-view-missions .game-stage{display:none!important}
+  body.geometry-mobile.mobile-view-missions .mission-sidebar{display:block!important}
+
+  /* Keep fullscreen header footprint minimal. */
+  body.geometry-mobile .topbar{min-height:50px!important;padding:6px 9px!important}
+  body.geometry-mobile.geometry-focus .topbar{display:none!important}
+  body.geometry-mobile .phase-tabs{top:50px!important}
+  body.geometry-mobile.geometry-focus .phase-tabs{top:0!important}
+  body.geometry-mobile .phase-tab{min-height:46px!important;padding:7px 9px!important}
+  body.geometry-mobile .phase-tab span{font-size:11px!important}
+  body.geometry-mobile .phase-tab b{font-size:9px!important}
+
+  /* Board */
+  body.geometry-mobile .game-stage{padding:10px 9px 92px!important}
+  body.geometry-mobile .journey-stepper{margin-bottom:9px!important;padding:7px 9px!important}
+  body.geometry-mobile .mission-header{margin-bottom:8px!important}
+  body.geometry-mobile .mission-header h1{font-size:clamp(25px,7.2vw,34px)!important;line-height:1.04!important;margin:4px 0 5px!important}
+  body.geometry-mobile .mission-header p{font-size:11px!important;line-height:1.4!important;-webkit-line-clamp:2!important}
+  body.geometry-mobile .concept-strip{margin-bottom:8px!important;padding:8px 9px!important}
+  body.geometry-mobile .concept-copy strong{font-size:10px!important;line-height:1.3!important}
+  body.geometry-mobile .concept-strip button{min-height:38px!important}
+  body.geometry-mobile .canvas-shell{width:100%!important;min-height:0!important;border-radius:12px!important}
+  body.geometry-mobile #gameCanvas{width:100%!important;height:min(64vw,46dvh)!important;min-height:250px!important;max-height:430px!important}
+  body.geometry-mobile .status-message{font-size:10px!important;line-height:1.35!important;margin-top:8px!important}
+
+  /* Formula Lab must be a complete, obvious mobile working screen. */
+  body.geometry-mobile .formula-panel{display:block;padding:13px 11px calc(88px + env(safe-area-inset-bottom,0px))!important;border:0!important;background:#fff!important}
+  body.geometry-mobile .panel-head{position:sticky!important;top:0!important;z-index:7!important;background:#fff!important;margin:-13px -11px 0!important;padding:12px 11px 10px!important;border-bottom:1px solid #D7E5E2!important}
+  body.geometry-mobile .panel-head h2{font-size:23px!important}
+  body.geometry-mobile .objective-card{margin-top:12px!important}
+  body.geometry-mobile .formula-form{margin-top:13px!important;padding:12px!important;border:1px solid #D7E5E2!important;border-radius:14px!important;background:#F8FBFA!important}
+  body.geometry-mobile .formula-input-row{display:grid!important;grid-template-columns:minmax(0,1fr) 76px!important;gap:8px!important}
+  body.geometry-mobile .formula-input-row input{display:block!important;width:100%!important;min-width:0!important;min-height:50px!important;background:#fff!important}
+  body.geometry-mobile .formula-input-row button{display:flex!important;align-items:center!important;justify-content:center!important;min-height:50px!important;padding:0 10px!important}
+  body.geometry-mobile .formula-help{margin-top:9px!important}
+  body.geometry-mobile .shortcut-label{margin-top:12px!important}
+  body.geometry-mobile .math-keys{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important}
+  body.geometry-mobile .math-key{min-height:44px!important;min-width:0!important;padding:0 5px!important}
+  body.geometry-mobile .domain-key{grid-column:span 2!important}
+  body.geometry-mobile .equations-head{margin-top:16px!important}
+  body.geometry-mobile .panel-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;margin-top:15px!important}
+  body.geometry-mobile .panel-actions button{min-height:48px!important}
+  body.geometry-mobile .ghost-action{grid-column:1/-1!important}
+
+  /* Direct Board -> Formula action. */
+  body.geometry-mobile .mobile-board-formula-button{
+    position:fixed;left:50%;bottom:calc(72px + env(safe-area-inset-bottom,0px));z-index:82;
+    transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:8px;
+    min-height:44px;min-width:180px;padding:0 16px;border:1px solid #35B6AB;border-radius:999px;
+    background:#4FC9BF;color:#083C37;box-shadow:0 10px 28px rgba(30,72,66,.22);
+    font-size:11px;font-weight:800;white-space:nowrap
+  }
+  body.geometry-mobile .mobile-board-formula-button svg{width:16px;height:16px}
+  body.geometry-mobile:not(.mobile-view-board) .mobile-board-formula-button{display:none!important}
+
+  /* Mobile nav remains visible in fullscreen and does not cover form actions. */
+  body.geometry-mobile .mobile-game-nav{display:grid!important;left:7px!important;right:7px!important;bottom:calc(7px + env(safe-area-inset-bottom,0px))!important;z-index:80!important}
+
+  /* Mission browser */
+  body.geometry-mobile .mission-sidebar{padding:12px 9px calc(86px + env(safe-area-inset-bottom,0px))!important}
+  body.geometry-mobile .mission-list{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important;overflow:visible!important}
+  body.geometry-mobile .mission-item{min-width:0!important;width:100%!important}
+
+  /* Lesson popup: content-sized, scroll within the card, never force 100dvh height. */
+  body.geometry-mobile .lesson-overlay{
+    position:fixed!important;inset:0!important;z-index:100!important;display:flex!important;align-items:center!important;justify-content:center!important;
+    padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))!important;
+    overflow:hidden!important
+  }
+  body.geometry-mobile .lesson-overlay.hidden{display:none!important}
+  body.geometry-mobile .lesson-card{
+    width:min(620px,100%)!important;max-width:100%!important;height:auto!important;min-height:0!important;
+    max-height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
+    border-radius:18px!important;padding:0!important;overflow:hidden!important;display:flex!important;flex-direction:column!important
+  }
+  body.geometry-mobile .lesson-topline{flex:0 0 auto!important;padding:10px 12px!important;margin:0!important}
+  body.geometry-mobile .lesson-grid{display:block!important;flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;padding:12px!important}
+  body.geometry-mobile .lesson-main{padding:0 0 12px!important}
+  body.geometry-mobile .lesson-main h2{font-size:27px!important;line-height:1.05!important}
+  body.geometry-mobile .lesson-formula-wrap,.lesson-example{padding:10px!important}
+  body.geometry-mobile .lesson-points{padding:10px 0 0!important}
+  body.geometry-mobile .lesson-point{padding:8px 0!important}
+  body.geometry-mobile .lesson-footer{
+    position:static!important;flex:0 0 auto!important;margin:0!important;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px))!important;
+    display:block!important;background:#fff!important;border-top:1px solid #D7E5E2!important;box-shadow:0 -6px 18px rgba(30,72,66,.06)!important
+  }
+  body.geometry-mobile .lesson-footer p{display:none!important}
+  body.geometry-mobile .lesson-footer button{width:100%!important;min-height:48px!important}
+
+  /* Guided lesson support if/when the richer learning layer is active. */
+  body.geometry-mobile .lesson-card.guided-mode{width:min(680px,100%)!important;height:auto!important;min-height:0!important;max-height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;display:flex!important;flex-direction:column!important}
+  body.geometry-mobile .guided-learning-course{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;padding:15px 13px!important}
+  body.geometry-mobile .guided-head{margin-bottom:14px!important;gap:9px!important}
+  body.geometry-mobile .guided-head h2{font-size:25px!important}
+  body.geometry-mobile .guided-concept-grid,
+  body.geometry-mobile .guided-concept-grid.compact,
+  body.geometry-mobile .explore-layout,
+  body.geometry-mobile .worked-layout{grid-template-columns:1fr!important;gap:12px!important}
+  body.geometry-mobile .guided-copy-block,
+  body.geometry-mobile .variable-board,
+  body.geometry-mobile .worked-answer,
+  body.geometry-mobile .learning-graph-card,
+  body.geometry-mobile .ready-mission{padding:13px!important}
+  body.geometry-mobile .check-options{grid-template-columns:1fr!important}
+  body.geometry-mobile .check-options button{min-height:50px!important}
+  body.geometry-mobile .lesson-card.guided-mode .lesson-footer{padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px))!important}
+
+  /* Result popup: content height only. */
+  body.geometry-mobile .modal{
+    position:fixed!important;inset:0!important;z-index:100!important;display:flex!important;align-items:center!important;justify-content:center!important;
+    padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))!important;
+    overflow:hidden!important
+  }
+  body.geometry-mobile .modal.hidden{display:none!important}
+  body.geometry-mobile .modal-card{
+    width:min(480px,100%)!important;max-width:100%!important;height:auto!important;min-height:0!important;
+    max-height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
+    overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;border-radius:18px!important;padding:20px 14px calc(16px + env(safe-area-inset-bottom,0px))!important
+  }
+  body.geometry-mobile .modal-card h2{font-size:25px!important}
+  body.geometry-mobile .modal-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important}
+
+  /* Super Admin access popup must also fit phones. */
+  body.geometry-mobile .geometry-access-modal{padding:10px!important;overflow:hidden!important;align-items:center!important}
+  body.geometry-mobile .geometry-access-card{width:min(500px,100%)!important;max-height:calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;overflow-y:auto!important;padding:18px!important;border-radius:18px!important}
+  body.geometry-mobile .geometry-access-card h2{font-size:22px!important;margin-top:13px!important}
+  body.geometry-mobile .geometry-access-actions{display:grid!important;grid-template-columns:1fr!important}
+  body.geometry-mobile .geometry-access-actions button{width:100%!important}
+
+  /* Hide mobile controls while any blocking popup is open. */
+  body.geometry-mobile:has(.lesson-overlay:not(.hidden)) .mobile-game-nav,
+  body.geometry-mobile:has(.lesson-overlay:not(.hidden)) .mobile-board-formula-button,
+  body.geometry-mobile:has(.modal:not(.hidden)) .mobile-game-nav,
+  body.geometry-mobile:has(.modal:not(.hidden)) .mobile-board-formula-button,
+  body.geometry-mobile:has(.geometry-access-modal:not(.hidden)) .mobile-game-nav,
+  body.geometry-mobile:has(.geometry-access-modal:not(.hidden)) .mobile-board-formula-button{visibility:hidden!important;pointer-events:none!important}
+}
+
+@media (max-width:480px), ((hover:none) and (pointer:coarse) and (max-width:600px)){
+  body.geometry-mobile .brand-mark{display:none!important}
+  body.geometry-mobile .top-stats .star-stat{display:none!important}
+  body.geometry-mobile #gameCanvas{height:min(78vw,44dvh)!important;min-height:235px!important}
+  body.geometry-mobile .concept-strip{grid-template-columns:30px minmax(0,1fr)!important}
+  body.geometry-mobile .concept-strip button{grid-column:1/-1!important;width:100%!important}
+  body.geometry-mobile .formula-input-row{grid-template-columns:1fr!important}
+  body.geometry-mobile .formula-input-row button{width:100%!important}
+  body.geometry-mobile .math-keys{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  body.geometry-mobile .domain-key{grid-column:span 3!important}
+  body.geometry-mobile .panel-actions{grid-template-columns:1fr!important}
+  body.geometry-mobile .ghost-action{grid-column:1!important}
+  body.geometry-mobile .mission-list{grid-template-columns:1fr!important}
+  body.geometry-mobile .modal-actions{grid-template-columns:1fr!important}
+}
+
+@media (max-width:1100px) and (orientation:landscape) and (max-height:600px), ((hover:none) and (pointer:coarse) and (orientation:landscape) and (max-height:600px)){
+  body.geometry-mobile .journey-stepper{display:none!important}
+  body.geometry-mobile .mission-header p{display:none!important}
+  body.geometry-mobile .mission-header h1{font-size:23px!important}
+  body.geometry-mobile .concept-strip{padding:6px 8px!important;margin-bottom:6px!important}
+  body.geometry-mobile #gameCanvas{height:calc(100dvh - 150px)!important;min-height:205px!important;max-height:350px!important}
+  body.geometry-mobile .lesson-card,
+  body.geometry-mobile .lesson-card.guided-mode,
+  body.geometry-mobile .modal-card{max-height:calc(100dvh - 8px)!important;border-radius:12px!important}
+  body.geometry-mobile .lesson-grid{padding:9px 11px!important}
+  body.geometry-mobile .lesson-main h2{font-size:23px!important}
+  body.geometry-mobile .lesson-points{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
+  body.geometry-mobile .lesson-point{display:block!important;padding:8px!important;border:1px solid #D7E5E2!important;border-radius:10px!important}
+  body.geometry-mobile .lesson-point>span{margin-bottom:6px!important}
+}
