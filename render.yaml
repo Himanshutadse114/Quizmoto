@@ -37,7 +37,7 @@ services:
         value: "true"
       - key: JWT_SECRET
         generateValue: true
-      - key: FAL_KEY
+      - key: REPLICATE_API_TOKEN
         sync: false
       - key: CORS_ORIGIN
         value: "https://quizmoto-frontend.onrender.com,https://kahoot-awareness-frontend.onrender.com"
