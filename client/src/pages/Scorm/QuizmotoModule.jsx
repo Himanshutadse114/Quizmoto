@@ -97,6 +97,28 @@ export default function QuizmotoModule() {
     }
   };
 
+  const launchGeometryFullscreen = async () => {
+    const target = document.documentElement;
+    const request = target.requestFullscreen || target.webkitRequestFullscreen;
+
+    if (!request) {
+      setMessage('Geometry Physics requires browser fullscreen, which is not supported on this device or browser.');
+      return;
+    }
+
+    try {
+      if (target.requestFullscreen) {
+        await target.requestFullscreen({ navigationUI: 'hide' });
+      } else {
+        target.webkitRequestFullscreen();
+      }
+      setGeometryOpen(true);
+      setMessage('');
+    } catch (_) {
+      setMessage('Geometry Physics can only be played in fullscreen. Please allow fullscreen and click Play again.');
+    }
+  };
+
   if (geometryOpen) {
     return <GeometryPhysicsWorkspace onClose={() => setGeometryOpen(false)} />;
   }
@@ -152,7 +174,7 @@ export default function QuizmotoModule() {
         </div>
       </section>
 
-      <FreeGamesSection onLaunch={() => setGeometryOpen(true)} />
+      <FreeGamesSection onLaunch={launchGeometryFullscreen} />
 
       {activeSessions.length > 0 && (
         <section className="scorm-panel overflow-hidden mb-5">
