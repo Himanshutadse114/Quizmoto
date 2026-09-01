@@ -62,6 +62,32 @@ describe('ScormCanonicalProgressService', () => {
         expect(progress.progressPercent).to.equal(42);
     });
 
+    it('uses lesson location against authored slides when progress_percent was never projected', () => {
+        const state = {
+            lessonStatus: 'incomplete',
+            sequence: 4,
+            values: {
+                'cmi.core.lesson_status': 'incomplete',
+                'cmi.core.lesson_location': '2'
+            }
+        };
+        const registration = {
+            status: 'invited',
+            course: {
+                package: {
+                    analysisJson: JSON.stringify({
+                        slides: [{ title: 'One' }, { title: 'Two' }, { title: 'Three' }],
+                        quiz: [{ id: 'q1' }]
+                    })
+                }
+            }
+        };
+
+        const progress = registrationProgress(registration, state);
+        expect(progress.status).to.equal('in_progress');
+        expect(progress.progressPercent).to.be.greaterThan(0);
+    });
+
     it('recovers Quizmoto progress from suspend data when no progress field was projected', () => {
         const state = {
             lessonStatus: 'incomplete',

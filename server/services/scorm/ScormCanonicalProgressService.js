@@ -1,4 +1,5 @@
 const LearningState = require('./ScormLearningStateService');
+const { deriveProgress } = require('./ScormProgressService');
 
 const FINISHED_STATUSES = new Set(['completed', 'passed', 'failed']);
 const EMPTY_STATUSES = new Set(['', 'unknown', 'not attempted', 'not_attempted']);
@@ -62,25 +63,40 @@ function suspendProgress(state) {
     }
 }
 
-function effectiveProgressPercent(state, fallbackProgress = null, lessonStatus = null) {
+function packageRowFor(registration) {
+    return registration?.package
+        || registration?.course?.package
+        || null;
+}
+
+function effectiveProgressPercent(state, fallbackProgress = null, lessonStatus = null, packageRow = null) {
     const status = cleanStatus(lessonStatus || effectiveLessonStatus(state));
     if (FINISHED_STATUSES.has(status)) return 100;
 
     const explicit = clampPercent(state?.progressPercent);
-    if (explicit != null) return explicit;
+    if (explicit != null && explicit > 0) return explicit;
 
     const values = stateValues(state);
     const progressMeasure = finiteNumber(values['cmi.progress_measure']);
     if (progressMeasure != null && progressMeasure >= 0 && progressMeasure <= 1) {
-        return clampPercent(progressMeasure * 100);
+        const measured = clampPercent(progressMeasure * 100);
+        if (measured != null && measured > 0) return measured;
     }
 
     const custom = clampPercent(values['quizmoto.progress_percent'] ?? values['quizmoto.progress']);
-    if (custom != null) return custom;
+    if (custom != null && custom > 0) return custom;
 
     const suspended = suspendProgress(state);
-    if (suspended != null) return suspended;
+    if (suspended != null && suspended > 0) return suspended;
 
+    const fromPlayer = clampPercent(deriveProgress({
+        registration: { lastLessonStatus: status, status: null },
+        cmiState: state,
+        packageRow
+    }));
+    if (fromPlayer != null && fromPlayer > 0) return fromPlayer;
+
+    if (explicit != null) return explicit;
     return clampPercent(fallbackProgress);
 }
 
@@ -98,7 +114,8 @@ function registrationProgress(registration, state = null) {
     const progressPercent = effectiveProgressPercent(
         state,
         registration?.progressPercent ?? null,
-        lessonStatus
+        lessonStatus,
+        packageRowFor(registration)
     );
     const registrationStatus = cleanStatus(registration?.status);
     const completed = registrationStatus === 'completed' || FINISHED_STATUSES.has(cleanStatus(lessonStatus));
@@ -130,9 +147,6 @@ async function loadCanonicalStates(registrations) {
     try {
         return await LearningState.listByRegistrationIds(ids);
     } catch (err) {
-        // Never break an admin or learner dashboard just because the canonical
-        // state table is temporarily unavailable. Projection fields remain a
-        // safe fallback while the database issue is logged for operations.
         console.error('[scorm-progress] canonical state read failed; using registration projection', {
             registrations: ids.length,
             error: err?.message || String(err),
@@ -149,9 +163,28 @@ function enrichCourse(course, state) {
         status: progress.status,
         lessonStatus: progress.lessonStatus,
         progressPercent: progress.progressPercent,
+        progressAvailable: true,
         score: progress.score,
         totalTime: progress.totalTime,
         lastActivityAt: progress.lastActivityAt
+    };
+}
+
+function summarizeProgressRows(rows) {
+    const list = Array.isArray(rows) ? rows : [];
+    let completedCount = 0;
+    let inProgressCount = 0;
+    for (const row of list) {
+        const status = String(row?.status || '').toLowerCase();
+        if (status === 'completed') completedCount += 1;
+        else if (status === 'in_progress') inProgressCount += 1;
+    }
+    return {
+        assignmentCount: list.length,
+        completedCount,
+        inProgressCount,
+        notStartedCount: Math.max(0, list.length - completedCount - inProgressCount),
+        completionPercent: list.length ? Math.round((completedCount / list.length) * 100) : 0
     };
 }
 
@@ -175,5 +208,6 @@ module.exports = {
     registrationProgress,
     loadCanonicalStates,
     enrichCourse,
-    enrichDashboardCourses
+    enrichDashboardCourses,
+    summarizeProgressRows
 };
