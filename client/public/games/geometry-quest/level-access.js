@@ -25,15 +25,6 @@
     return match ? Number(match[0]) : 1;
   }
 
-  function isSuperAdminUser() {
-    try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      return Boolean(user?.isSuperAdmin || user?.role === 'super_admin');
-    } catch {
-      return false;
-    }
-  }
-
   function ensureModal() {
     if (document.getElementById('geometryAccessModal')) return;
     const style = document.createElement('style');
@@ -165,12 +156,6 @@
   async function resolveAccess() {
     updateBranding();
     ensureModal();
-    if (isSuperAdminUser()) {
-      fullAccess = true;
-      checked = true;
-      window.GeometryGameAccess = { freeLevels: FREE_LEVELS, totalLevels: TOTAL_LEVELS, fullAccess, checked };
-      return;
-    }
 
     const token = getToken();
     if (token) {
@@ -187,6 +172,7 @@
         fullAccess = false;
       }
     }
+
     checked = true;
     window.GeometryGameAccess = { freeLevels: FREE_LEVELS, totalLevels: TOTAL_LEVELS, fullAccess, checked };
     enforceInitialLevel();
