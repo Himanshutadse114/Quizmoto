@@ -175,9 +175,24 @@ export const AuthProvider = ({ children }) => {
         return resolveScormAuthResponse(res.data);
     };
 
-    const registerScorm = async ({ username, email, password }) => {
-        const res = await axios.post(`${API_URL}/scorm/register`, { username, email, password });
+    const requestMailOtp = async ({ email, purpose, name = null }) => {
+        const res = await axios.post(apiUrl('/api/scorm/otp/request'), { email, purpose, name });
+        return res.data;
+    };
+
+    const verifyMailOtp = async ({ email, purpose, code }) => {
+        const res = await axios.post(apiUrl('/api/scorm/otp/verify'), { email, purpose, code });
+        return res.data;
+    };
+
+    const registerScorm = async ({ username, email, password, verificationToken }) => {
+        const res = await axios.post(`${API_URL}/scorm/register`, { username, email, password, verificationToken });
         return resolveScormAuthResponse(res.data);
+    };
+
+    const resetScormPassword = async ({ email, newPassword, verificationToken }) => {
+        const res = await axios.post(`${API_URL}/scorm/reset-password`, { email, newPassword, verificationToken });
+        return res.data;
     };
 
     const refreshScormAccess = async () => {
@@ -228,7 +243,10 @@ export const AuthProvider = ({ children }) => {
             loginQuizmotoOnlyWithGoogle,
             loginScormWorkspaceWithGoogle,
             loginScormWorkspaceWithMicrosoft,
+            requestMailOtp,
+            verifyMailOtp,
             registerScorm,
+            resetScormPassword,
             refreshScormAccess,
             prepareScormLogin,
             leaveScorm,
