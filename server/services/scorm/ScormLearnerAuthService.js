@@ -240,6 +240,7 @@ async function findAssignedRegistrations(hostId, email) {
     return ScormRegistration.findAll({
         where: {
             isPreview: false,
+            campaignId: null,
             status: { [Op.notIn]: ['revoked', 'superseded'] },
             [Op.and]: [
                 sequelize.where(sequelize.fn('LOWER', sequelize.col('learnerEmail')), normalized)
@@ -260,7 +261,7 @@ async function assertLearnerAssigned(workspace, identity) {
     const assignments = await findAssignedRegistrations(workspace.ownerUserId, identity.email);
     if (!assignments.length) {
         throw fail(
-            'No courses are assigned to this learner account. Contact your administrator.',
+            'No direct courses are assigned to this learner account. If your course was assigned through a campaign, use the campaign link sent by your administrator.',
             'SCORM_LEARNER_NOT_ASSIGNED',
             403
         );
@@ -387,6 +388,9 @@ async function launchLearnerCourse(context, registrationId) {
     });
     if (!registration || registration.isPreview || ['revoked', 'superseded'].includes(registration.status) || !registration.course) {
         throw fail('Course assignment not found.', 'SCORM_ASSIGNMENT_NOT_FOUND', 404);
+    }
+    if (registration.campaignId && context.typ !== 'scorm_campaign_learner') {
+        throw fail('This course was assigned through a campaign. Open it from the campaign learner link.', 'SCORM_CAMPAIGN_AUTH_REQUIRED', 403);
     }
     if (registration.campaignId && context.typ === 'scorm_campaign_learner' && String(registration.campaignId) !== String(context.campaignId || '')) {
         throw fail('This course belongs to a different campaign.', 'SCORM_CAMPAIGN_ASSIGNMENT_FORBIDDEN', 403);
