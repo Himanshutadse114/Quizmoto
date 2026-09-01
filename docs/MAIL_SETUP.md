@@ -1,45 +1,63 @@
 # LMSGEN outbound email setup
 
-LMSGEN sends application email through SMTP. The defaults in the code and Render blueprint match GoDaddy Professional Email, while every SMTP value remains configurable through environment variables.
+LMSGEN sends application email through Brevo's transactional email HTTPS API by default. This avoids SMTP-port restrictions on free hosting while keeping the existing LMSGEN email templates and notification flows.
 
-## Backend environment variables
+SMTP remains available as a fallback provider when `MAIL_PROVIDER=smtp` is explicitly configured.
 
-Set these on whichever backend is currently serving LMSGEN (for example the active Koyeb service or the Render backend):
+## Production environment variables
+
+Set these on the backend that serves `api.lmsgen.in`:
 
 - `MAIL_ENABLED=true`
-- `MAIL_HOST=smtpout.secureserver.net`
-- `MAIL_PORT=465`
-- `MAIL_SECURE=true`
-- `MAIL_USER=<full mailbox address on lmsgen.in>`
-- `MAIL_PASS=<mailbox password>`
+- `MAIL_PROVIDER=brevo`
+- `BREVO_API_KEY=<Brevo production API key>`
+- `MAIL_FROM=training@lmsgen.in`
+- `MAIL_FROM_NAME=LMSGen`
 - `MAIL_ADMIN_TO=<address that receives access/admin notifications>`
-- `APP_BASE_URL=https://lmsgen.in`
+- `APP_BASE_URL=https://www.lmsgen.in`
 
-`MAIL_FROM` is optional. If omitted, LMSGEN sends from `MAIL_USER`. `MAIL_REPLY_TO` is optional. If the chosen mailbox is hosted by a provider other than GoDaddy Professional Email, override `MAIL_HOST`, `MAIL_PORT` and `MAIL_SECURE` with that provider's SMTP settings.
+`MAIL_REPLY_TO` is optional.
 
-Do not commit mailbox passwords or SMTP credentials to GitHub.
+The Brevo API key must be stored only in the deployment environment. Do not commit it to GitHub.
+
+The sender domain `lmsgen.in` and the sender `LMSGen <training@lmsgen.in>` must remain authenticated/verified in Brevo.
 
 ## Mail flows handled by the application
 
-- Six-digit OTP delivery for login, password-reset and email-verification workflows through `/api/scorm/otp/request` and `/api/scorm/otp/verify`.
+- Six-digit OTP delivery for password reset and email verification through `/api/scorm/otp/request` and `/api/scorm/otp/verify`.
 - Direct course-assignment email when a learner registration is created outside a campaign.
-- Campaign invitation email when a campaign changes to active. Email-code campaigns include the learner-specific access code.
-- Tenant Admin invitation when a tenant Admin membership is created or an existing member is promoted to Admin.
+- Campaign invitation email when a campaign changes to active. Email-code campaigns include the learner-specific access code/passkey.
+- Tenant Admin invitation when a Tenant Admin membership is created or an existing member is promoted to Admin.
 - Co-admin and Analytics Viewer invitations/role notifications when workspace membership is added or changed.
 - New access-request acknowledgement to the requester and notification to the configured platform Admin.
 - Access-approved and access-revoked notifications when request status changes.
 
-Non-critical notification failures are logged and never roll back the underlying tenant, course or campaign operation. OTP delivery is strict: if SMTP delivery fails, the OTP request fails and the code record is removed.
+Non-critical notification failures are logged and never roll back the underlying tenant, course or campaign operation. OTP delivery is strict: if email delivery fails, the OTP request fails and the OTP record is removed.
 
-## Operational SMTP checks
+## Super Admin email checks
 
-An authenticated Tenant Admin or Super Admin can check the configured SMTP connection with:
+The Super Admin page includes an Email delivery diagnostics panel using the same provider as production mail.
 
-- `GET /api/scorm/mail/status`
-- `POST /api/scorm/mail/test` to send an actual test message. The request may contain `{ "to": "address@example.com" }`; otherwise the signed-in Admin email is used.
+Backend endpoints:
 
-The public `GET /api/scorm/otp/status` route reports only whether mail credentials are configured. It never exposes credentials.
+- `GET /api/scorm/mail/status` verifies the configured provider. For Brevo this validates the API key through the Brevo HTTPS API.
+- `POST /api/scorm/mail/test` sends an actual delivery test.
+- Send `{ "to": "address@example.com", "kind": "campaign" }` to test the campaign invitation template and a sample Email + access-code passkey.
+
+The diagnostics response never exposes the Brevo API key or mailbox passwords.
+
+## SMTP fallback
+
+If LMSGEN is later hosted somewhere that permits outbound SMTP and SMTP is preferred, set:
+
+- `MAIL_PROVIDER=smtp`
+- `MAIL_HOST=<smtp host>`
+- `MAIL_PORT=<smtp port>`
+- `MAIL_SECURE=true|false`
+- `MAIL_USER=<smtp username>`
+- `MAIL_PASS=<smtp password>`
+- `MAIL_FROM=<verified sender>`
 
 ## DNS note
 
-The exported `lmsgen.in` zone contains GoDaddy SPF, DKIM and mail records, but it also contains Google Workspace and Microsoft 365 MX records. Inbound mail should use one intended provider. If GoDaddy Professional Email is the intended provider, remove the unrelated Google and Microsoft MX records after confirming no mailbox depends on them. Keep SPF, DKIM and DMARC aligned with the active provider.
+Brevo domain authentication uses its own verification and DKIM records. Existing inbound-mail MX records do not need to be moved to Brevo. Keep only one DMARC TXT record at `_dmarc` and keep the authenticated Brevo DKIM selectors in place.
