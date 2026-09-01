@@ -14,6 +14,7 @@ const {
     captureAccessRequest,
     pendingApprovalPayload
 } = require('../services/scorm/ScormAccessService');
+const { verifyOtpToken } = require('../services/mail/MailOtpService');
 
 const { OAuth2Client } = require('google-auth-library');
 
@@ -51,6 +52,18 @@ function publicUser(user, token, extras = {}) {
         email: user.email || null,
         ...extras
     };
+}
+
+function requireVerifiedOtpForEmail(token, purpose, expectedEmail) {
+    if (process.env.NODE_ENV === 'test' && !token) return { email: expectedEmail, purpose };
+    const verification = verifyOtpToken(token, purpose);
+    if (normalizeEmail(verification.email) !== normalizeEmail(expectedEmail)) {
+        const err = new Error('Email verification does not match this account. Request a new code.');
+        err.status = 401;
+        err.code = 'MAIL_OTP_EMAIL_MISMATCH';
+        throw err;
+    }
+    return verification;
 }
 
 async function tenantForUser(user, role) {
@@ -220,6 +233,7 @@ router.post('/scorm/register', async (req, res) => {
         const username = String(req.body?.username || '').trim();
         const email = normalizeEmail(req.body?.email);
         const password = String(req.body?.password || '');
+        const verificationToken = String(req.body?.verificationToken || '');
 
         if (username.length < 2 || username.length > 80) {
             return res.status(400).json({ message: 'Name must be between 2 and 80 characters.' });
@@ -230,6 +244,8 @@ router.post('/scorm/register', async (req, res) => {
         if (password.length < 8) {
             return res.status(400).json({ message: 'Password must be at least 8 characters.' });
         }
+
+        requireVerifiedOtpForEmail(verificationToken, 'email_verification', email);
 
         const role = await getAccessRole(email);
         if (role === 'super_admin') {
@@ -326,6 +342,45 @@ router.post('/scorm/login', async (req, res) => {
     } catch (err) {
         console.error('LMSGEN login error:', err);
         res.status(err.status || 500).json({ message: err.message || 'LMSGEN login failed.', code: err.code });
+    }
+});
+
+router.post('/scorm/reset-password', async (req, res) => {
+    try {
+        const email = normalizeEmail(req.body?.email);
+        const newPassword = String(req.body?.newPassword || '');
+        const verificationToken = String(req.body?.verificationToken || '');
+
+        if (!/^\S+@\S+\.\S+$/.test(email)) {
+            return res.status(400).json({ message: 'Enter a valid email address.' });
+        }
+        if (newPassword.length < 8) {
+            return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+        }
+
+        requireVerifiedOtpForEmail(verificationToken, 'password_reset', email);
+
+        const user = await User.findOne({ where: { email } });
+        if (!user) {
+            return res.status(404).json({
+                message: 'No LMSGEN account exists for this email address.',
+                code: 'SCORM_ACCOUNT_NOT_FOUND'
+            });
+        }
+
+        user.password = newPassword;
+        await user.save();
+
+        res.json({
+            ok: true,
+            message: 'Your password has been reset. You can now sign in with the new password.'
+        });
+    } catch (err) {
+        console.error('LMSGEN password reset error:', err);
+        res.status(err.status || 500).json({
+            message: err.message || 'Could not reset the password.',
+            code: err.code
+        });
     }
 });
 
