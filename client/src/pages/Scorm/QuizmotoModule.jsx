@@ -130,15 +130,15 @@ export default function QuizmotoModule() {
                 <div className="w-12 h-12 rounded-xl grid place-items-center shrink-0 border border-[#4ce6f3]/30 bg-[#4ce6f3]/10 text-[#4ce6f3]"><Shapes size={22} /></div>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-[17px] font-semibold">Geometry Quest</h3>
+                    <h3 className="text-[17px] font-semibold">Geometry Physics</h3>
                     <span className="rounded-full border border-[#9d7cff]/30 bg-[#9d7cff]/10 px-2.5 py-1 text-[9px] uppercase tracking-[.12em] font-bold text-[#b9a5ff]">New add-on</span>
                   </div>
-                  <p className="text-xs md:text-[13px] text-[#8295ae] mt-2 leading-relaxed max-w-3xl">Teach geometry and maths formulas through 32 gamified missions covering coordinate geometry, triangles, polygons, circles, curves, trigonometry, 3D geometry and advanced functions.</p>
+                  <p className="text-xs md:text-[13px] text-[#8295ae] mt-2 leading-relaxed max-w-3xl">Recreate geometric shapes by writing equations manually, then enter the Gravity Campaign where those formulas become physical ramps. Drop the ball, let gravity roll it across your curves, collect every star and reach the basket.</p>
                   <div className="flex flex-wrap gap-2 mt-3 text-[10px] text-[#93a4bb]">
-                    <span className="rounded-lg border border-[#263950] px-2.5 py-1.5">32 missions</span>
-                    <span className="rounded-lg border border-[#263950] px-2.5 py-1.5">8 formula worlds</span>
-                    <span className="rounded-lg border border-[#263950] px-2.5 py-1.5">XP · Stars · Streaks</span>
-                    <span className="rounded-lg border border-[#263950] px-2.5 py-1.5">Formula Vault</span>
+                    <span className="rounded-lg border border-[#263950] px-2.5 py-1.5">18 shape missions</span>
+                    <span className="rounded-lg border border-[#263950] px-2.5 py-1.5">18 gravity missions</span>
+                    <span className="rounded-lg border border-[#263950] px-2.5 py-1.5">Manual formulas</span>
+                    <span className="rounded-lg border border-[#263950] px-2.5 py-1.5">Real gravity physics</span>
                   </div>
                 </div>
               </div>
