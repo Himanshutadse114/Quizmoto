@@ -83,6 +83,7 @@ const ScormRegistration = sequelize.define('ScormRegistration', {
     indexes: [
         { fields: ['courseId'] },
         { fields: ['campaignId'] },
+        { fields: ['campaignId', 'isPreview', 'status'], name: 'scorm_registrations_campaign_runtime_idx' },
         { fields: ['status'] },
         { fields: ['learnerEmail'] },
         { fields: ['assignedAt'] }
