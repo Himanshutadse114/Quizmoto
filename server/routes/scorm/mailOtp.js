@@ -5,7 +5,8 @@ const MailService = require('../../services/mail/MailService');
 const { requestOtp, verifyOtp } = require('../../services/mail/MailOtpService');
 
 function emailKey(req) {
-    return String(req.body?.email || '').trim().toLowerCase() || req.ip || 'anonymous';
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    return email ? `mail-otp:${email}` : 'mail-otp-anonymous';
 }
 
 const requestLimiter = rateLimit({
