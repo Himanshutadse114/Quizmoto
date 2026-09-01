@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny-ps" width="512" height="512" viewBox="0 0 512 512">
+  <title>LMSGEN</title>
+  <desc>LMSGEN brand mark: teal learning-book symbol on a dark background.</desc>
+  <rect width="512" height="512" fill="#071c1a"/>
+  <rect x="96" y="116" width="132" height="244" fill="#47c7c1"/>
+  <rect x="118" y="138" width="88" height="200" fill="#071c1a"/>
+  <rect x="284" y="116" width="132" height="244" fill="#47c7c1"/>
+  <rect x="306" y="138" width="88" height="200" fill="#071c1a"/>
+  <rect x="244" y="100" width="24" height="276" fill="#8fe4df"/>
+  <rect x="112" y="380" width="288" height="20" fill="#47c7c1"/>
+  <rect x="210" y="360" width="92" height="20" fill="#8fe4df"/>
+</svg>
