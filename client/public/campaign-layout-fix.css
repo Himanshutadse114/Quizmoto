@@ -1,0 +1,54 @@
+/* LMSGEN campaign layout guard.
+   Keeps campaign actions inside the panel at desktop widths and removes the
+   high-contrast divider artifact from the campaign detail lists. */
+
+.scorm-campaigns-page .campaign-list-row > * {
+  min-width: 0;
+}
+
+.scorm-campaigns-page .campaign-actions {
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap !important;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  box-sizing: border-box;
+}
+
+.scorm-campaigns-page .campaign-actions > * {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* The previous final `auto` grid track used the full intrinsic width of all
+   action buttons and could push the trash button beyond the rounded panel.
+   Give the actions a predictable share of the row instead. */
+@media (min-width: 1280px) {
+  .scorm-campaigns-page .campaign-list-row {
+    grid-template-columns:
+      minmax(0, 3fr)
+      minmax(64px, 1fr)
+      minmax(64px, 1fr)
+      minmax(150px, 2fr)
+      minmax(0, 5fr) !important;
+    column-gap: 14px !important;
+    align-items: center;
+  }
+}
+
+@media (max-width: 1279px) {
+  .scorm-campaigns-page .campaign-actions {
+    justify-content: flex-start !important;
+  }
+}
+
+/* `divide-y` was inheriting a bright border in the campaign detail card in
+   dark mode. The outer card border already separates the list, so individual
+   learner/course rows do not need another horizontal rule. */
+.scorm-campaigns-page .campaign-detail-list.divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-top-width: 0 !important;
+  border-bottom-width: 0 !important;
+  border-color: transparent !important;
+}
