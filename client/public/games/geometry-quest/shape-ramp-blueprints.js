@@ -28,7 +28,15 @@
     ctx.restore();
   };
 
-  function bootLearningLayer() {
+  function appendScript(src, marker) {
+    if (document.querySelector(`script[${marker}]`)) return;
+    const script = document.createElement('script');
+    script.src = src;
+    script.setAttribute(marker, 'true');
+    document.body.appendChild(script);
+  }
+
+  function bootGameLayers() {
     if (!document.querySelector('link[data-geometry-learning]')) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
@@ -36,17 +44,13 @@
       link.dataset.geometryLearning = 'true';
       document.head.appendChild(link);
     }
-    if (!document.querySelector('script[data-geometry-learning]')) {
-      const script = document.createElement('script');
-      script.src = 'learning-system.js?v=2';
-      script.dataset.geometryLearning = 'true';
-      document.body.appendChild(script);
-    }
+    appendScript('learning-system.js?v=2', 'data-geometry-learning');
+    appendScript('level-access.js?v=1', 'data-geometry-access');
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bootLearningLayer, { once: true });
+    document.addEventListener('DOMContentLoaded', bootGameLayers, { once: true });
   } else {
-    setTimeout(bootLearningLayer, 0);
+    setTimeout(bootGameLayers, 0);
   }
 })();
