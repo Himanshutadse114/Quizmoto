@@ -3,7 +3,11 @@ const User = require('../../models/User');
 const {
     ScormWorkspace,
     ScormWorkspaceMember,
-    ScormWorkspaceAuthConfig
+    ScormWorkspaceAuthConfig,
+    ScormPackage,
+    ScormCourse,
+    ScormCampaign,
+    ScormLearnerRoster
 } = require('../../models/scorm');
 const {
     normalizeEmail,
@@ -124,6 +128,22 @@ async function assertEmailAvailableForTenant(email, workspaceId = null) {
     throw fail('This email is already assigned to another LMSGEN tenant.', 'SCORM_TENANT_EMAIL_ALREADY_ASSIGNED', 409);
 }
 
+// A Tenant Admin who already has a real user account may already own SCORM
+// data (packages, courses, campaigns, roster) recorded under their own user
+// id from before tenants existed. The tenant's data host is a new synthetic
+// user (see createTenant), so that existing data must be re-pointed at the
+// new host or it silently disappears from every hostId-scoped query - the
+// admin keeps their login and sees an empty, "untracked" workspace.
+async function migrateExistingHostData(fromUserId, toUserId) {
+    if (!fromUserId || !toUserId || fromUserId === toUserId) return;
+    await Promise.all([
+        ScormPackage.update({ hostId: toUserId }, { where: { hostId: fromUserId } }),
+        ScormCourse.update({ hostId: toUserId }, { where: { hostId: fromUserId } }),
+        ScormCampaign.update({ hostId: toUserId }, { where: { hostId: fromUserId } }),
+        ScormLearnerRoster.update({ hostId: toUserId }, { where: { hostId: fromUserId } })
+    ]);
+}
+
 async function createTenant({
     name,
     adminEmail,
@@ -173,6 +193,10 @@ async function createTenant({
             invitedByEmail: normalizeEmail(actorEmail) || null,
             joinedAt: linkedUser ? new Date() : null
         });
+
+        if (linkedUser) {
+            await migrateExistingHostData(linkedUser.id, hostUser.id);
+        }
 
         // Entitlements belong to the tenant's internal data host, never to the
         // human Tenant Admin. Changing Admin therefore cannot reset allowances.

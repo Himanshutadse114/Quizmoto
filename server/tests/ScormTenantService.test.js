@@ -37,6 +37,10 @@ function loadService() {
         findAll: sinon.stub().resolves([adminMember])
     };
     const ScormWorkspaceAuthConfig = { findOrCreate: sinon.stub().resolves([{}]) };
+    const ScormPackage = { update: sinon.stub().resolves([0]) };
+    const ScormCourse = { update: sinon.stub().resolves([0]) };
+    const ScormCampaign = { update: sinon.stub().resolves([0]) };
+    const ScormLearnerRoster = { update: sinon.stub().resolves([0]) };
     const addGrant = sinon.stub().resolves({});
     const updateEntitlement = sinon.stub().resolves({});
     const entitlement = {
@@ -59,7 +63,10 @@ function loadService() {
 
     const service = proxyquire('../services/scorm/ScormTenantService', {
         '../../models/User': User,
-        '../../models/scorm': { ScormWorkspace, ScormWorkspaceMember, ScormWorkspaceAuthConfig },
+        '../../models/scorm': {
+            ScormWorkspace, ScormWorkspaceMember, ScormWorkspaceAuthConfig,
+            ScormPackage, ScormCourse, ScormCampaign, ScormLearnerRoster
+        },
         './ScormAccessService': {
             normalizeEmail: (value) => String(value || '').trim().toLowerCase(),
             isValidEmail: (value) => /^\S+@\S+\.\S+$/.test(String(value || '').trim()),
@@ -74,7 +81,11 @@ function loadService() {
         }
     });
 
-    return { service, User, ScormWorkspace, ScormWorkspaceMember, ScormWorkspaceAuthConfig, addGrant, updateEntitlement, hostUser, workspace, adminMember };
+    return {
+        service, User, ScormWorkspace, ScormWorkspaceMember, ScormWorkspaceAuthConfig,
+        ScormPackage, ScormCourse, ScormCampaign, ScormLearnerRoster,
+        addGrant, updateEntitlement, hostUser, workspace, adminMember
+    };
 }
 
 describe('ScormTenantService', () => {
@@ -102,6 +113,14 @@ describe('ScormTenantService', () => {
         expect(result.hostId).to.equal(901);
         expect(result.admin.email).to.equal('admin@acme.com');
         expect(result.usage).to.deep.equal({ staff: 1, courses: 1, courseCreations: 2, learners: 10, rosterLearners: 10, campaigns: 3, assignments: 12 });
+
+        // The Tenant Admin (userId 44) already existed and may already own SCORM
+        // data recorded under their own user id from before tenants existed.
+        // That data must move to the new tenant host or it silently disappears
+        // from every hostId-scoped tracking/report query.
+        for (const model of [ctx.ScormPackage, ctx.ScormCourse, ctx.ScormCampaign, ctx.ScormLearnerRoster]) {
+            expect(model.update.calledOnceWith({ hostId: ctx.hostUser.id }, { where: { hostId: 44 } })).to.equal(true);
+        }
     });
 
     it('does not allow the protected Super Admin email to become a customer Tenant Admin', async () => {
