@@ -20,6 +20,9 @@ const { getCampaignDetail } = require('./ScormCampaignService');
 
 const MAX_CAMPAIGN_COMBINATIONS = 5000;
 const ACTIVE_REGISTRATION_STATUSES = { [Op.notIn]: ['revoked', 'superseded'] };
+const CAMPAIGN_PUBLIC_BASE_URL = String(
+    process.env.CAMPAIGN_PUBLIC_BASE_URL || 'https://www.lmsgen.in'
+).trim().replace(/\/+$/, '') || 'https://www.lmsgen.in';
 
 function fail(message, code, status = 400) {
     const error = new Error(message);
@@ -30,6 +33,10 @@ function fail(message, code, status = 400) {
 
 function normalizeEmail(value) {
     return String(value || '').trim().toLowerCase();
+}
+
+function campaignPublicUrl(campaignId) {
+    return `${CAMPAIGN_PUBLIC_BASE_URL}/campaign/${encodeURIComponent(String(campaignId || ''))}`;
 }
 
 function normalizeLearners(input) {
@@ -94,17 +101,25 @@ function registrationCompleted(registration) {
 }
 
 async function sendCampaignMail(campaign, learner, template) {
-    const mode = normalizeStoredAuthMode(campaign.authMode);
+    // Do not trust a stale campaign instance when generating a learner link.
+    // Re-read the row so invitations/reminders can never be sent for a stopped
+    // or otherwise inactive campaign.
+    const liveCampaign = await ScormCampaign.findByPk(campaign.id);
+    if (!liveCampaign || String(liveCampaign.status).toLowerCase() !== 'active') {
+        return { sent: false, skipped: true, reason: 'SCORM_CAMPAIGN_NOT_ACTIVE' };
+    }
+
+    const mode = normalizeStoredAuthMode(liveCampaign.authMode);
     return MailService.safeSend({
         to: learner.email,
         template,
         data: {
             learnerName: learner.learnerName,
-            campaignId: campaign.id,
-            campaignName: campaign.name,
-            dueAt: campaign.dueAt,
-            accessCode: mode === 'email_code' ? campaignAccessCode(campaign.id, learner.email) : null,
-            path: `/campaign/${encodeURIComponent(campaign.id)}`
+            campaignId: liveCampaign.id,
+            campaignName: liveCampaign.name,
+            dueAt: liveCampaign.dueAt,
+            accessCode: mode === 'email_code' ? campaignAccessCode(liveCampaign.id, learner.email) : null,
+            path: campaignPublicUrl(liveCampaign.id)
         }
     });
 }
@@ -303,5 +318,6 @@ module.exports = {
     removeLearner,
     sendReminders,
     normalizeLearners,
-    registrationCompleted
+    registrationCompleted,
+    campaignPublicUrl
 };
