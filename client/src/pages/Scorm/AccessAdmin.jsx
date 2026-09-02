@@ -8,48 +8,52 @@ export default function AccessAdmin() {
   const [tab, setTab] = useState('tenants');
 
   return (
-    <div className="p-4 md:p-7 lg:p-8 max-w-[1500px] mx-auto w-full">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-5 pb-5 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
-        <div>
-          <div className="scorm-micro text-[9px] uppercase font-semibold">Platform administration</div>
-          <h1 className="text-[28px] md:text-[34px] font-semibold tracking-[-.03em] mt-1.5">Super Admin</h1>
-          <p className="text-xs mt-2 max-w-2xl leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>
-            Manage tenants, platform access and the email templates used across LMSGEN.
-          </p>
-        </div>
-        <div className="inline-flex rounded-xl border p-1 self-start lg:self-auto" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
-          <button
-            type="button"
-            onClick={() => setTab('tenants')}
-            className="h-9 px-3.5 rounded-lg text-[10px] font-semibold inline-flex items-center gap-2 transition"
-            style={{
-              background: tab === 'tenants' ? 'rgba(79,201,191,.12)' : 'transparent',
-              color: tab === 'tenants' ? '#4FC9BF' : 'var(--scorm-ink-soft)'
-            }}
-          >
-            <Building2 size={13} /> Tenant Management
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('email')}
-            className="h-9 px-3.5 rounded-lg text-[10px] font-semibold inline-flex items-center gap-2 transition"
-            style={{
-              background: tab === 'email' ? 'rgba(79,201,191,.12)' : 'transparent',
-              color: tab === 'email' ? '#4FC9BF' : 'var(--scorm-ink-soft)'
-            }}
-          >
-            <Mail size={13} /> Email Templates
-          </button>
+    <div className="pt-4 md:pt-5">
+      <div className="px-4 md:px-8 max-w-[1280px] mx-auto">
+        <div className="flex items-center justify-between gap-3 pb-4 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
+          <div>
+            <div className="scorm-micro text-[9px] uppercase font-semibold">Super Admin</div>
+            <div className="mt-1 text-[10px]" style={{ color: 'var(--scorm-muted)' }}>Platform-wide administration</div>
+          </div>
+          <div className="inline-flex rounded-xl border p-1" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
+            <button
+              type="button"
+              onClick={() => setTab('tenants')}
+              className="h-9 px-3.5 rounded-lg text-[10px] font-semibold inline-flex items-center gap-2 transition"
+              style={{
+                background: tab === 'tenants' ? 'rgba(79,201,191,.12)' : 'transparent',
+                color: tab === 'tenants' ? '#4FC9BF' : 'var(--scorm-muted)'
+              }}
+            >
+              <Building2 size={13} /> Tenant Management
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab('email')}
+              className="h-9 px-3.5 rounded-lg text-[10px] font-semibold inline-flex items-center gap-2 transition"
+              style={{
+                background: tab === 'email' ? 'rgba(79,201,191,.12)' : 'transparent',
+                color: tab === 'email' ? '#4FC9BF' : 'var(--scorm-muted)'
+              }}
+            >
+              <Mail size={13} /> Email Templates
+            </button>
+          </div>
         </div>
       </div>
 
       {tab === 'tenants' ? (
         <TenantAdmin />
       ) : (
-        <>
+        <div className="px-4 py-6 md:px-8 md:py-8 max-w-[1280px] mx-auto space-y-4">
+          <div className="mb-5">
+            <div className="text-[#4FC9BF] text-[9px] uppercase tracking-[.15em] font-semibold">Platform communication</div>
+            <h1 className="mt-2 text-2xl md:text-3xl font-semibold tracking-[-.025em]">Email Templates</h1>
+            <p className="mt-2 text-xs md:text-sm max-w-3xl leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>Control the HTML and subject used by every LMSGEN system email, then preview or test delivery before using it with learners.</p>
+          </div>
           <SuperAdminMailPanel />
           <EmailTemplatesPanel />
-        </>
+        </div>
       )}
     </div>
   );
