@@ -2,8 +2,12 @@ const { QueryTypes } = require('sequelize');
 const { sequelize } = require('../../config/database');
 const { ScormRegistration } = require('../../models/scorm');
 const { verifyRegistrationToken } = require('./ScormInviteService');
+const RuntimeStore = require('./ScormRuntimeSnapshotStore');
+const RuntimeReader = require('./ScormRuntimeSnapshotReader');
 
 let readyPromise = null;
+const FINISHED_STATUSES = new Set(['completed', 'passed', 'failed']);
+const EMPTY_STATUSES = new Set(['', 'unknown', 'not attempted', 'not_attempted']);
 
 function bearer(req) {
     const h = req.header('Authorization') || '';
@@ -33,16 +37,32 @@ function firstValue(values, keys) {
 }
 
 function finiteNumber(value) {
+    if (value == null || String(value).trim() === '') return null;
     const n = Number(value);
     return Number.isFinite(n) ? n : null;
 }
 
-function normalizeStatus(values) {
-    const success = firstValue(values, ['cmi.success_status']);
-    if (success && ['passed', 'failed'].includes(success.toLowerCase())) return success.toLowerCase();
+function cleanStatus(value) {
+    return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
 
-    const status = firstValue(values, ['cmi.core.lesson_status', 'cmi.completion_status']);
-    return status ? status.toLowerCase() : null;
+function normalizeStatus(values) {
+    const candidates = [
+        firstValue(values, ['cmi.success_status']),
+        firstValue(values, ['cmi.core.lesson_status']),
+        firstValue(values, ['cmi.completion_status'])
+    ].map(cleanStatus);
+
+    // The LMS player exposes defaults for SCORM 1.2 and SCORM 2004 at the same
+    // time. A default "not attempted" from one standard must never hide a valid
+    // completion from the other standard.
+    for (const status of candidates) {
+        if (FINISHED_STATUSES.has(status)) return status;
+    }
+    for (const status of candidates) {
+        if (status && !EMPTY_STATUSES.has(status)) return status;
+    }
+    return candidates.find(Boolean) || null;
 }
 
 function parseScorm12Time(value) {
@@ -78,19 +98,37 @@ function formatScorm12Time(seconds) {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${secs}`;
 }
 
+function suspendProgress(values) {
+    const raw = firstValue(values, ['cmi.suspend_data']);
+    if (!raw) return null;
+    try {
+        const parsed = JSON.parse(raw);
+        return finiteNumber(parsed?.quizmotoProgress ?? parsed?.progressPercent ?? parsed?.progress);
+    } catch (_) {
+        return null;
+    }
+}
+
 function deriveState(values, previous = null) {
     const lessonStatus = normalizeStatus(values) || previous?.lessonStatus || 'not attempted';
     const scoreRaw = finiteNumber(firstValue(values, ['cmi.core.score.raw', 'cmi.score.raw']));
     const lessonLocation = firstValue(values, ['cmi.core.lesson_location', 'cmi.location']);
     const suspendData = firstValue(values, ['cmi.suspend_data']) || previous?.suspendData || '';
 
+    const absoluteSeconds = finiteNumber(firstValue(values, ['quizmoto.total_time_seconds']));
     const explicitTotal = firstValue(values, ['cmi.core.total_time', 'cmi.total_time']);
     const sessionTime = firstValue(values, ['cmi.core.session_time', 'cmi.session_time']);
     const explicitSeconds = secondsFromTime(explicitTotal);
     const previousSeconds = secondsFromTime(previous?.totalTime || '');
     const sessionSeconds = secondsFromTime(sessionTime);
     let totalTime;
-    if (explicitTotal && explicitSeconds > 0) {
+    if (absoluteSeconds != null && absoluteSeconds >= 0) {
+        // LMSGEN's player shell supplies an absolute cumulative clock. This
+        // makes time tracking idempotent across autosave retries and prevents a
+        // package that repeatedly reports cumulative session_time from being
+        // added more than once.
+        totalTime = formatScorm12Time(absoluteSeconds);
+    } else if (explicitTotal && explicitSeconds > 0) {
         totalTime = explicitTotal;
     } else if (sessionSeconds > 0) {
         totalTime = formatScorm12Time(previousSeconds + sessionSeconds);
@@ -100,13 +138,16 @@ function deriveState(values, previous = null) {
 
     const progressMeasure = finiteNumber(firstValue(values, ['cmi.progress_measure']));
     const customProgress = finiteNumber(firstValue(values, ['quizmoto.progress', 'quizmoto.progress_percent']));
+    const suspendedProgress = suspendProgress(values);
     let progressPercent = previous?.progressPercent ?? null;
-    if (progressMeasure != null && progressMeasure >= 0 && progressMeasure <= 1) {
+    if (FINISHED_STATUSES.has(cleanStatus(lessonStatus))) {
+        progressPercent = 100;
+    } else if (progressMeasure != null && progressMeasure >= 0 && progressMeasure <= 1) {
         progressPercent = Math.round(progressMeasure * 1000) / 10;
     } else if (customProgress != null) {
         progressPercent = Math.max(0, Math.min(100, Math.round(customProgress * 10) / 10));
-    } else if (['completed', 'passed', 'failed'].includes(lessonStatus)) {
-        progressPercent = 100;
+    } else if (suspendedProgress != null) {
+        progressPercent = Math.max(0, Math.min(100, Math.round(suspendedProgress * 10) / 10));
     }
 
     return {
@@ -224,6 +265,37 @@ function rowToState(row) {
     };
 }
 
+function runtimeToState(registrationId, runtime) {
+    if (!runtime) return null;
+    let values = {};
+    try {
+        values = typeof runtime.rawMapJson === 'string' ? JSON.parse(runtime.rawMapJson) : runtime.rawMapJson || {};
+    } catch (_) {
+        values = {};
+    }
+    const derived = deriveState(asPlainObject(values), {
+        lessonStatus: runtime.lessonStatus,
+        scoreRaw: runtime.scoreRaw,
+        lessonLocation: runtime.lessonLocation,
+        suspendData: runtime.suspendData,
+        totalTime: runtime.totalTime,
+        progressPercent: null
+    });
+    return {
+        registrationId,
+        values: asPlainObject(values),
+        lessonStatus: derived.lessonStatus,
+        scoreRaw: derived.scoreRaw,
+        lessonLocation: derived.lessonLocation,
+        suspendData: derived.suspendData,
+        totalTime: derived.totalTime,
+        progressPercent: derived.progressPercent,
+        sequence: Number(runtime.stateVersion || 0),
+        clientRevision: Number(runtime.stateVersion || 0),
+        updatedAt: runtime.updatedAt || null
+    };
+}
+
 async function readRow(registrationId) {
     await ensureReady();
     const rows = await sequelize.query(
@@ -236,25 +308,60 @@ async function readRow(registrationId) {
     return rows[0] || null;
 }
 
+function hasActivity(state) {
+    if (!state) return false;
+    return Boolean(
+        Number(state.sequence || 0) > 0 ||
+        state.lessonLocation ||
+        state.suspendData ||
+        state.scoreRaw != null ||
+        (state.lessonStatus && !EMPTY_STATUSES.has(cleanStatus(state.lessonStatus)))
+    );
+}
+
+function emptyState(registrationId) {
+    return {
+        registrationId,
+        values: {},
+        lessonStatus: 'not attempted',
+        scoreRaw: null,
+        lessonLocation: null,
+        suspendData: '',
+        totalTime: '00:00:00.00',
+        progressPercent: 0,
+        sequence: 0,
+        clientRevision: 0,
+        updatedAt: null,
+        resume: false
+    };
+}
+
 async function getState(registrationId, token) {
     await authorize(registrationId, token);
-    const state = rowToState(await readRow(registrationId));
-    if (!state) {
-        return {
+    let state = null;
+    try {
+        state = rowToState(await readRow(registrationId));
+    } catch (err) {
+        console.warn('[scorm-state-v2] primary state read failed; using runtime snapshot', {
             registrationId,
-            values: {},
-            lessonStatus: 'not attempted',
-            scoreRaw: null,
-            lessonLocation: null,
-            suspendData: '',
-            totalTime: '00:00:00.00',
-            progressPercent: 0,
-            sequence: 0,
-            clientRevision: 0,
-            updatedAt: null,
-            resume: false
-        };
+            error: err?.message || String(err),
+            dbCode: err?.original?.code || err?.parent?.code || null
+        });
     }
+
+    if (!hasActivity(state)) {
+        try {
+            const runtimeState = runtimeToState(registrationId, await RuntimeStore.load(registrationId));
+            if (hasActivity(runtimeState)) state = runtimeState;
+        } catch (err) {
+            console.warn('[scorm-state-v2] runtime fallback read failed', {
+                registrationId,
+                error: err?.message || String(err)
+            });
+        }
+    }
+
+    if (!state) return emptyState(registrationId);
     const resume = Boolean(
         state.lessonLocation ||
         state.suspendData ||
@@ -270,7 +377,7 @@ async function projectRegistration(reg, state) {
         if (state.scoreRaw != null) reg.lastScoreRaw = state.scoreRaw;
         if (state.totalTime) reg.lastTotalTime = state.totalTime;
         reg.lastCommitAt = new Date();
-        if (['completed', 'passed', 'failed'].includes(String(state.lessonStatus || '').toLowerCase())) {
+        if (FINISHED_STATUSES.has(cleanStatus(state.lessonStatus))) {
             reg.status = 'completed';
         } else if (reg.status === 'invited') {
             reg.status = 'active';
@@ -346,12 +453,102 @@ async function persistDocument(registrationId, payload = {}) {
     return rowToState(await readRow(registrationId));
 }
 
+async function mirrorRuntime(registrationId, values, saved, clientRevision = 0) {
+    try {
+        const current = await RuntimeStore.load(registrationId);
+        const nextVersion = Math.max(
+            Number(current?.stateVersion || 0) + 1,
+            Number(saved?.sequence || 0),
+            Math.max(0, Math.floor(Number(clientRevision) || 0))
+        );
+        await RuntimeStore.save(registrationId, {
+            ...current,
+            lessonStatus: saved?.lessonStatus || current?.lessonStatus || 'not attempted',
+            scoreRaw: saved?.scoreRaw != null ? saved.scoreRaw : current?.scoreRaw ?? null,
+            scoreMin: finiteNumber(firstValue(values, ['cmi.core.score.min', 'cmi.score.min'])) ?? current?.scoreMin ?? null,
+            scoreMax: finiteNumber(firstValue(values, ['cmi.core.score.max', 'cmi.score.max'])) ?? current?.scoreMax ?? null,
+            lessonLocation: saved?.lessonLocation || current?.lessonLocation || null,
+            suspendData: saved?.suspendData || current?.suspendData || '',
+            exit: firstValue(values, ['cmi.core.exit', 'cmi.exit']) || current?.exit || '',
+            totalTime: saved?.totalTime || current?.totalTime || '00:00:00.00',
+            sessionTime: firstValue(values, ['cmi.core.session_time', 'cmi.session_time']) || current?.sessionTime || '00:00:00.00',
+            rawMapJson: JSON.stringify(asPlainObject(values)),
+            stateVersion: nextVersion,
+            initialized: true
+        });
+        return true;
+    } catch (err) {
+        console.warn('[scorm-state-v2] runtime mirror failed', {
+            registrationId,
+            error: err?.message || String(err),
+            dbCode: err?.original?.code || err?.parent?.code || null
+        });
+        return false;
+    }
+}
+
+async function saveFallback(registrationId, reg, payload, primaryError) {
+    const values = asPlainObject(payload.values);
+    let previous = null;
+    let currentRuntime = null;
+    try {
+        currentRuntime = await RuntimeStore.load(registrationId);
+        previous = runtimeToState(registrationId, currentRuntime);
+    } catch (_) {
+        previous = null;
+    }
+    const derived = deriveState(values, previous);
+    const requestedRevision = Math.max(0, Math.floor(Number(payload.clientRevision) || 0));
+    const nextVersion = Math.max(Number(currentRuntime?.stateVersion || 0) + 1, requestedRevision || 1);
+    const saved = {
+        registrationId,
+        values,
+        ...derived,
+        sequence: nextVersion,
+        clientRevision: requestedRevision || nextVersion,
+        updatedAt: new Date().toISOString()
+    };
+
+    await RuntimeStore.save(registrationId, {
+        ...(currentRuntime || RuntimeStore.defaultState()),
+        lessonStatus: saved.lessonStatus,
+        scoreRaw: saved.scoreRaw,
+        scoreMin: finiteNumber(firstValue(values, ['cmi.core.score.min', 'cmi.score.min'])),
+        scoreMax: finiteNumber(firstValue(values, ['cmi.core.score.max', 'cmi.score.max'])),
+        lessonLocation: saved.lessonLocation,
+        suspendData: saved.suspendData,
+        exit: firstValue(values, ['cmi.core.exit', 'cmi.exit']) || '',
+        totalTime: saved.totalTime,
+        sessionTime: firstValue(values, ['cmi.core.session_time', 'cmi.session_time']) || '00:00:00.00',
+        rawMapJson: JSON.stringify(values),
+        stateVersion: nextVersion,
+        initialized: true
+    });
+    await projectRegistration(reg, saved);
+    console.warn('[scorm-state-v2] primary state write failed; runtime snapshot accepted the commit', {
+        registrationId,
+        error: primaryError?.message || String(primaryError),
+        dbCode: primaryError?.original?.code || primaryError?.parent?.code || null
+    });
+    return saved;
+}
+
 async function saveState(registrationId, token, payload = {}) {
     const reg = await authorize(registrationId, token);
-    const saved = await persistDocument(registrationId, payload);
-    await projectRegistration(reg, saved);
+    const values = asPlainObject(payload.values);
+    let saved;
+    let degraded = false;
+    try {
+        saved = await persistDocument(registrationId, { ...payload, values });
+        await projectRegistration(reg, saved);
+        await mirrorRuntime(registrationId, values, saved, payload.clientRevision);
+    } catch (err) {
+        degraded = true;
+        saved = await saveFallback(registrationId, reg, { ...payload, values }, err);
+    }
     return {
         ok: true,
+        degraded,
         event: String(payload.event || 'commit').slice(0, 40),
         summary: saved
     };
@@ -360,32 +557,61 @@ async function saveState(registrationId, token, payload = {}) {
 async function listByRegistrationIds(registrationIds) {
     const ids = Array.from(new Set((registrationIds || []).filter(Boolean).map(String)));
     if (!ids.length) return new Map();
-    await ensureReady();
-    const rows = await sequelize.query(
-        'SELECT * FROM scorm_learning_state_v2 WHERE registration_id IN (:registrationIds)',
-        {
-            replacements: { registrationIds: ids },
-            type: QueryTypes.SELECT
-        }
-    );
     const out = new Map();
-    for (const row of rows) {
-        const state = rowToState(row);
-        if (state) out.set(String(state.registrationId), state);
+    try {
+        await ensureReady();
+        const rows = await sequelize.query(
+            'SELECT * FROM scorm_learning_state_v2 WHERE registration_id IN (:registrationIds)',
+            {
+                replacements: { registrationIds: ids },
+                type: QueryTypes.SELECT
+            }
+        );
+        for (const row of rows) {
+            const state = rowToState(row);
+            if (state) out.set(String(state.registrationId), state);
+        }
+    } catch (err) {
+        console.warn('[scorm-state-v2] primary state list failed; reading runtime snapshots', {
+            registrations: ids.length,
+            error: err?.message || String(err)
+        });
+    }
+
+    const missing = ids.filter((id) => !out.has(id));
+    if (missing.length) {
+        const runtimeStates = await RuntimeReader.listByRegistrationIds(missing);
+        for (const [id, runtime] of runtimeStates.entries()) {
+            const state = runtimeToState(id, runtime);
+            if (state && hasActivity(state)) out.set(String(id), state);
+        }
     }
     return out;
 }
 
 async function destroyState(registrationId) {
-    await ensureReady();
-    await sequelize.query(
-        'DELETE FROM scorm_learning_state_v2 WHERE registration_id = :registrationId',
-        { replacements: { registrationId } }
-    );
+    try {
+        await ensureReady();
+        await sequelize.query(
+            'DELETE FROM scorm_learning_state_v2 WHERE registration_id = :registrationId',
+            { replacements: { registrationId } }
+        );
+    } catch (err) {
+        console.warn('[scorm-state-v2] primary state delete skipped', {
+            registrationId,
+            error: err?.message || String(err)
+        });
+    }
+    try {
+        await RuntimeStore.destroy(registrationId);
+    } catch (_) {
+        // Registration deletion should not fail because a compatibility snapshot is unavailable.
+    }
 }
 
 function resetReadyForTests() {
     readyPromise = null;
+    if (typeof RuntimeStore.resetReadyForTests === 'function') RuntimeStore.resetReadyForTests();
 }
 
 module.exports = {
@@ -399,5 +625,7 @@ module.exports = {
     listByRegistrationIds,
     deriveState,
     rowToState,
+    runtimeToState,
+    normalizeStatus,
     resetReadyForTests
 };
