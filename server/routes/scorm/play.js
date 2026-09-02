@@ -88,6 +88,7 @@ var BOOT=${boot};
 var TOKEN=BOOT.token,SESSION=BOOT.sessionEndpoint,XAPI_EP=BOOT.xapiEndpoint;
 var initialized=false,stateLoaded=false,localValues=Object.create(null);
 var dirty=false,revision=0,savedRevision=-1,saveTimer=null,saveInFlight=false,saveAgain=false;
+var timeBaselineSeconds=0,sessionStartedAt=0;
 var lastError={code:0};
 var ERRORS={0:"No error",101:"General exception",201:"Invalid argument error",301:"Not initialized",351:"Not implemented error",391:"Not initialized error",402:"Invalid set value",403:"Element is read only",404:"Element is write only",405:"Incorrect data type"};
 
@@ -95,6 +96,18 @@ function setStatus(t){try{var el=document.getElementById("status");if(el)el.text
 function notifyOpener(type,data){try{if(window.opener&&!window.opener.closed){window.opener.postMessage({type:type,registrationId:BOOT.registrationId,data:data||null},"*");}}catch(e){}}
 function copyValues(input){var out=Object.create(null);if(!input||typeof input!=="object")return out;Object.keys(input).forEach(function(k){out[String(k)]=input[k]==null?"":String(input[k]);});return out;}
 function putDefault(key,value){if(!Object.prototype.hasOwnProperty.call(localValues,key)||localValues[key]==null||localValues[key]==="")localValues[key]=value;}
+function parseTimeSeconds(value){
+  var s=String(value||"").trim(),m=s.match(/^(\\d+):(\\d{1,2}):(\\d{1,2}(?:\\.\\d+)?)$/);if(m)return Number(m[1])*3600+Number(m[2])*60+Number(m[3]);
+  m=s.match(/^P(?:([\\d.]+)D)?(?:T(?:([\\d.]+)H)?(?:([\\d.]+)M)?(?:([\\d.]+)S)?)?$/i);if(m)return Number(m[1]||0)*86400+Number(m[2]||0)*3600+Number(m[3]||0)*60+Number(m[4]||0);
+  return 0;
+}
+function absoluteTrackedSeconds(){var elapsed=sessionStartedAt?Math.max(0,(Date.now()-sessionStartedAt)/1000):0;return Math.max(0,timeBaselineSeconds+elapsed);}
+function installTimeBaseline(d){
+  var values=d&&d.values&&typeof d.values==="object"?d.values:{};
+  var absolute=Number(values["quizmoto.total_time_seconds"]);
+  if(Number.isFinite(absolute)&&absolute>=0)timeBaselineSeconds=absolute;else timeBaselineSeconds=parseTimeSeconds(d&&d.totalTime);
+  sessionStartedAt=Date.now();
+}
 function installDefaults(resume){
   putDefault("cmi.core.student_id",BOOT.registrationId);
   putDefault("cmi.core.student_name",BOOT.learnerName);
@@ -110,7 +123,8 @@ function installDefaults(resume){
   localValues["cmi.core.entry"]=resume?"resume":"ab-initio";
   localValues["cmi.entry"]=resume?"resume":"ab-initio";
 }
-function snapshotPayload(eventName){return JSON.stringify({event:eventName||"commit",clientVersion:2,clientRevision:revision,values:localValues});}
+function snapshotValues(){var values=copyValues(localValues);values["quizmoto.total_time_seconds"]=String(Math.round(absoluteTrackedSeconds()*100)/100);return values;}
+function snapshotPayload(eventName){return JSON.stringify({event:eventName||"commit",clientVersion:3,clientRevision:revision,values:snapshotValues()});}
 function clearSaveTimer(){if(saveTimer){clearTimeout(saveTimer);saveTimer=null;}}
 function scheduleSave(delay,eventName){if(!initialized&&!stateLoaded)return;clearSaveTimer();saveTimer=setTimeout(function(){saveTimer=null;persist(eventName||"autosave",false);},delay==null?1200:delay);}
 function persist(eventName,keepalive){
@@ -123,7 +137,7 @@ function persist(eventName,keepalive){
     .then(function(d){
       lastError.code=0;savedRevision=Math.max(savedRevision,capturedRevision);
       if(revision===capturedRevision)dirty=false;
-      if(d&&d.summary&&d.summary.lessonStatus)setStatus("SCORM - "+d.summary.lessonStatus+" · saved");else setStatus("SCORM - progress saved");
+      if(d&&d.summary&&d.summary.lessonStatus)setStatus("SCORM - "+d.summary.lessonStatus+(d.degraded?" · saved safely":" · saved"));else setStatus("SCORM - progress saved");
       notifyOpener("quizmoto-scorm-progress",d&&d.summary?d.summary:null);
     })
     .catch(function(){dirty=true;lastError.code=101;setStatus("SCORM - saving will retry");})
@@ -149,18 +163,18 @@ function loadSavedState(){
   setStatus("SCORM - loading saved progress");
   fetch(SESSION,{method:"GET",headers:{"Authorization":"Bearer "+TOKEN},credentials:"same-origin",cache:"no-store"})
     .then(function(r){if(!r.ok)throw new Error("state load "+r.status);return r.json();})
-    .then(function(d){localValues=copyValues(d&&d.values);revision=Math.max(0,Number(d&&d.clientRevision||0));savedRevision=revision;installDefaults(!!(d&&d.resume));stateLoaded=true;setStatus("SCORM - "+(d&&d.resume?"progress restored":"ready"));})
-    .catch(function(){localValues=Object.create(null);installDefaults(false);stateLoaded=true;setStatus("SCORM - ready · save service retrying");})
+    .then(function(d){localValues=copyValues(d&&d.values);revision=Math.max(0,Number(d&&d.clientRevision||0));savedRevision=revision;installDefaults(!!(d&&d.resume));installTimeBaseline(d||{});stateLoaded=true;setStatus("SCORM - "+(d&&d.resume?"progress restored":"ready"));})
+    .catch(function(){localValues=Object.create(null);installDefaults(false);installTimeBaseline({});stateLoaded=true;setStatus("SCORM - ready · save service retrying");})
     .finally(loadContent);
 }
 
 var api12={
   LMSInitialize:function(){
-    initialized=true;lastError.code=0;dirty=true;revision++;
+    initialized=true;if(!sessionStartedAt)sessionStartedAt=Date.now();lastError.code=0;dirty=true;revision++;
     setStatus("SCORM - "+(localValues["cmi.core.entry"]==="resume"?"resumed":"started"));
     scheduleSave(120,"initialize");return "true";
   },
-  LMSFinish:function(){beaconPersist("finish");initialized=false;lastError.code=0;setStatus("SCORM - finished · saving");return "true";},
+  LMSFinish:function(){dirty=true;revision++;beaconPersist("finish");initialized=false;lastError.code=0;setStatus("SCORM - finished · saving");return "true";},
   LMSGetValue:function(el){var key=String(el||"");lastError.code=0;return Object.prototype.hasOwnProperty.call(localValues,key)?String(localValues[key]):"";},
   LMSSetValue:function(el,v){if(!initialized){lastError.code=301;return "false";}var key=String(el||"");localValues[key]=v==null?"":String(v);dirty=true;revision++;lastError.code=0;scheduleSave(900,"autosave");return "true";},
   LMSCommit:function(){if(initialized){dirty=true;revision++;persist("commit",false);}lastError.code=0;return "true";},
@@ -186,9 +200,12 @@ try{if(window.top&&window.top!==window){window.top.API=api12;window.top.API_1484
 window.__quizmotoScormReady=true;
 window.__quizmotoPersistState=function(eventName){dirty=true;revision++;persist(eventName||"manual",false);};
 window.__quizmotoBeaconState=function(eventName){return beaconPersist(eventName||"lifecycle");};
-document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden"&&(dirty||initialized))beaconPersist("visibility-hidden");});
-window.addEventListener("pagehide",function(){if(dirty||initialized)beaconPersist("pagehide");});
-setInterval(function(){if(dirty&&!saveInFlight)persist("heartbeat",false);},5000);
+document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden"&&stateLoaded&&(dirty||initialized))beaconPersist("visibility-hidden");});
+window.addEventListener("pagehide",function(){if(stateLoaded&&(dirty||initialized))beaconPersist("pagehide");});
+// Time is owned by the player shell, not by a particular generated package.
+// Persist periodically even when the SCO has made no new SetValue call so a
+// learner's elapsed time cannot disappear when a package is quiet.
+setInterval(function(){if(stateLoaded&&initialized&&!saveInFlight)persist("heartbeat",false);},5000);
 window.addEventListener("DOMContentLoaded",loadSavedState);
 })();
 </script>
