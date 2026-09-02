@@ -3,9 +3,7 @@ const {
     ScormCampaign,
     ScormCampaignLearner,
     ScormCampaignCourse,
-    ScormCourse,
-    ScormRegistration,
-    ScormWorkspaceAuthConfig
+    ScormRegistration
 } = require('../../models/scorm');
 const {
     normalizeStoredAuthMode,
@@ -14,29 +12,16 @@ const {
 
 const ACTIVE_REGISTRATION_STATUSES = { [Op.notIn]: ['revoked', 'superseded'] };
 
-function authOptions(config) {
-    return {
-        emailCode: true,
-        googleConfigured: Boolean(config?.googleEnabled && config?.googleClientId),
-        microsoftConfigured: Boolean(config?.microsoftEnabled && config?.microsoftClientId && config?.microsoftTenantId)
-    };
-}
-
 function countMap(rows, field = 'count') {
     const map = new Map();
-    for (const row of rows || []) {
-        map.set(String(row.campaignId), Number(row[field] || 0));
-    }
+    for (const row of rows || []) map.set(String(row.campaignId), Number(row[field] || 0));
     return map;
 }
 
 async function groupedCount(Model, campaignIds) {
     if (!campaignIds.length) return [];
     return Model.findAll({
-        attributes: [
-            'campaignId',
-            [fn('COUNT', col('id')), 'count']
-        ],
+        attributes: ['campaignId', [fn('COUNT', col('id')), 'count']],
         where: { campaignId: { [Op.in]: campaignIds } },
         group: ['campaignId'],
         raw: true
@@ -45,12 +30,6 @@ async function groupedCount(Model, campaignIds) {
 
 async function registrationSummaries(campaignIds) {
     if (!campaignIds.length) return [];
-
-    // The campaign list only needs summary numbers. Loading every registration
-    // and then every canonical SCORM state made this endpoint grow linearly with
-    // learner-course combinations. Let PostgreSQL aggregate the denormalised
-    // registration projection instead; exact canonical progress remains in the
-    // dedicated Campaign Analytics flow.
     return ScormRegistration.findAll({
         attributes: [
             'campaignId',
@@ -78,27 +57,15 @@ async function registrationSummaries(campaignIds) {
 }
 
 async function listCampaigns({ hostId, workspaceId }) {
-    const [campaigns, courses, authConfig] = await Promise.all([
-        ScormCampaign.findAll({
-            where: { hostId, workspaceId },
-            attributes: ['id', 'name', 'status', 'authMode', 'dueAt', 'required', 'createdAt', 'startedAt'],
-            order: [['createdAt', 'DESC']],
-            raw: true
-        }),
-        // Campaign creation only accepts published courses, so there is no reason
-        // to transfer archived/draft course metadata on every Campaigns visit.
-        ScormCourse.findAll({
-            where: { hostId, status: 'published' },
-            attributes: ['id', 'title', 'status', 'publishedAt'],
-            order: [['createdAt', 'DESC']],
-            raw: true
-        }),
-        ScormWorkspaceAuthConfig.findOne({
-            where: { workspaceId },
-            attributes: ['googleEnabled', 'googleClientId', 'microsoftEnabled', 'microsoftClientId', 'microsoftTenantId'],
-            raw: true
-        })
-    ]);
+    // The Campaigns route is now a pure list workspace. Course-selection and
+    // SSO configuration are loaded only by /campaigns/create-options when the
+    // administrator opens the dedicated Create Campaign page.
+    const campaigns = await ScormCampaign.findAll({
+        where: { hostId, workspaceId },
+        attributes: ['id', 'name', 'status', 'authMode', 'dueAt', 'required', 'createdAt', 'startedAt'],
+        order: [['createdAt', 'DESC']],
+        raw: true
+    });
 
     const campaignIds = campaigns.map((campaign) => campaign.id);
     const [learnerRows, courseRows, summaryRows] = campaignIds.length
@@ -119,11 +86,7 @@ async function listCampaigns({ hostId, workspaceId }) {
 
     return {
         campaigns: campaigns.map((campaign) => {
-            const summary = summaries.get(String(campaign.id)) || {
-                assignmentCount: 0,
-                completedCount: 0,
-                inProgressCount: 0
-            };
+            const summary = summaries.get(String(campaign.id)) || { assignmentCount: 0, completedCount: 0, inProgressCount: 0 };
             const mode = normalizeStoredAuthMode(campaign.authMode);
             return {
                 id: campaign.id,
@@ -140,24 +103,14 @@ async function listCampaigns({ hostId, workspaceId }) {
                 assignmentCount: summary.assignmentCount,
                 completedCount: summary.completedCount,
                 inProgressCount: summary.inProgressCount,
-                completionPercent: summary.assignmentCount
-                    ? Math.round((summary.completedCount / summary.assignmentCount) * 100)
-                    : 0,
+                completionPercent: summary.assignmentCount ? Math.round((summary.completedCount / summary.assignmentCount) * 100) : 0,
                 portalPath: campaign.status === 'active' ? `/campaign/${campaign.id}` : null
             };
-        }),
-        authOptions: authOptions(authConfig),
-        courses: courses.map((course) => ({
-            id: course.id,
-            title: course.title,
-            status: course.status,
-            publishedAt: course.publishedAt || null
-        }))
+        })
     };
 }
 
 module.exports = {
     listCampaigns,
-    authOptions,
     registrationSummaries
 };
