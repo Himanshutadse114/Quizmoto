@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { Op } = require('sequelize');
 const auth = require('../middleware');
 const {
     ScormCourse,
@@ -13,6 +14,7 @@ const { extractInteractions, answerSummary } = require('../../services/scorm/Sco
 const { resolveCourseOrPackageId } = require('../../services/scorm/ScormCourseWorkspaceService');
 
 const FINISHED = new Set(['completed', 'passed', 'failed']);
+const INACTIVE = ['revoked', 'superseded'];
 
 function activityTime(row) {
     return new Date(row.lastCommitAt || row.lastActivityAt || row.updatedAt || row.createdAt || 0).getTime();
@@ -65,10 +67,14 @@ function registrationRow(reg, course) {
     };
 }
 
+function isDirectTrackingRegistration(reg) {
+    return Boolean(reg && !reg.isPreview && !reg.campaignId && !INACTIVE.includes(String(reg.status || '').toLowerCase()));
+}
+
 function learnerRows(course) {
     const regs = Array.isArray(course.registrations) ? course.registrations : [];
     const rows = regs
-        .filter((reg) => !reg.isPreview)
+        .filter(isDirectTrackingRegistration)
         .map((reg) => registrationRow(reg, course));
 
     const grouped = new Map();
@@ -160,7 +166,14 @@ async function loadHostCourses(hostId, courseId = null) {
                 model: ScormRegistration,
                 as: 'registrations',
                 required: false,
-                where: { isPreview: false },
+                // Learner Tracking is intentionally the direct-learning view.
+                // Campaign registrations have their own lifecycle, management and
+                // analytics surface and must not be duplicated here.
+                where: {
+                    isPreview: false,
+                    campaignId: null,
+                    status: { [Op.notIn]: INACTIVE }
+                },
                 include: [{
                     model: ScormAttempt,
                     as: 'attempts',
@@ -187,6 +200,7 @@ router.get('/summary', auth, async (req, res) => {
         const stats = summarizeRows(rows);
 
         res.json({
+            scope: 'direct_learning',
             overview: {
                 courses: visible.length,
                 learners: rows.length,
@@ -214,6 +228,7 @@ router.get('/course/:courseId', auth, async (req, res) => {
         if (!course || course.status === 'archived') return res.status(404).json({ message: 'Course not found' });
         const learners = newestFirst(learnerRows(course));
         res.json({
+            scope: 'direct_learning',
             course: courseSummary(course),
             registrations: learners,
             learners
