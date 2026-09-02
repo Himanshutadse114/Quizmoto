@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { featureFlags } = require('../../config/featureFlags');
 const { injectRuntimeRepair } = require('../../services/scorm/ScormRuntimeRepair');
+const { injectCourseUiPolish } = require('../../services/scorm/ScormCourseUiPolish');
 
 function repairServedScormHtml(req, res, next) {
     const originalSend = res.send.bind(res);
@@ -15,7 +16,7 @@ function repairServedScormHtml(req, res, next) {
                 // rewrite arbitrary third-party HTML that happens to be served by
                 // the content router.
                 if (/scorm_api_wrapper\.js|\bdoLMSInitialize\b|quizmoto[-_]scorm/i.test(source)) {
-                    const patched = injectRuntimeRepair(source);
+                    const patched = injectCourseUiPolish(injectRuntimeRepair(source));
                     if (patched !== source) {
                         body = Buffer.isBuffer(body) ? Buffer.from(patched, 'utf8') : patched;
                         res.setHeader('Cache-Control', 'private, no-store');
