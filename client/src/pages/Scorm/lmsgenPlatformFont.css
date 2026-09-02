@@ -1,134 +1,145 @@
-/* LMSGEN product type = marketing site type.
- * Body / UI: Plus Jakarta Sans
- * Large titles: Barlow Condensed, sized up for impact
+/*
+ * LMSGEN platform typography.
+ *
+ * This file is intentionally scoped to LMSGEN application surfaces only.
+ * It must not change the public/marketing website typography.
+ *
+ * Pairing:
+ * - Montserrat: headings, navigation, buttons and strong product labels
+ * - Open Sans: body copy, forms, tables, metadata and long-form UI text
  */
 
-@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Open+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap");
 
-html,
-body,
-#root,
-button,
-input,
-textarea,
-select {
-  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif !important;
+:root {
+  --lmsgen-font-heading: "Montserrat", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --lmsgen-font-body: "Open Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-.scorm-auth-workbench,
-.scorm-auth-workbench .sa-display,
-.scorm-auth-workbench .sa-mono,
-.scorm-auth-workbench .sa-back,
-.scorm-auth-workbench .sa-top-note,
-.scorm-auth-workbench .sa-kicker,
-.scorm-auth-workbench .sa-point,
-.scorm-auth-workbench .sa-form-kicker,
-.scorm-auth-workbench .sa-form-title,
-.scorm-auth-workbench .sa-tab,
-.scorm-auth-workbench .sa-notice-title,
-.scorm-auth-workbench .sa-google-label,
-.scorm-auth-workbench .sa-google-face,
-.scorm-auth-workbench .sa-divider,
-.scorm-auth-workbench .sa-label,
-.scorm-auth-workbench .sa-input,
-.scorm-auth-workbench .sa-submit {
-  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif !important;
+/* -------------------------------------------------------------------------- */
+/* Admin platform body                                                        */
+/* -------------------------------------------------------------------------- */
+
+/* #root deliberately raises specificity above older route/theme font rules
+   without applying anything to the public website outside LMSGEN surfaces. */
+html body #root .scorm-editorial,
+html body #root .scorm-editorial * {
+  font-family: var(--lmsgen-font-body) !important;
 }
 
-.scorm-editorial,
-.scorm-editorial h1,
-.scorm-editorial h2,
-.scorm-editorial h3,
-.scorm-editorial h4,
-.scorm-editorial p,
-.scorm-editorial button,
-.scorm-editorial a,
-.scorm-editorial input,
-.scorm-editorial textarea,
-.scorm-editorial select,
-.scorm-editorial .scorm-micro,
-.scorm-editorial .scorm-nav-section,
-.scorm-editorial .scorm-page-title,
-.scorm-editorial .scorm-nav-item,
-.scorm-editorial .scorm-button-primary,
-.scorm-editorial .scorm-button-secondary {
-  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif !important;
+/* Product hierarchy uses Montserrat. */
+html body #root .scorm-editorial h1,
+html body #root .scorm-editorial h2,
+html body #root .scorm-editorial h3,
+html body #root .scorm-editorial h4,
+html body #root .scorm-editorial h5,
+html body #root .scorm-editorial h6,
+html body #root .scorm-editorial .scorm-display,
+html body #root .scorm-editorial .scorm-page-title,
+html body #root .scorm-editorial .scorm-brand-name,
+html body #root .scorm-editorial .reports-title,
+html body #root .scorm-editorial .reports-section-title,
+html body #root .scorm-editorial .sa-title,
+html body #root .scorm-editorial .sa-form-title {
+  font-family: var(--lmsgen-font-heading) !important;
 }
 
-.scorm-editorial.scorm-workbench,
-.scorm-editorial.scorm-workbench p,
-.scorm-editorial.scorm-workbench button,
-.scorm-editorial.scorm-workbench a,
-.scorm-editorial.scorm-workbench input,
-.scorm-editorial.scorm-workbench textarea,
-.scorm-editorial.scorm-workbench select,
-.scorm-editorial.scorm-workbench .scorm-nav-item,
-.scorm-editorial.scorm-workbench .scorm-button-primary,
-.scorm-editorial.scorm-workbench .scorm-button-secondary,
-.scorm-editorial.scorm-workbench .scorm-metric-label,
-.scorm-editorial.scorm-workbench .scorm-metric-value {
-  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif !important;
+/* Navigation and actions should feel like product controls rather than body
+   copy. Montserrat 600 keeps them crisp without becoming heavy. */
+html body #root .scorm-editorial .scorm-nav-section,
+html body #root .scorm-editorial .scorm-nav-item,
+html body #root .scorm-editorial .scorm-mobile-tab,
+html body #root .scorm-editorial .scorm-button-primary,
+html body #root .scorm-editorial .scorm-button-secondary,
+html body #root .scorm-editorial button,
+html body #root .scorm-editorial [role="button"],
+html body #root .scorm-editorial .font-semibold,
+html body #root .scorm-editorial .font-bold {
+  font-family: var(--lmsgen-font-heading) !important;
 }
 
-.scorm-editorial .scorm-display,
-.scorm-editorial.scorm-workbench .scorm-display,
-.scorm-editorial.scorm-workbench h1,
-.scorm-editorial.scorm-workbench h2,
-.scorm-auth-workbench .sa-title {
-  font-family: "Barlow Condensed", "Plus Jakarta Sans", sans-serif !important;
+/* Forms, data-heavy screens and supporting copy stay Open Sans for legibility. */
+html body #root .scorm-editorial p,
+html body #root .scorm-editorial input,
+html body #root .scorm-editorial textarea,
+html body #root .scorm-editorial select,
+html body #root .scorm-editorial option,
+html body #root .scorm-editorial table,
+html body #root .scorm-editorial th,
+html body #root .scorm-editorial td,
+html body #root .scorm-editorial .scorm-meta,
+html body #root .scorm-editorial .scorm-micro,
+html body #root .scorm-editorial .scorm-breadcrumb,
+html body #root .scorm-editorial .scorm-eyebrow,
+html body #root .scorm-editorial .scorm-metric-label {
+  font-family: var(--lmsgen-font-body) !important;
 }
 
-.scorm-editorial .scorm-display,
-.scorm-editorial main h1.scorm-display,
-.scorm-editorial main .scorm-display {
-  font-size: clamp(2.15rem, 5.2vw, 3.55rem) !important;
-  line-height: 0.96 !important;
-  font-weight: 800 !important;
-  letter-spacing: -0.03em !important;
+/* Preserve code/access-code readability. */
+html body #root .scorm-editorial code,
+html body #root .scorm-editorial pre,
+html body #root .scorm-editorial .font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
 }
 
-.scorm-editorial main h1:not(.scorm-display) {
-  font-size: clamp(1.85rem, 4.2vw, 2.7rem) !important;
-  line-height: 1.05 !important;
-  font-weight: 750 !important;
-  letter-spacing: -0.03em !important;
+/* -------------------------------------------------------------------------- */
+/* LMSGEN authentication                                                      */
+/* -------------------------------------------------------------------------- */
+
+html body #root .scorm-auth-workbench,
+html body #root .scorm-auth-workbench * {
+  font-family: var(--lmsgen-font-body) !important;
 }
 
-.scorm-editorial main h2 {
-  font-size: clamp(1.55rem, 3.4vw, 2.2rem) !important;
-  line-height: 1.08 !important;
+html body #root .scorm-auth-workbench .sa-title,
+html body #root .scorm-auth-workbench .sa-form-title,
+html body #root .scorm-auth-workbench .sa-brand-name,
+html body #root .scorm-auth-workbench .sa-submit,
+html body #root .scorm-auth-workbench .sa-tab,
+html body #root .scorm-auth-workbench button {
+  font-family: var(--lmsgen-font-heading) !important;
+}
+
+html body #root .scorm-auth-workbench .sa-copy,
+html body #root .scorm-auth-workbench .sa-form-sub,
+html body #root .scorm-auth-workbench .sa-label,
+html body #root .scorm-auth-workbench .sa-input,
+html body #root .scorm-auth-workbench .sa-notice,
+html body #root .scorm-auth-workbench input {
+  font-family: var(--lmsgen-font-body) !important;
+}
+
+/* Typography rhythm. Component-level font sizes remain authoritative; this
+   layer changes the family/weight feel without globally enlarging headings. */
+html body #root .scorm-editorial h1,
+html body #root .scorm-editorial h2,
+html body #root .scorm-editorial h3,
+html body #root .scorm-editorial h4,
+html body #root .scorm-auth-workbench .sa-title,
+html body #root .scorm-auth-workbench .sa-form-title {
+  font-style: normal !important;
+  font-stretch: normal !important;
+  text-transform: none;
+}
+
+html body #root .scorm-editorial h1,
+html body #root .scorm-editorial .scorm-display {
   font-weight: 700 !important;
+  letter-spacing: -0.035em !important;
+}
+
+html body #root .scorm-editorial h2,
+html body #root .scorm-editorial h3,
+html body #root .scorm-editorial h4,
+html body #root .scorm-editorial .scorm-page-title {
+  font-weight: 600 !important;
   letter-spacing: -0.025em !important;
 }
 
-.scorm-editorial .scorm-page-title {
-  font-size: 1.2rem !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.02em !important;
-}
-
-.scorm-auth-workbench .sa-form-title {
-  font-size: clamp(1.85rem, 4vw, 2.35rem) !important;
-  line-height: 1.05 !important;
-  font-weight: 750 !important;
-  letter-spacing: -0.03em !important;
-}
-
-@media (max-width: 767px) {
-  .scorm-editorial .scorm-display,
-  .scorm-editorial main h1.scorm-display {
-    font-size: clamp(2rem, 9vw, 2.7rem) !important;
-  }
-
-  .scorm-editorial main h1:not(.scorm-display) {
-    font-size: clamp(1.7rem, 7.5vw, 2.15rem) !important;
-  }
-
-  .scorm-editorial main h2 {
-    font-size: clamp(1.4rem, 6.2vw, 1.85rem) !important;
-  }
-
-  .scorm-auth-workbench .sa-form-title {
-    font-size: 1.7rem !important;
-  }
+html body #root .scorm-editorial p,
+html body #root .scorm-editorial input,
+html body #root .scorm-editorial textarea,
+html body #root .scorm-editorial select,
+html body #root .scorm-editorial td {
+  letter-spacing: normal !important;
 }
