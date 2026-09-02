@@ -1,0 +1,223 @@
+/*
+ * Final LMSGEN light-mode authority.
+ *
+ * This stylesheet is imported last from main.jsx so legacy dark compatibility
+ * layers and lazy route CSS cannot leak dark surfaces back into light mode.
+ * Generated learner SCORM documents do not load the admin application CSS.
+ */
+
+html body .scorm-editorial.scorm-theme-light {
+  color-scheme: light;
+
+  --scorm-canvas: #f5f9f8;
+  --scorm-surface: #ffffff;
+  --scorm-surface-soft: #f7fbfa;
+  --scorm-surface-muted: #eef6f4;
+  --scorm-ink: #13211e;
+  --scorm-ink-soft: #405a55;
+  --scorm-muted: #61736f;
+  --scorm-subtle: #7d8f8b;
+  --scorm-line: #d8e5e2;
+  --scorm-line-strong: #b8d5d0;
+  --scorm-sidebar: #ffffff;
+  --scorm-sidebar-soft: #f8fbfa;
+  --scorm-sidebar-line: #d8e5e2;
+  --scorm-sidebar-text: #13211e;
+  --scorm-sidebar-muted: #61736f;
+  --scorm-accent: #4fc9bf;
+  --scorm-accent-strong: #0b6259;
+  --scorm-accent-soft: #e4f7f4;
+
+  /* The global teal guard is dark-mode biased. Override its tokens here too. */
+  --scorm-platform-teal: #4fc9bf;
+  --scorm-platform-teal-strong: #168c82;
+  --scorm-platform-teal-hover: #0f7169;
+  --scorm-platform-teal-dark: #073b36;
+  --scorm-platform-teal-soft: #ffffff;
+  --scorm-platform-teal-soft-strong: #edf8f6;
+  --scorm-platform-teal-line: #b9d8d3;
+  --scorm-platform-teal-line-soft: #d2e6e2;
+  --scorm-platform-teal-surface: #ffffff;
+  --scorm-platform-teal-surface-2: #f7fbfa;
+  --scorm-platform-teal-surface-3: #eef6f4;
+  --scorm-platform-teal-text: #173f39;
+  --scorm-platform-teal-muted: #5f7772;
+
+  background: #f5f9f8 !important;
+  color: #13211e !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-main,
+html body .scorm-editorial.scorm-theme-light main {
+  background:
+    radial-gradient(circle at 92% -8%, rgba(79, 201, 191, .08), transparent 27rem),
+    linear-gradient(180deg, #f9fcfb 0%, #f5f9f8 56%, #f1f7f5 100%) !important;
+  color: #13211e !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-topbar {
+  background: rgba(255, 255, 255, .96) !important;
+  border-color: #d8e5e2 !important;
+  box-shadow: 0 1px 0 rgba(29, 78, 70, .04), 0 5px 18px rgba(29, 78, 70, .035) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-sidebar,
+html body .scorm-editorial.scorm-theme-light .scorm-mobile-drawer {
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: #d8e5e2 !important;
+  box-shadow: 8px 0 24px rgba(29, 78, 70, .035) !important;
+}
+
+/* White/light cards stay white even when an older dark route rule is loaded. */
+html body .scorm-editorial.scorm-theme-light .scorm-panel,
+html body .scorm-editorial.scorm-theme-light .scorm-soft-card,
+html body .scorm-editorial.scorm-theme-light .scorm-metric-card,
+html body .scorm-editorial.scorm-theme-light .scorm-action-card,
+html body .scorm-editorial.scorm-theme-light main [class*="rounded-2xl"].border {
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: #d8e5e2 !important;
+  color: #13211e !important;
+  box-shadow: 0 7px 22px rgba(29, 78, 70, .055) !important;
+}
+
+/* Inline route surfaces often use these theme tokens. Make the computed light
+   surface explicit so a later legacy declaration cannot turn them charcoal. */
+html body .scorm-editorial.scorm-theme-light [style*="background: var(--scorm-surface-soft)"],
+html body .scorm-editorial.scorm-theme-light [style*="background:var(--scorm-surface-soft)"] {
+  background: #f7fbfa !important;
+  background-image: none !important;
+  color: #13211e !important;
+}
+
+html body .scorm-editorial.scorm-theme-light [style*="background: var(--scorm-surface-muted)"],
+html body .scorm-editorial.scorm-theme-light [style*="background:var(--scorm-surface-muted)"] {
+  background: #eef6f4 !important;
+  background-image: none !important;
+  color: #13211e !important;
+}
+
+/* Buttons in light mode should read as SaaS controls, not dark pills. */
+html body .scorm-editorial.scorm-theme-light .scorm-button-secondary {
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: #b9d8d3 !important;
+  color: #264e49 !important;
+  box-shadow: 0 1px 2px rgba(29, 78, 70, .03) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-button-secondary:hover:not(:disabled) {
+  background: #edf8f6 !important;
+  border-color: #93cec6 !important;
+  color: #0b6259 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-button-primary {
+  background: #4fc9bf !important;
+  background-image: none !important;
+  border-color: #35b6ab !important;
+  color: #073b36 !important;
+  box-shadow: 0 5px 14px rgba(49, 164, 153, .13) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-button-primary:hover:not(:disabled) {
+  background: #68d4ca !important;
+  border-color: #2ea89e !important;
+  color: #063630 !important;
+}
+
+/* Campaign workspace ----------------------------------------------------- */
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel {
+  background: #ffffff !important;
+  border-color: #d6e4e1 !important;
+  box-shadow: 0 8px 24px rgba(29, 78, 70, .055) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-list-row {
+  background: #ffffff !important;
+  color: #13211e !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-list-row:hover {
+  background: #f4faf8 !important;
+}
+
+/* Header filter chips do not have semantic classes yet. Their active state is
+   identifiable by the accent token in the inline style emitted by React. */
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel > div:first-child button {
+  background: #ffffff !important;
+  border-color: #d2e2df !important;
+  color: #425b56 !important;
+  box-shadow: none !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel > div:first-child button[style*="var(--scorm-accent-strong)"] {
+  background: #e4f7f4 !important;
+  border-color: #9bd9d1 !important;
+  color: #0b6259 !important;
+}
+
+/* The pagination bar in the reported screenshot was still inheriting a dark
+   route surface. Keep it visibly connected to the white campaign card. */
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel > div:last-child[style*="var(--scorm-surface-soft)"] {
+  background: #f7fbfa !important;
+  border-color: #dce8e5 !important;
+  color: #35514c !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel > div:last-child[style*="var(--scorm-surface-soft)"] span {
+  color: #35514c !important;
+}
+
+/* Inline campaign detail / running learner manager are normal workspace
+   sections. In light mode they must never retain the former dark modal shell. */
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > [role="dialog"] > div.relative,
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > [role="dialog"] > section.relative {
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: #d8e5e2 !important;
+  color: #13211e !important;
+  box-shadow: 0 8px 24px rgba(29, 78, 70, .055) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > [role="dialog"] [style*="background: var(--scorm-surface-soft)"],
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > [role="dialog"] [style*="background:var(--scorm-surface-soft)"] {
+  background: #f7fbfa !important;
+  color: #13211e !important;
+}
+
+/* Readable text and separators throughout the light admin shell. */
+html body .scorm-editorial.scorm-theme-light main h1,
+html body .scorm-editorial.scorm-theme-light main h2,
+html body .scorm-editorial.scorm-theme-light main h3,
+html body .scorm-editorial.scorm-theme-light main h4,
+html body .scorm-editorial.scorm-theme-light main .font-semibold {
+  color: #13211e;
+}
+
+html body .scorm-editorial.scorm-theme-light main .border,
+html body .scorm-editorial.scorm-theme-light main [class*="border-"] {
+  border-color: #d8e5e2;
+}
+
+html body .scorm-editorial.scorm-theme-light main input,
+html body .scorm-editorial.scorm-theme-light main textarea,
+html body .scorm-editorial.scorm-theme-light main select {
+  background: #ffffff !important;
+  border-color: #cadbd7 !important;
+  color: #13211e !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main input:focus,
+html body .scorm-editorial.scorm-theme-light main textarea:focus,
+html body .scorm-editorial.scorm-theme-light main select:focus {
+  border-color: #4fc9bf !important;
+  box-shadow: 0 0 0 3px rgba(79, 201, 191, .13) !important;
+}
+
+@media (max-width: 767px) {
+  html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel > div:first-child button {
+    min-height: 38px;
+  }
+}
