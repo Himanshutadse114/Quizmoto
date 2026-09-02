@@ -11,6 +11,7 @@ const { extractInteractions, answerSummary } = require('./ScormInteractionReport
 const { generateScormLearnerReport } = require('../../utils/scormLearnerReportGenerator');
 
 const execFileAsync = promisify(execFile);
+const INACTIVE = ['revoked', 'superseded'];
 
 function operatorForTextSearch() {
     return sequelize.getDialect() === 'postgres' ? Op.iLike : Op.like;
@@ -55,7 +56,11 @@ function learnerResult(registration) {
 async function searchLearners(hostId, query = '') {
     const q = String(query || '').trim().slice(0, 160);
     const textOp = operatorForTextSearch();
-    const where = { isPreview: false };
+    const where = {
+        isPreview: false,
+        campaignId: null,
+        status: { [Op.notIn]: INACTIVE }
+    };
     if (q) {
         where[Op.or] = [
             { learnerEmail: { [textOp]: `%${q}%` } },
@@ -116,6 +121,8 @@ async function loadLearnerRegistrations(hostId, email) {
     const registrations = await ScormRegistration.findAll({
         where: {
             isPreview: false,
+            campaignId: null,
+            status: { [Op.notIn]: INACTIVE },
             learnerEmail: { [textOp]: normalized }
         },
         include: [{
@@ -192,6 +199,7 @@ async function buildLearnerReport({ hostId, email }) {
         learnerEmail: String(registrations[0].learnerEmail || email).trim(),
         learnerName: learnerName || 'Learner',
         generatedAt: new Date().toISOString(),
+        scope: 'direct_learning',
         summary: {
             courseCount: attempts.length,
             completedCount: attempts.filter((a) => isCompletedStatus(a.lessonStatus)).length,
