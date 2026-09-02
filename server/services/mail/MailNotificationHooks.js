@@ -5,7 +5,15 @@ const {
     campaignAccessCode
 } = require('../scorm/ScormCampaignAuthPolicy');
 
+const CAMPAIGN_PUBLIC_BASE_URL = String(
+    process.env.CAMPAIGN_PUBLIC_BASE_URL || 'https://www.lmsgen.in'
+).trim().replace(/\/+$/, '') || 'https://www.lmsgen.in';
+
 let registered = false;
+
+function campaignPublicUrl(campaignId) {
+    return `${CAMPAIGN_PUBLIC_BASE_URL}/campaign/${encodeURIComponent(String(campaignId || ''))}`;
+}
 
 function runLater(options, task) {
     const execute = () => {
@@ -81,18 +89,34 @@ function register(models = {}) {
     ScormCampaign.addHook('afterUpdate', 'mail-campaign-started', (campaign, options) => {
         if (!campaign.changed('status') || String(campaign.status).toLowerCase() !== 'active') return;
         runLater(options, async () => {
-            const learners = await ScormCampaignLearner.findAll({ where: { campaignId: campaign.id } });
-            const authMode = normalizeStoredAuthMode(campaign.authMode);
+            // Re-read after the transaction commits. Never send an invitation
+            // from the stale Sequelize instance captured by the update hook.
+            const liveCampaign = await ScormCampaign.findByPk(campaign.id);
+            if (!liveCampaign || String(liveCampaign.status).toLowerCase() !== 'active') {
+                logger.warn('campaign_invitation_skipped_inactive', {
+                    module: 'mail',
+                    campaignId: campaign.id,
+                    status: liveCampaign?.status || 'missing'
+                });
+                return;
+            }
+
+            const learners = await ScormCampaignLearner.findAll({ where: { campaignId: liveCampaign.id } });
+            const authMode = normalizeStoredAuthMode(liveCampaign.authMode);
+            const portalUrl = campaignPublicUrl(liveCampaign.id);
             await sendInBatches(learners, async (learner) => MailService.safeSend({
                 to: learner.email,
                 template: 'campaign_invitation',
                 data: {
                     learnerName: learner.learnerName,
-                    campaignId: campaign.id,
-                    campaignName: campaign.name,
-                    dueAt: campaign.dueAt,
-                    accessCode: authMode === 'email_code' ? campaignAccessCode(campaign.id, learner.email) : null,
-                    path: `/campaign/${encodeURIComponent(campaign.id)}`
+                    campaignId: liveCampaign.id,
+                    campaignName: liveCampaign.name,
+                    dueAt: liveCampaign.dueAt,
+                    accessCode: authMode === 'email_code' ? campaignAccessCode(liveCampaign.id, learner.email) : null,
+                    // Absolute canonical URL prevents stale APP_BASE_URL or
+                    // FRONTEND_URL values on a deployment from producing links
+                    // to an old frontend/database.
+                    path: portalUrl
                 }
             }));
         });
@@ -181,4 +205,4 @@ function register(models = {}) {
     logger.info('mail_notification_hooks_registered', { module: 'mail' });
 }
 
-module.exports = { register };
+module.exports = { register, campaignPublicUrl };
