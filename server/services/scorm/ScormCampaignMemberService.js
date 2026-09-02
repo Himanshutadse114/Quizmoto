@@ -16,7 +16,7 @@ const {
     campaignAccessCode
 } = require('./ScormCampaignAuthPolicy');
 const MailService = require('../mail/MailService');
-const { getCampaignDetail } = require('./ScormCampaignService');
+const { getCampaignManageDetail } = require('./ScormCampaignReadService');
 
 const MAX_CAMPAIGN_COMBINATIONS = 5000;
 const ACTIVE_REGISTRATION_STATUSES = { [Op.notIn]: ['revoked', 'superseded'] };
@@ -143,7 +143,7 @@ async function addLearners({ campaignId, hostId, workspaceId, actorUserId, learn
             added: 0,
             existing: requested.length,
             invitationSent: 0,
-            campaign: await getCampaignDetail({ campaignId, hostId, workspaceId })
+            campaign: await getCampaignManageDetail({ campaignId, hostId, workspaceId })
         };
     }
 
@@ -216,7 +216,7 @@ async function addLearners({ campaignId, hostId, workspaceId, actorUserId, learn
         added: additions.length,
         existing: requested.length - additions.length,
         invitationSent,
-        campaign: await getCampaignDetail({ campaignId, hostId, workspaceId })
+        campaign: await getCampaignManageDetail({ campaignId, hostId, workspaceId })
     };
 }
 
@@ -250,7 +250,7 @@ async function removeLearner({ campaignId, hostId, workspaceId, email }) {
     return {
         removed,
         email: cleanEmail,
-        campaign: await getCampaignDetail({ campaignId, hostId, workspaceId })
+        campaign: await getCampaignManageDetail({ campaignId, hostId, workspaceId })
     };
 }
 
@@ -262,6 +262,7 @@ async function sendReminders({ campaignId, hostId, workspaceId, emails = [] }) {
             campaignId,
             ...(requested.size ? { email: { [Op.in]: [...requested] } } : {})
         },
+        attributes: ['email', 'learnerName'],
         order: [['learnerName', 'ASC'], ['email', 'ASC']]
     });
     const registrations = await ScormRegistration.findAll({
@@ -270,7 +271,9 @@ async function sendReminders({ campaignId, hostId, workspaceId, emails = [] }) {
             isPreview: false,
             status: ACTIVE_REGISTRATION_STATUSES,
             ...(learners.length ? { learnerEmail: { [Op.in]: learners.map((learner) => learner.email) } } : {})
-        }
+        },
+        attributes: ['learnerEmail', 'status', 'lastLessonStatus'],
+        raw: true
     });
 
     const byEmail = new Map();
