@@ -110,12 +110,12 @@ export default function ScormHome() {
             </div>
             <h2 className="scorm-display"><span>Learning</span> <span className="wb-accent">Workbench</span></h2>
             <p className="mt-3 text-sm md:text-[15px] max-w-2xl">
-              Create courses, publish SCORM learning and see learner progress from one operating view.
+              Create and publish SCORM learning, monitor direct learner activity and keep campaign performance in its own analytics flow.
             </p>
           </div>
           <div className="flex flex-wrap gap-2.5">
             <Link to="/scorm/tracking" className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">
-              <Activity size={15} /> Learner progress
+              <Activity size={15} /> Direct tracking
             </Link>
             <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">
               <Sparkles size={15} /> Create course
@@ -134,7 +134,7 @@ export default function ScormHome() {
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
         <StatCard label="Courses" value={courses.length} icon={BookOpen} tone="violet" loading={loading} />
         <StatCard label="Packages" value={packages.length} icon={Package} tone="cyan" loading={loading} />
-        <StatCard label="Learners" value={overview.learners || 0} icon={Users} tone="neutral" loading={loading} />
+        <StatCard label="Direct learners" value={overview.learners || 0} icon={Users} tone="neutral" loading={loading} />
         <StatCard label="In progress" value={overview.inProgress || 0} icon={Clock3} tone="amber" loading={loading} />
         <StatCard label="Completed" value={overview.completed || 0} icon={CheckCircle2} tone="green" loading={loading} />
       </div>
@@ -170,9 +170,9 @@ export default function ScormHome() {
                     </div>
                     <div className="scorm-meta mt-1">{course.inviteCode || 'No invite code'}</div>
                   </div>
-                  <div className="hidden md:block"><div className="font-semibold text-sm">{stats.learners || 0}</div><div className="scorm-meta mt-1">Learners</div></div>
+                  <div className="hidden md:block"><div className="font-semibold text-sm">{stats.learners || 0}</div><div className="scorm-meta mt-1">Direct learners</div></div>
                   <div className="hidden md:block">
-                    <div className="flex items-center justify-between gap-2 text-[10px] text-[#667085] mb-1.5"><span>Progress</span><span className="font-semibold text-[#344054]">{progress.toFixed(0)}%</span></div>
+                    <div className="flex items-center justify-between gap-2 text-[10px] text-[#667085] mb-1.5"><span>Direct progress</span><span className="font-semibold text-[#344054]">{progress.toFixed(0)}%</span></div>
                     <div className="scorm-progress-track"><div className="scorm-progress-fill" style={{ width: `${Math.max(0, Math.min(100, progress))}%` }} /></div>
                   </div>
                   <ChevronRight size={15} className="text-[#98A2B3]" />
@@ -185,24 +185,24 @@ export default function ScormHome() {
         <div className="space-y-5">
           <section className="scorm-progress-hero min-h-[270px] flex flex-col justify-between">
             <div className="flex items-start justify-between gap-4">
-              <div><div className="scorm-progress-kicker">Learner pulse</div><h3 className="text-[22px] mt-1">Overall progress</h3></div>
+              <div><div className="scorm-progress-kicker">Direct learner pulse</div><h3 className="text-[22px] mt-1">Overall direct progress</h3></div>
               <div className="scorm-progress-icon"><Activity size={18} /></div>
             </div>
             <div>
               {loading ? <div className="h-14 w-28 rounded-lg bg-white/10 animate-pulse" /> : <div className="scorm-progress-number">{averageProgress.toFixed(0)}%</div>}
-              <div className="mt-2 text-xs text-white/70">Average completion across active learner sessions.</div>
+              <div className="mt-2 text-xs text-white/70">Average completion across direct published-link and direct-assignment sessions.</div>
               <div className="scorm-progress-track is-dark mt-5"><div className="scorm-progress-fill is-light" style={{ width: loading ? '0%' : `${Math.max(0, Math.min(100, averageProgress))}%` }} /></div>
             </div>
           </section>
 
           <section className="scorm-panel overflow-hidden">
             <div className="scorm-panel-header flex items-center justify-between gap-3">
-              <div className="font-semibold text-sm">Recent learner activity</div>
+              <div className="font-semibold text-sm">Recent direct activity</div>
               <Link to="/scorm/tracking" className="scorm-text-link">Open tracking</Link>
             </div>
             <div className="scorm-list">
               {loading && [0, 1, 2].map((item) => <div key={item} className="scorm-activity-row animate-pulse"><div className="h-3.5 w-2/3 rounded bg-current/10" /><div className="h-2.5 w-1/2 rounded bg-current/10 mt-2" /></div>)}
-              {!loading && recentLearners.length === 0 && <div className="p-6 text-center text-[#667085] text-xs">No learner activity yet.</div>}
+              {!loading && recentLearners.length === 0 && <div className="p-6 text-center text-[#667085] text-xs">No direct learner activity yet.</div>}
               {!loading && recentLearners.map((row) => (
                 <div key={row.id} className="scorm-activity-row">
                   <div className="flex items-center justify-between gap-3">
@@ -227,7 +227,7 @@ export default function ScormHome() {
           <div className="scorm-action-icon"><Palette size={17} /></div><div className="font-semibold text-[15px] mt-5">Content Editor</div><div className="text-xs text-[#667085] mt-1.5 leading-relaxed">Review and refine learner-visible course content before rebuilding and publishing.</div><div className="scorm-action-arrow"><ArrowUpRight size={15} /></div>
         </Link>
         <Link to="/scorm/reports" className="scorm-action-card scorm-action-green">
-          <div className="scorm-action-icon"><BarChart3 size={17} /></div><div className="font-semibold text-[15px] mt-5">Reports</div><div className="text-xs text-[#667085] mt-1.5 leading-relaxed">Review completion, progress and learner performance without raw-data digging.</div><div className="scorm-action-arrow"><ArrowUpRight size={15} /></div>
+          <div className="scorm-action-icon"><BarChart3 size={17} /></div><div className="font-semibold text-[15px] mt-5">Reports</div><div className="text-xs text-[#667085] mt-1.5 leading-relaxed">Review direct course evidence and campaign performance in clearly separated reporting sections.</div><div className="scorm-action-arrow"><ArrowUpRight size={15} /></div>
         </Link>
       </div>
     </div>
