@@ -63,9 +63,13 @@ export default function CampaignManagementDock() {
   const [notice, setNotice] = useState(null);
 
   useEffect(() => {
+    let previousPath = '';
     const sync = () => {
       const path = window.location.pathname;
-      setSession(storedSession());
+      if (path !== previousPath) {
+        previousPath = path;
+        setSession(storedSession());
+      }
       if (path === '/scorm/assignments' || path === '/scorm/campaigns') {
         setMountNode(document.querySelector('.scorm-campaigns-page'));
       } else {
