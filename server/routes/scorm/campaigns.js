@@ -14,6 +14,11 @@ const {
 } = require('../../services/scorm/ScormCampaignLifecycleService');
 const { listCampaigns } = require('../../services/scorm/ScormCampaignListService');
 const { getCampaignAnalytics } = require('../../services/scorm/ScormCampaignAnalyticsService');
+const {
+    addLearners,
+    removeLearner,
+    sendReminders
+} = require('../../services/scorm/ScormCampaignMemberService');
 
 function workspaceRequired(req) {
     if (!req.scormWorkspaceId) {
@@ -103,6 +108,52 @@ router.get('/:campaignId/access-sheet', auth, async (req, res) => {
         res.json({ ok: true, ...result });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to prepare learner access codes.', code: err.code });
+    }
+});
+
+router.post('/:campaignId/learners', auth, async (req, res) => {
+    try {
+        workspaceRequired(req);
+        const result = await addLearners({
+            campaignId: req.params.campaignId,
+            hostId: req.userId,
+            workspaceId: req.scormWorkspaceId,
+            actorUserId: req.authenticatedUserId || req.userId,
+            learners: req.body?.learners
+        });
+        res.status(201).json({ ok: true, ...result });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message || 'Unable to add campaign learners.', code: err.code });
+    }
+});
+
+router.delete('/:campaignId/learners/:email', auth, async (req, res) => {
+    try {
+        workspaceRequired(req);
+        const result = await removeLearner({
+            campaignId: req.params.campaignId,
+            hostId: req.userId,
+            workspaceId: req.scormWorkspaceId,
+            email: req.params.email
+        });
+        res.json({ ok: true, ...result });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message || 'Unable to remove campaign learner.', code: err.code });
+    }
+});
+
+router.post('/:campaignId/reminders', auth, async (req, res) => {
+    try {
+        workspaceRequired(req);
+        const result = await sendReminders({
+            campaignId: req.params.campaignId,
+            hostId: req.userId,
+            workspaceId: req.scormWorkspaceId,
+            emails: req.body?.emails
+        });
+        res.json({ ok: true, ...result });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message || 'Unable to send campaign reminders.', code: err.code });
     }
 });
 
