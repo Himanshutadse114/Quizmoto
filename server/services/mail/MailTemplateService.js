@@ -1,6 +1,7 @@
 const MailTemplateOverride = require('../../models/MailTemplateOverride');
 
 const BRAND_NAME = String(process.env.MAIL_BRAND_NAME || 'LMSGEN').trim() || 'LMSGEN';
+const EMAIL_FONT_STACK = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif";
 let schemaReadyPromise = null;
 
 function escapeHtml(value) {
@@ -28,24 +29,24 @@ function stripTags(value) {
 
 function frame({ title, preheader, body, actionLabel = null, actionUrl = null }) {
     const button = actionLabel && actionUrl
-        ? `<p style="margin:26px 0 8px"><a href="${actionUrl}" style="display:inline-block;background:#47c7c1;color:#061b1a;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:8px">${actionLabel}</a></p>`
+        ? `<p style="margin:28px 0 8px"><a href="${actionUrl}" style="display:inline-block;background:#47c7c1;color:#061b1a;text-decoration:none;font-family:${EMAIL_FONT_STACK};font-size:14px;line-height:20px;font-weight:650;letter-spacing:.01em;padding:13px 20px;border-radius:10px">${actionLabel}</a></p>`
         : '';
     return `<!doctype html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;background:#f4f7f6;font-family:Arial,Helvetica,sans-serif;color:#17312f">
+<body style="margin:0;background:#f4f7f6;font-family:${EMAIL_FONT_STACK};color:#17312f;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${preheader}</div>
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f7f6;padding:28px 12px">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f7f6;padding:32px 12px;font-family:${EMAIL_FONT_STACK}">
 <tr><td align="center">
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#ffffff;border:1px solid #dce9e7;border-radius:14px;overflow:hidden">
-<tr><td style="background:#071c1a;padding:20px 28px;color:#8fe4df;font-size:18px;font-weight:800;letter-spacing:.08em">{{brand_name}}</td></tr>
-<tr><td style="padding:30px 28px">
-<h1 style="margin:0 0 18px;font-size:24px;line-height:1.25;color:#102927">${title}</h1>
-<p style="margin:0 0 16px;font-size:15px;line-height:1.6">{{greeting}}</p>
-<div style="font-size:15px;line-height:1.65;color:#294844">${body}</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#ffffff;border:1px solid #dce9e7;border-radius:16px;overflow:hidden;font-family:${EMAIL_FONT_STACK}">
+<tr><td style="background:#071c1a;padding:21px 30px;color:#8fe4df;font-family:${EMAIL_FONT_STACK};font-size:17px;line-height:24px;font-weight:750;letter-spacing:.055em">{{brand_name}}</td></tr>
+<tr><td style="padding:34px 30px 32px;font-family:${EMAIL_FONT_STACK}">
+<h1 style="margin:0 0 18px;font-family:${EMAIL_FONT_STACK};font-size:25px;line-height:1.3;font-weight:700;letter-spacing:-.02em;color:#102927">${title}</h1>
+<p style="margin:0 0 16px;font-family:${EMAIL_FONT_STACK};font-size:15px;line-height:1.7;font-weight:400;color:#294844">{{greeting}}</p>
+<div style="font-family:${EMAIL_FONT_STACK};font-size:15px;line-height:1.72;font-weight:400;color:#294844">${body}</div>
 ${button}
 </td></tr>
-<tr><td style="padding:18px 28px;background:#f7fbfa;border-top:1px solid #e2edeb;font-size:12px;line-height:1.55;color:#6a7e7b">This is an automated message from {{brand_name}}.</td></tr>
+<tr><td style="padding:18px 30px;background:#f7fbfa;border-top:1px solid #e2edeb;font-family:${EMAIL_FONT_STACK};font-size:12px;line-height:1.6;font-weight:400;color:#6a7e7b">This is an automated message from {{brand_name}}.</td></tr>
 </table>
 </td></tr>
 </table>
