@@ -43,7 +43,7 @@ function interactionBuckets(values) {
             return;
         }
 
-        match = key.match(/^cmi\.interactions\.(\d+)\.(id|type|description|student_response|learner_response|result)$/i);
+        match = key.match(/^cmi\.interactions\.(\d+)\.(id|type|description|student_response|learner_response|result|latency|timestamp|time|weighting)$/i);
         if (match) {
             ensure(match[1])[`scorm_${match[2].toLowerCase()}`] = raw;
             return;
@@ -89,6 +89,9 @@ function extractInteractions({ state, packageRow } = {}) {
                 correctIndex,
                 result,
                 explanation: text(row.explanation) || text(authored.explanation),
+                latency: text(row.scorm_latency),
+                timestamp: text(row.scorm_timestamp || row.scorm_time),
+                weighting: text(row.scorm_weighting),
                 options
             };
         })
