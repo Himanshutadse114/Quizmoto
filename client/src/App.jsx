@@ -38,6 +38,9 @@ const ScormCourses = lazy(() => import('./pages/Scorm/Courses'));
 const ScormTracking = lazy(() => import('./pages/Scorm/Tracking'));
 const ScormLearnerRoster = lazy(() => import('./pages/Scorm/LearnerRoster'));
 const ScormAssignments = lazy(() => import('./pages/Scorm/Assignments'));
+const ScormCampaignCreate = lazy(() => import('./pages/Scorm/CampaignCreate'));
+const ScormCampaignDetail = lazy(() => import('./pages/Scorm/CampaignDetail'));
+const ScormCampaignLearners = lazy(() => import('./pages/Scorm/CampaignLearners'));
 const ScormCampaignAnalytics = lazy(() => import('./pages/Scorm/CampaignAnalytics'));
 const ScormLearnerAccessSettings = lazy(() => import('./pages/Scorm/LearnerAccessSettings'));
 const ScormLearnerPortal = lazy(() => import('./pages/Scorm/LearnerPortal'));
@@ -48,6 +51,7 @@ const ScormMicrosoftCampaignCallback = lazy(() => import('./pages/Scorm/Microsof
 const ScormMicrosoftStaffCallback = lazy(() => import('./pages/Scorm/MicrosoftStaffCallback'));
 const ScormMicrosoftUniversalCallback = lazy(() => import('./pages/Scorm/MicrosoftUniversalCallback'));
 const ScormLibrary = lazy(() => import('./pages/Scorm/Library'));
+const ScormPublishingGuide = lazy(() => import('./pages/Scorm/ScormPublishingGuide'));
 const ScormCourseDetail = lazy(() => import('./pages/Scorm/CourseDetail'));
 const ScormLearnLanding = lazy(() => import('./pages/Scorm/LearnLanding'));
 const ScormPlayerShell = lazy(() => import('./pages/Scorm/PlayerShell'));
@@ -189,9 +193,14 @@ function AppRoutes() {
           <Route path="courses/:id" element={<ScormFeatureGate featureId="courses"><ScormCourseDetail /></ScormFeatureGate>} />
           <Route path="roster" element={<ScormFeatureGate featureId="tracking"><ScormLearnerRoster /></ScormFeatureGate>} />
           <Route path="assignments" element={<ScormFeatureGate featureId="tracking"><ScormAssignments /></ScormFeatureGate>} />
+          <Route path="campaigns" element={<Navigate to="/scorm/assignments" replace />} />
+          <Route path="campaigns/new" element={<ScormFeatureGate featureId="tracking"><ScormCampaignCreate /></ScormFeatureGate>} />
+          <Route path="campaigns/:campaignId" element={<ScormFeatureGate featureId="tracking"><ScormCampaignDetail /></ScormFeatureGate>} />
+          <Route path="campaigns/:campaignId/learners" element={<ScormFeatureGate featureId="tracking"><ScormCampaignLearners /></ScormFeatureGate>} />
           <Route path="campaigns/:campaignId/analytics" element={<ScormFeatureGate featureId="reports" analyticsAllowed><ScormCampaignAnalytics /></ScormFeatureGate>} />
           <Route path="tracking" element={<ScormFeatureGate featureId="tracking" analyticsAllowed><ScormTracking /></ScormFeatureGate>} />
           <Route path="library" element={<ScormFeatureGate featureId="library"><ScormLibrary /></ScormFeatureGate>} />
+          <Route path="library/publishing-guide" element={<ScormFeatureGate featureId="library"><ScormPublishingGuide /></ScormFeatureGate>} />
           <Route path="author" element={<ScormFeatureGate featureId="author"><ScormAuthor /></ScormFeatureGate>} />
           <Route path="visual-studio" element={<ScormFeatureGate featureId="visualStudio"><ScormVisualStudio /></ScormFeatureGate>} />
           <Route path="reports" element={<ScormFeatureGate featureId="reports" analyticsAllowed><ScormReports /></ScormFeatureGate>} />
