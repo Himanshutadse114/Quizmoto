@@ -1,4 +1,4 @@
-const { Op, fn, col } = require('sequelize');
+const { Op, fn, col, literal } = require('sequelize');
 const {
     ScormCampaign,
     ScormCampaignLearner,
@@ -11,10 +11,6 @@ const {
     normalizeStoredAuthMode,
     authModeLabel
 } = require('./ScormCampaignAuthPolicy');
-const {
-    registrationProgress,
-    loadCanonicalStates
-} = require('./ScormCanonicalProgressService');
 
 const ACTIVE_REGISTRATION_STATUSES = { [Op.notIn]: ['revoked', 'superseded'] };
 
@@ -26,14 +22,10 @@ function authOptions(config) {
     };
 }
 
-function registrationStatus(registration, state = null) {
-    return registrationProgress(registration, state).status;
-}
-
-function countMap(rows) {
+function countMap(rows, field = 'count') {
     const map = new Map();
     for (const row of rows || []) {
-        map.set(String(row.campaignId), Number(row.count || 0));
+        map.set(String(row.campaignId), Number(row[field] || 0));
     }
     return map;
 }
@@ -51,6 +43,40 @@ async function groupedCount(Model, campaignIds) {
     });
 }
 
+async function registrationSummaries(campaignIds) {
+    if (!campaignIds.length) return [];
+
+    // The campaign list only needs summary numbers. Loading every registration
+    // and then every canonical SCORM state made this endpoint grow linearly with
+    // learner-course combinations. Let PostgreSQL aggregate the denormalised
+    // registration projection instead; exact canonical progress remains in the
+    // dedicated Campaign Analytics flow.
+    return ScormRegistration.findAll({
+        attributes: [
+            'campaignId',
+            [fn('COUNT', col('id')), 'assignmentCount'],
+            [literal(`SUM(CASE
+                WHEN "status" = 'completed'
+                  OR LOWER(COALESCE("lastLessonStatus", '')) IN ('completed', 'passed', 'failed')
+                THEN 1 ELSE 0 END)`), 'completedCount'],
+            [literal(`SUM(CASE
+                WHEN NOT (
+                    "status" = 'completed'
+                    OR LOWER(COALESCE("lastLessonStatus", '')) IN ('completed', 'passed', 'failed')
+                )
+                AND ("status" IN ('active', 'in_progress') OR "lastCommitAt" IS NOT NULL)
+                THEN 1 ELSE 0 END)`), 'inProgressCount']
+        ],
+        where: {
+            campaignId: { [Op.in]: campaignIds },
+            isPreview: false,
+            status: ACTIVE_REGISTRATION_STATUSES
+        },
+        group: ['campaignId'],
+        raw: true
+    });
+}
+
 async function listCampaigns({ hostId, workspaceId }) {
     const [campaigns, courses, authConfig] = await Promise.all([
         ScormCampaign.findAll({
@@ -59,9 +85,11 @@ async function listCampaigns({ hostId, workspaceId }) {
             order: [['createdAt', 'DESC']],
             raw: true
         }),
+        // Campaign creation only accepts published courses, so there is no reason
+        // to transfer archived/draft course metadata on every Campaigns visit.
         ScormCourse.findAll({
-            where: { hostId, status: { [Op.ne]: 'archived' } },
-            attributes: ['id', 'title', 'description', 'status', 'publishedAt', 'createdAt'],
+            where: { hostId, status: 'published' },
+            attributes: ['id', 'title', 'status', 'publishedAt'],
             order: [['createdAt', 'DESC']],
             raw: true
         }),
@@ -73,49 +101,29 @@ async function listCampaigns({ hostId, workspaceId }) {
     ]);
 
     const campaignIds = campaigns.map((campaign) => campaign.id);
-    const [learnerRows, courseRows, registrations] = campaignIds.length
+    const [learnerRows, courseRows, summaryRows] = campaignIds.length
         ? await Promise.all([
             groupedCount(ScormCampaignLearner, campaignIds),
             groupedCount(ScormCampaignCourse, campaignIds),
-            ScormRegistration.findAll({
-                where: {
-                    campaignId: { [Op.in]: campaignIds },
-                    isPreview: false,
-                    status: ACTIVE_REGISTRATION_STATUSES
-                },
-                attributes: ['id', 'campaignId', 'status', 'lastLessonStatus', 'lastScoreRaw', 'lastTotalTime', 'lastCommitAt'],
-                raw: true
-            })
+            registrationSummaries(campaignIds)
         ])
         : [[], [], []];
 
-    // The learner player persists to scorm_learning_state_v2 first. Registration
-    // summary columns are only a denormalized projection and may lag or fail to
-    // project. Campaign summaries therefore read the canonical state directly.
-    const canonicalStates = await loadCanonicalStates(registrations);
-
     const learnerCounts = countMap(learnerRows);
     const courseCounts = countMap(courseRows);
-    const registrationBuckets = new Map();
-    for (const registration of registrations) {
-        const key = String(registration.campaignId);
-        if (!registrationBuckets.has(key)) registrationBuckets.set(key, []);
-        registrationBuckets.get(key).push(registration);
-    }
+    const summaries = new Map((summaryRows || []).map((row) => [String(row.campaignId), {
+        assignmentCount: Number(row.assignmentCount || 0),
+        completedCount: Number(row.completedCount || 0),
+        inProgressCount: Number(row.inProgressCount || 0)
+    }]));
 
     return {
         campaigns: campaigns.map((campaign) => {
-            const rows = registrationBuckets.get(String(campaign.id)) || [];
-            let completedCount = 0;
-            let inProgressCount = 0;
-            for (const registration of rows) {
-                const status = registrationStatus(
-                    registration,
-                    canonicalStates.get(String(registration.id)) || null
-                );
-                if (status === 'completed') completedCount += 1;
-                else if (status === 'in_progress') inProgressCount += 1;
-            }
+            const summary = summaries.get(String(campaign.id)) || {
+                assignmentCount: 0,
+                completedCount: 0,
+                inProgressCount: 0
+            };
             const mode = normalizeStoredAuthMode(campaign.authMode);
             return {
                 id: campaign.id,
@@ -129,10 +137,12 @@ async function listCampaigns({ hostId, workspaceId }) {
                 startedAt: campaign.startedAt || null,
                 learnerCount: learnerCounts.get(String(campaign.id)) || 0,
                 courseCount: courseCounts.get(String(campaign.id)) || 0,
-                assignmentCount: rows.length,
-                completedCount,
-                inProgressCount,
-                completionPercent: rows.length ? Math.round((completedCount / rows.length) * 100) : 0,
+                assignmentCount: summary.assignmentCount,
+                completedCount: summary.completedCount,
+                inProgressCount: summary.inProgressCount,
+                completionPercent: summary.assignmentCount
+                    ? Math.round((summary.completedCount / summary.assignmentCount) * 100)
+                    : 0,
                 portalPath: campaign.status === 'active' ? `/campaign/${campaign.id}` : null
             };
         }),
@@ -140,7 +150,6 @@ async function listCampaigns({ hostId, workspaceId }) {
         courses: courses.map((course) => ({
             id: course.id,
             title: course.title,
-            description: course.description || null,
             status: course.status,
             publishedAt: course.publishedAt || null
         }))
@@ -149,6 +158,6 @@ async function listCampaigns({ hostId, workspaceId }) {
 
 module.exports = {
     listCampaigns,
-    registrationStatus,
-    authOptions
+    authOptions,
+    registrationSummaries
 };
