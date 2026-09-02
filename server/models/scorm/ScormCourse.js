@@ -44,7 +44,11 @@ const ScormCourse = sequelize.define('ScormCourse', {
     }
 }, {
     tableName: 'scorm_courses',
-    indexes: [{ fields: ['hostId'] }, { fields: ['inviteCode'], unique: true }]
+    indexes: [
+        { fields: ['hostId'] },
+        { fields: ['inviteCode'], unique: true },
+        { fields: ['hostId', 'status', 'createdAt'], name: 'scorm_courses_host_status_created_idx' }
+    ]
 });
 
 module.exports = ScormCourse;
