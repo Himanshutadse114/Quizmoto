@@ -101,7 +101,7 @@ export default function ScormHome() {
   const averageProgress = Number(overview.averageProgress || 0);
 
   return (
-    <div className="p-4 md:p-7 lg:p-8 max-w-[1440px] mx-auto">
+    <div className="w-full max-w-none p-4 md:p-7 lg:p-8">
       <section className="scorm-page-hero mb-6 md:mb-7">
         <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-6">
           <div className="max-w-3xl">
