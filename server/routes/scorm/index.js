@@ -1,6 +1,38 @@
 const express = require('express');
 const router = express.Router();
 const { featureFlags } = require('../../config/featureFlags');
+const { injectRuntimeRepair } = require('../../services/scorm/ScormRuntimeRepair');
+
+function repairServedScormHtml(req, res, next) {
+    const originalSend = res.send.bind(res);
+    res.send = function repairedSend(body) {
+        try {
+            const contentType = String(res.getHeader('Content-Type') || '').toLowerCase();
+            const isHtml = contentType.includes('text/html');
+            if (isHtml && (typeof body === 'string' || Buffer.isBuffer(body))) {
+                const source = Buffer.isBuffer(body) ? body.toString('utf8') : body;
+                // Only LMSGEN/Quizmoto packages use this generated wrapper. Do not
+                // rewrite arbitrary third-party HTML that happens to be served by
+                // the content router.
+                if (/scorm_api_wrapper\.js|\bdoLMSInitialize\b|quizmoto[-_]scorm/i.test(source)) {
+                    const patched = injectRuntimeRepair(source);
+                    if (patched !== source) {
+                        body = Buffer.isBuffer(body) ? Buffer.from(patched, 'utf8') : patched;
+                        res.setHeader('Cache-Control', 'private, no-store');
+                        res.removeHeader('Content-Length');
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn('[scorm-content] runtime repair skipped', {
+                path: req.originalUrl,
+                error: err?.message || String(err)
+            });
+        }
+        return originalSend(body);
+    };
+    next();
+}
 
 router.use((req, res, next) => {
     if (!featureFlags.scormLms) {
@@ -34,7 +66,7 @@ router.use('/campaigns', require('./campaigns'));
 router.use('/learner-access', require('./authConfig'));
 router.use('/session', require('./session'));
 router.use('/runtime', require('./runtime'));
-router.use('/content', require('./content'));
+router.use('/content', repairServedScormHtml, require('./content'));
 router.use('/play', require('./play'));
 router.use('/xapi', require('./xapi'));
 // Rebuild interception must run before the normal author route so edits reuse
@@ -68,4 +100,5 @@ router.get('/features', (req, res) => {
     });
 });
 
+router.repairServedScormHtml = repairServedScormHtml;
 module.exports = router;
