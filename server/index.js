@@ -99,6 +99,24 @@ const corsOrigin = (origin, callback) => {
     return callback(new Error('Origin is not allowed by CORS'));
 };
 
+// A SCORM player is served from the backend itself and saves progress back to the
+// same host. Custom API domains (for example api.lmsgen.in) may not equal
+// RENDER_EXTERNAL_URL, so accept an Origin whose host exactly matches the effective
+// request host. This preserves the explicit cross-origin allowlist for every other
+// browser origin while keeping same-host SCORM commits working after domain changes.
+function isSameHostBrowserOrigin(req, origin) {
+    if (!origin) return false;
+    try {
+        const originHost = new URL(origin).host.toLowerCase();
+        const requestHost = String(
+            req.headers['x-forwarded-host'] || req.headers.host || ''
+        ).split(',')[0].trim().toLowerCase();
+        return Boolean(originHost && requestHost && originHost === requestHost);
+    } catch (_) {
+        return false;
+    }
+}
+
 const io = new Server(server, {
     cors: {
         origin: corsOrigin,
@@ -148,10 +166,13 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(cors({
-    origin: corsOrigin,
+app.use((req, res, next) => cors({
+    origin: (origin, callback) => {
+        if (isSameHostBrowserOrigin(req, origin)) return callback(null, true);
+        return corsOrigin(origin, callback);
+    },
     credentials: true
-}));
+})(req, res, next));
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
