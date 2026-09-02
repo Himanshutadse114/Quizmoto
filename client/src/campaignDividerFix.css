@@ -169,6 +169,16 @@ html body .scorm-editorial .scorm-campaigns-page > [role="dialog"][aria-labelled
   overflow: visible !important;
 }
 
+html body .scorm-editorial .scorm-campaigns-page #campaign-learner-manager-title + p {
+  font-size: 0 !important;
+}
+
+html body .scorm-editorial .scorm-campaigns-page #campaign-learner-manager-title + p::after {
+  content: "Add or remove learners and send reminders for the selected active campaign.";
+  font-size: 11px;
+  line-height: 1.55;
+}
+
 /* The old modal components still toggle body overflow in React. Once they are
    rendered inline, scrolling must remain available. */
 html body:has(.scorm-campaigns-page > [role="dialog"][aria-labelledby="campaign-detail-title"]),
