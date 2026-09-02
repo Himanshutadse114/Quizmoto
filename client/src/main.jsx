@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import './services/scormApiCache.js'
 import App from './App.jsx'
 import CampaignManagementDock from './components/CampaignManagementDock.jsx'
 import './campaignDividerFix.css'
