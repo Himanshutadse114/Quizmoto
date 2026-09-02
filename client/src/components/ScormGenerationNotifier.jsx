@@ -12,28 +12,42 @@ function schedulePlatformPrefetch() {
   let cancelled = false;
   let idleId = null;
   let timerId = null;
+  let index = 0;
 
-  const preload = () => {
-    if (cancelled) return;
-    Promise.allSettled([
-      import('../pages/Scorm/CourseGenerator'),
-      import('../pages/Scorm/Courses'),
-      import('../pages/Scorm/CourseDetail'),
-      import('../pages/Scorm/Assignments'),
-      import('../pages/Scorm/Tracking'),
-      import('../pages/Scorm/Reports'),
-      import('../pages/Scorm/Library')
-    ]).catch(() => {});
+  const loaders = [
+    () => import('../pages/Scorm/CourseGenerator'),
+    () => import('../pages/Scorm/Courses'),
+    () => import('../pages/Scorm/Assignments'),
+    () => import('../pages/Scorm/Tracking'),
+    () => import('../pages/Scorm/CourseDetail'),
+    () => import('../pages/Scorm/Reports'),
+    () => import('../pages/Scorm/Library')
+  ];
+
+  const scheduleNext = () => {
+    if (cancelled || index >= loaders.length) return;
+    const run = () => {
+      if (cancelled || index >= loaders.length) return;
+      const loader = loaders[index++];
+      Promise.resolve()
+        .then(loader)
+        .catch(() => {})
+        .finally(() => {
+          if (!cancelled) timerId = window.setTimeout(scheduleNext, 180);
+        });
+    };
+
+    if (typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(run, { timeout: index === 0 ? 2200 : 3500 });
+    } else {
+      timerId = window.setTimeout(run, index === 0 ? 1200 : 320);
+    }
   };
 
-  // Let the dashboard paint and its first API requests start before downloading
-  // route chunks. After that, common LMSGEN screens are warmed in the browser
-  // module cache so the first sidebar click does not pause on a lazy import.
-  if (typeof window.requestIdleCallback === 'function') {
-    idleId = window.requestIdleCallback(preload, { timeout: 2200 });
-  } else {
-    timerId = window.setTimeout(preload, 1200);
-  }
+  // Warm high-use LMSGEN route chunks after the current screen has painted, one
+  // at a time. Sequential idle prefetch avoids a burst of downloads/parsing that
+  // can itself make the dashboard feel sluggish on lower-powered devices.
+  scheduleNext();
 
   return () => {
     cancelled = true;
