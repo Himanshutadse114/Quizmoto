@@ -6,9 +6,12 @@ const {
     createCampaign,
     getCampaignDetail,
     getCampaignAccessSheet,
-    startCampaign,
-    deleteDraftCampaign
+    startCampaign
 } = require('../../services/scorm/ScormCampaignService');
+const {
+    stopCampaign,
+    deleteCampaign
+} = require('../../services/scorm/ScormCampaignLifecycleService');
 const { listCampaigns } = require('../../services/scorm/ScormCampaignListService');
 const { getCampaignAnalytics } = require('../../services/scorm/ScormCampaignAnalyticsService');
 
@@ -133,12 +136,26 @@ router.post('/:campaignId/start', auth, async (req, res) => {
     }
 });
 
+router.post('/:campaignId/stop', auth, async (req, res) => {
+    try {
+        workspaceRequired(req);
+        const result = await stopCampaign({
+            campaignId: req.params.campaignId,
+            hostId: req.userId,
+            workspaceId: req.scormWorkspaceId
+        });
+        res.json({ ok: true, ...result });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message || 'Unable to stop campaign.', code: err.code });
+    }
+});
+
 router.delete('/:campaignId', auth, async (req, res) => {
     try {
         workspaceRequired(req);
         res.json({
             ok: true,
-            ...(await deleteDraftCampaign({
+            ...(await deleteCampaign({
                 campaignId: req.params.campaignId,
                 hostId: req.userId,
                 workspaceId: req.scormWorkspaceId
