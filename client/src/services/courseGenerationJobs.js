@@ -135,13 +135,30 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
       };
       return axios.post(apiUrl('/api/scorm/author/generate'), requestPayload, {
         headers: { Authorization: `Bearer ${token}` },
-        timeout: 600000,
+        // The API now only accepts/queues the job. Generation itself is isolated
+        // from the browser request and is tracked through the progress endpoint.
+        timeout: 60000,
         signal: controller.signal
       });
     })
     .then((res) => {
       if (!res || cancelledJobs.has(id)) return;
       const data = res.data || {};
+
+      if (res.status === 202 || data.accepted) {
+        upsertCourseGenerationJob(id, {
+          status: 'running',
+          percent: Math.max(1, Number(readCourseGenerationJobs().find((job) => job.id === id)?.percent || 1)),
+          stage: data.status === 'queued' ? 'Queued for generation' : 'Starting generation',
+          detail: 'Course generation is running in the background. You can continue using the platform.',
+          missingProgressCount: 0,
+          serverStatus: data.status || 'queued'
+        });
+        return;
+      }
+
+      // Backward compatibility for an older backend that still waits for the
+      // generation result in the original HTTP request.
       if (data.errorMessage || (data.status && data.status !== 'ready')) {
         throw new Error(data.errorMessage || `Course generation finished with status: ${data.status}.`);
       }
