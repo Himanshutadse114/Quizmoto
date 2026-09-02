@@ -12,8 +12,10 @@ const { serializeRegistration } = require('../../services/scorm/ScormProgressSer
 const { extractInteractions, answerSummary } = require('../../services/scorm/ScormInteractionReportService');
 const { resolveCourseOrPackageId } = require('../../services/scorm/ScormCourseWorkspaceService');
 
+const FINISHED = new Set(['completed', 'passed', 'failed']);
+
 function activityTime(row) {
-    return new Date(row.lastCommitAt || row.updatedAt || row.createdAt || 0).getTime();
+    return new Date(row.lastCommitAt || row.lastActivityAt || row.updatedAt || row.createdAt || 0).getTime();
 }
 
 function attemptRows(attempts) {
@@ -21,7 +23,8 @@ function attemptRows(attempts) {
         id: attempt.id,
         attemptNo: attempt.attemptNo,
         startedAt: attempt.startedAt,
-        finishedAt: attempt.finishedAt
+        finishedAt: attempt.finishedAt,
+        exitType: attempt.exitType || null
     }));
 }
 
@@ -34,9 +37,25 @@ function registrationRow(reg, course) {
         ? reg.getDataValue('learningStateV2')
         : reg.learningStateV2;
     const interactions = extractInteractions({ state, packageRow: course?.package || null });
+    const lessonStatus = String(state?.lessonStatus || row.lastLessonStatus || '').trim().toLowerCase();
+    const hasCanonicalActivity = Boolean(
+        state && (
+            Number(state.sequence || 0) > 0 ||
+            state.updatedAt ||
+            state.lessonLocation ||
+            state.suspendData ||
+            state.scoreRaw != null ||
+            (state.totalTime && state.totalTime !== '00:00:00.00') ||
+            (lessonStatus && lessonStatus !== 'not attempted' && lessonStatus !== 'unknown')
+        )
+    );
+    const completed = row.status === 'completed' || FINISHED.has(lessonStatus);
 
     return {
         ...row,
+        status: row.status === 'revoked' ? 'revoked' : completed ? 'completed' : hasCanonicalActivity ? 'active' : row.status,
+        lastCommitAt: state?.updatedAt || row.lastCommitAt || null,
+        lastActivityAt: state?.updatedAt || row.lastActivityAt || row.lastCommitAt || null,
         courseTitle: course?.title || row.courseTitle || 'Course',
         scormStandard: course?.package?.standard || null,
         attempts: attemptRows(attempts),
@@ -85,7 +104,7 @@ function isStartedRow(row) {
     if (isCompletedRow(row)) return true;
     return (row.progressAvailable && Number(row.progressPercent) > 0)
         || ['active', 'in_progress', 'launched', 'started'].includes(String(row.status || ''))
-        || Boolean(row.lastCommitAt)
+        || Boolean(row.lastCommitAt || row.lastActivityAt)
         || Number(row.stateVersion || 0) > 0
         || ['incomplete', 'browsed'].includes(String(row.lastLessonStatus || '').toLowerCase());
 }
@@ -146,7 +165,7 @@ async function loadHostCourses(hostId, courseId = null) {
                     model: ScormAttempt,
                     as: 'attempts',
                     required: false,
-                    attributes: ['id', 'attemptNo', 'startedAt', 'finishedAt']
+                    attributes: ['id', 'attemptNo', 'startedAt', 'finishedAt', 'exitType']
                 }]
             }
         ],
@@ -177,7 +196,7 @@ router.get('/summary', auth, async (req, res) => {
             learners: newestFirst(rows)
         });
     } catch (err) {
-        console.error('[scorm-tracking-v3] summary failed', {
+        console.error('[scorm-tracking-v4] summary failed', {
             hostId: req.userId,
             error: err?.message || String(err),
             dbCode: err?.original?.code || err?.parent?.code || null
@@ -200,7 +219,7 @@ router.get('/course/:courseId', auth, async (req, res) => {
             learners
         });
     } catch (err) {
-        console.error('[scorm-tracking-v3] course failed', {
+        console.error('[scorm-tracking-v4] course failed', {
             hostId: req.userId,
             courseId: req.params.courseId,
             error: err?.message || String(err),
