@@ -112,10 +112,6 @@ router.delete('/:id', auth, async (req, res) => {
         await LearningState.ensureReady();
 
         await sequelize.transaction(async (transaction) => {
-            await sequelize.query(
-                'DELETE FROM scorm_learning_state_v2 WHERE registration_id = :registrationId',
-                { replacements: { registrationId }, transaction }
-            );
             await ScormXapiStatement.destroy({ where: { registrationId }, transaction });
             await ScormRuntimeSnapshot.destroy({ where: { registrationId }, transaction });
             await ScormCmiState.destroy({ where: { registrationId }, transaction });
