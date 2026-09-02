@@ -61,7 +61,10 @@ function registrationRow(reg, course) {
         courseTitle: course?.title || row.courseTitle || 'Course',
         scormStandard: course?.package?.standard || null,
         attempts: attemptRows(attempts),
-        attemptCount: Math.max(1, attempts.length),
+        // A registration is an assignment, not an attempt. Do not display one
+        // attempt until the learner actually launches the course. Historical
+        // activity without an attempt row still counts as one legacy attempt.
+        attemptCount: attempts.length || (hasCanonicalActivity ? 1 : 0),
         interactions,
         answerSummary: answerSummary(interactions)
     };
@@ -89,7 +92,7 @@ function learnerRows(course) {
 
         const mergedAttempts = [...(current.attempts || []), ...(row.attempts || [])]
             .sort((a, b) => Number(a.attemptNo || 0) - Number(b.attemptNo || 0));
-        const combinedAttempts = Math.max(1, Number(current.attemptCount || 1) + Number(row.attemptCount || 1));
+        const combinedAttempts = Math.max(0, Number(current.attemptCount || 0) + Number(row.attemptCount || 0));
         const newest = activityTime(row) > activityTime(current) ? row : current;
         grouped.set(key, {
             ...newest,
@@ -118,8 +121,10 @@ function isStartedRow(row) {
 function summarizeRows(rows) {
     const completed = rows.filter(isCompletedRow).length;
     const inProgress = rows.filter((row) => !isCompletedRow(row) && isStartedRow(row)).length;
-    const notStarted = rows.filter((row) => !isStartedRow(row)).length;
     const unavailable = rows.filter((row) => row.progressAvailable === false && !isStartedRow(row)).length;
+    // Keep metric buckets mutually exclusive. Previously every unavailable row
+    // was also counted as Not started, which made the overview totals misleading.
+    const notStarted = rows.filter((row) => row.progressAvailable !== false && !isStartedRow(row)).length;
     const measurable = rows.filter((row) => row.progressAvailable);
     const averageProgress = measurable.length
         ? Math.round((measurable.reduce((sum, row) => sum + Number(row.progressPercent || 0), 0) / measurable.length) * 10) / 10
