@@ -17,6 +17,7 @@ const {
     deleteCampaign
 } = require('../../services/scorm/ScormCampaignLifecycleService');
 const { listCampaigns } = require('../../services/scorm/ScormCampaignListService');
+const { getCampaignCreateOptions } = require('../../services/scorm/ScormCampaignCreateOptionsService');
 const { getCampaignAnalytics } = require('../../services/scorm/ScormCampaignAnalyticsService');
 const {
     addLearners,
@@ -41,6 +42,20 @@ router.get('/', auth, async (req, res) => {
         res.json({ ok: true, ...result });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to load campaigns.', code: err.code });
+    }
+});
+
+router.get('/create-options', auth, async (req, res) => {
+    try {
+        workspaceRequired(req);
+        const result = await getCampaignCreateOptions({
+            hostId: req.userId,
+            workspaceId: req.scormWorkspaceId
+        });
+        res.setHeader('Cache-Control', 'no-store');
+        res.json({ ok: true, ...result });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message || 'Unable to load campaign creation options.', code: err.code });
     }
 });
 
