@@ -1,5 +1,4 @@
 const LearningState = require('./ScormLearningStateService');
-const RuntimeSnapshots = require('./ScormRuntimeSnapshotReader');
 const { deriveProgress, liveInteractionScore } = require('./ScormProgressService');
 
 const FINISHED_STATUSES = new Set(['completed', 'passed', 'failed']);
@@ -27,6 +26,10 @@ function stateValues(state) {
         : {};
 }
 
+// Kept for compatibility with existing unit tests and report helpers. Runtime
+// snapshots are now normalized by ScormLearningStateService before reaching
+// this service, so production reads no longer merge two independently queried
+// stores.
 function snapshotToLearningState(snapshot) {
     if (!snapshot) return null;
     let values = {};
@@ -45,34 +48,26 @@ function snapshotToLearningState(snapshot) {
         totalTime: snapshot.totalTime || null,
         progressPercent: null,
         sequence: Number(snapshot.stateVersion || 0),
-        clientRevision: 0,
+        clientRevision: Number(snapshot.stateVersion || 0),
         updatedAt: snapshot.updatedAt || null
     };
 }
 
-function mergeCanonicalState(v2, snapshot) {
-    const fromSnap = snapshotToLearningState(snapshot);
-    if (!v2) return fromSnap;
-    if (!fromSnap) return v2;
-
+function mergeCanonicalState(primary, fallback) {
+    if (!primary) return fallback || null;
+    if (!fallback) return primary;
+    const primaryVersion = Number(primary.sequence || primary.stateVersion || 0);
+    const fallbackVersion = Number(fallback.sequence || fallback.stateVersion || 0);
+    const primaryTime = new Date(primary.updatedAt || 0).getTime();
+    const fallbackTime = new Date(fallback.updatedAt || 0).getTime();
+    const newer = fallbackVersion > primaryVersion || (fallbackVersion === primaryVersion && fallbackTime > primaryTime)
+        ? fallback
+        : primary;
+    const older = newer === primary ? fallback : primary;
     return {
-        ...fromSnap,
-        ...v2,
-        values: { ...(fromSnap.values || {}), ...(v2.values || {}) },
-        lessonStatus: (!EMPTY_STATUSES.has(cleanStatus(v2.lessonStatus))
-            ? v2.lessonStatus
-            : (fromSnap.lessonStatus || v2.lessonStatus)),
-        scoreRaw: v2.scoreRaw != null ? v2.scoreRaw : fromSnap.scoreRaw,
-        lessonLocation: v2.lessonLocation || fromSnap.lessonLocation,
-        suspendData: (v2.suspendData && String(v2.suspendData).length)
-            ? v2.suspendData
-            : fromSnap.suspendData,
-        totalTime: (v2.totalTime && v2.totalTime !== '00:00:00.00')
-            ? v2.totalTime
-            : (fromSnap.totalTime || v2.totalTime),
-        progressPercent: v2.progressPercent != null ? v2.progressPercent : fromSnap.progressPercent,
-        sequence: Math.max(Number(v2.sequence || 0), Number(fromSnap.sequence || 0)),
-        updatedAt: v2.updatedAt || fromSnap.updatedAt
+        ...older,
+        ...newer,
+        values: { ...(older.values || {}), ...(newer.values || {}) }
     };
 }
 
@@ -202,33 +197,12 @@ async function loadCanonicalStates(registrations) {
         .map(String)));
     if (!ids.length) return new Map();
 
-    let states = new Map();
-    try {
-        states = await LearningState.listByRegistrationIds(ids);
-    } catch (err) {
-        console.error('[scorm-progress] canonical state read failed; using registration projection', {
-            registrations: ids.length,
-            error: err?.message || String(err),
-            dbCode: err?.original?.code || err?.parent?.code || null
-        });
-        states = new Map();
-    }
-
-    let snapshots = new Map();
-    try {
-        snapshots = await RuntimeSnapshots.listByRegistrationIds(ids);
-    } catch (err) {
-        console.warn('[scorm-progress] runtime snapshot fallback skipped', {
-            registrations: ids.length,
-            error: err?.message || String(err)
-        });
-    }
-
-    const merged = new Map();
-    for (const id of ids) {
-        merged.set(id, mergeCanonicalState(states.get(id) || null, snapshots.get(id) || null));
-    }
-    return merged;
+    // One logical source of truth. ScormLearningStateService delegates to the
+    // resilient runtime store, which itself handles Supabase table drift and
+    // fallback. Do not silently swallow a total state-store failure here: the
+    // route should return an error rather than displaying stale "not attempted"
+    // data as if it were valid tracking.
+    return LearningState.listByRegistrationIds(ids);
 }
 
 function enrichCourse(course, state) {
