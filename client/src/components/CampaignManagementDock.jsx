@@ -24,18 +24,11 @@ function isCampaignAdmin(user) {
   return ['super_admin', 'admin', 'co_admin'].includes(String(user?.role || '').toLowerCase());
 }
 
-function registrationComplete(registration) {
-  const status = String(registration?.status || '').toLowerCase();
-  const lesson = String(registration?.lessonStatus || registration?.lastLessonStatus || '').toLowerCase();
-  return status === 'completed' || ['completed', 'passed', 'failed'].includes(lesson);
-}
-
-function learnerStatus(email, registrations) {
-  const rows = registrations.filter((registration) => String(registration.learnerEmail || '').toLowerCase() === String(email || '').toLowerCase());
-  if (!rows.length) return { label: 'Not started', complete: false, tone: 'muted' };
-  if (rows.every(registrationComplete)) return { label: 'Complete', complete: true, tone: 'success' };
-  const started = rows.some((registration) => registration.status === 'in_progress' || registration.lastActivityAt || registration.lastCommitAt || registration.score !== null);
-  return { label: started ? 'In progress' : 'Not started', complete: false, tone: started ? 'accent' : 'muted' };
+function learnerStatus(learner) {
+  const value = String(learner?.progressStatus || '').toLowerCase();
+  if (value === 'completed') return { label: 'Complete', complete: true, tone: 'success' };
+  if (value === 'in_progress') return { label: 'In progress', complete: false, tone: 'accent' };
+  return { label: 'Not started', complete: false, tone: 'muted' };
 }
 
 function StatusPill({ value }) {
@@ -81,13 +74,14 @@ export default function CampaignManagementDock() {
     sync();
     window.addEventListener('popstate', sync);
     window.addEventListener('focus', sync);
-    const root = document.getElementById('root');
-    const observer = root ? new MutationObserver(sync) : null;
-    observer?.observe(root, { childList: true, subtree: true });
+    // React Router navigation does not emit popstate for every client-side push.
+    // A low-frequency pathname check is far cheaper than observing every DOM
+    // mutation in a large campaign/learner list.
+    const routeTimer = window.setInterval(sync, 500);
     return () => {
       window.removeEventListener('popstate', sync);
       window.removeEventListener('focus', sync);
-      observer?.disconnect();
+      window.clearInterval(routeTimer);
     };
   }, []);
 
@@ -105,7 +99,7 @@ export default function CampaignManagementDock() {
     if (!allowed || !id) return null;
     setLoading(true);
     try {
-      const response = await axios.get(apiUrl(`/api/scorm/campaigns/${id}`), { headers });
+      const response = await axios.get(apiUrl(`/api/scorm/campaigns/${id}/manage`), { headers });
       const nextDetail = response.data?.campaign || null;
       setDetail(nextDetail);
       setSelected((current) => current.filter((value) => (nextDetail?.learners || []).some((learner) => learner.email === value)));
@@ -239,13 +233,12 @@ export default function CampaignManagementDock() {
   };
 
   const learners = detail?.learners || [];
-  const registrations = detail?.registrations || [];
   const filtered = learners.filter((learner) => {
     const q = query.trim().toLowerCase();
     return !q || `${learner.learnerName || ''} ${learner.email || ''}`.toLowerCase().includes(q);
   });
   const incompleteEmails = learners
-    .filter((learner) => !learnerStatus(learner.email, registrations).complete)
+    .filter((learner) => !learnerStatus(learner).complete)
     .map((learner) => learner.email);
 
   if (!allowed) return null;
@@ -326,7 +319,7 @@ export default function CampaignManagementDock() {
                       <div className="max-h-[430px] overflow-y-auto divide-y" style={{ borderColor: 'var(--scorm-line)' }}>
                         {loading && !detail && <div className="px-4 py-8 text-center text-[10px]" style={{ color: 'var(--scorm-muted)' }}>Loading learners…</div>}
                         {!loading && filtered.map((learner) => {
-                          const status = learnerStatus(learner.email, registrations);
+                          const status = learnerStatus(learner);
                           const checked = selected.includes(learner.email);
                           const removing = busy === `remove:${learner.email}`;
                           return (
