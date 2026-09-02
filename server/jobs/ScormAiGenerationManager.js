@@ -6,6 +6,7 @@ const {
     cancelProgress,
     failProgress
 } = require('../services/scorm/ScormGenerationProgress');
+const { getObjectStorage } = require('../storage/ObjectStorage');
 const logger = require('../utils/logger');
 
 const queue = [];
@@ -25,6 +26,14 @@ function generationError(value = {}) {
     const error = new Error(String(value.message || 'Course generation failed.'));
     error.code = value.code || 'SCORM_AI_ERROR';
     return error;
+}
+
+function cleanupSource(payload) {
+    const key = String(payload?.sourceKey || '').trim();
+    if (!key || !key.startsWith('ai-author/source/')) return;
+    Promise.resolve()
+        .then(() => getObjectStorage().deleteObject(key))
+        .catch((error) => logger.warn('scorm_ai_source_cleanup_failed', { module: 'scorm', key, error: error.message }));
 }
 
 function finishActive(progressId) {
@@ -89,6 +98,7 @@ function startJob(job) {
             });
         }
 
+        cleanupSource(job.payload);
         finishActive(job.progressId);
     };
 
@@ -171,9 +181,11 @@ function cancel(progressId, userId) {
     if (!id) return null;
 
     if (queued.has(id)) {
+        const job = queued.get(id);
         queued.delete(id);
-        const index = queue.findIndex((job) => job.progressId === id);
+        const index = queue.findIndex((candidate) => candidate.progressId === id);
         if (index >= 0) queue.splice(index, 1);
+        cleanupSource(job?.payload);
         return cancelProgress(id, userId);
     }
 
