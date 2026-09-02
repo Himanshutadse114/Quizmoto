@@ -1,5 +1,13 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../../config/database');
+const {
+    ScormWorkspace,
+    ScormWorkspaceMember,
+    ScormPackage,
+    ScormCourse,
+    ScormCampaign,
+    ScormLearnerRoster
+} = require('../../models/scorm');
 
 const queryInterface = () => sequelize.getQueryInterface();
 const tableDescriptionCache = new Map();
@@ -273,6 +281,38 @@ async function ensureCampaignSchema() {
     return changes;
 }
 
+// ScormTenantService.createTenant creates each tenant's data host as a new
+// synthetic user, distinct from the human Tenant Admin. Tenants created
+// before that migration re-pointed existing data to the new host left the
+// Admin's pre-existing packages/courses/campaigns/roster stranded under
+// their own old user id - invisible to every hostId-scoped tracking and
+// report query, with no error, since the queries just return nothing.
+// Idempotent: only touches rows that still sit under the admin's own id.
+async function backfillTenantHostData() {
+    const changes = [];
+    const admins = await ScormWorkspaceMember.findAll({
+        where: { role: 'admin' },
+        include: [{ model: ScormWorkspace, as: 'workspace', required: true }]
+    }).catch(() => []);
+
+    for (const member of admins) {
+        const adminUserId = member.userId;
+        const hostId = member.workspace?.ownerUserId;
+        if (!adminUserId || !hostId || String(adminUserId) === String(hostId)) continue;
+
+        const results = await Promise.all([
+            ScormPackage.update({ hostId }, { where: { hostId: adminUserId } }),
+            ScormCourse.update({ hostId }, { where: { hostId: adminUserId } }),
+            ScormCampaign.update({ hostId }, { where: { hostId: adminUserId } }),
+            ScormLearnerRoster.update({ hostId }, { where: { hostId: adminUserId } })
+        ]);
+        const migratedRows = results.reduce((sum, [count]) => sum + (Number(count) || 0), 0);
+        if (migratedRows > 0) changes.push(`tenant:${member.workspaceId}:reattached:${migratedRows}`);
+    }
+
+    return changes;
+}
+
 async function ensurePlatformSchema() {
     resetSchemaCache();
     const changes = [];
@@ -300,7 +340,9 @@ async function ensurePlatformSchema() {
         if (await ensureIndex('scorm_registrations', fields, options)) changes.push(options.name);
     }
 
+    changes.push(...await backfillTenantHostData());
+
     return { changed: changes.length > 0, changes };
 }
 
-module.exports = { ensurePlatformSchema };
+module.exports = { ensurePlatformSchema, backfillTenantHostData };
