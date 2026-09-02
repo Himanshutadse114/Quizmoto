@@ -6,18 +6,6 @@ import AuthorVisual from './AuthorVisual';
 
 const EDITORIAL_THEME_ID = 1;
 
-function toBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const value = String(reader.result || '');
-      resolve(value.includes(',') ? value.split(',')[1] : value);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
 function createProgressId() {
   let random = '';
   try {
@@ -55,28 +43,31 @@ export default function CourseGenerator() {
 
   if (editId) return <AuthorVisual />;
 
-  const generateCourse = async () => {
+  const generateCourse = () => {
     if (!hasSource || busy || !token) return;
     setError('');
     setBusy(true);
 
     try {
       const progressId = createProgressId();
-      const fileBase64 = file ? await toBase64(file) : '';
       startBackgroundCourseGeneration({
         token,
         title: displayTitle,
+        file,
         payload: {
           progressId,
           topic: topic.trim(),
           description: description.trim(),
-          fileBase64,
+          fileBase64: '',
           mimeType: file?.type || '',
           detailLevel,
           templateId: EDITORIAL_THEME_ID
         }
       });
 
+      // Navigation is intentionally immediate. Source-file reading and the API
+      // request now continue from the background-generation service after this
+      // component unmounts.
       navigate('/scorm/courses', {
         state: {
           generationStarted: true,
