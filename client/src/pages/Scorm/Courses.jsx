@@ -114,7 +114,7 @@ export default function ScormCourses() {
         <div className="max-w-3xl">
           <div className="scorm-micro text-[10px] uppercase font-semibold text-slate-500">Course management</div>
           <h2 className="scorm-display text-[42px] md:text-[56px] mt-2">Courses</h2>
-          <p className="text-sm mt-3 leading-relaxed max-w-2xl">Publish, monitor and manage every learning experience from one place.</p>
+          <p className="text-sm mt-3 leading-relaxed max-w-2xl">Publish and manage learning content. Learner figures on this screen represent direct published-link or direct-assignment activity; campaign performance stays in Campaign Analytics.</p>
         </div>
         <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold">
           <Plus size={15} /> Create course
@@ -129,7 +129,7 @@ export default function ScormCourses() {
         <Metric label="Total courses" value={courses.length} icon={BookOpen} loading={loading} />
         <Metric label="Published" value={courses.filter((c) => c.status === 'published').length} icon={CheckCircle2} loading={loading} />
         <Metric label="Draft" value={courses.filter((c) => c.status === 'draft').length} icon={Clock3} loading={loading} />
-        <Metric label="Learners" value={learnerCount} icon={Users} loading={loading} />
+        <Metric label="Direct learners" value={learnerCount} icon={Users} loading={loading} />
       </div>
 
       <div className="scorm-course-list-shell rounded-xl overflow-hidden border">
@@ -182,7 +182,7 @@ export default function ScormCourses() {
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-[#f1f5f9]">{stats.learners || 0}</div>
-                  <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Learners</div>
+                  <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Direct learners</div>
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-emerald-300">{stats.completed || 0}</div>
@@ -190,7 +190,7 @@ export default function ScormCourses() {
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-[#f1f5f9]">{Number(stats.averageProgress || 0).toFixed(0)}%</div>
-                  <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Avg progress</div>
+                  <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Direct progress</div>
                 </div>
                 <ChevronRight size={17} className="text-[#60a5fa]" />
               </Link>
