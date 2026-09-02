@@ -81,3 +81,11 @@ html body .scorm-editorial .scorm-campaigns-page .campaign-actions .scorm-button
 html body .scorm-editorial .scorm-campaigns-page .campaign-actions .scorm-button-primary {
   min-width: 0 !important;
 }
+
+/* The campaign learner manager is a floating module. On mobile the platform
+   already has a fixed bottom tab bar, so keep this launcher safely above it. */
+@media (max-width: 1023px) {
+  html body .scorm-editorial .scorm-campaigns-page button[title="Add or remove campaign learners and send reminders"] {
+    bottom: 92px !important;
+  }
+}
