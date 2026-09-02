@@ -15,12 +15,12 @@ export const SCORM_FEATURES = {
     id: 'courses',
     label: 'My Courses',
     short: 'Publish, invite and manage learner-ready courses.',
-    description: 'Manage generated and uploaded learning as operational course workspaces, with learner invitations and reusable delivery links.',
+    description: 'Manage generated and uploaded learning as operational course workspaces, with direct learner invitations and reusable delivery links.',
     capabilities: [
       'Create and manage learner-facing course workspaces',
       'Publish or keep courses in draft while content is reviewed',
-      'Generate learner invite links and registration access',
-      'Open course-level learner and assessment activity'
+      'Generate direct learner invite links and registration access',
+      'Open direct course-level learner and assessment activity'
     ]
   },
   visualStudio: {
@@ -39,7 +39,7 @@ export const SCORM_FEATURES = {
     id: 'library',
     label: 'SCORM Library',
     short: 'Import, validate and manage SCORM packages.',
-    description: 'Use SCORM AI as a package operations workspace for both AI-generated content and compatible third-party learning packages.',
+    description: 'Use LMSGEN as a package operations workspace for both AI-generated content and compatible third-party learning packages.',
     capabilities: [
       'Upload and inspect SCORM packages from other authoring tools',
       'Keep generated and uploaded packages in one managed library',
@@ -50,25 +50,25 @@ export const SCORM_FEATURES = {
   tracking: {
     id: 'tracking',
     label: 'Learner Tracking',
-    short: 'See progress, score, resume state and learner activity.',
-    description: 'Follow learner progress without digging through raw runtime data, with course and learner views built from captured SCORM state.',
+    short: 'See direct learner progress, score, resume state and activity.',
+    description: 'Track learners who use published course links or direct course assignments. Campaign learner activity stays in Campaign Analytics so the same learner data is not repeated across modules.',
     capabilities: [
-      'Track completion, progress, score and last learning location',
-      'Inspect attempts and resume state for individual learners',
+      'Track direct-learning completion, progress, score and last learning location',
+      'Inspect attempts and resume state for individual direct learners',
       'Review captured question-level interactions where available',
-      'Search learners and open a detailed learning audit trail'
+      'Keep campaign tracking isolated in campaign-specific analytics'
     ]
   },
   reports: {
     id: 'reports',
     label: 'Reports & Insights',
     short: 'Turn learning records into usable completion and assessment evidence.',
-    description: 'Create management-ready reporting from learner progress and assessment evidence, including individual learner detail.',
+    description: 'Review direct course and learner evidence alongside a separate campaign reporting section, without duplicating campaign registrations inside general learner reports.',
     capabilities: [
-      'Review course and learner performance from one reporting workspace',
+      'Review direct course and learner performance in the general reporting workspace',
+      'Open campaign-specific performance from the dedicated campaign reports section',
       'Inspect question, learner answer and correct-answer evidence when captured',
-      'Export individual learner reporting to PDF and Excel',
-      'Use assessment evidence to identify learning and remediation needs'
+      'Export individual direct learner reporting to PDF and Excel'
     ]
   }
 };
