@@ -56,7 +56,9 @@ const ScormCampaign = sequelize.define('ScormCampaign', {
         { fields: ['workspaceId'] },
         { fields: ['hostId'] },
         { fields: ['status'] },
-        { fields: ['createdAt'] }
+        { fields: ['createdAt'] },
+        { fields: ['workspaceId', 'hostId', 'createdAt'], name: 'scorm_campaigns_workspace_host_created_idx' },
+        { fields: ['workspaceId', 'hostId', 'status'], name: 'scorm_campaigns_workspace_host_status_idx' }
     ]
 });
 
