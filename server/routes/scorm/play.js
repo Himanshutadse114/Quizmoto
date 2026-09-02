@@ -1,9 +1,10 @@
 /**
  * Same-origin SCORM / xAPI player shell.
  *
- * v2 tracking is local-first: the SCORM API is synchronous and entirely in
- * memory, while a complete attempt-state document is persisted asynchronously.
- * A slow database can therefore never make LMSInitialize/Get/Set/Commit fail.
+ * Tracking is local-first: the SCORM API remains synchronous in memory while
+ * the complete state document is persisted asynchronously to the canonical
+ * runtime snapshot store. The shell also owns launch and elapsed-time tracking,
+ * so a quiet or imperfect SCO cannot leave an opened course as "not attempted".
  */
 const express = require('express');
 const router = express.Router();
@@ -113,8 +114,8 @@ function installDefaults(resume){
   putDefault("cmi.core.student_name",BOOT.learnerName);
   putDefault("cmi.learner_id",BOOT.registrationId);
   putDefault("cmi.learner_name",BOOT.learnerName);
-  putDefault("cmi.core.lesson_status","not attempted");
-  putDefault("cmi.completion_status","unknown");
+  putDefault("cmi.core.lesson_status","incomplete");
+  putDefault("cmi.completion_status","incomplete");
   putDefault("cmi.success_status","unknown");
   putDefault("cmi.core.total_time","00:00:00.00");
   putDefault("cmi.total_time","PT0S");
@@ -124,10 +125,11 @@ function installDefaults(resume){
   localValues["cmi.entry"]=resume?"resume":"ab-initio";
 }
 function snapshotValues(){var values=copyValues(localValues);values["quizmoto.total_time_seconds"]=String(Math.round(absoluteTrackedSeconds()*100)/100);return values;}
-function snapshotPayload(eventName){return JSON.stringify({event:eventName||"commit",clientVersion:3,clientRevision:revision,values:snapshotValues()});}
+function snapshotPayload(eventName){return JSON.stringify({event:eventName||"commit",clientVersion:4,clientRevision:revision,values:snapshotValues()});}
 function clearSaveTimer(){if(saveTimer){clearTimeout(saveTimer);saveTimer=null;}}
-function scheduleSave(delay,eventName){if(!initialized&&!stateLoaded)return;clearSaveTimer();saveTimer=setTimeout(function(){saveTimer=null;persist(eventName||"autosave",false);},delay==null?1200:delay);}
+function scheduleSave(delay,eventName){if(!stateLoaded&&!initialized)return;clearSaveTimer();saveTimer=setTimeout(function(){saveTimer=null;persist(eventName||"autosave",false);},delay==null?1200:delay);}
 function persist(eventName,keepalive){
+  if(!stateLoaded)return;
   if(saveInFlight){saveAgain=true;return;}
   var capturedRevision=revision;
   var body=snapshotPayload(eventName);
@@ -137,13 +139,14 @@ function persist(eventName,keepalive){
     .then(function(d){
       lastError.code=0;savedRevision=Math.max(savedRevision,capturedRevision);
       if(revision===capturedRevision)dirty=false;
-      if(d&&d.summary&&d.summary.lessonStatus)setStatus("SCORM - "+d.summary.lessonStatus+(d.degraded?" · saved safely":" · saved"));else setStatus("SCORM - progress saved");
+      if(d&&d.summary&&d.summary.lessonStatus)setStatus("SCORM - "+d.summary.lessonStatus+" · saved");else setStatus("SCORM - progress saved");
       notifyOpener("quizmoto-scorm-progress",d&&d.summary?d.summary:null);
     })
     .catch(function(){dirty=true;lastError.code=101;setStatus("SCORM - saving will retry");})
     .finally(function(){saveInFlight=false;if(saveAgain||dirty&&revision>savedRevision){saveAgain=false;scheduleSave(1500,"retry");}});
 }
 function beaconPersist(eventName){
+  if(!stateLoaded)return false;
   clearSaveTimer();
   var body=snapshotPayload(eventName);
   var url=SESSION+"?token="+encodeURIComponent(TOKEN);
@@ -159,12 +162,16 @@ function beaconPersist(eventName){
 function loadContent(){
   try{var frame=document.getElementById("frame");if(frame&&!frame.getAttribute("data-loaded")){frame.setAttribute("data-loaded","1");frame.src=BOOT.contentSrc;}}catch(e){}
 }
+function beginLaunchTracking(d){
+  installDefaults(!!(d&&d.resume));installTimeBaseline(d||{});stateLoaded=true;dirty=true;revision++;
+  scheduleSave(150,"launch");
+}
 function loadSavedState(){
   setStatus("SCORM - loading saved progress");
   fetch(SESSION,{method:"GET",headers:{"Authorization":"Bearer "+TOKEN},credentials:"same-origin",cache:"no-store"})
     .then(function(r){if(!r.ok)throw new Error("state load "+r.status);return r.json();})
-    .then(function(d){localValues=copyValues(d&&d.values);revision=Math.max(0,Number(d&&d.clientRevision||0));savedRevision=revision;installDefaults(!!(d&&d.resume));installTimeBaseline(d||{});stateLoaded=true;setStatus("SCORM - "+(d&&d.resume?"progress restored":"ready"));})
-    .catch(function(){localValues=Object.create(null);installDefaults(false);installTimeBaseline({});stateLoaded=true;setStatus("SCORM - ready · save service retrying");})
+    .then(function(d){localValues=copyValues(d&&d.values);revision=Math.max(0,Number(d&&d.clientRevision||0));savedRevision=revision;beginLaunchTracking(d||{});setStatus("SCORM - "+(d&&d.resume?"progress restored":"started"));})
+    .catch(function(){localValues=Object.create(null);revision=0;savedRevision=-1;beginLaunchTracking({});setStatus("SCORM - started · save service retrying");})
     .finally(loadContent);
 }
 
@@ -177,7 +184,7 @@ var api12={
   LMSFinish:function(){dirty=true;revision++;beaconPersist("finish");initialized=false;lastError.code=0;setStatus("SCORM - finished · saving");return "true";},
   LMSGetValue:function(el){var key=String(el||"");lastError.code=0;return Object.prototype.hasOwnProperty.call(localValues,key)?String(localValues[key]):"";},
   LMSSetValue:function(el,v){if(!initialized){lastError.code=301;return "false";}var key=String(el||"");localValues[key]=v==null?"":String(v);dirty=true;revision++;lastError.code=0;scheduleSave(900,"autosave");return "true";},
-  LMSCommit:function(){if(initialized){dirty=true;revision++;persist("commit",false);}lastError.code=0;return "true";},
+  LMSCommit:function(){if(stateLoaded){dirty=true;revision++;persist("commit",false);}lastError.code=0;return "true";},
   LMSGetLastError:function(){return String(lastError.code||0);},
   LMSGetErrorString:function(code){return ERRORS[Number(code)]||"Unknown error";},
   LMSGetDiagnostic:function(code){return api12.LMSGetErrorString(code);}
@@ -199,13 +206,13 @@ window.ADL.XAPIWrapper.sendStatement=function(stmt,cb){try{var x=new XMLHttpRequ
 try{if(window.top&&window.top!==window){window.top.API=api12;window.top.API_1484_11=api2004;window.top.ADL=window.ADL;}}catch(e){}
 window.__quizmotoScormReady=true;
 window.__quizmotoPersistState=function(eventName){dirty=true;revision++;persist(eventName||"manual",false);};
-window.__quizmotoBeaconState=function(eventName){return beaconPersist(eventName||"lifecycle");};
-document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden"&&stateLoaded&&(dirty||initialized))beaconPersist("visibility-hidden");});
-window.addEventListener("pagehide",function(){if(stateLoaded&&(dirty||initialized))beaconPersist("pagehide");});
-// Time is owned by the player shell, not by a particular generated package.
-// Persist periodically even when the SCO has made no new SetValue call so a
-// learner's elapsed time cannot disappear when a package is quiet.
-setInterval(function(){if(stateLoaded&&initialized&&!saveInFlight)persist("heartbeat",false);},5000);
+window.__quizmotoBeaconState=function(eventName){dirty=true;revision++;return beaconPersist(eventName||"lifecycle");};
+document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden"&&stateLoaded){dirty=true;revision++;beaconPersist("visibility-hidden");}});
+window.addEventListener("pagehide",function(){if(stateLoaded){dirty=true;revision++;beaconPersist("pagehide");}});
+window.addEventListener("beforeunload",function(){if(stateLoaded){dirty=true;revision++;beaconPersist("beforeunload");}});
+// Persist elapsed wall-clock time even if the SCO never discovers or initializes
+// the SCORM API. This prevents an opened course from remaining at zero time.
+setInterval(function(){if(stateLoaded&&!saveInFlight){dirty=true;revision++;persist("heartbeat",false);}},5000);
 window.addEventListener("DOMContentLoaded",loadSavedState);
 })();
 </script>
@@ -237,7 +244,7 @@ function closePlayer(){
   try{window.close();}catch(e){}
   setTimeout(function(){try{window.location.href="about:blank";}catch(e2){}},200);
 }
-document.getElementById("btnSave").onclick=function(){try{window.API.LMSCommit("");}catch(e){}};
+document.getElementById("btnSave").onclick=function(){try{window.__quizmotoPersistState("manual-save");}catch(e){try{window.API.LMSCommit("");}catch(e2){}}};
 document.getElementById("btnExit").onclick=function(){persistAndFinish();closePlayer();};
 })();
 </script>
@@ -249,7 +256,7 @@ document.getElementById("btnExit").onclick=function(){persistAndFinish();closePl
         res.setHeader('Content-Security-Policy', embeddedPreview ? "frame-ancestors 'self' https: http:" : "frame-ancestors 'self'");
         res.send(html);
     } catch (err) {
-        console.error('[scorm-player-v2] launch failed', {
+        console.error('[scorm-player] launch failed', {
             registrationId: req.params.regId,
             error: err?.message || String(err)
         });
