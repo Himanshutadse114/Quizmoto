@@ -1,6 +1,7 @@
 import { apiUrl } from './config';
 
 const CONTROL_ATTR = 'data-lmsgen-campaign-lifecycle';
+const ROUTE_EVENT = 'lmsgen-campaign-lifecycle-route';
 let scanQueued = false;
 let observer = null;
 
@@ -172,18 +173,50 @@ function scan() {
 }
 
 function queueScan() {
-  if (scanQueued) return;
+  if (!onCampaignPage() || scanQueued) return;
   scanQueued = true;
   window.requestAnimationFrame(scan);
 }
 
-function start() {
-  if (observer) return;
+function connectCampaignObserver() {
+  if (!onCampaignPage() || observer) return;
   observer = new MutationObserver(queueScan);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-  window.addEventListener('popstate', queueScan);
-  document.addEventListener('click', () => window.setTimeout(queueScan, 0), true);
+  const root = document.getElementById('root') || document.body;
+  observer.observe(root, { childList: true, subtree: true });
   queueScan();
+}
+
+function disconnectCampaignObserver() {
+  if (!observer) return;
+  observer.disconnect();
+  observer = null;
+  scanQueued = false;
+}
+
+function syncRoute() {
+  if (onCampaignPage()) connectCampaignObserver();
+  else disconnectCampaignObserver();
+}
+
+function installRouteEvents() {
+  if (window.__lmsgenCampaignLifecycleRouteEvents) return;
+  window.__lmsgenCampaignLifecycleRouteEvents = true;
+  ['pushState', 'replaceState'].forEach((method) => {
+    const original = window.history[method];
+    if (typeof original !== 'function') return;
+    window.history[method] = function patchedHistoryState(...args) {
+      const result = original.apply(this, args);
+      window.dispatchEvent(new Event(ROUTE_EVENT));
+      return result;
+    };
+  });
+  window.addEventListener('popstate', () => window.dispatchEvent(new Event(ROUTE_EVENT)));
+}
+
+function start() {
+  installRouteEvents();
+  window.addEventListener(ROUTE_EVENT, syncRoute);
+  syncRoute();
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
