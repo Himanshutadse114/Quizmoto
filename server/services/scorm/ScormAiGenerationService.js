@@ -13,6 +13,34 @@ const logger = require('../../utils/logger');
 
 function noop() {}
 
+async function readUploadedSource(payload, userId) {
+    const key = String(payload?.sourceKey || '').trim();
+    if (!key) return null;
+    const allowedPrefix = `ai-author/source/${String(userId || 'unknown')}/`;
+    if (!key.startsWith(allowedPrefix)) {
+        const error = new Error('Invalid course source reference.');
+        error.code = 'SCORM_SOURCE_FORBIDDEN';
+        throw error;
+    }
+    const storage = getObjectStorage();
+    const buffer = await storage.getObjectBuffer(key);
+    return {
+        key,
+        storage,
+        base64: buffer.toString('base64'),
+        mimeType: String(payload.sourceMimeType || payload.mimeType || 'application/pdf')
+    };
+}
+
+async function removeUploadedSource(uploaded) {
+    if (!uploaded?.key || !uploaded?.storage) return;
+    try {
+        await uploaded.storage.deleteObject(uploaded.key);
+    } catch (error) {
+        logger.warn('scorm_ai_source_cleanup_failed', { module: 'scorm', key: uploaded.key, error: error.message });
+    }
+}
+
 async function generateScormCourse({ payload = {}, userId, onProgress = noop, checkCancelled = noop }) {
     let analysis = payload.analysis;
     const {
@@ -29,6 +57,7 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
 
     const selectedThemeId = normalizeThemeId(themeId || templateId || analysis?.themeId || 1);
     const selectedTheme = getTheme(selectedThemeId);
+    let uploadedSource = null;
 
     checkCancelled();
     if (!analysis) {
@@ -39,23 +68,38 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
             cleanDescription ? `Description and learning context:\n${cleanDescription}` : ''
         ].filter(Boolean).join('\n\n');
 
-        if (!fileBase64 && !brief) {
+        uploadedSource = await readUploadedSource(payload, userId);
+        const effectiveBase64 = uploadedSource?.base64 || fileBase64 || '';
+        const effectiveMimeType = uploadedSource?.mimeType || mimeType || 'application/pdf';
+
+        if (!effectiveBase64 && !brief) {
             const error = new Error('analysis, source document, or topic/description required');
             error.code = 'SCORM_AI_SOURCE_REQUIRED';
             throw error;
         }
 
-        const raw = fileBase64
-            ? String(fileBase64).replace(/^data:[^;]+;base64,/, '')
+        const raw = effectiveBase64
+            ? String(effectiveBase64).replace(/^data:[^;]+;base64,/, '')
             : Buffer.from(brief, 'utf8').toString('base64');
 
-        analysis = await analyzePolicy({
-            fileBase64: raw,
-            mimeType: fileBase64 ? (mimeType || 'application/pdf') : 'text/plain',
-            detailLevel: detailLevel || 'detailed',
-            onProgress
-        });
+        try {
+            analysis = await analyzePolicy({
+                fileBase64: raw,
+                mimeType: effectiveBase64 ? effectiveMimeType : 'text/plain',
+                detailLevel: detailLevel || 'detailed',
+                onProgress
+            });
+        } finally {
+            await removeUploadedSource(uploadedSource);
+            uploadedSource = null;
+        }
         checkCancelled();
+    } else if (payload.sourceKey) {
+        // A reviewed analysis no longer needs the original upload. Clean up a
+        // source reference if an older client supplied both.
+        uploadedSource = await readUploadedSource(payload, userId);
+        await removeUploadedSource(uploadedSource);
+        uploadedSource = null;
     }
 
     onProgress({ percent: 4, stage: 'Formatting course structure', detail: 'Balancing text, images and varied learner layouts before image generation.' });
