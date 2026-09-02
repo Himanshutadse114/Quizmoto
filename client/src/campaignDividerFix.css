@@ -1,5 +1,6 @@
-/* Campaign list polish.
-   Keep this file loaded after the SCORM page styles so these overrides are final. */
+/* Campaign workspace final responsive polish.
+   This file loads after the SCORM page styles, so these rules intentionally
+   own campaign list sizing and keep actions inside the available workspace. */
 
 /* Dark mode: campaign rows must not render any Tailwind/global divider border. */
 html body .scorm-editorial:not(.scorm-theme-light) .scorm-campaigns-page .campaign-list-row,
@@ -14,55 +15,69 @@ html body .scorm-editorial:not(.scorm-theme-light) .scorm-campaigns-page .divide
   outline: 0 !important;
 }
 
-/* Keep action controls in the same horizontal positions before and after a
-   campaign is started. The old flex group shrank/grow based on Start/Portal,
-   Codes and Delete which shifted the entire group from row to row. */
-@media (min-width: 1280px) {
+html body .scorm-editorial .scorm-campaigns-page,
+html body .scorm-editorial .scorm-campaigns-page .campaign-list-row,
+html body .scorm-editorial .scorm-campaigns-page .campaign-actions {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+html body .scorm-editorial .scorm-campaigns-page .campaign-actions {
+  width: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+html body .scorm-editorial .scorm-campaigns-page .campaign-actions > a,
+html body .scorm-editorial .scorm-campaigns-page .campaign-actions > button {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+}
+
+/* A 1280–1799px desktop still loses 268px to the platform sidebar. Keeping
+   every action in the same grid column was what caused Stop/Codes to leave the
+   viewport. Give actions a dedicated second row at these widths. */
+@media (min-width: 1280px) and (max-width: 1799px) {
+  html body .scorm-editorial .scorm-campaigns-page .campaign-list-row {
+    grid-template-columns: minmax(220px, 1.35fr) 88px 88px minmax(190px, .9fr) !important;
+    column-gap: 16px !important;
+    row-gap: 12px !important;
+  }
+
   html body .scorm-editorial .scorm-campaigns-page .campaign-actions {
-    width: 420px !important;
-    min-width: 420px !important;
-    display: flex !important;
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    justify-content: flex-end !important;
+    flex-wrap: wrap !important;
+    padding-top: 2px !important;
+  }
+}
+
+/* Wide workstations can keep the compact single-row layout, but no action
+   group gets a fixed minimum width. */
+@media (min-width: 1800px) {
+  html body .scorm-editorial .scorm-campaigns-page .campaign-list-row {
+    grid-template-columns: minmax(250px, 1.35fr) 92px 92px minmax(210px, .9fr) minmax(0, auto) !important;
+  }
+
+  html body .scorm-editorial .scorm-campaigns-page .campaign-actions {
+    justify-content: flex-end !important;
     flex-wrap: nowrap !important;
-    justify-content: flex-start !important;
-    align-items: center !important;
-    gap: 10px !important;
-  }
-
-  html body .scorm-editorial .scorm-campaigns-page .campaign-actions > :first-child {
-    width: 50px !important;
-    min-width: 50px !important;
-  }
-
-  html body .scorm-editorial .scorm-campaigns-page .campaign-actions > a {
-    width: 124px !important;
-    min-width: 124px !important;
-    justify-content: center !important;
-  }
-
-  html body .scorm-editorial .scorm-campaigns-page .campaign-actions > .scorm-button-primary {
-    width: 100px !important;
-    min-width: 100px !important;
-    justify-content: center !important;
-  }
-
-  html body .scorm-editorial .scorm-campaigns-page .campaign-actions > button[title="Download learner access list"] {
-    width: 96px !important;
-    min-width: 96px !important;
-    justify-content: center !important;
-  }
-
-  html body .scorm-editorial .scorm-campaigns-page .campaign-actions > button[title="Delete draft"] {
-    width: 50px !important;
-    min-width: 50px !important;
-    justify-content: center !important;
   }
 }
 
 @media (max-width: 1279px) {
   html body .scorm-editorial .scorm-campaigns-page .campaign-actions {
-    width: auto !important;
-    min-width: 0 !important;
+    width: 100% !important;
     justify-content: flex-start !important;
     flex-wrap: wrap !important;
   }
+}
+
+/* Keep controls compact enough to preserve hierarchy without clipping labels. */
+html body .scorm-editorial .scorm-campaigns-page .campaign-actions .scorm-button-secondary,
+html body .scorm-editorial .scorm-campaigns-page .campaign-actions .scorm-button-primary {
+  min-width: 0 !important;
 }
