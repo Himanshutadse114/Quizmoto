@@ -21,7 +21,8 @@ import {
   Sun,
   Moon,
   UserCheck,
-  Users
+  Users,
+  Megaphone
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import ScormGenerationNotifier from '../../components/ScormGenerationNotifier';
@@ -51,7 +52,7 @@ const OPERATIONAL_NAV_GROUPS = [
       { to: '/scorm/author', label: 'AI Course Author', icon: Sparkles, requiresScorm: true },
       { to: '/scorm/courses', label: 'My Courses', icon: BookOpen, requiresScorm: true },
       { to: '/scorm/roster', label: 'Learner Roster', icon: UserCheck, requiresScorm: true },
-      { to: '/scorm/assignments', label: 'Course Assignments', icon: BookOpen, requiresScorm: true },
+      { to: '/scorm/assignments', label: 'Campaigns', icon: Megaphone, requiresScorm: true },
       { to: '/scorm/visual-studio', label: 'Content Editor', icon: Palette, requiresScorm: true },
       { to: '/scorm/library', label: 'SCORM Library', icon: Library, requiresScorm: true },
       { to: '/scorm/tracking', label: 'Learner Tracking', icon: Activity, requiresScorm: true },
