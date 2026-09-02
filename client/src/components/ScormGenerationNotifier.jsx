@@ -8,6 +8,40 @@ import {
   useCourseGenerationJobs
 } from '../services/courseGenerationJobs';
 
+function schedulePlatformPrefetch() {
+  let cancelled = false;
+  let idleId = null;
+  let timerId = null;
+
+  const preload = () => {
+    if (cancelled) return;
+    Promise.allSettled([
+      import('../pages/Scorm/CourseGenerator'),
+      import('../pages/Scorm/Courses'),
+      import('../pages/Scorm/CourseDetail'),
+      import('../pages/Scorm/Assignments'),
+      import('../pages/Scorm/Tracking'),
+      import('../pages/Scorm/Reports'),
+      import('../pages/Scorm/Library')
+    ]).catch(() => {});
+  };
+
+  // Let the dashboard paint and its first API requests start before downloading
+  // route chunks. After that, common LMSGEN screens are warmed in the browser
+  // module cache so the first sidebar click does not pause on a lazy import.
+  if (typeof window.requestIdleCallback === 'function') {
+    idleId = window.requestIdleCallback(preload, { timeout: 2200 });
+  } else {
+    timerId = window.setTimeout(preload, 1200);
+  }
+
+  return () => {
+    cancelled = true;
+    if (idleId != null && typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(idleId);
+    if (timerId != null) window.clearTimeout(timerId);
+  };
+}
+
 export default function ScormGenerationNotifier() {
   const { token } = useAuth();
   const jobs = useCourseGenerationJobs(token, { poll: true });
@@ -17,6 +51,8 @@ export default function ScormGenerationNotifier() {
     () => jobs.find((job) => (job.status === 'ready' || job.status === 'failed') && !job.notifiedAt),
     [jobs]
   );
+
+  useEffect(() => schedulePlatformPrefetch(), []);
 
   useEffect(() => {
     if (!pendingNotice) return;
