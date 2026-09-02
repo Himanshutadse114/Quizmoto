@@ -230,12 +230,20 @@ export default function ScormTracking() {
           const attempts = Math.max(0, Number(row.attemptCount || 0));
           const progress = row.progressAvailable ? Math.max(0, Math.min(100, Number(row.progressPercent || 0))) : null;
           const tone = statusTone(row);
+          const toggleRow = () => setExpandedRowId(isExpanded ? null : row.id);
           return (
             <React.Fragment key={row.id}>
-              <button
-                type="button"
-                onClick={() => setExpandedRowId(isExpanded ? null : row.id)}
-                className="w-full text-left px-4 py-4 md:px-5 grid lg:grid-cols-[minmax(210px,1.2fr)_minmax(210px,1.15fr)_minmax(210px,.95fr)_80px_135px_40px] gap-4 lg:items-center border-b transition hover:bg-[rgba(79,201,191,.035)]"
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={toggleRow}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    toggleRow();
+                  }
+                }}
+                className="w-full cursor-pointer text-left px-4 py-4 md:px-5 grid lg:grid-cols-[minmax(210px,1.2fr)_minmax(210px,1.15fr)_minmax(210px,.95fr)_80px_135px_40px] gap-4 lg:items-center border-b transition hover:bg-[rgba(79,201,191,.035)] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#4FC9BF]/40"
                 style={{ borderColor: 'var(--scorm-line)', background: isExpanded ? 'rgba(79,201,191,.035)' : undefined }}
                 aria-expanded={isExpanded}
               >
@@ -283,7 +291,7 @@ export default function ScormTracking() {
                 <div className="w-9 h-9 rounded-lg border grid place-items-center lg:justify-self-end" style={{ borderColor: 'var(--scorm-line)', color: 'var(--scorm-ink-soft)' }}>
                   {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </div>
-              </button>
+              </div>
 
               {isExpanded && (
                 <div className="p-3 md:p-4 border-b" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
