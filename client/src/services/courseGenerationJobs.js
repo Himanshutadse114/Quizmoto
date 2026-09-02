@@ -16,6 +16,23 @@ function safeParse(value, fallback) {
   try { return JSON.parse(value); } catch (_) { return fallback; }
 }
 
+function fileToBase64(file) {
+  if (!file) return Promise.resolve('');
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = String(reader.result || '');
+      resolve(value.includes(',') ? value.split(',')[1] : value);
+    };
+    reader.onerror = () => {
+      const error = reader.error || new Error('Unable to read the selected source file.');
+      error.code = 'COURSE_SOURCE_READ_FAILED';
+      reject(error);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export function readCourseGenerationJobs() {
   if (typeof window === 'undefined') return [];
   const now = Date.now();
@@ -78,7 +95,7 @@ function publicStage(progress = {}, floorPercent = 1) {
   return { percent, stage: 'Preparing source material' };
 }
 
-export function startBackgroundCourseGeneration({ token, payload, title }) {
+export function startBackgroundCourseGeneration({ token, payload, title, file = null }) {
   const id = payload.progressId;
   const displayTitle = String(title || payload.topic || 'New course').trim() || 'New course';
   cancelledJobs.delete(id);
@@ -93,7 +110,7 @@ export function startBackgroundCourseGeneration({ token, payload, title }) {
     status: 'running',
     percent: 1,
     stage: 'Preparing source material',
-    detail: 'Course generation has started. You can continue using the platform.',
+    detail: file ? 'Reading the source file in the background.' : 'Course generation has started. You can continue using the platform.',
     courseId: null,
     packageId: null,
     error: '',
@@ -103,50 +120,77 @@ export function startBackgroundCourseGeneration({ token, payload, title }) {
     serverStatus: 'running'
   });
 
-  axios.post(apiUrl('/api/scorm/author/generate'), payload, {
-    headers: { Authorization: `Bearer ${token}` },
-    timeout: 600000,
-    signal: controller.signal
-  }).then((res) => {
-    if (cancelledJobs.has(id)) return;
-    const data = res.data || {};
-    if (data.errorMessage || (data.status && data.status !== 'ready')) {
-      throw new Error(data.errorMessage || `Course generation finished with status: ${data.status}.`);
-    }
-    upsertCourseGenerationJob(id, {
-      status: 'ready',
-      percent: 100,
-      stage: 'Course ready',
-      detail: 'Your course is ready to open.',
-      title: data.title || displayTitle,
-      courseId: data.courseId || null,
-      packageId: data.packageId || null,
-      error: '',
-      progressUpdatedAt: Date.now(),
-      missingProgressCount: 0,
-      serverStatus: 'complete'
-    });
-  }).catch((err) => {
-    if (cancelledJobs.has(id) || err?.code === 'ERR_CANCELED' || axios.isCancel?.(err)) return;
-    // A browser/network timeout does not necessarily stop server-side generation.
-    // Keep the job alive briefly and let progress polling resolve the final state.
-    if (!err.response) {
-      upsertCourseGenerationJob(id, {
-        status: 'running',
-        detail: 'Checking the background course generation process.'
+  // Do file reading after the job has been registered. The caller can navigate
+  // immediately instead of making the user stare at the Generate button while a
+  // large PDF/PPT is converted to Base64 on the author page.
+  Promise.resolve()
+    .then(async () => {
+      if (cancelledJobs.has(id)) return null;
+      const fileBase64 = file ? await fileToBase64(file) : String(payload.fileBase64 || '');
+      if (cancelledJobs.has(id)) return null;
+      const requestPayload = {
+        ...payload,
+        fileBase64,
+        mimeType: file?.type || payload.mimeType || ''
+      };
+      return axios.post(apiUrl('/api/scorm/author/generate'), requestPayload, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 600000,
+        signal: controller.signal
       });
-      return;
-    }
-    upsertCourseGenerationJob(id, {
-      status: 'failed',
-      stage: 'Generation failed',
-      error: publicGenerationError(err.response?.data?.message || err.message),
-      progressUpdatedAt: Date.now(),
-      serverStatus: 'error'
+    })
+    .then((res) => {
+      if (!res || cancelledJobs.has(id)) return;
+      const data = res.data || {};
+      if (data.errorMessage || (data.status && data.status !== 'ready')) {
+        throw new Error(data.errorMessage || `Course generation finished with status: ${data.status}.`);
+      }
+      upsertCourseGenerationJob(id, {
+        status: 'ready',
+        percent: 100,
+        stage: 'Course ready',
+        detail: 'Your course is ready to open.',
+        title: data.title || displayTitle,
+        courseId: data.courseId || null,
+        packageId: data.packageId || null,
+        error: '',
+        progressUpdatedAt: Date.now(),
+        missingProgressCount: 0,
+        serverStatus: 'complete'
+      });
+    })
+    .catch((err) => {
+      if (cancelledJobs.has(id) || err?.code === 'ERR_CANCELED' || axios.isCancel?.(err)) return;
+      if (err?.code === 'COURSE_SOURCE_READ_FAILED') {
+        upsertCourseGenerationJob(id, {
+          status: 'failed',
+          stage: 'Generation failed',
+          error: 'The selected source file could not be read. Please choose the file again and retry.',
+          progressUpdatedAt: Date.now(),
+          serverStatus: 'error'
+        });
+        return;
+      }
+      // A browser/network timeout does not necessarily stop server-side generation.
+      // Keep the job alive briefly and let progress polling resolve the final state.
+      if (!err.response) {
+        upsertCourseGenerationJob(id, {
+          status: 'running',
+          detail: 'Checking the background course generation process.'
+        });
+        return;
+      }
+      upsertCourseGenerationJob(id, {
+        status: 'failed',
+        stage: 'Generation failed',
+        error: publicGenerationError(err.response?.data?.message || err.message),
+        progressUpdatedAt: Date.now(),
+        serverStatus: 'error'
+      });
+    })
+    .finally(() => {
+      if (requestControllers.get(id) === controller) requestControllers.delete(id);
     });
-  }).finally(() => {
-    if (requestControllers.get(id) === controller) requestControllers.delete(id);
-  });
 
   return id;
 }
@@ -309,7 +353,9 @@ export function useCourseGenerationJobs(token, { poll = true } = {}) {
       if (!cancelled) setJobs(readCourseGenerationJobs());
     };
     tick();
-    const timer = window.setInterval(tick, 1800);
+    // Slightly slower polling keeps progress responsive while reducing background
+    // API/DB pressure during long AI/image generation jobs.
+    const timer = window.setInterval(tick, 2500);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
