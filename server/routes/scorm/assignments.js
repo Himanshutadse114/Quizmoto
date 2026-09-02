@@ -48,6 +48,7 @@ function serializeAssignment(reg) {
         score: reg.lastScoreRaw == null ? null : Number(reg.lastScoreRaw),
         lessonStatus: reg.lastLessonStatus || null,
         lastActivityAt: reg.lastCommitAt || null,
+        assignmentSource: reg.assignmentSource || 'admin',
         course: reg.course ? {
             id: reg.course.id,
             title: reg.course.title,
@@ -83,6 +84,8 @@ async function assertBulkLearnerLimit(hostId, learnerEmails) {
         })
         : [];
 
+    // Capacity is workspace-wide, so campaign learners still count toward the
+    // learner entitlement even though they are not displayed in direct assignments.
     const enrolled = new Set(existingRows.map((row) => normalizeEmail(row.learnerEmail)).filter(Boolean));
     const requested = [...new Set((learnerEmails || []).map(normalizeEmail).filter(Boolean))];
     const additional = requested.filter((email) => !enrolled.has(email)).length;
@@ -107,7 +110,12 @@ router.get('/', auth, async (req, res) => {
                 order: [['createdAt', 'DESC']]
             }),
             ScormRegistration.findAll({
-                where: { isPreview: false, status: { [Op.notIn]: INACTIVE_ASSIGNMENT_STATUSES } },
+                // Direct assignment management must never mirror campaign rows.
+                where: {
+                    isPreview: false,
+                    campaignId: null,
+                    status: { [Op.notIn]: INACTIVE_ASSIGNMENT_STATUSES }
+                },
                 include: [{
                     model: ScormCourse,
                     as: 'course',
@@ -120,6 +128,7 @@ router.get('/', auth, async (req, res) => {
 
         res.json({
             ok: true,
+            scope: 'direct_learning',
             workspaceId: req.scormWorkspaceId || null,
             learnerPortalPath: '/learn',
             learners: learners.map((row) => ({
@@ -183,6 +192,7 @@ router.post('/bulk', auth, async (req, res) => {
                     let registration = await ScormRegistration.findOne({
                         where: {
                             courseId: course.id,
+                            campaignId: null,
                             isPreview: false,
                             assignmentSource: 'admin',
                             status: { [Op.notIn]: ['completed', ...INACTIVE_ASSIGNMENT_STATUSES] },
@@ -194,11 +204,15 @@ router.post('/bulk', auth, async (req, res) => {
                     });
 
                     if (!registration) {
+                        // Only supersede another direct registration. A direct
+                        // assignment must never terminate a campaign registration
+                        // for the same learner/course pair.
                         const [count] = await ScormRegistration.update(
                             { status: 'superseded' },
                             {
                                 where: {
                                     courseId: course.id,
+                                    campaignId: null,
                                     isPreview: false,
                                     status: { [Op.notIn]: INACTIVE_ASSIGNMENT_STATUSES },
                                     [Op.and]: [sequelize.where(sequelize.fn('LOWER', sequelize.col('learnerEmail')), email)]
@@ -210,6 +224,7 @@ router.post('/bulk', auth, async (req, res) => {
 
                         registration = await ScormRegistration.create({
                             courseId: course.id,
+                            campaignId: null,
                             learnerEmail: email,
                             learnerName: learner.learnerName || 'Learner',
                             status: 'invited',
@@ -236,6 +251,7 @@ router.post('/bulk', auth, async (req, res) => {
 
         res.status(created ? 201 : 200).json({
             ok: true,
+            scope: 'direct_learning',
             created,
             updated,
             superseded,
@@ -255,8 +271,8 @@ router.patch('/:id', auth, async (req, res) => {
         const registration = await ScormRegistration.findByPk(req.params.id, {
             include: [{ model: ScormCourse, as: 'course' }]
         });
-        if (!registration || !registration.course || registration.course.hostId !== req.userId || registration.isPreview || INACTIVE_ASSIGNMENT_STATUSES.includes(registration.status)) {
-            return res.status(404).json({ message: 'Assignment not found.' });
+        if (!registration || registration.campaignId || !registration.course || registration.course.hostId !== req.userId || registration.isPreview || INACTIVE_ASSIGNMENT_STATUSES.includes(registration.status)) {
+            return res.status(404).json({ message: 'Direct assignment not found.' });
         }
         if (Object.prototype.hasOwnProperty.call(req.body || {}, 'dueAt')) {
             const dueAt = parseDate(req.body.dueAt);
@@ -265,7 +281,7 @@ router.patch('/:id', auth, async (req, res) => {
         }
         if (Object.prototype.hasOwnProperty.call(req.body || {}, 'required')) registration.required = Boolean(req.body.required);
         await registration.save();
-        res.json({ ok: true, assignment: serializeAssignment(registration) });
+        res.json({ ok: true, scope: 'direct_learning', assignment: serializeAssignment(registration) });
     } catch (err) {
         res.status(500).json({ message: 'Unable to update assignment.' });
     }
@@ -276,12 +292,12 @@ router.delete('/:id', auth, async (req, res) => {
         const registration = await ScormRegistration.findByPk(req.params.id, {
             include: [{ model: ScormCourse, as: 'course' }]
         });
-        if (!registration || !registration.course || registration.course.hostId !== req.userId || registration.isPreview || registration.status === 'superseded') {
-            return res.status(404).json({ message: 'Assignment not found.' });
+        if (!registration || registration.campaignId || !registration.course || registration.course.hostId !== req.userId || registration.isPreview || registration.status === 'superseded') {
+            return res.status(404).json({ message: 'Direct assignment not found.' });
         }
         registration.status = 'revoked';
         await registration.save();
-        res.json({ ok: true, revoked: registration.id });
+        res.json({ ok: true, scope: 'direct_learning', revoked: registration.id });
     } catch (err) {
         res.status(500).json({ message: 'Unable to remove assignment.' });
     }
