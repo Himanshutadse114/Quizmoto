@@ -9,6 +9,10 @@ const {
     startCampaign
 } = require('../../services/scorm/ScormCampaignService');
 const {
+    getCampaignSummaryDetail,
+    getCampaignManageDetail
+} = require('../../services/scorm/ScormCampaignReadService');
+const {
     stopCampaign,
     deleteCampaign
 } = require('../../services/scorm/ScormCampaignLifecycleService');
@@ -111,6 +115,39 @@ router.get('/:campaignId/access-sheet', auth, async (req, res) => {
     }
 });
 
+// Lightweight read models used by the admin UI. These deliberately avoid
+// returning every learner-course registration when the screen only needs
+// campaign metadata or one compact status per learner.
+router.get('/:campaignId/summary', auth, async (req, res) => {
+    try {
+        workspaceRequired(req);
+        const campaign = await getCampaignSummaryDetail({
+            campaignId: req.params.campaignId,
+            hostId: req.userId,
+            workspaceId: req.scormWorkspaceId
+        });
+        res.setHeader('Cache-Control', 'no-store');
+        res.json({ ok: true, campaign });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message || 'Unable to load campaign summary.', code: err.code });
+    }
+});
+
+router.get('/:campaignId/manage', auth, async (req, res) => {
+    try {
+        workspaceRequired(req);
+        const campaign = await getCampaignManageDetail({
+            campaignId: req.params.campaignId,
+            hostId: req.userId,
+            workspaceId: req.scormWorkspaceId
+        });
+        res.setHeader('Cache-Control', 'no-store');
+        res.json({ ok: true, campaign });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message || 'Unable to load campaign learners.', code: err.code });
+    }
+});
+
 router.post('/:campaignId/learners', auth, async (req, res) => {
     try {
         workspaceRequired(req);
@@ -157,6 +194,8 @@ router.post('/:campaignId/reminders', auth, async (req, res) => {
     }
 });
 
+// Retain the original full-detail endpoint for backwards compatibility and
+// internal consumers that genuinely need every learner-course registration.
 router.get('/:campaignId', auth, async (req, res) => {
     try {
         workspaceRequired(req);
