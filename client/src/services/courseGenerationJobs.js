@@ -33,6 +33,49 @@ function fileToBase64(file) {
   });
 }
 
+async function prepareGenerationPayload({ token, id, payload, file, signal }) {
+  if (!file) {
+    return {
+      ...payload,
+      fileBase64: String(payload.fileBase64 || ''),
+      mimeType: payload.mimeType || ''
+    };
+  }
+
+  try {
+    const upload = await axios.post(
+      apiUrl(`/api/scorm/author/source/${encodeURIComponent(id)}`),
+      file,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/octet-stream',
+          'X-Source-Mime': file.type || 'application/octet-stream'
+        },
+        timeout: 120000,
+        signal
+      }
+    );
+    return {
+      ...payload,
+      fileBase64: '',
+      sourceKey: upload.data?.sourceKey || '',
+      sourceMimeType: upload.data?.mimeType || file.type || 'application/octet-stream',
+      mimeType: file.type || payload.mimeType || ''
+    };
+  } catch (err) {
+    // Rolling deployments can briefly serve a newer frontend against an older
+    // API instance. Only in that compatibility window fall back to Base64.
+    if (![404, 405].includes(Number(err.response?.status || 0))) throw err;
+    const fileBase64 = await fileToBase64(file);
+    return {
+      ...payload,
+      fileBase64,
+      mimeType: file.type || payload.mimeType || ''
+    };
+  }
+}
+
 export function readCourseGenerationJobs() {
   if (typeof window === 'undefined') return [];
   const now = Date.now();
@@ -109,8 +152,8 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
     title: displayTitle,
     status: 'running',
     percent: 1,
-    stage: 'Preparing source material',
-    detail: file ? 'Reading the source file in the background.' : 'Course generation has started. You can continue using the platform.',
+    stage: file ? 'Uploading source material' : 'Preparing source material',
+    detail: file ? 'Uploading the source file in the background.' : 'Course generation has started. You can continue using the platform.',
     courseId: null,
     packageId: null,
     error: '',
@@ -120,23 +163,22 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
     serverStatus: 'running'
   });
 
-  // Do file reading after the job has been registered. The caller can navigate
-  // immediately instead of making the user stare at the Generate button while a
-  // large PDF/PPT is converted to Base64 on the author page.
+  // The page can navigate immediately. Source files are uploaded as raw binary
+  // data after the job is registered, avoiding Base64 conversion and huge JSON
+  // bodies on the browser/main API process.
   Promise.resolve()
     .then(async () => {
       if (cancelledJobs.has(id)) return null;
-      const fileBase64 = file ? await fileToBase64(file) : String(payload.fileBase64 || '');
+      const requestPayload = await prepareGenerationPayload({
+        token,
+        id,
+        payload,
+        file,
+        signal: controller.signal
+      });
       if (cancelledJobs.has(id)) return null;
-      const requestPayload = {
-        ...payload,
-        fileBase64,
-        mimeType: file?.type || payload.mimeType || ''
-      };
       return axios.post(apiUrl('/api/scorm/author/generate'), requestPayload, {
         headers: { Authorization: `Bearer ${token}` },
-        // The API now only accepts/queues the job. Generation itself is isolated
-        // from the browser request and is tracked through the progress endpoint.
         timeout: 60000,
         signal: controller.signal
       });
@@ -188,8 +230,6 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
         });
         return;
       }
-      // A browser/network timeout does not necessarily stop server-side generation.
-      // Keep the job alive briefly and let progress polling resolve the final state.
       if (!err.response) {
         upsertCourseGenerationJob(id, {
           status: 'running',
@@ -234,8 +274,6 @@ export async function cancelCourseGenerationJob(token, jobOrId) {
     });
     stopped = true;
   } catch (err) {
-    // If the server no longer knows this job, there is no live process left on
-    // that server instance, so it is safe to clear the stale browser entry.
     if ([404, 409].includes(Number(err.response?.status || 0))) stopped = true;
     else throw err;
   } finally {
@@ -370,8 +408,6 @@ export function useCourseGenerationJobs(token, { poll = true } = {}) {
       if (!cancelled) setJobs(readCourseGenerationJobs());
     };
     tick();
-    // Slightly slower polling keeps progress responsive while reducing background
-    // API/DB pressure during long AI/image generation jobs.
     const timer = window.setInterval(tick, 2500);
     return () => {
       cancelled = true;
