@@ -1,46 +1,25 @@
-const { QueryTypes } = require('sequelize');
-const { sequelize } = require('../../config/database');
 const RuntimeStore = require('./ScormRuntimeSnapshotStore');
 
+/**
+ * Batch reader used by admin tracking, reports and dashboards.
+ * RuntimeStore owns the Supabase-compatible fallback between the compact
+ * snapshot table and the historical CMI table, so every consumer sees the same
+ * canonical learner state.
+ */
 async function listByRegistrationIds(registrationIds) {
     const ids = Array.from(new Set((registrationIds || []).filter(Boolean).map(String)));
-    const out = new Map();
-    if (!ids.length) return out;
+    if (!ids.length) return new Map();
 
     try {
-        await RuntimeStore.ensureReady();
+        return await RuntimeStore.list(ids);
     } catch (err) {
-        console.warn('[scorm-runtime] snapshot reader ensureReady failed', { error: err?.message || String(err) });
-        return out;
-    }
-
-    const dialect = sequelize.getDialect();
-    const quotedTable = dialect === 'postgres' ? '"scorm_runtime_snapshots"' : '`scorm_runtime_snapshots`';
-    const quotedId = dialect === 'postgres' ? '"registrationId"' : '`registrationId`';
-
-    let rows = [];
-    try {
-        rows = await sequelize.query(
-            `SELECT * FROM ${quotedTable} WHERE ${quotedId} IN (:registrationIds)`,
-            {
-                replacements: { registrationIds: ids },
-                type: QueryTypes.SELECT
-            }
-        );
-    } catch (err) {
-        console.warn('[scorm-runtime] snapshot list failed', {
+        console.warn('[scorm-runtime] canonical batch read failed', {
             registrations: ids.length,
-            error: err?.message || String(err)
+            error: err?.message || String(err),
+            dbCode: err?.original?.code || err?.parent?.code || null
         });
-        return out;
+        return new Map();
     }
-
-    for (const row of rows) {
-        const state = RuntimeStore.snapshotState(row);
-        const id = String(row.registrationId || row.registrationid || '');
-        if (state && id) out.set(id, state);
-    }
-    return out;
 }
 
 module.exports = { listByRegistrationIds };
