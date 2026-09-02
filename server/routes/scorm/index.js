@@ -73,6 +73,10 @@ router.use('/xapi', require('./xapi'));
 // Rebuild interception must run before the normal author route so edits reuse
 // the existing packaged visuals instead of calling image generation again.
 router.use('/author', require('./authorRebuild'));
+// New AI course generation requests are accepted immediately and run in an
+// isolated child process. This keeps Gemini/FAL/ZIP work off the web request
+// process so dashboard, campaign and tracking APIs remain responsive.
+router.use('/author', require('./authorAsync'));
 router.use('/author', require('./author'));
 router.use('/team', require('./team'));
 router.use('/access', require('./access'));
