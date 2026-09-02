@@ -52,6 +52,15 @@ function rowStatus(row, actions) {
   return badge || 'unknown';
 }
 
+function lifecycleControl(actions, kind) {
+  return actions.querySelector(`[${CONTROL_ATTR}="${kind}"]`);
+}
+
+function removeLifecycleControl(actions, kind) {
+  const node = lifecycleControl(actions, kind);
+  if (node) node.remove();
+}
+
 function svgIcon(kind) {
   if (kind === 'stop') {
     return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" stroke="currentColor" stroke-width="2"/></svg>';
@@ -148,22 +157,26 @@ function enhanceRow(row) {
   const name = campaignNameFromRow(row);
   const status = rowStatus(row, actions);
 
-  actions.querySelectorAll(`[${CONTROL_ATTR}]`).forEach((node) => node.remove());
-
   if (status === 'active') {
-    actions.appendChild(makeStopButton(id, name));
+    removeLifecycleControl(actions, 'delete');
+    if (!lifecycleControl(actions, 'stop')) actions.appendChild(makeStopButton(id, name));
     return;
   }
 
   if (status === 'stopped') {
+    removeLifecycleControl(actions, 'stop');
     const badge = badgeFromRow(row);
-    if (badge) badge.textContent = 'Stopped';
+    if (badge && String(badge.textContent || '').trim() !== 'Stopped') badge.textContent = 'Stopped';
     const portal = buttonWithText(actions, 'Portal');
-    if (portal) portal.style.display = 'none';
+    if (portal && portal.style.display !== 'none') portal.style.display = 'none';
     const codes = buttonWithText(actions, 'Codes');
-    if (codes) codes.style.display = 'none';
-    actions.appendChild(makeDeleteButton(id, name));
+    if (codes && codes.style.display !== 'none') codes.style.display = 'none';
+    if (!lifecycleControl(actions, 'delete')) actions.appendChild(makeDeleteButton(id, name));
+    return;
   }
+
+  removeLifecycleControl(actions, 'stop');
+  removeLifecycleControl(actions, 'delete');
 }
 
 function scan() {
