@@ -95,7 +95,7 @@ function enrichedRegistration(registration, course) {
 async function attachLearningState(courseOrCourses) {
     const courses = Array.isArray(courseOrCourses) ? courseOrCourses : [courseOrCourses].filter(Boolean);
     const registrations = courses.flatMap((course) => (
-        Array.isArray(course?.registrations) ? course.registrations.filter((r) => !r.isPreview) : []
+        Array.isArray(course?.registrations) ? course.registrations.filter((r) => !r.isPreview && !r.campaignId) : []
     ));
     if (!registrations.length) return courseOrCourses;
 
@@ -113,10 +113,10 @@ function learnerOnlyCourseJson(course) {
     const modelRegs = Array.isArray(course?.registrations) ? course.registrations : [];
     if (modelRegs.length) {
         courseJson.registrations = modelRegs
-            .filter((r) => !r.isPreview)
+            .filter((r) => !r.isPreview && !r.campaignId)
             .map((r) => enrichedRegistration(r, course));
     } else {
-        courseJson.registrations = (courseJson.registrations || []).filter((r) => !r.isPreview);
+        courseJson.registrations = (courseJson.registrations || []).filter((r) => !r.isPreview && !r.campaignId);
     }
     return courseJson;
 }
@@ -134,7 +134,9 @@ async function loadCourseForExport(courseId, hostId) {
                 model: ScormRegistration,
                 as: 'registrations',
                 required: false,
-                where: { isPreview: false }
+                // Course reports are direct-learning reports. Campaign reporting
+                // is intentionally handled by Campaign Analytics instead.
+                where: { isPreview: false, campaignId: null }
             }
         ]
     });
@@ -143,7 +145,7 @@ async function loadCourseForExport(courseId, hostId) {
 }
 
 /**
- * List host courses with summary stats, learner rows and captured answers.
+ * List host courses with direct-learning summary stats, learner rows and captured answers.
  */
 async function listCourseReports(hostId) {
     const courses = await ScormCourse.findAll({
@@ -158,9 +160,10 @@ async function listCourseReports(hostId) {
                 model: ScormRegistration,
                 as: 'registrations',
                 required: false,
-                where: { isPreview: false },
+                where: { isPreview: false, campaignId: null },
                 attributes: [
                     'id',
+                    'campaignId',
                     'learnerName',
                     'learnerEmail',
                     'status',
@@ -183,7 +186,7 @@ async function listCourseReports(hostId) {
         .filter((c) => !c.package || c.package.status !== 'deleted')
         .map((c) => {
             const regs = (c.registrations || [])
-                .filter((r) => !r.isPreview)
+                .filter((r) => !r.isPreview && !r.campaignId)
                 .map((r) => enrichedRegistration(r, c));
             const completed = regs.filter((r) => isCompletedStatus(r.lastLessonStatus));
             const inProgress = regs.filter((r) => learnerResult(r) === 'In Progress');
@@ -226,6 +229,7 @@ async function listCourseReports(hostId) {
                 updatedAt: c.updatedAt,
                 packageTitle: c.package ? c.package.title : null,
                 scormStandard: c.package ? c.package.standard : null,
+                scope: 'direct_learning',
                 learnerCount: regs.length,
                 completedCount: completed.length,
                 inProgressCount: inProgress.length,
@@ -326,6 +330,7 @@ async function buildLearnerReport({ hostId, email }) {
         learnerEmail: attempts[0] ? String(email).trim() : normalizedEmail,
         learnerName: learnerName || 'Learner',
         generatedAt: new Date().toISOString(),
+        scope: 'direct_learning',
         summary: {
             courseCount: attempts.length,
             completedCount: attempts.filter((a) => isCompletedStatus(a.lessonStatus)).length,
