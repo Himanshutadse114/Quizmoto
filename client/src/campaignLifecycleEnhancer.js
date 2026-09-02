@@ -2,6 +2,7 @@ import { apiUrl } from './config';
 
 const CONTROL_ATTR = 'data-lmsgen-campaign-lifecycle';
 const ROUTE_EVENT = 'lmsgen-campaign-lifecycle-route';
+const UPDATE_EVENT = 'lmsgen-campaign-lifecycle-updated';
 let scanQueued = false;
 let observer = null;
 
@@ -99,10 +100,29 @@ function setBusy(button, busy, text) {
   }
 }
 
-function refreshCampaignPage() {
-  // A full refresh guarantees Campaign detail, analytics links, counts and the
-  // React-owned status/actions all agree with the lifecycle transaction.
-  window.location.reload();
+function emitLifecycleUpdate(detail) {
+  window.dispatchEvent(new CustomEvent(UPDATE_EVENT, { detail }));
+}
+
+function markRowStopped(row, id, name) {
+  if (!row) return;
+  const actions = row.querySelector('.campaign-actions');
+  const badge = badgeFromRow(row);
+  if (badge) badge.textContent = 'Stopped';
+  if (actions) {
+    const portal = buttonWithText(actions, 'Portal');
+    if (portal) portal.style.display = 'none';
+    const codes = buttonWithText(actions, 'Codes');
+    if (codes) codes.style.display = 'none';
+    removeLifecycleControl(actions, 'stop');
+    if (!lifecycleControl(actions, 'delete')) actions.appendChild(makeDeleteButton(id, name));
+  }
+  emitLifecycleUpdate({ id, status: 'stopped' });
+}
+
+function removeDeletedRow(row, id) {
+  if (row) row.remove();
+  emitLifecycleUpdate({ id, status: 'deleted' });
 }
 
 function makeStopButton(id, name) {
@@ -115,10 +135,13 @@ function makeStopButton(id, name) {
   button.addEventListener('click', async () => {
     const confirmed = window.confirm(`Stop “${name}”? Learner access will close immediately and no further score, progress or completion tracking will be accepted. After stopping, the campaign can be deleted.`);
     if (!confirmed) return;
+    const row = button.closest('.campaign-list-row');
     setBusy(button, true, 'Stopping…');
     try {
       await request(`/api/scorm/campaigns/${encodeURIComponent(id)}/stop`, { method: 'POST', body: '{}' });
-      refreshCampaignPage();
+      // Keep the page mounted. Only the affected campaign row changes state so
+      // stopping a campaign never blanks/reloads the whole Campaigns screen.
+      markRowStopped(row, id, name);
     } catch (error) {
       window.alert(error.message || 'Unable to stop campaign.');
       setBusy(button, false);
@@ -137,10 +160,11 @@ function makeDeleteButton(id, name) {
   button.addEventListener('click', async () => {
     const confirmed = window.confirm(`Delete stopped campaign “${name}”? The campaign will be removed permanently. Its learner registrations are already revoked so tracking cannot continue.`);
     if (!confirmed) return;
+    const row = button.closest('.campaign-list-row');
     setBusy(button, true, 'Deleting…');
     try {
       await request(`/api/scorm/campaigns/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      refreshCampaignPage();
+      removeDeletedRow(row, id);
     } catch (error) {
       window.alert(error.message || 'Unable to delete campaign.');
       setBusy(button, false);
