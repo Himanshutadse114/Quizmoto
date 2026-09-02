@@ -3,6 +3,12 @@ const router = express.Router();
 const { featureFlags } = require('../../config/featureFlags');
 const { injectRuntimeRepair } = require('../../services/scorm/ScormRuntimeRepair');
 const { injectCourseUiPolish } = require('../../services/scorm/ScormCourseUiPolish');
+const { startCampaignPerformanceIndexEnsure } = require('../../services/scorm/ScormCampaignPerformanceIndexService');
+
+// The SCORM router is required only after the database connection and additive
+// schema migration are ready. Create missing campaign performance indexes in the
+// background without delaying HTTP startup or the first Campaigns request.
+startCampaignPerformanceIndexEnsure();
 
 function repairServedScormHtml(req, res, next) {
     const originalSend = res.send.bind(res);
