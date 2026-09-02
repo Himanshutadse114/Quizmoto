@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
@@ -31,6 +31,13 @@ function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
   return date.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function courseProgress(course) {
+  if (course?.status === 'completed') return 100;
+  const value = Number(course?.progressPercent);
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
 }
 
 function GoogleLearnerButton({ clientId, onSuccess, onError }) {
@@ -102,7 +109,7 @@ export default function LearnerPortal() {
 
   useEffect(() => {
     const onMessage = (event) => {
-      if (event.data?.type === 'quizmoto-scorm-progress' || event.data?.type === 'quizmoto-scorm-exit') {
+      if (['quizmoto-scorm-progress', 'quizmoto-scorm-exit', 'quizmoto_scorm_progress', 'quizmoto_scorm_exit'].includes(event.data?.type)) {
         loadDashboard().catch(() => {});
       }
     };
@@ -115,11 +122,11 @@ export default function LearnerPortal() {
     };
   }, [learnerToken, loadDashboard]);
 
-  const acceptSession = (data) => {
+  const acceptSession = async (data) => {
     if (!data?.token) throw new Error('Learner sign-in did not return a session.');
     localStorage.setItem(sessionKey(workspaceId), data.token);
     setLearnerToken(data.token);
-    setDashboard({ learner: data.learner, workspace: data.workspace, courses: data.courses || [] });
+    await loadDashboard(data.token);
   };
 
   const loginEmail = async (event) => {
@@ -131,7 +138,7 @@ export default function LearnerPortal() {
         email: email.trim().toLowerCase(),
         name: name.trim()
       });
-      acceptSession(res.data);
+      await acceptSession(res.data);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Learner sign-in failed.');
     } finally {
@@ -147,7 +154,7 @@ export default function LearnerPortal() {
       const res = await axios.post(apiUrl(`/api/scorm-learner/workspace/${workspaceId}/google`), {
         credential: credentialResponse.credential
       });
-      acceptSession(res.data);
+      await acceptSession(res.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Google learner sign-in failed.');
     } finally {
@@ -214,7 +221,9 @@ export default function LearnerPortal() {
 
   const courses = dashboard?.courses || [];
   const completed = courses.filter((course) => course.status === 'completed').length;
-  const progress = courses.length ? Math.round((completed / courses.length) * 100) : 0;
+  const progress = courses.length
+    ? Math.round(courses.reduce((sum, course) => sum + courseProgress(course), 0) / courses.length)
+    : 0;
 
   if (loading) {
     return <div className="min-h-screen bg-[#f4f8f7] text-[#102321] grid place-items-center"><div className="text-center"><RefreshCw size={22} className="animate-spin mx-auto text-[#159b91]" /><div className="mt-3 text-sm text-[#58706d]">Loading learner portal…</div></div></div>;
@@ -292,11 +301,16 @@ export default function LearnerPortal() {
                 {courses.map((course) => {
                   const due = formatDate(course.dueAt);
                   const complete = course.status === 'completed';
+                  const trackedProgress = courseProgress(course);
                   return (
-                    <article key={course.registrationId} className="bg-white border border-[#dce8e5] rounded-2xl p-5 flex flex-col min-h-[260px] shadow-[0_8px_30px_rgba(16,35,33,.04)]">
+                    <article key={course.registrationId} className="bg-white border border-[#dce8e5] rounded-2xl p-5 flex flex-col min-h-[285px] shadow-[0_8px_30px_rgba(16,35,33,.04)]">
                       <div className="flex items-start justify-between gap-3"><div className={`w-10 h-10 rounded-xl grid place-items-center ${complete ? 'bg-[#ddf6ed] text-[#187a59]' : 'bg-[#e3f5f3] text-[#117f77]'}`}>{complete ? <CheckCircle2 size={18} /> : <BookOpen size={18} />}</div><span className={`px-2.5 py-1 rounded-full text-[9px] uppercase tracking-[.08em] font-bold ${complete ? 'bg-[#e4f7ef] text-[#237a5d]' : course.status === 'in_progress' ? 'bg-[#fff2d9] text-[#9b6815]' : 'bg-[#eff4f3] text-[#647a76]'}`}>{statusLabel(course.status)}</span></div>
                       <h3 className="text-lg font-semibold tracking-[-.02em] mt-5 leading-snug">{course.title}</h3>
                       <p className="text-xs leading-relaxed text-[#6d817e] mt-2 line-clamp-3">{course.description || 'Assigned learning course'}</p>
+                      <div className="mt-4">
+                        <div className="flex justify-between text-[10px] font-semibold text-[#647a76] mb-1.5"><span>Course progress</span><span>{trackedProgress}%</span></div>
+                        <div className="h-1.5 rounded-full bg-[#e8efed] overflow-hidden"><div className="h-full rounded-full bg-[#45c5bc]" style={{ width: `${trackedProgress}%` }} /></div>
+                      </div>
                       <div className="mt-auto pt-5 space-y-2 text-[11px] text-[#647a76]">
                         {due && <div className="flex items-center gap-2"><CalendarDays size={13} /> Due {due}</div>}
                         {course.lastActivityAt && <div className="flex items-center gap-2"><Clock3 size={13} /> Last activity {formatDate(course.lastActivityAt)}</div>}
