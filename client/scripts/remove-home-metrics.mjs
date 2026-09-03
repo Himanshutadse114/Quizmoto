@@ -26,3 +26,7 @@ console.log('Removed homepage AI / AI / 360° metrics strip.');
 // canonical URLs, structured data and audience-focused copy are applied to the
 // exact HTML that will be shipped in dist/.
 await import('./seo-marketing.mjs');
+
+// Fail the production build if stale branding/domains or the critical SEO
+// sections reappear in a future marketing export.
+await import('./marketing-seo-guard.mjs');
