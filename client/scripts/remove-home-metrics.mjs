@@ -34,6 +34,10 @@ await import('./refine-home-pain-section.mjs');
 // analytics/social profile integration when real IDs/URLs are configured.
 await import('./apply-seoptimer-fixes.mjs');
 
+// Make robots.txt, sitemap.xml and llms.txt reflect the final public/private
+// routing model and publish explicit freshness signals.
+await import('./finalize-public-seo-files.mjs');
+
 // Preserve the private React application as app.html and make the public
 // marketing pages the real static entry points used by Render/CDN hosting.
 await import('./prepare-static-entrypoints.mjs');
