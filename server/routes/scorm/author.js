@@ -10,6 +10,7 @@ const { featureFlags, scormMaxUploadMb } = require('../../config/featureFlags');
 const { analyzePolicy } = require('../../services/scorm/CourseAiService');
 const { prepareReplicateCourseMedia } = require('../../services/scorm/ReplicateCourseMediaService');
 const { planExperienceV5 } = require('../../services/scorm/ScormExperiencePlanner');
+const { applyInteractionTemplates } = require('../../services/scorm/ScormInteractionTemplatePlanner');
 const { ensureQuizIntegrity } = require('../../services/scorm/ScormQuizQualityService');
 const { buildScormPackageZip } = require('../../services/scorm/ScormReplicateMediaFinalizer');
 const { getTheme, listThemes, normalizeThemeId } = require('../../services/scorm/ScormThemeCatalog');
@@ -63,6 +64,14 @@ function sendAuthorError(res, err, progressId, userId, eventName) {
     }
     logger.error(eventName, { module: 'scorm', error: err.message, code: err.code });
     if (!res.headersSent) res.status(aiErrorStatus(err.code)).json({ message: err.message, code: err.code || 'AI_ERROR' });
+}
+
+function interactionPlannerOptions(body = {}) {
+    return {
+        experienceProfile: body.experienceProfile || '',
+        preferredTemplateId: body.preferredTemplateId || '',
+        interactionTemplateHints: Array.isArray(body.interactionTemplateHints) ? body.interactionTemplateHints : []
+    };
 }
 
 router.use((req, res, next) => {
@@ -177,12 +186,13 @@ router.post('/analyze', auth, async (req, res) => {
         checkpoint(progressId, req.userId);
         report({ percent: 96, stage: 'Formatting learning content', detail: 'Applying varied course layouts while keeping the full learner text visible.' });
         analysis = planExperienceV5(analysis);
+        analysis = applyInteractionTemplates(analysis, interactionPlannerOptions(req.body));
         report({ percent: 98, stage: 'Checking knowledge checks', detail: 'Ensuring every question has four answers, a valid correct answer and a learner explanation.' });
         analysis = ensureQuizIntegrity(analysis);
         if ((titleHint || cleanTopic) && !analysis.title) analysis.title = titleHint || cleanTopic;
         analysis.themeId = selectedThemeId;
         analysis.themeName = selectedTheme.name;
-        analysis.experienceVersion = 5;
+        analysis.experienceVersion = analysis.interactionEngineVersion === 7 ? 7 : 5;
 
         checkpoint(progressId, req.userId);
         if (progressId) {
@@ -250,13 +260,14 @@ router.post('/generate', auth, async (req, res) => {
 
         report({ percent: 4, stage: 'Formatting course structure', detail: 'Balancing text, images and varied learner layouts before image generation.' });
         analysis = planExperienceV5(analysis);
+        analysis = applyInteractionTemplates(analysis, interactionPlannerOptions(req.body));
         report({ percent: 5, stage: 'Checking knowledge checks', detail: 'Guaranteeing complete quiz questions and learner explanations before packaging.' });
         analysis = ensureQuizIntegrity(analysis);
         analysis = {
             ...(analysis || {}),
             themeId: selectedThemeId,
             themeName: selectedTheme.name,
-            experienceVersion: 5
+            experienceVersion: analysis?.interactionEngineVersion === 7 ? 7 : 5
         };
         if (title) analysis.title = title;
 

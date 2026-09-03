@@ -71,7 +71,6 @@ export const POINT_WORD_LIMITS = {
 };
 
 export function courseTheme(id) {
-  // Platform exposes one learner-course theme.
   return COURSE_THEMES[0];
 }
 
@@ -79,9 +78,23 @@ export function wordCount(value) {
   return String(value || '').trim().split(/\s+/).filter(Boolean).length;
 }
 
+export function inferredInteractionTemplate(slide = {}) {
+  const explicit = String(slide?.interaction?.templateId || '').trim();
+  if (explicit) return explicit;
+  const type = String(slide?.interaction?.type || '').trim().toLowerCase();
+  const layout = String(slide?.layout || '').trim().toLowerCase();
+  const screenType = String(slide?.screenType || '').trim().toLowerCase();
+  if (screenType === 'scenario' || type === 'decision_explore') return 'scenario_decision';
+  if (layout === 'timeline') return 'interactive_timeline';
+  if (layout === 'process' || type === 'step_explore') return 'process_tabs';
+  if (layout === 'hub' || type === 'hotspot_explore') return 'interactive_tabs';
+  if (layout === 'comparison' || type === 'compare_reveal' || type === 'focus_reveal') return 'accordion';
+  return 'flip_cards_classic';
+}
+
 export function normalizeCourseSlide(slide, index) {
   const s = slide || {};
-  return {
+  const normalized = {
     ...s,
     title: s.title || `Section ${index + 1}`,
     content: s.content || '',
@@ -92,12 +105,22 @@ export function normalizeCourseSlide(slide, index) {
     screenType: s.screenType || 'concept',
     backgroundStyle: s.backgroundStyle || 'mesh',
     visualMetaphor: s.visualMetaphor || 'shield',
-    visualTitle: s.visualTitle || s.title || `Section ${index + 1}`,
-    interaction: {
-      type: s.interaction?.type || 'hotspot_explore',
-      prompt: s.interaction?.prompt || 'Explore the learning visual before continuing.'
-    }
+    visualTitle: s.visualTitle || s.title || `Section ${index + 1}`
   };
+
+  normalized.interaction = {
+    ...(s.interaction && typeof s.interaction === 'object' ? s.interaction : {}),
+    type: s.interaction?.type || 'hotspot_explore',
+    prompt: s.interaction?.prompt || 'Explore the learning visual before continuing.'
+  };
+  normalized.interaction.templateId = inferredInteractionTemplate(normalized);
+  normalized.interaction.items = Array.isArray(normalized.interaction.items) ? normalized.interaction.items : [];
+  normalized.interaction.choices = Array.isArray(normalized.interaction.choices) ? normalized.interaction.choices : [];
+  normalized.interaction.completion = normalized.interaction.completion && typeof normalized.interaction.completion === 'object'
+    ? normalized.interaction.completion
+    : { rule: 'visit_all' };
+
+  return normalized;
 }
 
 export function visualFitIssues(slide) {

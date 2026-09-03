@@ -1,8 +1,16 @@
-import { useEffect, useState } from 'react';
-import { ArrowRight, CheckCircle2, FileText, FileUp, Loader2, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowRight, Check, CheckCircle2, Eye, FileText, FileUp, Loader2, Sparkles } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { startBackgroundCourseGeneration } from '../../services/courseGenerationJobs';
 import AuthorVisual from './AuthorVisual';
+import CourseTemplateAuthorBridge from './CourseTemplateAuthorBridge';
+import CourseTemplatePreviewModal from './CourseTemplatePreviewModal';
+import {
+  COURSE_EXPERIENCE_PROFILES,
+  profileById,
+  templateById,
+  templatesForProfile
+} from './courseTemplateCatalog';
 
 const EDITORIAL_THEME_ID = 1;
 
@@ -31,6 +39,10 @@ export default function CourseGenerator() {
   const [description, setDescription] = useState('');
   const [file, setFile] = useState(null);
   const [detailLevel, setDetailLevel] = useState('detailed');
+  const [experienceProfile, setExperienceProfile] = useState('auto');
+  const [preferredTemplateId, setPreferredTemplateId] = useState('');
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewTemplateId, setPreviewTemplateId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -40,8 +52,35 @@ export default function CourseGenerator() {
 
   const hasSource = Boolean(file || topic.trim() || description.trim());
   const displayTitle = topic.trim() || file?.name || 'New course';
+  const selectedProfile = useMemo(() => profileById(experienceProfile), [experienceProfile]);
+  const profileTemplates = useMemo(() => templatesForProfile(experienceProfile), [experienceProfile]);
+  const preferredTemplate = preferredTemplateId ? templateById(preferredTemplateId) : null;
 
-  if (editId) return <AuthorVisual />;
+  if (editId) {
+    return (
+      <>
+        <AuthorVisual />
+        <CourseTemplateAuthorBridge courseId={editId} />
+      </>
+    );
+  }
+
+  const chooseProfile = (profileId) => {
+    setExperienceProfile(profileId);
+    setPreferredTemplateId('');
+    setPreviewTemplateId('');
+  };
+
+  const openTemplatePreview = (templateId = '') => {
+    setPreviewTemplateId(templateId || preferredTemplateId || profileTemplates[0]?.id || '');
+    setPreviewOpen(true);
+  };
+
+  const usePreviewedTemplate = (templateId) => {
+    setPreferredTemplateId(templateId);
+    setPreviewTemplateId(templateId);
+    setPreviewOpen(false);
+  };
 
   const generateCourse = () => {
     if (!hasSource || busy || !token) return;
@@ -50,6 +89,16 @@ export default function CourseGenerator() {
 
     try {
       const progressId = createProgressId();
+      const direction = [
+        selectedProfile.aiInstruction,
+        preferredTemplate ? `Prefer the ${preferredTemplate.name} interaction when it fits the learning objective.` : '',
+        'Do not repeat this authoring instruction in learner-visible content.'
+      ].filter(Boolean).join(' ');
+      const generationDescription = [
+        description.trim(),
+        `Instructional design direction: ${direction}`
+      ].filter(Boolean).join('\n\n');
+
       startBackgroundCourseGeneration({
         token,
         title: displayTitle,
@@ -57,17 +106,17 @@ export default function CourseGenerator() {
         payload: {
           progressId,
           topic: topic.trim(),
-          description: description.trim(),
+          description: generationDescription,
           fileBase64: '',
           mimeType: file?.type || '',
           detailLevel,
-          templateId: EDITORIAL_THEME_ID
+          templateId: EDITORIAL_THEME_ID,
+          experienceProfile,
+          preferredTemplateId: preferredTemplateId || '',
+          interactionTemplateHints: selectedProfile.templateIds
         }
       });
 
-      // Navigation is intentionally immediate. Source-file reading and the API
-      // request now continue from the background-generation service after this
-      // component unmounts.
       navigate('/scorm/courses', {
         state: {
           generationStarted: true,
@@ -93,20 +142,16 @@ export default function CourseGenerator() {
           <div className="scorm-micro text-[10px] uppercase font-semibold">Course builder</div>
           <h1 className="scorm-display text-[42px] md:text-[56px] mt-2" style={ink}>Create a course</h1>
           <p className="text-sm mt-3 leading-relaxed max-w-2xl" style={muted}>
-            Add a topic, learning goal or source file. Generation runs in the background, so you can continue using the platform while the course is prepared.
+            Add a topic, learning goal or source file. AI can choose a varied interaction mix or follow the course experience you select.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => navigate('/scorm/courses')}
-          className="scorm-button-secondary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold"
-        >
+        <button type="button" onClick={() => navigate('/scorm/courses')} className="scorm-button-secondary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold">
           View courses <ArrowRight size={14} />
         </button>
       </div>
 
       {error && (
-        <div className="mb-5 rounded-xl border px-4 py-3 text-sm" style={{ background: 'var(--scorm-danger-soft)', borderColor: 'var(--scorm-danger)', color: 'var(--scorm-danger)' }}>
+        <div className="mb-5 rounded-xl border px-4 py-3 text-sm" style={{ background: 'var(--scorm-surface-soft)', borderColor: 'var(--scorm-line-strong)', color: 'var(--scorm-ink)' }}>
           {error}
         </div>
       )}
@@ -127,20 +172,12 @@ export default function CourseGenerator() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
               <div className="min-w-0">
                 <div className="scorm-micro text-[9px] uppercase font-semibold h-4 flex items-center mb-2">Topic</div>
-                <input
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  placeholder="e.g. Phishing Awareness"
-                  className="scorm-course-search w-full h-14 px-3 text-sm"
-                />
+                <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. Phishing Awareness" className="scorm-course-search w-full h-14 px-3 text-sm" />
               </div>
 
               <div className="min-w-0">
                 <div className="scorm-micro text-[9px] uppercase font-semibold h-4 flex items-center mb-2">Source file</div>
-                <label
-                  className="scorm-course-generator-upload h-14 rounded-lg border px-3 flex items-center gap-3 cursor-pointer transition-colors"
-                  style={softSurface}
-                >
+                <label className="scorm-course-generator-upload h-14 rounded-lg border px-3 flex items-center gap-3 cursor-pointer transition-colors" style={softSurface}>
                   <FileUp size={16} className="shrink-0" style={{ color: 'var(--scorm-accent)' }} />
                   <span className="text-xs truncate flex-1" style={{ color: file ? 'var(--scorm-ink-soft)' : 'var(--scorm-muted)' }}>
                     {file ? file.name : 'Upload source file (optional)'}
@@ -153,13 +190,7 @@ export default function CourseGenerator() {
 
             <label className="block">
               <span className="scorm-micro text-[9px] uppercase font-semibold">Description or learning goals</span>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={5}
-                placeholder="Describe what learners should understand and be able to do after completing the course."
-                className="scorm-course-search mt-1.5 w-full px-3 py-3 text-sm resize-y min-h-[145px]"
-              />
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} placeholder="Describe what learners should understand and be able to do after completing the course." className="scorm-course-search mt-1.5 w-full px-3 py-3 text-sm resize-y min-h-[145px]" />
             </label>
 
             <div>
@@ -174,16 +205,7 @@ export default function CourseGenerator() {
                 {depthOptions.map((option) => {
                   const selected = detailLevel === option.value;
                   return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setDetailLevel(option.value)}
-                      className={`scorm-course-generator-depth ${selected ? 'is-selected' : ''} text-left rounded-xl border p-4 transition-all min-h-[104px]`}
-                      style={{
-                        background: selected ? 'var(--scorm-accent-soft)' : 'var(--scorm-surface-soft)',
-                        borderColor: selected ? 'var(--scorm-accent)' : 'var(--scorm-line)'
-                      }}
-                    >
+                    <button key={option.value} type="button" onClick={() => setDetailLevel(option.value)} className={`scorm-course-generator-depth ${selected ? 'is-selected' : ''} text-left rounded-xl border p-4 transition-all min-h-[104px]`} style={{ background: selected ? 'var(--scorm-accent-soft)' : 'var(--scorm-surface-soft)', borderColor: selected ? 'var(--scorm-accent)' : 'var(--scorm-line)' }}>
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-sm font-semibold" style={ink}>{option.label}</span>
                         {selected && <CheckCircle2 size={16} style={{ color: 'var(--scorm-accent)' }} />}
@@ -194,18 +216,46 @@ export default function CourseGenerator() {
                 })}
               </div>
             </div>
+
+            <div>
+              <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
+                <div>
+                  <div className="scorm-micro text-[9px] uppercase font-semibold">Course experience</div>
+                  <div className="text-xs mt-1" style={muted}>Choose the interaction direction or keep AI on Auto.</div>
+                </div>
+                <button type="button" onClick={() => openTemplatePreview()} className="scorm-button-secondary inline-flex items-center gap-2 px-3 py-2 text-[10px] font-semibold">
+                  <Eye size={14} /> Preview templates
+                </button>
+              </div>
+
+              <div className="qmx-v7-profile-grid">
+                {COURSE_EXPERIENCE_PROFILES.map((profile) => {
+                  const selected = experienceProfile === profile.id;
+                  return (
+                    <button key={profile.id} type="button" onClick={() => chooseProfile(profile.id)} className={`qmx-v7-profile-card ${selected ? 'is-selected' : ''}`}>
+                      <div className="qmx-v7-profile-top">
+                        <strong>{profile.name}</strong>
+                        <span className="qmx-v7-profile-check">{selected && <Check size={13} />}</span>
+                      </div>
+                      <p>{profile.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="qmx-v7-profile-actions">
+                <span className="qmx-v7-profile-summary">{selectedProfile.shortName} · {profileTemplates.length} recommended interactions</span>
+                {profileTemplates.slice(0, 3).map((template) => (
+                  <span key={template.id} className="qmx-v7-template-pill"><button type="button" onClick={() => openTemplatePreview(template.id)}>{template.name}</button></span>
+                ))}
+                {preferredTemplate && <span className="qmx-v7-template-pill">Preferred: {preferredTemplate.name}</span>}
+              </div>
+            </div>
           </div>
 
           <div className="scorm-course-generator-footer px-5 md:px-6 py-5 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" style={{ ...softSurface, borderColor: 'var(--scorm-line)' }}>
-            <div className="text-[11px] leading-relaxed max-w-xl" style={muted}>
-              You can leave this page after generation starts. Progress remains visible from Courses and you will be notified when the course is ready.
-            </div>
-            <button
-              type="button"
-              onClick={generateCourse}
-              disabled={busy || !hasSource}
-              className="scorm-button-primary inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <div className="text-[11px] leading-relaxed max-w-xl" style={muted}>AI will use the selected experience as a design direction. You can still edit the generated course later.</div>
+            <button type="button" onClick={generateCourse} disabled={busy || !hasSource} className="scorm-button-primary inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
               {busy ? <Loader2 size={17} className="animate-spin" /> : <Sparkles size={17} />}
               {busy ? 'Starting…' : 'Generate course'}
             </button>
@@ -215,14 +265,14 @@ export default function CourseGenerator() {
         <aside className="space-y-4 xl:sticky xl:top-24">
           <section className="scorm-course-generator-panel rounded-2xl border overflow-hidden" style={surface}>
             <div className="scorm-course-generator-panel-header px-5 py-4 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
-              <div className="scorm-micro text-[9px] uppercase font-semibold">What happens next</div>
-              <h3 className="text-[16px] font-semibold mt-1" style={ink}>Background generation</h3>
+              <div className="scorm-micro text-[9px] uppercase font-semibold">Generation flow</div>
+              <h3 className="text-[16px] font-semibold mt-1" style={ink}>AI instructional design</h3>
             </div>
             <div className="p-5 space-y-4">
               {[
-                ['1', 'Course content', 'The learning structure and knowledge checks are prepared.'],
-                ['2', 'Course visuals', 'Supporting visuals are created for the course.'],
-                ['3', 'Course package', 'The final learner package is assembled and saved.']
+                ['1', 'Structure', 'AI turns the source into learning objectives and a course flow.'],
+                ['2', 'Interactions', 'Layouts and interactions are matched to each learning objective.'],
+                ['3', 'Package', 'Visuals, checks and tracking are assembled into the learner course.']
               ].map(([number, title, copy]) => (
                 <div key={number} className="flex gap-3">
                   <div className="scorm-course-generator-step w-7 h-7 rounded-lg border grid place-items-center text-[10px] font-semibold shrink-0" style={{ ...softSurface, color: 'var(--scorm-accent)' }}>{number}</div>
@@ -239,15 +289,15 @@ export default function CourseGenerator() {
             <div className="flex items-start gap-3">
               <CheckCircle2 size={17} className="shrink-0 mt-0.5" style={{ color: 'var(--scorm-accent)' }} />
               <div>
-                <div className="text-xs font-semibold" style={ink}>No need to wait on this page</div>
-                <div className="text-[11px] leading-relaxed mt-1" style={muted}>
-                  Once generation begins, continue working anywhere in the platform. Your course will appear in Courses when it is ready.
-                </div>
+                <div className="text-xs font-semibold" style={ink}>Preview before committing</div>
+                <div className="text-[11px] leading-relaxed mt-1" style={muted}>Open any recommended interaction, try it on desktop, tablet or mobile and only then mark it as preferred.</div>
               </div>
             </div>
           </section>
         </aside>
       </div>
+
+      <CourseTemplatePreviewModal open={previewOpen} profileId={experienceProfile} initialTemplateId={previewTemplateId} topic={topic} description={description} onClose={() => setPreviewOpen(false)} onUseTemplate={usePreviewedTemplate} />
     </div>
   );
 }
