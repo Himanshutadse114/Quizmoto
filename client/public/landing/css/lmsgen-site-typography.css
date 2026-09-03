@@ -124,7 +124,7 @@ body.lmsgen-solutions-ready main .nsl-channels-p {
   line-height: 1.65 !important;
 }
 
-/* Preserve readable dark copy on the one intentionally light gradient section
+/* Preserve readable dark copy on the intentionally light assignment section
    inside Solutions. */
 body.lmsgen-solutions-ready main .nsl-local-s,
 body.lmsgen-solutions-ready main .nsl-local-s h1,
@@ -142,6 +142,110 @@ body.lmsgen-solutions-ready main .nsl-local-s .nsl-channels-p {
 
 body.lmsgen-solutions-ready main .nsl-local-s .caption {
   color: #006f68 !important;
+}
+
+/* The generated audience block is also a light section. It previously inherited
+   the dark-page paragraph colour, making its intro and card copy nearly white. */
+body.lmsgen-solutions-ready main .lmsgen-audience-section {
+  background: #e7f7f4 !important;
+  color: #003f3a !important;
+  padding: clamp(10rem, 9vw, 13rem) clamp(2.4rem, 5vw, 7rem) clamp(9rem, 8vw, 12rem) !important;
+  scroll-margin-top: 9rem;
+}
+
+body.lmsgen-solutions-ready main .lmsgen-audience-section .lmsgen-seo-inner {
+  width: min(160rem, 100%) !important;
+  margin: 0 auto !important;
+}
+
+body.lmsgen-solutions-ready main .lmsgen-audience-section .lmsgen-seo-kicker {
+  color: #0b746d !important;
+  opacity: 1 !important;
+}
+
+body.lmsgen-solutions-ready main .lmsgen-audience-section h2,
+body.lmsgen-solutions-ready main .lmsgen-audience-section h3 {
+  color: #003f3a !important;
+}
+
+body.lmsgen-solutions-ready main .lmsgen-audience-section .lmsgen-seo-lead {
+  max-width: 96rem !important;
+  margin-top: 2.4rem !important;
+  color: #355c58 !important;
+  opacity: 1 !important;
+}
+
+body.lmsgen-solutions-ready main .lmsgen-audience-grid {
+  gap: clamp(1.8rem, 2vw, 2.8rem) !important;
+  margin-top: clamp(4rem, 5vw, 6rem) !important;
+}
+
+body.lmsgen-solutions-ready main .lmsgen-audience-grid article {
+  min-height: 27rem;
+  padding: clamp(2.8rem, 2.4vw, 3.8rem) !important;
+  background: #ffffff !important;
+  border-color: rgba(0, 63, 58, 0.16) !important;
+  border-radius: 2.2rem !important;
+}
+
+body.lmsgen-solutions-ready main .lmsgen-audience-grid h3 {
+  margin: 0 0 1.8rem !important;
+  color: #003f3a !important;
+  opacity: 1 !important;
+}
+
+body.lmsgen-solutions-ready main .lmsgen-audience-grid p {
+  margin: 0 !important;
+  color: #496763 !important;
+  opacity: 1 !important;
+  line-height: 1.62 !important;
+}
+
+/* Learner management: give the two-column block enough breathing room on wide
+   screens and prevent the content from sitting against the viewport edges. */
+body.lmsgen-solutions-ready main .nsol-manage-s {
+  padding: clamp(8rem, 8vw, 12rem) 0 clamp(9rem, 9vw, 14rem) !important;
+}
+
+body.lmsgen-solutions-ready main .nsol-manage-s > .container {
+  width: 100% !important;
+  max-width: 176rem !important;
+  padding-left: clamp(2.8rem, 4vw, 6.4rem) !important;
+  padding-right: clamp(2.8rem, 4vw, 6.4rem) !important;
+  box-sizing: border-box !important;
+}
+
+body.lmsgen-solutions-ready main .nsol-manage-s .sl-feat-common-content-w.nsl {
+  gap: clamp(4rem, 6vw, 9rem) !important;
+  align-items: center !important;
+}
+
+body.lmsgen-solutions-ready main .nsol-manage-s .sl-feat-common-text-w.swap.no-padding {
+  padding: 0 !important;
+}
+
+body.lmsgen-solutions-ready main .nsol-manage-s .sl-feat-common-text.long {
+  max-width: 70rem !important;
+}
+
+body.lmsgen-solutions-ready main .nsol-manage-s .sl-feat-common-text h2 {
+  margin-bottom: 2.4rem !important;
+}
+
+body.lmsgen-solutions-ready main .nsol-manage-s .sl-feat-common-text > p {
+  margin-bottom: 2.4rem !important;
+  color: #dbe8e5 !important;
+  opacity: 1 !important;
+}
+
+body.lmsgen-solutions-ready main .nsol-manage-s .sl-feat-common-list {
+  gap: 1.5rem !important;
+}
+
+body.lmsgen-solutions-ready main .nsol-manage-s .sl-feat-common-list-item,
+body.lmsgen-solutions-ready main .nsol-manage-s .sl-feat-common-list-item div {
+  color: #edf4f2 !important;
+  opacity: 1 !important;
 }
 
 body.lmsgen-solutions-ready main .paragraph-l {
@@ -227,6 +331,23 @@ body.atelora-home-refresh .lmsgen-pain-outcome {
   font-family: "Open Sans", Arial, sans-serif !important;
 }
 
+@media (max-width: 991px) {
+  body.lmsgen-solutions-ready main .nsol-manage-s {
+    padding-top: 7rem !important;
+    padding-bottom: 8rem !important;
+  }
+
+  body.lmsgen-solutions-ready main .nsol-manage-s .sl-feat-common-content-w.nsl {
+    gap: 4.5rem !important;
+  }
+
+  body.lmsgen-solutions-ready main .nsol-manage-s .sl-feat-common-img-w.n-solutions,
+  body.lmsgen-solutions-ready main .nsol-manage-s .sl-feat-common-text-w.swap.no-padding {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
 @media (max-width: 767px) {
   body.atelora-home-refresh .hp-hero-h1 {
     line-height: 1.1 !important;
@@ -248,5 +369,19 @@ body.atelora-home-refresh .lmsgen-pain-outcome {
   body.lmsgen-solutions-ready main h4,
   body.lmsgen-solutions-ready main .h4 {
     font-size: clamp(2.2rem, 6vw, 3.2rem) !important;
+  }
+
+  body.lmsgen-solutions-ready main .lmsgen-audience-section {
+    padding: 7rem 2rem 7.5rem !important;
+  }
+
+  body.lmsgen-solutions-ready main .lmsgen-audience-grid article {
+    min-height: 0;
+    padding: 2.6rem !important;
+  }
+
+  body.lmsgen-solutions-ready main .nsol-manage-s > .container {
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
   }
 }
