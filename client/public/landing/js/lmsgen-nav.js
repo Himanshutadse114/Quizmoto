@@ -33,7 +33,7 @@
 
   document.querySelectorAll(".btn-primary.arrow").forEach((arrowButton) => {
     const form = arrowButton.closest("form");
-    if (!form) return;
+    if (!form || form.id === "wf-form-Contact-Form") return;
     const submitButton = form.querySelector(
       'input[type="submit"], button[type="submit"], .btn-primary.submit',
     );
