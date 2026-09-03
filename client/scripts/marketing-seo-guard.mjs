@@ -3,7 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const landingRoot = path.resolve(scriptDir, '..', 'dist', 'landing');
+const distRoot = path.resolve(scriptDir, '..', 'dist');
+const landingRoot = path.join(distRoot, 'landing');
 
 async function htmlFiles(root) {
   const entries = await fs.readdir(root, { withFileTypes: true });
@@ -26,8 +27,16 @@ for (const file of files) {
   await fs.writeFile(file, html, 'utf8');
 }
 
+// Marketing HTML is served at clean routes such as /solutions and /about, but
+// its CSS, JS and images still live under /landing/. Keep those assets crawlable
+// so search engines can render the page correctly. Duplicate HTML URLs are
+// canonicalised/redirected by Nginx instead of blocking the whole asset tree.
+const robots = `User-agent: *\nAllow: /\nDisallow: /login\nDisallow: /scorm/\nDisallow: /campaign/\nDisallow: /learn/\nDisallow: /player/\nDisallow: /host/\nDisallow: /join\n\nSitemap: https://www.lmsgen.in/sitemap.xml\n`;
+await fs.writeFile(path.join(distRoot, 'robots.txt'), robots, 'utf8');
+
 const home = await fs.readFile(path.join(landingRoot, 'index.html'), 'utf8');
 const solutions = await fs.readFile(path.join(landingRoot, 'solutions', 'index.html'), 'utf8');
+const finalRobots = await fs.readFile(path.join(distRoot, 'robots.txt'), 'utf8');
 
 const checks = [
   [home.includes('<link rel="canonical" href="https://www.lmsgen.in/"'), 'Homepage canonical is missing or incorrect.'],
@@ -38,6 +47,8 @@ const checks = [
   [solutions.includes('id="lmsgen-audience-title"'), 'Solutions audience section was not generated.'],
   [!home.includes('quizmoto-frontend.onrender.com'), 'Old Render frontend domain remains in homepage HTML.'],
   [!home.includes('Atelora'), 'Old Atelora brand remains in homepage HTML.'],
+  [!finalRobots.includes('Disallow: /landing/'), 'robots.txt blocks marketing CSS/JS/image assets under /landing/.'],
+  [finalRobots.includes('Sitemap: https://www.lmsgen.in/sitemap.xml'), 'robots.txt does not expose the canonical sitemap.'],
 ];
 
 const failures = checks.filter(([ok]) => !ok).map(([, message]) => message);
