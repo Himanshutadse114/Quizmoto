@@ -21,3 +21,8 @@ if (!html.includes('id="lmsgen-hide-home-metrics"')) {
 
 await fs.writeFile(homePath, html, 'utf8');
 console.log('Removed homepage AI / AI / 360° metrics strip.');
+
+// The SEO pass deliberately runs after the existing marketing preparation so
+// canonical URLs, structured data and audience-focused copy are applied to the
+// exact HTML that will be shipped in dist/.
+await import('./seo-marketing.mjs');
