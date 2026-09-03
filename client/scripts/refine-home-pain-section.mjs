@@ -77,6 +77,7 @@ const style = `
     padding: clamp(7rem, 8vw, 11rem) 2.4rem !important;
     background: #073f3a !important;
     color: #ffffff !important;
+    font-family: "Open Sauce One", sans-serif !important;
   }
 
   .lmsgen-pain-section-v2::before,
@@ -102,19 +103,22 @@ const style = `
   .lmsgen-pain-kicker {
     margin-bottom: 1.8rem;
     color: #fafa45;
+    font-family: "Open Sauce One", sans-serif !important;
     font-size: 1.3rem;
-    line-height: 1.2;
+    line-height: 1.25;
     font-weight: 700;
-    letter-spacing: .15em;
+    letter-spacing: .13em;
   }
 
   .lmsgen-pain-section-v2 .lmsgen-pain-intro h2 {
     max-width: 58rem !important;
     margin: 0 !important;
     color: #ffffff !important;
-    font-size: clamp(3.8rem, 4.2vw, 6.1rem) !important;
-    line-height: 1.02 !important;
-    letter-spacing: -.035em !important;
+    font-family: "Open Sauce One", sans-serif !important;
+    font-size: clamp(4rem, 4.25vw, 6rem) !important;
+    font-weight: 520 !important;
+    line-height: 1.04 !important;
+    letter-spacing: -.045em !important;
     text-transform: none !important;
   }
 
@@ -122,7 +126,9 @@ const style = `
     max-width: 55rem;
     margin: 2.4rem 0 0;
     color: #c7d9d6;
+    font-family: "Open Sauce One", sans-serif !important;
     font-size: 1.8rem;
+    font-weight: 400;
     line-height: 1.6;
   }
 
@@ -132,8 +138,10 @@ const style = `
     gap: 1rem;
     margin-top: 3rem;
     color: #ffffff !important;
+    font-family: "Open Sauce One", sans-serif !important;
     font-size: 1.55rem;
-    font-weight: 700;
+    font-weight: 650;
+    letter-spacing: -.01em;
     text-decoration: none !important;
     border-bottom: 1px solid rgba(255,255,255,.45);
     padding-bottom: .5rem;
@@ -168,6 +176,7 @@ const style = `
     gap: 1.8rem;
     align-items: start;
     overflow: visible;
+    font-family: "Open Sauce One", sans-serif !important;
   }
 
   .lmsgen-pain-number {
@@ -180,24 +189,29 @@ const style = `
     border-radius: 999px;
     background: #d7f3ee;
     color: #0b6259;
+    font-family: "Open Sauce One", sans-serif !important;
     font-size: 1.2rem;
     line-height: 1;
-    font-weight: 800;
+    font-weight: 750;
   }
 
   .lmsgen-pain-section-v2 .lmsgen-pain-item h3 {
-    margin: .4rem 0 1.2rem !important;
+    margin: .35rem 0 1.2rem !important;
     color: #073f3a !important;
-    font-size: clamp(2rem, 1.7vw, 2.55rem) !important;
-    line-height: 1.12 !important;
-    letter-spacing: -.018em !important;
+    font-family: "Open Sauce One", sans-serif !important;
+    font-size: clamp(1.9rem, 1.5vw, 2.35rem) !important;
+    font-weight: 680 !important;
+    line-height: 1.25 !important;
+    letter-spacing: -.028em !important;
     text-transform: none !important;
   }
 
   .lmsgen-pain-item-copy > p {
     margin: 0;
     color: #4a6662;
+    font-family: "Open Sauce One", sans-serif !important;
     font-size: 1.55rem;
+    font-weight: 400;
     line-height: 1.55;
   }
 
@@ -206,6 +220,7 @@ const style = `
     padding-top: 1.8rem;
     border-top: 1px solid rgba(7,63,58,.12);
     color: #0b6259;
+    font-family: "Open Sauce One", sans-serif !important;
     font-size: 1.42rem;
     line-height: 1.5;
     font-weight: 650;
@@ -218,9 +233,10 @@ const style = `
     border-radius: .7rem;
     background: #073f3a;
     color: #fafa45;
+    font-family: "Open Sauce One", sans-serif !important;
     font-size: 1rem;
     line-height: 1;
-    font-weight: 800;
+    font-weight: 750;
     letter-spacing: .08em;
   }
 
