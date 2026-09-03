@@ -85,15 +85,15 @@ export const COURSE_INTERACTION_TEMPLATES = [
   },
   {
     id: 'scenario_decision',
-    name: 'Scenario Decision',
+    name: 'Two-Choice Scenario',
     category: 'Decide',
     phase: 2,
     runtimeReady: true,
-    description: 'Make a judgement and see immediate consequence-based feedback.',
+    description: 'A no-image decision screen with exactly two choices on the left and the scenario question on the right. Each response is scored and tracked.',
     bestFor: ['Security decisions', 'Policy choices', 'Social engineering'],
-    completion: 'Make a decision',
+    completion: 'Answer the scenario',
     previewKind: 'scenario',
-    recommendedItems: '2–4 choices'
+    recommendedItems: 'Exactly 2 choices'
   },
   {
     id: 'branching_scenario',
