@@ -22,16 +22,22 @@ if (!html.includes('id="lmsgen-hide-home-metrics"')) {
 await fs.writeFile(homePath, html, 'utf8');
 console.log('Removed homepage AI / AI / 360° metrics strip.');
 
-// The SEO pass deliberately runs after the existing marketing preparation so
-// canonical URLs, structured data and audience-focused copy are applied to the
-// exact HTML that will be shipped in dist/.
+// Apply canonical URLs, structured data, audience-focused copy and crawlable
+// FAQ content to the generated marketing HTML.
 await import('./seo-marketing.mjs');
 
-// Refine the generated pain-point block after SEO inserts it. This keeps the
-// content crawlable while ensuring the homepage layout uses the product site's
-// visual system rather than a generic long card grid.
+// Keep the buyer pain-point content but use the site's actual visual language.
 await import('./refine-home-pain-section.mjs');
 
-// Fail the production build if stale branding/domains or the critical SEO
-// sections reappear in a future marketing export.
+// Apply the remaining code-level findings from the SEOptimer audit: social
+// preview tags, identity/contact schema, freshness/trust signals and optional
+// analytics/social profile integration when real IDs/URLs are configured.
+await import('./apply-seoptimer-fixes.mjs');
+
+// Preserve the private React application as app.html and make the public
+// marketing pages the real static entry points used by Render/CDN hosting.
+await import('./prepare-static-entrypoints.mjs');
+
+// Fail the production build if stale branding/domains or critical SEO signals
+// disappear from the final files that will actually be deployed.
 await import('./marketing-seo-guard.mjs');
