@@ -50,6 +50,32 @@ describe('SCORM V7 interaction template planner', () => {
         templates.forEach((templateId) => expect(RUNTIME_READY.has(templateId)).to.equal(true));
     });
 
+    it('never falls back to Classic flip cards when Highly Interactive is selected', () => {
+        const input = course([
+            { title: 'Warning signs', layout: 'cards', screenType: 'reveal', interaction: { type: 'click_reveal' } },
+            { title: 'Explore the signals', layout: 'hub', screenType: 'hotspot', interaction: { type: 'hotspot_explore' } },
+            { title: 'Response process', layout: 'process', screenType: 'process', interaction: { type: 'step_explore' } },
+            { title: 'Attack progression', layout: 'timeline', screenType: 'timeline', interaction: { type: 'step_explore' } },
+            { title: 'Decision point', layout: 'spotlight', screenType: 'scenario', interaction: { type: 'decision_explore' } }
+        ]);
+        const output = applyInteractionTemplates(input, {
+            experienceProfile: 'interactive',
+            interactionTemplateHints: [
+                'interactive_tabs',
+                'accordion',
+                'labelled_graphic',
+                'hotspot_explorer',
+                'sorting_activity',
+                'sequence_builder'
+            ]
+        });
+        const templates = output.slides.map((slide) => slide.interaction.templateId);
+
+        expect(templates).to.not.include('flip_cards_classic');
+        expect(new Set(templates).size).to.be.greaterThan(1);
+        templates.forEach((templateId) => expect(RUNTIME_READY.has(templateId)).to.equal(true));
+    });
+
     it('preserves an explicit supported per-slide template override through planning', () => {
         const input = course([
             {
