@@ -48,15 +48,25 @@ services:
       - key: MAIL_ENABLED
         value: "true"
       - key: MAIL_PROVIDER
-        value: "brevo"
-      - key: BREVO_API_KEY
+        value: "smtp"
+      - key: MAIL_HOST
+        value: "smtpout.secureserver.net"
+      - key: MAIL_PORT
+        value: "465"
+      - key: MAIL_SECURE
+        value: "true"
+      - key: MAIL_USER
+        value: "training@lmsgen.in"
+      - key: MAIL_PASS
         sync: false
       - key: MAIL_FROM
         value: "training@lmsgen.in"
       - key: MAIL_FROM_NAME
         value: "LMSGen"
+      - key: SCORM_SUPER_ADMIN_EMAIL
+        value: "tadsehimanshu@gmail.com"
       - key: MAIL_ADMIN_TO
-        sync: false
+        value: "tadsehimanshu@gmail.com"
 
   - type: web
     name: kahoot-awareness-frontend
@@ -68,47 +78,48 @@ services:
       - key: VITE_BACKEND_URL
         value: "https://api.lmsgen.in"
     routes:
-      # Public marketing pages are physical, crawlable HTML entry points.
+      # Public marketing pages are served directly from the prepared landing HTML.
       - type: rewrite
         source: /solutions
-        destination: /solutions/index.html
+        destination: /landing/solutions/index.html
       - type: rewrite
         source: /about
-        destination: /about/index.html
+        destination: /landing/about/index.html
       - type: rewrite
         source: /blog
-        destination: /blog/index.html
+        destination: /landing/blog/index.html
       - type: rewrite
         source: /contact
-        destination: /contact/index.html
+        destination: /landing/contact/index.html
       - type: rewrite
         source: /blog/why-scorm-courses-go-unfinished
-        destination: /blog/why-scorm-courses-go-unfinished/index.html
+        destination: /landing/blog/why-scorm-courses-go-unfinished.html
       - type: rewrite
         source: /blog/live-quizzes-vs-static-assessments
-        destination: /blog/live-quizzes-vs-static-assessments/index.html
+        destination: /landing/blog/live-quizzes-vs-static-assessments.html
       - type: rewrite
         source: /blog/scorm-1-2-vs-scorm-2004
-        destination: /blog/scorm-1-2-vs-scorm-2004/index.html
+        destination: /landing/blog/scorm-1-2-vs-scorm-2004.html
       - type: rewrite
         source: /blog/ai-assisted-authoring-course-timeline
-        destination: /blog/ai-assisted-authoring-course-timeline/index.html
+        destination: /landing/blog/ai-assisted-authoring-course-timeline.html
       - type: rewrite
         source: /blog/signs-security-awareness-training-needs-refresh
-        destination: /blog/signs-security-awareness-training-needs-refresh/index.html
+        destination: /landing/blog/signs-security-awareness-training-needs-refresh.html
       - type: rewrite
         source: /blog/slide-deck-to-scorm-migration-guide
-        destination: /blog/slide-deck-to-scorm-migration-guide/index.html
+        destination: /landing/blog/slide-deck-to-scorm-migration-guide.html
       - type: rewrite
         source: /blog/quizmoto-as-a-full-learning-platform
-        destination: /blog/quizmoto-as-a-full-learning-platform/index.html
+        destination: /landing/blog/quizmoto-as-a-full-learning-platform.html
       - type: rewrite
         source: /blog/designing-knowledge-checks-that-dont-feel-like-a-test
-        destination: /blog/designing-knowledge-checks-that-dont-feel-like-a-test/index.html
+        destination: /landing/blog/designing-knowledge-checks-that-dont-feel-like-a-test.html
 
-      # Authenticated LMS, learner and live-quiz routes use the preserved React
-      # shell. Keeping these rewrites explicit prevents marketing assets and SEO
-      # pages from being swallowed by an SPA catch-all rule.
+      # Sign-in alias and authenticated LMS routes use the preserved React shell.
+      - type: redirect
+        source: /signin
+        destination: /login
       - type: rewrite
         source: /login
         destination: /app.html
