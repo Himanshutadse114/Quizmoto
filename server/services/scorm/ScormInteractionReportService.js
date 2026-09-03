@@ -28,7 +28,7 @@ function quizForPackage(packageRow) {
     return analysis && Array.isArray(analysis.quiz) ? analysis.quiz : [];
 }
 
-function interactionBuckets(values) {
+function interactionBuckets(values, quizCount = 0) {
     const buckets = new Map();
     const ensure = (index) => {
         const key = Number(index);
@@ -40,6 +40,15 @@ function interactionBuckets(values) {
         let match = key.match(/^quizmoto\.quiz\.(\d+)\.(question|selected|correct|selected_index|correct_index|result|explanation)$/i);
         if (match) {
             ensure(match[1])[match[2].toLowerCase()] = raw;
+            return;
+        }
+
+        match = key.match(/^quizmoto\.scenario\.(\d+)\.(question|selected|correct|selected_index|correct_index|result|explanation|choice_0|choice_1)$/i);
+        if (match) {
+            const row = ensure(Number(quizCount) + Number(match[1]));
+            row[match[2].toLowerCase()] = raw;
+            row.interaction_kind = 'scenario_decision';
+            row.scenario_index = Number(match[1]);
             return;
         }
 
@@ -65,24 +74,29 @@ function answerFromIndex(options, value) {
 function extractInteractions({ state, packageRow } = {}) {
     const values = valuesFromState(state);
     const quiz = quizForPackage(packageRow);
-    const buckets = interactionBuckets(values);
+    const buckets = interactionBuckets(values, quiz.length);
 
     return Array.from(buckets.entries())
         .sort((a, b) => a[0] - b[0])
         .map(([index, row]) => {
-            const authored = quiz[index] && typeof quiz[index] === 'object' ? quiz[index] : {};
-            const options = Array.isArray(authored.options) ? authored.options.map(text) : [];
+            const isScenario = row.interaction_kind === 'scenario_decision';
+            const authored = !isScenario && quiz[index] && typeof quiz[index] === 'object' ? quiz[index] : {};
+            const scenarioOptions = isScenario ? [text(row.choice_0), text(row.choice_1)].filter(Boolean) : [];
+            const options = scenarioOptions.length
+                ? scenarioOptions
+                : (Array.isArray(authored.options) ? authored.options.map(text) : []);
             const selectedIndex = numericIndex(row.selected_index ?? row.scorm_student_response ?? row.scorm_learner_response);
             const correctIndex = numericIndex(row.correct_index ?? row.scorm_correct_pattern ?? authored.correctAnswer);
             const selectedAnswer = text(row.selected) || answerFromIndex(options, selectedIndex) || text(row.scorm_student_response ?? row.scorm_learner_response);
             const correctAnswer = text(row.correct) || answerFromIndex(options, correctIndex) || text(row.scorm_correct_pattern);
             const result = normalizedResult(row.result || row.scorm_result || (selectedIndex != null && correctIndex != null ? (selectedIndex === correctIndex ? 'correct' : 'incorrect') : ''));
+            const displayIndex = isScenario && Number.isInteger(row.scenario_index) ? row.scenario_index : index;
 
             return {
                 index,
-                id: text(row.scorm_id) || `question_${index + 1}`,
-                type: text(row.scorm_type) || 'choice',
-                question: text(row.question) || text(authored.question) || text(row.scorm_description) || text(row.scorm_id) || `Question ${index + 1}`,
+                id: text(row.scorm_id) || (isScenario ? `scenario_${displayIndex + 1}` : `question_${index + 1}`),
+                type: text(row.scorm_type) || (isScenario ? 'scenario_decision' : 'choice'),
+                question: text(row.question) || text(authored.question) || text(row.scorm_description) || text(row.scorm_id) || (isScenario ? `Scenario ${displayIndex + 1}` : `Question ${index + 1}`),
                 selectedAnswer: selectedAnswer || '—',
                 correctAnswer: correctAnswer || '—',
                 selectedIndex,
