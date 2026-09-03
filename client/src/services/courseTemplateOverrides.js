@@ -69,6 +69,12 @@ function applyOverrides(analysis, overrides) {
   };
 }
 
+function stripInternalAuthoringDirection(value) {
+  return String(value || '')
+    .replace(/\n{2,}Instructional design direction:[\s\S]*$/i, '')
+    .trim();
+}
+
 export function installCourseTemplateOverrideInterceptor() {
   if (installed) return;
   installed = true;
@@ -76,15 +82,28 @@ export function installCourseTemplateOverrideInterceptor() {
     try {
       const url = String(config?.url || '');
       const body = config?.data;
-      if (!url.includes('/api/scorm/author/generate') || !body || typeof body !== 'object' || !body.analysis) return config;
-      const courseId = body.replacePackageId || body.packageId || '';
-      if (!courseId) return config;
-      const overrides = readCourseTemplateOverrides(courseId);
-      if (!Object.keys(overrides).length) return config;
-      config.data = {
+      if (!url.includes('/api/scorm/author/generate') || !body || typeof body !== 'object') return config;
+
+      // Experience-profile metadata is handled by the server-side V7 planner.
+      // The temporary frontend direction must never become learner source copy.
+      const nextBody = {
         ...body,
-        analysis: applyOverrides(body.analysis, overrides)
+        ...(typeof body.description === 'string'
+          ? { description: stripInternalAuthoringDirection(body.description) }
+          : {})
       };
+
+      if (nextBody.analysis) {
+        const courseId = nextBody.replacePackageId || nextBody.packageId || '';
+        if (courseId) {
+          const overrides = readCourseTemplateOverrides(courseId);
+          if (Object.keys(overrides).length) {
+            nextBody.analysis = applyOverrides(nextBody.analysis, overrides);
+          }
+        }
+      }
+
+      config.data = nextBody;
     } catch (_) {}
     return config;
   });
