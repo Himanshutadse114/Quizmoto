@@ -205,8 +205,19 @@ function renderCover(analysis) {
     </section>`;
 }
 
+const SCENARIO_TEMPLATE_IDS = new Set(['scenario_decision', 'branching_scenario', 'advanced_knowledge_check', 'sorting_activity']);
+
+function isScenarioSlide(slide) {
+    if (text(slide?.screenType).toLowerCase() === 'scenario') return true;
+    return SCENARIO_TEMPLATE_IDS.has(text(slide?.interaction?.templateId).toLowerCase());
+}
+
 function renderLearningSlide(slide, index) {
-    const path = rasterPath(slide);
+    // Scenario/decision slides pair an image-shaped choice grid with the
+    // learner's own reasoning text; a photo alongside it adds no
+    // information and was the slide type most often left with an
+    // awkwardly scaled or cropped image, so it never gets one.
+    const path = isScenarioSlide(slide) ? '' : rasterPath(slide);
     const points = renderPoints(slide);
     const visual = path
         ? `<div class="qmx-image-col">${imageFigure(path, slide?.visualTitle || slide?.title || `Section ${index + 1}`)}<div class="qmx-v7-secondary"></div></div>`
