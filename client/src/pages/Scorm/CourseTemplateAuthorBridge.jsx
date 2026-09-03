@@ -20,10 +20,10 @@ function profileForTemplate(templateId) {
   return COURSE_EXPERIENCE_PROFILES.find((profile) => profile.templateIds.includes(templateId))?.id || 'auto';
 }
 
-function suggestionsForSlide(slide = {}) {
-  const layout = String(slide.layout || '').toLowerCase();
-  const screenType = String(slide.screenType || '').toLowerCase();
-  const type = String(slide.interaction?.type || '').toLowerCase();
+function suggestionsForSlide(slide) {
+  const layout = String(slide?.layout || '').toLowerCase();
+  const screenType = String(slide?.screenType || '').toLowerCase();
+  const type = String(slide?.interaction?.type || '').toLowerCase();
   let ids = [];
 
   if (screenType === 'scenario' || type === 'decision_explore') {
