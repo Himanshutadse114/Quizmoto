@@ -40,21 +40,21 @@ describe('SCORM course interactions', () => {
         expect(style).to.include('var(--ink-soft)');
     });
 
-    it('keeps classic flip cards compact and responsive', () => {
+    it('keeps classic flip cards roomy and responsive', () => {
         const style = courseInteractionStyle();
-        expect(style).to.include('grid-template-columns:repeat(2,minmax(220px,280px))');
-        expect(style).to.include('max-width:572px');
+        expect(style).to.include('grid-template-columns:repeat(2,minmax(240px,320px))');
+        expect(style).to.include('max-width:664px');
         expect(style).to.include('grid-area:1/1');
-        expect(style).to.include('min-height:112px');
+        expect(style).to.include('min-height:220px');
         expect(style).to.include('@media(max-width:760px)');
-        expect(style).to.not.include('min-height:172px');
+        expect(style).to.not.include('min-height:112px');
     });
 
     it('keeps no-image learning screens split between reading and interaction columns', () => {
         const style = courseInteractionStyle();
         expect(style).to.include('.qmx-learning-shell.no-image');
-        expect(style).to.include('width:min(1180px,100%)!important');
-        expect(style).to.include('grid-template-columns:minmax(0,1.08fr) minmax(420px,.92fr)');
+        expect(style).to.include('width:min(1680px,94vw)!important');
+        expect(style).to.include('grid-template-columns:minmax(0,1fr) minmax(460px,1fr)');
         expect(style).to.include('grid-column:2');
         expect(style).to.include('grid-row:1/span 3');
         expect(style).to.include('.qmx-learning-shell.no-image .qmx-v7-runtime');
@@ -88,7 +88,7 @@ describe('SCORM course interactions', () => {
     it('preserves classic behaviour unless an advanced template is explicitly selected', () => {
         const script = courseInteractionScript();
         expect(script).to.include("function templateFor(s){var explicit=clean(s&&s.interaction&&s.interaction.templateId);return explicit||'flip_cards_classic'}");
-        expect(script).to.include("if(!built)upgradeFlipCards(slide)");
+        expect(script).to.include("if(!built)upgradeFlipCards(slide,s)");
     });
 
     it('supports opt-in tabs, accordion, process/timeline and decision interactions', () => {
