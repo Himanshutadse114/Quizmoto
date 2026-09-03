@@ -37,15 +37,40 @@ function visibleWordCount(html) {
   return withoutCode ? withoutCode.split(' ').filter(Boolean).length : 0;
 }
 
-function hasVisibleLegacyBrand(html) {
-  // Legacy Webflow class/id hooks intentionally retain names such as
-  // `atelora-site-refresh` because CSS depends on them. Only fail when Atelora
-  // appears in a human-visible text node or metadata/structured content.
-  const textNodes = html
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<!--([\s\S]*?)-->/g, '')
-    .match(/>([^<>]+)</g) || [];
-  return textNodes.some((node) => /\bAtelora\b/i.test(node));
+function visibleText(html) {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<svg[\s\S]*?<\/svg>/gi, ' ')
+    .replace(/<!--([\s\S]*?)-->/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&[a-z0-9#]+;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function seoAuditSurface(html) {
+  // Only inspect content that can affect visible branding or search/social
+  // metadata. Webflow implementation hooks such as data-wf-domain, legacy CSS
+  // class names, JavaScript identifiers and asset folder names are deliberately
+  // excluded because they are not rendered brand copy or canonical SEO signals.
+  const title = (html.match(/<title>[\s\S]*?<\/title>/i) || [''])[0];
+  const metaTags = (html.match(/<meta\b[^>]*>/gi) || []).join('\n');
+  const canonicalAndAlternates = (html.match(/<link\b[^>]*(?:rel=["'](?:canonical|alternate)["']|hreflang=)[^>]*>/gi) || []).join('\n');
+  const structuredData = (html.match(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi) || []).join('\n');
+
+  return [
+    visibleText(html),
+    title,
+    metaTags,
+    canonicalAndAlternates,
+    structuredData,
+  ].join('\n');
+}
+
+function hasLegacySeoBranding(html) {
+  const surface = seoAuditSurface(html);
+  return /\bAtelora\b/i.test(surface) || /quizmoto-frontend\.onrender\.com/i.test(surface);
 }
 
 const landingFiles = await htmlFiles(landingRoot);
@@ -84,9 +109,7 @@ const entrypointChecks = await Promise.all(requiredEntrypoints.map(async (file) 
 const staleMarketing = [];
 for (const file of landingFiles) {
   const html = await fs.readFile(file, 'utf8');
-  const oldDomain = /quizmoto-frontend\.onrender\.com/i.test(html);
-  const visibleLegacyBrand = hasVisibleLegacyBrand(html);
-  if (oldDomain || visibleLegacyBrand) staleMarketing.push(file);
+  if (hasLegacySeoBranding(html)) staleMarketing.push(file);
 }
 
 const checks = [
@@ -111,7 +134,7 @@ const checks = [
   [home.includes('updated ') && home.includes('<time datetime='), 'Visible freshness signal is missing.'],
   [solutions.includes('<link rel="canonical" href="https://www.lmsgen.in/solutions"'), 'Solutions canonical is missing or incorrect.'],
   [solutions.includes('id="lmsgen-audience-title"'), 'Solutions audience section was not generated.'],
-  [staleMarketing.length === 0, `Stale visible Atelora/Render branding remains in ${staleMarketing.length} marketing files.`],
+  [staleMarketing.length === 0, `Stale visible or SEO Atelora/Render branding remains in ${staleMarketing.length} marketing files.`],
   [metaContent(app, 'name', 'robots').toLowerCase().includes('noindex'), 'Private React LMS shell must remain noindex.'],
   [!finalRobots.includes('Disallow: /landing/'), 'robots.txt blocks marketing CSS/JS/image assets under /landing/.'],
   [finalRobots.includes('Sitemap: https://www.lmsgen.in/sitemap.xml'), 'robots.txt does not expose the canonical sitemap.'],
