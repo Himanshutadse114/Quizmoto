@@ -4,6 +4,7 @@ export const COURSE_INTERACTION_TEMPLATES = [
     name: 'Flip Cards',
     category: 'Explore',
     phase: 1,
+    runtimeReady: true,
     description: 'Reveal short learning points one card at a time.',
     bestFor: ['Key points', 'Definitions', 'Do and do not guidance'],
     completion: 'Visit all cards',
@@ -15,6 +16,7 @@ export const COURSE_INTERACTION_TEMPLATES = [
     name: 'Interactive Tabs',
     category: 'Explore',
     phase: 2,
+    runtimeReady: true,
     description: 'Explore related concepts without crowding the slide.',
     bestFor: ['Categories', 'Features', 'Warning signs'],
     completion: 'Visit all tabs',
@@ -26,6 +28,7 @@ export const COURSE_INTERACTION_TEMPLATES = [
     name: 'Accordion',
     category: 'Explore',
     phase: 2,
+    runtimeReady: true,
     description: 'Chunk longer explanations into compact expandable sections.',
     bestFor: ['FAQs', 'Policies', 'Detailed guidance'],
     completion: 'Visit all sections',
@@ -37,6 +40,7 @@ export const COURSE_INTERACTION_TEMPLATES = [
     name: 'Process Tabs',
     category: 'Explain',
     phase: 2,
+    runtimeReady: true,
     description: 'Move through an ordered process with one focused step at a time.',
     bestFor: ['Procedures', 'Workflows', 'Response steps'],
     completion: 'Visit all steps',
@@ -48,6 +52,7 @@ export const COURSE_INTERACTION_TEMPLATES = [
     name: 'Interactive Timeline',
     category: 'Explain',
     phase: 2,
+    runtimeReady: true,
     description: 'Explore chronological events, stages or attack progression.',
     bestFor: ['Journeys', 'Attack stages', 'History'],
     completion: 'Visit all milestones',
@@ -59,6 +64,7 @@ export const COURSE_INTERACTION_TEMPLATES = [
     name: 'Labelled Graphic',
     category: 'Explore',
     phase: 2,
+    runtimeReady: false,
     description: 'Inspect parts of an image through accessible interactive markers.',
     bestFor: ['Phishing emails', 'Interfaces', 'Workplace scenes'],
     completion: 'Visit all markers',
@@ -70,6 +76,7 @@ export const COURSE_INTERACTION_TEMPLATES = [
     name: 'Hotspot Explorer',
     category: 'Explore',
     phase: 2,
+    runtimeReady: false,
     description: 'Discover hidden risks or learning points inside a visual scene.',
     bestFor: ['Threat spotting', 'Visual audits', 'URL inspection'],
     completion: 'Find all hotspots',
@@ -81,6 +88,7 @@ export const COURSE_INTERACTION_TEMPLATES = [
     name: 'Scenario Decision',
     category: 'Decide',
     phase: 2,
+    runtimeReady: true,
     description: 'Make a judgement and see immediate consequence-based feedback.',
     bestFor: ['Security decisions', 'Policy choices', 'Social engineering'],
     completion: 'Make a decision',
@@ -92,6 +100,7 @@ export const COURSE_INTERACTION_TEMPLATES = [
     name: 'Branching Scenario',
     category: 'Decide',
     phase: 2,
+    runtimeReady: false,
     description: 'Follow different paths based on learner decisions.',
     bestFor: ['Incident response', 'Money mule scams', 'Manager decisions'],
     completion: 'Reach an ending',
@@ -103,6 +112,7 @@ export const COURSE_INTERACTION_TEMPLATES = [
     name: 'Sorting Activity',
     category: 'Practise',
     phase: 2,
+    runtimeReady: false,
     description: 'Classify items into meaningful categories with feedback.',
     bestFor: ['Data classification', 'Safe vs unsafe', 'Threat categories'],
     completion: 'Sort all items',
@@ -114,6 +124,7 @@ export const COURSE_INTERACTION_TEMPLATES = [
     name: 'Sequence Builder',
     category: 'Practise',
     phase: 2,
+    runtimeReady: false,
     description: 'Arrange response actions or process steps in the correct order.',
     bestFor: ['Incident response', 'Escalation', 'Operational procedures'],
     completion: 'Complete sequence',
@@ -125,6 +136,7 @@ export const COURSE_INTERACTION_TEMPLATES = [
     name: 'Advanced Knowledge Check',
     category: 'Assess',
     phase: 2,
+    runtimeReady: false,
     description: 'Use richer checks with feedback and learner retry states.',
     bestFor: ['Application checks', 'Scenario questions', 'Assessment'],
     completion: 'Submit answer',
@@ -138,8 +150,8 @@ export const COURSE_EXPERIENCE_PROFILES = [
     id: 'auto',
     name: 'Auto — Recommended',
     shortName: 'Auto',
-    description: 'AI selects the best interaction for each learning objective.',
-    templateIds: ['interactive_tabs', 'process_tabs', 'labelled_graphic', 'scenario_decision', 'sorting_activity', 'advanced_knowledge_check'],
+    description: 'AI selects the best production-ready interaction for each learning objective.',
+    templateIds: ['interactive_tabs', 'accordion', 'process_tabs', 'interactive_timeline', 'scenario_decision', 'flip_cards_classic'],
     aiInstruction: 'Choose varied interactions by instructional intent. Avoid repeating the same interaction on consecutive slides.'
   },
   {
@@ -147,15 +159,15 @@ export const COURSE_EXPERIENCE_PROFILES = [
     name: 'Classic Editorial',
     shortName: 'Classic',
     description: 'Keep the current Editorial course style and familiar flip-card experience.',
-    templateIds: ['flip_cards_classic', 'process_tabs', 'interactive_timeline'],
+    templateIds: ['flip_cards_classic'],
     aiInstruction: 'Prefer the existing Editorial presentation and restrained interactions.'
   },
   {
     id: 'interactive',
     name: 'Highly Interactive',
     shortName: 'Interactive',
-    description: 'Prioritise learner exploration, practice and progressive reveals.',
-    templateIds: ['interactive_tabs', 'accordion', 'labelled_graphic', 'hotspot_explorer', 'sorting_activity', 'sequence_builder'],
+    description: 'Use varied production-ready exploration, process, timeline and decision interactions.',
+    templateIds: ['interactive_tabs', 'accordion', 'process_tabs', 'interactive_timeline', 'scenario_decision'],
     aiInstruction: 'Prioritise active exploration and practice. Use interaction variety and progressive disclosure.'
   },
   {
@@ -163,24 +175,24 @@ export const COURSE_EXPERIENCE_PROFILES = [
     name: 'Scenario-led',
     shortName: 'Scenario',
     description: 'Build the course around decisions, consequences and realistic situations.',
-    templateIds: ['scenario_decision', 'branching_scenario', 'interactive_timeline', 'advanced_knowledge_check'],
+    templateIds: ['scenario_decision', 'interactive_timeline', 'accordion', 'interactive_tabs'],
     aiInstruction: 'Prefer realistic workplace scenarios, decisions and consequence-based feedback where the source supports them.'
   },
   {
     id: 'visual',
     name: 'Visual Explorer',
     shortName: 'Visual',
-    description: 'Use images, hotspots and visual investigation as the main learning pattern.',
-    templateIds: ['labelled_graphic', 'hotspot_explorer', 'interactive_tabs', 'interactive_timeline'],
-    aiInstruction: 'Prefer visual investigation, labelled graphics and hotspot-style exploration where appropriate.'
+    description: 'Use progressive exploration and visual sequencing as the main learning pattern.',
+    templateIds: ['interactive_tabs', 'accordion', 'interactive_timeline', 'process_tabs'],
+    aiInstruction: 'Prefer visual investigation and progressive exploration where appropriate.'
   },
   {
     id: 'assessment',
     name: 'Assessment-led',
     shortName: 'Assess',
-    description: 'Use frequent practice and knowledge checks to reinforce the course.',
-    templateIds: ['advanced_knowledge_check', 'scenario_decision', 'sorting_activity', 'sequence_builder'],
-    aiInstruction: 'Prefer frequent application checks, scenarios and practice activities while keeping explanatory slides concise.'
+    description: 'Use frequent decisions and guided checks to reinforce the course.',
+    templateIds: ['scenario_decision', 'accordion', 'interactive_tabs', 'process_tabs'],
+    aiInstruction: 'Prefer frequent application checks and decision activities while keeping explanatory slides concise.'
   }
 ];
 
