@@ -34,6 +34,10 @@ await import('./refine-home-pain-section.mjs');
 // analytics/social profile integration when real IDs/URLs are configured.
 await import('./apply-seoptimer-fixes.mjs');
 
+// Move the existing real GTM container into the document head and set consent
+// defaults before it loads so analytics is both detectable and consent-aware.
+await import('./normalize-marketing-analytics.mjs');
+
 // Add explicit, truthful business/contact context without inventing a physical
 // address, phone number or registration detail that has not been provided.
 await import('./contact-transparency.mjs');
