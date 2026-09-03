@@ -46,14 +46,18 @@ jobs:
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
 
-    - name: Build client
+    - name: Build client application
+      working-directory: client
       shell: bash
       run: |
         set -o pipefail
-        npm --prefix client run build 2>&1 | tee client-build.log
+        npx vite build 2>&1 | tee ../client-build.log
 
     - name: Run server unit tests
-      run: npm --prefix server test
+      shell: bash
+      run: |
+        set -o pipefail
+        npm --prefix server test 2>&1 | tee server-unit.log
 
     - name: Run SCORM PostgreSQL persistence tests
       working-directory: server
@@ -67,9 +71,10 @@ jobs:
         DB_PASS: testpass
         DB_SSL: "false"
         JWT_SECRET: ci_scorm_runtime_secret
+      shell: bash
       run: |
-        npx mocha tests/ScormLearningStatePostgres.test.js --exit
-        npx mocha tests/ScormRuntimePostgres.test.js --exit
+        set -o pipefail
+        { npx mocha tests/ScormLearningStatePostgres.test.js --exit && npx mocha tests/ScormRuntimePostgres.test.js --exit; } 2>&1 | tee ../scorm-postgres.log
 
     - name: Run E2E tests
       shell: bash
@@ -86,6 +91,8 @@ jobs:
         retention-days: 7
         path: |
           client-build.log
+          server-unit.log
+          scorm-postgres.log
           playwright-e2e.log
           test-results/
           playwright-report/
