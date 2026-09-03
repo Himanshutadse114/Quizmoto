@@ -60,6 +60,15 @@ describe('SCORM course interactions', () => {
         expect(style).to.include('.qmx-learning-shell.no-image .qmx-v7-runtime');
     });
 
+    it('loads generated slide template metadata from content.json before installing V7 interactions', () => {
+        const script = courseInteractionScript();
+        expect(script).to.include("window.fetch('content.json',{cache:'no-store'})");
+        expect(script).to.include('window.__quizmotoData=payload');
+        expect(script).to.include('function installWithData(courseData)');
+        expect(script).to.include("slide.setAttribute('data-qmx-template',template)");
+        expect(script).to.include('loadCourseData(installWithData)');
+    });
+
     it('requires classic flip cards on the active slide to be revealed before Next', () => {
         const script = courseInteractionScript();
         expect(script).to.include("card.setAttribute('data-qmx-revealed','false')");
@@ -104,12 +113,15 @@ describe('SCORM course interactions', () => {
         expect(script).to.include('function runtimeIncomplete(slide)');
     });
 
-    it('provides responsive and reduced-motion styling for new interactions', () => {
+    it('provides responsive, template-specific and reduced-motion styling for new interactions', () => {
         const style = courseInteractionStyle();
         expect(style).to.include('.qmx-runtime-tabs');
         expect(style).to.include('.qmx-runtime-accordion');
         expect(style).to.include('.qmx-runtime-process');
         expect(style).to.include('.qmx-runtime-scenario');
+        expect(style).to.include('.slide[data-qmx-template="interactive_tabs"]');
+        expect(style).to.include('.slide[data-qmx-template="interactive_timeline"]');
+        expect(style).to.include('.slide[data-qmx-template="scenario_decision"]');
         expect(style).to.include('@media(max-width:760px)');
         expect(style).to.include('@media(prefers-reduced-motion:reduce)');
     });
