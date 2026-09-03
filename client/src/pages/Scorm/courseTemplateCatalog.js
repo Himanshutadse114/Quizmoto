@@ -171,10 +171,18 @@ export const COURSE_EXPERIENCE_PROFILES = [
     aiInstruction: 'Prioritise active exploration and practice. Use interaction variety and progressive disclosure.'
   },
   {
+    id: 'two_choice_scenario',
+    name: 'Two-Choice Scenario',
+    shortName: '2-Choice',
+    description: 'Create a text-only scenario course with two answer choices per decision. Every response is scored and tracked.',
+    templateIds: ['scenario_decision'],
+    aiInstruction: 'Use the Two-Choice Scenario interaction as the primary learner experience. Create realistic scenario questions with exactly two plausible choices, one clearly correct answer and concise feedback. Do not use background images for scenario screens. Ensure every scenario answer can be scored and tracked.'
+  },
+  {
     id: 'scenario',
     name: 'Scenario-led',
     shortName: 'Scenario',
-    description: 'Build the course around decisions, consequences and realistic situations.',
+    description: 'Build the course around decisions, consequences and realistic situations using a varied interaction mix.',
     templateIds: ['scenario_decision', 'interactive_timeline', 'accordion', 'interactive_tabs'],
     aiInstruction: 'Prefer realistic workplace scenarios, decisions and consequence-based feedback where the source supports them.'
   },
