@@ -124,6 +124,26 @@ body.lmsgen-solutions-ready main .nsl-channels-p {
   line-height: 1.65 !important;
 }
 
+/* Preserve readable dark copy on the one intentionally light gradient section
+   inside Solutions. */
+body.lmsgen-solutions-ready main .nsl-local-s,
+body.lmsgen-solutions-ready main .nsl-local-s h1,
+body.lmsgen-solutions-ready main .nsl-local-s h2,
+body.lmsgen-solutions-ready main .nsl-local-s h3,
+body.lmsgen-solutions-ready main .nsl-local-s h4,
+body.lmsgen-solutions-ready main .nsl-local-s p,
+body.lmsgen-solutions-ready main .nsl-local-s li,
+body.lmsgen-solutions-ready main .nsl-local-s .paragraph-s,
+body.lmsgen-solutions-ready main .nsl-local-s .paragraph-m,
+body.lmsgen-solutions-ready main .nsl-local-s .paragraph-l,
+body.lmsgen-solutions-ready main .nsl-local-s .nsl-channels-p {
+  color: #003f3a !important;
+}
+
+body.lmsgen-solutions-ready main .nsl-local-s .caption {
+  color: #006f68 !important;
+}
+
 body.lmsgen-solutions-ready main .paragraph-l {
   font-size: clamp(1.7rem, 1.45vw, 2rem) !important;
 }
