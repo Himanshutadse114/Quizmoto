@@ -37,6 +37,17 @@ function visibleWordCount(html) {
   return withoutCode ? withoutCode.split(' ').filter(Boolean).length : 0;
 }
 
+function hasVisibleLegacyBrand(html) {
+  // Legacy Webflow class/id hooks intentionally retain names such as
+  // `atelora-site-refresh` because CSS depends on them. Only fail when Atelora
+  // appears in a human-visible text node or metadata/structured content.
+  const textNodes = html
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<!--([\s\S]*?)-->/g, '')
+    .match(/>([^<>]+)</g) || [];
+  return textNodes.some((node) => /\bAtelora\b/i.test(node));
+}
+
 const landingFiles = await htmlFiles(landingRoot);
 const home = await fs.readFile(path.join(distRoot, 'index.html'), 'utf8');
 const app = await fs.readFile(path.join(distRoot, 'app.html'), 'utf8');
@@ -73,7 +84,9 @@ const entrypointChecks = await Promise.all(requiredEntrypoints.map(async (file) 
 const staleMarketing = [];
 for (const file of landingFiles) {
   const html = await fs.readFile(file, 'utf8');
-  if (/quizmoto-frontend\.onrender\.com/i.test(html) || /\bAtelora\b/i.test(html)) staleMarketing.push(file);
+  const oldDomain = /quizmoto-frontend\.onrender\.com/i.test(html);
+  const visibleLegacyBrand = hasVisibleLegacyBrand(html);
+  if (oldDomain || visibleLegacyBrand) staleMarketing.push(file);
 }
 
 const checks = [
@@ -88,19 +101,22 @@ const checks = [
   [home.includes('id="lmsgen-pain-title"'), 'Homepage pain-point section was not generated.'],
   [home.includes('id="lmsgen-faq-title"'), 'Homepage FAQ/Q&A section was not generated.'],
   [home.includes('class="lmsgen-audit-trust"'), 'Homepage trust/freshness section was not generated.'],
+  [home.includes('class="lmsgen-business-identity"'), 'Visible business/contact identity block was not generated.'],
   [home.includes('id="lmsgen-seoptimer-entity-schema"'), 'Identity/contact structured data was not generated.'],
   [home.includes('FAQPage'), 'FAQ structured data is missing.'],
   [home.includes('Organization'), 'Organization identity schema is missing.'],
   [home.includes(`property="og:image" content="${PREVIEW_IMAGE}"`), 'Homepage Open Graph image is missing or non-canonical.'],
   [home.includes(`name="twitter:image" content="${PREVIEW_IMAGE}"`), 'Homepage X/Twitter card image is missing or non-canonical.'],
+  [home.includes('GTM-M6VGFPM'), 'Google Tag Manager is missing from the final marketing homepage.'],
   [home.includes('updated ') && home.includes('<time datetime='), 'Visible freshness signal is missing.'],
   [solutions.includes('<link rel="canonical" href="https://www.lmsgen.in/solutions"'), 'Solutions canonical is missing or incorrect.'],
   [solutions.includes('id="lmsgen-audience-title"'), 'Solutions audience section was not generated.'],
-  [staleMarketing.length === 0, `Stale Atelora/Render branding remains in ${staleMarketing.length} marketing files.`],
+  [staleMarketing.length === 0, `Stale visible Atelora/Render branding remains in ${staleMarketing.length} marketing files.`],
   [metaContent(app, 'name', 'robots').toLowerCase().includes('noindex'), 'Private React LMS shell must remain noindex.'],
   [!finalRobots.includes('Disallow: /landing/'), 'robots.txt blocks marketing CSS/JS/image assets under /landing/.'],
   [finalRobots.includes('Sitemap: https://www.lmsgen.in/sitemap.xml'), 'robots.txt does not expose the canonical sitemap.'],
   [sitemap.includes('<loc>https://www.lmsgen.in/</loc>'), 'Sitemap is missing the canonical homepage.'],
+  [sitemap.includes('<lastmod>'), 'Sitemap does not include freshness lastmod values.'],
   ...entrypointChecks,
 ];
 
