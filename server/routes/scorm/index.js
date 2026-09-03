@@ -71,6 +71,7 @@ router.use('/roster', require('./roster'));
 router.use('/assignments', require('./assignments'));
 router.use('/campaigns', require('./campaigns'));
 router.use('/learner-access', require('./authConfig'));
+router.use('/branding', require('./branding'));
 router.use('/session', require('./session'));
 router.use('/runtime', require('./runtime'));
 router.use('/content', repairServedScormHtml, require('./content'));

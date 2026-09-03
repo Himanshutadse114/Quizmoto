@@ -284,7 +284,7 @@ router.post('/generate', auth, async (req, res) => {
         report({ percent: 80, stage: 'Building the SCORM package', detail: 'Combining course content, images, varied layouts, quiz explanations and tracking into the learner package.' });
         const zipBuf = await buildScormPackageZip(analysis, {
             templateId: selectedThemeId,
-            logoDataUrl: logoDataUrl || null,
+            logoDataUrl: logoDataUrl || req.scormWorkspace?.logoDataUrl || null,
             replicateMediaFiles: media.files
         });
         checkpoint(progressId, req.userId);

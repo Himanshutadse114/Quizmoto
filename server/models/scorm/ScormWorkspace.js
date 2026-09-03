@@ -20,6 +20,10 @@ const ScormWorkspace = sequelize.define('ScormWorkspace', {
         type: DataTypes.STRING(32),
         allowNull: false,
         defaultValue: 'active'
+    },
+    logoDataUrl: {
+        type: DataTypes.TEXT,
+        allowNull: true
     }
 }, {
     tableName: 'scorm_workspaces',

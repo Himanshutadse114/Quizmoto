@@ -15,6 +15,7 @@ import {
   Upload,
   ShieldCheck,
   LockKeyhole,
+  ImagePlus,
   Gamepad2,
   LogOut,
   RefreshCw,
@@ -98,7 +99,8 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess, role, quizmotoOnly 
         label: 'Tenant Administration',
         items: [
           { to: '/scorm/team', label: 'Team & Roles', icon: Users, requiresScorm: true },
-          { to: '/scorm/learner-access', label: 'Authentication & SSO', icon: LockKeyhole, requiresScorm: true }
+          { to: '/scorm/learner-access', label: 'Authentication & SSO', icon: LockKeyhole, requiresScorm: true },
+          { to: '/scorm/branding', label: 'Branding', icon: ImagePlus, requiresScorm: true }
         ]
       }
     ];

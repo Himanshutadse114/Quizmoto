@@ -110,7 +110,7 @@ router.post('/generate', auth, async (req, res, next) => {
 
         const zipBuf = await buildScormPackageZip(analysis, {
             templateId: selectedThemeId,
-            logoDataUrl: req.body?.logoDataUrl || null,
+            logoDataUrl: req.body?.logoDataUrl || req.scormWorkspace?.logoDataUrl || null,
             replicateMediaFiles: media.files
         });
 

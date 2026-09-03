@@ -4,6 +4,7 @@ const { planExperienceV5 } = require('./ScormExperiencePlanner');
 const { applyInteractionTemplates } = require('./ScormInteractionTemplatePlanner');
 const { ensureQuizIntegrity } = require('./ScormQuizQualityService');
 const { buildScormPackageZip } = require('./ScormReplicateMediaFinalizer');
+const { resolveWorkspaceLogoForUserId } = require('./ScormBrandingService');
 const { getTheme, normalizeThemeId } = require('./ScormThemeCatalog');
 const { ScormPackage } = require('../../models/scorm');
 const { ensureCourseForPackage } = require('./ScormCourseWorkspaceService');
@@ -132,9 +133,10 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
     checkCancelled();
 
     onProgress({ percent: 80, stage: 'Building the SCORM package', detail: 'Combining course content, images, varied layouts, quiz explanations and tracking into the learner package.' });
+    const effectiveLogoDataUrl = logoDataUrl || await resolveWorkspaceLogoForUserId(userId);
     const zipBuf = await buildScormPackageZip(analysis, {
         templateId: selectedThemeId,
-        logoDataUrl: logoDataUrl || null,
+        logoDataUrl: effectiveLogoDataUrl || null,
         replicateMediaFiles: media.files
     });
     checkCancelled();

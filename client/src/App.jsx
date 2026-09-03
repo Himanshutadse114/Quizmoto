@@ -43,6 +43,7 @@ const ScormCampaignDetail = lazy(() => import('./pages/Scorm/CampaignDetail'));
 const ScormCampaignLearners = lazy(() => import('./pages/Scorm/CampaignLearners'));
 const ScormCampaignAnalytics = lazy(() => import('./pages/Scorm/CampaignAnalytics'));
 const ScormLearnerAccessSettings = lazy(() => import('./pages/Scorm/LearnerAccessSettings'));
+const ScormBrandingSettings = lazy(() => import('./pages/Scorm/BrandingSettings'));
 const ScormLearnerPortal = lazy(() => import('./pages/Scorm/LearnerPortal'));
 const ScormUniversalLearnerPortal = lazy(() => import('./pages/Scorm/UniversalLearnerPortal'));
 const ScormCampaignPortal = lazy(() => import('./pages/Scorm/CampaignPortal'));
@@ -206,6 +207,7 @@ function AppRoutes() {
           <Route path="reports" element={<ScormFeatureGate featureId="reports" analyticsAllowed><ScormReports /></ScormFeatureGate>} />
           <Route path="team" element={<WorkspaceAdminGate><ScormTeamAccess /></WorkspaceAdminGate>} />
           <Route path="learner-access" element={<WorkspaceAdminGate><ScormLearnerAccessSettings /></WorkspaceAdminGate>} />
+          <Route path="branding" element={<WorkspaceAdminGate><ScormBrandingSettings /></WorkspaceAdminGate>} />
           <Route path="access" element={<AccessAdminGate />} />
         </Route>
 

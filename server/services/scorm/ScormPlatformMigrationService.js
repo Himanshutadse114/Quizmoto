@@ -96,6 +96,7 @@ function workspaceColumns() {
         ownerUserId: { type: DataTypes.INTEGER, allowNull: false, unique: true },
         name: { type: DataTypes.STRING(160), allowNull: false },
         status: { type: DataTypes.STRING(32), allowNull: false, defaultValue: 'active' },
+        logoDataUrl: { type: DataTypes.TEXT, allowNull: true },
         ...timestampColumns()
     };
 }
