@@ -1,0 +1,104 @@
+/* LMSGEN public-site typography and readability layer.
+   The product platform uses Montserrat for display/UI emphasis and Open Sans
+   for highly readable supporting copy. Keep this marketing layer scoped to
+   exported public pages only. */
+
+body.atelora-site-refresh {
+  font-family: "Open Sans", Arial, sans-serif !important;
+}
+
+body.atelora-site-refresh p,
+body.atelora-site-refresh li,
+body.atelora-site-refresh input,
+body.atelora-site-refresh textarea,
+body.atelora-site-refresh select,
+body.atelora-site-refresh .paragraph-s,
+body.atelora-site-refresh .paragraph-m,
+body.atelora-site-refresh .paragraph-l,
+body.atelora-site-refresh .hp-hero-p,
+body.atelora-site-refresh .lmsgen-seo-lead,
+body.atelora-site-refresh .lmsgen-pain-item-copy > p,
+body.atelora-site-refresh .lmsgen-pain-outcome,
+body.atelora-site-refresh .lmsgen-faq-item p,
+body.atelora-site-refresh .lmsgen-audit-trust-copy > p,
+body.atelora-site-refresh .lmsgen-audit-trust-links span {
+  font-family: "Open Sans", Arial, sans-serif !important;
+}
+
+body.atelora-site-refresh h1,
+body.atelora-site-refresh h2,
+body.atelora-site-refresh h3,
+body.atelora-site-refresh h4,
+body.atelora-site-refresh h5,
+body.atelora-site-refresh h6,
+body.atelora-site-refresh .caption,
+body.atelora-site-refresh .btn-primary,
+body.atelora-site-refresh .lmsgen-pain-kicker,
+body.atelora-site-refresh .lmsgen-pain-cta,
+body.atelora-site-refresh .lmsgen-pain-number,
+body.atelora-site-refresh .lmsgen-pain-outcome span,
+body.atelora-site-refresh .lmsgen-seo-kicker,
+body.atelora-site-refresh .lmsgen-audit-kicker,
+body.atelora-site-refresh .lmsgen-audit-updated,
+body.atelora-site-refresh .lmsgen-audit-trust-links strong {
+  font-family: "Montserrat", Arial, sans-serif !important;
+}
+
+/* Hero: add breathing room between the four display lines. */
+body.atelora-home-refresh .hp-hero-h1 {
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-weight: 600 !important;
+  line-height: 1.08 !important;
+  letter-spacing: -0.045em !important;
+  text-wrap: balance;
+}
+
+body.atelora-home-refresh .caption.text-color-lemon.font-weight-normal {
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-weight: 600 !important;
+}
+
+body.atelora-home-refresh .hp-hero-p {
+  font-family: "Open Sans", Arial, sans-serif !important;
+  line-height: 1.62 !important;
+}
+
+/* Keep the SEO pain-point module visually consistent with the hero. */
+body.atelora-home-refresh .lmsgen-pain-section-v2,
+body.atelora-home-refresh .lmsgen-pain-item {
+  font-family: "Open Sans", Arial, sans-serif !important;
+}
+
+body.atelora-home-refresh .lmsgen-pain-section-v2 .lmsgen-pain-intro h2 {
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-weight: 600 !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.035em !important;
+}
+
+body.atelora-home-refresh .lmsgen-pain-section-v2 .lmsgen-pain-item h3 {
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-weight: 650 !important;
+  line-height: 1.3 !important;
+  letter-spacing: -0.02em !important;
+}
+
+body.atelora-home-refresh .lmsgen-pain-kicker,
+body.atelora-home-refresh .lmsgen-pain-cta,
+body.atelora-home-refresh .lmsgen-pain-number,
+body.atelora-home-refresh .lmsgen-pain-outcome span {
+  font-family: "Montserrat", Arial, sans-serif !important;
+}
+
+body.atelora-home-refresh .lmsgen-pain-intro > p,
+body.atelora-home-refresh .lmsgen-pain-item-copy > p,
+body.atelora-home-refresh .lmsgen-pain-outcome {
+  font-family: "Open Sans", Arial, sans-serif !important;
+}
+
+@media (max-width: 767px) {
+  body.atelora-home-refresh .hp-hero-h1 {
+    line-height: 1.1 !important;
+    letter-spacing: -0.035em !important;
+  }
+}
