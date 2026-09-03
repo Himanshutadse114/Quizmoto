@@ -67,3 +67,93 @@ services:
     envVars:
       - key: VITE_BACKEND_URL
         value: "https://api.lmsgen.in"
+    routes:
+      # Public marketing pages are physical, crawlable HTML entry points.
+      - type: rewrite
+        source: /solutions
+        destination: /solutions/index.html
+      - type: rewrite
+        source: /about
+        destination: /about/index.html
+      - type: rewrite
+        source: /blog
+        destination: /blog/index.html
+      - type: rewrite
+        source: /contact
+        destination: /contact/index.html
+      - type: rewrite
+        source: /blog/why-scorm-courses-go-unfinished
+        destination: /blog/why-scorm-courses-go-unfinished/index.html
+      - type: rewrite
+        source: /blog/live-quizzes-vs-static-assessments
+        destination: /blog/live-quizzes-vs-static-assessments/index.html
+      - type: rewrite
+        source: /blog/scorm-1-2-vs-scorm-2004
+        destination: /blog/scorm-1-2-vs-scorm-2004/index.html
+      - type: rewrite
+        source: /blog/ai-assisted-authoring-course-timeline
+        destination: /blog/ai-assisted-authoring-course-timeline/index.html
+      - type: rewrite
+        source: /blog/signs-security-awareness-training-needs-refresh
+        destination: /blog/signs-security-awareness-training-needs-refresh/index.html
+      - type: rewrite
+        source: /blog/slide-deck-to-scorm-migration-guide
+        destination: /blog/slide-deck-to-scorm-migration-guide/index.html
+      - type: rewrite
+        source: /blog/quizmoto-as-a-full-learning-platform
+        destination: /blog/quizmoto-as-a-full-learning-platform/index.html
+      - type: rewrite
+        source: /blog/designing-knowledge-checks-that-dont-feel-like-a-test
+        destination: /blog/designing-knowledge-checks-that-dont-feel-like-a-test/index.html
+
+      # Authenticated LMS, learner and live-quiz routes use the preserved React
+      # shell. Keeping these rewrites explicit prevents marketing assets and SEO
+      # pages from being swallowed by an SPA catch-all rule.
+      - type: rewrite
+        source: /login
+        destination: /app.html
+      - type: rewrite
+        source: /login/*
+        destination: /app.html
+      - type: rewrite
+        source: /auth/*
+        destination: /app.html
+      - type: rewrite
+        source: /scorm
+        destination: /app.html
+      - type: rewrite
+        source: /scorm/*
+        destination: /app.html
+      - type: rewrite
+        source: /player/*
+        destination: /app.html
+      - type: rewrite
+        source: /join
+        destination: /app.html
+      - type: rewrite
+        source: /host
+        destination: /app.html
+      - type: rewrite
+        source: /host/*
+        destination: /app.html
+      - type: rewrite
+        source: /dashboard
+        destination: /app.html
+      - type: rewrite
+        source: /create-quiz
+        destination: /app.html
+      - type: rewrite
+        source: /edit-quiz/*
+        destination: /app.html
+      - type: rewrite
+        source: /reports
+        destination: /app.html
+      - type: rewrite
+        source: /learn
+        destination: /app.html
+      - type: rewrite
+        source: /learn/*
+        destination: /app.html
+      - type: rewrite
+        source: /campaign/*
+        destination: /app.html
