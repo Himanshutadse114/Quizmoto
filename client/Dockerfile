@@ -14,8 +14,8 @@ FROM nginx:stable-alpine
 
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Serve the public marketing pages as real HTML documents at their canonical
-# URLs. The authenticated LMS stays a React SPA under /login, /scorm, etc.
+# Serve public marketing pages directly from the prepared /landing output while
+# keeping the authenticated LMS on the preserved React app shell (app.html).
 RUN printf 'server {\n\
     listen 80;\n\
     root /usr/share/nginx/html;\n\
@@ -25,17 +25,23 @@ RUN printf 'server {\n\
     \n\
     if ($host = lmsgen.in) { return 301 https://www.lmsgen.in$request_uri; }\n\
     \n\
-    location = / { try_files /index.html =404; }\n\
-    location = /solutions { try_files /solutions/index.html =404; }\n\
+    location = / { try_files /landing/index.html =404; }\n\
+    location = /solutions { try_files /landing/solutions/index.html =404; }\n\
     location = /solutions/ { return 301 /solutions; }\n\
-    location = /about { try_files /about/index.html =404; }\n\
+    location = /about { try_files /landing/about/index.html =404; }\n\
     location = /about/ { return 301 /about; }\n\
-    location = /blog { try_files /blog/index.html =404; }\n\
+    location = /blog { try_files /landing/blog/index.html =404; }\n\
     location = /blog/ { return 301 /blog; }\n\
     location ~ ^/blog/([a-z0-9-]+)/$ { return 301 /blog/$1; }\n\
-    location ~ ^/blog/([a-z0-9-]+)$ { try_files /blog/$1/index.html =404; }\n\
-    location = /contact { try_files /contact/index.html =404; }\n\
+    location ~ ^/blog/([a-z0-9-]+)$ { try_files /landing/blog/$1.html =404; }\n\
+    location = /contact { try_files /landing/contact/index.html =404; }\n\
     location = /contact/ { return 301 /contact; }\n\
+    \n\
+    location = /signin { return 302 /login; }\n\
+    location = /signin/ { return 302 /login; }\n\
+    location = /login { try_files /app.html =404; }\n\
+    location ^~ /login/ { try_files /app.html =404; }\n\
+    location ^~ /auth/ { try_files /app.html =404; }\n\
     \n\
     location = /landing/index.html { return 301 /; }\n\
     location = /landing/solutions/index.html { return 301 /solutions; }\n\
