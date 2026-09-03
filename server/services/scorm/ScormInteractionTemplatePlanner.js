@@ -67,18 +67,29 @@ function chooseTemplate(slide, index, options = {}, previousTemplate = '') {
     const preferred = clean(options.preferredTemplateId);
     const hints = usableHints(options.interactionTemplateHints);
     const profilePool = PROFILE_POOLS[profile] || PROFILE_POOLS.auto;
-    const allowed = hints.length ? profilePool.filter((id) => hints.includes(id)) : profilePool;
-    const semantic = candidatesForSlide(slide);
+
+    // Hints are ranking signals, never a hard restriction. Some author profiles
+    // intentionally list templates whose dedicated runtime is still being rolled
+    // out; filtering the whole profile to only the surviving hints previously
+    // collapsed Highly Interactive down to two choices and then allowed Classic
+    // flip cards back in as a universal fallback.
+    const hinted = hints.filter((id) => profilePool.includes(id));
+    const allowed = unique([...hinted, ...profilePool]).filter((id) => RUNTIME_READY.has(id));
+    const preferredReady = preferred && RUNTIME_READY.has(preferred) ? preferred : '';
+    const semantic = candidatesForSlide(slide).filter((id) => allowed.includes(id));
+
     const ranked = unique([
-        ...(preferred && RUNTIME_READY.has(preferred) ? [preferred] : []),
+        ...(preferredReady ? [preferredReady] : []),
         ...semantic,
-        ...allowed,
-        'flip_cards_classic'
-    ]).filter((id) => RUNTIME_READY.has(id) && (allowed.includes(id) || id === 'flip_cards_classic' || id === preferred));
+        ...hinted,
+        ...allowed
+    ]).filter((id) => RUNTIME_READY.has(id) && (allowed.includes(id) || id === preferredReady));
 
     const semanticPreferred = ranked.filter((id) => semantic.includes(id));
     const pool = semanticPreferred.length ? semanticPreferred : ranked;
-    if (!pool.length) return 'flip_cards_classic';
+    if (!pool.length) {
+        return profilePool.find((id) => RUNTIME_READY.has(id)) || (profile === 'auto' ? 'flip_cards_classic' : 'interactive_tabs');
+    }
 
     // Avoid a repetitive Storyline-template feel by rotating away from the
     // previous interaction whenever a semantically suitable alternative exists.
