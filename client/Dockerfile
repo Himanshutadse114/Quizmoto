@@ -25,16 +25,16 @@ RUN printf 'server {\n\
     \n\
     if ($host = lmsgen.in) { return 301 https://www.lmsgen.in$request_uri; }\n\
     \n\
-    location = / { try_files /landing/index.html =404; }\n\
-    location = /solutions { try_files /landing/solutions/index.html =404; }\n\
+    location = / { try_files /index.html =404; }\n\
+    location = /solutions { try_files /solutions/index.html =404; }\n\
     location = /solutions/ { return 301 /solutions; }\n\
-    location = /about { try_files /landing/about/index.html =404; }\n\
+    location = /about { try_files /about/index.html =404; }\n\
     location = /about/ { return 301 /about; }\n\
-    location = /blog { try_files /landing/blog/index.html =404; }\n\
+    location = /blog { try_files /blog/index.html =404; }\n\
     location = /blog/ { return 301 /blog; }\n\
     location ~ ^/blog/([a-z0-9-]+)/$ { return 301 /blog/$1; }\n\
-    location ~ ^/blog/([a-z0-9-]+)$ { try_files /landing/blog/$1.html =404; }\n\
-    location = /contact { try_files /landing/contact/index.html =404; }\n\
+    location ~ ^/blog/([a-z0-9-]+)$ { try_files /blog/$1/index.html =404; }\n\
+    location = /contact { try_files /contact/index.html =404; }\n\
     location = /contact/ { return 301 /contact; }\n\
     \n\
     location = /landing/index.html { return 301 /; }\n\
@@ -68,7 +68,7 @@ RUN printf 'server {\n\
     }\n\
     \n\
     location / {\n\
-        try_files $uri $uri/ /index.html;\n\
+        try_files $uri $uri/ /app.html;\n\
     }\n\
 }\n' > /etc/nginx/conf.d/default.conf
 
