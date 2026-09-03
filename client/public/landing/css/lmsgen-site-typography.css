@@ -3,6 +3,19 @@
    for highly readable supporting copy. Keep this marketing layer scoped to
    exported public pages only. */
 
+/* The homepage uses a deliberate dark canvas. Other exported pages use light
+   page designs and dark-green copy. Override the shared anti-FOUC background
+   so About, Solutions, Blog, articles and Contact do not render dark text on
+   the homepage's near-black background. */
+html {
+  background: #ffffff !important;
+}
+
+body.atelora-site-refresh:not(.atelora-home-refresh) {
+  background: #ffffff !important;
+  color: #003f3a !important;
+}
+
 body.atelora-site-refresh {
   font-family: "Open Sans", Arial, sans-serif !important;
 }
