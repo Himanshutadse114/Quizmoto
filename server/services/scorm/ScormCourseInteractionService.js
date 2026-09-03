@@ -1,326 +1,76 @@
-const COURSE_INTERACTION_STYLE_ID = 'quizmoto-course-interactions-v1';
-const COURSE_INTERACTION_SCRIPT_ID = 'quizmoto-course-interactions-script-v1';
+const COURSE_INTERACTION_STYLE_ID = 'quizmoto-course-interactions-v2';
+const COURSE_INTERACTION_SCRIPT_ID = 'quizmoto-course-interactions-script-v2';
 
 function courseInteractionStyle() {
     return `<style id="${COURSE_INTERACTION_STYLE_ID}">
-/* Interactive learning cards: compact click/tap or keyboard reveal cards. */
-.qmx-cards { perspective: 1200px; }
-.qmx-cards.qmx-flip-grid {
-  grid-template-columns: repeat(2,minmax(220px,280px)) !important;
-  gap: 12px !important;
-  max-width: 572px;
-  align-items: stretch;
-  justify-content: start;
-}
-
-/* No-image slides keep the reading content on the left and use the visual column for interactions. */
-.qmx-learning-shell.no-image {
-  width: min(1180px,100%) !important;
-  margin-inline: auto !important;
-}
-.qmx-learning-shell.no-image .qmx-copy {
-  width: 100%;
-  display: grid;
-  grid-template-columns: minmax(0,1.08fr) minmax(420px,.92fr);
-  column-gap: 42px;
-  row-gap: 0;
-  align-items: start;
-  text-align: left;
-}
-.qmx-learning-shell.no-image .qmx-copy > .eyebrow,
-.qmx-learning-shell.no-image .qmx-copy > h2,
-.qmx-learning-shell.no-image .qmx-copy > p {
-  grid-column: 1;
-}
-.qmx-learning-shell.no-image .qmx-copy > .eyebrow { grid-row: 1; }
-.qmx-learning-shell.no-image .qmx-copy > h2 {
-  grid-row: 2;
-  max-width: 720px;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-}
-.qmx-learning-shell.no-image .qmx-copy > p {
-  grid-row: 3;
-  max-width: 650px !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-}
-.qmx-learning-shell.no-image .qmx-cards,
-.qmx-learning-shell.no-image .qmx-process,
-.qmx-learning-shell.no-image .qmx-compare {
-  grid-column: 2;
-  grid-row: 1 / span 3;
-  align-self: center;
-  justify-self: end;
-  width: 100%;
-  margin: 0 !important;
-}
-.qmx-learning-shell.no-image .qmx-cards.qmx-flip-grid {
-  grid-template-columns: repeat(2,minmax(0,1fr)) !important;
-  max-width: 560px;
-  justify-content: stretch !important;
-}
-.qmx-learning-shell.no-image .qmx-step,
-.qmx-learning-shell.no-image .qmx-compare-col,
-.qmx-learning-shell.no-image .qmx-flip-face,
-.qmx-learning-shell.no-image .qmx-flip-back p {
-  text-align: left;
-}
-.qmx-learning-shell.no-image .qmx-card.qmx-flip-card .qmx-flip-number {
-  align-self: flex-start !important;
-}
-
-.qmx-card.qmx-flip-card {
-  min-height: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
-  cursor: pointer;
-  outline: none;
-  perspective: 1200px;
-  align-self: stretch;
-}
-.qmx-flip-inner {
-  position: relative;
-  display: grid;
-  width: 100%;
-  min-height: 112px;
-  transform-style: preserve-3d;
-  transition: transform .55s cubic-bezier(.2,.72,.22,1);
-}
-.qmx-flip-card.is-flipped .qmx-flip-inner { transform: rotateY(180deg); }
-.qmx-flip-face {
-  position: relative;
-  grid-area: 1 / 1;
-  min-height: 112px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 8px;
-  padding: 13px 14px;
-  border: 1px solid var(--paper-3);
-  border-radius: 12px;
-  background: var(--surface);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  box-shadow: 0 7px 18px rgba(15,23,42,.055);
-  overflow: hidden;
-}
-.qmx-flip-front {
-  background: var(--surface);
-  border-color: var(--paper-3);
-}
-.qmx-flip-back {
-  transform: rotateY(180deg);
-  border-color: var(--accent);
-  background: var(--surface);
-}
-.qmx-card.qmx-flip-card .qmx-flip-number {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  align-self: flex-start !important;
-  flex: 0 0 28px !important;
-  width: 28px !important;
-  height: 28px !important;
-  min-width: 28px !important;
-  min-height: 28px !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border-radius: 8px;
-  background: var(--soft);
-  color: var(--primary-dark);
-  font-size: 10px !important;
-  line-height: 1 !important;
-  font-weight: 700 !important;
-  text-align: center;
-}
-.qmx-flip-title {
-  margin-top: 2px;
-  color: var(--ink);
-  font-size: 14px;
-  line-height: 1.25;
-  font-weight: 600;
-}
-.qmx-flip-hint {
-  margin-top: auto;
-  padding-top: 4px;
-  color: var(--primary-dark);
-  font-size: 8.5px;
-  line-height: 1.2;
-  font-weight: 600;
-  letter-spacing: .075em;
-  text-transform: uppercase;
-}
-.qmx-flip-back p {
-  margin: 2px 0 0 !important;
-  color: var(--ink-soft) !important;
-  font-size: 12.5px !important;
-  line-height: 1.42 !important;
-  font-weight: 500 !important;
-}
-.qmx-flip-card:hover .qmx-flip-face,
-.qmx-flip-card:focus-visible .qmx-flip-face {
-  border-color: var(--accent);
-  box-shadow: 0 9px 22px rgba(15,23,42,.085);
-}
-.qmx-flip-card:focus-visible .qmx-flip-face { outline: 2px solid var(--primary); outline-offset: 2px; }
-#next-btn[data-qmx-reveal-locked="true"] { opacity: .38 !important; cursor: not-allowed !important; }
-@media(max-width:980px){
-  .qmx-learning-shell.no-image .qmx-copy{display:block;text-align:left}
-  .qmx-learning-shell.no-image .qmx-copy>h2{max-width:none}
-  .qmx-learning-shell.no-image .qmx-copy>p{max-width:840px!important}
-  .qmx-learning-shell.no-image .qmx-cards,
-  .qmx-learning-shell.no-image .qmx-process,
-  .qmx-learning-shell.no-image .qmx-compare{width:100%;max-width:572px;margin-top:22px!important;justify-self:start}
-}
-@media(max-width:760px){
-  .qmx-cards.qmx-flip-grid{grid-template-columns:minmax(0,1fr) !important;max-width:420px}
-  .qmx-learning-shell.no-image .qmx-cards.qmx-flip-grid{grid-template-columns:minmax(0,1fr) !important;max-width:420px}
-}
-@media(max-width:620px){
-  .qmx-learning-shell.no-image{width:100%!important}
-  .qmx-flip-inner,.qmx-flip-face{min-height:106px}
-  .qmx-flip-face{padding:12px 13px}
-  .qmx-card.qmx-flip-card .qmx-flip-number{width:26px!important;height:26px!important;min-width:26px!important;min-height:26px!important;flex-basis:26px!important}
-}
-@media(prefers-reduced-motion:reduce){
-  .qmx-flip-inner{transition:none!important}
-}
+.qmx-cards{perspective:1200px}.qmx-cards.qmx-flip-grid{grid-template-columns:repeat(2,minmax(220px,280px))!important;gap:12px!important;max-width:572px;align-items:stretch;justify-content:start}
+.qmx-card.qmx-flip-card{min-height:0!important;padding:0!important;border:0!important;background:transparent!important;cursor:pointer;outline:none;perspective:1200px;align-self:stretch}.qmx-flip-inner{position:relative;display:grid;width:100%;min-height:112px;transform-style:preserve-3d;transition:transform .55s cubic-bezier(.2,.72,.22,1)}.qmx-flip-card.is-flipped .qmx-flip-inner{transform:rotateY(180deg)}.qmx-flip-face{position:relative;grid-area:1/1;min-height:112px;display:flex;flex-direction:column;justify-content:flex-start;gap:8px;padding:13px 14px;border:1px solid var(--paper-3);border-radius:12px;background:var(--surface);backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 7px 18px rgba(15,23,42,.055);overflow:hidden}.qmx-flip-back{transform:rotateY(180deg);border-color:var(--accent)}.qmx-flip-number,.qmx-interaction-index{display:inline-flex;align-items:center;justify-content:center;flex:0 0 28px;width:28px;height:28px;border-radius:8px;background:var(--soft);color:var(--primary-dark);font-size:10px;line-height:1;font-weight:700}.qmx-flip-title{margin-top:2px;color:var(--ink);font-size:14px;line-height:1.25;font-weight:600}.qmx-flip-hint{margin-top:auto;padding-top:4px;color:var(--primary-dark);font-size:8.5px;line-height:1.2;font-weight:600;letter-spacing:.075em;text-transform:uppercase}.qmx-flip-back p{margin:2px 0 0!important;color:var(--ink-soft)!important;font-size:12.5px!important;line-height:1.42!important;font-weight:500!important}.qmx-flip-card:hover .qmx-flip-face,.qmx-flip-card:focus-visible .qmx-flip-face{border-color:var(--accent);box-shadow:0 9px 22px rgba(15,23,42,.085)}.qmx-flip-card:focus-visible .qmx-flip-face{outline:2px solid var(--primary);outline-offset:2px}
+.qmx-v7-runtime{width:100%;margin-top:18px}.qmx-runtime-prompt{margin:0 0 10px;color:var(--ink-soft);font-size:10px;font-weight:650}.qmx-runtime-tabs{border:1px solid var(--paper-3);border-radius:15px;overflow:hidden;background:var(--surface)}.qmx-runtime-tablist{display:flex;gap:0;overflow:auto;border-bottom:1px solid var(--paper-3);background:var(--soft)}.qmx-runtime-tab{min-width:110px;padding:11px 12px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--ink-soft);font-size:10px;font-weight:750;cursor:pointer}.qmx-runtime-tab[aria-selected="true"]{background:var(--surface);border-bottom-color:var(--accent);color:var(--primary-dark)}.qmx-runtime-tab:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}.qmx-runtime-panel{min-height:112px;padding:18px;display:grid;grid-template-columns:34px 1fr;gap:11px;align-items:start}.qmx-runtime-panel h4{margin:1px 0 5px;color:var(--ink);font-size:14px}.qmx-runtime-panel p{grid-column:2;margin:0;color:var(--ink-soft);font-size:12.5px;line-height:1.5}
+.qmx-runtime-accordion{display:grid;gap:8px}.qmx-runtime-accordion-item{border:1px solid var(--paper-3);border-radius:12px;background:var(--surface);overflow:hidden}.qmx-runtime-accordion-item.is-open{border-color:var(--accent)}.qmx-runtime-accordion-button{width:100%;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:0;background:transparent;color:var(--ink);font-size:11.5px;font-weight:700;text-align:left;cursor:pointer}.qmx-runtime-accordion-button:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}.qmx-runtime-accordion-copy{padding:0 14px 13px 52px;color:var(--ink-soft);font-size:12px;line-height:1.5}
+.qmx-runtime-process{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding-top:4px}.qmx-runtime-process:before{content:"";position:absolute;left:8%;right:8%;top:20px;height:2px;background:var(--paper-3)}.qmx-runtime-step{position:relative;z-index:1;padding:0 4px 9px;border:0;background:transparent;color:var(--ink-soft);cursor:pointer;text-align:center}.qmx-runtime-step span{width:34px;height:34px;margin:0 auto 7px;display:grid;place-items:center;border-radius:50%;background:var(--surface);border:2px solid var(--paper-3);font-size:10px;font-weight:800}.qmx-runtime-step strong{display:block;font-size:9px;line-height:1.25}.qmx-runtime-step[aria-selected="true"] span{border-color:var(--accent);background:var(--soft);color:var(--primary-dark)}.qmx-runtime-step-copy{grid-column:1/-1;padding:13px 14px;border:1px solid var(--paper-3);border-radius:12px;background:var(--surface)}.qmx-runtime-step-copy strong{font-size:11px;color:var(--ink)}.qmx-runtime-step-copy p{margin:4px 0 0;color:var(--ink-soft);font-size:12px;line-height:1.5}
+.qmx-runtime-scenario{display:grid;gap:10px}.qmx-runtime-scenario-context{padding:13px 14px;border:1px solid var(--paper-3);border-radius:12px;background:var(--surface);color:var(--ink-soft);font-size:12px;line-height:1.5}.qmx-runtime-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.qmx-runtime-choice{padding:11px 12px;border:1px solid var(--paper-3);border-radius:11px;background:var(--surface);color:var(--ink);font-size:10.5px;font-weight:700;text-align:left;cursor:pointer}.qmx-runtime-choice:hover,.qmx-runtime-choice:focus-visible{border-color:var(--accent);outline:none}.qmx-runtime-choice.is-selected{background:var(--soft);border-color:var(--accent);color:var(--primary-dark)}.qmx-runtime-feedback{padding:10px 12px;border:1px solid var(--accent);border-radius:11px;background:var(--soft);color:var(--ink-soft);font-size:11px;line-height:1.45}
+.qmx-runtime-progress{margin-top:8px;color:var(--ink-soft);font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}#next-btn[data-qmx-reveal-locked="true"]{opacity:.38!important;cursor:not-allowed!important}
+.qmx-learning-shell.no-image{width:min(1180px,100%)!important;margin-inline:auto!important}.qmx-learning-shell.no-image .qmx-copy{width:100%;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(420px,.92fr);column-gap:42px;row-gap:0;align-items:start;text-align:left}.qmx-learning-shell.no-image .qmx-copy>.eyebrow,.qmx-learning-shell.no-image .qmx-copy>h2,.qmx-learning-shell.no-image .qmx-copy>p{grid-column:1}.qmx-learning-shell.no-image .qmx-copy>.eyebrow{grid-row:1}.qmx-learning-shell.no-image .qmx-copy>h2{grid-row:2;max-width:720px;margin-left:0!important;margin-right:0!important}.qmx-learning-shell.no-image .qmx-copy>p{grid-row:3;max-width:650px!important;margin-left:0!important;margin-right:0!important}.qmx-learning-shell.no-image .qmx-v7-runtime,.qmx-learning-shell.no-image .qmx-cards,.qmx-learning-shell.no-image .qmx-process,.qmx-learning-shell.no-image .qmx-compare{grid-column:2;grid-row:1/span 3;align-self:center;justify-self:end;width:100%;margin:0!important}
+@media(max-width:980px){.qmx-learning-shell.no-image .qmx-copy{display:block;text-align:left}.qmx-learning-shell.no-image .qmx-v7-runtime,.qmx-learning-shell.no-image .qmx-cards,.qmx-learning-shell.no-image .qmx-process,.qmx-learning-shell.no-image .qmx-compare{width:100%;max-width:620px;margin-top:22px!important;justify-self:start}}
+@media(max-width:760px){.qmx-cards.qmx-flip-grid{grid-template-columns:minmax(0,1fr)!important;max-width:420px}.qmx-runtime-process{grid-template-columns:repeat(2,minmax(0,1fr))}.qmx-runtime-process:before{display:none}.qmx-runtime-choice-grid{grid-template-columns:1fr}.qmx-runtime-tablist{display:grid;grid-template-columns:1fr}.qmx-runtime-tab{min-width:0;text-align:left;border-bottom:1px solid var(--paper-3);border-left:3px solid transparent}.qmx-runtime-tab[aria-selected="true"]{border-left-color:var(--accent);border-bottom-color:var(--paper-3)}}
+@media(max-width:620px){.qmx-flip-inner,.qmx-flip-face{min-height:106px}.qmx-flip-face{padding:12px 13px}.qmx-runtime-panel{padding:14px}.qmx-runtime-accordion-copy{padding-left:14px}}
+@media(prefers-reduced-motion:reduce){.qmx-flip-inner{transition:none!important}}
 </style>`;
 }
 
 function courseInteractionScript() {
     return `<script id="${COURSE_INTERACTION_SCRIPT_ID}">
 (function(){
-  function clean(value){ return String(value || '').replace(/\\s+/g,' ').trim(); }
-
-  function makeNode(tag, className, text){
-    var node = document.createElement(tag);
-    if (className) node.className = className;
-    if (text) node.textContent = text;
-    return node;
+  function clean(value){return String(value||'').replace(/\\s+/g,' ').trim()}
+  function node(tag,className,text){var el=document.createElement(tag);if(className)el.className=className;if(text!==undefined&&text!==null)el.textContent=text;return el}
+  function points(slide){return Array.isArray(slide&&slide.keyPoints)?slide.keyPoints.map(clean).filter(Boolean).slice(0,6):[]}
+  function learningSlides(){return Array.prototype.slice.call(document.querySelectorAll('.slide[data-kind="learning"]'))}
+  function dataSlides(){var data=window.__quizmotoData||{};return Array.isArray(data.slides)?data.slides:[]}
+  function existingTarget(slide){return slide.querySelector('.qmx-cards,.qmx-process,.qmx-timeline,.qmx-compare,.qmx-hub-list,.hub-list,.qmx-hub,.qmx-cycle,.qmx-matrix')}
+  function templateFor(s,index){
+    var explicit=clean(s&&s.interaction&&s.interaction.templateId);if(explicit)return explicit;
+    var type=clean(s&&s.interaction&&s.interaction.type).toLowerCase();var layout=clean(s&&s.layout).toLowerCase();var screen=clean(s&&s.screenType).toLowerCase();
+    if(screen==='scenario'||type==='decision_explore')return 'scenario_decision';
+    if(layout==='process'||type==='step_explore')return 'process_tabs';
+    if(layout==='timeline')return 'interactive_timeline';
+    if(layout==='hub'||type==='hotspot_explore')return index%2===0?'interactive_tabs':'accordion';
+    if(layout==='comparison'||type==='compare_reveal')return 'accordion';
+    if(type==='focus_reveal')return 'accordion';
+    return 'flip_cards_classic';
   }
+  function promptFor(s,fallback){return clean(s&&s.interaction&&s.interaction.prompt)||fallback}
+  function makeRuntime(slide,s,template){var old=existingTarget(slide);if(!old)return null;var host=node('div','qmx-v7-runtime');host.setAttribute('data-qmx-template',template);old.parentNode.replaceChild(host,old);return host}
+  function markVisited(control){control.setAttribute('data-qmx-visited','true')}
+  function progress(host,total){var seen=host.querySelectorAll('[data-qmx-required="true"][data-qmx-visited="true"]').length;var out=host.querySelector('.qmx-runtime-progress');if(out)out.textContent=seen+' / '+total+' explored';host.setAttribute('data-qmx-complete',seen>=total?'true':'false');syncNextGate()}
+  function addPrompt(host,text){if(text)host.appendChild(node('p','qmx-runtime-prompt',text))}
 
-  function upgradeCard(card, index){
-    if (!card || card.getAttribute('data-qmx-flip-ready') === 'true') return;
-    var numberNode = card.querySelector('span');
-    var copyNode = card.querySelector('p');
-    var number = clean(numberNode && numberNode.textContent) || String(index + 1).padStart(2,'0');
-    var copy = clean(copyNode && copyNode.textContent);
-    if (!copy) return;
+  function buildTabs(slide,s,template){var list=points(s);if(list.length<2)return false;var host=makeRuntime(slide,s,template);if(!host)return false;addPrompt(host,promptFor(s,'Explore each point before continuing.'));var shell=node('div','qmx-runtime-tabs');var tabs=node('div','qmx-runtime-tablist');tabs.setAttribute('role','tablist');var panel=node('div','qmx-runtime-panel');panel.setAttribute('role','tabpanel');var progressNode=node('div','qmx-runtime-progress','0 / '+list.length+' explored');host.appendChild(shell);shell.appendChild(tabs);shell.appendChild(panel);host.appendChild(progressNode);
+    function show(index){var buttons=tabs.querySelectorAll('.qmx-runtime-tab');Array.prototype.forEach.call(buttons,function(btn,i){btn.setAttribute('aria-selected',i===index?'true':'false');btn.tabIndex=i===index?0:-1});var label='Point '+String(index+1).padStart(2,'0');panel.textContent='';panel.appendChild(node('span','qmx-interaction-index',String(index+1).padStart(2,'0')));var wrap=node('div');wrap.appendChild(node('h4','',label));wrap.appendChild(node('p','',list[index]));panel.appendChild(wrap);markVisited(buttons[index]);progress(host,list.length)}
+    list.forEach(function(item,index){var btn=node('button','qmx-runtime-tab','Point '+String(index+1).padStart(2,'0'));btn.type='button';btn.setAttribute('role','tab');btn.setAttribute('data-qmx-required','true');btn.addEventListener('click',function(){show(index)});btn.addEventListener('keydown',function(e){if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft')return;e.preventDefault();var next=(index+(e.key==='ArrowRight'?1:-1)+list.length)%list.length;tabs.querySelectorAll('.qmx-runtime-tab')[next].focus();show(next)});tabs.appendChild(btn)});show(0);return true}
 
-    card.textContent = '';
-    card.classList.add('qmx-flip-card');
-    card.setAttribute('data-qmx-flip-ready','true');
-    card.setAttribute('data-qmx-revealed','false');
-    card.setAttribute('role','button');
-    card.setAttribute('tabindex','0');
-    card.setAttribute('aria-expanded','false');
-    card.setAttribute('aria-label','Reveal key point ' + number);
+  function buildAccordion(slide,s){var list=points(s);if(list.length<2)return false;var host=makeRuntime(slide,s,'accordion');if(!host)return false;addPrompt(host,promptFor(s,'Open each section to reveal the practical detail.'));var shell=node('div','qmx-runtime-accordion');host.appendChild(shell);host.appendChild(node('div','qmx-runtime-progress','0 / '+list.length+' explored'));
+    list.forEach(function(item,index){var row=node('div','qmx-runtime-accordion-item');var btn=node('button','qmx-runtime-accordion-button');btn.type='button';btn.setAttribute('aria-expanded','false');btn.setAttribute('data-qmx-required','true');btn.appendChild(node('span','',String(index+1).padStart(2,'0')+'  Learning point'));btn.appendChild(node('span','qmx-accordion-sign','+'));var copy=node('div','qmx-runtime-accordion-copy',item);copy.hidden=true;btn.addEventListener('click',function(){var open=copy.hidden;copy.hidden=!open;row.classList.toggle('is-open',open);btn.setAttribute('aria-expanded',open?'true':'false');btn.querySelector('.qmx-accordion-sign').textContent=open?'−':'+';if(open)markVisited(btn);progress(host,list.length)});row.appendChild(btn);row.appendChild(copy);shell.appendChild(row)});progress(host,list.length);return true}
 
-    var inner = makeNode('div','qmx-flip-inner');
-    var front = makeNode('div','qmx-flip-face qmx-flip-front');
-    var back = makeNode('div','qmx-flip-face qmx-flip-back');
+  function buildProcess(slide,s,template){var list=points(s);if(list.length<2)return false;var host=makeRuntime(slide,s,template);if(!host)return false;addPrompt(host,promptFor(s,'Explore every stage to understand the sequence.'));var shell=node('div','qmx-runtime-process');var copy=node('div','qmx-runtime-step-copy');host.appendChild(shell);host.appendChild(node('div','qmx-runtime-progress','0 / '+list.length+' explored'));
+    function show(index){var buttons=shell.querySelectorAll('.qmx-runtime-step');Array.prototype.forEach.call(buttons,function(btn,i){btn.setAttribute('aria-selected',i===index?'true':'false')});copy.textContent='';copy.appendChild(node('strong','',template==='interactive_timeline'?'Milestone '+(index+1):'Step '+(index+1)));copy.appendChild(node('p','',list[index]));markVisited(buttons[index]);progress(host,list.length)}
+    list.slice(0,4).forEach(function(item,index){var btn=node('button','qmx-runtime-step');btn.type='button';btn.setAttribute('data-qmx-required','true');btn.appendChild(node('span','',String(index+1)));btn.appendChild(node('strong','',template==='interactive_timeline'?'Milestone':'Step'));btn.addEventListener('click',function(){show(index)});shell.appendChild(btn)});shell.appendChild(copy);show(0);return true}
 
-    front.appendChild(makeNode('span','qmx-flip-number',number));
-    front.appendChild(makeNode('div','qmx-flip-title','Key point ' + number));
-    front.appendChild(makeNode('div','qmx-flip-hint','Click to reveal'));
+  function buildScenario(slide,s){var list=points(s);if(list.length<2)return false;var host=makeRuntime(slide,s,'scenario_decision');if(!host)return false;addPrompt(host,promptFor(s,'Choose the response you would take.'));var shell=node('div','qmx-runtime-scenario');var context=node('div','qmx-runtime-scenario-context',clean(s&&s.revealText)||clean(s&&s.introText)||'Consider the situation before choosing.');var choices=node('div','qmx-runtime-choice-grid');var feedback=node('div','qmx-runtime-feedback');feedback.hidden=true;shell.appendChild(context);shell.appendChild(choices);shell.appendChild(feedback);host.appendChild(shell);host.appendChild(node('div','qmx-runtime-progress','Choose one response to continue'));
+    list.slice(0,4).forEach(function(item,index){var btn=node('button','qmx-runtime-choice',item);btn.type='button';btn.setAttribute('data-qmx-required','true');btn.addEventListener('click',function(){Array.prototype.forEach.call(choices.children,function(other){other.classList.remove('is-selected')});btn.classList.add('is-selected');markVisited(btn);host.setAttribute('data-qmx-complete','true');feedback.hidden=false;feedback.textContent='Decision recorded. Compare your reasoning with the course guidance before continuing.';var out=host.querySelector('.qmx-runtime-progress');if(out)out.textContent='Decision completed';syncNextGate()});choices.appendChild(btn)});host.setAttribute('data-qmx-complete','false');syncNextGate();return true}
 
-    back.appendChild(makeNode('span','qmx-flip-number',number));
-    back.appendChild(makeNode('p','',copy));
-    back.appendChild(makeNode('div','qmx-flip-hint','Click to flip back'));
-
-    inner.appendChild(front);
-    inner.appendChild(back);
-    card.appendChild(inner);
-  }
-
-  function upgradeCards(){
-    Array.prototype.forEach.call(document.querySelectorAll('.slide[data-kind="learning"] .qmx-cards'), function(grid){
-      var cards = grid.querySelectorAll('.qmx-card');
-      if (!cards.length) return;
-      if (!grid.classList.contains('qmx-flip-grid')) grid.classList.add('qmx-flip-grid');
-      Array.prototype.forEach.call(cards, upgradeCard);
-    });
-  }
-
-  function activeSlide(){ return document.querySelector('.slide.active'); }
-
-  function unrevealedCards(slide){
-    if (!slide) return [];
-    return Array.prototype.filter.call(slide.querySelectorAll('.qmx-flip-card'), function(card){
-      return card.getAttribute('data-qmx-revealed') !== 'true';
-    });
-  }
-
-  function syncNextGate(){
-    var next = document.getElementById('next-btn');
-    if (!next) return;
-    var slide = activeSlide();
-    var cards = slide ? slide.querySelectorAll('.qmx-flip-card') : [];
-    var locked = cards.length > 0 && unrevealedCards(slide).length > 0;
-    if (locked) {
-      next.disabled = true;
-      next.setAttribute('data-qmx-reveal-locked','true');
-      next.title = 'Reveal every key point before continuing';
-      next.setAttribute('aria-label','Reveal every key point before continuing');
-    } else {
-      if (next.getAttribute('data-qmx-reveal-locked') === 'true') next.disabled = false;
-      next.removeAttribute('data-qmx-reveal-locked');
-      next.removeAttribute('title');
-      next.removeAttribute('aria-label');
-    }
-  }
-
-  function toggleCard(card){
-    if (!card) return;
-    var flipped = !card.classList.contains('is-flipped');
-    card.classList.toggle('is-flipped', flipped);
-    if (flipped) card.setAttribute('data-qmx-revealed','true');
-    card.setAttribute('aria-expanded', flipped ? 'true' : 'false');
-    card.setAttribute('aria-label', (flipped ? 'Hide' : 'Reveal') + ' key point');
-    syncNextGate();
-  }
-
-  document.addEventListener('click', function(event){
-    var card = event.target && event.target.closest ? event.target.closest('.qmx-flip-card') : null;
-    if (card) toggleCard(card);
-  }, false);
-
-  document.addEventListener('keydown', function(event){
-    var card = event.target && event.target.closest ? event.target.closest('.qmx-flip-card') : null;
-    if (!card || (event.key !== 'Enter' && event.key !== ' ')) return;
-    event.preventDefault();
-    toggleCard(card);
-  }, false);
-
-  function blockLockedNext(event){
-    var next = event.target && event.target.closest ? event.target.closest('#next-btn') : null;
-    if (!next) return;
-    var slide = activeSlide();
-    if (!unrevealedCards(slide).length) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    syncNextGate();
-  }
-
-  function syncAfterNavigation(event){
-    var nav = event.target && event.target.closest ? event.target.closest('#next-btn,#prev-btn') : null;
-    if (!nav) return;
-    setTimeout(syncNextGate, 0);
-  }
-
-  function install(){
-    upgradeCards();
-    syncNextGate();
-    document.addEventListener('click', blockLockedNext, true);
-    document.addEventListener('click', syncAfterNavigation, false);
-    window.addEventListener('load', function(){ setTimeout(syncNextGate, 0); });
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
-  else install();
+  function upgradeCard(card,index){if(!card||card.getAttribute('data-qmx-flip-ready')==='true')return;var numberNode=card.querySelector('span');var copyNode=card.querySelector('p');var number=clean(numberNode&&numberNode.textContent)||String(index+1).padStart(2,'0');var copy=clean(copyNode&&copyNode.textContent);if(!copy)return;card.textContent='';card.classList.add('qmx-flip-card');card.setAttribute('data-qmx-flip-ready','true');card.setAttribute('data-qmx-revealed','false');card.setAttribute('role','button');card.setAttribute('tabindex','0');card.setAttribute('aria-expanded','false');card.setAttribute('aria-label','Reveal key point '+number);var inner=node('div','qmx-flip-inner');var front=node('div','qmx-flip-face qmx-flip-front');var back=node('div','qmx-flip-face qmx-flip-back');front.appendChild(node('span','qmx-flip-number',number));front.appendChild(node('div','qmx-flip-title','Key point '+number));front.appendChild(node('div','qmx-flip-hint','Click to reveal'));back.appendChild(node('span','qmx-flip-number',number));back.appendChild(node('p','',copy));back.appendChild(node('div','qmx-flip-hint','Click to flip back'));inner.appendChild(front);inner.appendChild(back);card.appendChild(inner)}
+  function upgradeFlipCards(slide){Array.prototype.forEach.call(slide.querySelectorAll('.qmx-cards'),function(grid){var cards=grid.querySelectorAll('.qmx-card');if(!cards.length)return;if(!grid.classList.contains('qmx-flip-grid'))grid.classList.add('qmx-flip-grid');Array.prototype.forEach.call(cards,upgradeCard)})}
+  function activeSlide(){return document.querySelector('.slide.active')}
+  function unrevealedCards(slide){if(!slide)return[];return Array.prototype.filter.call(slide.querySelectorAll('.qmx-flip-card'),function(card){return card.getAttribute('data-qmx-revealed')!=='true'})}
+  function runtimeIncomplete(slide){if(!slide)return false;var runtime=slide.querySelector('.qmx-v7-runtime');return !!runtime&&runtime.getAttribute('data-qmx-complete')==='false'}
+  function syncNextGate(){var next=document.getElementById('next-btn');if(!next)return;var slide=activeSlide();var locked=unrevealedCards(slide).length>0||runtimeIncomplete(slide);if(locked){next.disabled=true;next.setAttribute('data-qmx-reveal-locked','true');next.title='Complete the interaction before continuing';next.setAttribute('aria-label','Complete the interaction before continuing')}else{if(next.getAttribute('data-qmx-reveal-locked')==='true')next.disabled=false;next.removeAttribute('data-qmx-reveal-locked');next.removeAttribute('title');next.removeAttribute('aria-label')}}
+  function toggleCard(card){if(!card)return;var flipped=!card.classList.contains('is-flipped');card.classList.toggle('is-flipped',flipped);if(flipped)card.setAttribute('data-qmx-revealed','true');card.setAttribute('aria-expanded',flipped?'true':'false');card.setAttribute('aria-label',(flipped?'Hide':'Reveal')+' key point');syncNextGate()}
+  document.addEventListener('click',function(event){var card=event.target&&event.target.closest?event.target.closest('.qmx-flip-card'):null;if(card)toggleCard(card)},false)
+  document.addEventListener('keydown',function(event){var card=event.target&&event.target.closest?event.target.closest('.qmx-flip-card'):null;if(!card||(event.key!=='Enter'&&event.key!==' '))return;event.preventDefault();toggleCard(card)},false)
+  document.addEventListener('click',function(event){var next=event.target&&event.target.closest?event.target.closest('#next-btn'):null;if(!next)return;var slide=activeSlide();if(!unrevealedCards(slide).length&&!runtimeIncomplete(slide))return;event.preventDefault();event.stopImmediatePropagation();syncNextGate()},true)
+  document.addEventListener('click',function(event){var nav=event.target&&event.target.closest?event.target.closest('#next-btn,#prev-btn'):null;if(nav)setTimeout(syncNextGate,0)},false)
+  function install(){var nodes=learningSlides();var data=dataSlides();nodes.forEach(function(slide,index){var s=data[index]||{};var template=templateFor(s,index);var built=false;if(template==='interactive_tabs')built=buildTabs(slide,s,template);else if(template==='accordion')built=buildAccordion(slide,s);else if(template==='process_tabs'||template==='interactive_timeline')built=buildProcess(slide,s,template);else if(template==='scenario_decision')built=buildScenario(slide,s);if(!built)upgradeFlipCards(slide)});syncNextGate();window.addEventListener('load',function(){setTimeout(syncNextGate,0)})}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
 })();
 </script>`;
 }
