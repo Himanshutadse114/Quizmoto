@@ -1,0 +1,73 @@
+/* Course author theme parity. Loaded after the final light authority and V7 styles. */
+html body .scorm-editorial.scorm-theme-light .scorm-course-generator,
+html body .scorm-editorial.scorm-theme-light .scorm-course-generator-panel,
+html body .scorm-editorial.scorm-theme-light .scorm-course-generator-note,
+html body .scorm-editorial.scorm-theme-light .scorm-panel {
+  color: var(--scorm-ink) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-generator .text-white,
+html body .scorm-editorial.scorm-theme-light .scorm-panel .text-white {
+  color: var(--scorm-ink) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-generator .text-slate-300,
+html body .scorm-editorial.scorm-theme-light .scorm-panel .text-slate-300,
+html body .scorm-editorial.scorm-theme-light .scorm-course-generator .text-slate-400,
+html body .scorm-editorial.scorm-theme-light .scorm-panel .text-slate-400 {
+  color: var(--scorm-ink-soft) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-generator .text-slate-500,
+html body .scorm-editorial.scorm-theme-light .scorm-panel .text-slate-500,
+html body .scorm-editorial.scorm-theme-light .scorm-course-generator .text-slate-600,
+html body .scorm-editorial.scorm-theme-light .scorm-panel .text-slate-600 {
+  color: var(--scorm-muted) !important;
+}
+
+/* AuthorVisual selected slide formerly used a fixed navy background. */
+html body .scorm-editorial.scorm-theme-light .scorm-panel .bg-\[\#122541\] {
+  background: var(--scorm-accent-soft) !important;
+  border-color: var(--scorm-accent) !important;
+  color: var(--scorm-ink) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-panel .hover\:bg-\[\#0d1928\]:hover {
+  background: var(--scorm-surface-muted) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-panel .bg-white\/\[\.03\],
+html body .scorm-editorial.scorm-theme-light .scorm-panel .bg-white\/\[\.025\],
+html body .scorm-editorial.scorm-theme-light .scorm-panel .bg-white\/\[\.04\] {
+  background: var(--scorm-surface-soft) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-panel .border-white\/10,
+html body .scorm-editorial.scorm-theme-light .scorm-panel .border-white\/\[\.07\],
+html body .scorm-editorial.scorm-theme-light .scorm-panel .border-white\/\[\.05\] {
+  border-color: var(--scorm-line) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-panel textarea,
+html body .scorm-editorial.scorm-theme-light .scorm-panel input,
+html body .scorm-editorial.scorm-theme-light .scorm-course-generator textarea,
+html body .scorm-editorial.scorm-theme-light .scorm-course-generator input {
+  background: var(--scorm-surface) !important;
+  border-color: var(--scorm-line-strong) !important;
+  color: var(--scorm-ink) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-panel textarea::placeholder,
+html body .scorm-editorial.scorm-theme-light .scorm-panel input::placeholder,
+html body .scorm-editorial.scorm-theme-light .scorm-course-generator textarea::placeholder,
+html body .scorm-editorial.scorm-theme-light .scorm-course-generator input::placeholder {
+  color: var(--scorm-subtle) !important;
+}
+
+/* Keep status messages readable without importing dark-only text colours. */
+html body .scorm-editorial.scorm-theme-light .scorm-panel + .border-emerald-500\/30,
+html body .scorm-editorial.scorm-theme-light .border-emerald-500\/30 {
+  color: var(--scorm-accent-strong) !important;
+}
+
+/* Dark mode intentionally relies on the existing SCORM tokens and original utility classes. */
