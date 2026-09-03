@@ -5,6 +5,14 @@ import { fileURLToPath } from 'node:url';
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const distRoot = path.resolve(scriptDir, '..', 'dist');
 const landingRoot = path.join(distRoot, 'landing');
+const PREVIEW_IMAGE = 'https://www.lmsgen.in/atelora-marketing/hero-dashboard.png';
+
+function upsertMeta(html, attribute, key, content) {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`<meta\\s+[^>]*${attribute}=["']${escaped}["'][^>]*>`, 'i');
+  const tag = `<meta ${attribute}="${key}" content="${content}" />`;
+  return pattern.test(html) ? html.replace(pattern, tag) : html.replace(/<\/head>/i, `  ${tag}\n</head>`);
+}
 
 async function htmlFiles(root) {
   const entries = await fs.readdir(root, { withFileTypes: true });
@@ -24,6 +32,8 @@ for (const file of files) {
     .replace(/quizmoto-frontend\.onrender\.com/gi, 'www.lmsgen.in')
     .replace(/\bAtelora\b/g, 'LMSGEN')
     .replace(/\bATELORA\b/g, 'LMSGEN');
+  html = upsertMeta(html, 'property', 'og:image', PREVIEW_IMAGE);
+  html = upsertMeta(html, 'name', 'twitter:image', PREVIEW_IMAGE);
   await fs.writeFile(file, html, 'utf8');
 }
 
@@ -43,6 +53,8 @@ const checks = [
   [home.includes('id="lmsgen-pain-title"'), 'Homepage pain-point section was not generated.'],
   [home.includes('id="lmsgen-faq-title"'), 'Homepage FAQ section was not generated.'],
   [home.includes('AI-powered LMS for SCORM course creation, delivery and learner tracking.'), 'Homepage SEO hero was not generated.'],
+  [home.includes(`property="og:image" content="${PREVIEW_IMAGE}"`), 'Homepage Open Graph image is not canonical.'],
+  [home.includes(`name="twitter:image" content="${PREVIEW_IMAGE}"`), 'Homepage Twitter image is not canonical.'],
   [solutions.includes('<link rel="canonical" href="https://www.lmsgen.in/solutions"'), 'Solutions canonical is missing or incorrect.'],
   [solutions.includes('id="lmsgen-audience-title"'), 'Solutions audience section was not generated.'],
   [!home.includes('quizmoto-frontend.onrender.com'), 'Old Render frontend domain remains in homepage HTML.'],
