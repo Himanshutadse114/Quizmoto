@@ -7,13 +7,6 @@ const distRoot = path.resolve(scriptDir, '..', 'dist');
 const landingRoot = path.join(distRoot, 'landing');
 const PREVIEW_IMAGE = 'https://www.lmsgen.in/atelora-marketing/hero-dashboard.png';
 
-function upsertMeta(html, attribute, key, content) {
-  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const pattern = new RegExp(`<meta\\s+[^>]*${attribute}=["']${escaped}["'][^>]*>`, 'i');
-  const tag = `<meta ${attribute}="${key}" content="${content}" />`;
-  return pattern.test(html) ? html.replace(pattern, tag) : html.replace(/<\/head>/i, `  ${tag}\n</head>`);
-}
-
 async function htmlFiles(root) {
   const entries = await fs.readdir(root, { withFileTypes: true });
   const files = [];
@@ -25,42 +18,90 @@ async function htmlFiles(root) {
   return files;
 }
 
-const files = await htmlFiles(landingRoot);
-for (const file of files) {
-  let html = await fs.readFile(file, 'utf8');
-  html = html
-    .replace(/quizmoto-frontend\.onrender\.com/gi, 'www.lmsgen.in')
-    .replace(/\bAtelora\b/g, 'LMSGEN')
-    .replace(/\bATELORA\b/g, 'LMSGEN');
-  html = upsertMeta(html, 'property', 'og:image', PREVIEW_IMAGE);
-  html = upsertMeta(html, 'name', 'twitter:image', PREVIEW_IMAGE);
-  await fs.writeFile(file, html, 'utf8');
+function metaContent(html, attribute, key) {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const first = new RegExp(`<meta\\s+[^>]*${attribute}=["']${escaped}["'][^>]*content=["']([^"']*)["'][^>]*>`, 'i');
+  const second = new RegExp(`<meta\\s+[^>]*content=["']([^"']*)["'][^>]*${attribute}=["']${escaped}["'][^>]*>`, 'i');
+  return (html.match(first) || html.match(second) || [])[1] || '';
 }
 
-// Marketing HTML is served at clean routes such as /solutions and /about, but
-// its CSS, JS and images still live under /landing/. Keep those assets crawlable
-// so search engines can render the page correctly. Duplicate HTML URLs are
-// canonicalised/redirected by Nginx instead of blocking the whole asset tree.
-const robots = `User-agent: *\nAllow: /\nDisallow: /login\nDisallow: /scorm/\nDisallow: /campaign/\nDisallow: /learn/\nDisallow: /player/\nDisallow: /host/\nDisallow: /join\n\nSitemap: https://www.lmsgen.in/sitemap.xml\n`;
-await fs.writeFile(path.join(distRoot, 'robots.txt'), robots, 'utf8');
+function visibleWordCount(html) {
+  const withoutCode = html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<svg[\s\S]*?<\/svg>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&[a-z0-9#]+;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return withoutCode ? withoutCode.split(' ').filter(Boolean).length : 0;
+}
 
-const home = await fs.readFile(path.join(landingRoot, 'index.html'), 'utf8');
-const solutions = await fs.readFile(path.join(landingRoot, 'solutions', 'index.html'), 'utf8');
+const landingFiles = await htmlFiles(landingRoot);
+const home = await fs.readFile(path.join(distRoot, 'index.html'), 'utf8');
+const app = await fs.readFile(path.join(distRoot, 'app.html'), 'utf8');
+const solutions = await fs.readFile(path.join(distRoot, 'solutions', 'index.html'), 'utf8');
 const finalRobots = await fs.readFile(path.join(distRoot, 'robots.txt'), 'utf8');
+const sitemap = await fs.readFile(path.join(distRoot, 'sitemap.xml'), 'utf8');
+
+const title = (home.match(/<title>([\s\S]*?)<\/title>/i) || [])[1]?.trim() || '';
+const description = metaContent(home, 'name', 'description');
+const robotsMeta = metaContent(home, 'name', 'robots');
+const h1Count = (home.match(/<h1\b/gi) || []).length;
+const h2Count = (home.match(/<h2\b/gi) || []).length;
+const h3Count = (home.match(/<h3\b/gi) || []).length;
+const wordCount = visibleWordCount(home);
+
+const requiredEntrypoints = [
+  'solutions/index.html',
+  'about/index.html',
+  'blog/index.html',
+  'contact/index.html',
+  'blog/why-scorm-courses-go-unfinished/index.html',
+  'blog/live-quizzes-vs-static-assessments/index.html',
+  'blog/scorm-1-2-vs-scorm-2004/index.html',
+];
+const entrypointChecks = await Promise.all(requiredEntrypoints.map(async (file) => {
+  try {
+    await fs.access(path.join(distRoot, file));
+    return [true, `Missing static entry point: ${file}`];
+  } catch {
+    return [false, `Missing static entry point: ${file}`];
+  }
+}));
+
+const staleMarketing = [];
+for (const file of landingFiles) {
+  const html = await fs.readFile(file, 'utf8');
+  if (/quizmoto-frontend\.onrender\.com/i.test(html) || /\bAtelora\b/i.test(html)) staleMarketing.push(file);
+}
 
 const checks = [
   [home.includes('<link rel="canonical" href="https://www.lmsgen.in/"'), 'Homepage canonical is missing or incorrect.'],
+  [!robotsMeta.toLowerCase().includes('noindex'), 'Public homepage is still marked noindex.'],
+  [h1Count === 1, `Homepage must have exactly one H1; found ${h1Count}.`],
+  [h2Count >= 3, `Homepage should use multiple H2 headings; found ${h2Count}.`],
+  [h3Count >= 4, `Homepage should use supporting H3 headings; found ${h3Count}.`],
+  [wordCount >= 500, `Homepage is still too thin for the audit; visible word count is ${wordCount}.`],
+  [title.length >= 50 && title.length <= 60, `Homepage title length should be 50-60 characters; found ${title.length}.`],
+  [description.length >= 120 && description.length <= 160, `Homepage meta description should be 120-160 characters; found ${description.length}.`],
   [home.includes('id="lmsgen-pain-title"'), 'Homepage pain-point section was not generated.'],
-  [home.includes('id="lmsgen-faq-title"'), 'Homepage FAQ section was not generated.'],
-  [home.includes('AI-powered LMS for SCORM course creation, delivery and learner tracking.'), 'Homepage SEO hero was not generated.'],
-  [home.includes(`property="og:image" content="${PREVIEW_IMAGE}"`), 'Homepage Open Graph image is not canonical.'],
-  [home.includes(`name="twitter:image" content="${PREVIEW_IMAGE}"`), 'Homepage Twitter image is not canonical.'],
+  [home.includes('id="lmsgen-faq-title"'), 'Homepage FAQ/Q&A section was not generated.'],
+  [home.includes('class="lmsgen-audit-trust"'), 'Homepage trust/freshness section was not generated.'],
+  [home.includes('id="lmsgen-seoptimer-entity-schema"'), 'Identity/contact structured data was not generated.'],
+  [home.includes('FAQPage'), 'FAQ structured data is missing.'],
+  [home.includes('Organization'), 'Organization identity schema is missing.'],
+  [home.includes(`property="og:image" content="${PREVIEW_IMAGE}"`), 'Homepage Open Graph image is missing or non-canonical.'],
+  [home.includes(`name="twitter:image" content="${PREVIEW_IMAGE}"`), 'Homepage X/Twitter card image is missing or non-canonical.'],
+  [home.includes('updated ') && home.includes('<time datetime='), 'Visible freshness signal is missing.'],
   [solutions.includes('<link rel="canonical" href="https://www.lmsgen.in/solutions"'), 'Solutions canonical is missing or incorrect.'],
   [solutions.includes('id="lmsgen-audience-title"'), 'Solutions audience section was not generated.'],
-  [!home.includes('quizmoto-frontend.onrender.com'), 'Old Render frontend domain remains in homepage HTML.'],
-  [!home.includes('Atelora'), 'Old Atelora brand remains in homepage HTML.'],
+  [staleMarketing.length === 0, `Stale Atelora/Render branding remains in ${staleMarketing.length} marketing files.`],
+  [metaContent(app, 'name', 'robots').toLowerCase().includes('noindex'), 'Private React LMS shell must remain noindex.'],
   [!finalRobots.includes('Disallow: /landing/'), 'robots.txt blocks marketing CSS/JS/image assets under /landing/.'],
   [finalRobots.includes('Sitemap: https://www.lmsgen.in/sitemap.xml'), 'robots.txt does not expose the canonical sitemap.'],
+  [sitemap.includes('<loc>https://www.lmsgen.in/</loc>'), 'Sitemap is missing the canonical homepage.'],
+  ...entrypointChecks,
 ];
 
 const failures = checks.filter(([ok]) => !ok).map(([, message]) => message);
@@ -68,4 +109,4 @@ if (failures.length) {
   throw new Error(`Marketing SEO guard failed:\n- ${failures.join('\n- ')}`);
 }
 
-console.log(`Marketing SEO guard passed for ${files.length} HTML files.`);
+console.log(`Marketing SEO guard passed. Homepage: ${wordCount} words, ${h1Count} H1, ${h2Count} H2, ${h3Count} H3.`);
