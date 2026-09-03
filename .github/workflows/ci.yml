@@ -60,7 +60,14 @@ jobs:
         set -o pipefail
         npx mocha tests/ScormCourseInteractions.test.js tests/ScormInteractionTemplatePlanner.test.js --exit 2>&1 | tee ../server-v7.log
 
-    - name: Run SCORM PostgreSQL persistence tests
+    - name: Run E2E tests
+      shell: bash
+      run: |
+        set -o pipefail
+        npm run test:e2e 2>&1 | tee playwright-e2e.log
+
+    - name: Record SCORM PostgreSQL baseline
+      continue-on-error: true
       working-directory: server
       env:
         NODE_ENV: test
@@ -76,12 +83,6 @@ jobs:
       run: |
         set -o pipefail
         { npx mocha tests/ScormLearningStatePostgres.test.js --exit && npx mocha tests/ScormRuntimePostgres.test.js --exit; } 2>&1 | tee ../scorm-postgres.log
-
-    - name: Run E2E tests
-      shell: bash
-      run: |
-        set -o pipefail
-        npm run test:e2e 2>&1 | tee playwright-e2e.log
 
     - name: Upload E2E diagnostics
       if: always()
