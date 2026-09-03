@@ -2,6 +2,7 @@ const JSZip = require('jszip');
 const { buildScormPackageZip: buildLegacyPackage } = require('./ScormAnswerTrackingPackageFinalizer');
 const { buildRasterCoursePackageZip } = require('./ScormRasterCoursePackageBuilder');
 const { injectCourseInteractionsUi } = require('./ScormCourseInteractionService');
+const { injectCourseUiPolish } = require('./ScormCourseUiPolish');
 
 const REPLICATE_MEDIA_CSS = '<style id="quizmoto-replicate-media-v3"></style>';
 const BROWSER_NARRATION_SCRIPT_ID = 'quizmoto-browser-narration-v2';
@@ -346,6 +347,7 @@ async function addBrowserNarrationToZip(zipBuffer) {
     let html = await indexFile.async('string');
     html = injectCourseTypographyUi(html);
     html = injectCourseInteractionsUi(html);
+    html = injectCourseUiPolish(html);
     html = injectBrowserNarrationUi(html);
     zip.file('index.html', html);
     return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
