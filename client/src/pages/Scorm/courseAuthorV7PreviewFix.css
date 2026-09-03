@@ -1,0 +1,47 @@
+/* Compact V7 template preview. Uses only shared SCORM tokens for light/dark parity. */
+.qmx-v7-modal-backdrop{padding:20px!important;align-items:center!important}
+.qmx-v7-modal{width:min(1080px,calc(100vw - 40px))!important;max-height:min(760px,calc(100vh - 40px))!important;border-radius:18px!important}
+.qmx-v7-modal-header,.qmx-v7-modal-footer{padding:12px 14px!important;flex:0 0 auto}
+.qmx-v7-modal-header h2{font-size:17px!important}
+.qmx-v7-modal-body{grid-template-columns:190px minmax(0,1fr)!important;min-height:0!important}
+.qmx-v7-template-rail{padding:8px!important}
+.qmx-v7-template-rail button{padding:9px 10px!important;margin-bottom:5px!important}
+.qmx-v7-preview-stage-wrap{display:flex!important;flex-direction:column!important;min-height:0!important;overflow:auto!important;padding:11px 13px 13px!important}
+.qmx-v7-preview-toolbar{margin-bottom:9px!important;flex:0 0 auto}
+.qmx-v7-preview-toolbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.qmx-v7-profile-badge{display:inline-flex;align-items:center;min-height:25px;padding:0 8px;border:1px solid var(--scorm-line);border-radius:999px;background:var(--scorm-surface);color:var(--scorm-ink-soft);font-size:8px;font-weight:750}
+.qmx-v7-device-frame{min-height:0!important;max-height:440px!important;border-radius:14px!important;flex:0 0 auto}
+.qmx-v7-device-frame.is-desktop{width:min(780px,100%)!important;aspect-ratio:16/9}
+.qmx-v7-device-frame.is-tablet{width:min(600px,100%)!important;aspect-ratio:4/3}
+.qmx-v7-device-frame.is-mobile{width:min(320px,100%)!important;height:430px!important;aspect-ratio:auto}
+.qmx-v7-learner-preview{min-height:100%!important;height:100%;padding:22px!important;overflow:auto}
+.qmx-v7-learner-preview>h3{margin:5px 0 6px!important;font-size:clamp(20px,2.5vw,32px)!important}
+.qmx-v7-learner-preview>p{margin-bottom:15px!important;font-size:10px!important;line-height:1.5!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.qmx-v7-preview-meta{margin-top:8px!important;gap:6px!important;flex:0 0 auto}
+.qmx-v7-preview-meta>div{padding:7px 9px!important}
+.qmx-v7-step-demo{padding-top:2px!important}
+.qmx-v7-step-copy{padding:10px!important}
+.qmx-v7-demo-grid{gap:8px!important}
+.qmx-v7-flip{min-height:92px!important;padding:10px!important}
+.qmx-v7-hotspot-demo{min-height:230px!important}
+.qmx-v7-use-btn:disabled{opacity:.5;cursor:not-allowed;filter:saturate(.35)}
+.qmx-v7-runtime-note{font-size:8px;color:var(--scorm-muted);margin-right:8px}
+
+@media(max-width:800px){
+  .qmx-v7-modal-backdrop{padding:8px!important}
+  .qmx-v7-modal{width:calc(100vw - 16px)!important;max-height:calc(100vh - 16px)!important}
+  .qmx-v7-modal-body{grid-template-columns:1fr!important;overflow:auto!important}
+  .qmx-v7-template-rail{display:flex!important;gap:6px;overflow-x:auto!important;border-right:0!important;border-bottom:1px solid var(--scorm-line);flex:0 0 auto}
+  .qmx-v7-template-rail button{min-width:150px;margin:0!important}
+  .qmx-v7-preview-stage-wrap{overflow:visible!important}
+  .qmx-v7-device-frame.is-desktop,.qmx-v7-device-frame.is-tablet{width:100%!important}
+  .qmx-v7-preview-meta{grid-template-columns:1fr!important}
+  .qmx-v7-modal-footer{align-items:flex-end!important;flex-wrap:wrap}
+}
+
+@media(max-width:520px){
+  .qmx-v7-device-switch button span{display:none}
+  .qmx-v7-profile-badge{display:none}
+  .qmx-v7-preview-nav>span{display:none}
+  .qmx-v7-learner-preview{padding:16px!important}
+}
