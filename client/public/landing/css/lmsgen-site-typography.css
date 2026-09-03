@@ -3,15 +3,14 @@
    for highly readable supporting copy. Keep this marketing layer scoped to
    exported public pages only. */
 
-/* The homepage uses a deliberate dark canvas. Other exported pages use light
-   page designs and dark-green copy. Override the shared anti-FOUC background
-   so About, Solutions, Blog, articles and Contact do not render dark text on
-   the homepage's near-black background. */
+/* The homepage uses a deliberate dark canvas. About, Blog and Contact use
+   light page designs. Solutions has its own dark product canvas and therefore
+   is excluded from this light-page override. */
 html {
   background: #ffffff !important;
 }
 
-body.atelora-site-refresh:not(.atelora-home-refresh) {
+body.atelora-site-refresh:not(.atelora-home-refresh):not(.lmsgen-solutions-ready) {
   background: #ffffff !important;
   color: #003f3a !important;
 }
@@ -55,6 +54,105 @@ body.atelora-site-refresh .lmsgen-audit-kicker,
 body.atelora-site-refresh .lmsgen-audit-updated,
 body.atelora-site-refresh .lmsgen-audit-trust-links strong {
   font-family: "Montserrat", Arial, sans-serif !important;
+}
+
+/* Solutions: keep the intended dark canvas and replace the legacy exported
+   condensed/oversized type scale with the proportional LMSGEN system. */
+body.atelora-site-refresh.lmsgen-solutions-ready {
+  background: #061311 !important;
+  color: #edf4f2 !important;
+}
+
+body.lmsgen-solutions-ready main {
+  background: #061311 !important;
+  color: #edf4f2 !important;
+}
+
+body.lmsgen-solutions-ready main h1 {
+  max-width: 112rem;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-size: clamp(4.4rem, 5.1vw, 7.2rem) !important;
+  font-weight: 650 !important;
+  line-height: 1.04 !important;
+  letter-spacing: -0.045em !important;
+  text-transform: none !important;
+  text-wrap: balance;
+}
+
+body.lmsgen-solutions-ready main h2,
+body.lmsgen-solutions-ready main .h2 {
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-size: clamp(3.2rem, 3.8vw, 5.2rem) !important;
+  font-weight: 650 !important;
+  line-height: 1.08 !important;
+  letter-spacing: -0.035em !important;
+  text-transform: none !important;
+  text-wrap: balance;
+}
+
+body.lmsgen-solutions-ready main h3,
+body.lmsgen-solutions-ready main .h3,
+body.lmsgen-solutions-ready main h4,
+body.lmsgen-solutions-ready main .h4 {
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-size: clamp(2.4rem, 2.7vw, 3.8rem) !important;
+  font-weight: 650 !important;
+  line-height: 1.14 !important;
+  letter-spacing: -0.025em !important;
+  text-transform: none !important;
+}
+
+body.lmsgen-solutions-ready main .caption {
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  letter-spacing: 0.08em !important;
+  color: #8fe4dc !important;
+}
+
+body.lmsgen-solutions-ready main p,
+body.lmsgen-solutions-ready main li,
+body.lmsgen-solutions-ready main .paragraph-s,
+body.lmsgen-solutions-ready main .paragraph-m,
+body.lmsgen-solutions-ready main .paragraph-l,
+body.lmsgen-solutions-ready main .nsl-channels-p {
+  font-family: "Open Sans", Arial, sans-serif !important;
+  color: #d7e4e1 !important;
+  line-height: 1.65 !important;
+}
+
+body.lmsgen-solutions-ready main .paragraph-l {
+  font-size: clamp(1.7rem, 1.45vw, 2rem) !important;
+}
+
+body.lmsgen-solutions-ready main .paragraph-m {
+  font-size: 1.7rem !important;
+}
+
+body.lmsgen-solutions-ready main .paragraph-s {
+  font-size: 1.5rem !important;
+}
+
+body.lmsgen-solutions-ready .sl-hero-s {
+  padding-top: clamp(6.4rem, 8vw, 10rem) !important;
+  padding-bottom: clamp(5.6rem, 7vw, 9rem) !important;
+}
+
+body.lmsgen-solutions-ready .nsl-hero-title-w,
+body.lmsgen-solutions-ready .sl-hero-c > div:first-child {
+  max-width: 116rem !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+body.lmsgen-solutions-ready .nsl-hero-title-w > p,
+body.lmsgen-solutions-ready .sl-hero-c > div:first-child > p {
+  max-width: 78rem !important;
+  margin: 2rem auto 0 !important;
+  color: #cbdad7 !important;
 }
 
 /* Hero: add breathing room between the four display lines. */
@@ -113,5 +211,22 @@ body.atelora-home-refresh .lmsgen-pain-outcome {
   body.atelora-home-refresh .hp-hero-h1 {
     line-height: 1.1 !important;
     letter-spacing: -0.035em !important;
+  }
+
+  body.lmsgen-solutions-ready main h1 {
+    font-size: clamp(3.6rem, 10vw, 5rem) !important;
+    line-height: 1.06 !important;
+  }
+
+  body.lmsgen-solutions-ready main h2,
+  body.lmsgen-solutions-ready main .h2 {
+    font-size: clamp(2.8rem, 8vw, 4rem) !important;
+  }
+
+  body.lmsgen-solutions-ready main h3,
+  body.lmsgen-solutions-ready main .h3,
+  body.lmsgen-solutions-ready main h4,
+  body.lmsgen-solutions-ready main .h4 {
+    font-size: clamp(2.2rem, 6vw, 3.2rem) !important;
   }
 }
