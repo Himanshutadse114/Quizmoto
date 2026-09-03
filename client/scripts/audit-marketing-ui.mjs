@@ -78,7 +78,8 @@ check(contact.includes('id="wf-form-Contact-Form"'), 'Contact form is missing fr
 check(contact.includes('/landing/js/contact-form.js'), 'Contact form SMTP/API client script is missing.');
 
 const blog = await read(path.join(landingRoot, 'blog', 'index.html'));
-check(!/contENt for you/i.test(blog), 'Blog hero still contains broken mixed-case copy.');
+check(!/contENt for you/.test(blog), 'Blog hero still contains broken mixed-case copy.');
+check(/Curated learning\s*<br\s*\/?>\s*content for you/.test(blog), 'Blog hero corrected copy is missing.');
 
 const unifiedCss = await read(path.join(landingRoot, 'css', 'lmsgen-unified-ui.css'));
 check(unifiedCss.includes('body.lmsgen-page-about'), 'Unified UI CSS is missing About scoping.');
