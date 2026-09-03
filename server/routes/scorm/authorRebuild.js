@@ -35,6 +35,33 @@ function errorStatus(code) {
     return 500;
 }
 
+function stripV7CourseFormatMetadata(rawAnalysis) {
+    const analysis = rawAnalysis && typeof rawAnalysis === 'object' ? rawAnalysis : {};
+    const {
+        experienceProfile,
+        interactionEngineVersion,
+        preferredTemplateId,
+        interactionTemplateHints,
+        ...legacyAnalysis
+    } = analysis;
+
+    return {
+        ...legacyAnalysis,
+        slides: (Array.isArray(analysis.slides) ? analysis.slides : []).map((slide) => {
+            if (!slide || typeof slide !== 'object') return slide;
+
+            const cleanedSlide = { ...slide };
+            if (cleanedSlide.interaction && typeof cleanedSlide.interaction === 'object') {
+                const interaction = { ...cleanedSlide.interaction };
+                delete interaction.templateId;
+                cleanedSlide.interaction = interaction;
+            }
+
+            return cleanedSlide;
+        })
+    };
+}
+
 // Intercepts only editor rebuilds. New-course generation falls through to the
 // normal author route, where visuals are created once. Rebuilds never call any
 // image-generation service: existing packaged visuals are copied into the new ZIP.
@@ -83,6 +110,11 @@ router.post('/generate', auth, async (req, res, next) => {
             detail: 'Validating slide structure and knowledge checks before rebuilding.'
         });
 
+        // Courses authored while the V7 template experiment was live may have
+        // persisted profile/template metadata in their saved analysis. Rebuilds
+        // must discard those V7-only selectors before the legacy V5 planner runs,
+        // otherwise the newer slide format can survive even after the code rollback.
+        analysis = stripV7CourseFormatMetadata(analysis);
         analysis = planExperienceV5(analysis);
         analysis = ensureQuizIntegrity(analysis);
         analysis = {
