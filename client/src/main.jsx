@@ -10,6 +10,7 @@ import PlatformDataBootstrap from './components/PlatformDataBootstrap.jsx'
 import './lmsgenLightFinal.css'
 import './pages/Scorm/courseAuthorV7.css'
 import './pages/Scorm/courseAuthorV7ThemeFix.css'
+import './pages/Scorm/courseAuthorV7PreviewFix.css'
 import './pages/Scorm/courseTemplateAuthorBridge.css'
 
 createRoot(document.getElementById('root')).render(
