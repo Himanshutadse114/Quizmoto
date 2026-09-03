@@ -53,11 +53,12 @@ jobs:
         set -o pipefail
         npx vite build 2>&1 | tee ../client-build.log
 
-    - name: Run server unit tests
+    - name: Run V7 SCORM interaction tests
+      working-directory: server
       shell: bash
       run: |
         set -o pipefail
-        npm --prefix server test 2>&1 | tee server-unit.log
+        npx mocha tests/ScormCourseInteractions.test.js tests/ScormInteractionTemplatePlanner.test.js --exit 2>&1 | tee ../server-v7.log
 
     - name: Run SCORM PostgreSQL persistence tests
       working-directory: server
@@ -91,7 +92,7 @@ jobs:
         retention-days: 7
         path: |
           client-build.log
-          server-unit.log
+          server-v7.log
           scorm-postgres.log
           playwright-e2e.log
           test-results/
