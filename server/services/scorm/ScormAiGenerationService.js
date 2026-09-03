@@ -1,6 +1,7 @@
 const { analyzePolicy } = require('./CourseAiService');
 const { prepareReplicateCourseMedia } = require('./ReplicateCourseMediaService');
 const { planExperienceV5 } = require('./ScormExperiencePlanner');
+const { applyInteractionTemplates } = require('./ScormInteractionTemplatePlanner');
 const { ensureQuizIntegrity } = require('./ScormQuizQualityService');
 const { buildScormPackageZip } = require('./ScormReplicateMediaFinalizer');
 const { getTheme, normalizeThemeId } = require('./ScormThemeCatalog');
@@ -52,7 +53,10 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
         logoDataUrl,
         title,
         topic,
-        description
+        description,
+        experienceProfile,
+        preferredTemplateId,
+        interactionTemplateHints
     } = payload || {};
 
     const selectedThemeId = normalizeThemeId(themeId || templateId || analysis?.themeId || 1);
@@ -104,6 +108,11 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
 
     onProgress({ percent: 4, stage: 'Formatting course structure', detail: 'Balancing text, images and varied learner layouts before image generation.' });
     analysis = planExperienceV5(analysis);
+    analysis = applyInteractionTemplates(analysis, {
+        experienceProfile: experienceProfile || '',
+        preferredTemplateId: preferredTemplateId || '',
+        interactionTemplateHints: Array.isArray(interactionTemplateHints) ? interactionTemplateHints : []
+    });
     onProgress({ percent: 5, stage: 'Checking knowledge checks', detail: 'Guaranteeing complete quiz questions and learner explanations before packaging.' });
     analysis = ensureQuizIntegrity(analysis);
     analysis = {
