@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "node scripts/prepare-marketing.mjs && node scripts/prepare-advantage-assets.mjs && node scripts/wire-contact-form.mjs && node scripts/remove-home-metrics.mjs && node scripts/marketing-audit-polish.mjs",
+    "postbuild": "node scripts/prepare-marketing.mjs && node scripts/prepare-advantage-assets.mjs && node scripts/wire-contact-form.mjs && node scripts/remove-contact-image.mjs && node scripts/remove-home-metrics.mjs && node scripts/marketing-audit-polish.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
