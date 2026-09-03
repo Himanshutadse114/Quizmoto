@@ -75,17 +75,11 @@ function semanticLayout(slide) {
     const points = (Array.isArray(slide?.keyPoints) ? slide.keyPoints.join(' ') : '').toLowerCase();
     const structureText = `${title} ${points}`;
 
-    // Infer structure from the title and visual points rather than every word in
-    // the body. Professional prose often says "works by", which previously made
-    // unrelated lessons look like Process slides throughout the course.
     if (/timeline|history|phase|sequence|journey|before.*after|from .* to /.test(structureText)) return 'timeline';
     if (/step|process|workflow|how .* works|lifecycle|flow|reporting process|response process|verification process/.test(structureText)) return 'process';
     if (/versus|\bvs\b|difference between|compare|comparison|safe .* unsafe|recommended .* avoid|do .* don.?t|smishing and vishing|vishing and smishing/.test(structureText)) return 'comparison';
     if (/types of|categories|channels|pillars|components|warning signs|red flags|indicators|signals|checklist/.test(structureText)) return 'hub';
     if (/tips|rules|principles|things to|actions to|ways to|key behaviours|key behaviors/.test(title)) return 'cards';
-
-    // A focused lesson, attack type, scenario or workplace example works best as
-    // a visual split/spotlight rather than another grid of cards.
     return 'spotlight';
 }
 
@@ -102,8 +96,6 @@ function chooseBalancedLayouts(slides) {
         const semantic = semanticLayout(slide);
         let layout = semantic;
 
-        // Keep useful AI-selected structural layouts, but never blindly retain
-        // repeated generic Cards/HUB choices.
         if (RENDER_LAYOUTS.includes(explicit) && !['cards', 'hub'].includes(explicit)) {
             layout = explicit;
         }
@@ -111,8 +103,6 @@ function chooseBalancedLayouts(slides) {
         if (layout === 'cards' && (counts.cards || 0) >= maxCards) layout = 'spotlight';
         if (layout === 'hub' && (counts.hub || 0) >= maxHubs) layout = 'spotlight';
 
-        // Never place two card-family screens beside each other. This keeps the
-        // course from feeling like an endless set of flip/reveal tiles.
         if (['cards', 'hub'].includes(layout) && ['cards', 'hub'].includes(previous)) {
             layout = 'spotlight';
         }
@@ -144,8 +134,6 @@ function preferredType(slide, layout, index, interactiveUsed) {
     if (layout === 'timeline') return 'timeline';
     if (layout === 'process') return 'process';
 
-    // At most two learning screens per course become click/reveal experiences.
-    // Everything else remains immediately readable.
     if (layout === 'cards' && interactiveUsed < 2) return 'reveal';
     if (layout === 'hub' && interactiveUsed < 2) return 'hotspot';
     if (/scenario|imagine|suppose|you receive|you notice|you are|if you|when you|example|case study/.test(text) && index > 0) return 'scenario';
@@ -177,6 +165,18 @@ function interactionFor(type, layout) {
     if (type === 'timeline' || layout === 'timeline') return { type: 'step_explore', prompt: 'Follow the sequence to understand how the situation develops.' };
     if (type === 'process' || layout === 'process') return { type: 'step_explore', prompt: 'Follow the steps to understand the process.' };
     return { type: 'focus_reveal', prompt: 'Review the lesson and the action to remember.' };
+}
+
+function preserveInteractionTemplate(slide, plannedInteraction) {
+    const existing = slide?.interaction && typeof slide.interaction === 'object' ? slide.interaction : {};
+    const templateId = clean(existing.templateId);
+    return {
+        ...plannedInteraction,
+        ...(templateId ? { templateId } : {}),
+        ...(Array.isArray(existing.items) ? { items: existing.items } : {}),
+        ...(Array.isArray(existing.choices) ? { choices: existing.choices } : {}),
+        ...(existing.completion && typeof existing.completion === 'object' ? { completion: existing.completion } : {})
+    };
 }
 
 function pointLimitFor(slide, type) {
@@ -227,7 +227,7 @@ function planExperienceV5(rawAnalysis) {
             introText: slide.content,
             revealText: '',
             keyPoints: concisePoints(slide.keyPoints, pointLimitFor({ ...slide, layout }, type)),
-            interaction: interactionFor(type, layout)
+            interaction: preserveInteractionTemplate(slide, interactionFor(type, layout))
         };
         previousBackground = result.backgroundStyle;
         return result;
@@ -250,6 +250,7 @@ module.exports = {
     chooseBalancedLayouts,
     backgroundFor,
     pointLimitFor,
+    preserveInteractionTemplate,
     SCREEN_TYPES,
     BACKGROUNDS,
     RENDER_LAYOUTS
