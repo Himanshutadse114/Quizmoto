@@ -27,6 +27,11 @@ console.log('Removed homepage AI / AI / 360° metrics strip.');
 // exact HTML that will be shipped in dist/.
 await import('./seo-marketing.mjs');
 
+// Refine the generated pain-point block after SEO inserts it. This keeps the
+// content crawlable while ensuring the homepage layout uses the product site's
+// visual system rather than a generic long card grid.
+await import('./refine-home-pain-section.mjs');
+
 // Fail the production build if stale branding/domains or the critical SEO
 // sections reappear in a future marketing export.
 await import('./marketing-seo-guard.mjs');
