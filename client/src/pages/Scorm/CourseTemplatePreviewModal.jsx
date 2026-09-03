@@ -11,20 +11,49 @@ import {
   Tablet,
   X
 } from 'lucide-react';
-import { templateById, templatesForProfile } from './courseTemplateCatalog';
+import { profileById, templateById, templatesForProfile } from './courseTemplateCatalog';
 
-function sampleItems(title) {
-  const topic = String(title || 'Phishing Awareness').trim() || 'Phishing Awareness';
-  return [
-    { label: 'Signal 01', text: `Inspect the first important signal in ${topic}.` },
-    { label: 'Signal 02', text: 'Check the context before taking action.' },
-    { label: 'Signal 03', text: 'Verify unusual requests through a trusted channel.' },
-    { label: 'Signal 04', text: 'Report suspicious activity through the approved process.' }
+function concise(value, max = 180) {
+  const clean = String(value || '').replace(/\s+/g, ' ').trim();
+  if (clean.length <= max) return clean;
+  return `${clean.slice(0, max).replace(/\s+\S*$/, '')}…`;
+}
+
+function sampleItems(title, description) {
+  const topic = String(title || '').trim();
+  const signal = `${topic} ${description || ''}`.toLowerCase();
+
+  if (/phish|email|credential|social engineer|invoice|mfa|suspicious|link/.test(signal)) {
+    return [
+      { label: 'Sender identity', text: 'Check the full sender address and confirm that the domain matches the organisation you expect.' },
+      { label: 'Urgent language', text: 'Pressure, secrecy or unusual urgency can be used to push you into acting before you verify.' },
+      { label: 'Link destination', text: 'Inspect the real destination before opening a link and avoid sign-in pages reached through unexpected messages.' },
+      { label: 'Unexpected attachment', text: 'Verify unexpected files through a trusted channel before opening or enabling any content.' }
+    ];
+  }
+
+  const sentences = String(description || '')
+    .split(/(?<=[.!?])\s+/)
+    .map((item) => concise(item, 105))
+    .filter((item) => item.length > 24)
+    .slice(0, 4);
+
+  const labels = ['Recognise', 'Consider', 'Verify', 'Act'];
+  const fallback = [
+    'Recognise the important signal before deciding what to do next.',
+    'Check the surrounding context instead of relying on one detail alone.',
+    'Verify unusual requests through an independent and trusted channel.',
+    'Take the approved action and report concerns through the right process.'
   ];
+
+  return labels.map((label, index) => ({
+    label,
+    text: sentences[index] || fallback[index]
+  }));
 }
 
 function TemplateInteractionDemo({ template, title, description }) {
-  const items = useMemo(() => sampleItems(title), [title]);
+  const items = useMemo(() => sampleItems(title, description), [title, description]);
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState(0);
   const [revealed, setRevealed] = useState([]);
@@ -97,13 +126,14 @@ function TemplateInteractionDemo({ template, title, description }) {
   }
 
   if (template.previewKind === 'process' || template.previewKind === 'timeline') {
+    const noun = template.previewKind === 'timeline' ? 'Stage' : 'Step';
     return (
       <div className={`qmx-v7-step-demo ${template.previewKind === 'timeline' ? 'is-timeline' : ''}`}>
         <div className="qmx-v7-step-rail" aria-hidden="true" />
         {items.map((item, index) => (
           <button key={item.label} type="button" className={active === index ? 'is-active' : ''} onClick={() => setActive(index)}>
             <span>{index + 1}</span>
-            <strong>{item.label}</strong>
+            <strong>{noun} {index + 1}</strong>
           </button>
         ))}
         <div className="qmx-v7-step-copy">
@@ -139,11 +169,11 @@ function TemplateInteractionDemo({ template, title, description }) {
     return (
       <div className="qmx-v7-scenario-demo">
         <div className="qmx-v7-scenario-message">
-          <span>Urgent request</span>
-          <p>A senior colleague asks you to bypass the usual process and send sensitive information immediately.</p>
+          <span>Decision point</span>
+          <p>A colleague asks you to bypass the usual process because the request is urgent. What should you do?</p>
         </div>
         <div className="qmx-v7-choice-grid">
-          <button type="button" className={choice === 'send' ? 'is-selected' : ''} onClick={() => setChoice('send')}>Send it now</button>
+          <button type="button" className={choice === 'send' ? 'is-selected' : ''} onClick={() => setChoice('send')}>Act immediately</button>
           <button type="button" className={choice === 'verify' ? 'is-selected' : ''} onClick={() => setChoice('verify')}>Verify independently</button>
         </div>
         {choice && (
@@ -220,7 +250,12 @@ export default function CourseTemplatePreviewModal({
   onClose,
   onUseTemplate
 }) {
-  const templates = useMemo(() => templatesForProfile(profileId), [profileId]);
+  const profile = profileById(profileId);
+  const templates = useMemo(() => {
+    const listed = templatesForProfile(profileId);
+    if (!initialTemplateId || listed.some((item) => item.id === initialTemplateId)) return listed;
+    return [templateById(initialTemplateId), ...listed];
+  }, [profileId, initialTemplateId]);
   const initialIndex = Math.max(0, templates.findIndex((item) => item.id === initialTemplateId));
   const [index, setIndex] = useState(initialIndex);
   const [device, setDevice] = useState('desktop');
@@ -232,16 +267,27 @@ export default function CourseTemplatePreviewModal({
     setDevice('desktop');
   }, [open, initialTemplateId, templates]);
 
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') onClose?.();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, onClose]);
+
   if (!open || typeof document === 'undefined' || !templates.length) return null;
   const template = templateById(templates[index]?.id);
   const deviceIcon = { desktop: Laptop, tablet: Tablet, mobile: Smartphone };
+  const previewTitle = topic.trim() || (template.previewKind === 'scenario' ? 'Make the safer decision' : 'Explore the learning');
+  const previewDescription = concise(description, 190) || template.description;
 
   return createPortal(
-    <div className="qmx-v7-modal-backdrop" role="dialog" aria-modal="true" aria-label="Interaction template preview">
+    <div className="qmx-v7-modal-backdrop" role="dialog" aria-modal="true" aria-label="Interaction template preview" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.(); }}>
       <div className="qmx-v7-modal">
         <header className="qmx-v7-modal-header">
           <div>
-            <span className="qmx-v7-kicker">Template preview</span>
+            <span className="qmx-v7-kicker">Template preview · {profile.shortName}</span>
             <h2>{template.name}</h2>
           </div>
           <button type="button" className="qmx-v7-icon-btn" onClick={onClose} aria-label="Close template preview"><X size={18} /></button>
@@ -251,7 +297,7 @@ export default function CourseTemplatePreviewModal({
           <aside className="qmx-v7-template-rail" aria-label="Available templates">
             {templates.map((item, itemIndex) => (
               <button key={item.id} type="button" className={itemIndex === index ? 'is-active' : ''} onClick={() => setIndex(itemIndex)}>
-                <span>{item.category}</span>
+                <span>{item.category}{item.runtimeReady === false ? ' · Preview' : ''}</span>
                 <strong>{item.name}</strong>
               </button>
             ))}
@@ -266,14 +312,17 @@ export default function CourseTemplatePreviewModal({
                   </button>
                 ))}
               </div>
-              <span className="qmx-v7-live-badge"><Eye size={13} /> Live preview</span>
+              <div className="qmx-v7-preview-toolbar-right">
+                <span className="qmx-v7-profile-badge">{profile.name} · {templates.length} templates</span>
+                <span className="qmx-v7-live-badge"><Eye size={13} /> Live preview</span>
+              </div>
             </div>
 
             <div className={`qmx-v7-device-frame is-${device}`}>
               <div className="qmx-v7-learner-preview">
                 <span className="qmx-v7-learner-kicker">Interactive learning</span>
-                <h3>{topic.trim() || 'Spot the warning signs'}</h3>
-                <p>{description.trim() || template.description}</p>
+                <h3>{previewTitle}</h3>
+                <p>{previewDescription}</p>
                 <TemplateInteractionDemo template={template} title={topic} description={description} />
               </div>
             </div>
@@ -292,9 +341,12 @@ export default function CourseTemplatePreviewModal({
             <span>{index + 1} / {templates.length}</span>
             <button type="button" className="scorm-button-secondary" onClick={() => setIndex((value) => (value + 1) % templates.length)}>Next <ChevronRight size={15} /></button>
           </div>
-          <button type="button" className="scorm-button-primary qmx-v7-use-btn" onClick={() => onUseTemplate?.(template.id)}>
-            Use this template
-          </button>
+          <div>
+            {template.runtimeReady === false && <span className="qmx-v7-runtime-note">Interactive learner runtime is in the next template release.</span>}
+            <button type="button" disabled={template.runtimeReady === false} className="scorm-button-primary qmx-v7-use-btn" onClick={() => onUseTemplate?.(template.id)}>
+              {template.runtimeReady === false ? 'Preview only' : 'Use this template'}
+            </button>
+          </div>
         </footer>
       </div>
     </div>,
