@@ -63,9 +63,13 @@ services:
         value: "training@lmsgen.in"
       - key: MAIL_FROM_NAME
         value: "LMSGen"
+      - key: BREVO_API_KEY
+        sync: false
       - key: SCORM_SUPER_ADMIN_EMAIL
         value: "tadsehimanshu@gmail.com"
       - key: MAIL_ADMIN_TO
+        value: "tadsehimanshu@gmail.com"
+      - key: WEBSITE_INQUIRY_TO
         value: "tadsehimanshu@gmail.com"
 
   - type: web
