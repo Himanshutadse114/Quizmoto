@@ -33,7 +33,7 @@ function injectTypographyAssets(html) {
       '<link rel="preconnect" href="https://fonts.googleapis.com" />',
       '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
       '<link id="lmsgen-google-fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Open+Sans:wght@400;500;600;700&display=swap" />',
-      '<link id="lmsgen-site-typography" rel="stylesheet" href="/landing/css/lmsgen-site-typography.css?v=20260903" />',
+      '<link id="lmsgen-site-typography" rel="stylesheet" href="/landing/css/lmsgen-site-typography.css?v=20260903c" />',
     ].join('\n    ');
     html = html.replace(/<\/head>/i, `    ${block}\n</head>`);
   }
@@ -71,9 +71,6 @@ function inferAlt(tag) {
     return label ? `LMSGEN ${label}` : 'LMSGEN learning platform illustration';
   }
 
-  // Most remaining exported images are decorative Webflow artwork. An empty
-  // alt attribute is the correct accessible treatment and still distinguishes
-  // the image from an accidentally missing alt attribute.
   return '';
 }
 
@@ -135,9 +132,6 @@ function normaliseInternalAnchorLinks(html) {
 }
 
 function removeOwnedInlineStyles(html) {
-  // This style was injected by the LMSGEN marketing build itself. The width is
-  // already defined in the external stylesheet, so keeping the style attribute
-  // only adds to the audit's inline-style noise.
   return html.replace(
     /(<div\s+class=["']atelora-hero-product["'])\s+style=["'][^"']*["']/i,
     '$1',
