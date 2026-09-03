@@ -69,7 +69,13 @@ function seoAuditSurface(html) {
 }
 
 function hasLegacySeoBranding(html) {
-  const surface = seoAuditSurface(html);
+  // The existing Webflow export still stores the product screenshot under
+  // /atelora-marketing/. That folder name is an internal asset locator, not
+  // rendered brand copy. Mask only that exact path before checking for stale
+  // Atelora text so real visible/meta/schema regressions are still rejected.
+  const surface = seoAuditSurface(html)
+    .replace(/\/atelora-marketing\//gi, '/lmsgen-marketing-asset/');
+
   return /\bAtelora\b/i.test(surface) || /quizmoto-frontend\.onrender\.com/i.test(surface);
 }
 
