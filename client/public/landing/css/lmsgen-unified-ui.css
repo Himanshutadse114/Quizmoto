@@ -1,0 +1,798 @@
+/* LMSGEN final marketing UI shell.
+   This file is deliberately loaded last on every public marketing page.
+   Page-specific rules are scoped by lmsgen-page-* body classes so exported
+   Webflow styles cannot leak between Home, Solutions, About, Blog or Contact. */
+
+:root {
+  --lmsgen-ink: #003f3a;
+  --lmsgen-ink-2: #385c58;
+  --lmsgen-teal: #00a99d;
+  --lmsgen-teal-soft: #7bdcd3;
+  --lmsgen-dark: #061311;
+  --lmsgen-dark-2: #0a2422;
+  --lmsgen-paper: #ffffff;
+  --lmsgen-mist: #f4f8f7;
+  --lmsgen-line: rgba(0, 63, 58, 0.14);
+  --lmsgen-header-h: 7.8rem;
+}
+
+body.atelora-site-refresh,
+body.atelora-site-refresh * {
+  box-sizing: border-box;
+}
+
+body.atelora-site-refresh {
+  margin: 0;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body.atelora-site-refresh .w-locales-list,
+body.atelora-site-refresh .book-demo-s {
+  display: none !important;
+}
+
+/* ---------- One navigation shell on every public page ---------- */
+body.atelora-site-refresh .global-header-c {
+  z-index: 9999 !important;
+  position: sticky !important;
+  top: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: 100% !important;
+  min-height: var(--lmsgen-header-h) !important;
+  padding: 0 !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  color: var(--lmsgen-ink) !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--lmsgen-line) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: box-shadow 180ms ease, background-color 180ms ease !important;
+}
+
+body.atelora-site-refresh .global-header-c.sticky {
+  background: rgba(255, 255, 255, 0.97) !important;
+  box-shadow: 0 10px 30px rgba(0, 63, 58, 0.08) !important;
+}
+
+body.atelora-site-refresh .global-header-c > .container-large {
+  width: 100% !important;
+  max-width: none !important;
+  padding: 0 3.2rem !important;
+}
+
+body.atelora-site-refresh .global-header-w {
+  width: 100% !important;
+  max-width: 172rem !important;
+  min-height: var(--lmsgen-header-h) !important;
+  margin: 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 3.2rem !important;
+}
+
+body.atelora-site-refresh .global-header-logo-c {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 !important;
+}
+
+body.atelora-site-refresh .nav-logo,
+body.atelora-site-refresh .nav-logo.jungle,
+body.atelora-site-refresh .nav-logo.sticky {
+  display: block !important;
+  width: 17rem !important;
+  height: 3.6rem !important;
+  max-width: 17rem !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+body.atelora-site-refresh .global-header-nav-w,
+body.atelora-site-refresh .global-header-nav-w.jungle,
+body.atelora-site-refresh .global-header-nav-w.sticky {
+  display: flex;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: clamp(2.4rem, 3vw, 4.8rem) !important;
+  margin-left: auto !important;
+  color: var(--lmsgen-ink) !important;
+  background: transparent !important;
+}
+
+body.atelora-site-refresh .global-nav-link,
+body.atelora-site-refresh .global-nav-link.jungle,
+body.atelora-site-refresh .global-nav-link.sticky {
+  position: relative !important;
+  padding: 0.8rem 0 !important;
+  color: var(--lmsgen-ink) !important;
+  background: transparent !important;
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-size: 1.55rem !important;
+  font-weight: 650 !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0.01em !important;
+  text-transform: uppercase !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+}
+
+body.atelora-site-refresh .global-nav-link.first {
+  display: none !important;
+}
+
+body.atelora-site-refresh .global-nav-link::before {
+  bottom: 0 !important;
+  height: 2px !important;
+  background: var(--lmsgen-teal) !important;
+}
+
+body.atelora-site-refresh .global-nav-link:hover,
+body.atelora-site-refresh .global-nav-link.w--current,
+body.atelora-site-refresh .global-nav-link.jungle.w--current,
+body.atelora-site-refresh .global-nav-link.sticky.w--current {
+  color: #007c73 !important;
+}
+
+body.atelora-site-refresh .global-nav-btn-c {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 1rem !important;
+  margin-left: 1rem !important;
+}
+
+body.atelora-site-refresh .btn-primary.nav-bar,
+body.atelora-site-refresh .btn-primary.nav-bar.secondary,
+body.atelora-site-refresh .btn-primary.nav-bar.sticky {
+  min-width: 20rem !important;
+  min-height: 5.4rem !important;
+  height: 5.4rem !important;
+  padding: 1.5rem 2.8rem !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: #004b45 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-size: 1.6rem !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  text-decoration: none !important;
+}
+
+body.atelora-site-refresh .btn-primary.nav-bar:hover {
+  background: #00635b !important;
+}
+
+body.atelora-site-refresh .global-nav-menu-btn,
+body.atelora-site-refresh .global-nav-menu-icon,
+body.atelora-site-refresh .global-nav-menu-icon.jungle,
+body.atelora-site-refresh .global-nav-menu-icon.sticky {
+  color: var(--lmsgen-ink) !important;
+}
+
+/* ---------- Shared typography/readability ---------- */
+body.atelora-site-refresh h1,
+body.atelora-site-refresh h2,
+body.atelora-site-refresh h3,
+body.atelora-site-refresh h4,
+body.atelora-site-refresh h5,
+body.atelora-site-refresh h6 {
+  font-family: "Montserrat", Arial, sans-serif !important;
+}
+
+body.atelora-site-refresh p,
+body.atelora-site-refresh li,
+body.atelora-site-refresh input,
+body.atelora-site-refresh textarea,
+body.atelora-site-refresh select {
+  font-family: "Open Sans", Arial, sans-serif !important;
+}
+
+body.lmsgen-page-about,
+body.lmsgen-page-blog,
+body.lmsgen-page-article,
+body.lmsgen-page-contact {
+  background: #ffffff !important;
+  color: var(--lmsgen-ink) !important;
+}
+
+/* ---------- Home ---------- */
+body.lmsgen-page-home {
+  background: #0a0f0e !important;
+}
+
+body.lmsgen-page-home .hp-hero-s {
+  padding-top: 5.5rem !important;
+}
+
+body.lmsgen-page-home .hp-hero-c {
+  margin-top: 4rem !important;
+}
+
+/* ---------- Solutions ---------- */
+body.lmsgen-page-solutions,
+body.lmsgen-page-solutions main {
+  background: var(--lmsgen-dark) !important;
+  color: #edf4f2 !important;
+}
+
+body.lmsgen-page-solutions .sl-hero-s,
+body.lmsgen-page-solutions .sl-feat-main-s,
+body.lmsgen-page-solutions .sl-feat-common-s,
+body.lmsgen-page-solutions .sl-feat-templ-s,
+body.lmsgen-page-solutions .nsol-manage-s {
+  background: var(--lmsgen-dark) !important;
+  color: #edf4f2 !important;
+}
+
+body.lmsgen-page-solutions .sl-hero-s {
+  padding-top: 5.5rem !important;
+  padding-bottom: 7rem !important;
+}
+
+body.lmsgen-page-solutions .sl-hero-c {
+  margin-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+body.lmsgen-page-solutions main h1 {
+  max-width: 112rem !important;
+  margin: 0 auto !important;
+  color: var(--lmsgen-teal-soft) !important;
+  font-size: clamp(4.4rem, 5.1vw, 7.2rem) !important;
+  font-weight: 650 !important;
+  line-height: 1.04 !important;
+  letter-spacing: -0.045em !important;
+  text-transform: none !important;
+  text-wrap: balance;
+}
+
+body.lmsgen-page-solutions main h2,
+body.lmsgen-page-solutions main .h2 {
+  color: var(--lmsgen-teal-soft) !important;
+  font-size: clamp(3.2rem, 3.8vw, 5.2rem) !important;
+  font-weight: 650 !important;
+  line-height: 1.08 !important;
+  letter-spacing: -0.035em !important;
+  text-transform: none !important;
+}
+
+body.lmsgen-page-solutions main h3,
+body.lmsgen-page-solutions main h4,
+body.lmsgen-page-solutions main .h3,
+body.lmsgen-page-solutions main .h4 {
+  color: var(--lmsgen-teal-soft) !important;
+  font-weight: 650 !important;
+  line-height: 1.16 !important;
+  letter-spacing: -0.02em !important;
+  text-transform: none !important;
+}
+
+body.lmsgen-page-solutions main p,
+body.lmsgen-page-solutions main li,
+body.lmsgen-page-solutions main .paragraph-s,
+body.lmsgen-page-solutions main .paragraph-m,
+body.lmsgen-page-solutions main .paragraph-l {
+  color: #dbe8e5 !important;
+  opacity: 1 !important;
+  line-height: 1.62 !important;
+}
+
+body.lmsgen-page-solutions main .caption {
+  color: #8fe4dc !important;
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  letter-spacing: 0.08em !important;
+}
+
+body.lmsgen-page-solutions .sl-hero-feature-w h2,
+body.lmsgen-page-solutions .sl-hero-feature-w .h4 {
+  color: #ffffff !important;
+}
+
+body.lmsgen-page-solutions .sl-hero-feature-w p {
+  color: #edf5f3 !important;
+}
+
+body.lmsgen-page-solutions .sl-features-key-card-content h3,
+body.lmsgen-page-solutions .sl-features-key-card-content .h4 {
+  color: var(--lmsgen-teal-soft) !important;
+}
+
+/* The assignment section is intentionally light. */
+body.lmsgen-page-solutions .nsl-local-s {
+  background-image: linear-gradient(180deg, #e7fbf7 0%, #ffffff 100%) !important;
+  color: var(--lmsgen-ink) !important;
+}
+
+body.lmsgen-page-solutions .nsl-local-s h1,
+body.lmsgen-page-solutions .nsl-local-s h2,
+body.lmsgen-page-solutions .nsl-local-s h3,
+body.lmsgen-page-solutions .nsl-local-s h4,
+body.lmsgen-page-solutions .nsl-local-s p,
+body.lmsgen-page-solutions .nsl-local-s li,
+body.lmsgen-page-solutions .nsl-local-s div {
+  color: var(--lmsgen-ink) !important;
+}
+
+body.lmsgen-page-solutions .nsl-local-s .nsl-local-graph-card.green,
+body.lmsgen-page-solutions .nsl-local-s .nsl-local-graph-card.green h3,
+body.lmsgen-page-solutions .nsl-local-s .nsl-local-graph-card.green p,
+body.lmsgen-page-solutions .nsl-local-s .nsl-local-graph-card.green div {
+  color: #ffffff !important;
+}
+
+/* SEO audience module is also a light section: do not inherit dark-page copy. */
+body.lmsgen-page-solutions .lmsgen-audience-section {
+  padding: 8rem 2.4rem !important;
+  background: #e7f7f4 !important;
+  color: var(--lmsgen-ink) !important;
+}
+
+body.lmsgen-page-solutions .lmsgen-audience-section .lmsgen-seo-inner {
+  width: min(128rem, 100%) !important;
+}
+
+body.lmsgen-page-solutions .lmsgen-audience-section h2,
+body.lmsgen-page-solutions .lmsgen-audience-section h3,
+body.lmsgen-page-solutions .lmsgen-audience-section .lmsgen-seo-kicker {
+  color: var(--lmsgen-ink) !important;
+}
+
+body.lmsgen-page-solutions .lmsgen-audience-section .lmsgen-seo-kicker {
+  color: #08766e !important;
+}
+
+body.lmsgen-page-solutions .lmsgen-audience-section p,
+body.lmsgen-page-solutions .lmsgen-audience-section .lmsgen-seo-lead,
+body.lmsgen-page-solutions .lmsgen-audience-grid article p {
+  color: #385c58 !important;
+  opacity: 1 !important;
+}
+
+body.lmsgen-page-solutions .lmsgen-audience-grid {
+  align-items: stretch !important;
+  gap: 2rem !important;
+}
+
+body.lmsgen-page-solutions .lmsgen-audience-grid article {
+  min-height: 0 !important;
+  padding: 3rem !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 63, 58, 0.14) !important;
+  border-radius: 2rem !important;
+}
+
+/* Learner-management section: restore breathing room and a controlled grid. */
+body.lmsgen-page-solutions .nsol-manage-s {
+  padding: 8rem 0 10rem !important;
+}
+
+body.lmsgen-page-solutions .nsol-manage-s > .container {
+  width: 100% !important;
+  max-width: 172rem !important;
+  padding-left: clamp(2.4rem, 4vw, 6rem) !important;
+  padding-right: clamp(2.4rem, 4vw, 6rem) !important;
+}
+
+body.lmsgen-page-solutions .nsol-manage-s .sl-feat-common-content-c {
+  width: 100% !important;
+  gap: 0 !important;
+}
+
+body.lmsgen-page-solutions .nsol-manage-s .sl-feat-common-content-w.nsl {
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) !important;
+  gap: clamp(4rem, 5vw, 8rem) !important;
+  align-items: center !important;
+}
+
+body.lmsgen-page-solutions .nsol-manage-s .sl-feat-common-text-w.swap.no-padding {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  width: 100% !important;
+  max-width: 68rem !important;
+  padding: 0 !important;
+  order: initial !important;
+}
+
+body.lmsgen-page-solutions .nsol-manage-s .sl-feat-common-text.long {
+  width: 100% !important;
+  max-width: 68rem !important;
+}
+
+body.lmsgen-page-solutions .nsol-manage-s .sl-feat-common-img-w.n-solutions {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+body.lmsgen-page-solutions .nsol-manage-s .sl-feat-common-img {
+  width: 100% !important;
+  height: auto !important;
+  display: block !important;
+  border-radius: 2rem !important;
+}
+
+body.lmsgen-page-solutions .nsol-manage-s .sl-feat-common-list {
+  gap: 1.4rem !important;
+  margin-top: 2.2rem !important;
+}
+
+body.lmsgen-page-solutions .nsol-manage-s .sl-feat-common-list-item,
+body.lmsgen-page-solutions .nsol-manage-s .sl-feat-common-list-item div {
+  color: #edf4f2 !important;
+  font-size: 1.8rem !important;
+  line-height: 1.45 !important;
+}
+
+/* ---------- About ---------- */
+body.lmsgen-page-about .ab-hero-s {
+  padding-top: 5.5rem !important;
+  background: #fafa45 !important;
+  color: var(--lmsgen-ink) !important;
+}
+
+body.lmsgen-page-about .ab-hero-c {
+  margin-top: 0 !important;
+  padding-bottom: 7rem !important;
+  gap: 3.2rem !important;
+}
+
+body.lmsgen-page-about .ab-hero-title-w {
+  max-width: 105rem !important;
+}
+
+body.lmsgen-page-about .ab-hero-s h1 {
+  color: var(--lmsgen-ink) !important;
+  font-size: clamp(4.8rem, 6vw, 7.6rem) !important;
+  font-weight: 650 !important;
+  line-height: 1.04 !important;
+  letter-spacing: -0.045em !important;
+  text-transform: none !important;
+}
+
+body.lmsgen-page-about .ab-hero-s p,
+body.lmsgen-page-about .ab-hero-s .paragraph-l {
+  color: #244f4b !important;
+  opacity: 1 !important;
+  line-height: 1.6 !important;
+}
+
+body.lmsgen-page-about .ab-hero-carousel-w,
+body.lmsgen-page-about .ab-hero-carousel-slide,
+body.lmsgen-page-about .ab-hero-carousel-img-c,
+body.lmsgen-page-about .ab-hero-img {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+body.lmsgen-page-about .ab-hero-carousel-w {
+  display: flex !important;
+  margin-top: 2rem !important;
+}
+
+body.lmsgen-page-about .ab-hero-carousel-slide {
+  display: block !important;
+}
+
+body.lmsgen-page-about .ab-hero-img {
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+}
+
+body.lmsgen-page-about .ab-founded-s,
+body.lmsgen-page-about .ab-team-s,
+body.lmsgen-page-about .ab-timeline-s,
+body.lmsgen-page-about .ab-openjobs-s {
+  background: #ffffff !important;
+  color: var(--lmsgen-ink) !important;
+}
+
+body.lmsgen-page-about .ab-founded-s,
+body.lmsgen-page-about .ab-team-s {
+  padding-top: 9rem !important;
+  padding-bottom: 9rem !important;
+}
+
+body.lmsgen-page-about .ab-founded-s h2,
+body.lmsgen-page-about .ab-founded-s h3,
+body.lmsgen-page-about .ab-team-s h2,
+body.lmsgen-page-about .ab-team-s h3,
+body.lmsgen-page-about .ab-timeline-s h2,
+body.lmsgen-page-about .ab-timeline-s h3 {
+  color: var(--lmsgen-ink) !important;
+  text-transform: none !important;
+}
+
+body.lmsgen-page-about .ab-founded-s p,
+body.lmsgen-page-about .ab-team-s p,
+body.lmsgen-page-about .ab-timeline-s p,
+body.lmsgen-page-about .timeline-rich-block {
+  color: var(--lmsgen-ink-2) !important;
+  opacity: 1 !important;
+  line-height: 1.6 !important;
+}
+
+/* ---------- Blog listing ---------- */
+body.lmsgen-page-blog .blog-hero-s,
+body.lmsgen-page-blog .blog-main-s {
+  color: var(--lmsgen-ink) !important;
+}
+
+body.lmsgen-page-blog .blog-hero-c {
+  margin-top: 0 !important;
+  padding-top: 6rem !important;
+}
+
+body.lmsgen-page-blog .blog-hero-title-w h1 {
+  color: var(--lmsgen-ink) !important;
+  font-size: clamp(4.8rem, 6vw, 7.2rem) !important;
+  font-weight: 650 !important;
+  line-height: 1.04 !important;
+  letter-spacing: -0.04em !important;
+  text-transform: none !important;
+}
+
+/* Exported category routes do not exist in this deployment. Hide the dead
+   filter controls instead of sending users into the host catch-all. */
+body.lmsgen-page-blog .blog-hero-nav-c {
+  display: none !important;
+}
+
+body.lmsgen-page-blog .hp-insights-article-w,
+body.lmsgen-page-blog .hp-insights-article-content-c,
+body.lmsgen-page-blog .global-article-link,
+body.lmsgen-page-blog .global-article-date,
+body.lmsgen-page-blog .global-article-tag {
+  color: var(--lmsgen-ink) !important;
+}
+
+body.lmsgen-page-blog .hp-insights-article-w p,
+body.lmsgen-page-blog .paragraph-s {
+  color: var(--lmsgen-ink-2) !important;
+  opacity: 1 !important;
+}
+
+/* ---------- Blog articles ---------- */
+body.lmsgen-page-article .art-main-s,
+body.lmsgen-page-article .art-main-c,
+body.lmsgen-page-article .art-content-w {
+  background: #ffffff !important;
+  color: var(--lmsgen-ink) !important;
+}
+
+body.lmsgen-page-article .art-main-s {
+  padding-top: 6rem !important;
+}
+
+body.lmsgen-page-article .art-header-w h1,
+body.lmsgen-page-article .art-content-w h2,
+body.lmsgen-page-article .art-content-w h3,
+body.lmsgen-page-article .art-content-w h4 {
+  color: var(--lmsgen-ink) !important;
+  text-transform: none !important;
+}
+
+body.lmsgen-page-article .art-content-w p,
+body.lmsgen-page-article .art-content-w li,
+body.lmsgen-page-article .w-richtext p,
+body.lmsgen-page-article .w-richtext li {
+  color: var(--lmsgen-ink-2) !important;
+  opacity: 1 !important;
+  line-height: 1.72 !important;
+}
+
+/* ---------- Contact ---------- */
+body.lmsgen-page-contact .ct-main-s {
+  background: #ffffff !important;
+  color: var(--lmsgen-ink) !important;
+  padding-top: 0 !important;
+}
+
+body.lmsgen-page-contact .ct-main-c {
+  width: 100% !important;
+  max-width: 100rem !important;
+  margin: 6rem auto 10rem !important;
+  gap: 3.6rem !important;
+}
+
+body.lmsgen-page-contact .ct-main-form-title-w {
+  max-width: 78rem !important;
+}
+
+body.lmsgen-page-contact .ct-main-form-title-w h1 {
+  color: var(--lmsgen-ink) !important;
+  font-size: clamp(4.4rem, 5vw, 6.4rem) !important;
+  font-weight: 650 !important;
+  line-height: 1.06 !important;
+  letter-spacing: -0.04em !important;
+  text-transform: none !important;
+}
+
+body.lmsgen-page-contact .ct-main-form-title-w p,
+body.lmsgen-page-contact .ct-main-form label,
+body.lmsgen-page-contact .ct-form-checkbox-label {
+  color: var(--lmsgen-ink-2) !important;
+  opacity: 1 !important;
+}
+
+body.lmsgen-page-contact .ct-main-form-c,
+body.lmsgen-page-contact .ct-main-form-w {
+  width: 100% !important;
+  max-width: 82rem !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+body.lmsgen-page-contact .ct-main-info-c,
+body.lmsgen-page-contact .ct-main-img-w {
+  display: none !important;
+}
+
+body.lmsgen-page-contact .ct-main-form-field {
+  color: var(--lmsgen-ink) !important;
+  background: #f0f4f3 !important;
+  border: 1px solid transparent !important;
+}
+
+body.lmsgen-page-contact .ct-main-form-field:focus {
+  border-color: #80cfc8 !important;
+  box-shadow: 0 0 0 3px rgba(0, 169, 157, 0.12) !important;
+}
+
+body.lmsgen-page-contact .btn-primary.submit {
+  background: #004b45 !important;
+  color: #ffffff !important;
+}
+
+/* ---------- Shared footer ---------- */
+body.atelora-site-refresh .footer-s {
+  background: var(--lmsgen-ink) !important;
+  color: #ffffff !important;
+}
+
+body.atelora-site-refresh .footer-s .hp-footer-h1 {
+  color: #54ddd2 !important;
+}
+
+body.atelora-site-refresh .footer-s p,
+body.atelora-site-refresh .footer-s .paragraph-s,
+body.atelora-site-refresh .footer-s .global-footer-nav-link,
+body.atelora-site-refresh .footer-s .global-footer-legal-link {
+  color: #ffffff !important;
+}
+
+@media (max-width: 991px) {
+  :root { --lmsgen-header-h: 7rem; }
+
+  body.atelora-site-refresh .global-header-c > .container-large {
+    padding: 0 2rem !important;
+  }
+
+  body.atelora-site-refresh .global-header-w {
+    min-height: var(--lmsgen-header-h) !important;
+    gap: 1.6rem !important;
+  }
+
+  body.atelora-site-refresh .nav-logo,
+  body.atelora-site-refresh .nav-logo.jungle,
+  body.atelora-site-refresh .nav-logo.sticky {
+    width: 15rem !important;
+    max-width: 15rem !important;
+    height: 3.2rem !important;
+  }
+
+  body.atelora-site-refresh .global-nav-btn-c {
+    display: none !important;
+  }
+
+  body.atelora-site-refresh .global-nav-menu-btn {
+    margin-left: auto !important;
+    padding: 1rem !important;
+    display: block !important;
+  }
+
+  body.atelora-site-refresh .global-header-nav-w {
+    color: var(--lmsgen-ink) !important;
+    background: #ffffff !important;
+    padding: 1rem 2rem 2rem !important;
+  }
+
+  body.atelora-site-refresh .global-header-nav-w[data-nav-menu-open] {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    border-top: 1px solid var(--lmsgen-line) !important;
+    box-shadow: 0 18px 28px rgba(0, 63, 58, 0.1) !important;
+  }
+
+  body.atelora-site-refresh .global-nav-link,
+  body.atelora-site-refresh .global-nav-link.jungle,
+  body.atelora-site-refresh .global-nav-link.sticky {
+    width: 100% !important;
+    padding: 1.5rem 0 !important;
+    border-top: 1px solid rgba(0, 63, 58, 0.1) !important;
+    font-size: 1.7rem !important;
+  }
+
+  body.atelora-site-refresh .global-header-nav-w[data-nav-menu-open] .global-nav-link:first-of-type {
+    border-top: 0 !important;
+  }
+
+  body.atelora-site-refresh .global-header-nav-w[data-nav-menu-open] .mobile-btn-c {
+    display: flex !important;
+    margin-top: 1rem !important;
+  }
+
+  body.lmsgen-page-solutions .nsol-manage-s .sl-feat-common-content-w.nsl {
+    grid-template-columns: 1fr !important;
+    gap: 4rem !important;
+  }
+
+  body.lmsgen-page-solutions .nsol-manage-s .sl-feat-common-text-w.swap.no-padding,
+  body.lmsgen-page-solutions .nsol-manage-s .sl-feat-common-img-w.n-solutions {
+    grid-column: 1 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  body.lmsgen-page-solutions .nsol-manage-s .sl-feat-common-text-w.swap.no-padding {
+    grid-row: 1 !important;
+  }
+
+  body.lmsgen-page-solutions .nsol-manage-s .sl-feat-common-img-w.n-solutions {
+    grid-row: 2 !important;
+  }
+
+  body.lmsgen-page-about .ab-founded-header-c,
+  body.lmsgen-page-about .ab-team-header-c {
+    flex-direction: column !important;
+    gap: 3rem !important;
+  }
+
+  body.lmsgen-page-about .ab-team-header-title-w,
+  body.lmsgen-page-about .ab-team-header-text-w {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  body.atelora-site-refresh .global-header-c > .container-large {
+    padding: 0 1.6rem !important;
+  }
+
+  body.lmsgen-page-home .hp-hero-s,
+  body.lmsgen-page-solutions .sl-hero-s,
+  body.lmsgen-page-about .ab-hero-s {
+    padding-top: 4rem !important;
+  }
+
+  body.lmsgen-page-solutions .lmsgen-audience-section {
+    padding: 6rem 1.8rem !important;
+  }
+
+  body.lmsgen-page-contact .ct-main-c {
+    margin-top: 4rem !important;
+    margin-bottom: 7rem !important;
+  }
+}
