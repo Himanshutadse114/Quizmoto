@@ -1,0 +1,52 @@
+/*
+ * Homepage lower-section heading correction.
+ *
+ * The exported homepage uses `h2.h1` for several section titles. The shared
+ * UI system correctly treats `.h1` as page-title scale, which made those
+ * lower-page section headings look disproportionately large. From the
+ * "Built for..." / trust section onwards, keep headings at section scale.
+ */
+
+body.atelora-home-page .hp-trust-s h2,
+body.atelora-home-page .hp-trust-s ~ section h2 {
+  font-family: var(--atelora-font) !important;
+  font-size: clamp(3.4rem, 3.25vw, 4.5rem) !important;
+  font-weight: 500 !important;
+  line-height: 1.12 !important;
+  letter-spacing: -0.022em !important;
+  text-transform: none !important;
+}
+
+/* Section-title utility classes should not promote an H2 back to H1 scale. */
+body.atelora-home-page .hp-trust-s h2.h1,
+body.atelora-home-page .hp-trust-s ~ section h2.h1 {
+  font-size: clamp(3.4rem, 3.25vw, 4.5rem) !important;
+  line-height: 1.12 !important;
+}
+
+/* Keep long section headings readable and visually aligned with the site. */
+body.atelora-home-page .hp-trust-s h2,
+body.atelora-home-page .hp-trust-s ~ section h2 {
+  max-width: 82rem;
+  text-wrap: balance;
+}
+
+@media screen and (max-width: 991px) {
+  body.atelora-home-page .hp-trust-s h2,
+  body.atelora-home-page .hp-trust-s ~ section h2,
+  body.atelora-home-page .hp-trust-s h2.h1,
+  body.atelora-home-page .hp-trust-s ~ section h2.h1 {
+    font-size: clamp(3.2rem, 5vw, 4rem) !important;
+  }
+}
+
+@media screen and (max-width: 767px) {
+  body.atelora-home-page .hp-trust-s h2,
+  body.atelora-home-page .hp-trust-s ~ section h2,
+  body.atelora-home-page .hp-trust-s h2.h1,
+  body.atelora-home-page .hp-trust-s ~ section h2.h1 {
+    font-size: clamp(2.8rem, 8vw, 3.5rem) !important;
+    line-height: 1.16 !important;
+    letter-spacing: -0.018em !important;
+  }
+}
