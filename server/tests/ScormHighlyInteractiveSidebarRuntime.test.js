@@ -62,11 +62,13 @@ describe('Highly Interactive learner sidebar runtime', () => {
         expect(css).to.include('visibility:hidden!important');
         expect(js).to.include("type==='step_explore'");
         expect(js).to.include('data-qmx-step-visited');
-        expect(js).to.include('data-qmx-hotspot-visited');
+        expect(js).to.include('.qmx-explore-option');
+        expect(js).to.include('data-qmx-explore-visited');
         expect(js).to.include('data-qmx-focus-complete');
         expect(js).to.include('data-qmx-revealed');
         expect(js).to.include("kind==='quiz'");
         expect(js).to.include('data-qmx-interaction-locked');
+        expect(js).to.not.include('data-qmx-hotspot-visited');
     });
 
     it('uses the existing Previous and Next controls instead of bypassing learner navigation state', () => {
