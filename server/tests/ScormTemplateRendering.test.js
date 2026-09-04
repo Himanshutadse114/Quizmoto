@@ -9,6 +9,7 @@ const {
 } = require('../services/scorm/ScormTemplateContentFitter');
 const {
     SCRIPT_ID,
+    STYLE_ID,
     injectTemplateRuntime,
     runtimeScript,
     slideDescriptors
@@ -77,17 +78,33 @@ describe('SCORM template fixed-stage rendering', () => {
         expect(trimmed).to.match(/[.!?]$/);
     });
 
-    it('injects template metadata before generic body interaction scripts and has no 78 percent clipping floor', () => {
+    it('injects template metadata before generic body interaction scripts and has no clipping floor', () => {
         const binding = createTemplateBinding('highly-interactive', { interactionLevel: 'high' });
         const course = planExperienceForTemplate(analysisWithLongSlides(), binding);
         const html = '<!doctype html><html><head></head><body><main><section class="slide active" data-kind="learning" data-section="1"><div class="qmx-learning-shell"><div class="qmx-copy"><h2>Title</h2><p>Long copy</p><div class="qmx-cards"><div class="qmx-card"><span>01</span><p>Point</p></div></div></div></div></section></main><script id="generic-interactions"></script></body></html>';
         const patched = injectTemplateRuntime(html, course);
 
         expect(patched).to.include(SCRIPT_ID);
+        expect(patched).to.include(STYLE_ID);
         expect(patched.indexOf(SCRIPT_ID)).to.be.lessThan(patched.indexOf('<body>'));
         expect(patched).to.include('data-qmx-layout-id');
         expect(patched).to.include('disableGenericFlip');
         expect(patched).to.not.include('MIN_SCALE=.78');
+    });
+
+    it('gives Highly Interactive a stage-filling 16:9 composition instead of a centred content-height block', () => {
+        const binding = createTemplateBinding('highly-interactive', { interactionLevel: 'high' });
+        const course = planExperienceForTemplate(analysisWithLongSlides(), binding);
+        const html = '<!doctype html><html><head></head><body><main><section class="slide active" data-kind="learning" data-section="1"><div class="qmx-learning-shell no-image"><div class="qmx-copy"><div class="eyebrow">Section 1</div><h2>Title</h2><p>Copy</p><div class="qmx-process"><div class="qmx-step"><p>Step</p></div></div></div></div></section></main></body></html>';
+        const patched = injectTemplateRuntime(html, course);
+
+        expect(patched).to.include('stageGeometry');
+        expect(patched).to.include('--qmx-stage-width');
+        expect(patched).to.include('--qmx-stage-height');
+        expect(patched).to.include('.qmx-learning-shell.no-image .qmx-copy');
+        expect(patched).to.include('grid-auto-rows:1fr!important');
+        expect(patched).to.include('.qmx-quiz-shell');
+        expect(patched).to.include('data-qmx-stage-size');
     });
 
     it('emits syntactically valid browser runtime JavaScript', () => {
