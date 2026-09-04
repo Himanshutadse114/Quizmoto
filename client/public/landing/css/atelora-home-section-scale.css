@@ -1,34 +1,63 @@
 /*
  * Homepage lower-section heading correction.
  *
- * The exported homepage uses `h2.h1` for several section titles. The shared
- * UI system correctly treats `.h1` as page-title scale, which made those
- * lower-page section headings look disproportionately large. From the
- * "Built for..." / trust section onwards, keep headings at section scale.
+ * The exported homepage uses `h2.h1` for several section titles. Those are
+ * section headings, not page titles, so they use a restrained size while
+ * preserving the homepage's native display typeface: National 2 Condensed.
  */
 
+@font-face {
+  font-family: "National 2 Condensed";
+  src: url("/landing/fonts/National2Condensed-Medium.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+/* Main section headings from the trust / "Built for..." block onwards. */
 body.atelora-home-page .hp-trust-s h2,
 body.atelora-home-page .hp-trust-s ~ section h2 {
-  font-family: var(--atelora-font) !important;
+  font-family: "National 2 Condensed", sans-serif !important;
   font-size: clamp(3.4rem, 3.25vw, 4.5rem) !important;
   font-weight: 500 !important;
-  line-height: 1.12 !important;
-  letter-spacing: -0.022em !important;
+  line-height: 1.02 !important;
+  letter-spacing: -0.018em !important;
   text-transform: none !important;
+  max-width: 82rem;
+  text-wrap: balance;
 }
 
 /* Section-title utility classes should not promote an H2 back to H1 scale. */
 body.atelora-home-page .hp-trust-s h2.h1,
 body.atelora-home-page .hp-trust-s ~ section h2.h1 {
+  font-family: "National 2 Condensed", sans-serif !important;
   font-size: clamp(3.4rem, 3.25vw, 4.5rem) !important;
-  line-height: 1.12 !important;
+  line-height: 1.02 !important;
 }
 
-/* Keep long section headings readable and visually aligned with the site. */
-body.atelora-home-page .hp-trust-s h2,
-body.atelora-home-page .hp-trust-s ~ section h2 {
-  max-width: 82rem;
-  text-wrap: balance;
+/* Keep display-style card headings in the same native homepage typeface. */
+body.atelora-home-page .hp-trust-s .hp-trust-card-title,
+body.atelora-home-page .hp-mark-s .heading-3,
+body.atelora-home-page .hp-mark-s h3:not(.h5) {
+  font-family: "National 2 Condensed", sans-serif !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.012em !important;
+  text-transform: none !important;
+}
+
+body.atelora-home-page .hp-trust-s .hp-trust-card-title,
+body.atelora-home-page .hp-mark-s .heading-3 {
+  font-size: clamp(2.5rem, 2.2vw, 3.2rem) !important;
+  line-height: 1.08 !important;
+}
+
+/* Editorial/article card titles intentionally remain Open Sauce, as in the
+ * original exported design, so only display headings use the condensed face. */
+body.atelora-home-page .hp-insights-s h3.h5 {
+  font-family: var(--atelora-font) !important;
+  font-size: 2.1rem !important;
+  line-height: 1.3 !important;
+  letter-spacing: -0.01em !important;
 }
 
 @media screen and (max-width: 991px) {
@@ -46,7 +75,12 @@ body.atelora-home-page .hp-trust-s ~ section h2 {
   body.atelora-home-page .hp-trust-s h2.h1,
   body.atelora-home-page .hp-trust-s ~ section h2.h1 {
     font-size: clamp(2.8rem, 8vw, 3.5rem) !important;
-    line-height: 1.16 !important;
-    letter-spacing: -0.018em !important;
+    line-height: 1.06 !important;
+    letter-spacing: -0.014em !important;
+  }
+
+  body.atelora-home-page .hp-trust-s .hp-trust-card-title,
+  body.atelora-home-page .hp-mark-s .heading-3 {
+    font-size: clamp(2.3rem, 6vw, 2.8rem) !important;
   }
 }
