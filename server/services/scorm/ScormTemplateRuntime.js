@@ -2,6 +2,7 @@
 
 const JSZip = require('jszip');
 const { fitSlidePresentationContent } = require('./ScormTemplateContentFitter');
+const { inject: injectHighlyInteractiveSidebar } = require('./ScormHighlyInteractiveSidebarRuntime');
 
 const STYLE_ID = 'quizmoto-template-stage-v3';
 const SCRIPT_ID = 'quizmoto-template-stage-script-v3';
@@ -157,7 +158,7 @@ function injectTemplateRuntime(html, analysis) {
     const descriptors = slideDescriptors(analysis);
     if (!source.includes(STYLE_ID)) source = source.replace('</head>', `${runtimeStyle(templateId)}\n</head>`);
     if (!source.includes(SCRIPT_ID)) source = source.replace('</head>', `${runtimeScript(templateId, descriptors)}\n</head>`);
-    return source;
+    return injectHighlyInteractiveSidebar(source, templateId);
 }
 
 async function applyTemplateRuntimeToZip(zipBuffer, analysis) {
