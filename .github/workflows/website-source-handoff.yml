@@ -1,0 +1,63 @@
+name: Website Source Handoff
+
+on:
+  push:
+    branches:
+      - handoff/website-source-20260905
+
+jobs:
+  package-website:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Prepare frontend-only handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p handoff/LMSGEN-Website
+          rsync -a client/ handoff/LMSGEN-Website/ \
+            --exclude node_modules \
+            --exclude dist \
+            --exclude '*.ttf' \
+            --exclude '*.otf' \
+            --exclude '*.woff' \
+            --exclude '*.woff2'
+
+          cat > handoff/LMSGEN-Website/LOCAL-RUN.md <<'EOF'
+          # LMSGEN website - local run
+
+          This handoff contains the current frontend source from the live LMSGEN project. Backend, database and server-side course-generation code are intentionally not included.
+
+          ## Requirements
+          - Node.js 22.x
+          - npm
+
+          ## Run locally
+          1. Open a terminal in this folder.
+          2. Run `npm install`.
+          3. Run `npm run dev`.
+          4. Open the local Vite URL shown in the terminal (normally `http://localhost:5173`).
+
+          ## Production-style build
+          - Run `npm run build`.
+          - Run `npm run preview` to preview the generated build.
+
+          ## Notes
+          - Public website pages and frontend code are included.
+          - Backend/API/database code is not included.
+          - Features that require API calls may still point to the configured LMSGEN API unless the developer changes the frontend configuration locally.
+          - Local font binary files are not included in this handoff. Use appropriately licensed local fonts or system fallbacks when editing locally.
+          - When returning the edited ZIP, keep the same folder structure so changes can be compared and applied cleanly.
+          EOF
+
+          printf '%s\n' 'Source branch: main' 'Source commit: 9e9286756250e9b236963a95b89c8a297e9fc2c7' > handoff/LMSGEN-Website/SOURCE-VERSION.txt
+
+      - name: Upload website ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LMSGEN-Website-Source-20260905
+          path: handoff/LMSGEN-Website
+          if-no-files-found: error
+          retention-days: 7
