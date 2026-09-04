@@ -36,7 +36,40 @@ function parseCandidate(raw) {
     };
 }
 
-async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' }) {
+function templateInstruction(courseTemplateId, interactionLevel) {
+    const templateId = String(courseTemplateId || '').trim().toLowerCase();
+    const level = String(interactionLevel || '').trim().toLowerCase() || 'balanced';
+    if (templateId !== 'scenario-learning') return '';
+
+    const scenarioTarget = level === 'high'
+        ? 'About 35-50% of suitable learning screens should be genuine workplace situations or decisions.'
+        : level === 'balanced'
+            ? 'About 25-35% of suitable learning screens should be genuine workplace situations or decisions.'
+            : 'Use a small number of genuine workplace situations and keep the rest as guided explanation.';
+
+    return `SELECTED COURSE EXPERIENCE: SCENARIO LEARNING (${level.toUpperCase()} INTERACTION)
+
+This course will be rendered as a decision-led scenario experience. Write the learning content so the scenario template has meaningful material to work with rather than converting ordinary factual bullets into fake choices.
+
+SCENARIO AUTHORING CONTRACT:
+- ${scenarioTarget}
+- A genuine scenario screen must establish a concrete workplace moment in the body. Use natural openings such as "Imagine...", "You notice...", "A colleague asks..." or "You are about to..." only where a real decision exists.
+- On genuine scenario screens, keyPoints must be 3-7 word response choices, decision factors or observable clues that a learner could reasonably select. Do not use four unrelated facts and call them choices.
+- Where response choices are used, include enough consequence and coaching language in the body for the renderer to explain why a response is safer, riskier or incomplete. Keep all guidance grounded in the supplied source.
+- Do not force every screen into a decision. Definitions, ordered procedures, comparisons, warning-sign screens and reporting steps should remain process, comparison, hub or spotlight content when those structures teach the material better.
+- Use process keyPoints for ordered actions, comparison keyPoints for meaningful contrasts and hub keyPoints for clues or warning signs.
+- Do not invent organisation-specific policy, disciplinary outcomes, contacts, access rules or escalation routes that are not present in the source.
+- The course should feel like a sequence of situation → learner judgement → consequence/coaching → safer behaviour, while still teaching essential concepts clearly.
+- Avoid generic recap screens. Every scenario or interaction must change what the learner notices, decides or does.`;
+}
+
+async function analyzePolicy({
+    fileBase64,
+    mimeType,
+    detailLevel = 'detailed',
+    courseTemplateId = '',
+    interactionLevel = ''
+}) {
     const config = vertexConfig();
     if (!config.projectId) {
         const error = new Error('GOOGLE_CLOUD_PROJECT is not configured for Vertex AI.');
@@ -60,7 +93,12 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
     }
 
     const instruction = LegacyPolicy.professionalInstruction(normalizedLevel, level);
-    const baseParts = [...sourceParts, { text: instruction }];
+    const selectedTemplateInstruction = templateInstruction(courseTemplateId, interactionLevel);
+    const baseParts = [
+        ...sourceParts,
+        { text: instruction },
+        ...(selectedTemplateInstruction ? [{ text: selectedTemplateInstruction }] : [])
+    ];
     if (!fileBase64 && !sourceParts.length) {
         baseParts.unshift({ text: 'SOURCE: Course brief will be provided by the caller context or prior messages.' });
     }
@@ -150,6 +188,8 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
         module: 'scorm',
         model,
         detailLevel: normalizedLevel,
+        courseTemplateId: String(courseTemplateId || '') || null,
+        interactionLevel: String(interactionLevel || '') || null,
         slides: Array.isArray(analysis.slides) ? analysis.slides.length : 0,
         courseWords: LegacyPolicy.courseWordCount(analysis),
         remainingQualityIssues: LegacyPolicy.qualityIssues(analysis, normalizedLevel).length
@@ -162,5 +202,6 @@ module.exports = {
     analyzePolicy,
     selectedTextModel,
     callVertex,
-    mapVertexError
+    mapVertexError,
+    templateInstruction
 };

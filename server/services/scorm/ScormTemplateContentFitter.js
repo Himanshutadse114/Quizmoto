@@ -126,7 +126,7 @@ function supportingSentence(point, sentences, usedIndexes) {
     return best && bestScore >= 3.8 ? best : null;
 }
 
-function enrichHighlyInteractiveKeyPoints(slide) {
+function enrichInteractiveKeyPoints(slide) {
     const source = slide && typeof slide === 'object' ? slide : {};
     const points = Array.isArray(source.keyPoints) ? source.keyPoints.map(clean).filter(Boolean) : [];
     if (!points.length) return points;
@@ -141,6 +141,11 @@ function enrichHighlyInteractiveKeyPoints(slide) {
         usedIndexes.add(match.index);
         return trimToWordBudget(match.sentence, INTERACTION_POINT_WORD_LIMIT);
     });
+}
+
+// Backwards-compatible export retained for existing callers/tests.
+function enrichHighlyInteractiveKeyPoints(slide) {
+    return enrichInteractiveKeyPoints(slide);
 }
 
 function layoutBudget(templateId, layout) {
@@ -160,11 +165,11 @@ function fitSlidePresentationContent(slide, templateId) {
         return next;
     }
 
+    const enrichPoints = templateId === 'highly-interactive' || templateId === 'scenario-learning';
+
     return {
         ...source,
-        ...(templateId === 'highly-interactive'
-            ? { keyPoints: enrichHighlyInteractiveKeyPoints(source) }
-            : {}),
+        ...(enrichPoints ? { keyPoints: enrichInteractiveKeyPoints(source) } : {}),
         displayContent: trimToWordBudget(source.content, maxWords),
         displayContentWordLimit: maxWords
     };
@@ -186,6 +191,7 @@ function fitTemplatePresentationContent(analysis, binding) {
 module.exports = {
     BODY_WORD_BUDGETS,
     INTERACTION_POINT_WORD_LIMIT,
+    enrichInteractiveKeyPoints,
     enrichHighlyInteractiveKeyPoints,
     fitSlidePresentationContent,
     fitTemplatePresentationContent,

@@ -11,6 +11,7 @@ const {
 } = require('./ScormTemplateBindingService');
 const { validateTemplateAnalysis } = require('./ScormTemplateValidator');
 const { applyTemplateRuntimeToZip } = require('./ScormTemplateRuntime');
+const { applyScenarioLearningRuntimeToZip } = require('./ScormScenarioLearningRuntime');
 const { ScormPackage } = require('../../models/scorm');
 const { ensureCourseForPackage } = require('./ScormCourseWorkspaceService');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
@@ -105,6 +106,8 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
                 fileBase64: raw,
                 mimeType: effectiveBase64 ? effectiveMimeType : 'text/plain',
                 detailLevel: detailLevel || 'detailed',
+                courseTemplateId: templateBinding?.templateId || '',
+                interactionLevel: templateBinding?.interactionLevel || '',
                 onProgress
             });
         } finally {
@@ -159,6 +162,7 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
     });
     if (useTemplateEngine) {
         zipBuf = await applyTemplateRuntimeToZip(zipBuf, analysis);
+        zipBuf = await applyScenarioLearningRuntimeToZip(zipBuf, analysis);
     }
     checkCancelled();
 

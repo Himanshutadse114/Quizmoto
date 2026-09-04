@@ -19,7 +19,7 @@ function semanticKind(slide) {
     if (explicit === 'timeline' || /timeline|history|sequence|journey|phase/.test(text)) return 'timeline';
     if (explicit === 'process' || /step|process|workflow|lifecycle|how .* works/.test(text)) return 'process';
     if (explicit === 'comparison' || /versus|\bvs\b|compare|comparison|safe .* unsafe|do .* don.?t/.test(text)) return 'comparison';
-    if (/scenario|case study|imagine|suppose|you receive|you notice|what would you|decision/.test(text)) return 'scenario';
+    if (/scenario|case study|imagine|suppose|you receive|you notice|you are asked|you see|someone asks|a colleague asks|what would you|what should you|decision/.test(text)) return 'scenario';
     if (/warning signs|red flags|indicators|signals|types of|categories|components|features/.test(text)) return 'hub';
     return explicit || 'spotlight';
 }
@@ -44,19 +44,46 @@ function highInteractivePlan(slide, index, level) {
 
 function scenarioPlan(slide, index, level) {
     const semantic = semanticKind(slide);
-    if (semantic === 'timeline') return { layout: 'timeline', screenType: 'timeline', interaction: interaction('step_explore', 'Follow the situation in sequence.') };
-    if (semantic === 'process') return { layout: 'process', screenType: 'process', interaction: interaction('step_explore', 'Follow the guided response step by step.') };
-    if (semantic === 'comparison') return { layout: 'comparison', screenType: 'comparison', interaction: interaction('compare_reveal', 'Compare the possible outcomes before deciding.') };
-
-    if (index > 0 && (semantic === 'scenario' || level === 'high' || (level === 'balanced' && index % 2 === 1))) {
+    if (semantic === 'timeline') {
+        return { layout: 'timeline', screenType: 'timeline', interaction: interaction('step_explore', 'Follow the situation in sequence and reveal the coaching at each stage.') };
+    }
+    if (semantic === 'process') {
+        return { layout: 'process', screenType: 'process', interaction: interaction('step_explore', 'Explore each response step before continuing.') };
+    }
+    if (semantic === 'comparison') {
+        return { layout: 'comparison', screenType: 'comparison', interaction: interaction('compare_reveal', 'Compare the outcomes and identify what changes the safest decision.') };
+    }
+    if (semantic === 'hub') {
+        return { layout: 'hub', screenType: 'hotspot', interaction: interaction('hotspot_explore', 'Notice each clue and reveal why it matters in the situation.') };
+    }
+    if (semantic === 'scenario') {
         return {
-            layout: index % 3 === 0 ? 'cards' : 'spotlight',
+            layout: 'cards',
             screenType: 'scenario',
-            interaction: interaction('decision_explore', 'Consider the workplace situation and choose the most appropriate response.')
+            interaction: interaction('decision_explore', 'Consider the situation, choose a response and review the coaching feedback.')
         };
     }
 
-    return { layout: 'spotlight', screenType: index === 0 ? 'concept' : 'takeaway', interaction: interaction('focus_reveal', 'Review the context before moving to the next decision.') };
+    const interactive = level === 'high' || (level === 'balanced' && index % 2 === 1);
+    if (interactive && index % 3 === 1) {
+        return {
+            layout: 'cards',
+            screenType: 'reveal',
+            interaction: interaction('click_reveal', 'Explore the learner cues before moving to the next decision.')
+        };
+    }
+    if (interactive && index % 3 === 2) {
+        return {
+            layout: 'hub',
+            screenType: 'hotspot',
+            interaction: interaction('hotspot_explore', 'Explore the clues and reflect on what you would notice.')
+        };
+    }
+    return {
+        layout: 'spotlight',
+        screenType: index === 0 ? 'concept' : 'takeaway',
+        interaction: interaction('focus_reveal', 'Review the situation and reveal the coach’s note before continuing.')
+    };
 }
 
 function visualPlan(slide, index, level) {
