@@ -1,0 +1,522 @@
+/* LMSGEN Contact page refresh.
+   Loaded after lmsgen-unified-ui.css on the production static Contact page. */
+
+body.lmsgen-page-contact {
+  background: #f6faf9 !important;
+}
+
+body.lmsgen-page-contact .ct-main-s {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(5.2rem, 6vw, 8rem) 0 clamp(8rem, 8vw, 12rem) !important;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(0, 169, 157, 0.11), transparent 28rem),
+    radial-gradient(circle at 94% 24%, rgba(123, 220, 211, 0.16), transparent 34rem),
+    linear-gradient(180deg, #f8fcfb 0%, #eef7f5 100%) !important;
+  color: #003f3a !important;
+}
+
+body.lmsgen-page-contact .ct-main-s::before {
+  content: "";
+  position: absolute;
+  width: 42rem;
+  height: 42rem;
+  right: -20rem;
+  top: 3rem;
+  border: 1px solid rgba(0, 63, 58, 0.08);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+body.lmsgen-page-contact .ct-main-s > .container-small {
+  position: relative;
+  z-index: 1;
+  width: 100% !important;
+  max-width: 142rem !important;
+  padding: 0 clamp(2.4rem, 4.8vw, 7rem) !important;
+}
+
+body.lmsgen-page-contact .ct-main-c {
+  display: grid !important;
+  grid-template-columns: minmax(0, 0.82fr) minmax(52rem, 1.18fr) !important;
+  grid-template-areas:
+    "intro form"
+    "context form" !important;
+  column-gap: clamp(4.8rem, 6vw, 9rem) !important;
+  row-gap: 3.2rem !important;
+  align-items: start !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 auto !important;
+}
+
+body.lmsgen-page-contact .ct-main-form-title-w {
+  grid-area: intro;
+  width: 100% !important;
+  max-width: 54rem !important;
+  margin: 0 !important;
+  padding-top: 2.4rem;
+  text-align: left !important;
+}
+
+body.lmsgen-page-contact .ct-main-form-title-w::before {
+  content: "CONTACT LMSGEN";
+  display: inline-flex;
+  align-items: center;
+  min-height: 3.2rem;
+  margin-bottom: 2rem;
+  padding: 0.7rem 1.3rem;
+  border: 1px solid rgba(0, 99, 91, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  color: #08766e;
+  font-family: "Montserrat", Arial, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.08em;
+}
+
+body.lmsgen-page-contact .ct-main-form-title-w h1 {
+  max-width: 52rem !important;
+  margin: 0 !important;
+  color: #003f3a !important;
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-size: clamp(4.8rem, 5vw, 7rem) !important;
+  font-weight: 600 !important;
+  line-height: 1.02 !important;
+  letter-spacing: -0.045em !important;
+  text-transform: none !important;
+  text-wrap: balance;
+}
+
+body.lmsgen-page-contact .ct-main-form-title-w > p {
+  max-width: 49rem !important;
+  margin: 2.4rem 0 0 !important;
+  color: #496a66 !important;
+  font-family: "Open Sans", Arial, sans-serif !important;
+  font-size: 1.8rem !important;
+  font-weight: 400 !important;
+  line-height: 1.7 !important;
+  text-align: left !important;
+}
+
+body.lmsgen-page-contact .lmsgen-contact-context {
+  grid-area: context;
+  position: relative;
+  display: block !important;
+  width: 100% !important;
+  max-width: 54rem !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 3.2rem !important;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 2.6rem;
+  background:
+    radial-gradient(circle at 90% 8%, rgba(123, 220, 211, 0.2), transparent 18rem),
+    linear-gradient(145deg, #003f3a 0%, #072f2c 100%);
+  color: #ffffff !important;
+  box-shadow: 0 24px 60px rgba(0, 63, 58, 0.14);
+}
+
+body.lmsgen-page-contact .lmsgen-contact-context::after {
+  content: "";
+  position: absolute;
+  width: 16rem;
+  height: 16rem;
+  right: -6rem;
+  bottom: -7rem;
+  border: 1px solid rgba(123, 220, 211, 0.28);
+  border-radius: 50%;
+}
+
+body.lmsgen-page-contact .lmsgen-contact-context-head,
+body.lmsgen-page-contact .lmsgen-contact-capability-list,
+body.lmsgen-page-contact .lmsgen-contact-response {
+  position: relative;
+  z-index: 1;
+}
+
+body.lmsgen-page-contact .lmsgen-contact-kicker {
+  display: block;
+  margin-bottom: 1.4rem;
+  color: #8fe4dc;
+  font-family: "Montserrat", Arial, sans-serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.09em;
+}
+
+body.lmsgen-page-contact .lmsgen-contact-context h2 {
+  max-width: 42rem;
+  margin: 0;
+  color: #ffffff !important;
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-size: clamp(2.8rem, 2.7vw, 3.8rem) !important;
+  font-weight: 600 !important;
+  line-height: 1.12 !important;
+  letter-spacing: -0.03em !important;
+  text-transform: none !important;
+}
+
+body.lmsgen-page-contact .lmsgen-contact-context-head > p {
+  max-width: 44rem;
+  margin: 1.5rem 0 0;
+  color: #cce2de !important;
+  font-size: 1.55rem !important;
+  line-height: 1.65 !important;
+}
+
+body.lmsgen-page-contact .lmsgen-contact-capability-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2.6rem;
+}
+
+body.lmsgen-page-contact .lmsgen-contact-capability {
+  display: grid;
+  grid-template-columns: 4.2rem minmax(0, 1fr);
+  gap: 1.3rem;
+  align-items: start;
+  padding: 1.5rem 1.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.6rem;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+body.lmsgen-page-contact .lmsgen-contact-capability-number {
+  display: grid;
+  place-items: center;
+  width: 4.2rem;
+  height: 4.2rem;
+  border-radius: 1.2rem;
+  background: #8fe4dc;
+  color: #003f3a;
+  font-family: "Montserrat", Arial, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+body.lmsgen-page-contact .lmsgen-contact-capability h3 {
+  margin: 0 0 0.35rem;
+  color: #ffffff !important;
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-size: 1.65rem !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+  letter-spacing: -0.01em !important;
+  text-transform: none !important;
+}
+
+body.lmsgen-page-contact .lmsgen-contact-capability p {
+  margin: 0;
+  color: #bad5d1 !important;
+  font-size: 1.35rem !important;
+  line-height: 1.55 !important;
+}
+
+body.lmsgen-page-contact .lmsgen-contact-response {
+  display: flex;
+  gap: 1.2rem;
+  align-items: flex-start;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+body.lmsgen-page-contact .lmsgen-contact-response-dot {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.55rem;
+  border-radius: 50%;
+  background: #8fe4dc;
+  box-shadow: 0 0 0 5px rgba(143, 228, 220, 0.12);
+}
+
+body.lmsgen-page-contact .lmsgen-contact-response p {
+  margin: 0;
+  color: #cce2de !important;
+  font-size: 1.35rem !important;
+  line-height: 1.55 !important;
+}
+
+body.lmsgen-page-contact .lmsgen-contact-response strong {
+  color: #ffffff !important;
+  font-family: "Montserrat", Arial, sans-serif;
+  font-weight: 600;
+}
+
+body.lmsgen-page-contact .ct-main-form-c {
+  grid-area: form;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+body.lmsgen-page-contact .ct-main-form-w {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: clamp(3rem, 3.4vw, 4.8rem) !important;
+  border: 1px solid rgba(0, 63, 58, 0.11);
+  border-radius: 3rem;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 28px 80px rgba(0, 63, 58, 0.1);
+}
+
+body.lmsgen-page-contact .ct-main-form {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 2rem !important;
+  width: 100% !important;
+}
+
+body.lmsgen-page-contact .lmsgen-contact-form-head {
+  grid-column: 1 / -1;
+  margin-bottom: 0.4rem;
+}
+
+body.lmsgen-page-contact .lmsgen-contact-form-head h2 {
+  margin: 0;
+  color: #003f3a !important;
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-size: clamp(2.6rem, 2.5vw, 3.4rem) !important;
+  font-weight: 600 !important;
+  line-height: 1.15 !important;
+  letter-spacing: -0.025em !important;
+  text-transform: none !important;
+}
+
+body.lmsgen-page-contact .lmsgen-contact-form-head p {
+  margin: 0.8rem 0 0;
+  color: #617b77 !important;
+  font-size: 1.5rem !important;
+  line-height: 1.6 !important;
+}
+
+body.lmsgen-page-contact .ct-main-form > .ct-form-input-c {
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+body.lmsgen-page-contact .ct-main-form > .ct-form-input-c:nth-of-type(5),
+body.lmsgen-page-contact .ct-main-form > .ct-form-terms-c,
+body.lmsgen-page-contact .ct-main-form > .w-form-formrecaptcha,
+body.lmsgen-page-contact .ct-main-form > .ct-form-button-c {
+  grid-column: 1 / -1;
+}
+
+body.lmsgen-page-contact .ct-main-form-field-label {
+  display: block !important;
+  margin: 0 0 0.8rem !important;
+  color: #244d49 !important;
+  font-family: "Open Sans", Arial, sans-serif !important;
+  font-size: 1.35rem !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+}
+
+body.lmsgen-page-contact .ct-main-form-field {
+  width: 100% !important;
+  min-height: 5.6rem !important;
+  margin: 0 !important;
+  padding: 1.5rem 1.7rem !important;
+  border: 1px solid #d5e4e1 !important;
+  border-radius: 1.35rem !important;
+  outline: none !important;
+  background: #f8fbfa !important;
+  color: #103f3b !important;
+  font-family: "Open Sans", Arial, sans-serif !important;
+  font-size: 1.5rem !important;
+  font-weight: 400 !important;
+  line-height: 1.4 !important;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+body.lmsgen-page-contact textarea.ct-main-form-field {
+  min-height: 15rem !important;
+  resize: vertical;
+}
+
+body.lmsgen-page-contact .ct-main-form-field::placeholder {
+  color: #8aa09d !important;
+  opacity: 1 !important;
+}
+
+body.lmsgen-page-contact .ct-main-form-field:hover {
+  border-color: #b9d3cf !important;
+  background: #ffffff !important;
+}
+
+body.lmsgen-page-contact .ct-main-form-field:focus {
+  border-color: #00a99d !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 4px rgba(0, 169, 157, 0.1) !important;
+}
+
+body.lmsgen-page-contact .ct-form-terms-c {
+  margin: 0.2rem 0 0 !important;
+}
+
+body.lmsgen-page-contact .ct-form-checkbox-c {
+  display: flex !important;
+  gap: 1rem !important;
+  align-items: flex-start !important;
+}
+
+body.lmsgen-page-contact .ct-form-checkbox {
+  flex: 0 0 auto;
+  width: 1.9rem !important;
+  height: 1.9rem !important;
+  margin-top: 0.15rem !important;
+  border: 1px solid #aacac5 !important;
+  border-radius: 0.45rem !important;
+  background: #ffffff !important;
+}
+
+body.lmsgen-page-contact .ct-form-checkbox-label {
+  color: #6b817e !important;
+  font-family: "Open Sans", Arial, sans-serif !important;
+  font-size: 1.25rem !important;
+  font-weight: 400 !important;
+  line-height: 1.55 !important;
+}
+
+body.lmsgen-page-contact .w-form-formrecaptcha {
+  display: none !important;
+}
+
+body.lmsgen-page-contact .ct-form-button-c {
+  display: flex !important;
+  align-items: stretch !important;
+  gap: 0.8rem !important;
+  margin-top: 0.5rem !important;
+}
+
+body.lmsgen-page-contact .btn-primary.submit {
+  min-height: 5.6rem !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: #004b45 !important;
+  color: #ffffff !important;
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-size: 1.5rem !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  text-transform: none !important;
+  box-shadow: none !important;
+}
+
+body.lmsgen-page-contact input.btn-primary.submit {
+  flex: 1 1 auto;
+  padding: 1.7rem 2.4rem !important;
+  cursor: pointer;
+}
+
+body.lmsgen-page-contact a.btn-primary.submit.arrow {
+  flex: 0 0 5.6rem;
+  width: 5.6rem !important;
+  min-width: 5.6rem !important;
+  padding: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+}
+
+body.lmsgen-page-contact .btn-primary.submit:hover {
+  background: #00635b !important;
+}
+
+body.lmsgen-page-contact .w-form-done,
+body.lmsgen-page-contact .w-form-fail {
+  margin: 0 !important;
+  padding: 2rem !important;
+  border-radius: 1.4rem !important;
+  font-size: 1.5rem !important;
+  line-height: 1.5 !important;
+}
+
+body.lmsgen-page-contact .w-form-done {
+  background: #e8f8f5 !important;
+  color: #075b54 !important;
+}
+
+body.lmsgen-page-contact .w-form-fail {
+  background: #fff1ee !important;
+  color: #8c3425 !important;
+}
+
+@media (max-width: 1100px) {
+  body.lmsgen-page-contact .ct-main-c {
+    grid-template-columns: minmax(0, 0.78fr) minmax(46rem, 1.22fr) !important;
+    column-gap: 4rem !important;
+  }
+}
+
+@media (max-width: 991px) {
+  body.lmsgen-page-contact .ct-main-s {
+    padding-top: 4.8rem !important;
+  }
+
+  body.lmsgen-page-contact .ct-main-c {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "intro"
+      "form"
+      "context" !important;
+    row-gap: 3rem !important;
+  }
+
+  body.lmsgen-page-contact .ct-main-form-title-w,
+  body.lmsgen-page-contact .lmsgen-contact-context {
+    max-width: 72rem !important;
+  }
+
+  body.lmsgen-page-contact .ct-main-form-title-w {
+    padding-top: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  body.lmsgen-page-contact .ct-main-s {
+    padding: 3.6rem 0 7rem !important;
+  }
+
+  body.lmsgen-page-contact .ct-main-s > .container-small {
+    padding: 0 1.8rem !important;
+  }
+
+  body.lmsgen-page-contact .ct-main-form-title-w h1 {
+    font-size: clamp(4rem, 12vw, 5.2rem) !important;
+  }
+
+  body.lmsgen-page-contact .ct-main-form-title-w > p {
+    font-size: 1.65rem !important;
+  }
+
+  body.lmsgen-page-contact .ct-main-form-w {
+    padding: 2.2rem !important;
+    border-radius: 2.2rem;
+  }
+
+  body.lmsgen-page-contact .ct-main-form {
+    grid-template-columns: 1fr !important;
+    gap: 1.6rem !important;
+  }
+
+  body.lmsgen-page-contact .ct-main-form > .ct-form-input-c,
+  body.lmsgen-page-contact .ct-main-form > .ct-form-terms-c,
+  body.lmsgen-page-contact .ct-main-form > .w-form-formrecaptcha,
+  body.lmsgen-page-contact .ct-main-form > .ct-form-button-c,
+  body.lmsgen-page-contact .lmsgen-contact-form-head {
+    grid-column: 1 !important;
+  }
+
+  body.lmsgen-page-contact .lmsgen-contact-context {
+    padding: 2.4rem !important;
+    border-radius: 2.2rem;
+  }
+}
