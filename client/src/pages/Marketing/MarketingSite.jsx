@@ -10,7 +10,7 @@ const MARKETING_UI_STYLESHEETS = [
 
 const HOME_SECTION_SCALE_STYLESHEET = {
   id: 'atelora-home-section-scale',
-  href: '/landing/css/atelora-home-section-scale.css?v=20260904-1',
+  href: '/landing/css/atelora-home-section-scale.css?v=20260904-2',
 };
 
 function getMarketingPageClasses(src) {
