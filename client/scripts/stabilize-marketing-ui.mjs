@@ -67,6 +67,14 @@ function ensureHomeTypographyCss(html, type) {
   return html.replace(/<\/head>/i, `    ${tag}\n</head>`);
 }
 
+function ensureContactRefreshCss(html, type) {
+  html = stripStylesheet(html, 'lmsgen-contact-refresh.css');
+  if (type !== 'contact') return html;
+
+  const tag = '<link id="lmsgen-contact-refresh" rel="stylesheet" href="/landing/css/lmsgen-contact-refresh.css?v=20260904a" />';
+  return html.replace(/<\/head>/i, `    ${tag}\n</head>`);
+}
+
 function ensureUnifiedNav(html) {
   html = stripScript(html, 'nav-menu.js');
   html = stripScript(html, 'lmsgen-nav.js');
@@ -112,6 +120,7 @@ for (const page of pages) {
   html = tidyPageCopy(html, page.type);
   html = ensureUnifiedCss(html);
   html = ensureHomeTypographyCss(html, page.type);
+  html = ensureContactRefreshCss(html, page.type);
   html = ensureUnifiedNav(html);
 
   await fs.writeFile(filePath, html, 'utf8');
