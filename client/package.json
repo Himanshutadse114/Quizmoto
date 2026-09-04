@@ -3,10 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22 <23"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "node scripts/prepare-marketing.mjs && node scripts/prepare-advantage-assets.mjs && node scripts/wire-contact-form.mjs && node scripts/remove-contact-image.mjs && node scripts/remove-home-metrics.mjs && node scripts/marketing-audit-polish.mjs && node scripts/stabilize-marketing-ui.mjs && node scripts/prepare-static-entrypoints.mjs && node scripts/marketing-seo-guard.mjs && node scripts/audit-marketing-ui.mjs",
+    "postbuild": "node scripts/postbuild.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
