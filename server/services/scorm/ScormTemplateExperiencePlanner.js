@@ -3,6 +3,7 @@
 const { planExperienceV5 } = require('./ScormExperiencePlanner');
 const { getCourseTemplate } = require('./ScormTemplateCatalog');
 const { applyTemplateBinding } = require('./ScormTemplateBindingService');
+const { fitTemplatePresentationContent } = require('./ScormTemplateContentFitter');
 
 function clean(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -105,13 +106,15 @@ function planExperienceForTemplate(rawAnalysis, binding) {
         return applyStableDesignIdentity({ ...slide, ...planned }, template, binding);
     });
 
-    return applyTemplateBinding({
+    const plannedAnalysis = applyTemplateBinding({
         ...base,
         experienceVersion: 5,
         templateEngineVersion: 1,
         templatePlanner: `${template.id}@${binding.templateVersion}`,
         slides
     }, binding);
+
+    return fitTemplatePresentationContent(plannedAnalysis, binding);
 }
 
 module.exports = {
