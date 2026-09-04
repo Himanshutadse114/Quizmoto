@@ -12,6 +12,7 @@ const {
 const { validateTemplateAnalysis } = require('./ScormTemplateValidator');
 const { applyTemplateRuntimeToZip } = require('./ScormTemplateRuntime');
 const { applyScenarioLearningRuntimeToZip } = require('./ScormScenarioLearningRuntime');
+const { applyCourseChromeRuntimeToZip } = require('./ScormCourseChromeRuntime');
 const { ScormPackage } = require('../../models/scorm');
 const { ensureCourseForPackage } = require('./ScormCourseWorkspaceService');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
@@ -163,6 +164,7 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
     if (useTemplateEngine) {
         zipBuf = await applyTemplateRuntimeToZip(zipBuf, analysis);
         zipBuf = await applyScenarioLearningRuntimeToZip(zipBuf, analysis);
+        zipBuf = await applyCourseChromeRuntimeToZip(zipBuf, analysis);
     }
     checkCancelled();
 
