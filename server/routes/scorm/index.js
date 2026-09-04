@@ -76,6 +76,9 @@ router.use('/runtime', require('./runtime'));
 router.use('/content', repairServedScormHtml, require('./content'));
 router.use('/play', require('./play'));
 router.use('/xapi', require('./xapi'));
+// Template discovery is isolated from generation routes so new authoring clients
+// can opt into the versioned template engine without changing legacy API calls.
+router.use('/author', require('./authorTemplates'));
 // Rebuild interception must run before the normal author route so edits reuse
 // the existing packaged visuals instead of calling image generation again.
 router.use('/author', require('./authorRebuild'));
