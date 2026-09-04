@@ -1,5 +1,7 @@
 'use strict';
 
+const { fitTemplatePresentationContent } = require('./ScormTemplateContentFitter');
+
 const DESIGN_FIELDS = Object.freeze([
     'layout',
     'layoutId',
@@ -28,7 +30,7 @@ function preserveCourseDesign(editedAnalysis, storedAnalysis) {
     const storedSlides = Array.isArray(stored.slides) ? stored.slides : [];
     const byKey = new Map(storedSlides.map((slide, index) => [slideKey(slide, index), slide]));
 
-    return {
+    const preserved = {
         ...edited,
         slides: (Array.isArray(edited.slides) ? edited.slides : []).map((slide, index) => {
             const current = slide && typeof slide === 'object' ? slide : {};
@@ -46,6 +48,11 @@ function preserveCourseDesign(editedAnalysis, storedAnalysis) {
             return next;
         })
     };
+
+    const binding = stored?.templateBinding;
+    return binding?.templateId
+        ? fitTemplatePresentationContent(preserved, binding)
+        : preserved;
 }
 
 module.exports = {
