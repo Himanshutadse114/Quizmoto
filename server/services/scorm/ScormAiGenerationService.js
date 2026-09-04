@@ -1,9 +1,16 @@
 const { analyzePolicy } = require('./CourseAiService');
 const { prepareReplicateCourseMedia } = require('./ReplicateCourseMediaService');
 const { planExperienceV5 } = require('./ScormExperiencePlanner');
+const { planExperienceForTemplate } = require('./ScormTemplateExperiencePlanner');
 const { ensureQuizIntegrity } = require('./ScormQuizQualityService');
 const { buildScormPackageZip } = require('./ScormReplicateMediaFinalizer');
 const { getTheme, normalizeThemeId } = require('./ScormThemeCatalog');
+const {
+    publicTemplateBinding,
+    resolveNewCourseTemplateBinding
+} = require('./ScormTemplateBindingService');
+const { validateTemplateAnalysis } = require('./ScormTemplateValidator');
+const { applyTemplateRuntimeToZip } = require('./ScormTemplateRuntime');
 const { ScormPackage } = require('../../models/scorm');
 const { ensureCourseForPackage } = require('./ScormCourseWorkspaceService');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
@@ -41,6 +48,13 @@ async function removeUploadedSource(uploaded) {
     }
 }
 
+function templateEngineRequested(payload, analysis) {
+    return Boolean(
+        String(payload?.courseTemplateId || payload?.courseStyleId || '').trim()
+        || analysis?.templateBinding?.templateId
+    );
+}
+
 async function generateScormCourse({ payload = {}, userId, onProgress = noop, checkCancelled = noop }) {
     let analysis = payload.analysis;
     const {
@@ -57,6 +71,10 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
 
     const selectedThemeId = normalizeThemeId(themeId || templateId || analysis?.themeId || 1);
     const selectedTheme = getTheme(selectedThemeId);
+    const useTemplateEngine = templateEngineRequested(payload, analysis);
+    const templateBinding = useTemplateEngine
+        ? resolveNewCourseTemplateBinding(payload, analysis)
+        : null;
     let uploadedSource = null;
 
     checkCancelled();
@@ -102,8 +120,17 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
         uploadedSource = null;
     }
 
-    onProgress({ percent: 4, stage: 'Formatting course structure', detail: 'Balancing text, images and varied learner layouts before image generation.' });
-    analysis = planExperienceV5(analysis);
+    onProgress({
+        percent: 4,
+        stage: 'Formatting course structure',
+        detail: useTemplateEngine
+            ? 'Applying the selected course template and its allowed interaction patterns.'
+            : 'Balancing text, images and varied learner layouts before image generation.'
+    });
+    analysis = useTemplateEngine
+        ? planExperienceForTemplate(analysis, templateBinding)
+        : planExperienceV5(analysis);
+
     onProgress({ percent: 5, stage: 'Checking knowledge checks', detail: 'Guaranteeing complete quiz questions and learner explanations before packaging.' });
     analysis = ensureQuizIntegrity(analysis);
     analysis = {
@@ -112,6 +139,7 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
         themeName: selectedTheme.name,
         experienceVersion: 5
     };
+    if (useTemplateEngine) validateTemplateAnalysis(analysis, templateBinding);
     if (title) analysis.title = title;
 
     checkCancelled();
@@ -120,14 +148,18 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
         checkCancelled
     });
     analysis = media.analysis;
+    if (useTemplateEngine) validateTemplateAnalysis(analysis, templateBinding);
     checkCancelled();
 
     onProgress({ percent: 80, stage: 'Building the SCORM package', detail: 'Combining course content, images, varied layouts, quiz explanations and tracking into the learner package.' });
-    const zipBuf = await buildScormPackageZip(analysis, {
+    let zipBuf = await buildScormPackageZip(analysis, {
         templateId: selectedThemeId,
         logoDataUrl: logoDataUrl || null,
         replicateMediaFiles: media.files
     });
+    if (useTemplateEngine) {
+        zipBuf = await applyTemplateRuntimeToZip(zipBuf, analysis);
+    }
     checkCancelled();
 
     const replaceId = payload.replacePackageId || payload.packageId || null;
@@ -151,6 +183,8 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
             source: 'ai_author',
             standard: 'scorm_1_2',
             byteSize: zipBuf.length,
+            // This numeric field is retained as the legacy visual theme id.
+            // Versioned course-template identity lives in analysis.templateBinding.
             templateId: selectedThemeId,
             analysisJson: JSON.stringify(analysis)
         });
@@ -205,6 +239,7 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
         title: pkg.title,
         templateId: selectedThemeId,
         theme: { id: selectedThemeId, name: selectedTheme.name, slug: selectedTheme.slug },
+        courseTemplate: useTemplateEngine ? publicTemplateBinding(templateBinding) : null,
         media: media.metadata || null,
         errorMessage: pkg.errorMessage
     };
