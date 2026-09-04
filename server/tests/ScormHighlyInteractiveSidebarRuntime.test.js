@@ -47,6 +47,28 @@ describe('Highly Interactive learner sidebar runtime', () => {
         expect(css).to.include('height:min(80%,540px)!important');
     });
 
+    it('uses a two-by-two composition for four image-led learning cards', () => {
+        const css = style();
+        expect(css).to.include('.qmx-learning-shell.has-image .qmx-cards');
+        expect(css).to.include('grid-template-columns:repeat(2,minmax(0,1fr))!important');
+        expect(css).to.include('grid-template-rows:repeat(2,minmax(128px,1fr))!important');
+        expect(css).to.include('min-height:128px!important');
+    });
+
+    it('hides Next until the active interaction is completed', () => {
+        const css = style();
+        const js = script();
+        expect(css).to.include('#next-btn[data-qmx-interaction-locked="true"]');
+        expect(css).to.include('visibility:hidden!important');
+        expect(js).to.include("type==='step_explore'");
+        expect(js).to.include('data-qmx-step-visited');
+        expect(js).to.include('data-qmx-hotspot-visited');
+        expect(js).to.include('data-qmx-focus-complete');
+        expect(js).to.include('data-qmx-revealed');
+        expect(js).to.include("kind==='quiz'");
+        expect(js).to.include('data-qmx-interaction-locked');
+    });
+
     it('uses the existing Previous and Next controls instead of bypassing learner navigation state', () => {
         const js = script();
         expect(js).to.include("target<current?'prev-btn':'next-btn'");
