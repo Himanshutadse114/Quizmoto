@@ -55,7 +55,17 @@ describe('Highly Interactive learner sidebar runtime', () => {
         expect(css).to.include('min-height:128px!important');
     });
 
-    it('hides Next until the active interaction is completed', () => {
+    it('keeps source cards hidden on reveal interactions and gives the reveal button proper padding', () => {
+        const css = style();
+        expect(css).to.include('.slide[data-qmx-interaction="focus_reveal"] .qmx-cards');
+        expect(css).to.include('.slide[data-qmx-interaction="focus_reveal"] .qmx-static-cards');
+        expect(css).to.include('display:none!important');
+        expect(css).to.include('.qmx-focus-trigger');
+        expect(css).to.include('min-height:48px!important');
+        expect(css).to.include('padding:12px 22px!important');
+    });
+
+    it('hides Next until the active interaction is completed and clears stale flip locks afterwards', () => {
         const css = style();
         const js = script();
         expect(css).to.include('#next-btn[data-qmx-interaction-locked="true"]');
@@ -68,6 +78,8 @@ describe('Highly Interactive learner sidebar runtime', () => {
         expect(js).to.include('data-qmx-revealed');
         expect(js).to.include("kind==='quiz'");
         expect(js).to.include('data-qmx-interaction-locked');
+        expect(js).to.include("removeAttribute('data-qmx-reveal-locked')");
+        expect(js).to.include('next.disabled=false');
         expect(js).to.not.include('data-qmx-hotspot-visited');
     });
 
