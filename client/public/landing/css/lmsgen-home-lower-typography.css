@@ -1,0 +1,68 @@
+/*
+ * LMSGEN live homepage lower-section typography.
+ *
+ * The production marketing homepage is served from the static postbuild output.
+ * Several lower-page section titles are semantic H2 elements carrying the
+ * legacy `.h1` utility, which otherwise promotes them to the old ~82px display
+ * scale. Keep the hero untouched and normalise only the lower homepage hierarchy
+ * to the current LMSGEN Montserrat / Open Sans type system.
+ */
+
+/* Main section titles below the hero/product area. */
+body.lmsgen-page-home main h2.h1 {
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-size: clamp(3.6rem, 3vw, 4.8rem) !important;
+  font-weight: 500 !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.035em !important;
+  text-transform: none !important;
+  text-wrap: balance;
+}
+
+/* The large feature-card headings in the lower homepage use section-card scale,
+ * not the legacy H3 display scale. */
+body.lmsgen-page-home .hp-trust-s h3,
+body.lmsgen-page-home .hp-advg-s h3,
+body.lmsgen-page-home .hp-insights-s h3 {
+  font-family: "Montserrat", Arial, sans-serif !important;
+  font-size: clamp(2.1rem, 1.65vw, 2.8rem) !important;
+  font-weight: 600 !important;
+  line-height: 1.22 !important;
+  letter-spacing: -0.02em !important;
+  text-transform: none !important;
+}
+
+/* Article/platform tiles are intentionally more compact than feature cards. */
+body.lmsgen-page-home .hp-insights-s h3.h5 {
+  font-size: 2.05rem !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+  letter-spacing: -0.012em !important;
+}
+
+/* Supporting copy follows the same body face used by the current live site. */
+body.lmsgen-page-home .hp-trust-s p,
+body.lmsgen-page-home .hp-advg-s p,
+body.lmsgen-page-home .hp-insights-s p {
+  font-family: "Open Sans", Arial, sans-serif !important;
+}
+
+@media (max-width: 991px) {
+  body.lmsgen-page-home main h2.h1 {
+    font-size: clamp(3.3rem, 5vw, 4.2rem) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  body.lmsgen-page-home main h2.h1 {
+    font-size: clamp(2.8rem, 8vw, 3.6rem) !important;
+    line-height: 1.14 !important;
+    letter-spacing: -0.025em !important;
+  }
+
+  body.lmsgen-page-home .hp-trust-s h3,
+  body.lmsgen-page-home .hp-advg-s h3,
+  body.lmsgen-page-home .hp-insights-s h3 {
+    font-size: clamp(2rem, 6vw, 2.5rem) !important;
+  }
+}
