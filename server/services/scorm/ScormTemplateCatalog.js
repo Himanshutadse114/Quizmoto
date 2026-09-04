@@ -20,7 +20,6 @@ const COMMON_INTERACTIONS = Object.freeze([
 
 function template(definition) {
     return Object.freeze({
-        version: DEFAULT_TEMPLATE_VERSION,
         rendererVersion: 1,
         status: 'stable',
         selectable: true,
@@ -37,103 +36,146 @@ function template(definition) {
     });
 }
 
-const COURSE_TEMPLATES = Object.freeze({
-    'professional-classic': template({
-        id: 'professional-classic',
-        name: 'Clean & Professional',
-        shortName: 'Professional',
-        description: 'Balanced corporate learning with clean text, imagery, processes and restrained interactions.',
-        experience: 'Balanced corporate',
-        layoutIds: {
-            spotlight: 'professional-classic.image-text',
-            cards: 'professional-classic.cards',
-            process: 'professional-classic.process',
-            timeline: 'professional-classic.timeline',
-            comparison: 'professional-classic.comparison',
-            hub: 'professional-classic.topic-hub'
-        },
-        contentBudgets: {
-            maxTitleChars: 78,
-            maxBodyWords: 150,
-            maxPoints: 4,
-            maxInteractionItems: 4
-        }
+function versionSet(versions) {
+    return Object.freeze({ ...versions });
+}
+
+const COURSE_TEMPLATE_VERSIONS = Object.freeze({
+    'professional-classic': versionSet({
+        '1.0.0': template({
+            id: 'professional-classic',
+            version: '1.0.0',
+            name: 'Clean & Professional',
+            shortName: 'Professional',
+            description: 'Balanced corporate learning with clean text, imagery, processes and restrained interactions.',
+            experience: 'Balanced corporate',
+            layoutIds: {
+                spotlight: 'professional-classic.image-text',
+                cards: 'professional-classic.cards',
+                process: 'professional-classic.process',
+                timeline: 'professional-classic.timeline',
+                comparison: 'professional-classic.comparison',
+                hub: 'professional-classic.topic-hub'
+            },
+            contentBudgets: {
+                maxTitleChars: 78,
+                maxBodyWords: 150,
+                maxPoints: 4,
+                maxInteractionItems: 4
+            }
+        })
     }),
-    'highly-interactive': template({
-        id: 'highly-interactive',
-        name: 'Highly Interactive',
-        shortName: 'Interactive',
-        description: 'Exploration-led learning with flip cards, hotspots, reveals, timelines and decisions.',
-        experience: 'Explore and discover',
-        defaultInteractionLevel: 'high',
-        layoutIds: {
-            spotlight: 'highly-interactive.focus-reveal',
-            cards: 'highly-interactive.flip-cards',
-            process: 'highly-interactive.stepper',
-            timeline: 'highly-interactive.timeline',
-            comparison: 'highly-interactive.compare-reveal',
-            hub: 'highly-interactive.hotspot'
-        },
-        contentBudgets: {
-            maxTitleChars: 68,
-            maxBodyWords: 115,
-            maxPoints: 4,
-            maxInteractionItems: 4
-        }
+    'highly-interactive': versionSet({
+        '1.0.0': template({
+            id: 'highly-interactive',
+            version: '1.0.0',
+            name: 'Highly Interactive',
+            shortName: 'Interactive',
+            description: 'Exploration-led learning with flip cards, hotspots, reveals, timelines and decisions.',
+            experience: 'Explore and discover',
+            defaultInteractionLevel: 'high',
+            layoutIds: {
+                spotlight: 'highly-interactive.focus-reveal',
+                cards: 'highly-interactive.flip-cards',
+                process: 'highly-interactive.stepper',
+                timeline: 'highly-interactive.timeline',
+                comparison: 'highly-interactive.compare-reveal',
+                hub: 'highly-interactive.hotspot'
+            },
+            contentBudgets: {
+                maxTitleChars: 68,
+                maxBodyWords: 115,
+                maxPoints: 4,
+                maxInteractionItems: 4
+            }
+        })
     }),
-    'scenario-learning': template({
-        id: 'scenario-learning',
-        name: 'Scenario Learning',
-        shortName: 'Scenario',
-        description: 'Decision-led learning using workplace situations, consequences, coaching and guided sequences.',
-        experience: 'Decide and reflect',
-        defaultInteractionLevel: 'high',
-        layoutIds: {
-            spotlight: 'scenario-learning.scene',
-            cards: 'scenario-learning.choices',
-            process: 'scenario-learning.guided-process',
-            timeline: 'scenario-learning.sequence',
-            comparison: 'scenario-learning.consequence-compare',
-            hub: 'scenario-learning.clue-explore'
-        },
-        contentBudgets: {
-            maxTitleChars: 68,
-            maxBodyWords: 110,
-            maxPoints: 4,
-            maxInteractionItems: 4
-        }
+    'scenario-learning': versionSet({
+        '1.0.0': template({
+            id: 'scenario-learning',
+            version: '1.0.0',
+            name: 'Scenario Learning',
+            shortName: 'Scenario',
+            description: 'Decision-led learning using workplace situations, consequences, coaching and guided sequences.',
+            experience: 'Decide and reflect',
+            defaultInteractionLevel: 'high',
+            layoutIds: {
+                spotlight: 'scenario-learning.scene',
+                cards: 'scenario-learning.choices',
+                process: 'scenario-learning.guided-process',
+                timeline: 'scenario-learning.sequence',
+                comparison: 'scenario-learning.consequence-compare',
+                hub: 'scenario-learning.clue-explore'
+            },
+            contentBudgets: {
+                maxTitleChars: 68,
+                maxBodyWords: 110,
+                maxPoints: 4,
+                maxInteractionItems: 4
+            }
+        })
     }),
-    'visual-product-training': template({
-        id: 'visual-product-training',
-        name: 'Visual Product Training',
-        shortName: 'Visual',
-        description: 'Image-led learning for products, software and procedures with labelled visuals and guided steps.',
-        experience: 'See and explore',
-        layoutIds: {
-            spotlight: 'visual-product-training.image-split',
-            cards: 'visual-product-training.labels',
-            process: 'visual-product-training.steps',
-            timeline: 'visual-product-training.timeline',
-            comparison: 'visual-product-training.before-after',
-            hub: 'visual-product-training.hotspot'
-        },
-        contentBudgets: {
-            maxTitleChars: 72,
-            maxBodyWords: 105,
-            maxPoints: 4,
-            maxInteractionItems: 5
-        }
+    'visual-product-training': versionSet({
+        '1.0.0': template({
+            id: 'visual-product-training',
+            version: '1.0.0',
+            name: 'Visual Product Training',
+            shortName: 'Visual',
+            description: 'Image-led learning for products, software and procedures with labelled visuals and guided steps.',
+            experience: 'See and explore',
+            layoutIds: {
+                spotlight: 'visual-product-training.image-split',
+                cards: 'visual-product-training.labels',
+                process: 'visual-product-training.steps',
+                timeline: 'visual-product-training.timeline',
+                comparison: 'visual-product-training.before-after',
+                hub: 'visual-product-training.hotspot'
+            },
+            contentBudgets: {
+                maxTitleChars: 72,
+                maxBodyWords: 105,
+                maxPoints: 4,
+                maxInteractionItems: 5
+            }
+        })
     })
 });
 
+const CURRENT_TEMPLATE_VERSIONS = Object.freeze({
+    'professional-classic': '1.0.0',
+    'highly-interactive': '1.0.0',
+    'scenario-learning': '1.0.0',
+    'visual-product-training': '1.0.0'
+});
+
+// Convenience view used by discovery APIs. Historical versions remain available
+// through COURSE_TEMPLATE_VERSIONS and are never overwritten when a new current
+// version is introduced.
+const COURSE_TEMPLATES = Object.freeze(Object.fromEntries(
+    Object.entries(CURRENT_TEMPLATE_VERSIONS).map(([id, version]) => [id, COURSE_TEMPLATE_VERSIONS[id][version]])
+));
+
 function normalizeCourseTemplateId(value, fallback = DEFAULT_COURSE_TEMPLATE_ID) {
     const id = String(value || '').trim().toLowerCase();
-    return COURSE_TEMPLATES[id] ? id : fallback;
+    return COURSE_TEMPLATE_VERSIONS[id] ? id : fallback;
 }
 
-function getCourseTemplate(value) {
-    const id = normalizeCourseTemplateId(value);
-    return COURSE_TEMPLATES[id];
+function currentCourseTemplateVersion(value) {
+    const id = normalizeCourseTemplateId(value, '');
+    return id ? CURRENT_TEMPLATE_VERSIONS[id] : null;
+}
+
+function hasCourseTemplateVersion(value, version) {
+    const id = normalizeCourseTemplateId(value, '');
+    const selectedVersion = String(version || '').trim();
+    return Boolean(id && selectedVersion && COURSE_TEMPLATE_VERSIONS[id]?.[selectedVersion]);
+}
+
+function getCourseTemplate(value, version = null) {
+    const id = normalizeCourseTemplateId(value, '');
+    if (!id) return null;
+    const selectedVersion = String(version || CURRENT_TEMPLATE_VERSIONS[id] || '').trim();
+    return COURSE_TEMPLATE_VERSIONS[id]?.[selectedVersion] || null;
 }
 
 function listCourseTemplates({ selectableOnly = true } = {}) {
@@ -156,8 +198,9 @@ function listCourseTemplates({ selectableOnly = true } = {}) {
         }));
 }
 
-function normalizeInteractionLevel(templateValue, value) {
-    const selectedTemplate = getCourseTemplate(templateValue);
+function normalizeInteractionLevel(templateValue, value, version = null) {
+    const selectedTemplate = getCourseTemplate(templateValue, version);
+    if (!selectedTemplate) return 'balanced';
     const requested = String(value || '').trim().toLowerCase();
     return selectedTemplate.interactionLevels.includes(requested)
         ? requested
@@ -166,9 +209,13 @@ function normalizeInteractionLevel(templateValue, value) {
 
 module.exports = {
     COURSE_TEMPLATES,
+    COURSE_TEMPLATE_VERSIONS,
+    CURRENT_TEMPLATE_VERSIONS,
     DEFAULT_COURSE_TEMPLATE_ID,
     DEFAULT_TEMPLATE_VERSION,
+    currentCourseTemplateVersion,
     getCourseTemplate,
+    hasCourseTemplateVersion,
     listCourseTemplates,
     normalizeCourseTemplateId,
     normalizeInteractionLevel
