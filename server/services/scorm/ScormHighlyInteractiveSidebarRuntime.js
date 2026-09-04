@@ -1,7 +1,7 @@
 'use strict';
 
-const STYLE_ID = 'quizmoto-highly-interactive-sidebar-v3';
-const SCRIPT_ID = 'quizmoto-highly-interactive-sidebar-script-v3';
+const STYLE_ID = 'quizmoto-highly-interactive-sidebar-v4';
+const SCRIPT_ID = 'quizmoto-highly-interactive-sidebar-script-v4';
 
 function style() {
     return `<style id="${STYLE_ID}">
@@ -24,6 +24,7 @@ body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.no-image
 body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.no-image .qmx-compare-col p{width:100%;text-align:left!important;line-height:1.48!important}
 body[data-qmx-course-template="highly-interactive"] .qmx-flip-face{justify-content:flex-start!important;align-items:flex-start!important;text-align:left!important;padding:16px 17px!important;gap:10px!important}
 body[data-qmx-course-template="highly-interactive"] .qmx-flip-back p{width:100%;font-size:14px!important;line-height:1.48!important;text-align:left!important}
+body[data-qmx-course-template="highly-interactive"] .qmx-focus-trigger{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:48px!important;padding:12px 22px!important;margin:22px 0 14px!important;border-radius:999px!important;box-sizing:border-box!important;line-height:1.15!important;white-space:nowrap!important}
 body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-image .qmx-cards,
 body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-image .qmx-static-cards,
 body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-image .qmx-process{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-auto-flow:row!important;grid-auto-rows:minmax(128px,1fr)!important;gap:12px!important;width:100%!important;max-width:100%!important;margin-top:18px!important;align-items:stretch!important}
@@ -37,6 +38,10 @@ body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-imag
 body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-image .qmx-flip-card,
 body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-image .qmx-flip-inner,
 body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-image .qmx-flip-face{height:100%!important;min-height:128px!important}
+body[data-qmx-course-template="highly-interactive"] .slide[data-qmx-interaction="focus_reveal"] .qmx-cards,
+body[data-qmx-course-template="highly-interactive"] .slide[data-qmx-interaction="focus_reveal"] .qmx-static-cards,
+body[data-qmx-course-template="highly-interactive"] .slide[data-qmx-interaction="hotspot_explore"].qmx-guided-explore-ready .qmx-cards,
+body[data-qmx-course-template="highly-interactive"] .slide[data-qmx-interaction="hotspot_explore"].qmx-guided-explore-ready .qmx-static-cards{display:none!important}
 @media(min-width:1500px){
 body[data-qmx-course-template="highly-interactive"] .qmx-course-sidebar{display:flex;flex:0 0 252px;width:252px;min-width:252px;min-height:0;flex-direction:column;border-right:1px solid var(--paper-3,#d8e5e2);background:linear-gradient(180deg,var(--surface,#fff) 0%,var(--paper,#f3f8f7) 100%);color:var(--ink,#10211f);box-shadow:10px 0 28px rgba(15,52,48,.035);z-index:12;overflow:hidden}
 body[data-qmx-course-template="highly-interactive"] .qmx-course-sidebar-head{padding:20px 18px 15px;border-bottom:1px solid var(--paper-3,#d8e5e2)}
@@ -64,7 +69,7 @@ body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-imag
 body[data-qmx-course-template="highly-interactive"] .qmx-card p,body[data-qmx-course-template="highly-interactive"] .qmx-step p,body[data-qmx-course-template="highly-interactive"] .qmx-compare-col p{font-size:15px!important;line-height:1.46!important}
 }
 @media(max-width:900px){body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-image .qmx-cards,body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-image .qmx-static-cards,body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-image .qmx-process{grid-template-columns:1fr!important;grid-auto-rows:auto!important}}
-@media(max-height:720px){body[data-qmx-course-template="highly-interactive"] footer{height:68px!important;min-height:68px!important;padding:8px 22px 9px!important}}
+@media(max-height:720px){body[data-qmx-course-template="highly-interactive"] footer{height:68px!important;min-height:68px!important;padding:8px 22px 9px!important}body[data-qmx-course-template="highly-interactive"] .qmx-focus-trigger{min-height:44px!important;padding:10px 18px!important;margin:16px 0 10px!important}}
 </style>`;
 }
 
@@ -107,15 +112,24 @@ function script() {
     }
     return {required:false,complete:true};
   }
+  function clearLegacyRevealGate(next){
+    if(!next)return;
+    next.removeAttribute('data-qmx-reveal-locked');
+    if(next.title==='Reveal every key point before continuing')next.removeAttribute('title');
+    if(next.getAttribute('aria-label')==='Reveal every key point before continuing')next.removeAttribute('aria-label');
+  }
   function syncNextGate(){
     var next=document.getElementById('next-btn'),slide=activeSlide();if(!next||!slide)return;
     var status=gateStatus(slide),locked=status.required&&!status.complete;
     slide.setAttribute('data-qmx-interaction-gated',status.required?'true':'false');
     if(status.required&&status.complete)slide.setAttribute('data-qmx-interaction-complete','true');
-    if(locked){next.disabled=true;next.setAttribute('data-qmx-interaction-locked','true');next.setAttribute('aria-hidden','true');}
-    else{next.removeAttribute('data-qmx-interaction-locked');next.removeAttribute('aria-hidden');if(next.getAttribute('data-qmx-reveal-locked')!=='true')next.disabled=false;}
+    if(locked){next.disabled=true;next.setAttribute('data-qmx-interaction-locked','true');next.setAttribute('aria-hidden','true');return;}
+    clearLegacyRevealGate(next);
+    next.removeAttribute('data-qmx-interaction-locked');
+    next.removeAttribute('aria-hidden');
+    next.disabled=false;
   }
-  function syncGateSoon(){setTimeout(syncNextGate,0);setTimeout(syncNextGate,80);}
+  function syncGateSoon(){setTimeout(syncNextGate,0);setTimeout(syncNextGate,80);setTimeout(syncNextGate,220);}
   function handleInteraction(event){
     var target=event.target&&event.target.closest?event.target:null;if(!target)return;
     var slide=target.closest('.slide');if(!slide)return;
