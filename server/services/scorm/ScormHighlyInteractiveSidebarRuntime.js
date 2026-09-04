@@ -1,7 +1,7 @@
 'use strict';
 
-const STYLE_ID = 'quizmoto-highly-interactive-sidebar-v2';
-const SCRIPT_ID = 'quizmoto-highly-interactive-sidebar-script-v2';
+const STYLE_ID = 'quizmoto-highly-interactive-sidebar-v3';
+const SCRIPT_ID = 'quizmoto-highly-interactive-sidebar-script-v3';
 
 function style() {
     return `<style id="${STYLE_ID}">
@@ -24,8 +24,6 @@ body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.no-image
 body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.no-image .qmx-compare-col p{width:100%;text-align:left!important;line-height:1.48!important}
 body[data-qmx-course-template="highly-interactive"] .qmx-flip-face{justify-content:flex-start!important;align-items:flex-start!important;text-align:left!important;padding:16px 17px!important;gap:10px!important}
 body[data-qmx-course-template="highly-interactive"] .qmx-flip-back p{width:100%;font-size:14px!important;line-height:1.48!important;text-align:left!important}
-
-/* Image-led learning cards use a balanced 2 x 2 composition instead of four narrow columns. */
 body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-image .qmx-cards,
 body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-image .qmx-static-cards,
 body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-image .qmx-process{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-auto-flow:row!important;grid-auto-rows:minmax(128px,1fr)!important;gap:12px!important;width:100%!important;max-width:100%!important;margin-top:18px!important;align-items:stretch!important}
@@ -39,7 +37,6 @@ body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-imag
 body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-image .qmx-flip-card,
 body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-image .qmx-flip-inner,
 body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-image .qmx-flip-face{height:100%!important;min-height:128px!important}
-
 @media(min-width:1500px){
 body[data-qmx-course-template="highly-interactive"] .qmx-course-sidebar{display:flex;flex:0 0 252px;width:252px;min-width:252px;min-height:0;flex-direction:column;border-right:1px solid var(--paper-3,#d8e5e2);background:linear-gradient(180deg,var(--surface,#fff) 0%,var(--paper,#f3f8f7) 100%);color:var(--ink,#10211f);box-shadow:10px 0 28px rgba(15,52,48,.035);z-index:12;overflow:hidden}
 body[data-qmx-course-template="highly-interactive"] .qmx-course-sidebar-head{padding:20px 18px 15px;border-bottom:1px solid var(--paper-3,#d8e5e2)}
@@ -95,8 +92,8 @@ function script() {
       return trigger?{required:true,complete:slide.getAttribute('data-qmx-focus-complete')==='true'}:{required:false,complete:true};
     }
     if(type==='hotspot_explore'){
-      var hotspots=slide.querySelectorAll('.qmx-hotspot-marker');
-      return hotspots.length?{required:true,complete:allMarked(hotspots,'data-qmx-hotspot-visited')}:{required:false,complete:true};
+      var explore=slide.querySelectorAll('.qmx-explore-option');
+      return explore.length?{required:true,complete:allMarked(explore,'data-qmx-explore-visited')}:{required:false,complete:true};
     }
     if(type==='step_explore'){
       var steps=slide.querySelectorAll('.qmx-step');
@@ -123,7 +120,7 @@ function script() {
     var target=event.target&&event.target.closest?event.target:null;if(!target)return;
     var slide=target.closest('.slide');if(!slide)return;
     var focus=target.closest('.qmx-focus-trigger');if(focus){slide.setAttribute('data-qmx-focus-complete','true');slide.setAttribute('data-qmx-interaction-complete','true');syncGateSoon();return;}
-    var hotspot=target.closest('.qmx-hotspot-marker');if(hotspot){hotspot.setAttribute('data-qmx-hotspot-visited','true');syncGateSoon();return;}
+    var explore=target.closest('.qmx-explore-option');if(explore){explore.setAttribute('data-qmx-explore-visited','true');syncGateSoon();return;}
     var step=target.closest('.qmx-step');if(step){step.setAttribute('data-qmx-step-visited','true');syncGateSoon();return;}
     if(target.closest('.qmx-flip-card')||target.closest('.quiz-option'))syncGateSoon();
   }
@@ -131,7 +128,7 @@ function script() {
   function sync(force){var list=slides(),idx=activeIndex();state.maxVisited=Math.max(state.maxVisited,idx);syncNextGate();if(!force&&idx===state.lastIndex)return;state.lastIndex=idx;var value=document.querySelector('.qmx-course-sidebar-progress-value');if(value)value.textContent='Part '+(idx+1)+' of '+list.length;Array.prototype.forEach.call(document.querySelectorAll('.qmx-course-nav-item'),function(button){var target=Number(button.getAttribute('data-qmx-target')),active=target===idx,visited=target<=state.maxVisited;button.classList.toggle('is-active',active);button.classList.toggle('is-visited',visited);button.disabled=!visited&&!active;button.setAttribute('aria-current',active?'step':'false');var mark=button.querySelector('.qmx-course-nav-state');if(mark)mark.textContent=active?'•':(target<state.maxVisited?'✓':'');});}
   function navigate(target){if(state.navigating||!Number.isFinite(target)||target<0||target>state.maxVisited)return;state.navigating=true;var guard=0;function done(){state.navigating=false;sync(true);if(typeof window.requestAnimationFrame==='function')requestAnimationFrame(function(){window.dispatchEvent(new Event('resize'));});}function step(){var current=activeIndex();if(current===target||guard++>40){done();return;}var id=target<current?'prev-btn':'next-btn',button=document.getElementById(id);if(!button||button.disabled||getComputedStyle(button).display==='none'){done();return;}var before=current;button.click();setTimeout(function(){if(activeIndex()===before){done();return;}step();},45);}step();}
   function seedResume(){var idx=activeIndex();slides().forEach(function(slide,i){if(i<idx)slide.setAttribute('data-qmx-interaction-complete','true');});state.maxVisited=Math.max(state.maxVisited,idx);}
-  function install(){if(!document.body||document.body.getAttribute('data-qmx-course-template')!=='highly-interactive')return;build();seedResume();sync(true);var main=document.querySelector('main');if(main){var observer=new MutationObserver(function(changes){var navChanged=changes.some(function(change){return change.type==='attributes'&&change.attributeName==='class'&&change.target&&change.target.classList&&change.target.classList.contains('slide');});if(navChanged)sync(false);else syncNextGate();});observer.observe(main,{subtree:true,childList:true,attributes:true,attributeFilter:['class','data-qmx-revealed','data-qmx-step-visited','data-qmx-hotspot-visited']});}document.addEventListener('click',handleInteraction,true);document.addEventListener('keydown',function(event){if(event.key==='Enter'||event.key===' ')handleInteraction(event);},true);document.addEventListener('click',function(){setTimeout(function(){sync(false);},0);},true);window.addEventListener('load',function(){setTimeout(syncNextGate,0);});}
+  function install(){if(!document.body||document.body.getAttribute('data-qmx-course-template')!=='highly-interactive')return;build();seedResume();sync(true);var main=document.querySelector('main');if(main){var observer=new MutationObserver(function(changes){var navChanged=changes.some(function(change){return change.type==='attributes'&&change.attributeName==='class'&&change.target&&change.target.classList&&change.target.classList.contains('slide');});if(navChanged)sync(false);else syncNextGate();});observer.observe(main,{subtree:true,childList:true,attributes:true,attributeFilter:['class','data-qmx-revealed','data-qmx-step-visited','data-qmx-explore-visited']});}document.addEventListener('click',handleInteraction,true);document.addEventListener('keydown',function(event){if(event.key==='Enter'||event.key===' ')handleInteraction(event);},true);document.addEventListener('click',function(){setTimeout(function(){sync(false);},0);},true);window.addEventListener('load',function(){setTimeout(syncNextGate,0);});}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
 </script>`;
@@ -140,8 +137,10 @@ function script() {
 function inject(html, templateId) {
     let source = String(html || '');
     if (!source || String(templateId || '') !== 'highly-interactive') return source;
-    if (!source.includes(STYLE_ID)) source = source.replace('</head>', `${style()}\n</head>`);
-    if (!source.includes(SCRIPT_ID)) source = source.replace('</head>', `${script()}\n</head>`);
+    if (!source.includes(STYLE_ID)) source = source.replace('</head>', `${style()}\
+</head>`);
+    if (!source.includes(SCRIPT_ID)) source = source.replace('</head>', `${script()}\
+</head>`);
     return source;
 }
 
