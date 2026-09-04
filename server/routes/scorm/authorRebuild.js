@@ -18,6 +18,8 @@ const {
     preserveCourseDesign
 } = require('../../services/scorm/ScormRebuildDesignPreserver');
 const { applyTemplateRuntimeToZip } = require('../../services/scorm/ScormTemplateRuntime');
+const { applyScenarioLearningRuntimeToZip } = require('../../services/scorm/ScormScenarioLearningRuntime');
+const { applyCourseChromeRuntimeToZip } = require('../../services/scorm/ScormCourseChromeRuntime');
 const { ScormPackage } = require('../../models/scorm');
 const { ensureCourseForPackage } = require('../../services/scorm/ScormCourseWorkspaceService');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
@@ -196,6 +198,8 @@ router.post('/generate', auth, async (req, res, next) => {
         });
         if (templateEngineVersion >= 1) {
             zipBuf = await applyTemplateRuntimeToZip(zipBuf, analysis);
+            zipBuf = await applyScenarioLearningRuntimeToZip(zipBuf, analysis);
+            zipBuf = await applyCourseChromeRuntimeToZip(zipBuf, analysis);
         }
 
         report({
