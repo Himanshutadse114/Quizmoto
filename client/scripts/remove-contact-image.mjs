@@ -57,7 +57,7 @@ if (!html.includes('lmsgen-contact-context')) {
 if (!html.includes('lmsgen-contact-form-head')) {
   html = html.replace(
     /(<form\b[^>]*id="wf-form-Contact-Form"[^>]*>)/i,
-    `$1\n                  <div class="lmsgen-contact-form-head">\n                    <h2>Send us a message</h2>\n                    <p>Share a few details and we will help you find the right way to use LMSGEN.</p>\n                  </div>`,
+    `$1\n                  <header class="lmsgen-contact-form-head">\n                    <h2>Send us a message</h2>\n                    <p>Share a few details and we will help you find the right way to use LMSGEN.</p>\n                  </header>`,
   );
 }
 
