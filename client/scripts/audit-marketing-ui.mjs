@@ -74,8 +74,18 @@ check(about.includes('ab-hero-carousel-w'), 'About page lost its hero carousel m
 check(!about.includes('.ab-hero-carousel-w,.ab-hero-img,.ab-hero-carousel-slide{display:none'), 'About page contains a forced carousel hide rule.');
 
 const contact = await read(path.join(landingRoot, 'contact', 'index.html'));
+const canonicalContact = await read(path.join(distRoot, 'contact', 'index.html'));
 check(contact.includes('id="wf-form-Contact-Form"'), 'Contact form is missing from the final page.');
 check(contact.includes('/landing/js/contact-form.js'), 'Contact form SMTP/API client script is missing.');
+check(contact.includes('lmsgen-contact-context'), 'Contact product context panel is missing from the physical page.');
+check(contact.includes('lmsgen-contact-form-head'), 'Contact form hierarchy header is missing from the physical page.');
+check(contact.includes('lmsgen-contact-refresh.css'), 'Contact refresh stylesheet is missing from the physical page.');
+check(canonicalContact.includes('lmsgen-contact-context'), 'Contact product context panel is missing from the canonical page.');
+check(canonicalContact.includes('lmsgen-contact-refresh.css'), 'Contact refresh stylesheet is missing from the canonical page.');
+
+const contactRefreshCss = await read(path.join(landingRoot, 'css', 'lmsgen-contact-refresh.css'));
+check(contactRefreshCss.includes('grid-template-areas'), 'Contact refresh CSS is missing the responsive page grid.');
+check(contactRefreshCss.includes('lmsgen-contact-context'), 'Contact refresh CSS is missing the product context panel styles.');
 
 const blog = await read(path.join(landingRoot, 'blog', 'index.html'));
 check(!/contENt for you/.test(blog), 'Blog hero still contains broken mixed-case copy.');
