@@ -2,10 +2,40 @@
 
 const {
     DEFAULT_COURSE_TEMPLATE_ID,
+    currentCourseTemplateVersion,
     getCourseTemplate,
+    hasCourseTemplateVersion,
     normalizeCourseTemplateId,
     normalizeInteractionLevel
 } = require('./ScormTemplateCatalog');
+
+function templateError(message, code, status, details = {}) {
+    const error = new Error(message);
+    error.code = code;
+    error.status = status;
+    Object.assign(error, details);
+    return error;
+}
+
+function unknownTemplateError(value, { stored = false } = {}) {
+    return templateError(
+        stored
+            ? `This saved course references an unavailable course template '${String(value || 'unknown')}'.`
+            : `Unknown course template '${String(value || 'unknown')}'.`,
+        'SCORM_TEMPLATE_UNKNOWN',
+        stored ? 409 : 400,
+        { requestedTemplateId: String(value || '') }
+    );
+}
+
+function unavailableVersionError(templateId, version) {
+    return templateError(
+        `Course template ${templateId}@${version} is not available on this server. The course will not be silently upgraded to another template version.`,
+        'SCORM_TEMPLATE_VERSION_UNAVAILABLE',
+        409,
+        { requestedTemplateId: templateId, requestedTemplateVersion: version }
+    );
+}
 
 function cloneBinding(binding) {
     return binding ? {
@@ -18,13 +48,22 @@ function cloneBinding(binding) {
 }
 
 function createTemplateBinding(templateValue, options = {}) {
-    const templateId = normalizeCourseTemplateId(templateValue);
-    const template = getCourseTemplate(templateId);
+    const templateId = normalizeCourseTemplateId(templateValue, '');
+    if (!templateId) throw unknownTemplateError(templateValue);
+
+    const templateVersion = String(
+        options.templateVersion || currentCourseTemplateVersion(templateId) || ''
+    ).trim();
+    if (!hasCourseTemplateVersion(templateId, templateVersion)) {
+        throw unavailableVersionError(templateId, templateVersion || 'unknown');
+    }
+
+    const template = getCourseTemplate(templateId, templateVersion);
     return Object.freeze({
         templateId: template.id,
         templateVersion: template.version,
         rendererVersion: template.rendererVersion,
-        interactionLevel: normalizeInteractionLevel(template.id, options.interactionLevel),
+        interactionLevel: normalizeInteractionLevel(template.id, options.interactionLevel, template.version),
         locked: true
     });
 }
@@ -32,31 +71,46 @@ function createTemplateBinding(templateValue, options = {}) {
 function getTemplateBindingFromAnalysis(analysis) {
     const raw = analysis?.templateBinding;
     if (!raw || typeof raw !== 'object') return null;
+
     const templateId = normalizeCourseTemplateId(raw.templateId, '');
-    if (!templateId) return null;
-    const template = getCourseTemplate(templateId);
+    if (!templateId) throw unknownTemplateError(raw.templateId, { stored: true });
+
+    const templateVersion = String(
+        raw.templateVersion || currentCourseTemplateVersion(templateId) || ''
+    ).trim();
+    if (!hasCourseTemplateVersion(templateId, templateVersion)) {
+        throw unavailableVersionError(templateId, templateVersion || 'unknown');
+    }
+
+    const template = getCourseTemplate(templateId, templateVersion);
     return {
         templateId,
-        templateVersion: String(raw.templateVersion || template.version),
+        templateVersion: template.version,
         rendererVersion: Number(raw.rendererVersion || template.rendererVersion || 1),
-        interactionLevel: normalizeInteractionLevel(templateId, raw.interactionLevel),
+        interactionLevel: normalizeInteractionLevel(templateId, raw.interactionLevel, template.version),
         locked: raw.locked !== false
     };
 }
 
 function requestedCourseTemplateId(request = {}) {
     const raw = request.courseTemplateId || request.courseStyleId || '';
-    return raw ? normalizeCourseTemplateId(raw, '') : '';
+    if (!raw) return '';
+    const id = normalizeCourseTemplateId(raw, '');
+    if (!id) throw unknownTemplateError(raw);
+    return id;
 }
 
 function resolveNewCourseTemplateBinding(request = {}, analysis = null) {
     const existing = getTemplateBindingFromAnalysis(analysis);
     if (existing) return Object.freeze(existing);
     const requested = requestedCourseTemplateId(request) || DEFAULT_COURSE_TEMPLATE_ID;
-    return createTemplateBinding(requested, { interactionLevel: request.interactionLevel });
+    return createTemplateBinding(requested, {
+        interactionLevel: request.interactionLevel,
+        templateVersion: request.courseTemplateVersion || request.templateVersion || undefined
+    });
 }
 
-function resolveExistingCourseTemplateBinding({ analysis, pkg } = {}) {
+function resolveExistingCourseTemplateBinding({ analysis } = {}) {
     const existing = getTemplateBindingFromAnalysis(analysis);
     if (existing) return Object.freeze(existing);
 
@@ -99,7 +153,8 @@ function bindingsEqual(left, right) {
 
 function publicTemplateBinding(binding) {
     if (!binding) return null;
-    const template = getCourseTemplate(binding.templateId);
+    const template = getCourseTemplate(binding.templateId, binding.templateVersion);
+    if (!template) throw unavailableVersionError(binding.templateId, binding.templateVersion);
     return {
         ...cloneBinding(binding),
         name: template.name,
@@ -117,5 +172,7 @@ module.exports = {
     publicTemplateBinding,
     requestedCourseTemplateId,
     resolveExistingCourseTemplateBinding,
-    resolveNewCourseTemplateBinding
+    resolveNewCourseTemplateBinding,
+    unavailableVersionError,
+    unknownTemplateError
 };
