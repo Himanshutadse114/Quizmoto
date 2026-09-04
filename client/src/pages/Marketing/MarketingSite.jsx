@@ -1,8 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
-const MARKETING_UI_STYLESHEET = '/landing/css/atelora-ui-system.css?v=20260904-1';
-const MARKETING_UI_LINK_ID = 'atelora-ui-system';
+const MARKETING_UI_STYLESHEETS = [
+  {
+    id: 'atelora-ui-system',
+    href: '/landing/css/atelora-ui-system.css?v=20260904-1',
+  },
+];
+
+const HOME_SECTION_SCALE_STYLESHEET = {
+  id: 'atelora-home-section-scale',
+  href: '/landing/css/atelora-home-section-scale.css?v=20260904-1',
+};
 
 function getMarketingPageClasses(src) {
   if (src === '/landing/index.html') return ['atelora-home-page'];
@@ -12,6 +21,40 @@ function getMarketingPageClasses(src) {
   if (src === '/landing/blog/index.html') return ['atelora-blog-page'];
   if (src.includes('/landing/blog/')) return ['atelora-blog-post-page'];
   return [];
+}
+
+function getMarketingStylesheets(src) {
+  if (src === '/landing/index.html') {
+    return [...MARKETING_UI_STYLESHEETS, HOME_SECTION_SCALE_STYLESHEET];
+  }
+  return MARKETING_UI_STYLESHEETS;
+}
+
+function ensureStylesheet(doc, { id, href }, onSettled) {
+  const existing = doc.getElementById(id);
+  if (existing) {
+    if (existing.getAttribute('href') !== href) {
+      existing.setAttribute('href', href);
+    }
+    onSettled();
+    return;
+  }
+
+  const stylesheet = doc.createElement('link');
+  stylesheet.id = id;
+  stylesheet.rel = 'stylesheet';
+  stylesheet.href = href;
+
+  let settled = false;
+  const finish = () => {
+    if (settled) return;
+    settled = true;
+    onSettled();
+  };
+
+  stylesheet.addEventListener('load', finish, { once: true });
+  stylesheet.addEventListener('error', finish, { once: true });
+  doc.head.appendChild(stylesheet);
 }
 
 function applySharedMarketingUi(frame, src, onReady) {
@@ -25,24 +68,22 @@ function applySharedMarketingUi(frame, src, onReady) {
     doc.documentElement.classList.add('atelora-ui-root');
     doc.body.classList.add('atelora-public-site', ...getMarketingPageClasses(src));
 
-    const existing = doc.getElementById(MARKETING_UI_LINK_ID);
-    if (existing) {
-      if (existing.getAttribute('href') !== MARKETING_UI_STYLESHEET) {
-        existing.setAttribute('href', MARKETING_UI_STYLESHEET);
-      }
+    const stylesheets = getMarketingStylesheets(src);
+    let remaining = stylesheets.length;
+
+    if (!remaining) {
       window.requestAnimationFrame(onReady);
       return;
     }
 
-    const stylesheet = doc.createElement('link');
-    stylesheet.id = MARKETING_UI_LINK_ID;
-    stylesheet.rel = 'stylesheet';
-    stylesheet.href = MARKETING_UI_STYLESHEET;
+    const markSettled = () => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        window.requestAnimationFrame(onReady);
+      }
+    };
 
-    const finish = () => window.requestAnimationFrame(onReady);
-    stylesheet.addEventListener('load', finish, { once: true });
-    stylesheet.addEventListener('error', finish, { once: true });
-    doc.head.appendChild(stylesheet);
+    stylesheets.forEach((stylesheet) => ensureStylesheet(doc, stylesheet, markSettled));
   } catch {
     // Marketing files are same-origin in production. If a host changes that
     // assumption, keep the page usable instead of leaving the iframe hidden.
@@ -52,8 +93,9 @@ function applySharedMarketingUi(frame, src, onReady) {
 
 // Renders one of the pre-built static marketing pages inside the SPA's own
 // document. React owns routing while the exported marketing HTML stays editable
-// as static files under public/landing. A single post-load UI stylesheet is
-// injected here so all public pages share one typography and layout system.
+// as static files under public/landing. Post-load UI stylesheets are injected
+// here so public pages share one typography/layout system while the homepage
+// can also receive tightly scoped section-level corrections.
 export default function MarketingSite({ src, title, tabTitle }) {
   const { hash } = useLocation();
   const [ready, setReady] = useState(false);
