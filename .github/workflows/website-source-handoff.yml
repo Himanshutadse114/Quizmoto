@@ -9,55 +9,124 @@ jobs:
   package-website:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout source
+      - name: Checkout current main
         uses: actions/checkout@v4
+        with:
+          ref: main
 
-      - name: Prepare frontend-only handoff
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Build exact production website
+        working-directory: client
+        run: |
+          npm ci
+          npm run build
+
+      - name: Verify LMSGEN production output
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p handoff/LMSGEN-Website
-          rsync -a client/ handoff/LMSGEN-Website/ \
-            --exclude node_modules \
-            --exclude dist \
-            --exclude '*.ttf' \
-            --exclude '*.otf' \
-            --exclude '*.woff' \
-            --exclude '*.woff2'
+          test -f client/dist/index.html
+          grep -qi "LMSGEN" client/dist/index.html
+          if grep -qi "Atelora | AI-Powered Learning Platform" client/dist/index.html; then
+            echo "Old Atelora entrypoint still present in production output" >&2
+            exit 1
+          fi
 
-          cat > handoff/LMSGEN-Website/LOCAL-RUN.md <<'EOF'
-          # LMSGEN website - local run
+      - name: Prepare editable live-site handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p handoff/LMSGEN-Live-Website
+          rsync -a client/dist/ handoff/LMSGEN-Live-Website/
 
-          This handoff contains the current frontend source from the live LMSGEN project. Backend, database and server-side course-generation code are intentionally not included.
+          cat > handoff/LMSGEN-Live-Website/server.mjs <<'EOF'
+          import http from 'node:http';
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { fileURLToPath } from 'node:url';
 
-          ## Requirements
-          - Node.js 22.x
-          - npm
-
-          ## Run locally
-          1. Open a terminal in this folder.
-          2. Run `npm install`.
-          3. Run `npm run dev`.
-          4. Open the local Vite URL shown in the terminal (normally `http://localhost:5173`).
-
-          ## Production-style build
-          - Run `npm run build`.
-          - Run `npm run preview` to preview the generated build.
-
-          ## Notes
-          - Public website pages and frontend code are included.
-          - Backend/API/database code is not included.
-          - Features that require API calls may still point to the configured LMSGEN API unless the developer changes the frontend configuration locally.
-          - Local font binary files are not included in this handoff. Use appropriately licensed local fonts or system fallbacks when editing locally.
-          - When returning the edited ZIP, keep the same folder structure so changes can be compared and applied cleanly.
+          const root = path.dirname(fileURLToPath(import.meta.url));
+          const port = Number(process.env.PORT || 5173);
+          const mime = {
+            '.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8',
+            '.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp',
+            '.ico':'image/x-icon','.woff':'font/woff','.woff2':'font/woff2','.mp4':'video/mp4','.webm':'video/webm'
+          };
+          function safePath(urlPath) {
+            const decoded = decodeURIComponent((urlPath || '/').split('?')[0]);
+            const normal = path.normalize(decoded).replace(/^([.][.][/\\])+/, '');
+            return path.join(root, normal);
+          }
+          function resolveFile(urlPath) {
+            let p = safePath(urlPath);
+            try { if (fs.statSync(p).isDirectory()) p = path.join(p, 'index.html'); } catch {}
+            if (fs.existsSync(p) && fs.statSync(p).isFile()) return p;
+            if (!path.extname(p)) {
+              const html = p + '.html';
+              if (fs.existsSync(html)) return html;
+              const idx = path.join(p, 'index.html');
+              if (fs.existsSync(idx)) return idx;
+            }
+            return path.join(root, 'index.html');
+          }
+          http.createServer((req,res)=>{
+            const file = resolveFile(req.url || '/');
+            fs.readFile(file,(err,data)=>{
+              if(err){res.writeHead(404);res.end('Not found');return;}
+              res.writeHead(200,{'Content-Type':mime[path.extname(file).toLowerCase()] || 'application/octet-stream','Cache-Control':'no-store'});
+              res.end(data);
+            });
+          }).listen(port,()=>console.log(`LMSGEN website: http://localhost:${port}`));
           EOF
 
-          printf '%s\n' 'Source branch: main' 'Source commit: 9e9286756250e9b236963a95b89c8a297e9fc2c7' > handoff/LMSGEN-Website/SOURCE-VERSION.txt
+          cat > handoff/LMSGEN-Live-Website/RUN-WEBSITE.bat <<'EOF'
+          @echo off
+          cd /d "%~dp0"
+          node server.mjs
+          pause
+          EOF
 
-      - name: Upload website ZIP artifact
+          cat > handoff/LMSGEN-Live-Website/RUN-WEBSITE.command <<'EOF'
+          #!/bin/sh
+          cd "$(dirname "$0")"
+          node server.mjs
+          EOF
+          chmod +x handoff/LMSGEN-Live-Website/RUN-WEBSITE.command
+
+          cat > handoff/LMSGEN-Live-Website/LOCAL-RUN.md <<'EOF'
+          # LMSGEN live website - editable local copy
+
+          This folder is the generated production website from the same frontend build pipeline used by LMSGEN. It is not the old Atelora source preview.
+
+          ## Run locally
+          - Install Node.js 22.x.
+          - Windows: double-click `RUN-WEBSITE.bat`.
+          - macOS/Linux: run `./RUN-WEBSITE.command` or `node server.mjs`.
+          - Open `http://localhost:5173`.
+
+          ## Editing
+          The HTML, CSS, JavaScript and image assets in this folder are the built public website and can be edited directly for visual/content changes.
+          Keep the folder structure unchanged. When finished, ZIP this entire folder and return it so the edits can be compared against the LMSGEN source and applied properly.
+
+          Note: this is website-only. Backend, database, course-generation services and admin application source are intentionally not included.
+          EOF
+
+          printf '%s\n' \
+            'Source branch: main' \
+            'Source commit: 9e9286756250e9b236963a95b89c8a297e9fc2c7' \
+            'Package type: production-built public website' \
+            > handoff/LMSGEN-Live-Website/SOURCE-VERSION.txt
+
+      - name: Upload live website ZIP artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LMSGEN-Website-Source-20260905
-          path: handoff/LMSGEN-Website
+          name: LMSGEN-Live-Website-Production-Build-20260905
+          path: handoff/LMSGEN-Live-Website
           if-no-files-found: error
           retention-days: 7
