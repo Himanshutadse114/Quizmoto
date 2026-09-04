@@ -29,6 +29,13 @@ const BODY_WORD_BUDGETS = Object.freeze({
     })
 });
 
+const INTERACTION_POINT_WORD_LIMIT = 22;
+const TOKEN_STOP_WORDS = new Set([
+    'the', 'a', 'an', 'and', 'or', 'to', 'of', 'for', 'in', 'on', 'with', 'from', 'your', 'you',
+    'is', 'are', 'be', 'as', 'at', 'this', 'that', 'these', 'those', 'it', 'its', 'can', 'may', 'will',
+    'all', 'any', 'by', 'use', 'using'
+]);
+
 function clean(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
 }
@@ -70,6 +77,72 @@ function trimToWordBudget(value, maxWords) {
     return /[.!?]$/.test(clipped) ? clipped : `${clipped}.`;
 }
 
+function canonicalToken(value) {
+    let token = String(value || '').toLowerCase();
+    if (token.length > 5 && token.endsWith('ing')) token = token.slice(0, -3);
+    else if (token.length > 4 && token.endsWith('ied')) token = `${token.slice(0, -3)}y`;
+    else if (token.length > 4 && token.endsWith('ed')) token = token.slice(0, -2);
+    else if (token.length > 5 && token.endsWith('ly')) token = token.slice(0, -2);
+    else if (token.length > 4 && token.endsWith('es')) token = token.slice(0, -2);
+    else if (token.length > 3 && token.endsWith('s')) token = token.slice(0, -1);
+    return token;
+}
+
+function meaningfulTokens(value) {
+    return clean(value)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .split(/\s+/)
+        .filter((token) => token.length >= 3 && !TOKEN_STOP_WORDS.has(token))
+        .map(canonicalToken)
+        .filter(Boolean);
+}
+
+function supportingSentence(point, sentences, usedIndexes) {
+    const pointTokens = new Set(meaningfulTokens(point));
+    if (!pointTokens.size) return null;
+
+    let best = null;
+    let bestScore = 0;
+
+    sentences.forEach((sentence, index) => {
+        if (usedIndexes.has(index)) return;
+        const sentenceTokens = new Set(meaningfulTokens(sentence));
+        let overlap = 0;
+        pointTokens.forEach((token) => {
+            if (sentenceTokens.has(token)) overlap += 1;
+        });
+        if (!overlap) return;
+
+        const coverage = overlap / Math.max(1, pointTokens.size);
+        const lengthPenalty = Math.abs(words(sentence).length - 14) * 0.02;
+        const score = (coverage * 10) + overlap - lengthPenalty;
+        if (score > bestScore) {
+            bestScore = score;
+            best = { index, sentence };
+        }
+    });
+
+    return best && bestScore >= 3.8 ? best : null;
+}
+
+function enrichHighlyInteractiveKeyPoints(slide) {
+    const source = slide && typeof slide === 'object' ? slide : {};
+    const points = Array.isArray(source.keyPoints) ? source.keyPoints.map(clean).filter(Boolean) : [];
+    if (!points.length) return points;
+
+    const sentences = sentenceChunks(source.content).map(clean).filter(Boolean);
+    if (!sentences.length) return points;
+
+    const usedIndexes = new Set();
+    return points.map((point) => {
+        const match = supportingSentence(point, sentences, usedIndexes);
+        if (!match) return point;
+        usedIndexes.add(match.index);
+        return trimToWordBudget(match.sentence, INTERACTION_POINT_WORD_LIMIT);
+    });
+}
+
 function layoutBudget(templateId, layout) {
     const budgets = BODY_WORD_BUDGETS[templateId];
     if (!budgets) return null;
@@ -89,6 +162,9 @@ function fitSlidePresentationContent(slide, templateId) {
 
     return {
         ...source,
+        ...(templateId === 'highly-interactive'
+            ? { keyPoints: enrichHighlyInteractiveKeyPoints(source) }
+            : {}),
         displayContent: trimToWordBudget(source.content, maxWords),
         displayContentWordLimit: maxWords
     };
@@ -109,6 +185,8 @@ function fitTemplatePresentationContent(analysis, binding) {
 
 module.exports = {
     BODY_WORD_BUDGETS,
+    INTERACTION_POINT_WORD_LIMIT,
+    enrichHighlyInteractiveKeyPoints,
     fitSlidePresentationContent,
     fitTemplatePresentationContent,
     layoutBudget,
