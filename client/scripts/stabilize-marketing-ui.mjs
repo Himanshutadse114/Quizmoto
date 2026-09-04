@@ -59,6 +59,14 @@ function ensureUnifiedCss(html) {
   return html.replace(/<\/head>/i, `    ${tag}\n</head>`);
 }
 
+function ensureHomeTypographyCss(html, type) {
+  html = stripStylesheet(html, 'lmsgen-home-lower-typography.css');
+  if (type !== 'home') return html;
+
+  const tag = '<link id="lmsgen-home-lower-typography" rel="stylesheet" href="/landing/css/lmsgen-home-lower-typography.css?v=20260904a" />';
+  return html.replace(/<\/head>/i, `    ${tag}\n</head>`);
+}
+
 function ensureUnifiedNav(html) {
   html = stripScript(html, 'nav-menu.js');
   html = stripScript(html, 'lmsgen-nav.js');
@@ -103,6 +111,7 @@ for (const page of pages) {
   html = normaliseLogo(html);
   html = tidyPageCopy(html, page.type);
   html = ensureUnifiedCss(html);
+  html = ensureHomeTypographyCss(html, page.type);
   html = ensureUnifiedNav(html);
 
   await fs.writeFile(filePath, html, 'utf8');
