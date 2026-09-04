@@ -128,7 +128,7 @@ describe('SCORM versioned template architecture', () => {
         const patched = injectTemplateRuntime(html, course);
 
         expect(shouldUseTemplateRuntime(course)).to.equal(true);
-        expect(patched).to.include('quizmoto-template-stage-v3');
+        expect(patched).to.include('quizmoto-template-stage-v4');
         expect(patched).to.include('overflow:hidden!important');
         expect(patched).to.include('highly-interactive');
 
