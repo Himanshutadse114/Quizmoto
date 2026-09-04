@@ -115,6 +115,22 @@ describe('SCORM template fixed-stage rendering', () => {
         expect(() => new Function(js)).not.to.throw();
     });
 
+    it('keeps generated images clean instead of inventing arbitrary numbered hotspots', () => {
+        const js = runtimeScript('highly-interactive', [{
+            section: 1,
+            layout: 'spotlight',
+            layoutId: 'highly-interactive.hotspot',
+            interaction: 'hotspot_explore',
+            screenType: 'concept',
+            displayContent: 'Spot the signs.'
+        }]);
+        expect(js).to.include('qmx-explore-grid');
+        expect(js).to.include('qmx-explore-option');
+        expect(js).to.include('data-qmx-explore-visited');
+        expect(js).to.not.include('hotspotPositions');
+        expect(js).to.not.include('qmx-hotspot-marker');
+    });
+
     it('recomputes runtime descriptors from current content instead of trusting stale display content', () => {
         const binding = createTemplateBinding('highly-interactive', { interactionLevel: 'high' });
         const course = planExperienceForTemplate(analysisWithLongSlides(), binding);
