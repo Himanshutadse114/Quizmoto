@@ -6,6 +6,18 @@ const { planExperienceV5 } = require('../../services/scorm/ScormExperiencePlanne
 const { ensureQuizIntegrity } = require('../../services/scorm/ScormQuizQualityService');
 const { buildScormPackageZip } = require('../../services/scorm/ScormReplicateMediaFinalizer');
 const { getTheme, normalizeThemeId } = require('../../services/scorm/ScormThemeCatalog');
+const {
+    applyTemplateBinding,
+    assertRequestedTemplateMatchesBinding,
+    publicTemplateBinding,
+    resolveExistingCourseTemplateBinding
+} = require('../../services/scorm/ScormTemplateBindingService');
+const { validateTemplateAnalysis } = require('../../services/scorm/ScormTemplateValidator');
+const {
+    hasPlannedSlideDesign,
+    preserveCourseDesign
+} = require('../../services/scorm/ScormRebuildDesignPreserver');
+const { applyTemplateRuntimeToZip } = require('../../services/scorm/ScormTemplateRuntime');
 const { ScormPackage } = require('../../models/scorm');
 const { ensureCourseForPackage } = require('../../services/scorm/ScormCourseWorkspaceService');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
@@ -30,9 +42,18 @@ function reporter(progressId, userId) {
 }
 
 function errorStatus(code) {
-    if (code === 'SCORM_REBUILD_MEDIA_MISSING') return 409;
-    if (code === 'SCORM_QUIZ_INCOMPLETE') return 422;
+    if (code === 'SCORM_REBUILD_MEDIA_MISSING' || code === 'SCORM_TEMPLATE_LOCKED') return 409;
+    if (code === 'SCORM_QUIZ_INCOMPLETE' || code === 'SCORM_TEMPLATE_SCHEMA_INVALID') return 422;
     return 500;
+}
+
+function parseStoredAnalysis(pkg) {
+    try {
+        const parsed = JSON.parse(pkg?.analysisJson || '{}');
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (_) {
+        return {};
+    }
 }
 
 function stripV7CourseFormatMetadata(rawAnalysis) {
@@ -63,8 +84,9 @@ function stripV7CourseFormatMetadata(rawAnalysis) {
 }
 
 // Intercepts only editor rebuilds. New-course generation falls through to the
-// normal author route, where visuals are created once. Rebuilds never call any
-// image-generation service: existing packaged visuals are copied into the new ZIP.
+// normal author route. A rebuild is deliberately design-preserving: it may edit
+// learner content but it cannot silently switch the course template or redraw a
+// slide using another layout family.
 router.post('/generate', auth, async (req, res, next) => {
     const replaceId = req.body?.replacePackageId || req.body?.packageId || null;
     if (!replaceId) return next();
@@ -82,7 +104,7 @@ router.post('/generate', auth, async (req, res, next) => {
             status: 'running',
             percent: 2,
             stage: 'Preparing course update',
-            detail: 'Applying your text and knowledge-check changes while preserving the existing visuals.'
+            detail: 'Applying your text and knowledge-check changes while preserving the existing course design.'
         });
     }
 
@@ -99,23 +121,48 @@ router.post('/generate', auth, async (req, res, next) => {
             return res.status(404).json({ message: 'Package to rebuild not found.' });
         }
 
-        const selectedThemeId = normalizeThemeId(
-            req.body?.themeId || req.body?.templateId || analysis?.themeId || pkg.templateId || 1
-        );
+        const storedAnalysis = parseStoredAnalysis(pkg);
+        const binding = resolveExistingCourseTemplateBinding({ analysis: storedAnalysis, pkg });
+        assertRequestedTemplateMatchesBinding(req.body || {}, binding);
+
+        // Theme remains a legacy visual setting. Rebuilds take it from the saved
+        // package rather than trusting a new request, so even the legacy styling
+        // cannot drift during a normal edit-and-rebuild operation.
+        const selectedThemeId = normalizeThemeId(storedAnalysis?.themeId || pkg.templateId || 1);
         const selectedTheme = getTheme(selectedThemeId);
+        const templateEngineVersion = Number(storedAnalysis?.templateEngineVersion || 0);
 
         report({
             percent: 5,
             stage: 'Checking edited course content',
-            detail: 'Validating slide structure and knowledge checks before rebuilding.'
+            detail: 'Validating content while keeping the saved template, slide layouts and interactions locked.'
         });
 
-        // Courses authored while the V7 template experiment was live may have
-        // persisted profile/template metadata in their saved analysis. Rebuilds
-        // must discard those V7-only selectors before the legacy V5 planner runs,
-        // otherwise the newer slide format can survive even after the code rollback.
-        analysis = stripV7CourseFormatMetadata(analysis);
-        analysis = planExperienceV5(analysis);
+        if (templateEngineVersion >= 1) {
+            // Versioned template courses preserve the exact design identity chosen
+            // at creation. Content may change, but rebuild does not run the layout
+            // planner again.
+            analysis = preserveCourseDesign(analysis, storedAnalysis);
+            analysis = applyTemplateBinding(analysis, binding);
+            analysis = {
+                ...analysis,
+                templateEngineVersion,
+                templatePlanner: storedAnalysis.templatePlanner || `${binding.templateId}@${binding.templateVersion}`
+            };
+        } else {
+            // Legacy courses keep the behaviour they were created with. If their
+            // saved analysis already contains planned layouts, preserve those
+            // layouts rather than recalculating them on every text edit.
+            analysis = stripV7CourseFormatMetadata(analysis);
+            if (hasPlannedSlideDesign(storedAnalysis)) {
+                analysis = preserveCourseDesign(analysis, storedAnalysis);
+            } else {
+                analysis = planExperienceV5(analysis);
+            }
+            analysis = applyTemplateBinding(analysis, binding);
+            analysis.templateEngineVersion = 0;
+        }
+
         analysis = ensureQuizIntegrity(analysis);
         analysis = {
             ...(analysis || {}),
@@ -123,6 +170,7 @@ router.post('/generate', auth, async (req, res, next) => {
             themeName: selectedTheme.name,
             experienceVersion: 5
         };
+        if (templateEngineVersion >= 1) validateTemplateAnalysis(analysis, binding);
         if (req.body?.title) analysis.title = req.body.title;
 
         const storage = getObjectStorage();
@@ -133,23 +181,27 @@ router.post('/generate', auth, async (req, res, next) => {
             onProgress: report
         });
         analysis = media.analysis;
+        if (templateEngineVersion >= 1) validateTemplateAnalysis(analysis, binding);
 
         report({
             percent: 78,
             stage: 'Rebuilding course package',
-            detail: 'Combining your updated content with the existing course visuals.'
+            detail: 'Combining the updated content with the saved template, layouts and existing visuals.'
         });
 
-        const zipBuf = await buildScormPackageZip(analysis, {
+        let zipBuf = await buildScormPackageZip(analysis, {
             templateId: selectedThemeId,
             logoDataUrl: req.body?.logoDataUrl || null,
             replicateMediaFiles: media.files
         });
+        if (templateEngineVersion >= 1) {
+            zipBuf = await applyTemplateRuntimeToZip(zipBuf, analysis);
+        }
 
         report({
             percent: 86,
             stage: 'Saving course update',
-            detail: 'Replacing the existing package with the updated course.'
+            detail: 'Replacing the existing package without changing its course template.'
         });
 
         pkg.title = String(analysis.title || pkg.title || 'Course').slice(0, 200);
@@ -157,6 +209,8 @@ router.post('/generate', auth, async (req, res, next) => {
         pkg.source = 'ai_author';
         pkg.standard = 'scorm_1_2';
         pkg.byteSize = zipBuf.length;
+        // Retain legacy numeric theme id for backwards compatibility. The real
+        // course template binding is stored in analysisJson.templateBinding.
         pkg.templateId = selectedThemeId;
         pkg.analysisJson = JSON.stringify(analysis);
         pkg.errorMessage = null;
@@ -199,7 +253,7 @@ router.post('/generate', auth, async (req, res, next) => {
                 status: 'complete',
                 percent: 100,
                 stage: 'Course updated',
-                detail: 'Your edits are saved and the existing visuals were preserved.'
+                detail: 'Your edits are saved and the original template, layouts and visuals were preserved.'
             });
         }
 
@@ -218,12 +272,14 @@ router.post('/generate', auth, async (req, res, next) => {
                 name: selectedTheme.name,
                 slug: selectedTheme.slug
             },
+            courseTemplate: publicTemplateBinding(binding),
             media: media.metadata || {
                 reusedOnRebuild: true,
                 totalImagesGenerated: 0,
                 estimatedImageCostUsd: 0
             },
             visualsRegenerated: false,
+            designPreserved: true,
             errorMessage: pkg.errorMessage
         });
     } catch (err) {
@@ -236,7 +292,8 @@ router.post('/generate', auth, async (req, res, next) => {
         });
         return res.status(errorStatus(err.code)).json({
             message: err.message || 'Course rebuild failed.',
-            code: err.code || 'SCORM_REBUILD_ERROR'
+            code: err.code || 'SCORM_REBUILD_ERROR',
+            ...(Array.isArray(err.details) ? { details: err.details } : {})
         });
     }
 });
