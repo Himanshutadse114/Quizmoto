@@ -1,5 +1,7 @@
 'use strict';
 
+const JSZip = require('jszip');
+
 const STYLE_ID = 'quizmoto-template-stage-v1';
 const SCRIPT_ID = 'quizmoto-template-stage-script-v1';
 
@@ -44,7 +46,6 @@ function runtimeScript(templateId) {
     if(!slide||!slide.classList.contains('active'))return;
     var node=contentNode(slide);if(!node)return;
     node.style.transform='';
-    node.style.setProperty('--qmx-template-fit','1');
     var available=availableSize(slide);
     var rect=node.getBoundingClientRect();
     var width=Math.max(node.scrollWidth||0,rect.width||0,1);
@@ -59,8 +60,7 @@ function runtimeScript(templateId) {
     if(fitting)return;fitting=true;
     requestAnimationFrame(function(){
       fitting=false;
-      var active=document.querySelector('.slide.active');
-      fit(active);
+      fit(document.querySelector('.slide.active'));
     });
   }
   function install(){
@@ -99,9 +99,30 @@ function injectTemplateRuntime(html, analysis) {
     return source;
 }
 
+async function applyTemplateRuntimeToZip(zipBuffer, analysis) {
+    if (!shouldUseTemplateRuntime(analysis)) return zipBuffer;
+    const zip = await JSZip.loadAsync(zipBuffer);
+    const htmlNames = Object.keys(zip.files).filter((name) => !zip.files[name].dir && /\.html?$/i.test(name));
+    let changed = false;
+
+    for (const name of htmlNames) {
+        const html = await zip.file(name).async('string');
+        const patched = injectTemplateRuntime(html, analysis);
+        if (patched !== html) {
+            zip.file(name, patched);
+            changed = true;
+        }
+    }
+
+    return changed
+        ? zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } })
+        : zipBuffer;
+}
+
 module.exports = {
     STYLE_ID,
     SCRIPT_ID,
+    applyTemplateRuntimeToZip,
     injectTemplateRuntime,
     shouldUseTemplateRuntime
 };
