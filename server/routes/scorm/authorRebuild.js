@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require('../middleware');
 const { featureFlags } = require('../../config/featureFlags');
 const { planExperienceV5 } = require('../../services/scorm/ScormExperiencePlanner');
+const { planExperienceForTemplate } = require('../../services/scorm/ScormTemplateExperiencePlanner');
 const { planScenarioGraph } = require('../../services/scorm/ScormScenarioGraphPlanner');
 const { ensureQuizIntegrity } = require('../../services/scorm/ScormQuizQualityService');
 const { buildScormPackageZip } = require('../../services/scorm/ScormReplicateMediaFinalizer');
@@ -10,9 +11,9 @@ const { getTheme, normalizeThemeId } = require('../../services/scorm/ScormThemeC
 const {
     applyTemplateBinding,
     assertRequestedTemplateMatchesBinding,
-    publicTemplateBinding,
-    resolveExistingCourseTemplateBinding
+    publicTemplateBinding
 } = require('../../services/scorm/ScormTemplateBindingService');
+const { resolveRebuildTemplateBinding } = require('../../services/scorm/ScormTemplateRebuildMigration');
 const { validateTemplateAnalysis } = require('../../services/scorm/ScormTemplateValidator');
 const {
     hasPlannedSlideDesign,
@@ -105,7 +106,7 @@ router.post('/generate', auth, async (req, res, next) => {
             status: 'running',
             percent: 2,
             stage: 'Preparing course update',
-            detail: 'Applying your text and knowledge-check changes while preserving the existing course design.'
+            detail: 'Applying your text and knowledge-check changes while preserving reusable course assets.'
         });
     }
 
@@ -123,20 +124,31 @@ router.post('/generate', auth, async (req, res, next) => {
         }
 
         const storedAnalysis = parseStoredAnalysis(pkg);
-        const binding = resolveExistingCourseTemplateBinding({ analysis: storedAnalysis, pkg });
+        const migration = resolveRebuildTemplateBinding({ analysis: storedAnalysis, pkg });
+        const binding = migration.binding;
         assertRequestedTemplateMatchesBinding(req.body || {}, binding);
 
         const selectedThemeId = normalizeThemeId(storedAnalysis?.themeId || pkg.templateId || 1);
         const selectedTheme = getTheme(selectedThemeId);
-        const templateEngineVersion = Number(storedAnalysis?.templateEngineVersion || 0);
+        let templateEngineVersion = Number(storedAnalysis?.templateEngineVersion || 0);
 
         report({
             percent: 5,
-            stage: 'Checking edited course content',
-            detail: 'Validating content while keeping the saved template, slide layouts and interactions locked.'
+            stage: migration.templateUpgraded ? 'Updating Clean & Professional layout' : 'Checking edited course content',
+            detail: migration.templateUpgraded
+                ? 'Applying the restored classic flip-card course layout while keeping the existing course media and menu.'
+                : 'Validating content while keeping the saved template, slide layouts and interactions locked.'
         });
 
-        if (templateEngineVersion >= 1) {
+        if (migration.templateUpgraded) {
+            // Clean & Professional 1.1 is intentionally a different learner
+            // experience from 1.0. Rebuilding an older Professional course must
+            // therefore re-run the template planner instead of preserving the old
+            // generic slide layouts. Existing raster media is still reused below.
+            analysis = stripV7CourseFormatMetadata(analysis);
+            analysis = planExperienceForTemplate(analysis, binding);
+            templateEngineVersion = 1;
+        } else if (templateEngineVersion >= 1) {
             analysis = preserveCourseDesign(analysis, storedAnalysis);
             analysis = applyTemplateBinding(analysis, binding);
             analysis = {
@@ -184,7 +196,9 @@ router.post('/generate', auth, async (req, res, next) => {
         report({
             percent: 78,
             stage: 'Rebuilding course package',
-            detail: 'Combining the updated content with the saved template, layouts and existing visuals.'
+            detail: migration.templateUpgraded
+                ? 'Combining the restored flip-card learner layout with the existing visuals and current course menu.'
+                : 'Combining the updated content with the saved template, layouts and existing visuals.'
         });
 
         let zipBuf = await buildScormPackageZip(analysis, {
@@ -203,7 +217,9 @@ router.post('/generate', auth, async (req, res, next) => {
         report({
             percent: 86,
             stage: 'Saving course update',
-            detail: 'Replacing the existing package without changing its course template.'
+            detail: migration.templateUpgraded
+                ? `Clean & Professional was upgraded from ${migration.previousVersion} to ${migration.currentVersion}.`
+                : 'Replacing the existing package without changing its course template.'
         });
 
         pkg.title = String(analysis.title || pkg.title || 'Course').slice(0, 200);
@@ -253,7 +269,9 @@ router.post('/generate', auth, async (req, res, next) => {
                 status: 'complete',
                 percent: 100,
                 stage: 'Course updated',
-                detail: 'Your edits are saved and the original template, layouts and visuals were preserved.'
+                detail: migration.templateUpgraded
+                    ? 'Clean & Professional now uses the restored flip-card learner experience with the current course menu.'
+                    : 'Your edits are saved and the original template, layouts and visuals were preserved.'
             });
         }
 
@@ -273,13 +291,15 @@ router.post('/generate', auth, async (req, res, next) => {
                 slug: selectedTheme.slug
             },
             courseTemplate: publicTemplateBinding(binding),
+            templateUpgraded: migration.templateUpgraded,
+            previousTemplateVersion: migration.previousVersion,
             media: media.metadata || {
                 reusedOnRebuild: true,
                 totalImagesGenerated: 0,
                 estimatedImageCostUsd: 0
             },
             visualsRegenerated: false,
-            designPreserved: true,
+            designPreserved: !migration.templateUpgraded,
             errorMessage: pkg.errorMessage
         });
     } catch (err) {
