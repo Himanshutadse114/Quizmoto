@@ -73,16 +73,20 @@ function script() {
 (function(){
   var graph=window.__QMX_SCENARIO_GRAPH__;
   if(!graph||graph.version<2||!Array.isArray(graph.nodes)||!graph.decisionCount)return;
+  if(window.__qmxScenarioBranchingRuntimeLoaded)return;
+  window.__qmxScenarioBranchingRuntimeLoaded=true;
   var nodes={};graph.nodes.forEach(function(n){nodes[n.id]=n;});
   var decisionNodes=graph.nodes.filter(function(n){return n.type==='decision';}).sort(function(a,b){return Number(a.ordinal||0)-Number(b.ordinal||0);});
   var storageKey='qmx-scenario-v2:'+String(location.pathname||'course')+':'+String(graph.startNodeId||'start');
+  var slideCache=null,syncPending=false;
   function emptyState(){return {version:2,choices:{},completed:{},path:[]};}
   function load(){try{var raw=sessionStorage.getItem(storageKey);var parsed=raw?JSON.parse(raw):null;return parsed&&parsed.version===2?parsed:emptyState();}catch(e){return emptyState();}}
   var state=load();window.__qmxScenarioState=state;
   function save(){try{sessionStorage.setItem(storageKey,JSON.stringify(state));}catch(e){}window.__qmxScenarioState=state;}
   function clean(v){return String(v||'').replace(/\\s+/g,' ').trim();}
   function make(tag,cls,text){var el=document.createElement(tag);if(cls)el.className=cls;if(text!=null)el.textContent=text;return el;}
-  function learningSlides(){return Array.prototype.slice.call(document.querySelectorAll('main .slide[data-kind="learning"]'));}
+  function setText(el,value){if(el&&el.textContent!==value)el.textContent=value;}
+  function learningSlides(){if(!slideCache)slideCache=Array.prototype.slice.call(document.querySelectorAll('main .slide[data-kind="learning"]'));return slideCache;}
   function riskScore(){return Object.keys(state.choices||{}).reduce(function(sum,id){var c=state.choices[id];return sum+(Number(c&&c.riskDelta)||0);},0);}
   function completedCount(){return Object.keys(state.completed||{}).filter(function(id){return state.completed[id];}).length;}
   function status(){var done=Math.max(1,Object.keys(state.choices||{}).length),avg=riskScore()/done;if(avg<=0)return {id:'on-track',label:'On track'};if(avg<=14)return {id:'caution',label:'Caution'};return {id:'high-risk',label:'High risk'};}
@@ -93,18 +97,18 @@ function script() {
   function renderConsequence(slide,node,choice,container,note,continueButton){
     container.hidden=false;
     var effect=container.querySelector('.qmx-branch-effect'),what=container.querySelector('[data-qmx-branch="consequence"]'),coach=container.querySelector('[data-qmx-branch="coaching"]');
-    if(effect)effect.textContent=pathEffect(choice.safety);
-    if(what)what.textContent=clean(choice.consequence)||'Your response changes how the situation develops.';
-    if(coach)coach.textContent=clean(choice.coaching)||'Pause and independently verify before taking the requested action.';
+    setText(effect,pathEffect(choice.safety));
+    setText(what,clean(choice.consequence)||'Your response changes how the situation develops.');
+    setText(coach,clean(choice.coaching)||'Pause and independently verify before taking the requested action.');
     continueButton.hidden=Boolean(state.completed[node.id]);
-    if(state.completed[node.id]){note.classList.add('is-complete');note.textContent='Consequence reviewed • continue to the next part';slide.setAttribute('data-qmx-scenario-decision-complete','true');slide.setAttribute('data-qmx-scenario-complete','true');}
+    if(state.completed[node.id]){note.classList.add('is-complete');setText(note,'Consequence reviewed • continue to the next part');slide.setAttribute('data-qmx-scenario-decision-complete','true');slide.setAttribute('data-qmx-scenario-complete','true');}
   }
   function choose(slide,node,choice,buttons,container,note,continueButton){
     if(state.choices[node.id])return;
     state.choices[node.id]={choiceId:choice.id,safety:choice.safety,riskDelta:Number(choice.riskDelta)||0,nextNodeId:choice.nextNodeId};
     state.path=Array.isArray(state.path)?state.path:[];state.path.push(node.id,choice.nextNodeId);save();
-    buttons.forEach(function(b){var selected=b.getAttribute('data-choice-id')===choice.id;b.classList.toggle('is-selected',selected);b.disabled=true;var hint=b.querySelector('.qmx-branch-choice-hint');if(hint)hint.textContent=selected?pathEffect(choice.safety):'Response locked';});
-    renderConsequence(slide,node,choice,container,note,continueButton);syncGlobal();notify(slide);
+    buttons.forEach(function(b){var selected=b.getAttribute('data-choice-id')===choice.id;b.classList.toggle('is-selected',selected);b.disabled=true;var hint=b.querySelector('.qmx-branch-choice-hint');setText(hint,selected?pathEffect(choice.safety):'Response locked');});
+    renderConsequence(slide,node,choice,container,note,continueButton);notify(slide);
   }
   function prepareDecision(node){
     var slide=learningSlides()[Number(node.slideIndex)];if(!slide||slide.getAttribute('data-qmx-branch-owned')==='true')return;
@@ -114,14 +118,21 @@ function script() {
     var head=make('div','qmx-branch-head'),headCopy=make('div','qmx-branch-head-copy');headCopy.appendChild(make('div','qmx-branch-kicker','Decision '+String(node.ordinal).padStart(2,'0')+' of '+graph.decisionCount));headCopy.appendChild(make('div','qmx-branch-objective',clean(node.objective)||'Choose the response you would take. Your decision changes the consequence.'));head.appendChild(headCopy);var badge=make('div','qmx-branch-state','Path status');badge.setAttribute('data-qmx-branch-status','true');head.appendChild(badge);copy.appendChild(head);
     var grid=make('div','qmx-branch-grid');copy.appendChild(grid);var buttons=[];
     (node.choices||[]).forEach(function(choice,i){var b=make('button','qmx-branch-choice');b.type='button';b.setAttribute('data-choice-id',choice.id);b.appendChild(make('span','qmx-branch-number',String(i+1).padStart(2,'0')));b.appendChild(make('span','qmx-branch-choice-label',choice.label));b.appendChild(make('span','qmx-branch-choice-hint','Choose this response'));b.onclick=function(){choose(slide,node,choice,buttons,consequence,note,continueButton);};buttons.push(b);grid.appendChild(b);});
-    var consequence=make('div','qmx-branch-consequence');consequence.hidden=true;var top=make('div','qmx-branch-consequence-top');top.appendChild(make('div','qmx-branch-consequence-title','Your decision changed the path'));top.appendChild(make('div','qmx-branch-effect',''));consequence.appendChild(top);var body=make('div','qmx-branch-consequence-body');var happened=make('div','qmx-branch-panel');happened.appendChild(make('div','qmx-branch-panel-label','What happened'));var hp=make('p','');hp.setAttribute('data-qmx-branch','consequence');happened.appendChild(hp);var coaching=make('div','qmx-branch-panel');coaching.appendChild(make('div','qmx-branch-panel-label','Coach’s note'));var cp=make('p','');cp.setAttribute('data-qmx-branch','coaching');coaching.appendChild(cp);body.appendChild(happened);body.appendChild(coaching);consequence.appendChild(body);var continueButton=make('button','qmx-branch-continue','Continue this path');continueButton.type='button';continueButton.onclick=function(){state.completed[node.id]=true;save();slide.setAttribute('data-qmx-scenario-decision-complete','true');slide.setAttribute('data-qmx-scenario-complete','true');continueButton.hidden=true;note.classList.add('is-complete');note.textContent='Consequence reviewed • Next is unlocked';syncGlobal();notify(slide);};consequence.appendChild(continueButton);copy.appendChild(consequence);var note=make('div','qmx-branch-note','Choose one response, then review the consequence before continuing.');copy.appendChild(note);
-    var saved=state.choices[node.id];if(saved){var choice=(node.choices||[]).find(function(c){return c.id===saved.choiceId;})||node.choices[0];buttons.forEach(function(b){var selected=b.getAttribute('data-choice-id')===choice.id;b.classList.toggle('is-selected',selected);b.disabled=true;var hint=b.querySelector('.qmx-branch-choice-hint');if(hint)hint.textContent=selected?pathEffect(choice.safety):'Response locked';});renderConsequence(slide,node,choice,consequence,note,continueButton);}syncGlobal();
+    var consequence=make('div','qmx-branch-consequence');consequence.hidden=true;var top=make('div','qmx-branch-consequence-top');top.appendChild(make('div','qmx-branch-consequence-title','Your decision changed the path'));top.appendChild(make('div','qmx-branch-effect',''));consequence.appendChild(top);var body=make('div','qmx-branch-consequence-body');var happened=make('div','qmx-branch-panel');happened.appendChild(make('div','qmx-branch-panel-label','What happened'));var hp=make('p','');hp.setAttribute('data-qmx-branch','consequence');happened.appendChild(hp);var coaching=make('div','qmx-branch-panel');coaching.appendChild(make('div','qmx-branch-panel-label','Coach’s note'));var cp=make('p','');cp.setAttribute('data-qmx-branch','coaching');coaching.appendChild(cp);body.appendChild(happened);body.appendChild(coaching);consequence.appendChild(body);var continueButton=make('button','qmx-branch-continue','Continue this path');continueButton.type='button';continueButton.onclick=function(){state.completed[node.id]=true;save();slide.setAttribute('data-qmx-scenario-decision-complete','true');slide.setAttribute('data-qmx-scenario-complete','true');continueButton.hidden=true;note.classList.add('is-complete');setText(note,'Consequence reviewed • Next is unlocked');notify(slide);};consequence.appendChild(continueButton);copy.appendChild(consequence);var note=make('div','qmx-branch-note','Choose one response, then review the consequence before continuing.');copy.appendChild(note);
+    var saved=state.choices[node.id];if(saved){var choice=(node.choices||[]).find(function(c){return c.id===saved.choiceId;})||node.choices[0];buttons.forEach(function(b){var selected=b.getAttribute('data-choice-id')===choice.id;b.classList.toggle('is-selected',selected);b.disabled=true;var hint=b.querySelector('.qmx-branch-choice-hint');setText(hint,selected?pathEffect(choice.safety):'Response locked');});renderConsequence(slide,node,choice,consequence,note,continueButton);}
   }
-  function syncSidebar(){var head=document.querySelector('.qmx-scenario-sidebar-head');if(!head)return;var row=head.querySelector('.qmx-branch-sidebar-state');if(!row){row=make('div','qmx-branch-sidebar-state');head.appendChild(row);}var s=status();row.innerHTML='Decision path: <strong>'+s.label+'</strong> · '+completedCount()+'/'+graph.decisionCount+' completed';}
-  function syncBadges(){var s=status();Array.prototype.forEach.call(document.querySelectorAll('[data-qmx-branch-status="true"]'),function(b){b.textContent=s.label;b.setAttribute('data-level',s.id);});}
-  function syncOutcome(){var slide=document.querySelector('main .slide[data-kind="final"]'),shell=slide&&slide.querySelector('.qmx-final-shell');if(!shell)return;var card=shell.querySelector('.qmx-branch-outcome');if(!card){card=make('section','qmx-branch-outcome');card.setAttribute('aria-live','polite');card.appendChild(make('div','qmx-branch-outcome-label'));card.appendChild(make('h3',''));card.appendChild(make('p',''));card.appendChild(make('div','qmx-branch-outcome-meta'));shell.appendChild(card);}var result=outcome();card.setAttribute('data-outcome',result.id);card.querySelector('.qmx-branch-outcome-label').textContent='Scenario outcome · '+result.label;card.querySelector('h3').textContent=result.title;card.querySelector('p').textContent=result.text;card.querySelector('.qmx-branch-outcome-meta').textContent=completedCount()+' of '+graph.decisionCount+' decisions completed';}
+  function syncSidebar(){var head=document.querySelector('.qmx-scenario-sidebar-head');if(!head)return;var row=head.querySelector('.qmx-branch-sidebar-state');if(!row){row=make('div','qmx-branch-sidebar-state');head.appendChild(row);}var s=status(),html='Decision path: <strong>'+s.label+'</strong> · '+completedCount()+'/'+graph.decisionCount+' completed';if(row.innerHTML!==html)row.innerHTML=html;}
+  function syncBadges(){var s=status();Array.prototype.forEach.call(document.querySelectorAll('[data-qmx-branch-status="true"]'),function(b){setText(b,s.label);if(b.getAttribute('data-level')!==s.id)b.setAttribute('data-level',s.id);});}
+  function syncOutcome(){var slide=document.querySelector('main .slide[data-kind="final"]'),shell=slide&&slide.querySelector('.qmx-final-shell');if(!shell)return;var card=shell.querySelector('.qmx-branch-outcome');if(!card){card=make('section','qmx-branch-outcome');card.setAttribute('aria-live','polite');card.appendChild(make('div','qmx-branch-outcome-label'));card.appendChild(make('h3',''));card.appendChild(make('p',''));card.appendChild(make('div','qmx-branch-outcome-meta'));shell.appendChild(card);}var result=outcome();if(card.getAttribute('data-outcome')!==result.id)card.setAttribute('data-outcome',result.id);setText(card.querySelector('.qmx-branch-outcome-label'),'Scenario outcome · '+result.label);setText(card.querySelector('h3'),result.title);setText(card.querySelector('p'),result.text);setText(card.querySelector('.qmx-branch-outcome-meta'),completedCount()+' of '+graph.decisionCount+' decisions completed');}
   function syncGlobal(){syncBadges();syncSidebar();syncOutcome();}
-  function install(){if(!document.body||document.body.getAttribute('data-qmx-course-template')!=='scenario-learning')return;decisionNodes.forEach(prepareDecision);syncGlobal();var main=document.querySelector('main');if(main){var observer=new MutationObserver(function(){decisionNodes.forEach(prepareDecision);syncGlobal();});observer.observe(main,{subtree:true,attributes:true,attributeFilter:['class','data-qmx-scenario-complete']});}document.addEventListener('qmx:scenario-update',function(){setTimeout(syncGlobal,0);},true);window.addEventListener('load',function(){setTimeout(function(){decisionNodes.forEach(prepareDecision);syncGlobal();},0);});}
+  function scheduleGlobalSync(){if(syncPending)return;syncPending=true;setTimeout(function(){syncPending=false;syncGlobal();},0);}
+  function install(){
+    if(!document.body||document.body.getAttribute('data-qmx-course-template')!=='scenario-learning')return;
+    decisionNodes.forEach(prepareDecision);
+    syncGlobal();
+    document.addEventListener('qmx:scenario-update',scheduleGlobalSync,true);
+    window.addEventListener('pageshow',function(){decisionNodes.forEach(prepareDecision);scheduleGlobalSync();});
+  }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
 </script>`;
