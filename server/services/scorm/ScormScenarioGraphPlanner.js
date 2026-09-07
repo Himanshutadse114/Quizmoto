@@ -2,6 +2,15 @@
 
 const SAFE_PATTERN = /\b(verify|confirm|report|pause|stop|refuse|escalate|contact|official|known|independent|check|inspect|lock|protect|avoid|do not|don't|never|follow|validate)\b/i;
 const RISKY_PATTERN = /\b(click|open|approve|pay|transfer|share|send|disclose|ignore|bypass|continue|trust|allow|install|enter|provide|reply|download|scan the code|use the link)\b/i;
+const ACTION_CHOICE_PATTERN = /^(ask|avoid|challenge|check|confirm|contact|decline|deny|do not|don't|escort|follow|hold|ignore|immediately|never|notify|offer|open|pause|politely|refuse|report|request|stop|tell|use|verify|wait|allow|approve|assume|block|call|click|continue|direct|enter|install|pay|reply|scan|send|share|transfer)\b/i;
+const ACTION_QUESTION_PATTERN = /\b(what should|what would|what is your (?:best|first|next|most appropriate)|best (?:immediate )?action|most appropriate action|first action|first step|next step|correct response|how should|what do you do|what should you do)\b/i;
+const TOKEN_STOP_WORDS = new Set([
+    'a', 'an', 'and', 'are', 'as', 'at', 'be', 'been', 'being', 'but', 'by', 'can', 'could', 'did', 'do', 'does',
+    'for', 'from', 'had', 'has', 'have', 'he', 'her', 'here', 'him', 'his', 'how', 'i', 'if', 'in', 'into', 'is',
+    'it', 'its', 'may', 'might', 'of', 'on', 'or', 'our', 'she', 'should', 'so', 'some', 'than', 'that', 'the', 'their',
+    'them', 'then', 'there', 'these', 'they', 'this', 'those', 'to', 'was', 'we', 'were', 'what', 'when', 'where', 'which',
+    'who', 'why', 'will', 'with', 'would', 'you', 'your'
+]);
 
 function clean(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -14,10 +23,13 @@ function clip(value, max = 220) {
 }
 
 function shortLabel(value, index) {
-    const source = clean(value).replace(/^[0-9]+[.)\s-]*/, '').replace(/[.!?]+$/, '');
+    const source = clean(value)
+        .replace(/^[A-D][.)]\s*/i, '')
+        .replace(/^[0-9]+[.)\s-]*/, '')
+        .replace(/[.!?]+$/, '');
     if (!source) return `Response ${index + 1}`;
     const words = source.split(/\s+/);
-    return clip(words.slice(0, 8).join(' '), 72);
+    return clip(words.slice(0, 12).join(' '), 96);
 }
 
 function classifySafety(label, index, total) {
@@ -25,10 +37,8 @@ function classifySafety(label, index, total) {
     if (SAFE_PATTERN.test(value) && !RISKY_PATTERN.test(value)) return 'safe';
     if (RISKY_PATTERN.test(value) && !SAFE_PATTERN.test(value)) return 'risky';
 
-    // Scenario AI is asked to provide meaningful alternatives, but legacy
-    // courses may not have explicit safety language. Keep a deterministic
-    // spread so the learner still sees different consequences rather than
-    // four identical neutral responses.
+    // Structured scenario choices should normally include explicit safety.
+    // This deterministic fallback is only for older actionable content.
     if (total >= 3 && index === 0) return 'risky';
     if (total >= 3 && index === total - 1) return 'safe';
     return 'mixed';
@@ -43,12 +53,12 @@ function riskDeltaFor(safety) {
 function consequenceFor(label, safety) {
     const action = shortLabel(label, 0);
     if (safety === 'safe') {
-        return `${action} creates a verification checkpoint before the situation can cause further harm.`;
+        return `Choosing “${action}” creates a safer checkpoint before the situation can cause further harm.`;
     }
     if (safety === 'risky') {
-        return `${action} lets the situation progress before the request, person or channel has been independently verified.`;
+        return `Choosing “${action}” leaves the situation exposed because the safest verification or escalation step has not happened yet.`;
     }
-    return `${action} adds some caution, but the situation still needs a stronger independent check before action continues.`;
+    return `Choosing “${action}” reduces some risk, but a stronger verification or escalation step is still needed.`;
 }
 
 function coachingFor(safety) {
@@ -56,30 +66,137 @@ function coachingFor(safety) {
         return 'Good judgement. Keep the verification step separate from the original request and follow the approved reporting or escalation route.';
     }
     if (safety === 'risky') {
-        return 'A safer response is to pause, verify through a trusted route and avoid acting through the same channel that created the pressure.';
+        return 'A safer response is to pause, verify through a trusted route and avoid acting before the situation has been checked.';
     }
-    return 'This is a partial safeguard. Strengthen it by independently validating the request before sharing information, approving access or taking action.';
+    return 'This is a partial safeguard. Strengthen it by independently validating the situation before continuing.';
+}
+
+function normalizeStructuredChoices(slide) {
+    const structured = Array.isArray(slide?.scenario?.choices) ? slide.scenario.choices : [];
+    if (structured.length < 2) return [];
+    const normalized = structured.slice(0, 4).map((choice, index) => ({
+        label: shortLabel(choice?.label || choice?.text || choice, index),
+        consequence: clip(choice?.consequence || '', 280),
+        coaching: clip(choice?.coaching || choice?.feedback || '', 320),
+        safety: ['safe', 'mixed', 'risky'].includes(String(choice?.safety || '').toLowerCase())
+            ? String(choice.safety).toLowerCase()
+            : null,
+        riskDelta: Number.isFinite(Number(choice?.riskDelta)) ? Number(choice.riskDelta) : null
+    }));
+    if (!normalized.every((choice) => ACTION_CHOICE_PATTERN.test(choice.label))) return [];
+    return normalized;
+}
+
+function actionableKeyPointChoices(slide) {
+    const points = (Array.isArray(slide?.keyPoints) ? slide.keyPoints : [])
+        .map(clean)
+        .filter(Boolean)
+        .slice(0, 4);
+    if (points.length < 2) return [];
+
+    // Do not turn clues/facts such as “No badge displayed” or “Unusual package”
+    // into fake learner decisions. Every fallback key point must read as an
+    // action the learner could actually choose.
+    const actionable = points.every((point) => ACTION_CHOICE_PATTERN.test(point));
+    if (!actionable) return [];
+    return points.map((point, index) => ({ label: shortLabel(point, index) }));
 }
 
 function scenarioSourceChoices(slide) {
-    const structured = Array.isArray(slide?.scenario?.choices) ? slide.scenario.choices : [];
-    if (structured.length >= 2) {
-        return structured.slice(0, 4).map((choice, index) => ({
-            label: shortLabel(choice?.label || choice?.text || choice, index),
-            consequence: clip(choice?.consequence || '', 260),
-            coaching: clip(choice?.coaching || choice?.feedback || '', 260),
-            safety: ['safe', 'mixed', 'risky'].includes(String(choice?.safety || '').toLowerCase())
-                ? String(choice.safety).toLowerCase()
-                : null,
-            riskDelta: Number.isFinite(Number(choice?.riskDelta)) ? Number(choice.riskDelta) : null
-        }));
+    const structured = normalizeStructuredChoices(slide);
+    if (structured.length >= 2) return structured;
+    return actionableKeyPointChoices(slide);
+}
+
+function tokenSet(value) {
+    return new Set(
+        clean(value)
+            .toLowerCase()
+            .replace(/[^a-z0-9'’-]+/g, ' ')
+            .split(/\s+/)
+            .map((token) => token.replace(/[’']/g, ''))
+            .filter((token) => token.length >= 3 && !TOKEN_STOP_WORDS.has(token))
+    );
+}
+
+function overlapCount(left, right) {
+    let count = 0;
+    left.forEach((token) => {
+        if (right.has(token)) count += 1;
+    });
+    return count;
+}
+
+function quizDecisionScore(slide, quizItem) {
+    const question = clean(quizItem?.question);
+    const options = Array.isArray(quizItem?.options) ? quizItem.options : [];
+    const correctAnswer = Number(quizItem?.correctAnswer);
+    if (!ACTION_QUESTION_PATTERN.test(question)) return -1;
+    if (options.length < 3 || options.length > 5) return -1;
+    if (!Number.isInteger(correctAnswer) || correctAnswer < 0 || correctAnswer >= options.length) return -1;
+
+    const titleTokens = tokenSet(slide?.title);
+    const bodyTokens = tokenSet(slide?.scenario?.situation || slide?.displayContent || slide?.content);
+    const questionTokens = tokenSet(question);
+    const titleOverlap = overlapCount(titleTokens, questionTokens);
+    const bodyOverlap = overlapCount(bodyTokens, questionTokens);
+    return (titleOverlap * 4) + bodyOverlap;
+}
+
+function quizChoicesForSlide(slide, analysis, usedQuizIndexes = new Set()) {
+    const quiz = Array.isArray(analysis?.quiz) ? analysis.quiz : [];
+    let best = null;
+
+    quiz.forEach((item, index) => {
+        if (usedQuizIndexes.has(index)) return;
+        const score = quizDecisionScore(slide, item);
+        if (score < 2) return;
+        if (!best || score > best.score) best = { item, index, score };
+    });
+
+    if (!best) return null;
+    const correctAnswer = Number(best.item.correctAnswer);
+    const explanation = clip(best.item.explanation || '', 360);
+    const choices = best.item.options.slice(0, 4).map((option, index) => {
+        const safety = index === correctAnswer ? 'safe' : 'risky';
+        const label = shortLabel(option, index);
+        return {
+            label,
+            safety,
+            riskDelta: riskDeltaFor(safety),
+            consequence: consequenceFor(label, safety),
+            coaching: explanation || coachingFor(safety)
+        };
+    });
+
+    return {
+        quizIndex: best.index,
+        objective: clip(best.item.question, 260),
+        choices
+    };
+}
+
+function decisionSourceForSlide(slide, analysis, usedQuizIndexes = new Set()) {
+    const directChoices = scenarioSourceChoices(slide);
+    if (directChoices.length >= 2) {
+        return {
+            choices: directChoices,
+            objective: clip(slide?.scenario?.objective || slide?.interaction?.prompt || 'Choose the response you would take, then review what happens.', 220),
+            source: Array.isArray(slide?.scenario?.choices) && slide.scenario.choices.length >= 2 ? 'structured' : 'actionable-keypoints'
+        };
     }
 
-    return (Array.isArray(slide?.keyPoints) ? slide.keyPoints : [])
-        .map(clean)
-        .filter(Boolean)
-        .slice(0, 4)
-        .map((point, index) => ({ label: shortLabel(point, index) }));
+    const quizSource = quizChoicesForSlide(slide, analysis, usedQuizIndexes);
+    if (quizSource) {
+        usedQuizIndexes.add(quizSource.quizIndex);
+        return {
+            choices: quizSource.choices,
+            objective: quizSource.objective,
+            source: 'matched-quiz'
+        };
+    }
+
+    return { choices: [], objective: '', source: 'none' };
 }
 
 function isDecisionSlide(slide) {
@@ -117,19 +234,25 @@ function outcomeForRisk(riskScore, decisionCount) {
 
 function buildScenarioGraph(analysis) {
     const slides = Array.isArray(analysis?.slides) ? analysis.slides : [];
-    const decisions = slides
-        .map((slide, slideIndex) => ({ slide, slideIndex }))
-        .filter(({ slide }) => isDecisionSlide(slide) && scenarioSourceChoices(slide).length >= 2);
+    const usedQuizIndexes = new Set();
+    const decisions = [];
+
+    slides.forEach((slide, slideIndex) => {
+        if (!isDecisionSlide(slide)) return;
+        const source = decisionSourceForSlide(slide, analysis, usedQuizIndexes);
+        if (source.choices.length < 2) return;
+        decisions.push({ slide, slideIndex, source });
+    });
 
     const decisionNodes = [];
     const consequenceNodes = [];
 
-    decisions.forEach(({ slide, slideIndex }, decisionIndex) => {
+    decisions.forEach(({ slide, slideIndex, source }, decisionIndex) => {
         const id = `decision-${String(decisionIndex + 1).padStart(2, '0')}`;
         const nextDecision = decisions[decisionIndex + 1]
             ? `decision-${String(decisionIndex + 2).padStart(2, '0')}`
             : 'outcome';
-        const sourceChoices = scenarioSourceChoices(slide);
+        const sourceChoices = source.choices;
         const choices = sourceChoices.map((choice, choiceIndex) => {
             const choiceId = `${id}-choice-${choiceIndex + 1}`;
             const consequenceNodeId = `${id}-consequence-${choiceIndex + 1}`;
@@ -168,13 +291,14 @@ function buildScenarioGraph(analysis) {
             ordinal: decisionIndex + 1,
             title: clean(slide?.title) || `Decision ${decisionIndex + 1}`,
             situation: clip(slide?.scenario?.situation || slide?.displayContent || slide?.content || '', 420),
-            objective: clip(slide?.scenario?.objective || slide?.interaction?.prompt || 'Choose the response you would take, then review what happens.', 180),
+            objective: source.objective || clip(slide?.scenario?.objective || slide?.interaction?.prompt || 'Choose the response you would take, then review what happens.', 220),
+            source: source.source,
             choices
         });
     });
 
     return {
-        version: 2,
+        version: 3,
         mode: 'decision-consequence-branching',
         startNodeId: decisionNodes[0]?.id || null,
         decisionCount: decisionNodes.length,
@@ -200,7 +324,7 @@ function planScenarioGraph(analysis, binding = null) {
 
     return {
         ...(analysis || {}),
-        scenarioEngineVersion: 2,
+        scenarioEngineVersion: 3,
         scenarioGraph: graph,
         slides: (Array.isArray(analysis?.slides) ? analysis.slides : []).map((slide, index) => {
             const node = nodeBySlide.get(index);
@@ -212,6 +336,7 @@ function planScenarioGraph(analysis, binding = null) {
                         ...(slide?.scenario && typeof slide.scenario === 'object' ? slide.scenario : {}),
                         situation: node.situation,
                         objective: node.objective,
+                        source: node.source,
                         choices: node.choices.map((choice) => ({ ...choice }))
                     }
                 }
@@ -223,8 +348,11 @@ function planScenarioGraph(analysis, binding = null) {
 module.exports = {
     buildScenarioGraph,
     classifySafety,
+    decisionSourceForSlide,
     outcomeForRisk,
     planScenarioGraph,
+    quizChoicesForSlide,
+    quizDecisionScore,
     riskDeltaFor,
     scenarioSourceChoices
 };
