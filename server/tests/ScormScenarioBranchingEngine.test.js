@@ -129,6 +129,9 @@ describe('Scenario Learning branching engine v2', () => {
         expect(patched).to.include('__qmxScenarioState');
         expect(patched).to.include('Continue this path');
         expect(patched).to.include('Scenario outcome');
+        expect(patched).to.include('__qmxScenarioBranchingRuntimeLoaded');
+        expect(patched).to.include('scheduleGlobalSync');
+        expect(patched).to.not.include('MutationObserver');
     });
 
     it('applies branching runtime only to Scenario Learning packages with decisions', async () => {
@@ -141,5 +144,6 @@ describe('Scenario Learning branching engine v2', () => {
         const html = await opened.file('index.html').async('string');
         expect(html).to.include(SCRIPT_ID);
         expect(html).to.include('decision-01-consequence-1');
+        expect(html).to.not.include('MutationObserver');
     });
 });
