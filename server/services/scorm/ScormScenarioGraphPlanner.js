@@ -29,18 +29,17 @@ function shortLabel(value, index) {
         .replace(/[.!?]+$/, '');
     if (!source) return `Response ${index + 1}`;
     const words = source.split(/\s+/);
-    return clip(words.slice(0, 12).join(' '), 96);
+    return clip(words.slice(0, 16).join(' '), 120);
 }
 
-function classifySafety(label, index, total) {
+function classifySafety(label) {
     const value = clean(label);
     if (SAFE_PATTERN.test(value) && !RISKY_PATTERN.test(value)) return 'safe';
     if (RISKY_PATTERN.test(value) && !SAFE_PATTERN.test(value)) return 'risky';
 
-    // Structured scenario choices should normally include explicit safety.
-    // This deterministic fallback is only for older actionable content.
-    if (total >= 3 && index === 0) return 'risky';
-    if (total >= 3 && index === total - 1) return 'safe';
+    // Never invent correctness from option position. If an older/action-only
+    // scenario has no explicit safety signal, keep it neutral rather than
+    // declaring the first or last response safe/risky arbitrarily.
     return 'mixed';
 }
 
@@ -58,7 +57,7 @@ function consequenceFor(label, safety) {
     if (safety === 'risky') {
         return `Choosing “${action}” leaves the situation exposed because the safest verification or escalation step has not happened yet.`;
     }
-    return `Choosing “${action}” reduces some risk, but a stronger verification or escalation step is still needed.`;
+    return `Choosing “${action}” changes how the situation develops. Review the coaching before deciding how this action should be strengthened.`;
 }
 
 function coachingFor(safety) {
@@ -68,7 +67,7 @@ function coachingFor(safety) {
     if (safety === 'risky') {
         return 'A safer response is to pause, verify through a trusted route and avoid acting before the situation has been checked.';
     }
-    return 'This is a partial safeguard. Strengthen it by independently validating the situation before continuing.';
+    return 'This response is not classified as clearly safe or risky from the available source. Use the coaching and source guidance to identify the stronger action.';
 }
 
 function normalizeStructuredChoices(slide) {
@@ -177,15 +176,9 @@ function quizChoicesForSlide(slide, analysis, usedQuizIndexes = new Set()) {
 }
 
 function decisionSourceForSlide(slide, analysis, usedQuizIndexes = new Set()) {
-    const directChoices = scenarioSourceChoices(slide);
-    if (directChoices.length >= 2) {
-        return {
-            choices: directChoices,
-            objective: clip(slide?.scenario?.objective || slide?.interaction?.prompt || 'Choose the response you would take, then review what happens.', 220),
-            source: Array.isArray(slide?.scenario?.choices) && slide.scenario.choices.length >= 2 ? 'structured' : 'actionable-keypoints'
-        };
-    }
-
+    // A matched knowledge check is the strongest grounded source because it
+    // carries an explicit question and correct answer. Prefer it over inferred
+    // key-point actions whenever one clearly matches this situation.
     const quizSource = quizChoicesForSlide(slide, analysis, usedQuizIndexes);
     if (quizSource) {
         usedQuizIndexes.add(quizSource.quizIndex);
@@ -193,6 +186,15 @@ function decisionSourceForSlide(slide, analysis, usedQuizIndexes = new Set()) {
             choices: quizSource.choices,
             objective: quizSource.objective,
             source: 'matched-quiz'
+        };
+    }
+
+    const directChoices = scenarioSourceChoices(slide);
+    if (directChoices.length >= 2) {
+        return {
+            choices: directChoices,
+            objective: clip(slide?.scenario?.objective || slide?.interaction?.prompt || 'Choose the response you would take, then review what happens.', 220),
+            source: Array.isArray(slide?.scenario?.choices) && slide.scenario.choices.length >= 2 ? 'structured' : 'actionable-keypoints'
         };
     }
 
@@ -256,7 +258,7 @@ function buildScenarioGraph(analysis) {
         const choices = sourceChoices.map((choice, choiceIndex) => {
             const choiceId = `${id}-choice-${choiceIndex + 1}`;
             const consequenceNodeId = `${id}-consequence-${choiceIndex + 1}`;
-            const safety = choice.safety || classifySafety(choice.label, choiceIndex, sourceChoices.length);
+            const safety = choice.safety || classifySafety(choice.label);
             const riskDelta = Number.isFinite(choice.riskDelta) ? choice.riskDelta : riskDeltaFor(safety);
             const consequence = choice.consequence || consequenceFor(choice.label, safety);
             const coaching = choice.coaching || coachingFor(safety);
