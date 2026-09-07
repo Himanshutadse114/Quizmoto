@@ -6,30 +6,42 @@ const {
     resolveExistingCourseTemplateBinding
 } = require('./ScormTemplateBindingService');
 
+function upgradeInteractionLevel(templateId, existing) {
+    if (templateId === 'professional-classic') return 'balanced';
+    if (templateId === 'visual-product-training') {
+        return existing?.interactionLevel === 'balanced' ? 'balanced' : 'high';
+    }
+    return existing?.interactionLevel || 'balanced';
+}
+
 function resolveRebuildTemplateBinding({ analysis, pkg } = {}) {
     const existing = resolveExistingCourseTemplateBinding({ analysis, pkg });
     const currentVersion = currentCourseTemplateVersion(existing?.templateId);
-    const upgradeProfessional = existing?.templateId === 'professional-classic'
+    const upgradeableTemplate = existing?.templateId === 'professional-classic'
+        || existing?.templateId === 'visual-product-training';
+    const shouldUpgrade = upgradeableTemplate
         && Boolean(currentVersion)
         && existing.templateVersion !== currentVersion;
 
-    if (!upgradeProfessional) {
+    if (!shouldUpgrade) {
         return {
             binding: existing,
             templateUpgraded: false,
+            upgradeKind: null,
             previousVersion: existing?.templateVersion || null,
             currentVersion: existing?.templateVersion || currentVersion || null
         };
     }
 
-    const binding = createTemplateBinding('professional-classic', {
+    const binding = createTemplateBinding(existing.templateId, {
         templateVersion: currentVersion,
-        interactionLevel: 'balanced'
+        interactionLevel: upgradeInteractionLevel(existing.templateId, existing)
     });
 
     return {
         binding,
         templateUpgraded: true,
+        upgradeKind: existing.templateId === 'visual-product-training' ? 'visual-product' : 'professional',
         previousVersion: existing.templateVersion,
         currentVersion: binding.templateVersion
     };
