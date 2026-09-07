@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require('../middleware');
 const { featureFlags } = require('../../config/featureFlags');
 const { planExperienceV5 } = require('../../services/scorm/ScormExperiencePlanner');
+const { planScenarioGraph } = require('../../services/scorm/ScormScenarioGraphPlanner');
 const { ensureQuizIntegrity } = require('../../services/scorm/ScormQuizQualityService');
 const { buildScormPackageZip } = require('../../services/scorm/ScormReplicateMediaFinalizer');
 const { getTheme, normalizeThemeId } = require('../../services/scorm/ScormThemeCatalog');
@@ -21,6 +22,7 @@ const { applyTemplateRuntimeToZip } = require('../../services/scorm/ScormTemplat
 const { applyScenarioLearningRuntimeToZip } = require('../../services/scorm/ScormScenarioLearningRuntime');
 const { applyScenarioBranchingRuntimeToZip } = require('../../services/scorm/ScormScenarioBranchingRuntime');
 const { applyCourseChromeRuntimeToZip } = require('../../services/scorm/ScormCourseChromeRuntime');
+const { applyScenarioDecisionUxRuntimeToZip } = require('../../services/scorm/ScormScenarioDecisionUxRuntime');
 const { ScormPackage } = require('../../models/scorm');
 const { ensureCourseForPackage } = require('../../services/scorm/ScormCourseWorkspaceService');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
@@ -140,9 +142,7 @@ router.post('/generate', auth, async (req, res, next) => {
             analysis = {
                 ...analysis,
                 templateEngineVersion,
-                templatePlanner: storedAnalysis.templatePlanner || `${binding.templateId}@${binding.templateVersion}`,
-                ...(storedAnalysis.scenarioGraph ? { scenarioGraph: storedAnalysis.scenarioGraph } : {}),
-                ...(storedAnalysis.scenarioEngineVersion ? { scenarioEngineVersion: storedAnalysis.scenarioEngineVersion } : {})
+                templatePlanner: storedAnalysis.templatePlanner || `${binding.templateId}@${binding.templateVersion}`
             };
         } else {
             analysis = stripV7CourseFormatMetadata(analysis);
@@ -156,6 +156,9 @@ router.post('/generate', auth, async (req, res, next) => {
         }
 
         analysis = ensureQuizIntegrity(analysis);
+        if (binding?.templateId === 'scenario-learning') {
+            analysis = planScenarioGraph(analysis, binding);
+        }
         analysis = {
             ...(analysis || {}),
             themeId: selectedThemeId,
@@ -173,6 +176,9 @@ router.post('/generate', auth, async (req, res, next) => {
             onProgress: report
         });
         analysis = media.analysis;
+        if (binding?.templateId === 'scenario-learning') {
+            analysis = planScenarioGraph(analysis, binding);
+        }
         if (templateEngineVersion >= 1) validateTemplateAnalysis(analysis, binding);
 
         report({
@@ -191,6 +197,7 @@ router.post('/generate', auth, async (req, res, next) => {
             zipBuf = await applyScenarioLearningRuntimeToZip(zipBuf, analysis);
             zipBuf = await applyScenarioBranchingRuntimeToZip(zipBuf, analysis);
             zipBuf = await applyCourseChromeRuntimeToZip(zipBuf, analysis);
+            zipBuf = await applyScenarioDecisionUxRuntimeToZip(zipBuf, analysis);
         }
 
         report({
