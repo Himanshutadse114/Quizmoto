@@ -18,7 +18,7 @@ const {
     inject
 } = require('../services/scorm/ScormScenarioBranchingRuntime');
 
-describe('Scenario Learning branching engine v2', () => {
+describe('Scenario Learning branching engine v3', () => {
     const scenarioAnalysis = () => ({
         title: 'Phishing Decisions',
         templateBinding: {
@@ -83,7 +83,7 @@ describe('Scenario Learning branching engine v2', () => {
 
     it('builds decision nodes with a unique consequence branch for every response', () => {
         const graph = buildScenarioGraph(scenarioAnalysis());
-        expect(graph.version).to.equal(2);
+        expect(graph.version).to.equal(3);
         expect(graph.mode).to.equal('decision-consequence-branching');
         expect(graph.decisionCount).to.equal(2);
 
@@ -102,7 +102,7 @@ describe('Scenario Learning branching engine v2', () => {
 
     it('stores graph identity and normalised choices on the Scenario analysis', () => {
         const analysis = planScenarioGraph(scenarioAnalysis(), { templateId: 'scenario-learning' });
-        expect(analysis.scenarioEngineVersion).to.equal(2);
+        expect(analysis.scenarioEngineVersion).to.equal(3);
         expect(analysis.scenarioGraph.decisionCount).to.equal(2);
         expect(analysis.slides[0].scenarioNodeId).to.equal('decision-01');
         expect(analysis.slides[0].scenario.choices[0]).to.have.keys([
