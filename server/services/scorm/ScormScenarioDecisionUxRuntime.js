@@ -81,6 +81,8 @@ async function applyScenarioDecisionUxRuntimeToZip(zipBuffer, analysis = {}) {
 }
 
 module.exports = {
+    STYLE_ID,
+    SCRIPT_ID,
     applyScenarioDecisionUxRuntimeToZip,
     inject,
     removeLegacyObserver,
