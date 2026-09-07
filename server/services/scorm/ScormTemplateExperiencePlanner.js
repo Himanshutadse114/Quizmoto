@@ -28,6 +28,14 @@ function interaction(type, prompt) {
     return { type, prompt };
 }
 
+function classicFlipCardPlan() {
+    return {
+        layout: 'cards',
+        screenType: 'reveal',
+        interaction: interaction('click_reveal', 'Reveal each key point before continuing.')
+    };
+}
+
 function highInteractivePlan(slide, index, level) {
     const semantic = semanticKind(slide);
     if (semantic === 'timeline') return { layout: 'timeline', screenType: 'timeline', interaction: interaction('step_explore', 'Explore each stage to understand how the situation develops.') };
@@ -122,11 +130,15 @@ function applyStableDesignIdentity(slide, template, binding) {
 }
 
 function planExperienceForTemplate(rawAnalysis, binding) {
-    const template = getCourseTemplate(binding?.templateId);
+    const template = getCourseTemplate(binding?.templateId, binding?.templateVersion);
+    if (!template) throw new Error(`Course template ${binding?.templateId || 'unknown'}@${binding?.templateVersion || 'unknown'} is unavailable.`);
     const base = planExperienceV5(rawAnalysis);
 
     const slides = (Array.isArray(base.slides) ? base.slides : []).map((slide, index) => {
         if (template.id === 'professional-classic') {
+            if (template.version === '1.1.0') {
+                return applyStableDesignIdentity({ ...slide, ...classicFlipCardPlan() }, template, binding);
+            }
             return applyStableDesignIdentity(slide, template, binding);
         }
         const planned = templatePlan(template.id, slide, index, binding.interactionLevel) || {};

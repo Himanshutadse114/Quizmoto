@@ -63,6 +63,27 @@ const COURSE_TEMPLATE_VERSIONS = Object.freeze({
                 maxPoints: 4,
                 maxInteractionItems: 4
             }
+        }),
+        '1.1.0': template({
+            id: 'professional-classic',
+            version: '1.1.0',
+            name: 'Clean & Professional',
+            shortName: 'Professional',
+            description: 'Classic corporate learning with clean text, imagery and flip-card reveals, plus guided course navigation.',
+            experience: 'Balanced corporate',
+            defaultInteractionLevel: 'balanced',
+            interactionLevels: Object.freeze(['balanced']),
+            allowedInteractions: Object.freeze(['click_reveal']),
+            layoutIds: {
+                spotlight: 'professional-classic.flip-cards',
+                cards: 'professional-classic.flip-cards'
+            },
+            contentBudgets: {
+                maxTitleChars: 78,
+                maxBodyWords: 150,
+                maxPoints: 4,
+                maxInteractionItems: 4
+            }
         })
     }),
     'highly-interactive': versionSet({
@@ -142,7 +163,7 @@ const COURSE_TEMPLATE_VERSIONS = Object.freeze({
 });
 
 const CURRENT_TEMPLATE_VERSIONS = Object.freeze({
-    'professional-classic': '1.0.0',
+    'professional-classic': '1.1.0',
     'highly-interactive': '1.0.0',
     'scenario-learning': '1.0.0',
     'visual-product-training': '1.0.0'

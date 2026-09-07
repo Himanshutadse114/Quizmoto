@@ -18,7 +18,10 @@ function validateTemplateAnalysis(analysis, binding) {
         throw validationError('Course template binding is missing.');
     }
 
-    const template = getCourseTemplate(binding.templateId);
+    const template = getCourseTemplate(binding.templateId, binding.templateVersion);
+    if (!template) {
+        throw validationError(`Course template ${binding.templateId}@${binding.templateVersion || 'unknown'} is unavailable.`);
+    }
     const allowedLayoutIds = new Set(Object.values(template.layoutIds));
     const allowedInteractions = new Set(template.allowedInteractions);
     const issues = [];

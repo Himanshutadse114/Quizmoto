@@ -2,6 +2,7 @@
 
 const {
     DEFAULT_COURSE_TEMPLATE_ID,
+    DEFAULT_TEMPLATE_VERSION,
     currentCourseTemplateVersion,
     getCourseTemplate,
     hasCourseTemplateVersion,
@@ -114,11 +115,12 @@ function resolveExistingCourseTemplateBinding({ analysis } = {}) {
     const existing = getTemplateBindingFromAnalysis(analysis);
     if (existing) return Object.freeze(existing);
 
-    // All packages created before the versioned template engine are treated as
-    // the original professional course style. We intentionally do not infer a
-    // new course style from the legacy numeric theme/template id.
+    // Packages created before versioned templates must remain on the original
+    // Professional renderer. New Professional courses can advance to newer
+    // versions without silently changing a legacy course during rebuild.
     return createTemplateBinding(DEFAULT_COURSE_TEMPLATE_ID, {
-        interactionLevel: analysis?.interactionLevel || 'balanced'
+        interactionLevel: analysis?.interactionLevel || 'balanced',
+        templateVersion: DEFAULT_TEMPLATE_VERSION
     });
 }
 
