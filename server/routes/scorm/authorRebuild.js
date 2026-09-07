@@ -19,6 +19,7 @@ const {
 } = require('../../services/scorm/ScormRebuildDesignPreserver');
 const { applyTemplateRuntimeToZip } = require('../../services/scorm/ScormTemplateRuntime');
 const { applyScenarioLearningRuntimeToZip } = require('../../services/scorm/ScormScenarioLearningRuntime');
+const { applyScenarioBranchingRuntimeToZip } = require('../../services/scorm/ScormScenarioBranchingRuntime');
 const { applyCourseChromeRuntimeToZip } = require('../../services/scorm/ScormCourseChromeRuntime');
 const { ScormPackage } = require('../../models/scorm');
 const { ensureCourseForPackage } = require('../../services/scorm/ScormCourseWorkspaceService');
@@ -85,10 +86,6 @@ function stripV7CourseFormatMetadata(rawAnalysis) {
     };
 }
 
-// Intercepts only editor rebuilds. New-course generation falls through to the
-// normal author route. A rebuild is deliberately design-preserving: it may edit
-// learner content but it cannot silently switch the course template or redraw a
-// slide using another layout family.
 router.post('/generate', auth, async (req, res, next) => {
     const replaceId = req.body?.replacePackageId || req.body?.packageId || null;
     if (!replaceId) return next();
@@ -127,9 +124,6 @@ router.post('/generate', auth, async (req, res, next) => {
         const binding = resolveExistingCourseTemplateBinding({ analysis: storedAnalysis, pkg });
         assertRequestedTemplateMatchesBinding(req.body || {}, binding);
 
-        // Theme remains a legacy visual setting. Rebuilds take it from the saved
-        // package rather than trusting a new request, so even the legacy styling
-        // cannot drift during a normal edit-and-rebuild operation.
         const selectedThemeId = normalizeThemeId(storedAnalysis?.themeId || pkg.templateId || 1);
         const selectedTheme = getTheme(selectedThemeId);
         const templateEngineVersion = Number(storedAnalysis?.templateEngineVersion || 0);
@@ -141,20 +135,16 @@ router.post('/generate', auth, async (req, res, next) => {
         });
 
         if (templateEngineVersion >= 1) {
-            // Versioned template courses preserve the exact design identity chosen
-            // at creation. Content may change, but rebuild does not run the layout
-            // planner again.
             analysis = preserveCourseDesign(analysis, storedAnalysis);
             analysis = applyTemplateBinding(analysis, binding);
             analysis = {
                 ...analysis,
                 templateEngineVersion,
-                templatePlanner: storedAnalysis.templatePlanner || `${binding.templateId}@${binding.templateVersion}`
+                templatePlanner: storedAnalysis.templatePlanner || `${binding.templateId}@${binding.templateVersion}`,
+                ...(storedAnalysis.scenarioGraph ? { scenarioGraph: storedAnalysis.scenarioGraph } : {}),
+                ...(storedAnalysis.scenarioEngineVersion ? { scenarioEngineVersion: storedAnalysis.scenarioEngineVersion } : {})
             };
         } else {
-            // Legacy courses keep the behaviour they were created with. If their
-            // saved analysis already contains planned layouts, preserve those
-            // layouts rather than recalculating them on every text edit.
             analysis = stripV7CourseFormatMetadata(analysis);
             if (hasPlannedSlideDesign(storedAnalysis)) {
                 analysis = preserveCourseDesign(analysis, storedAnalysis);
@@ -199,6 +189,7 @@ router.post('/generate', auth, async (req, res, next) => {
         if (templateEngineVersion >= 1) {
             zipBuf = await applyTemplateRuntimeToZip(zipBuf, analysis);
             zipBuf = await applyScenarioLearningRuntimeToZip(zipBuf, analysis);
+            zipBuf = await applyScenarioBranchingRuntimeToZip(zipBuf, analysis);
             zipBuf = await applyCourseChromeRuntimeToZip(zipBuf, analysis);
         }
 
@@ -213,8 +204,6 @@ router.post('/generate', auth, async (req, res, next) => {
         pkg.source = 'ai_author';
         pkg.standard = 'scorm_1_2';
         pkg.byteSize = zipBuf.length;
-        // Retain legacy numeric theme id for backwards compatibility. The real
-        // course template binding is stored in analysisJson.templateBinding.
         pkg.templateId = selectedThemeId;
         pkg.analysisJson = JSON.stringify(analysis);
         pkg.errorMessage = null;
