@@ -2,6 +2,7 @@ const { analyzePolicy } = require('./CourseAiService');
 const { prepareReplicateCourseMedia } = require('./ReplicateCourseMediaService');
 const { planExperienceV5 } = require('./ScormExperiencePlanner');
 const { planExperienceForTemplate } = require('./ScormTemplateExperiencePlanner');
+const { planScenarioGraph } = require('./ScormScenarioGraphPlanner');
 const { ensureQuizIntegrity } = require('./ScormQuizQualityService');
 const { buildScormPackageZip } = require('./ScormReplicateMediaFinalizer');
 const { getTheme, normalizeThemeId } = require('./ScormThemeCatalog');
@@ -12,6 +13,7 @@ const {
 const { validateTemplateAnalysis } = require('./ScormTemplateValidator');
 const { applyTemplateRuntimeToZip } = require('./ScormTemplateRuntime');
 const { applyScenarioLearningRuntimeToZip } = require('./ScormScenarioLearningRuntime');
+const { applyScenarioBranchingRuntimeToZip } = require('./ScormScenarioBranchingRuntime');
 const { applyCourseChromeRuntimeToZip } = require('./ScormCourseChromeRuntime');
 const { ScormPackage } = require('../../models/scorm');
 const { ensureCourseForPackage } = require('./ScormCourseWorkspaceService');
@@ -117,8 +119,6 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
         }
         checkCancelled();
     } else if (payload.sourceKey) {
-        // A reviewed analysis no longer needs the original upload. Clean up a
-        // source reference if an older client supplied both.
         uploadedSource = await readUploadedSource(payload, userId);
         await removeUploadedSource(uploadedSource);
         uploadedSource = null;
@@ -134,6 +134,9 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
     analysis = useTemplateEngine
         ? planExperienceForTemplate(analysis, templateBinding)
         : planExperienceV5(analysis);
+    if (templateBinding?.templateId === 'scenario-learning') {
+        analysis = planScenarioGraph(analysis, templateBinding);
+    }
 
     onProgress({ percent: 5, stage: 'Checking knowledge checks', detail: 'Guaranteeing complete quiz questions and learner explanations before packaging.' });
     analysis = ensureQuizIntegrity(analysis);
@@ -152,6 +155,9 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
         checkCancelled
     });
     analysis = media.analysis;
+    if (templateBinding?.templateId === 'scenario-learning') {
+        analysis = planScenarioGraph(analysis, templateBinding);
+    }
     if (useTemplateEngine) validateTemplateAnalysis(analysis, templateBinding);
     checkCancelled();
 
@@ -164,6 +170,7 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
     if (useTemplateEngine) {
         zipBuf = await applyTemplateRuntimeToZip(zipBuf, analysis);
         zipBuf = await applyScenarioLearningRuntimeToZip(zipBuf, analysis);
+        zipBuf = await applyScenarioBranchingRuntimeToZip(zipBuf, analysis);
         zipBuf = await applyCourseChromeRuntimeToZip(zipBuf, analysis);
     }
     checkCancelled();
@@ -189,8 +196,6 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
             source: 'ai_author',
             standard: 'scorm_1_2',
             byteSize: zipBuf.length,
-            // This numeric field is retained as the legacy visual theme id.
-            // Versioned course-template identity lives in analysis.templateBinding.
             templateId: selectedThemeId,
             analysisJson: JSON.stringify(analysis)
         });
