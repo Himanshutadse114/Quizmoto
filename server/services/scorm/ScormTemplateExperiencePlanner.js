@@ -20,7 +20,7 @@ function semanticKind(slide) {
     if (explicit === 'process' || /step|process|workflow|lifecycle|how .* works/.test(text)) return 'process';
     if (explicit === 'comparison' || /versus|\bvs\b|compare|comparison|safe .* unsafe|do .* don.?t/.test(text)) return 'comparison';
     if (/scenario|case study|imagine|suppose|you receive|you notice|you are asked|you see|someone asks|a colleague asks|what would you|what should you|decision/.test(text)) return 'scenario';
-    if (/warning signs|red flags|indicators|signals|types of|categories|components|features/.test(text)) return 'hub';
+    if (/warning signs|red flags|indicators|signals|types of|categories|components|features|controls|buttons|areas|parts|functions/.test(text)) return 'hub';
     return explicit || 'spotlight';
 }
 
@@ -96,16 +96,62 @@ function scenarioPlan(slide, index, level) {
 
 function visualPlan(slide, index, level) {
     const semantic = semanticKind(slide);
-    if (semantic === 'timeline') return { layout: 'timeline', screenType: 'timeline', interaction: interaction('step_explore', 'Follow the visual sequence.') };
-    if (semantic === 'process') return { layout: 'process', screenType: 'process', interaction: interaction('step_explore', 'Explore each visual step in order.') };
-    if (semantic === 'comparison') return { layout: 'comparison', screenType: 'comparison', interaction: interaction('compare_reveal', 'Compare the two visual states.') };
-    if (semantic === 'hub' || (level !== 'light' && index % 3 === 2)) {
-        return { layout: 'hub', screenType: 'hotspot', interaction: interaction('hotspot_explore', 'Select the labelled areas to explore the visual.') };
+
+    // Visual Product Training v2 deliberately never uses the Professional
+    // flip-card interaction. The image or visual board remains the primary
+    // learning surface, while text acts as a guide to what the learner sees.
+    if (semantic === 'timeline') {
+        return {
+            layout: 'timeline',
+            screenType: 'timeline',
+            interaction: interaction('step_explore', 'Move through each visual stage and notice what changes.')
+        };
     }
-    if (level === 'high' && index % 4 === 3) {
-        return { layout: 'cards', screenType: 'reveal', interaction: interaction('click_reveal', 'Open each label to review the supporting detail.') };
+    if (semantic === 'process') {
+        return {
+            layout: 'process',
+            screenType: 'process',
+            interaction: interaction('step_explore', 'Follow the guided visual steps in order.')
+        };
     }
-    return { layout: 'spotlight', screenType: semantic === 'scenario' ? 'scenario' : 'concept', interaction: interaction('focus_reveal', 'Use the visual and supporting text together.') };
+    if (semantic === 'comparison') {
+        return {
+            layout: 'comparison',
+            screenType: 'comparison',
+            interaction: interaction('compare_reveal', 'Compare the visual states and inspect the important differences.')
+        };
+    }
+    if (semantic === 'hub') {
+        return {
+            layout: 'hub',
+            screenType: 'hotspot',
+            interaction: interaction('hotspot_explore', 'Select the numbered callouts on the visual to explore each feature.')
+        };
+    }
+
+    // High visual mode intentionally creates regular labelled-visual screens even
+    // when the source material does not explicitly say "features" or "components".
+    // This keeps the experience image-led without inventing factual content.
+    if (level === 'high' && index % 3 === 1) {
+        return {
+            layout: 'hub',
+            screenType: 'hotspot',
+            interaction: interaction('hotspot_explore', 'Explore the visual callouts and connect each one to the lesson.')
+        };
+    }
+    if (level !== 'light' && index % 3 === 2) {
+        return {
+            layout: 'process',
+            screenType: 'process',
+            interaction: interaction('step_explore', 'Use the guided visual sequence to work through the key points.')
+        };
+    }
+
+    return {
+        layout: 'spotlight',
+        screenType: semantic === 'scenario' ? 'scenario' : 'concept',
+        interaction: interaction('focus_reveal', 'Study the main visual, then open the supporting visual notes.')
+    };
 }
 
 function templatePlan(templateId, slide, index, interactionLevel) {
