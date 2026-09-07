@@ -12,6 +12,8 @@ const {
 } = require('./ScormTemplateBindingService');
 const { validateTemplateAnalysis } = require('./ScormTemplateValidator');
 const { applyTemplateRuntimeToZip } = require('./ScormTemplateRuntime');
+const { applyVisualProductRuntimeToZip } = require('./ScormVisualProductRuntime');
+const { applyVisualProductPromptDirection } = require('./ScormVisualProductPromptService');
 const { applyScenarioLearningRuntimeToZip } = require('./ScormScenarioLearningRuntime');
 const { applyScenarioBranchingRuntimeToZip } = require('./ScormScenarioBranchingRuntime');
 const { applyCourseChromeRuntimeToZip } = require('./ScormCourseChromeRuntime');
@@ -150,6 +152,11 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
     if (useTemplateEngine) validateTemplateAnalysis(analysis, templateBinding);
     if (title) analysis.title = title;
 
+    // The content AI writes factual learning material first. After the template
+    // planner knows which screens are hotspot, sequence or comparison screens, add
+    // visual-product-specific composition direction to the trusted image prompts.
+    analysis = applyVisualProductPromptDirection(analysis);
+
     checkCancelled();
     const media = await prepareReplicateCourseMedia(analysis, {
         onProgress,
@@ -170,6 +177,7 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
     });
     if (useTemplateEngine) {
         zipBuf = await applyTemplateRuntimeToZip(zipBuf, analysis);
+        zipBuf = await applyVisualProductRuntimeToZip(zipBuf, analysis);
         zipBuf = await applyScenarioLearningRuntimeToZip(zipBuf, analysis);
         zipBuf = await applyScenarioBranchingRuntimeToZip(zipBuf, analysis);
         zipBuf = await applyCourseChromeRuntimeToZip(zipBuf, analysis);
