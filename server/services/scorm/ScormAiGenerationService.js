@@ -15,6 +15,7 @@ const { applyTemplateRuntimeToZip } = require('./ScormTemplateRuntime');
 const { applyScenarioLearningRuntimeToZip } = require('./ScormScenarioLearningRuntime');
 const { applyScenarioBranchingRuntimeToZip } = require('./ScormScenarioBranchingRuntime');
 const { applyCourseChromeRuntimeToZip } = require('./ScormCourseChromeRuntime');
+const { applyScenarioDecisionUxRuntimeToZip } = require('./ScormScenarioDecisionUxRuntime');
 const { ScormPackage } = require('../../models/scorm');
 const { ensureCourseForPackage } = require('./ScormCourseWorkspaceService');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
@@ -172,6 +173,7 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
         zipBuf = await applyScenarioLearningRuntimeToZip(zipBuf, analysis);
         zipBuf = await applyScenarioBranchingRuntimeToZip(zipBuf, analysis);
         zipBuf = await applyCourseChromeRuntimeToZip(zipBuf, analysis);
+        zipBuf = await applyScenarioDecisionUxRuntimeToZip(zipBuf, analysis);
     }
     checkCancelled();
 
