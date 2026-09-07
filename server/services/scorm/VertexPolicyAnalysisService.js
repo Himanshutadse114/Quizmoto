@@ -39,6 +39,26 @@ function parseCandidate(raw) {
 function templateInstruction(courseTemplateId, interactionLevel) {
     const templateId = String(courseTemplateId || '').trim().toLowerCase();
     const level = String(interactionLevel || '').trim().toLowerCase() || 'balanced';
+
+    if (templateId === 'visual-product-training') {
+        return `SELECTED COURSE EXPERIENCE: VISUAL PRODUCT TRAINING (${level.toUpperCase()} INTERACTION)
+
+This course will be rendered as a visual-first product walkthrough. The learner should understand the topic primarily by seeing, inspecting and stepping through visual material. Text supports the visual; it must not become a conventional slide deck with a picture beside a long paragraph.
+
+VISUAL PRODUCT AUTHORING CONTRACT:
+- Keep learning-slide titles concise and concrete. Prefer feature, component, screen, state or procedure names over abstract marketing-style headings.
+- Keep each learning-slide body focused and economical. Explain what the learner should notice, why it matters and how it is used. Avoid long paragraph walls or repeated recap language.
+- Use 3-4 short keyPoints per learning screen. Each keyPoint should work as a visible callout label, component label, step label or comparison cue, ideally 2-7 words.
+- For products, equipment, interfaces, dashboards, controls, components, warning indicators, fields or feature groups, write keyPoints as things the learner can visually locate. These will become numbered visual callouts.
+- For ordered procedures, setup, workflows or operational sequences, write keyPoints as genuine ordered steps. The renderer will turn these into a guided visual step rail.
+- For two states, correct versus incorrect examples, before versus after, enabled versus disabled or safe versus unsafe usage, write a meaningful comparison rather than four unrelated bullets.
+- Use spotlight-style content for a single important visual subject. The body should explain what the learner is looking at and the practical point to remember.
+- Do not manufacture UI labels, controls, product specifications, locations, workflow steps or organisation-specific procedures that are not supported by the source.
+- Do not turn ordinary facts into fake decisions. This experience is about inspection and guided visual exploration, not scenario branching.
+- Every learning screen should answer at least one visual question: What am I looking at? What should I notice? What changes? What do I do next? or What is different between these states?
+- Avoid generic summary slides. Prefer a final practical visual takeaway or knowledge check grounded in the source.`;
+    }
+
     if (templateId !== 'scenario-learning') return '';
 
     const scenarioTarget = level === 'high'
@@ -183,6 +203,8 @@ async function analyzePolicy({
     analysis.aiProvider = 'vertex_ai';
     analysis.aiModel = model;
     analysis.aiPlatform = 'google_cloud_vertex_ai';
+    analysis.requestedCourseTemplateId = String(courseTemplateId || '').trim();
+    analysis.requestedInteractionLevel = String(interactionLevel || '').trim();
 
     logger.info('scorm_vertex_content_ready', {
         module: 'scorm',
