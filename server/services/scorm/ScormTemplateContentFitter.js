@@ -155,6 +155,13 @@ function layoutBudget(templateId, layout) {
     return budgets[key] || budgets.spotlight;
 }
 
+function isScenarioDecision(slide, templateId) {
+    if (templateId !== 'scenario-learning') return false;
+    const screenType = String(slide?.screenType || '').toLowerCase();
+    const interactionType = String(slide?.interaction?.type || '').toLowerCase();
+    return screenType === 'scenario' || interactionType === 'decision_explore';
+}
+
 function fitSlidePresentationContent(slide, templateId) {
     const source = slide && typeof slide === 'object' ? slide : {};
     const maxWords = layoutBudget(templateId, source.layout);
@@ -165,7 +172,11 @@ function fitSlidePresentationContent(slide, templateId) {
         return next;
     }
 
-    const enrichPoints = templateId === 'highly-interactive' || templateId === 'scenario-learning';
+    // Interactive cards benefit from richer teaser copy. Scenario decisions are
+    // different: their keyPoints are learner responses authored as short choices.
+    // Expanding them back into body sentences destroys the decision experience.
+    const enrichPoints = templateId === 'highly-interactive'
+        || (templateId === 'scenario-learning' && !isScenarioDecision(source, templateId));
 
     return {
         ...source,
@@ -195,6 +206,7 @@ module.exports = {
     enrichHighlyInteractiveKeyPoints,
     fitSlidePresentationContent,
     fitTemplatePresentationContent,
+    isScenarioDecision,
     layoutBudget,
     trimToWordBudget
 };
