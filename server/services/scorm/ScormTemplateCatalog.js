@@ -158,6 +158,39 @@ const COURSE_TEMPLATE_VERSIONS = Object.freeze({
                 maxPoints: 4,
                 maxInteractionItems: 5
             }
+        }),
+        '1.1.0': template({
+            id: 'visual-product-training',
+            version: '1.1.0',
+            rendererVersion: 2,
+            name: 'Visual Product Training',
+            shortName: 'Visual',
+            description: 'Visual-first walkthroughs with large media, interactive callouts, guided steps and polished product comparisons.',
+            experience: 'See and explore',
+            defaultInteractionLevel: 'high',
+            interactionLevels: Object.freeze(['balanced', 'high']),
+            allowedInteractions: Object.freeze(['focus_reveal', 'hotspot_explore', 'step_explore', 'compare_reveal']),
+            layoutIds: {
+                spotlight: 'visual-product-training.hero-focus.v2',
+                cards: 'visual-product-training.callout-board.v2',
+                process: 'visual-product-training.guided-steps.v2',
+                timeline: 'visual-product-training.visual-sequence.v2',
+                comparison: 'visual-product-training.visual-compare.v2',
+                hub: 'visual-product-training.overlay-hotspots.v2'
+            },
+            contentBudgets: {
+                maxTitleChars: 66,
+                maxBodyWords: 88,
+                maxPoints: 4,
+                maxInteractionItems: 4
+            },
+            stage: Object.freeze({
+                ...BASE_STAGE,
+                desktopWidth: 1440,
+                tabletWidth: 920,
+                mobileWidth: 390,
+                minHeight: 680
+            })
         })
     })
 });
@@ -166,7 +199,7 @@ const CURRENT_TEMPLATE_VERSIONS = Object.freeze({
     'professional-classic': '1.1.0',
     'highly-interactive': '1.0.0',
     'scenario-learning': '1.0.0',
-    'visual-product-training': '1.0.0'
+    'visual-product-training': '1.1.0'
 });
 
 // Convenience view used by discovery APIs. Historical versions remain available

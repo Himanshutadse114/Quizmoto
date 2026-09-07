@@ -40,6 +40,78 @@ const interactionLabels = {
   high: { label: 'High', copy: 'More reveals, hotspots, decisions and interactive screens.' }
 };
 
+function VisualProductTemplatePreview({ selected }) {
+  const accent = 'var(--scorm-accent)';
+  const surface = 'var(--scorm-surface)';
+  const soft = 'var(--scorm-surface-soft)';
+  const line = 'var(--scorm-line)';
+  const muted = 'var(--scorm-muted)';
+
+  return (
+    <div
+      aria-hidden="true"
+      className="relative rounded-2xl border overflow-hidden min-h-[168px] p-3"
+      style={{
+        borderColor: selected ? accent : line,
+        background: `radial-gradient(circle at 75% 18%, color-mix(in srgb, ${accent} 18%, transparent), transparent 33%), linear-gradient(145deg, ${surface}, ${soft})`,
+        boxShadow: selected ? `0 18px 42px color-mix(in srgb, ${accent} 15%, transparent)` : 'none'
+      }}
+    >
+      <div className="h-7 rounded-lg border flex items-center px-2.5 gap-1.5" style={{ borderColor: line, background: surface }}>
+        <span className="w-1.5 h-1.5 rounded-full" style={{ background: accent }} />
+        <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--scorm-muted)' }} />
+        <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--scorm-line-strong, var(--scorm-line))' }} />
+        <div className="h-1.5 w-20 rounded-full ml-2" style={{ background: line }} />
+      </div>
+
+      <div className="grid grid-cols-[minmax(0,1fr)_104px] gap-2 mt-2 h-[111px]">
+        <div className="relative rounded-xl border overflow-hidden" style={{ borderColor: line, background: `linear-gradient(145deg, color-mix(in srgb, ${accent} 8%, ${surface}), ${soft})` }}>
+          <div className="absolute inset-x-[18%] top-[18%] bottom-[16%] rounded-[20px] border" style={{ borderColor: `color-mix(in srgb, ${accent} 40%, ${line})`, background: surface }}>
+            <div className="absolute left-3 right-3 top-3 h-2 rounded-full" style={{ background: line }} />
+            <div className="absolute left-3 top-8 w-[42%] bottom-3 rounded-lg" style={{ background: `color-mix(in srgb, ${accent} 11%, ${soft})` }} />
+            <div className="absolute right-3 top-8 w-[43%] h-3 rounded-full" style={{ background: line }} />
+            <div className="absolute right-3 top-14 w-[35%] h-3 rounded-full" style={{ background: line }} />
+            <div className="absolute right-3 bottom-4 w-[40%] h-5 rounded-lg" style={{ background: `color-mix(in srgb, ${accent} 18%, ${soft})` }} />
+          </div>
+          {[
+            ['16%', '24%', '01'],
+            ['auto', '24%', '02'],
+            ['28%', 'auto', '03'],
+            ['auto', 'auto', '04']
+          ].map(([left, top, label], index) => (
+            <span
+              key={label}
+              className="absolute w-7 h-7 rounded-full grid place-items-center text-[8px] font-bold border-2"
+              style={{
+                left: left === 'auto' ? undefined : left,
+                right: left === 'auto' ? (index === 1 ? '15%' : '23%') : undefined,
+                top: top === 'auto' ? undefined : top,
+                bottom: top === 'auto' ? '16%' : undefined,
+                background: accent,
+                color: 'white',
+                borderColor: surface,
+                boxShadow: `0 0 0 5px color-mix(in srgb, ${accent} 13%, transparent)`
+              }}
+            >
+              {label}
+            </span>
+          ))}
+        </div>
+
+        <div className="rounded-xl border p-2 flex flex-col gap-2" style={{ borderColor: line, background: surface }}>
+          {[1, 2, 3].map((step) => (
+            <div key={step} className="rounded-lg border px-2 py-2 flex items-center gap-2" style={{ borderColor: step === 1 ? accent : line, background: step === 1 ? `color-mix(in srgb, ${accent} 9%, ${surface})` : soft }}>
+              <span className="w-5 h-5 shrink-0 rounded-md grid place-items-center text-[7px] font-bold" style={{ background: step === 1 ? accent : soft, color: step === 1 ? 'white' : accent, border: `1px solid ${step === 1 ? accent : line}` }}>0{step}</span>
+              <span className="h-1.5 rounded-full flex-1" style={{ background: step === 1 ? `color-mix(in srgb, ${accent} 55%, ${line})` : line }} />
+            </div>
+          ))}
+          <div className="mt-auto text-[7px] uppercase tracking-[.12em] font-semibold" style={{ color: muted }}>Guided tour</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CourseGenerator() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -278,6 +350,49 @@ export default function CourseGenerator() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {courseTemplates.map((template) => {
                   const selected = courseTemplateId === template.id;
+                  const isVisualProduct = template.id === 'visual-product-training';
+
+                  if (isVisualProduct) {
+                    return (
+                      <button
+                        key={template.id}
+                        type="button"
+                        onClick={() => selectTemplate(template)}
+                        className="md:col-span-2 text-left rounded-2xl border p-0 transition-all overflow-hidden"
+                        style={{
+                          borderColor: selected ? 'var(--scorm-accent)' : 'var(--scorm-line)',
+                          background: selected
+                            ? 'linear-gradient(135deg, var(--scorm-accent-soft), var(--scorm-surface-soft))'
+                            : 'linear-gradient(135deg, var(--scorm-surface), var(--scorm-surface-soft))',
+                          boxShadow: selected ? '0 18px 46px color-mix(in srgb, var(--scorm-accent) 11%, transparent)' : 'none'
+                        }}
+                      >
+                        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,.78fr)_minmax(360px,1.22fr)] gap-0 min-h-[218px]">
+                          <div className="p-5 md:p-6 flex flex-col justify-center">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-[10px] uppercase tracking-[.1em] font-semibold" style={{ color: 'var(--scorm-accent)' }}>{template.experience || 'See and explore'}</div>
+                                <div className="text-[18px] font-semibold mt-1" style={ink}>{template.name}</div>
+                              </div>
+                              {selected && <CheckCircle2 size={19} className="shrink-0" style={{ color: 'var(--scorm-accent)' }} />}
+                            </div>
+                            <div className="text-[12px] leading-relaxed mt-3 max-w-md" style={muted}>{template.description}</div>
+                            <div className="flex flex-wrap gap-2 mt-5">
+                              {['Hotspot callouts', 'Guided steps', 'Visual compare'].map((label) => (
+                                <span key={label} className="px-2.5 py-1.5 rounded-full border text-[9px] font-semibold" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface)', color: 'var(--scorm-ink-soft)' }}>
+                                  {label}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="p-4 md:p-5 border-t md:border-t-0 md:border-l" style={{ borderColor: 'var(--scorm-line)' }}>
+                            <VisualProductTemplatePreview selected={selected} />
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  }
+
                   return (
                     <button
                       key={template.id}

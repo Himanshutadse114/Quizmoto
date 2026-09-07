@@ -20,6 +20,7 @@ const {
     preserveCourseDesign
 } = require('../../services/scorm/ScormRebuildDesignPreserver');
 const { applyTemplateRuntimeToZip } = require('../../services/scorm/ScormTemplateRuntime');
+const { applyVisualProductRuntimeToZip } = require('../../services/scorm/ScormVisualProductRuntime');
 const { applyScenarioLearningRuntimeToZip } = require('../../services/scorm/ScormScenarioLearningRuntime');
 const { applyScenarioBranchingRuntimeToZip } = require('../../services/scorm/ScormScenarioBranchingRuntime');
 const { applyCourseChromeRuntimeToZip } = require('../../services/scorm/ScormCourseChromeRuntime');
@@ -89,6 +90,25 @@ function stripV7CourseFormatMetadata(rawAnalysis) {
     };
 }
 
+function upgradeProgressCopy(migration) {
+    if (migration?.upgradeKind === 'visual-product') {
+        return {
+            stage: 'Upgrading Visual Product Training',
+            detail: 'Applying the new visual-first walkthrough layout while keeping the existing course media and navigation.',
+            packageDetail: 'Combining the new visual walkthrough runtime with the existing images and current course menu.',
+            savedDetail: `Visual Product Training was upgraded from ${migration.previousVersion} to ${migration.currentVersion}.`,
+            completeDetail: 'Visual Product Training now uses the dedicated media-first walkthrough experience with callouts, guided steps and visual comparisons.'
+        };
+    }
+    return {
+        stage: 'Updating Clean & Professional layout',
+        detail: 'Applying the restored classic flip-card course layout while keeping the existing course media and menu.',
+        packageDetail: 'Combining the restored flip-card learner layout with the existing visuals and current course menu.',
+        savedDetail: `Clean & Professional was upgraded from ${migration?.previousVersion} to ${migration?.currentVersion}.`,
+        completeDetail: 'Clean & Professional now uses the restored flip-card learner experience with the current course menu.'
+    };
+}
+
 router.post('/generate', auth, async (req, res, next) => {
     const replaceId = req.body?.replacePackageId || req.body?.packageId || null;
     if (!replaceId) return next();
@@ -126,6 +146,7 @@ router.post('/generate', auth, async (req, res, next) => {
         const storedAnalysis = parseStoredAnalysis(pkg);
         const migration = resolveRebuildTemplateBinding({ analysis: storedAnalysis, pkg });
         const binding = migration.binding;
+        const upgradeCopy = upgradeProgressCopy(migration);
         assertRequestedTemplateMatchesBinding(req.body || {}, binding);
 
         const selectedThemeId = normalizeThemeId(storedAnalysis?.themeId || pkg.templateId || 1);
@@ -134,17 +155,16 @@ router.post('/generate', auth, async (req, res, next) => {
 
         report({
             percent: 5,
-            stage: migration.templateUpgraded ? 'Updating Clean & Professional layout' : 'Checking edited course content',
+            stage: migration.templateUpgraded ? upgradeCopy.stage : 'Checking edited course content',
             detail: migration.templateUpgraded
-                ? 'Applying the restored classic flip-card course layout while keeping the existing course media and menu.'
+                ? upgradeCopy.detail
                 : 'Validating content while keeping the saved template, slide layouts and interactions locked.'
         });
 
         if (migration.templateUpgraded) {
-            // Clean & Professional 1.1 is intentionally a different learner
-            // experience from 1.0. Rebuilding an older Professional course must
-            // therefore re-run the template planner instead of preserving the old
-            // generic slide layouts. Existing raster media is still reused below.
+            // A versioned template upgrade deliberately changes presentation
+            // behaviour. Re-run its planner instead of preserving the old slide
+            // layouts; reusable raster media is still kept below.
             analysis = stripV7CourseFormatMetadata(analysis);
             analysis = planExperienceForTemplate(analysis, binding);
             templateEngineVersion = 1;
@@ -197,7 +217,7 @@ router.post('/generate', auth, async (req, res, next) => {
             percent: 78,
             stage: 'Rebuilding course package',
             detail: migration.templateUpgraded
-                ? 'Combining the restored flip-card learner layout with the existing visuals and current course menu.'
+                ? upgradeCopy.packageDetail
                 : 'Combining the updated content with the saved template, layouts and existing visuals.'
         });
 
@@ -208,6 +228,7 @@ router.post('/generate', auth, async (req, res, next) => {
         });
         if (templateEngineVersion >= 1) {
             zipBuf = await applyTemplateRuntimeToZip(zipBuf, analysis);
+            zipBuf = await applyVisualProductRuntimeToZip(zipBuf, analysis);
             zipBuf = await applyScenarioLearningRuntimeToZip(zipBuf, analysis);
             zipBuf = await applyScenarioBranchingRuntimeToZip(zipBuf, analysis);
             zipBuf = await applyCourseChromeRuntimeToZip(zipBuf, analysis);
@@ -218,7 +239,7 @@ router.post('/generate', auth, async (req, res, next) => {
             percent: 86,
             stage: 'Saving course update',
             detail: migration.templateUpgraded
-                ? `Clean & Professional was upgraded from ${migration.previousVersion} to ${migration.currentVersion}.`
+                ? upgradeCopy.savedDetail
                 : 'Replacing the existing package without changing its course template.'
         });
 
@@ -270,7 +291,7 @@ router.post('/generate', auth, async (req, res, next) => {
                 percent: 100,
                 stage: 'Course updated',
                 detail: migration.templateUpgraded
-                    ? 'Clean & Professional now uses the restored flip-card learner experience with the current course menu.'
+                    ? upgradeCopy.completeDetail
                     : 'Your edits are saved and the original template, layouts and visuals were preserved.'
             });
         }
