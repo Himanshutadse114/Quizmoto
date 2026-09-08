@@ -7,7 +7,7 @@
   if (document.querySelector('script[src*="lmsgen-nav.js"]')) return;
 
   const script = document.createElement("script");
-  script.src = "/landing/js/lmsgen-nav.js?v=20260903a";
+  script.src = "/landing/js/lmsgen-nav.js?v=20260908-live2";
   script.defer = true;
   document.head.appendChild(script);
 })();

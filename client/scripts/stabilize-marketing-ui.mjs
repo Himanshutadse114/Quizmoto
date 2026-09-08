@@ -78,7 +78,7 @@ function ensureContactRefreshCss(html, type) {
 function ensureUnifiedNav(html) {
   html = stripScript(html, 'nav-menu.js');
   html = stripScript(html, 'lmsgen-nav.js');
-  const tag = '<script src="/landing/js/lmsgen-nav.js?v=20260903a" defer></script>';
+  const tag = '<script src="/landing/js/lmsgen-nav.js?v=20260908-live2" defer></script>';
   return html.replace(/<\/body>/i, `    ${tag}\n  </body>`);
 }
 
