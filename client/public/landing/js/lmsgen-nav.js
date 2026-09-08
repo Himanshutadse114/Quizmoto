@@ -5,7 +5,10 @@
   const header = document.querySelector(".global-header-c");
   const logo = document.querySelector(".nav-logo");
   const menuButton = document.querySelector(".global-nav-menu-btn.w-nav-button");
+  const desktopMenu = document.querySelector(".global-header-nav-w.w-nav-menu");
   const onHome = document.body.classList.contains("lmsgen-page-home");
+  const mobileQuery = window.matchMedia("(max-width: 991px)");
+  let mobileMenuOpen = false;
 
   function setLogo() {
     if (!logo) return;
@@ -16,19 +19,248 @@
   function applyHeaderState() {
     setLogo();
     if (!header) return;
-    const menuOpen = Boolean(menuButton && menuButton.classList.contains("w--open"));
-    header.classList.toggle("sticky", menuOpen || window.scrollY > 16);
+    header.classList.toggle("sticky", mobileMenuOpen || window.scrollY > 16);
   }
 
-  if (menuButton) {
-    new MutationObserver(applyHeaderState).observe(menuButton, {
-      attributes: true,
-      attributeFilter: ["class"],
+  function ensureMobileDropdown() {
+    if (!header || !menuButton || !desktopMenu) return null;
+
+    let dropdown = document.getElementById("lmsgen-mobile-dropdown");
+    if (dropdown) return dropdown;
+
+    const style = document.createElement("style");
+    style.id = "lmsgen-mobile-dropdown-style";
+    style.textContent = `
+      #lmsgen-mobile-dropdown {
+        display: none;
+      }
+
+      @media (max-width: 991px) {
+        .global-header-c {
+          overflow: visible !important;
+        }
+
+        .global-nav-menu-btn.w-nav-button {
+          position: relative !important;
+          z-index: 2147483002 !important;
+          pointer-events: auto !important;
+          cursor: pointer !important;
+        }
+
+        #lmsgen-mobile-dropdown {
+          position: fixed;
+          left: 0;
+          right: 0;
+          width: 100vw;
+          max-height: calc(100dvh - var(--lmsgen-mobile-nav-top, 70px));
+          padding: 14px 20px 24px;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          background: #ffffff;
+          color: #003f3a;
+          border-top: 1px solid rgba(0, 63, 58, 0.12);
+          box-shadow: 0 18px 42px rgba(0, 63, 58, 0.16);
+          z-index: 2147483000;
+          opacity: 0;
+          visibility: hidden;
+          pointer-events: none;
+          transform: translateY(-14px);
+          transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
+        }
+
+        #lmsgen-mobile-dropdown[data-open="true"] {
+          opacity: 1;
+          visibility: visible;
+          pointer-events: auto;
+          transform: translateY(0);
+        }
+
+        #lmsgen-mobile-dropdown .lmsgen-mobile-nav-link {
+          width: 100%;
+          min-height: 54px;
+          padding: 14px 2px;
+          display: flex;
+          align-items: center;
+          color: #003f3a !important;
+          border-bottom: 1px solid rgba(0, 63, 58, 0.12);
+          font-family: "Montserrat", Arial, sans-serif;
+          font-size: 17px;
+          font-weight: 600;
+          line-height: 1.3;
+          text-decoration: none !important;
+          text-transform: none;
+          box-sizing: border-box;
+        }
+
+        #lmsgen-mobile-dropdown .lmsgen-mobile-nav-link:active,
+        #lmsgen-mobile-dropdown .lmsgen-mobile-nav-link:focus-visible {
+          color: #007c73 !important;
+        }
+
+        #lmsgen-mobile-dropdown .lmsgen-mobile-nav-cta {
+          min-height: 52px;
+          margin-top: 22px;
+          padding: 14px 22px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 999px;
+          background: #004b45;
+          color: #ffffff !important;
+          font-family: "Montserrat", Arial, sans-serif;
+          font-size: 16px;
+          font-weight: 600;
+          line-height: 1.2;
+          text-decoration: none !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+
+    dropdown = document.createElement("nav");
+    dropdown.id = "lmsgen-mobile-dropdown";
+    dropdown.setAttribute("aria-label", "Mobile navigation");
+    dropdown.setAttribute("data-open", "false");
+
+    const seen = new Set();
+    desktopMenu.querySelectorAll("a[href]").forEach((sourceLink) => {
+      const href = sourceLink.getAttribute("href");
+      const label = (sourceLink.textContent || "").replace(/\s+/g, " ").trim();
+      if (!href || !label || seen.has(href)) return;
+      if (sourceLink.closest(".mobile-btn-c")) return;
+      seen.add(href);
+
+      const link = document.createElement("a");
+      link.className = "lmsgen-mobile-nav-link";
+      link.href = href;
+      link.textContent = label;
+      dropdown.appendChild(link);
+    });
+
+    if (!seen.has("/")) {
+      const home = document.createElement("a");
+      home.className = "lmsgen-mobile-nav-link";
+      home.href = "/";
+      home.textContent = "Home";
+      dropdown.insertBefore(home, dropdown.firstChild);
+    }
+
+    const cta = document.createElement("a");
+    cta.className = "lmsgen-mobile-nav-cta";
+    cta.href = "/login";
+    cta.textContent = "Explore LMSGEN";
+    dropdown.appendChild(cta);
+
+    document.body.appendChild(dropdown);
+
+    dropdown.addEventListener("click", (event) => {
+      if (event.target.closest("a[href]")) setMobileMenuOpen(false);
+    });
+
+    return dropdown;
+  }
+
+  function syncMobileDropdownTop() {
+    if (!header) return;
+    const rect = header.getBoundingClientRect();
+    const top = Math.max(0, Math.round(rect.bottom || rect.height || 70));
+    document.documentElement.style.setProperty("--lmsgen-mobile-nav-top", `${top}px`);
+    const dropdown = document.getElementById("lmsgen-mobile-dropdown");
+    if (dropdown) dropdown.style.top = `${top}px`;
+  }
+
+  function setMobileMenuOpen(shouldOpen) {
+    const dropdown = ensureMobileDropdown();
+    const open = Boolean(shouldOpen && mobileQuery.matches && dropdown);
+    mobileMenuOpen = open;
+
+    if (menuButton) {
+      menuButton.classList.toggle("w--open", open);
+      menuButton.setAttribute("aria-expanded", open ? "true" : "false");
+      menuButton.setAttribute("aria-label", open ? "Close navigation menu" : "Open navigation menu");
+    }
+
+    if (dropdown) {
+      syncMobileDropdownTop();
+      dropdown.setAttribute("data-open", open ? "true" : "false");
+      dropdown.setAttribute("aria-hidden", open ? "false" : "true");
+    }
+
+    if (open) document.body.style.setProperty("overflow", "hidden", "important");
+    else document.body.style.removeProperty("overflow");
+
+    applyHeaderState();
+  }
+
+  function initialiseMobileNavigation() {
+    if (!menuButton || !desktopMenu) return;
+
+    menuButton.style.setProperty("pointer-events", "auto", "important");
+    menuButton.style.setProperty("cursor", "pointer", "important");
+    menuButton.setAttribute("role", "button");
+    menuButton.setAttribute("tabindex", "0");
+    menuButton.setAttribute("aria-expanded", "false");
+    menuButton.setAttribute("aria-controls", "lmsgen-mobile-dropdown");
+    menuButton.setAttribute("aria-label", "Open navigation menu");
+
+    ensureMobileDropdown();
+    syncMobileDropdownTop();
+
+    const toggle = (event) => {
+      if (!mobileQuery.matches) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+      setMobileMenuOpen(!mobileMenuOpen);
+    };
+
+    menuButton.addEventListener("click", toggle, true);
+    menuButton.addEventListener(
+      "keydown",
+      (event) => {
+        if (!mobileQuery.matches || (event.key !== "Enter" && event.key !== " ")) return;
+        toggle(event);
+      },
+      true,
+    );
+
+    document.addEventListener("click", (event) => {
+      if (!mobileMenuOpen) return;
+      const dropdown = document.getElementById("lmsgen-mobile-dropdown");
+      if (dropdown && dropdown.contains(event.target)) return;
+      if (menuButton.contains(event.target)) return;
+      setMobileMenuOpen(false);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && mobileMenuOpen) setMobileMenuOpen(false);
     });
   }
 
-  window.addEventListener("scroll", applyHeaderState, { passive: true });
-  window.addEventListener("resize", applyHeaderState);
+  initialiseMobileNavigation();
+
+  window.addEventListener("scroll", () => {
+    if (mobileMenuOpen) syncMobileDropdownTop();
+    applyHeaderState();
+  }, { passive: true });
+
+  window.addEventListener("resize", () => {
+    syncMobileDropdownTop();
+    if (!mobileQuery.matches && mobileMenuOpen) setMobileMenuOpen(false);
+    applyHeaderState();
+  });
+
+  if (typeof mobileQuery.addEventListener === "function") {
+    mobileQuery.addEventListener("change", (event) => {
+      if (!event.matches) setMobileMenuOpen(false);
+      else syncMobileDropdownTop();
+    });
+  }
+
   applyHeaderState();
 
   document.querySelectorAll(".btn-primary.arrow").forEach((arrowButton) => {
