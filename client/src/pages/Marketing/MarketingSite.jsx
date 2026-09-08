@@ -57,6 +57,87 @@ function ensureStylesheet(doc, { id, href }, onSettled) {
   doc.head.appendChild(stylesheet);
 }
 
+function installMarketingMobileNavigation(frame) {
+  const doc = frame?.contentDocument || frame?.contentWindow?.document;
+  const frameWindow = frame?.contentWindow;
+  if (!doc?.body || !frameWindow) return;
+
+  const isMobileViewport = () => frameWindow.matchMedia('(max-width: 991px)').matches;
+
+  doc.querySelectorAll('.w-nav').forEach((navbar, index) => {
+    const button = navbar.querySelector('.w-nav-button');
+    const menu = navbar.querySelector('.w-nav-menu');
+    if (!button || !menu || button.dataset.ateloraMobileNavBound === 'true') return;
+
+    button.dataset.ateloraMobileNavBound = 'true';
+
+    if (!menu.id) menu.id = `atelora-mobile-nav-${index + 1}`;
+    button.setAttribute('role', 'button');
+    button.setAttribute('tabindex', '0');
+    button.setAttribute('aria-label', button.getAttribute('aria-label') || 'Toggle navigation menu');
+    button.setAttribute('aria-controls', menu.id);
+    button.setAttribute('aria-expanded', 'false');
+    menu.setAttribute('aria-hidden', 'true');
+
+    const setOpen = (shouldOpen) => {
+      const open = Boolean(shouldOpen && isMobileViewport());
+
+      button.classList.toggle('w--open', open);
+      menu.classList.toggle('w--open', open);
+      button.setAttribute('aria-expanded', open ? 'true' : 'false');
+      menu.setAttribute('aria-hidden', open ? 'false' : 'true');
+
+      if (open) {
+        // Webflow normally adds this attribute and display state. The exported
+        // marketing pages can miss that initialisation when mounted in the SPA
+        // iframe, so keep a small same-origin fallback for mobile navigation.
+        menu.setAttribute('data-nav-menu-open', '');
+        menu.style.display = 'block';
+        doc.body.classList.add('atelora-mobile-nav-open');
+        doc.body.style.overflow = 'hidden';
+      } else {
+        menu.removeAttribute('data-nav-menu-open');
+        menu.style.removeProperty('display');
+        doc.body.classList.remove('atelora-mobile-nav-open');
+        doc.body.style.removeProperty('overflow');
+      }
+    };
+
+    const toggleMenu = (event) => {
+      if (!isMobileViewport()) return;
+      event.preventDefault();
+      // Run before the exported Webflow listener so a partially initialised
+      // navbar cannot immediately undo the fallback state.
+      event.stopImmediatePropagation();
+      setOpen(!button.classList.contains('w--open'));
+    };
+
+    button.addEventListener('click', toggleMenu, true);
+    button.addEventListener('keydown', (event) => {
+      if (!isMobileViewport() || (event.key !== 'Enter' && event.key !== ' ')) return;
+      toggleMenu(event);
+    }, true);
+
+    menu.addEventListener('click', (event) => {
+      if (event.target.closest('a[href]')) setOpen(false);
+    });
+
+    doc.addEventListener('click', (event) => {
+      if (
+        isMobileViewport()
+        && button.classList.contains('w--open')
+        && !navbar.contains(event.target)
+      ) {
+        setOpen(false);
+      }
+    });
+
+    frameWindow.addEventListener('resize', () => {
+      if (!isMobileViewport()) setOpen(false);
+    }, { passive: true });
+  });
+}
+
 function applySharedMarketingUi(frame, src, onReady) {
   try {
     const doc = frame?.contentDocument || frame?.contentWindow?.document;
@@ -67,6 +148,7 @@ function applySharedMarketingUi(frame, src, onReady) {
 
     doc.documentElement.classList.add('atelora-ui-root');
     doc.body.classList.add('atelora-public-site', ...getMarketingPageClasses(src));
+    installMarketingMobileNavigation(frame);
 
     const stylesheets = getMarketingStylesheets(src);
     let remaining = stylesheets.length;
