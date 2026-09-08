@@ -216,10 +216,6 @@ function installMarketingMobileNavigation(frame) {
   };
 
   button.addEventListener('click', toggleMenu, true);
-  button.addEventListener('pointerup', (event) => {
-    if (event.pointerType === 'mouse') return;
-    toggleMenu(event);
-  }, true);
   button.addEventListener('keydown', (event) => {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     toggleMenu(event);
