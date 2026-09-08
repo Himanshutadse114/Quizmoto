@@ -13,6 +13,15 @@ const HOME_SECTION_SCALE_STYLESHEET = {
   href: '/landing/css/atelora-home-section-scale.css?v=20260904-2',
 };
 
+const MOBILE_NAV_LINKS = [
+  { label: 'Home', href: '/' },
+  { label: 'Solutions', href: '/solutions' },
+  { label: 'About', href: '/about' },
+  { label: 'Blog', href: '/blog' },
+  { label: 'Contact', href: '/contact' },
+  { label: 'Sign In', href: '/login' },
+];
+
 function getMarketingPageClasses(src) {
   if (src === '/landing/index.html') return ['atelora-home-page'];
   if (src.includes('/landing/solutions/')) return ['atelora-solutions-page'];
@@ -88,9 +97,6 @@ function installMarketingMobileNavigation(frame) {
       menu.setAttribute('aria-hidden', open ? 'false' : 'true');
 
       if (open) {
-        // Webflow normally adds this attribute and display state. The exported
-        // marketing pages can miss that initialisation when mounted in the SPA
-        // iframe, so keep a small same-origin fallback for mobile navigation.
         menu.setAttribute('data-nav-menu-open', '');
         menu.style.display = 'block';
         doc.body.classList.add('atelora-mobile-nav-open');
@@ -106,8 +112,6 @@ function installMarketingMobileNavigation(frame) {
     const toggleMenu = (event) => {
       if (!isMobileViewport()) return;
       event.preventDefault();
-      // Run before the exported Webflow listener so a partially initialised
-      // navbar cannot immediately undo the fallback state.
       event.stopImmediatePropagation();
       setOpen(!button.classList.contains('w--open'));
     };
@@ -167,23 +171,21 @@ function applySharedMarketingUi(frame, src, onReady) {
 
     stylesheets.forEach((stylesheet) => ensureStylesheet(doc, stylesheet, markSettled));
   } catch {
-    // Marketing files are same-origin in production. If a host changes that
-    // assumption, keep the page usable instead of leaving the iframe hidden.
     onReady();
   }
 }
 
-// Renders one of the pre-built static marketing pages inside the SPA's own
-// document. React owns routing while the exported marketing HTML stays editable
-// as static files under public/landing. Post-load UI stylesheets are injected
-// here so public pages share one typography/layout system while the homepage
-// can also receive tightly scoped section-level corrections.
 export default function MarketingSite({ src, title, tabTitle }) {
   const { hash } = useLocation();
   const [ready, setReady] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => (
+    typeof window !== 'undefined' ? window.innerWidth <= 991 : false
+  ));
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setReady(false);
+    setMobileMenuOpen(false);
     const fallback = window.setTimeout(() => setReady(true), 1400);
     return () => window.clearTimeout(fallback);
   }, [src]);
@@ -195,21 +197,144 @@ export default function MarketingSite({ src, title, tabTitle }) {
     return () => { document.title = previous; };
   }, [tabTitle]);
 
+  useEffect(() => {
+    const updateViewport = () => {
+      const mobile = window.innerWidth <= 991;
+      setIsMobile(mobile);
+      if (!mobile) setMobileMenuOpen(false);
+    };
+
+    updateViewport();
+    window.addEventListener('resize', updateViewport, { passive: true });
+    return () => window.removeEventListener('resize', updateViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile || !mobileMenuOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobile, mobileMenuOpen]);
+
+  const closeMobileMenu = () => setMobileMenuOpen(false);
+
   return (
-    <iframe
-      src={hash ? `${src}${hash}` : src}
-      title={title}
-      onLoad={(event) => applySharedMarketingUi(event.currentTarget, src, () => setReady(true))}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        width: '100%',
-        height: '100%',
-        border: 0,
-        background: '#0A0F0E',
-        opacity: ready ? 1 : 0,
-        transition: 'opacity 160ms ease',
-      }}
-    />
+    <>
+      <iframe
+        src={hash ? `${src}${hash}` : src}
+        title={title}
+        onLoad={(event) => applySharedMarketingUi(event.currentTarget, src, () => setReady(true))}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          border: 0,
+          background: '#0A0F0E',
+          opacity: ready ? 1 : 0,
+          transition: 'opacity 160ms ease',
+          pointerEvents: mobileMenuOpen ? 'none' : 'auto',
+        }}
+      />
+
+      {isMobile && (
+        <>
+          <button
+            type="button"
+            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              right: 0,
+              width: 88,
+              height: 74,
+              zIndex: 10002,
+              border: 0,
+              padding: 0,
+              margin: 0,
+              background: 'transparent',
+              cursor: 'pointer',
+              color: '#003f3a',
+              fontSize: 36,
+              lineHeight: 1,
+              display: 'grid',
+              placeItems: 'center',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            {mobileMenuOpen ? '×' : ''}
+          </button>
+
+          {mobileMenuOpen && (
+            <nav
+              aria-label="Mobile navigation"
+              style={{
+                position: 'fixed',
+                top: 74,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 10001,
+                overflowY: 'auto',
+                background: '#ffffff',
+                borderTop: '1px solid rgba(0, 63, 58, 0.12)',
+                boxShadow: '0 18px 40px rgba(0, 63, 58, 0.12)',
+                padding: '22px 22px 30px',
+                fontFamily: '"Open Sauce One", Arial, sans-serif',
+              }}
+            >
+              <div style={{ display: 'grid', gap: 0 }}>
+                {MOBILE_NAV_LINKS.map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    onClick={closeMobileMenu}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      minHeight: 58,
+                      padding: '0 4px',
+                      borderBottom: '1px solid rgba(0, 63, 58, 0.12)',
+                      color: '#003f3a',
+                      fontSize: 18,
+                      fontWeight: 500,
+                      lineHeight: 1.3,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+
+              <a
+                href="/login"
+                onClick={closeMobileMenu}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: 52,
+                  marginTop: 24,
+                  borderRadius: 999,
+                  background: '#003f3a',
+                  color: '#ffffff',
+                  fontSize: 16,
+                  fontWeight: 600,
+                  lineHeight: 1.2,
+                  textDecoration: 'none',
+                }}
+              >
+                Explore LMSGEN
+              </a>
+            </nav>
+          )}
+        </>
+      )}
+    </>
   );
 }
