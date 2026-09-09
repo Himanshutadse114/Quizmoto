@@ -35,8 +35,13 @@ function renderFlipbookReader(book) {
         pages
     };
     const pageMarkup = pages.map((src, index) => {
-        const isCover = index === 0;
-        return `<div class="book-page${isCover ? ' front-cover-page' : ''}"${isCover ? ' data-density="hard"' : ''}><img src="${escapeHtml(src)}" alt="Page ${index + 1}" draggable="false"></div>`;
+        const isFront = index === 0;
+        const isBack = pageCount > 1 && index === pageCount - 1;
+        const hard = isFront || isBack;
+        const classes = ['book-page'];
+        if (isFront) classes.push('front-cover-page');
+        if (isBack) classes.push('back-cover-page');
+        return `<div class="${classes.join(' ')}"${hard ? ' data-density="hard"' : ''}><img src="${escapeHtml(src)}" alt="Page ${index + 1}" draggable="false"></div>`;
     }).join('\n');
 
     return `<!doctype html>
@@ -50,27 +55,20 @@ function renderFlipbookReader(book) {
 <meta name="description" content="${description}">
 <style>
 :root{--canvas:#f7f4ee;--surface:#fff;--line:#e4ddd3;--ink:#24282c;--muted:#827970;--accent:#ca8b49;--accent-dark:#ad6f31;--teal:#0f817b}
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;font-family:Inter,Arial,sans-serif;background:var(--canvas);color:var(--ink)}body{overflow:hidden}.reader-shell{height:100dvh;display:grid;grid-template-rows:62px minmax(0,1fr) 84px;background:linear-gradient(180deg,#fff 0,#fbf9f5 14%,#f4f0e9 100%)}
-.reader-header{display:flex;align-items:center;gap:14px;padding:0 22px;background:rgba(255,255,255,.96);border-bottom:1px solid #e9e2d8;box-shadow:0 2px 10px rgba(60,47,32,.04);z-index:20}.reader-brand{font-weight:850;letter-spacing:.16em;font-size:11px;color:var(--teal)}.reader-meta{min-width:0;flex:1}.reader-meta h1{margin:0;font-size:14px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.reader-meta p{margin:4px 0 0;font-size:10px;color:#8d857d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.reader-tools{display:flex;gap:8px}
-.icon-btn,.nav-btn{appearance:none;border:1px solid #ded6ca;background:#fff;color:#554c43;border-radius:11px;height:40px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:11px;font-weight:750;cursor:pointer;box-shadow:0 3px 9px rgba(68,54,35,.04);transition:background .18s ease,border-color .18s ease,color .18s ease,transform .12s ease}.icon-btn:hover,.nav-btn:hover{border-color:#d8b58b;background:#fffaf3;color:#94591f}.icon-btn:active,.nav-btn:active{transform:translateY(1px)}.icon-btn:disabled,.nav-btn:disabled{opacity:.3;cursor:not-allowed}.icon-btn.primary{background:#fff8ef;border-color:#dfc29f;color:#995b1d}
-.reader-stage{position:relative;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:14px 64px}.book-frame{width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:visible}.flip-book{opacity:0;transition:opacity .18s ease;filter:drop-shadow(0 22px 34px rgba(59,45,30,.2))}.flip-book.is-ready{opacity:1}.book-page{background:#fff;overflow:hidden}.book-page img{display:block;width:100%;height:100%;object-fit:contain;background:#fff}.front-cover-page{box-shadow:inset 0 0 22px rgba(60,44,27,.08)}.turn-hint{position:absolute;left:50%;bottom:5px;transform:translateX(-50%);padding:5px 10px;border-radius:999px;border:1px solid #e4ddd3;background:rgba(255,255,255,.91);color:#91877d;font-size:9px;white-space:nowrap;pointer-events:none;transition:opacity .3s ease}.edge-arrow{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;border:1px solid #ded6ca;background:rgba(255,255,255,.96);color:#996024;display:grid;place-items:center;font-size:25px;cursor:pointer;z-index:12;box-shadow:0 8px 22px rgba(68,54,35,.09)}.edge-arrow.left{left:18px}.edge-arrow.right{right:18px}.edge-arrow:hover{background:#fff8ef;border-color:#d9b98f}.edge-arrow:disabled{opacity:.2;cursor:not-allowed}.empty{padding:36px;text-align:center;color:#81776d}
-.control-row{display:flex;align-items:center;justify-content:center;padding:9px 16px 14px}.control-dock{width:min(820px,calc(100vw - 30px));display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #ded6ca;border-radius:16px;background:rgba(255,255,255,.98);box-shadow:0 10px 30px rgba(65,51,34,.12)}.nav-btn{height:42px;min-width:116px}.nav-btn.next{background:var(--accent);border-color:var(--accent);color:#fff}.nav-btn.next:hover{background:var(--accent-dark);color:#fff}.seek-wrap{display:flex;align-items:center;gap:10px;flex:1;min-width:0}.seek-label{font-size:9px;color:#958b80;white-space:nowrap}.page-slider{appearance:none;width:100%;height:5px;border-radius:999px;background:linear-gradient(to right,var(--accent) 0 var(--progress,0%),#e8e1d8 var(--progress,0%) 100%);outline:none;cursor:pointer}.page-slider::-webkit-slider-thumb{appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--accent);box-shadow:0 2px 6px rgba(80,56,28,.2)}.page-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid var(--accent)}.page-status{min-width:76px;text-align:center;color:#a46627;font-size:11px;font-weight:800;white-space:nowrap}.page-jump{width:58px;height:36px;border:1px solid #ddd4c8;border-radius:9px;background:#fff;color:#51483f;text-align:center;font-size:11px;font-weight:700;outline:none}.page-jump:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(201,135,66,.12)}
-@media(max-width:760px){.reader-shell{grid-template-rows:58px minmax(0,1fr) 76px}.reader-header{padding:0 12px;gap:9px}.reader-brand{display:none}.reader-meta h1{font-size:13px}.reader-meta p{display:none}.icon-btn{height:36px;min-width:36px;padding:0 10px}.icon-btn .label{display:none}.reader-stage{padding:8px}.edge-arrow{display:none}.turn-hint{bottom:1px;font-size:8px}.control-row{padding:7px}.control-dock{width:100%;gap:7px;padding:8px}.nav-btn{min-width:68px;height:38px;padding:0 9px}.nav-btn .word{display:none}.seek-wrap{gap:7px}.seek-label,.page-jump{display:none}.page-status{min-width:56px;font-size:10px}}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;font-family:Inter,Arial,sans-serif;background:var(--canvas);color:var(--ink)}body{overflow:hidden}.reader-shell{height:100dvh;display:grid;grid-template-rows:minmax(0,1fr) 78px;background:linear-gradient(180deg,#fff 0,#fbf9f5 10%,#f4f0e9 100%)}
+.reader-stage{position:relative;min-height:0;display:flex;align-items:center;justify-content:center;overflow:auto;padding:8px 56px 6px}.zoom-space{position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 auto}.book-frame{display:flex;align-items:center;justify-content:center;overflow:visible;transform-origin:center center;transition:transform .18s ease}.flip-book{opacity:0;transition:opacity .18s ease;filter:drop-shadow(0 24px 38px rgba(59,45,30,.22))}.flip-book.is-ready{opacity:1}.book-page{background:#fff;overflow:hidden}.book-page img{display:block;width:100%;height:100%;object-fit:contain;background:#fff}.front-cover-page,.back-cover-page{box-shadow:inset 0 0 24px rgba(60,44,27,.09)}.turn-hint{position:absolute;left:50%;bottom:4px;transform:translateX(-50%);padding:5px 10px;border-radius:999px;border:1px solid #e4ddd3;background:rgba(255,255,255,.92);color:#91877d;font-size:9px;white-space:nowrap;pointer-events:none;transition:opacity .3s ease;z-index:10}.edge-arrow{position:fixed;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;border:1px solid #ded6ca;background:rgba(255,255,255,.96);color:#996024;display:grid;place-items:center;font-size:25px;cursor:pointer;z-index:12;box-shadow:0 8px 22px rgba(68,54,35,.09)}.edge-arrow.left{left:16px}.edge-arrow.right{right:16px}.edge-arrow:hover{background:#fff8ef;border-color:#d9b98f}.edge-arrow:disabled{opacity:.2;cursor:not-allowed}.empty{padding:36px;text-align:center;color:#81776d}
+.control-row{display:flex;align-items:center;justify-content:center;padding:7px 12px 11px;background:linear-gradient(180deg,rgba(247,244,238,0),#f7f4ee 28%)}.control-dock{width:min(1080px,calc(100vw - 20px));display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid #ded6ca;border-radius:15px;background:rgba(255,255,255,.985);box-shadow:0 10px 30px rgba(65,51,34,.12)}.nav-btn,.tool-btn{appearance:none;border:1px solid #ded6ca;background:#fff;color:#554c43;border-radius:10px;height:40px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:10px;font-weight:750;cursor:pointer;white-space:nowrap;transition:background .18s ease,border-color .18s ease,color .18s ease,transform .12s ease}.nav-btn:hover,.tool-btn:hover{border-color:#d8b58b;background:#fffaf3;color:#94591f}.nav-btn:active,.tool-btn:active{transform:translateY(1px)}.nav-btn:disabled,.tool-btn:disabled{opacity:.3;cursor:not-allowed}.nav-btn{min-width:104px}.nav-btn.next{background:var(--accent);border-color:var(--accent);color:#fff}.nav-btn.next:hover{background:var(--accent-dark);color:#fff}.seek-wrap{display:flex;align-items:center;gap:8px;flex:1;min-width:160px}.seek-label{font-size:9px;color:#958b80;white-space:nowrap}.page-slider{appearance:none;width:100%;height:5px;border-radius:999px;background:linear-gradient(to right,var(--accent) 0 var(--progress,0%),#e8e1d8 var(--progress,0%) 100%);outline:none;cursor:pointer}.page-slider::-webkit-slider-thumb{appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--accent);box-shadow:0 2px 6px rgba(80,56,28,.2)}.page-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid var(--accent)}.page-status{min-width:78px;text-align:center;color:#a46627;font-size:10px;font-weight:800;white-space:nowrap}.page-jump{width:52px;height:34px;border:1px solid #ddd4c8;border-radius:8px;background:#fff;color:#51483f;text-align:center;font-size:10px;font-weight:700;outline:none}.page-jump:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(201,135,66,.12)}.tool-group{display:flex;align-items:center;gap:5px}.tool-btn{min-width:40px;padding:0 10px}.tool-btn.primary{background:#fff8ef;border-color:#dfc29f;color:#995b1d}.zoom-value{min-width:52px;font-size:9px;font-weight:800;color:#7f6f5f}
+@media(max-width:900px){.reader-stage{padding:6px 44px 4px}.control-dock{gap:6px}.nav-btn{min-width:82px;padding:0 9px}.tool-btn .label{display:none}.tool-btn{min-width:38px;padding:0 8px}.page-jump{display:none}.seek-label{display:none}}
+@media(max-width:760px){.reader-shell{grid-template-rows:minmax(0,1fr) 72px}.reader-stage{padding:4px 6px}.edge-arrow{display:none}.turn-hint{bottom:1px;font-size:8px}.control-row{padding:5px}.control-dock{width:100%;gap:5px;padding:6px;border-radius:12px}.nav-btn{min-width:54px;height:36px;padding:0 7px}.nav-btn .word{display:none}.seek-wrap{gap:5px;min-width:90px}.page-status{min-width:46px;font-size:9px}.tool-btn{height:36px;min-width:34px;padding:0 7px}.zoom-value{display:none}.tool-group{gap:3px}}
 </style>
 </head>
 <body>
 <div class="reader-shell">
-  <header class="reader-header">
-    <div class="reader-brand">LMSGEN</div>
-    <div class="reader-meta"><h1>${title}</h1><p>${description || 'Interactive flipbook'}</p></div>
-    <div class="reader-tools">
-      <button class="icon-btn primary" id="shareBtn" title="Share"><span>↗</span><span class="label">Share</span></button>
-      <button class="icon-btn" id="fullBtn" title="Fullscreen">⛶</button>
-    </div>
-  </header>
-  <main class="reader-stage">
+  <main class="reader-stage" id="readerStage">
     <button class="edge-arrow left" id="leftEdge" aria-label="Previous page">‹</button>
-    <div class="book-frame"><div class="flip-book" id="book">${pageMarkup}</div></div>
+    <div class="zoom-space" id="zoomSpace">
+      <div class="book-frame" id="bookFrame"><div class="flip-book" id="book">${pageMarkup}</div></div>
+    </div>
     <div class="turn-hint" id="turnHint">Drag the hard cover corner to open</div>
     <button class="edge-arrow right" id="rightEdge" aria-label="Next page">›</button>
   </main>
@@ -83,6 +81,13 @@ function renderFlipbookReader(book) {
         <div class="page-status" id="pageStatus">Cover</div>
         <input id="pageJump" class="page-jump" type="number" min="1" max="${Math.max(1, pageCount)}" value="1" aria-label="Go to page number">
       </div>
+      <div class="tool-group" aria-label="Zoom controls">
+        <button class="tool-btn" id="zoomOutBtn" title="Zoom out" aria-label="Zoom out">−</button>
+        <button class="tool-btn zoom-value" id="zoomResetBtn" title="Reset zoom"><span id="zoomValue">100%</span></button>
+        <button class="tool-btn" id="zoomInBtn" title="Zoom in" aria-label="Zoom in">+</button>
+      </div>
+      <button class="tool-btn primary" id="shareBtn" title="Share"><span>↗</span><span class="label">Share</span></button>
+      <button class="tool-btn" id="fullBtn" title="Fullscreen" aria-label="Fullscreen">⛶</button>
       <button class="nav-btn next" id="nextBtn"><span class="word">Open</span> →</button>
     </div>
   </footer>
@@ -91,6 +96,9 @@ function renderFlipbookReader(book) {
 <script>
 const DATA=${safeJson(payload)};
 const bookEl=document.getElementById('book');
+const bookFrame=document.getElementById('bookFrame');
+const zoomSpace=document.getElementById('zoomSpace');
+const readerStage=document.getElementById('readerStage');
 const prevBtn=document.getElementById('prevBtn');
 const nextBtn=document.getElementById('nextBtn');
 const leftEdge=document.getElementById('leftEdge');
@@ -99,28 +107,35 @@ const pageSlider=document.getElementById('pageSlider');
 const pageJump=document.getElementById('pageJump');
 const pageStatus=document.getElementById('pageStatus');
 const turnHint=document.getElementById('turnHint');
+const zoomOutBtn=document.getElementById('zoomOutBtn');
+const zoomInBtn=document.getElementById('zoomInBtn');
+const zoomResetBtn=document.getElementById('zoomResetBtn');
+const zoomValue=document.getElementById('zoomValue');
 let pageFlip=null;
 let currentIndex=0;
 let audioCtx=null;
 let hintTimer=null;
+let zoomLevel=1;
+let baseFrameWidth=0;
+let baseFrameHeight=0;
 
 function isMobile(){return window.innerWidth<768}
 
 function pageDimensions(){
   const ratio=Math.max(.35,Math.min(1.8,Number(DATA.aspectRatio)||.70710678));
   const mobile=isMobile();
-  const maxStageHeight=Math.max(300,window.innerHeight-(mobile?154:174));
+  const maxStageHeight=Math.max(320,window.innerHeight-(mobile?84:92));
   if(mobile){
-    let width=Math.min(window.innerWidth-28,420);
+    let width=Math.min(window.innerWidth-18,520);
     let height=width/ratio;
     if(height>maxStageHeight){height=maxStageHeight;width=height*ratio}
-    return {width:Math.max(180,Math.round(width)),height:Math.max(255,Math.round(height)),mobile:true};
+    return {width:Math.max(190,Math.round(width)),height:Math.max(270,Math.round(height)),mobile:true};
   }
-  let height=Math.min(maxStageHeight,760);
+  let height=Math.min(maxStageHeight,900);
   let width=height*ratio;
-  const maxSpreadWidth=Math.max(520,window.innerWidth-170);
+  const maxSpreadWidth=Math.max(620,window.innerWidth-100);
   if(width*2>maxSpreadWidth){width=maxSpreadWidth/2;height=width/ratio}
-  return {width:Math.max(240,Math.round(width)),height:Math.max(340,Math.round(height)),mobile:false};
+  return {width:Math.max(280,Math.round(width)),height:Math.max(396,Math.round(height)),mobile:false};
 }
 
 function spreadState(){
@@ -150,6 +165,9 @@ function updateControls(index){
   if(currentIndex===0){
     pageStatus.textContent='Cover';
     if(turnHint)turnHint.textContent='Drag the hard cover corner to open';
+  }else if(currentIndex===DATA.pageCount-1){
+    pageStatus.textContent='Back cover';
+    if(turnHint)turnHint.textContent='Turn back to reopen';
   }else if(state&&Array.isArray(state.spread)&&state.spread.length===2){
     pageStatus.textContent=(state.spread[0]+1)+'–'+(state.spread[1]+1)+' / '+DATA.pageCount;
     if(turnHint)turnHint.textContent='Drag a page corner or swipe to turn';
@@ -202,10 +220,28 @@ function jumpToPage(value){
   try{pageFlip.flip(target,'top')}catch(_){try{pageFlip.turnToPage(target);updateControls(pageFlip.getCurrentPageIndex())}catch(__){}}
 }
 
+function applyZoom(next){
+  const clamped=Math.max(.75,Math.min(2.25,Math.round(next*20)/20));
+  zoomLevel=clamped;
+  bookFrame.style.transform='scale('+zoomLevel+')';
+  zoomSpace.style.width=Math.ceil(baseFrameWidth*zoomLevel)+'px';
+  zoomSpace.style.height=Math.ceil(baseFrameHeight*zoomLevel)+'px';
+  zoomValue.textContent=Math.round(zoomLevel*100)+'%';
+  zoomOutBtn.disabled=zoomLevel<=.75;
+  zoomInBtn.disabled=zoomLevel>=2.25;
+  if(zoomLevel===1){readerStage.scrollLeft=0;readerStage.scrollTop=0}
+}
+
 function init(){
   if(!DATA.pageCount){bookEl.style.opacity='1';bookEl.innerHTML='<div class="empty">This flipbook has no pages.</div>';updateControls(0);return}
   if(!window.St||!window.St.PageFlip){bookEl.style.opacity='1';bookEl.innerHTML='<div class="empty">The page-turn engine could not load. Please refresh.</div>';return}
   const dims=pageDimensions();
+  baseFrameWidth=dims.width*(dims.mobile?1:2);
+  baseFrameHeight=dims.height;
+  bookFrame.style.width=baseFrameWidth+'px';
+  bookFrame.style.height=baseFrameHeight+'px';
+  zoomSpace.style.width=baseFrameWidth+'px';
+  zoomSpace.style.height=baseFrameHeight+'px';
   pageFlip=new window.St.PageFlip(bookEl,{
     width:dims.width,
     height:dims.height,
@@ -218,7 +254,7 @@ function init(){
     flippingTime:900,
     usePortrait:dims.mobile,
     startPage:0,
-    autoSize:true,
+    autoSize:false,
     maxShadowOpacity:.5,
     showCover:true,
     mobileScrollSupport:true,
@@ -232,6 +268,7 @@ function init(){
     currentIndex=Number(e.data?.page)||0;
     bookEl.classList.add('is-ready');
     updateControls(currentIndex);
+    applyZoom(1);
   });
   pageFlip.on('flip',e=>{
     currentIndex=Number(e.data)||0;
@@ -255,8 +292,14 @@ function init(){
   pageSlider.addEventListener('change',()=>jumpToPage(pageSlider.value));
   pageJump.addEventListener('change',()=>jumpToPage(pageJump.value));
   pageJump.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();jumpToPage(pageJump.value);pageJump.blur()}});
+  zoomOutBtn.onclick=()=>applyZoom(zoomLevel-.25);
+  zoomInBtn.onclick=()=>applyZoom(zoomLevel+.25);
+  zoomResetBtn.onclick=()=>applyZoom(1);
   document.addEventListener('keydown',e=>{
     if(document.activeElement===pageJump||document.activeElement===pageSlider)return;
+    if((e.ctrlKey||e.metaKey)&&e.key==='='){e.preventDefault();applyZoom(zoomLevel+.25);return}
+    if((e.ctrlKey||e.metaKey)&&e.key==='-'){e.preventDefault();applyZoom(zoomLevel-.25);return}
+    if((e.ctrlKey||e.metaKey)&&e.key==='0'){e.preventDefault();applyZoom(1);return}
     if(e.key==='ArrowRight'||e.key==='PageDown'){e.preventDefault();nextBtn.onclick()}
     if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();prevBtn.onclick()}
     if(e.key==='Home'){e.preventDefault();jumpToPage(1)}
