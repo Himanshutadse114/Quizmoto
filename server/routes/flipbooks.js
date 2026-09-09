@@ -4,6 +4,7 @@ const router = express.Router();
 const User = require('../models/User');
 const Flipbook = require('../models/Flipbook');
 const { getObjectStorage } = require('../storage/ObjectStorage');
+const { renderFlipbookReader } = require('../views/flipbookReader');
 const {
     ensureFlipbookSchema,
     isSuperAdmin,
@@ -35,7 +36,7 @@ function ownerPayload(book) {
         status: book.status,
         shareEnabled: Boolean(book.shareEnabled),
         shareToken: book.shareToken,
-        sharePath: published ? `/flipbook/${book.shareToken}` : null,
+        sharePath: published ? `/api/scorm/flipbooks/public/${book.shareToken}/view` : null,
         coverPath: published && pageCount ? `/api/scorm/flipbooks/public/${book.shareToken}/pages/0` : null,
         pageCount,
         viewCount: Number(book.viewCount || 0),
@@ -103,6 +104,23 @@ async function findOwnedBook(req, res, next) {
 }
 
 // Public reader endpoints deliberately sit before private authentication.
+router.get('/public/:shareToken/view', async (req, res, next) => {
+    try {
+        await ensureFlipbookSchema();
+        const book = await Flipbook.findOne({
+            where: { shareToken: req.params.shareToken, status: 'published', shareEnabled: true }
+        });
+        if (!book) {
+            return res.status(404).type('html').send('<!doctype html><html><body style="font-family:Arial;padding:40px"><h1>Flipbook unavailable</h1><p>This link is invalid, unpublished or has been disabled.</p></body></html>');
+        }
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+        res.type('html').send(renderFlipbookReader(book));
+    } catch (err) {
+        next(err);
+    }
+});
+
 router.get('/public/:shareToken', async (req, res, next) => {
     try {
         await ensureFlipbookSchema();
