@@ -17,6 +17,13 @@ function useMobileReader() {
   return mobile;
 }
 
+function lastStartFor(pageCount, mobile) {
+  if (!pageCount) return 0;
+  return mobile
+    ? Math.max(0, pageCount - 1)
+    : Math.max(0, Math.floor((pageCount - 1) / 2) * 2);
+}
+
 export default function FlipbookViewer({ shareToken: propToken }) {
   const shareToken = propToken || window.location.pathname.split('/').filter(Boolean).pop();
   const mobile = useMobileReader();
@@ -52,14 +59,17 @@ export default function FlipbookViewer({ shareToken: propToken }) {
   }, []);
 
   useEffect(() => {
+    const pageCount = book?.pageCount || 0;
+    const lastStart = lastStartFor(pageCount, mobile);
     setIndex((current) => {
-      if (mobile) return Math.min(current, Math.max(0, (book?.pageCount || 1) - 1));
-      return Math.floor(current / 2) * 2;
+      const normalised = mobile ? current : Math.floor(current / 2) * 2;
+      return Math.max(0, Math.min(lastStart, normalised));
     });
   }, [mobile, book?.pageCount]);
 
+  const pageCount = book?.pageCount || 0;
   const pagesPerView = mobile ? 1 : 2;
-  const maxStart = Math.max(0, (book?.pageCount || 0) - pagesPerView);
+  const maxStart = lastStartFor(pageCount, mobile);
   const currentStart = mobile ? index : Math.floor(index / 2) * 2;
 
   const go = useCallback((delta) => {
@@ -68,7 +78,8 @@ export default function FlipbookViewer({ shareToken: propToken }) {
     setIndex((current) => {
       const step = mobile ? 1 : 2;
       const base = mobile ? current : Math.floor(current / 2) * 2;
-      return Math.max(0, Math.min(Math.max(0, book.pageCount - (mobile ? 1 : 2)), base + (delta > 0 ? step : -step)));
+      const lastStart = lastStartFor(book.pageCount, mobile);
+      return Math.max(0, Math.min(lastStart, base + (delta > 0 ? step : -step)));
     });
   }, [book?.pageCount, mobile]);
 
