@@ -200,9 +200,11 @@ export default function FlipbookEditor() {
     } finally { setBusy(false); }
   };
 
+  const publishedUrl = book?.sharePath ? apiUrl(book.sharePath) : '';
+
   const copyShare = async () => {
-    if (!book?.sharePath) return;
-    try { await navigator.clipboard.writeText(`${window.location.origin}${book.sharePath}`); setSuccess('Share link copied.'); } catch (_) {}
+    if (!publishedUrl) return;
+    try { await navigator.clipboard.writeText(publishedUrl); setSuccess('Share link copied.'); } catch (_) {}
   };
 
   if (loading) return <div className="flip-loading"><Loader2 size={20} className="animate-spin" /> Loading editor…</div>;
@@ -253,7 +255,7 @@ export default function FlipbookEditor() {
             </div>
           </div>
           <div className="flip-preview-copy"><strong>Responsive reader included</strong><p>Desktop readers see a book-style spread. Phones automatically switch to a single-page swipe view with the same share link.</p></div>
-          {published && <div className="flip-share-box"><div><div className="flip-kicker">Published link</div><div className="flip-share-url">{`${window.location.origin}${book.sharePath}`}</div></div><div className="flex gap-2"><button type="button" onClick={copyShare} className="flip-icon-button"><Copy size={14} /></button><a href={`${window.location.origin}${book.sharePath}`} target="_blank" rel="noreferrer" className="flip-icon-button"><Share2 size={14} /></a></div></div>}
+          {published && <div className="flip-share-box"><div><div className="flip-kicker">Published link</div><div className="flip-share-url">{publishedUrl}</div></div><div className="flex gap-2"><button type="button" onClick={copyShare} className="flip-icon-button"><Copy size={14} /></button><a href={publishedUrl} target="_blank" rel="noreferrer" className="flip-icon-button"><Share2 size={14} /></a></div></div>}
         </aside>
       </div>
     </div>
