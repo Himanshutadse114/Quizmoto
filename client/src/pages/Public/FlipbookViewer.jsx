@@ -53,6 +53,17 @@ export default function FlipbookViewer({ shareToken: propToken }) {
   }, [shareToken]);
 
   useEffect(() => {
+    const viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) return undefined;
+    const previous = viewport.getAttribute('content');
+    viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
+    return () => {
+      if (previous === null) viewport.removeAttribute('content');
+      else viewport.setAttribute('content', previous);
+    };
+  }, []);
+
+  useEffect(() => {
     const sync = () => setFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener('fullscreenchange', sync);
     return () => document.removeEventListener('fullscreenchange', sync);
