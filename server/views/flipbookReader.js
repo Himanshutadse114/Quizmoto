@@ -16,6 +16,12 @@ function renderFlipbookReader(book) {
     const shareToken = String(book.shareToken || '');
     const title = escapeHtml(book.title || 'Flipbook');
     const description = escapeHtml(book.description || '');
+    const storedPages = Array.isArray(book.pages) ? book.pages : [];
+    const firstWidth = Number(storedPages[0]?.width || 0);
+    const firstHeight = Number(storedPages[0]?.height || 0);
+    const aspectRatio = firstWidth > 0 && firstHeight > 0
+        ? Math.max(0.35, Math.min(1.8, firstWidth / firstHeight))
+        : (1 / Math.sqrt(2));
     const pages = Array.from(
         { length: pageCount },
         (_, index) => `/api/scorm/flipbooks/public/${shareToken}/pages/${index}`
@@ -25,12 +31,9 @@ function renderFlipbookReader(book) {
         description: String(book.description || ''),
         pageCount,
         token: shareToken,
+        aspectRatio,
         pages
     };
-    const pageMarkup = pages.map((src, index) => {
-        const cover = index === 0;
-        return `<div class="book-page${cover ? ' book-cover' : ''}"${cover ? ' data-density="hard"' : ''}><img src="${escapeHtml(src)}" alt="Page ${index + 1}" draggable="false"></div>`;
-    }).join('\n');
 
     return `<!doctype html>
 <html lang="en">
@@ -42,39 +45,38 @@ function renderFlipbookReader(book) {
 <title>${title} | LMSGEN Flipbook</title>
 <meta name="description" content="${description}">
 <style>
-:root{--canvas:#f6f2eb;--surface:#fff;--line:#e1d9ce;--ink:#20262b;--muted:#7d756d;--accent:#c98742;--accent-dark:#a96827;--teal:#0f7f79;--shadow:rgba(63,48,31,.16)}
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;font-family:Inter,Arial,sans-serif;background:var(--canvas);color:var(--ink)}body{overflow:hidden}.shell{height:100dvh;display:grid;grid-template-rows:64px minmax(0,1fr) 82px;background:linear-gradient(180deg,#fff 0,#faf8f4 15%,#f3efe8 100%)}
-.topbar{display:flex;align-items:center;gap:14px;padding:0 22px;background:rgba(255,255,255,.96);border-bottom:1px solid #e7e0d6;box-shadow:0 2px 12px rgba(58,45,30,.04);z-index:20}.brand{font-weight:850;letter-spacing:.16em;font-size:11px;color:var(--teal)}.meta{min-width:0;flex:1}.meta h1{margin:0;font-size:14px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.meta p{margin:4px 0 0;font-size:10px;color:#8e877f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tools{display:flex;gap:8px}.icon-btn,.nav-btn{appearance:none;border:1px solid #ddd5c9;background:#fff;color:#534b43;border-radius:11px;height:40px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:11px;font-weight:750;cursor:pointer;box-shadow:0 3px 10px rgba(68,54,35,.04);transition:.18s ease}.icon-btn:hover,.nav-btn:hover{border-color:#d4ad7d;background:#fffaf3;color:#955b1f}.icon-btn:disabled,.nav-btn:disabled{opacity:.32;cursor:not-allowed}.icon-btn.primary{background:#fff8ef;border-color:#dfc19d;color:#995b1d}
-.reader-stage{position:relative;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:16px 58px}.book-zone{width:min(calc(100vw - 150px),880px);max-width:880px;display:flex;align-items:center;justify-content:center;transition:transform .28s ease}.book-zone.front-cover{transform:translateX(-25%)}.book-zone.back-cover{transform:translateX(25%)}.flip-book{margin:0 auto;box-shadow:0 22px 42px rgba(56,44,30,.18);background:#fff;display:none}.book-page{background:#fff;overflow:hidden;border:1px solid #e3ddd4}.book-page img{display:block;width:100%;height:100%;object-fit:contain;background:#fff}.book-page.--left{border-right:0;box-shadow:inset -10px 0 26px -16px rgba(0,0,0,.35)}.book-page.--right{border-left:0;box-shadow:inset 10px 0 26px -16px rgba(0,0,0,.35)}.book-cover{border:1px solid #d7cec2;box-shadow:inset 0 0 24px rgba(70,50,30,.08)}.turn-hint{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);padding:5px 10px;border-radius:999px;border:1px solid #e3dbd0;background:rgba(255,255,255,.9);color:#91877d;font-size:9px;white-space:nowrap;pointer-events:none;transition:opacity .3s ease}.edge-arrow{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;border:1px solid #ded6ca;background:rgba(255,255,255,.95);color:#9a6124;display:grid;place-items:center;font-size:25px;cursor:pointer;z-index:12;box-shadow:0 8px 22px rgba(68,54,35,.09)}.edge-arrow.left{left:18px}.edge-arrow.right{right:18px}.edge-arrow:disabled{opacity:.2;cursor:not-allowed}
-.control-row{display:flex;align-items:center;justify-content:center;padding:10px 16px 14px}.control-dock{width:min(820px,calc(100vw - 30px));display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #ded6ca;border-radius:16px;background:rgba(255,255,255,.97);box-shadow:0 10px 30px rgba(65,51,34,.12)}.nav-btn{height:42px;min-width:116px}.nav-btn.next{background:var(--accent);border-color:var(--accent);color:#fff}.nav-btn.next:hover{background:var(--accent-dark);color:#fff}.jump-wrap{display:flex;align-items:center;gap:10px;flex:1;min-width:0}.jump-label{font-size:9px;color:#958b80;white-space:nowrap}.page-slider{appearance:none;width:100%;height:5px;border-radius:999px;background:linear-gradient(to right,var(--accent) 0 var(--progress,0%),#e8e1d8 var(--progress,0%) 100%);outline:none;cursor:pointer}.page-slider::-webkit-slider-thumb{appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--accent);box-shadow:0 2px 6px rgba(80,56,28,.2)}.page-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid var(--accent)}.page-status{min-width:74px;text-align:center;color:#a46627;font-size:11px;font-weight:800;white-space:nowrap}.page-jump{width:58px;height:36px;border:1px solid #ddd4c8;border-radius:9px;background:#fff;color:#51483f;text-align:center;font-size:11px;font-weight:700;outline:none}.page-jump:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(201,135,66,.12)}.empty{padding:35px;text-align:center;color:#82786e}
-@media(max-width:760px){.shell{grid-template-rows:58px minmax(0,1fr) 76px}.topbar{padding:0 12px;gap:9px}.brand{display:none}.meta h1{font-size:13px}.meta p{display:none}.icon-btn{height:36px;min-width:36px;padding:0 10px}.icon-btn .label{display:none}.reader-stage{padding:8px 8px}.book-zone{width:min(92vw,520px);transform:none!important}.edge-arrow{display:none}.turn-hint{bottom:2px;font-size:8px}.control-row{padding:8px}.control-dock{width:100%;gap:7px;padding:8px}.nav-btn{min-width:68px;height:38px;padding:0 9px}.nav-btn .word{display:none}.jump-wrap{gap:7px}.jump-label,.page-jump{display:none}.page-status{min-width:54px;font-size:10px}}
+:root{--canvas:#f7f4ee;--surface:#fff;--line:#e4ddd3;--ink:#24282c;--muted:#827970;--accent:#ca8b49;--accent-dark:#ad6f31;--teal:#0f817b;--shadow:rgba(65,50,33,.16)}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;font-family:Inter,Arial,sans-serif;background:var(--canvas);color:var(--ink)}body{overflow:hidden}.reader-shell{height:100dvh;display:grid;grid-template-rows:62px minmax(0,1fr) 84px;background:linear-gradient(180deg,#fff 0,#fbf9f5 14%,#f4f0e9 100%)}
+.reader-header{display:flex;align-items:center;gap:14px;padding:0 22px;background:rgba(255,255,255,.96);border-bottom:1px solid #e9e2d8;box-shadow:0 2px 10px rgba(60,47,32,.04);z-index:20}.reader-brand{font-weight:850;letter-spacing:.16em;font-size:11px;color:var(--teal)}.reader-meta{min-width:0;flex:1}.reader-meta h1{margin:0;font-size:14px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.reader-meta p{margin:4px 0 0;font-size:10px;color:#8d857d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.reader-tools{display:flex;gap:8px}
+.icon-btn,.nav-btn{appearance:none;border:1px solid #ded6ca;background:#fff;color:#554c43;border-radius:11px;height:40px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:11px;font-weight:750;cursor:pointer;box-shadow:0 3px 9px rgba(68,54,35,.04);transition:background .18s ease,border-color .18s ease,color .18s ease,transform .12s ease}.icon-btn:hover,.nav-btn:hover{border-color:#d8b58b;background:#fffaf3;color:#94591f}.icon-btn:active,.nav-btn:active{transform:translateY(1px)}.icon-btn:disabled,.nav-btn:disabled{opacity:.3;cursor:not-allowed}.icon-btn.primary{background:#fff8ef;border-color:#dfc29f;color:#995b1d}
+.reader-stage{position:relative;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:14px 64px}.book-container{width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:visible}.flip-book{margin:0 auto;opacity:0;transition:opacity .18s ease;filter:drop-shadow(0 22px 34px rgba(59,45,30,.2))}.flip-book.is-ready{opacity:1}.turn-hint{position:absolute;left:50%;bottom:5px;transform:translateX(-50%);padding:5px 10px;border-radius:999px;border:1px solid #e4ddd3;background:rgba(255,255,255,.91);color:#91877d;font-size:9px;white-space:nowrap;pointer-events:none;transition:opacity .3s ease}.edge-arrow{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;border:1px solid #ded6ca;background:rgba(255,255,255,.96);color:#996024;display:grid;place-items:center;font-size:25px;cursor:pointer;z-index:12;box-shadow:0 8px 22px rgba(68,54,35,.09)}.edge-arrow.left{left:18px}.edge-arrow.right{right:18px}.edge-arrow:hover{background:#fff8ef;border-color:#d9b98f}.edge-arrow:disabled{opacity:.2;cursor:not-allowed}.empty{padding:36px;text-align:center;color:#81776d}
+.control-row{display:flex;align-items:center;justify-content:center;padding:9px 16px 14px}.control-dock{width:min(820px,calc(100vw - 30px));display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #ded6ca;border-radius:16px;background:rgba(255,255,255,.98);box-shadow:0 10px 30px rgba(65,51,34,.12)}.nav-btn{height:42px;min-width:116px}.nav-btn.next{background:var(--accent);border-color:var(--accent);color:#fff}.nav-btn.next:hover{background:var(--accent-dark);color:#fff}.seek-wrap{display:flex;align-items:center;gap:10px;flex:1;min-width:0}.seek-label{font-size:9px;color:#958b80;white-space:nowrap}.page-slider{appearance:none;width:100%;height:5px;border-radius:999px;background:linear-gradient(to right,var(--accent) 0 var(--progress,0%),#e8e1d8 var(--progress,0%) 100%);outline:none;cursor:pointer}.page-slider::-webkit-slider-thumb{appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--accent);box-shadow:0 2px 6px rgba(80,56,28,.2)}.page-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid var(--accent)}.page-status{min-width:62px;text-align:center;color:#a46627;font-size:11px;font-weight:800;white-space:nowrap}.page-jump{width:58px;height:36px;border:1px solid #ddd4c8;border-radius:9px;background:#fff;color:#51483f;text-align:center;font-size:11px;font-weight:700;outline:none}.page-jump:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(201,135,66,.12)}
+@media(max-width:760px){.reader-shell{grid-template-rows:58px minmax(0,1fr) 76px}.reader-header{padding:0 12px;gap:9px}.reader-brand{display:none}.reader-meta h1{font-size:13px}.reader-meta p{display:none}.icon-btn{height:36px;min-width:36px;padding:0 10px}.icon-btn .label{display:none}.reader-stage{padding:8px}.edge-arrow{display:none}.turn-hint{bottom:1px;font-size:8px}.control-row{padding:7px}.control-dock{width:100%;gap:7px;padding:8px}.nav-btn{min-width:68px;height:38px;padding:0 9px}.nav-btn .word{display:none}.seek-wrap{gap:7px}.seek-label,.page-jump{display:none}.page-status{min-width:48px;font-size:10px}}
 </style>
 </head>
 <body>
-<div class="shell">
-  <header class="topbar">
-    <div class="brand">LMSGEN</div>
-    <div class="meta"><h1>${title}</h1><p>${description || 'Interactive flipbook'}</p></div>
-    <div class="tools">
+<div class="reader-shell">
+  <header class="reader-header">
+    <div class="reader-brand">LMSGEN</div>
+    <div class="reader-meta"><h1>${title}</h1><p>${description || 'Interactive flipbook'}</p></div>
+    <div class="reader-tools">
       <button class="icon-btn primary" id="shareBtn" title="Share"><span>↗</span><span class="label">Share</span></button>
       <button class="icon-btn" id="fullBtn" title="Fullscreen">⛶</button>
     </div>
   </header>
   <main class="reader-stage">
     <button class="edge-arrow left" id="leftEdge" aria-label="Previous page">‹</button>
-    <div class="book-zone" id="bookZone">
-      <div class="flip-book" id="book">${pageMarkup}</div>
-      <div class="turn-hint" id="turnHint">Drag the cover corner to open</div>
-    </div>
+    <div class="book-container"><div class="flip-book" id="book"></div></div>
+    <div class="turn-hint" id="turnHint">Drag the cover corner to open</div>
     <button class="edge-arrow right" id="rightEdge" aria-label="Next page">›</button>
   </main>
   <footer class="control-row">
     <div class="control-dock">
       <button class="nav-btn" id="prevBtn">← <span class="word">Previous</span></button>
-      <div class="jump-wrap">
-        <span class="jump-label">Page</span>
+      <div class="seek-wrap">
+        <span class="seek-label">Page</span>
         <input id="pageSlider" class="page-slider" type="range" min="1" max="${Math.max(1, pageCount)}" value="1" step="1" aria-label="Jump to page">
-        <div class="page-status" id="pageStatus">Cover</div>
+        <div class="page-status" id="pageStatus">1 / ${Math.max(1, pageCount)}</div>
         <input id="pageJump" class="page-jump" type="number" min="1" max="${Math.max(1, pageCount)}" value="1" aria-label="Go to page number">
       </div>
       <button class="nav-btn next" id="nextBtn"><span class="word">Open</span> →</button>
@@ -85,7 +87,6 @@ function renderFlipbookReader(book) {
 <script>
 const DATA=${safeJson(payload)};
 const bookEl=document.getElementById('book');
-const bookZone=document.getElementById('bookZone');
 const prevBtn=document.getElementById('prevBtn');
 const nextBtn=document.getElementById('nextBtn');
 const leftEdge=document.getElementById('leftEdge');
@@ -96,33 +97,36 @@ const pageStatus=document.getElementById('pageStatus');
 const turnHint=document.getElementById('turnHint');
 let pageFlip=null;
 let currentIndex=0;
-let orientation='landscape';
 let audioCtx=null;
-let initialising=true;
 let hintTimer=null;
 
-function lastSpreadStart(){
-  if(!DATA.pageCount)return 0;
-  if(orientation==='portrait')return DATA.pageCount-1;
-  if(DATA.pageCount===1)return 0;
-  return DATA.pageCount%2===0?DATA.pageCount-1:Math.max(0,DATA.pageCount-2);
+function isMobile(){return window.innerWidth<768}
+
+function pageDimensions(){
+  const ratio=Math.max(.35,Math.min(1.8,Number(DATA.aspectRatio)||.70710678));
+  const mobile=isMobile();
+  const maxStageHeight=Math.max(300,window.innerHeight-(mobile?154:174));
+  if(mobile){
+    let width=Math.min(window.innerWidth-28,420);
+    let height=width/ratio;
+    if(height>maxStageHeight){height=maxStageHeight;width=height*ratio}
+    return {width:Math.max(180,Math.round(width)),height:Math.max(255,Math.round(height)),mobile:true};
+  }
+  let height=Math.min(maxStageHeight,760);
+  let width=height*ratio;
+  const maxSpreadWidth=Math.max(520,window.innerWidth-170);
+  if(width*2>maxSpreadWidth){width=maxSpreadWidth/2;height=width/ratio}
+  return {width:Math.max(240,Math.round(width)),height:Math.max(340,Math.round(height)),mobile:false};
 }
 
-function currentSpreadLabel(index){
-  if(!DATA.pageCount)return '0 / 0';
-  if(index===0)return 'Cover';
-  if(orientation==='portrait')return (index+1)+' / '+DATA.pageCount;
-  const lastStart=lastSpreadStart();
-  if(index===lastStart&&DATA.pageCount%2===0)return 'Back cover';
-  const end=Math.min(DATA.pageCount,index+2);
-  return (index+1)+(end>index+1?'–'+end:'')+' / '+DATA.pageCount;
-}
-
-function syncCoverPosition(){
-  bookZone.classList.remove('front-cover','back-cover');
-  if(orientation!=='landscape')return;
-  if(currentIndex===0)bookZone.classList.add('front-cover');
-  else if(currentIndex===lastSpreadStart()&&DATA.pageCount%2===0)bookZone.classList.add('back-cover');
+function collectionState(){
+  try{
+    const collection=pageFlip?.getPageCollection?.();
+    if(!collection)return null;
+    const spreadIndex=collection.getCurrentSpreadIndex();
+    const spreads=collection.getSpread();
+    return {spreadIndex,spreadCount:Array.isArray(spreads)?spreads.length:0};
+  }catch(_){return null}
 }
 
 function updateControls(index){
@@ -131,17 +135,16 @@ function updateControls(index){
     prevBtn.disabled=true;nextBtn.disabled=true;leftEdge.disabled=true;rightEdge.disabled=true;
     pageSlider.disabled=true;pageJump.disabled=true;pageStatus.textContent='0 / 0';return;
   }
-  const first=currentIndex===0;
-  const last=currentIndex>=lastSpreadStart();
-  prevBtn.disabled=first;leftEdge.disabled=first;nextBtn.disabled=last;rightEdge.disabled=last;
-  nextBtn.innerHTML=first?'<span class="word">Open</span> →':'<span class="word">Next</span> →';
-  prevBtn.innerHTML='← <span class="word">Previous</span>';
+  const state=collectionState();
+  const canPrev=state?state.spreadIndex>0:currentIndex>0;
+  const canNext=state?state.spreadIndex<state.spreadCount-1:currentIndex<DATA.pageCount-1;
+  prevBtn.disabled=!canPrev;leftEdge.disabled=!canPrev;nextBtn.disabled=!canNext;rightEdge.disabled=!canNext;
+  nextBtn.innerHTML=currentIndex===0?'<span class="word">Open</span> →':'<span class="word">Next</span> →';
   pageSlider.value=String(currentIndex+1);
   pageJump.value=String(currentIndex+1);
-  pageStatus.textContent=currentSpreadLabel(currentIndex);
+  pageStatus.textContent=(currentIndex+1)+' / '+DATA.pageCount;
   pageSlider.style.setProperty('--progress',DATA.pageCount>1?((currentIndex/(DATA.pageCount-1))*100)+'%':'100%');
-  if(turnHint)turnHint.textContent=first?'Drag the hard cover corner to open':'Drag a page corner or swipe to turn';
-  syncCoverPosition();
+  if(turnHint)turnHint.textContent=currentIndex===0?'Drag the hard cover corner to open':'Drag a page corner or swipe to turn';
 }
 
 function ensureAudio(){
@@ -167,7 +170,7 @@ function playPageTurnSound(){
     const hp=ctx.createBiquadFilter();
     const lp=ctx.createBiquadFilter();
     const gain=ctx.createGain();
-    hp.type='highpass';hp.frequency.value=700;lp.type='lowpass';lp.frequency.value=5000;
+    hp.type='highpass';hp.frequency.value=680;lp.type='lowpass';lp.frequency.value=5100;
     gain.gain.setValueAtTime(.0001,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(.07,ctx.currentTime+.015);gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+duration);
     src.buffer=buffer;src.connect(hp);hp.connect(lp);lp.connect(gain);gain.connect(ctx.destination);src.start();
   }catch(_){}
@@ -182,60 +185,55 @@ function jumpToPage(value){
   if(!pageFlip||!DATA.pageCount)return;
   const human=Math.max(1,Math.min(DATA.pageCount,Math.round(Number(value)||1)));
   const target=human-1;
-  try{
-    pageFlip.turnToPage(target);
-    setTimeout(()=>{try{updateControls(pageFlip.getCurrentPageIndex())}catch(_){}},0);
-    playPageTurnSound();
-  }catch(_){}
+  ensureAudio();
+  try{pageFlip.flip(target,'top')}catch(_){try{pageFlip.turnToPage(target);updateControls(pageFlip.getCurrentPageIndex())}catch(__){}}
 }
 
 function init(){
-  if(!DATA.pageCount){bookEl.innerHTML='<div class="empty">This flipbook has no pages.</div>';updateControls(0);return;}
-  if(!window.St||!window.St.PageFlip){bookEl.style.display='block';bookEl.innerHTML='<div class="empty">The page-turn engine could not load. Please refresh.</div>';return;}
+  if(!DATA.pageCount){bookEl.style.opacity='1';bookEl.innerHTML='<div class="empty">This flipbook has no pages.</div>';updateControls(0);return}
+  if(!window.St||!window.St.PageFlip){bookEl.style.opacity='1';bookEl.innerHTML='<div class="empty">The page-turn engine could not load. Please refresh.</div>';return}
+  const dims=pageDimensions();
   pageFlip=new window.St.PageFlip(bookEl,{
-    width:400,
-    height:566,
-    size:'stretch',
-    minWidth:260,
-    maxWidth:440,
-    minHeight:368,
-    maxHeight:623,
+    width:dims.width,
+    height:dims.height,
+    size:'fixed',
+    minWidth:dims.width,
+    maxWidth:dims.width,
+    minHeight:dims.height,
+    maxHeight:dims.height,
     drawShadow:true,
     flippingTime:900,
-    usePortrait:true,
+    usePortrait:dims.mobile,
     startPage:0,
     autoSize:true,
     maxShadowOpacity:.5,
     showCover:true,
-    mobileScrollSupport:false,
-    swipeDistance:25,
+    mobileScrollSupport:true,
+    swipeDistance:30,
     clickEventForward:true,
     useMouseEvents:true,
     showPageCorners:true,
     disableFlipByClick:false
   });
   pageFlip.on('init',e=>{
-    orientation=e.data?.mode||pageFlip.getOrientation();
     currentIndex=Number(e.data?.page)||0;
-    initialising=false;
+    bookEl.classList.add('is-ready');
     updateControls(currentIndex);
   });
   pageFlip.on('flip',e=>{
     currentIndex=Number(e.data)||0;
     updateControls(currentIndex);
-    if(!initialising)playPageTurnSound();
+    playPageTurnSound();
     hideHint();
   });
-  pageFlip.on('changeOrientation',e=>{
-    orientation=String(e.data||pageFlip.getOrientation());
-    setTimeout(()=>{try{updateControls(pageFlip.getCurrentPageIndex())}catch(_){}},0);
-  });
-  pageFlip.loadFromHTML(document.querySelectorAll('#book .book-page'));
+  pageFlip.on('changeOrientation',()=>{setTimeout(()=>{try{updateControls(pageFlip.getCurrentPageIndex())}catch(_){}},0)});
+  pageFlip.loadFromImages(DATA.pages);
 
   prevBtn.onclick=()=>{ensureAudio();try{pageFlip.flipPrev('top')}catch(_){}};
   nextBtn.onclick=()=>{ensureAudio();try{pageFlip.flipNext('top')}catch(_){}};
   leftEdge.onclick=prevBtn.onclick;
   rightEdge.onclick=nextBtn.onclick;
+
   pageSlider.addEventListener('input',()=>{
     const human=Number(pageSlider.value)||1;
     pageJump.value=String(human);
@@ -247,11 +245,10 @@ function init(){
   pageJump.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();jumpToPage(pageJump.value);pageJump.blur()}});
   document.addEventListener('keydown',e=>{
     if(document.activeElement===pageJump||document.activeElement===pageSlider)return;
-    ensureAudio();
-    if(e.key==='ArrowRight'||e.key==='PageDown')nextBtn.onclick();
-    if(e.key==='ArrowLeft'||e.key==='PageUp')prevBtn.onclick();
-    if(e.key==='Home')jumpToPage(1);
-    if(e.key==='End')jumpToPage(DATA.pageCount);
+    if(e.key==='ArrowRight'||e.key==='PageDown'){e.preventDefault();nextBtn.onclick()}
+    if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();prevBtn.onclick()}
+    if(e.key==='Home'){e.preventDefault();jumpToPage(1)}
+    if(e.key==='End'){e.preventDefault();jumpToPage(DATA.pageCount)}
   });
   document.addEventListener('pointerdown',ensureAudio,{once:true});
 }
