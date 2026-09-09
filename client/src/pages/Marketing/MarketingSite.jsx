@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const MARKETING_UI_STYLESHEETS = [
@@ -30,13 +30,10 @@ function getMarketingStylesheets(src) {
   return MARKETING_UI_STYLESHEETS;
 }
 
-function ensureStylesheet(doc, { id, href }, onSettled) {
+function ensureStylesheet(doc, { id, href }) {
   const existing = doc.getElementById(id);
   if (existing) {
-    if (existing.getAttribute('href') !== href) {
-      existing.setAttribute('href', href);
-    }
-    onSettled();
+    if (existing.getAttribute('href') !== href) existing.setAttribute('href', href);
     return;
   }
 
@@ -44,16 +41,6 @@ function ensureStylesheet(doc, { id, href }, onSettled) {
   stylesheet.id = id;
   stylesheet.rel = 'stylesheet';
   stylesheet.href = href;
-
-  let settled = false;
-  const finish = () => {
-    if (settled) return;
-    settled = true;
-    onSettled();
-  };
-
-  stylesheet.addEventListener('load', finish, { once: true });
-  stylesheet.addEventListener('error', finish, { once: true });
   doc.head.appendChild(stylesheet);
 }
 
@@ -85,20 +72,17 @@ function installMarketingMobileNavigation(frame) {
           z-index: 2147483000 !important;
           overflow: visible !important;
         }
-
         .global-header-c .global-header-w,
         .global-header-c .container-large {
           position: relative !important;
           z-index: 2147483001 !important;
         }
-
         .global-nav-menu-btn.w-nav-button {
           position: relative !important;
           z-index: 2147483004 !important;
           cursor: pointer !important;
           pointer-events: auto !important;
         }
-
         [data-lmsgen-mobile-menu="true"] {
           position: fixed !important;
           top: var(--lmsgen-mobile-nav-top, 74px) !important;
@@ -126,19 +110,16 @@ function installMarketingMobileNavigation(frame) {
           pointer-events: none !important;
           transition: transform 180ms ease, opacity 180ms ease, visibility 180ms ease !important;
         }
-
         .w-nav[data-collapse="medium"] [data-lmsgen-mobile-menu="true"],
         [data-lmsgen-mobile-menu="true"] {
           display: flex !important;
         }
-
         [data-lmsgen-mobile-menu="true"][data-lmsgen-open="true"] {
           transform: translateY(0) !important;
           opacity: 1 !important;
           visibility: visible !important;
           pointer-events: auto !important;
         }
-
         [data-lmsgen-mobile-menu="true"] .global-nav-link,
         [data-lmsgen-mobile-menu="true"] .w-nav-link {
           width: 100% !important;
@@ -155,17 +136,14 @@ function installMarketingMobileNavigation(frame) {
           text-transform: none !important;
           text-decoration: none !important;
         }
-
         [data-lmsgen-mobile-menu="true"] .mobile-local-wrapper {
           margin-top: 1.2rem !important;
         }
-
         [data-lmsgen-mobile-menu="true"] .mobile-btn-c {
           display: block !important;
           width: 100% !important;
           margin-top: 1.8rem !important;
         }
-
         [data-lmsgen-mobile-menu="true"] .mobile-btn-c .btn-primary {
           width: 100% !important;
           min-height: 5.2rem !important;
@@ -187,7 +165,6 @@ function installMarketingMobileNavigation(frame) {
   const setOpen = (shouldOpen) => {
     const open = Boolean(shouldOpen && isMobileViewport());
     syncDropdownTop();
-
     menu.dataset.lmsgenOpen = open ? 'true' : 'false';
     navbar.dataset.lmsgenMobileOpen = open ? 'true' : 'false';
     button.classList.toggle('w--open', open);
@@ -234,56 +211,116 @@ function installMarketingMobileNavigation(frame) {
     if (!isMobileViewport()) setOpen(false);
   }, { passive: true });
 
-  frameWindow.addEventListener('scroll', () => {
-    if (menu.dataset.lmsgenOpen === 'true') syncDropdownTop();
-  }, { passive: true });
-
   syncDropdownTop();
   setOpen(false);
 }
 
-function applySharedMarketingUi(frame, src, onReady) {
-  try {
-    const doc = frame?.contentDocument || frame?.contentWindow?.document;
-    if (!doc?.head || !doc?.body) {
-      onReady();
+function installEfficientPlatformHeadlineTracking(frame) {
+  const doc = frame?.contentDocument || frame?.contentWindow?.document;
+  const frameWindow = frame?.contentWindow;
+  if (!doc || !frameWindow || frameWindow.__lmsgenHeadlineTrackingInstalled) return;
+
+  const container = doc.querySelector('.hp-plaf-stats-title-c');
+  const heads = Array.from(doc.querySelectorAll('.platform-h2'));
+  if (!container || heads.length < 2) return;
+
+  frameWindow.__lmsgenHeadlineTrackingInstalled = true;
+
+  // The exported homepage contains an always-running requestAnimationFrame loop
+  // that reads and writes layout every frame. Block only that named callback and
+  // replace it with a scroll/resize-throttled equivalent. Other animation frames
+  // (Webflow, GSAP, Swiper, etc.) continue to use the native scheduler.
+  const nativeRequestAnimationFrame = frameWindow.requestAnimationFrame.bind(frameWindow);
+  const currentRequestAnimationFrame = frameWindow.requestAnimationFrame.bind(frameWindow);
+  frameWindow.requestAnimationFrame = (callback) => {
+    if (callback?.name === 'updatePlatformHeadlineVisibility') return 0;
+    return currentRequestAnimationFrame(callback);
+  };
+
+  const update = () => {
+    const cRect = container.getBoundingClientRect();
+    if (!cRect.height) return;
+
+    let bestIndex = 0;
+    let bestFraction = -1;
+
+    heads.forEach((el, index) => {
+      const rect = el.getBoundingClientRect();
+      const overlap = Math.min(rect.bottom, cRect.bottom) - Math.max(rect.top, cRect.top);
+      const fraction = Math.max(0, Math.min(1, overlap / Math.max(rect.height, 1)));
+      if (fraction > bestFraction) {
+        bestFraction = fraction;
+        bestIndex = index;
+      }
+    });
+
+    heads.forEach((el, index) => {
+      const active = index === bestIndex;
+      el.style.opacity = active ? '1' : '0';
+      el.style.visibility = active ? 'visible' : 'hidden';
+    });
+  };
+
+  let scheduled = false;
+  const scheduleUpdate = () => {
+    if (scheduled) return;
+    scheduled = true;
+    nativeRequestAnimationFrame(() => {
+      scheduled = false;
+      update();
+    });
+  };
+
+  frameWindow.addEventListener('scroll', scheduleUpdate, { passive: true });
+  frameWindow.addEventListener('resize', scheduleUpdate, { passive: true });
+  scheduleUpdate();
+}
+
+function tuneImageLoading(frame) {
+  const doc = frame?.contentDocument || frame?.contentWindow?.document;
+  const frameWindow = frame?.contentWindow;
+  if (!doc || !frameWindow) return;
+
+  const viewportHeight = frameWindow.innerHeight || 900;
+  doc.querySelectorAll('img').forEach((image) => {
+    image.decoding = 'async';
+    const rect = image.getBoundingClientRect();
+    const isBelowInitialViewport = rect.top > viewportHeight * 1.25;
+    const isBrandLogo = image.classList.contains('nav-logo');
+
+    if (isBrandLogo) {
+      image.setAttribute('fetchpriority', 'high');
       return;
     }
+
+    if (isBelowInitialViewport) {
+      image.loading = 'lazy';
+      image.setAttribute('fetchpriority', 'low');
+    }
+  });
+}
+
+function applySharedMarketingUi(frame, src) {
+  try {
+    const doc = frame?.contentDocument || frame?.contentWindow?.document;
+    if (!doc?.head || !doc?.body) return;
 
     doc.documentElement.classList.add('atelora-ui-root');
     doc.body.classList.add('atelora-public-site', ...getMarketingPageClasses(src));
+
+    getMarketingStylesheets(src).forEach((stylesheet) => ensureStylesheet(doc, stylesheet));
     installMarketingMobileNavigation(frame);
-
-    const stylesheets = getMarketingStylesheets(src);
-    let remaining = stylesheets.length;
-
-    if (!remaining) {
-      window.requestAnimationFrame(onReady);
-      return;
-    }
-
-    const markSettled = () => {
-      remaining -= 1;
-      if (remaining <= 0) {
-        window.requestAnimationFrame(onReady);
-      }
-    };
-
-    stylesheets.forEach((stylesheet) => ensureStylesheet(doc, stylesheet, markSettled));
+    installEfficientPlatformHeadlineTracking(frame);
+    tuneImageLoading(frame);
   } catch {
-    onReady();
+    // Same-origin marketing frames should be accessible. If a deployment
+    // temporarily serves a cross-origin frame, keep the page visible instead
+    // of blocking rendering on enhancement code.
   }
 }
 
 export default function MarketingSite({ src, title, tabTitle }) {
   const { hash } = useLocation();
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    setReady(false);
-    const fallback = window.setTimeout(() => setReady(true), 1400);
-    return () => window.clearTimeout(fallback);
-  }, [src]);
 
   useEffect(() => {
     if (!tabTitle) return;
@@ -296,7 +333,8 @@ export default function MarketingSite({ src, title, tabTitle }) {
     <iframe
       src={hash ? `${src}${hash}` : src}
       title={title}
-      onLoad={(event) => applySharedMarketingUi(event.currentTarget, src, () => setReady(true))}
+      loading="eager"
+      onLoad={(event) => applySharedMarketingUi(event.currentTarget, src)}
       style={{
         position: 'fixed',
         inset: 0,
@@ -304,8 +342,7 @@ export default function MarketingSite({ src, title, tabTitle }) {
         height: '100%',
         border: 0,
         background: '#0A0F0E',
-        opacity: ready ? 1 : 0,
-        transition: 'opacity 160ms ease',
+        opacity: 1,
       }}
     />
   );
