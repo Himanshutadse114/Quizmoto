@@ -20,10 +20,55 @@ const {
 } = require('../services/FlipbookService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const PUBLIC_APP_URL = String(
+    process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'https://www.lmsgen.in'
+).replace(/\/+$/, '');
 
 function sanitiseText(value, maxLength) {
     const text = String(value || '').trim();
     return text ? text.slice(0, maxLength) : '';
+}
+
+function publicFlipbookUrl(book) {
+    return `${PUBLIC_APP_URL}/flipbook/${book.shareToken}`;
+}
+
+function renderPublicReader(book) {
+    const publicUrl = publicFlipbookUrl(book);
+    const publicTitle = String(book.title || 'Flipbook');
+    const mobileOverrides = `
+<style id="lmsgen-public-flipbook-mobile-overrides">
+@media(max-width:760px){
+  #zoomOutBtn,#zoomInBtn{display:none!important}
+  .tool-group{grid-template-columns:1fr!important}
+  #zoomResetBtn{width:100%!important}
+}
+</style>`;
+    const canonicalShareScript = `
+<script>
+(() => {
+  const publicUrl = ${JSON.stringify(publicUrl)};
+  const publicTitle = ${JSON.stringify(publicTitle)};
+  const shareButton = document.getElementById('shareBtn');
+  if (!shareButton) return;
+  shareButton.onclick = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: publicTitle, url: publicUrl });
+      } else {
+        await navigator.clipboard.writeText(publicUrl);
+        const original = shareButton.innerHTML;
+        shareButton.textContent = 'Copied';
+        setTimeout(() => { shareButton.innerHTML = original; }, 1200);
+      }
+    } catch (_) {}
+  };
+})();
+</script>`;
+
+    return renderFlipbookReader(book)
+        .replace('</head>', `${mobileOverrides}</head>`)
+        .replace('</body>', `${canonicalShareScript}</body>`);
 }
 
 function ownerPayload(book) {
@@ -36,7 +81,7 @@ function ownerPayload(book) {
         status: book.status,
         shareEnabled: Boolean(book.shareEnabled),
         shareToken: book.shareToken,
-        sharePath: published ? `/api/scorm/flipbooks/public/${book.shareToken}/view` : null,
+        sharePath: published ? publicFlipbookUrl(book) : null,
         coverPath: published && pageCount ? `/api/scorm/flipbooks/public/${book.shareToken}/pages/0` : null,
         pageCount,
         viewCount: Number(book.viewCount || 0),
@@ -58,6 +103,7 @@ function publicPayload(book) {
         viewCount: Number(book.viewCount || 0),
         publishedAt: book.publishedAt || null,
         theme: book.theme || {},
+        shareUrl: publicFlipbookUrl(book),
         pages: Array.from({ length: pageCount }, (_, index) => ({
             index,
             src: `/api/scorm/flipbooks/public/${book.shareToken}/pages/${index}`
@@ -115,7 +161,7 @@ router.get('/public/:shareToken/view', async (req, res, next) => {
         }
         res.setHeader('Cache-Control', 'private, no-store');
         res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
-        res.type('html').send(renderFlipbookReader(book));
+        res.type('html').send(renderPublicReader(book));
     } catch (err) {
         next(err);
     }
