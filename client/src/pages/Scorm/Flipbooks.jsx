@@ -23,7 +23,7 @@ import './flipbooks.css';
 const API = '/api/scorm/flipbooks';
 
 function shareUrl(book) {
-  return book?.sharePath ? `${window.location.origin}${book.sharePath}` : '';
+  return book?.sharePath ? apiUrl(book.sharePath) : '';
 }
 
 function QuotaCard({ quota }) {
