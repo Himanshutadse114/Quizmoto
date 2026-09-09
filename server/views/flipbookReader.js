@@ -80,6 +80,7 @@ let pageFlip=null;
 let currentIndex=0;
 let hintTimer=null;
 let resizeTimer=null;
+let audioCtx=null;
 
 function fitBookFrame(){
   const mobile=matchMedia('(max-width:760px)').matches;
@@ -101,6 +102,40 @@ function fitBookFrame(){
   }
 }
 
+function playPageTurnSound(){
+  try{
+    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+    if(!AudioContextClass)return;
+    if(!audioCtx)audioCtx=new AudioContextClass();
+    const ctx=audioCtx;
+    const renderSound=()=>{
+      const duration=.24;
+      const length=Math.max(1,Math.floor(ctx.sampleRate*duration));
+      const buffer=ctx.createBuffer(1,length,ctx.sampleRate);
+      const data=buffer.getChannelData(0);
+      for(let i=0;i<length;i+=1){
+        const t=i/length;
+        const envelope=Math.sin(Math.PI*Math.min(1,t*1.5))*Math.pow(1-t,.7);
+        data[i]=(Math.random()*2-1)*envelope;
+      }
+      const source=ctx.createBufferSource();
+      const highpass=ctx.createBiquadFilter();
+      const lowpass=ctx.createBiquadFilter();
+      const gain=ctx.createGain();
+      highpass.type='highpass';highpass.frequency.value=650;
+      lowpass.type='lowpass';lowpass.frequency.value=5200;
+      gain.gain.setValueAtTime(.0001,ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(.075,ctx.currentTime+.018);
+      gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+duration);
+      source.buffer=buffer;
+      source.playbackRate.setValueAtTime(.92+Math.random()*.16,ctx.currentTime);
+      source.connect(highpass);highpass.connect(lowpass);lowpass.connect(gain);gain.connect(ctx.destination);
+      source.start();source.stop(ctx.currentTime+duration+.02);
+    };
+    if(ctx.state==='suspended')ctx.resume().then(renderSound).catch(()=>{});else renderSound();
+  }catch(_){}
+}
+
 function updateControls(index){
   currentIndex=Math.max(0,Math.min(DATA.pageCount-1,Number(index)||0));
   if(!DATA.pageCount){statusEl.textContent='0 pages';progressEl.style.width='0%';prevBtn.disabled=true;nextBtn.disabled=true;leftEdge.disabled=true;rightEdge.disabled=true;return;}
@@ -120,7 +155,7 @@ function fallback(){
   if(!DATA.pageCount){bookEl.innerHTML='<div class="empty">This flipbook has no pages.</div>';updateControls(0);return;}
   let index=0;
   const draw=()=>{bookEl.innerHTML='<div class="fallback"><img src="'+DATA.pages[index]+'" alt="Page '+(index+1)+'"><div>Page flip library could not load. Use Previous and Next.</div></div>';updateControls(index)};
-  const move=(delta)=>{index=Math.max(0,Math.min(DATA.pageCount-1,index+delta));draw()};
+  const move=(delta)=>{const next=Math.max(0,Math.min(DATA.pageCount-1,index+delta));if(next===index)return;index=next;playPageTurnSound();draw()};
   prevBtn.onclick=()=>move(-1);nextBtn.onclick=()=>move(1);leftEdge.onclick=()=>move(-1);rightEdge.onclick=()=>move(1);draw();
 }
 
@@ -151,7 +186,7 @@ function initFlipbook(){
     disableFlipByClick:false
   });
   pageFlip.on('init',e=>{updateControls(e.data&&Number.isFinite(e.data.page)?e.data.page:0)});
-  pageFlip.on('flip',e=>{updateControls(e.data);hideHint()});
+  pageFlip.on('flip',e=>{updateControls(e.data);playPageTurnSound();hideHint()});
   pageFlip.on('changeOrientation',()=>{requestAnimationFrame(()=>{try{updateControls(pageFlip.getCurrentPageIndex())}catch(_){}})});
   pageFlip.loadFromImages(DATA.pages);
   updateControls(0);
@@ -161,7 +196,7 @@ function initFlipbook(){
   document.addEventListener('keydown',e=>{if(['ArrowRight','PageDown'].includes(e.key))next();if(['ArrowLeft','PageUp'].includes(e.key))prev()});
   window.addEventListener('resize',()=>{
     if(resizeTimer)clearTimeout(resizeTimer);
-    resizeTimer=setTimeout(()=>{fitBookFrame();window.dispatchEvent(new Event('resize'));},80);
+    resizeTimer=setTimeout(fitBookFrame,80);
   },{passive:true});
 }
 
