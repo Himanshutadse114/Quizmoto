@@ -34,6 +34,9 @@ const ScormHome = lazy(() => import('./pages/Scorm/Home'));
 const PendingScormHome = lazy(() => import('./pages/Scorm/PendingHome'));
 const ScormFeatureLocked = lazy(() => import('./pages/Scorm/FeatureLocked'));
 const QuizmotoModule = lazy(() => import('./pages/Scorm/QuizmotoModule'));
+const Flipbooks = lazy(() => import('./pages/Scorm/Flipbooks'));
+const FlipbookEditor = lazy(() => import('./pages/Scorm/FlipbookEditor'));
+const FlipbookViewer = lazy(() => import('./pages/Public/FlipbookViewer'));
 const ScormCourses = lazy(() => import('./pages/Scorm/Courses'));
 const ScormTracking = lazy(() => import('./pages/Scorm/Tracking'));
 const ScormLearnerRoster = lazy(() => import('./pages/Scorm/LearnerRoster'));
@@ -189,6 +192,9 @@ function AppRoutes() {
           <Route path="quizmoto/create" element={<ScormOperationalGate><CreateQuiz embedded /></ScormOperationalGate>} />
           <Route path="quizmoto/edit/:id" element={<ScormOperationalGate><EditQuiz embedded /></ScormOperationalGate>} />
           <Route path="quizmoto/reports" element={<ScormOperationalGate><Reports embedded /></ScormOperationalGate>} />
+          <Route path="flipbooks" element={<Flipbooks />} />
+          <Route path="flipbooks/new" element={<FlipbookEditor />} />
+          <Route path="flipbooks/:id/edit" element={<FlipbookEditor />} />
           <Route path="courses" element={<ScormFeatureGate featureId="courses"><ScormCourses /></ScormFeatureGate>} />
           <Route path="courses/:id" element={<ScormFeatureGate featureId="courses"><ScormCourseDetail /></ScormFeatureGate>} />
           <Route path="roster" element={<ScormFeatureGate featureId="tracking"><ScormLearnerRoster /></ScormFeatureGate>} />
@@ -223,6 +229,7 @@ function AppRoutes() {
         <Route path="/host/lobby-old/:pin" element={<LegacyQuizRedirect kind="lobby" />} />
         <Route path="/host/game-old/:pin" element={<LegacyQuizRedirect kind="game" />} />
 
+        <Route path="/flipbook/:shareToken" element={<FlipbookViewer />} />
         <Route path="/learn" element={<ScormUniversalLearnerPortal />} />
         <Route path="/learn/microsoft" element={<MicrosoftDiscovery />} />
         <Route path="/learn/:workspaceId" element={<ScormLearnerPortal />} />

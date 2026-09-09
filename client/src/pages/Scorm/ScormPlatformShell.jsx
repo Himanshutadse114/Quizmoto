@@ -3,6 +3,7 @@ import { Link, NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   BookOpen,
+  BookOpenCheck,
   Activity,
   BarChart3,
   Library,
@@ -43,7 +44,8 @@ const OPERATIONAL_NAV_GROUPS = [
     label: 'Platform',
     items: [
       { to: '/scorm', end: true, label: 'Overview', icon: LayoutDashboard },
-      { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2, unlocked: true }
+      { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2, unlocked: true },
+      { to: '/scorm/flipbooks', label: 'Flipbooks', icon: BookOpenCheck, unlocked: true }
     ]
   },
   {
@@ -63,6 +65,10 @@ const OPERATIONAL_NAV_GROUPS = [
 
 const ANALYTICS_NAV_GROUPS = [
   {
+    label: 'Free tools',
+    items: [{ to: '/scorm/flipbooks', label: 'Flipbooks', icon: BookOpenCheck, unlocked: true }]
+  },
+  {
     label: 'Analytics',
     items: [
       { to: '/scorm/tracking', label: 'Learner Tracking', icon: Activity, requiresScorm: true },
@@ -73,13 +79,16 @@ const ANALYTICS_NAV_GROUPS = [
 
 const QUIZMOTO_ONLY_GROUPS = [
   {
-    label: 'Quizmoto',
-    items: [{ to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2, unlocked: true }]
+    label: 'Free tools',
+    items: [
+      { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2, unlocked: true },
+      { to: '/scorm/flipbooks', label: 'Flipbooks', icon: BookOpenCheck, unlocked: true }
+    ]
   }
 ];
 
 function displayRole(role, isSuperAdmin, quizmotoOnly) {
-  if (quizmotoOnly) return 'Quizmoto user';
+  if (quizmotoOnly) return 'Free platform user';
   if (isSuperAdmin || role === 'super_admin') return 'Super Admin';
   if (role === 'admin') return 'Tenant Admin';
   if (role === 'co_admin') return 'Co-admin';
@@ -172,19 +181,23 @@ function ThemeToggle({ theme, onToggle, auth = false }) {
 function MobileTabBar({ scormAccess, role, quizmotoOnly }) {
   const analyticsOnly = scormAccess && role === 'analytics_viewer';
   const items = quizmotoOnly
-    ? [{ to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2 }]
+    ? [
+        { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2 },
+        { to: '/scorm/flipbooks', label: 'Flipbooks', icon: BookOpenCheck }
+      ]
     : analyticsOnly
       ? [
+          { to: '/scorm/flipbooks', label: 'Flipbooks', icon: BookOpenCheck },
           { to: '/scorm/tracking', label: 'Tracking', icon: Activity },
           { to: '/scorm/reports', label: 'Reports', icon: BarChart3 }
         ]
       : [
           { to: '/scorm', end: true, label: 'Home', icon: LayoutDashboard },
           { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2 },
-          { to: '/scorm/author', label: scormAccess ? 'Create' : 'Locked', icon: scormAccess ? Sparkles : LockKeyhole },
-          { to: '/scorm/reports', label: 'Reports', icon: BarChart3 }
+          { to: '/scorm/flipbooks', label: 'Flipbooks', icon: BookOpenCheck },
+          { to: '/scorm/author', label: scormAccess ? 'Create' : 'Locked', icon: scormAccess ? Sparkles : LockKeyhole }
         ];
-  const gridClass = quizmotoOnly ? 'grid-cols-1' : analyticsOnly ? 'grid-cols-2' : 'grid-cols-4';
+  const gridClass = quizmotoOnly ? 'grid-cols-2' : analyticsOnly ? 'grid-cols-3' : 'grid-cols-4';
   return <div className={`scorm-mobile-tabbar lg:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40 grid ${gridClass} p-1.5`}>{items.map(({ to, end, label, icon: Icon }) => <NavLink key={to} to={to} end={end} className={({ isActive }) => `scorm-mobile-tab ${isActive ? 'is-active' : ''} flex flex-col items-center justify-center gap-1 px-3 py-2`}><Icon size={17} strokeWidth={2} /><span>{label}</span></NavLink>)}</div>;
 }
 
@@ -236,7 +249,7 @@ export default function ScormPlatformShell() {
           {(scormAccess || quizmotoOnly) && (
             <div className="rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
               <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]">
-                {quizmotoOnly ? <Gamepad2 size={13} /> : analyticsOnly ? <BarChart3 size={13} /> : <ShieldCheck size={13} />} {roleName}
+                {quizmotoOnly ? <BookOpenCheck size={13} /> : analyticsOnly ? <BarChart3 size={13} /> : <ShieldCheck size={13} />} {roleName}
               </div>
               <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae] break-all">{user?.email}</div>
             </div>
@@ -244,13 +257,13 @@ export default function ScormPlatformShell() {
 
           {quizmotoOnly ? (
             <div className="scorm-status-card rounded-xl px-3.5 py-3">
-              <div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />Quizmoto access</div>
-              <div className="mt-1.5 text-[10px] leading-relaxed">This Google account is not assigned to an LMSGEN tenant. The Super Admin can assign this exact email to a tenant if LMSGEN access is required.</div>
+              <div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />Free tools access</div>
+              <div className="mt-1.5 text-[10px] leading-relaxed">Quizmoto and Flipbooks are available on this account. LMSGEN tenant features unlock after the Super Admin assigns this email to a tenant.</div>
             </div>
           ) : !scormAccess ? (
             <div className="rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
               <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={13} /> Approval pending</div>
-              <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae]">Quizmoto is unlocked. LMSGEN features unlock after administrator approval and tenant assignment.</div>
+              <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae]">Quizmoto and Flipbooks are unlocked. LMSGEN features unlock after administrator approval and tenant assignment.</div>
               <button type="button" onClick={refreshApproval} disabled={checkingAccess} className="mt-2 inline-flex items-center gap-1.5 text-[9px] font-semibold text-[#60a5fa] disabled:opacity-50"><RefreshCw size={11} className={checkingAccess ? 'animate-spin' : ''} /> Refresh access</button>
             </div>
           ) : null}
@@ -263,20 +276,25 @@ export default function ScormPlatformShell() {
       <div className="lg:pl-[268px] min-h-screen">
         <header className="scorm-topbar sticky top-0 z-30 min-h-[64px] border-b px-4 md:px-7 py-2.5 flex items-center gap-3 md:gap-4">
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open LMSGEN navigation" className="scorm-topbar-icon lg:hidden w-10 h-10 grid place-items-center shrink-0"><Menu size={18} /></button>
-          {!scormAccess && !quizmotoOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> LMSGEN approval / tenant assignment pending · Quizmoto available</div>}
-          {quizmotoOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><Gamepad2 size={12} /> Google account not assigned to a tenant · Quizmoto available</div>}
+          {!scormAccess && !quizmotoOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> LMSGEN approval / tenant assignment pending · Free tools available</div>}
+          {quizmotoOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><BookOpenCheck size={12} /> Free tools · Quizmoto and Flipbooks</div>}
           {analyticsOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><BarChart3 size={12} /> Read-only analytics access</div>}
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
             {quizmotoOnly ? (
-              <Link to="/scorm/quizmoto" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
+              <>
+                <Link to="/scorm/flipbooks" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Flipbooks</span></Link>
+                <Link to="/scorm/quizmoto" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
+              </>
             ) : analyticsOnly ? (
               <>
+                <Link to="/scorm/flipbooks" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Flipbooks</span></Link>
                 <Link to="/scorm/tracking" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Activity size={14} /><span>Tracking</span></Link>
                 <Link to="/scorm/reports" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold"><BarChart3 size={14} /><span>Reports</span></Link>
               </>
             ) : (
               <>
+                <Link to="/scorm/flipbooks" className="scorm-button-secondary hidden lg:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Flipbooks</span></Link>
                 <Link to="/scorm/quizmoto" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
                 {isWorkspaceAdmin && <Link to="/scorm/team" className="scorm-button-secondary hidden xl:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Users size={14} /> Team</Link>}
                 {isSuperAdmin && <Link to="/scorm/access" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><ShieldCheck size={14} /> Tenants</Link>}

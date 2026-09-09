@@ -61,6 +61,10 @@ router.use('/mail', require('./mailAdmin'));
 // Viewer workspace membership before a protected SCORM session is issued.
 router.use('/staff-auth', require('./staffAuthPublic'));
 
+// Flipbooks are a platform-level free feature. This router owns its own generic
+// JWT checks so Quizmoto-only/free accounts do not need paid LMSGEN entitlement.
+router.use('/flipbooks', require('../flipbooks'));
+
 router.use('/packages', require('./packages'));
 router.use('/courses', require('./courses'));
 router.use('/tracking', require('./tracking'));
@@ -103,6 +107,7 @@ router.get('/features', (req, res) => {
         emailDelivery: true,
         emailOtp: true,
         emailHealthCheck: true,
+        flipbooks: true,
         standards: {
             scorm12: true,
             scorm2004: true,
