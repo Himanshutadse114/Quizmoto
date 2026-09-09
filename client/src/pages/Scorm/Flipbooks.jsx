@@ -43,7 +43,7 @@ function QuotaCard({ quota }) {
   );
 }
 
-function FlipbookCard({ book, token, onDelete, onCopied }) {
+function FlipbookCard({ book, onDelete, onCopied }) {
   const published = book.status === 'published' && book.shareEnabled;
   const cover = book.coverPath ? apiUrl(book.coverPath) : '';
   const copy = async () => {
@@ -204,7 +204,7 @@ export default function Flipbooks() {
       {error && <div className="flip-error">{error}</div>}
 
       {loading ? <div className="flip-loading"><RefreshCw size={20} className="animate-spin" /><span>Loading flipbooks…</span></div> : books.length ? (
-        <div className="flip-grid">{books.map((book) => <FlipbookCard key={book.id} book={book} token={token} onDelete={remove} onCopied={markCopied} />)}</div>
+        <div className="flip-grid">{books.map((book) => <FlipbookCard key={book.id} book={book} onDelete={remove} onCopied={markCopied} />)}</div>
       ) : (
         <div className="flip-empty"><div className="flip-empty-icon"><BookOpenCheck size={30} /></div><h2>Create your first flipbook</h2><p>Upload a PDF or a set of images. Quizmoto will build the reader and give you a public sharing link.</p><Link to="/scorm/flipbooks/new" className="flip-button-primary"><FilePlus2 size={16} /> Create flipbook</Link></div>
       )}
