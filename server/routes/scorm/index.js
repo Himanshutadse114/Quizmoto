@@ -64,6 +64,9 @@ router.use('/staff-auth', require('./staffAuthPublic'));
 // Analytics wraps the existing public reader before it is served so the mature
 // page-flip UI stays unchanged while reader identity and page events are added.
 router.use('/flipbooks', require('../flipbookAnalytics'));
+// The library router adds a second public share surface without changing each
+// individual flipbook share token or reader route.
+router.use('/flipbooks', require('../flipbookLibrary'));
 // Flipbooks are a platform-level free feature. This router owns its own generic
 // JWT checks so Quizmoto-only/free accounts do not need paid LMSGEN entitlement.
 router.use('/flipbooks', require('../flipbooks'));
