@@ -5,9 +5,6 @@ const { injectRuntimeRepair } = require('../../services/scorm/ScormRuntimeRepair
 const { injectCourseUiPolish } = require('../../services/scorm/ScormCourseUiPolish');
 const { startCampaignPerformanceIndexEnsure } = require('../../services/scorm/ScormCampaignPerformanceIndexService');
 
-// The SCORM router is required only after the database connection and additive
-// schema migration are ready. Create missing campaign performance indexes in the
-// background without delaying HTTP startup or the first Campaigns request.
 startCampaignPerformanceIndexEnsure();
 
 function repairServedScormHtml(req, res, next) {
@@ -28,10 +25,7 @@ function repairServedScormHtml(req, res, next) {
                 }
             }
         } catch (err) {
-            console.warn('[scorm-content] runtime repair skipped', {
-                path: req.originalUrl,
-                error: err?.message || String(err)
-            });
+            console.warn('[scorm-content] runtime repair skipped', { path: req.originalUrl, error: err?.message || String(err) });
         }
         return originalSend(body);
     };
@@ -39,20 +33,19 @@ function repairServedScormHtml(req, res, next) {
 }
 
 router.use((req, res, next) => {
-    if (!featureFlags.scormLms) {
-        return res.status(404).json({ message: 'SCORM AI is not enabled' });
-    }
+    if (!featureFlags.scormLms) return res.status(404).json({ message: 'SCORM AI is not enabled' });
     next();
 });
 
 router.use('/otp', require('./mailOtp'));
 router.use('/mail', require('./mailAdmin'));
 router.use('/staff-auth', require('./staffAuthPublic'));
-
-// Super Admin tenant-level Flipbook controls use the normal LMSGEN auth context.
 router.use('/flipbook-tenants', require('./flipbookTenants'));
 
-// Public and platform Flipbook surfaces.
+// Assignment tracking must run before general public Flipbook analytics so an
+// opaque campaign assignment token can bind the reader session to its learner,
+// campaign and optional course without changing the mature Flipbook reader.
+router.use('/flipbooks', require('../flipbookAssignmentTracking'));
 router.use('/flipbooks', require('../flipbookAnalytics'));
 router.use('/flipbooks', require('../flipbookLibrary'));
 router.use('/flipbooks', require('../flipbooks'));
