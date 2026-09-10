@@ -54,6 +54,14 @@ function EmptyAnalytics() {
   return <div className="flip-empty-inline flip-analytics-empty">No reader activity is available for this period yet.</div>;
 }
 
+function reachTone(reach) {
+  const value = Number(reach || 0);
+  if (value >= 80) return 'is-high';
+  if (value >= 50) return 'is-medium';
+  if (value > 0) return 'is-low';
+  return 'is-zero';
+}
+
 function PagePerformance({ pages }) {
   const [pageGroup, setPageGroup] = useState(0);
   const [jumpValue, setJumpValue] = useState('');
@@ -102,7 +110,7 @@ function PagePerformance({ pages }) {
                   type="button"
                   key={page.page}
                   className={`flip-page-heat-cell ${active ? 'is-active' : ''}`}
-                  style={{ '--reach-opacity': String(0.18 + (reach / 100) * 0.82) }}
+                  style={{ '--reach-opacity': String(0.14 + (reach / 100) * 0.86) }}
                   onClick={() => goToPage(page.page)}
                   title={`${page.label}: ${reach}% reach · ${page.uniqueReaders} reader${page.uniqueReaders === 1 ? '' : 's'}`}
                   aria-label={`${page.label}, ${reach}% reach`}
@@ -119,7 +127,7 @@ function PagePerformance({ pages }) {
       <div className="flip-page-detail-toolbar">
         <div className="flip-page-detail-copy">
           <strong>{totalPages <= PAGE_ROWS_PER_VIEW ? `${totalPages} page${totalPages === 1 ? '' : 's'}` : `Pages ${startIndex + 1}–${endIndex} of ${totalPages}`}</strong>
-          {totalPages > PAGE_ROWS_PER_VIEW && <span>Showing {PAGE_ROWS_PER_VIEW} detailed rows at a time</span>}
+          {totalPages > PAGE_ROWS_PER_VIEW && <span>Showing {PAGE_ROWS_PER_VIEW} pages at a time</span>}
         </div>
         {totalPages > PAGE_ROWS_PER_VIEW && (
           <div className="flip-page-detail-actions">
@@ -146,17 +154,32 @@ function PagePerformance({ pages }) {
         )}
       </div>
 
-      <div className="flip-page-analytics-list">
-        {visiblePages.map((page) => (
-          <div className="flip-page-analytics-row" key={page.page}>
-            <div className="flip-page-analytics-label">
-              <strong>{page.label}</strong>
-              <span>{page.uniqueReaders} readers · {page.views} sessions reached · {page.exitReaders ?? page.exits ?? 0} reader exits</span>
-            </div>
-            <div className="flip-page-analytics-bar"><span style={{ width: `${Math.min(100, page.reachRate || 0)}%` }} /></div>
-            <div className="flip-page-analytics-rate">{page.reachRate || 0}%</div>
-          </div>
-        ))}
+      <div className="flip-page-table-wrap">
+        <table className="flip-page-table">
+          <thead>
+            <tr>
+              <th>Page</th>
+              <th>Reach</th>
+              <th>Readers</th>
+              <th>Sessions</th>
+              <th>Exits</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visiblePages.map((page) => (
+              <tr key={page.page}>
+                <td>
+                  <strong>{page.label}</strong>
+                  <span>Page {page.page} of {totalPages}</span>
+                </td>
+                <td><span className={`flip-page-reach-pill ${reachTone(page.reachRate)}`}>{page.reachRate || 0}%</span></td>
+                <td>{page.uniqueReaders || 0}</td>
+                <td>{page.views || 0}</td>
+                <td>{page.exitReaders ?? page.exits ?? 0}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </>
   );
@@ -269,7 +292,7 @@ function SingleAnalytics({ analytics }) {
           <div>
             <div className="flip-kicker"><BarChart3 size={12} /> Page performance</div>
             <h2>Where readers reached and stopped</h2>
-            <p>Reach uses unique email identities. A page is counted once per reading session even if the reader turns back to it repeatedly.</p>
+            <p>Reach uses unique email identities. Each page is counted once per reading session even if a reader revisits it.</p>
           </div>
         </div>
         <PagePerformance pages={pages} />
