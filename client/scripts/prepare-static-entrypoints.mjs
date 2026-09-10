@@ -78,9 +78,10 @@ for (const entry of marketingCopies) {
 const publicRecoveryScript = `<script id="lmsgen-public-route-recovery">(function(){try{var p=location.pathname.replace(/\\/+$/,'')||'/';var routes={'/solutions':'/landing/solutions/index.html','/about':'/landing/about/index.html','/blog':'/landing/blog/index.html','/contact':'/landing/contact/index.html'};var target=routes[p];if(!target){var m=p.match(/^\\/blog\\/([a-z0-9-]+)$/);if(m)target='/landing/blog/'+m[1]+'.html';}if(target){location.replace(target+location.search+location.hash);}}catch(e){}})();</script>`;
 
 // If a host-level catch-all sends an authenticated/app route to the marketing
-// homepage, move it to app.html and preserve the original path for React. Legacy
-// /flipbook links are also handed to React so existing shared URLs keep working.
-const appHandoffScript = `<script id="lmsgen-static-app-handoff">(function(){try{var p=location.pathname;var app=/^\\/(?:signin(?:\\/|$)|login(?:\\/|$)|auth(?:\\/|$)|scorm(?:\\/|$)|flipbook(?:\\/|$)|player(?:\\/|$)|join(?:\\/|$)|host(?:\\/|$)|dashboard(?:\\/|$)|create-quiz(?:\\/|$)|edit-quiz(?:\\/|$)|reports(?:\\/|$)|learn(?:\\/|$)|campaign(?:\\/|$))/.test(p);if(!app)return;var route=p+location.search+location.hash;if(/^\\/signin(?:\\/|$)/.test(p))route='/login'+location.search+location.hash;location.replace('/app.html?__lmsgen_route='+encodeURIComponent(route));}catch(e){}})();</script>`;
+// homepage, move it to app.html and preserve the original path for React. Public
+// /flipbook and /flipbook-library links are also handed to React so shared URLs
+// open the correct reader or library instead of the marketing homepage.
+const appHandoffScript = `<script id="lmsgen-static-app-handoff">(function(){try{var p=location.pathname;var app=/^\\/(?:signin(?:\\/|$)|login(?:\\/|$)|auth(?:\\/|$)|scorm(?:\\/|$)|flipbook(?:\\/|$)|flipbook-library(?:\\/|$)|player(?:\\/|$)|join(?:\\/|$)|host(?:\\/|$)|dashboard(?:\\/|$)|create-quiz(?:\\/|$)|edit-quiz(?:\\/|$)|reports(?:\\/|$)|learn(?:\\/|$)|campaign(?:\\/|$))/.test(p);if(!app)return;var route=p+location.search+location.hash;if(/^\\/signin(?:\\/|$)/.test(p))route='/login'+location.search+location.hash;location.replace('/app.html?__lmsgen_route='+encodeURIComponent(route));}catch(e){}})();</script>`;
 
 let rootMarketing = await fs.readFile(path.join(distRoot, 'index.html'), 'utf8');
 if (!rootMarketing.includes('id="lmsgen-public-route-recovery"')) {
