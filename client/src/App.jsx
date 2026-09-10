@@ -15,6 +15,7 @@ import './pages/Host/quizmotoClassicBoundary.css';
 import './pages/Scorm/scormVisualStudioFixes.css';
 import './pages/Scorm/scormReferenceTheme.css';
 import './pages/Scorm/scormReferencePolish.css';
+import './pages/Scorm/flipbookAnalytics.css';
 
 const CreateQuiz = lazy(() => import('./pages/Host/CreateQuiz'));
 const EditQuiz = lazy(() => import('./pages/Host/EditQuiz'));
@@ -36,6 +37,7 @@ const ScormFeatureLocked = lazy(() => import('./pages/Scorm/FeatureLocked'));
 const QuizmotoModule = lazy(() => import('./pages/Scorm/QuizmotoModule'));
 const Flipbooks = lazy(() => import('./pages/Scorm/Flipbooks'));
 const FlipbookEditor = lazy(() => import('./pages/Scorm/FlipbookEditor'));
+const FlipbookAnalytics = lazy(() => import('./pages/Scorm/FlipbookAnalytics'));
 const FlipbookViewer = lazy(() => import('./pages/Public/FlipbookViewer'));
 const ScormCourses = lazy(() => import('./pages/Scorm/Courses'));
 const ScormTracking = lazy(() => import('./pages/Scorm/Tracking'));
@@ -193,8 +195,10 @@ function AppRoutes() {
           <Route path="quizmoto/edit/:id" element={<ScormOperationalGate><EditQuiz embedded /></ScormOperationalGate>} />
           <Route path="quizmoto/reports" element={<ScormOperationalGate><Reports embedded /></ScormOperationalGate>} />
           <Route path="flipbooks" element={<Flipbooks />} />
+          <Route path="flipbooks/analytics" element={<FlipbookAnalytics />} />
           <Route path="flipbooks/new" element={<FlipbookEditor />} />
           <Route path="flipbooks/:id/edit" element={<FlipbookEditor />} />
+          <Route path="flipbooks/:id/analytics" element={<FlipbookAnalytics />} />
           <Route path="courses" element={<ScormFeatureGate featureId="courses"><ScormCourses /></ScormFeatureGate>} />
           <Route path="courses/:id" element={<ScormFeatureGate featureId="courses"><ScormCourseDetail /></ScormFeatureGate>} />
           <Route path="roster" element={<ScormFeatureGate featureId="tracking"><ScormLearnerRoster /></ScormFeatureGate>} />
