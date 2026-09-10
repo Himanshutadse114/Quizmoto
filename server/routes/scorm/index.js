@@ -42,9 +42,6 @@ router.use('/mail', require('./mailAdmin'));
 router.use('/staff-auth', require('./staffAuthPublic'));
 router.use('/flipbook-tenants', require('./flipbookTenants'));
 
-// Assignment tracking must run before general public Flipbook analytics so an
-// opaque campaign assignment token can bind the reader session to its learner,
-// campaign and optional course without changing the mature Flipbook reader.
 router.use('/flipbooks', require('../flipbookAssignmentTracking'));
 router.use('/flipbooks', require('../flipbookAnalytics'));
 router.use('/flipbooks', require('../flipbookLibrary'));
@@ -58,6 +55,10 @@ router.use('/slide-preview', require('./slidePreview'));
 router.use('/registrations', require('./registrations'));
 router.use('/roster', require('./roster'));
 router.use('/assignments', require('./assignments'));
+// Exact campaign create/list/start routes are intercepted here to add Flipbook
+// learning items while every other campaign route continues through the mature
+// campaign router below.
+router.use('/campaigns', require('./campaignFlipbooks'));
 router.use('/campaigns', require('./campaigns'));
 router.use('/learner-access', require('./authConfig'));
 router.use('/session', require('./session'));
