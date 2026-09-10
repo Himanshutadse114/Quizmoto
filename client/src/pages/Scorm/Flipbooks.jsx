@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import FlipbookLibraryShare from './FlipbookLibraryShare';
 import './flipbooks.css';
 
 const API = '/api/scorm/flipbooks';
@@ -202,6 +203,7 @@ export default function Flipbooks() {
         </div>
       </div>
 
+      <FlipbookLibraryShare />
       {atLimit && <div className="flip-limit-banner"><Gauge size={15} /><span>You have reached your flipbook allowance. Delete a flipbook or ask the Super Admin to increase the limit.</span></div>}
       {copied && <div className="flip-toast">Share link copied</div>}
       {error && <div className="flip-error">{error}</div>}
