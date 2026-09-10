@@ -92,6 +92,9 @@ router.use('/author', require('./authorRebuild'));
 router.use('/author', require('./authorAsync'));
 router.use('/author', require('./author'));
 router.use('/team', require('./team'));
+// Super Admin global user directory. This is intentionally separate from tenant
+// team management because it can see and bind platform users across all tenants.
+router.use('/platform-users', require('./platformUsers'));
 router.use('/access', require('./access'));
 
 router.get('/features', (req, res) => {
