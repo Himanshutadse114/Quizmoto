@@ -34,6 +34,9 @@ router.use((req, res, next) => {
     next();
 });
 
+// Add Flipbook learning items to campaign dashboards and launch handling before
+// the existing course-only campaign router consumes those exact paths.
+router.use('/campaign', require('./scormCampaignFlipbookLearner'));
 router.use('/campaign', require('./scormCampaignLearner'));
 
 router.post('/discover', learnerAuthLimiter, async (req, res) => {
@@ -48,43 +51,26 @@ router.post('/discover', learnerAuthLimiter, async (req, res) => {
             config: result.publicConfig
         });
     } catch (err) {
-        res.status(err.status || 500).json({
-            message: err.message || 'Unable to identify your learning organisation.',
-            code: err.code
-        });
+        res.status(err.status || 500).json({ message: err.message || 'Unable to identify your learning organisation.', code: err.code });
     }
 });
 
-// Common learner Google entry. Google proves the identity first. LMSGEN then
-// finds the exact tenant from the verified email's active assignments and still
-// requires that exact email to own at least one course instance before issuing
-// a learner session. This common Google entry therefore does not depend on a
-// tenant-specific Google client configuration.
 router.post('/google', learnerAuthLimiter, async (req, res) => {
     try {
         const identity = await verifyGlobalGoogleCredential(req.body?.credential);
         const policy = await discoverLearnerPolicy(identity.email);
-        const result = await createLearnerSessionFromIdentity({
-            workspaceId: policy.workspace.id,
-            identity
-        });
+        const result = await createLearnerSessionFromIdentity({ workspaceId: policy.workspace.id, identity });
         res.setHeader('Cache-Control', 'no-store');
         res.json(await enrichDashboardCourses(result));
     } catch (err) {
-        res.status(err.status || 500).json({
-            message: err.message || 'Google learner sign-in failed.',
-            code: err.code
-        });
+        res.status(err.status || 500).json({ message: err.message || 'Google learner sign-in failed.', code: err.code });
     }
 });
 
 router.get('/workspace/:workspaceId/config', async (req, res) => {
     try {
         const { workspace, config } = await getWorkspaceAndConfig(req.params.workspaceId);
-        res.json({
-            ok: true,
-            config: serializeAuthConfig(config, { workspace, publicView: true })
-        });
+        res.json({ ok: true, config: serializeAuthConfig(config, { workspace, publicView: true }) });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to load learner portal.', code: err.code });
     }
@@ -92,12 +78,7 @@ router.get('/workspace/:workspaceId/config', async (req, res) => {
 
 router.post('/workspace/:workspaceId/email', learnerAuthLimiter, async (req, res) => {
     try {
-        const result = await createLearnerSession({
-            workspaceId: req.params.workspaceId,
-            provider: 'email',
-            email: req.body?.email,
-            name: req.body?.name
-        });
+        const result = await createLearnerSession({ workspaceId: req.params.workspaceId, provider: 'email', email: req.body?.email, name: req.body?.name });
         res.setHeader('Cache-Control', 'no-store');
         res.json(await enrichDashboardCourses(result));
     } catch (err) {
@@ -107,11 +88,7 @@ router.post('/workspace/:workspaceId/email', learnerAuthLimiter, async (req, res
 
 router.post('/workspace/:workspaceId/google', learnerAuthLimiter, async (req, res) => {
     try {
-        const result = await createLearnerSession({
-            workspaceId: req.params.workspaceId,
-            provider: 'google',
-            credential: req.body?.credential
-        });
+        const result = await createLearnerSession({ workspaceId: req.params.workspaceId, provider: 'google', credential: req.body?.credential });
         res.setHeader('Cache-Control', 'no-store');
         res.json(await enrichDashboardCourses(result));
     } catch (err) {
@@ -121,11 +98,7 @@ router.post('/workspace/:workspaceId/google', learnerAuthLimiter, async (req, re
 
 router.post('/workspace/:workspaceId/microsoft', learnerAuthLimiter, async (req, res) => {
     try {
-        const result = await createLearnerSession({
-            workspaceId: req.params.workspaceId,
-            provider: 'microsoft',
-            credential: req.body?.idToken || req.body?.credential
-        });
+        const result = await createLearnerSession({ workspaceId: req.params.workspaceId, provider: 'microsoft', credential: req.body?.idToken || req.body?.credential });
         res.setHeader('Cache-Control', 'no-store');
         res.json(await enrichDashboardCourses(result));
     } catch (err) {
