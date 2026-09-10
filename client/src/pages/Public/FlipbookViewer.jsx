@@ -5,11 +5,12 @@ const API = '/api/scorm/flipbooks';
 
 export default function FlipbookViewer({ shareToken: propToken }) {
   const shareToken = propToken || window.location.pathname.split('/flipbook/')[1]?.split('/')[0] || '';
+  const source = new URLSearchParams(window.location.search).get('source') || 'share';
 
   const readerUrl = useMemo(() => {
     if (!shareToken) return '';
-    return apiUrl(`${API}/public/${encodeURIComponent(shareToken)}/view?embedded=1`);
-  }, [shareToken]);
+    return apiUrl(`${API}/public/${encodeURIComponent(shareToken)}/view?embedded=1&source=${encodeURIComponent(source)}`);
+  }, [shareToken, source]);
 
   if (!shareToken) {
     return (
