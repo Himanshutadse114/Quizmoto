@@ -18,6 +18,11 @@ const { applyScenarioLearningRuntimeToZip } = require('./ScormScenarioLearningRu
 const { applyScenarioBranchingRuntimeToZip } = require('./ScormScenarioBranchingRuntime');
 const { applyCourseChromeRuntimeToZip } = require('./ScormCourseChromeRuntime');
 const { applyScenarioDecisionUxRuntimeToZip } = require('./ScormScenarioDecisionUxRuntime');
+const {
+    normaliseCourseBranding,
+    publicBranding,
+    applyCourseBrandingToZip
+} = require('./ScormCourseBrandingService');
 const { ScormPackage } = require('../../models/scorm');
 const { ensureCourseForPackage } = require('./ScormCourseWorkspaceService');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
@@ -60,6 +65,15 @@ function templateEngineRequested(payload, analysis) {
         String(payload?.courseTemplateId || payload?.courseStyleId || '').trim()
         || analysis?.templateBinding?.templateId
     );
+}
+
+function requestedBranding(payload, analysis, legacyLogo) {
+    const source = payload?.branding || analysis?.branding || {
+        logoDataUrl: legacyLogo || payload?.logoDataUrl || '',
+        primaryColor: payload?.primaryColor,
+        accentColor: payload?.accentColor || payload?.secondaryColor
+    };
+    return normaliseCourseBranding(source);
 }
 
 async function generateScormCourse({ payload = {}, userId, onProgress = noop, checkCancelled = noop }) {
@@ -127,6 +141,8 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
         uploadedSource = null;
     }
 
+    const courseBranding = requestedBranding(payload, analysis, logoDataUrl);
+
     onProgress({
         percent: 4,
         stage: 'Formatting course structure',
@@ -147,14 +163,12 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
         ...(analysis || {}),
         themeId: selectedThemeId,
         themeName: selectedTheme.name,
-        experienceVersion: 5
+        experienceVersion: 5,
+        branding: publicBranding(courseBranding)
     };
     if (useTemplateEngine) validateTemplateAnalysis(analysis, templateBinding);
     if (title) analysis.title = title;
 
-    // The content AI writes factual learning material first. After the template
-    // planner knows which screens are hotspot, sequence or comparison screens, add
-    // visual-product-specific composition direction to the trusted image prompts.
     analysis = applyVisualProductPromptDirection(analysis);
 
     checkCancelled();
@@ -162,17 +176,20 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
         onProgress,
         checkCancelled
     });
-    analysis = media.analysis;
+    analysis = {
+        ...(media.analysis || analysis),
+        branding: publicBranding(courseBranding)
+    };
     if (templateBinding?.templateId === 'scenario-learning') {
         analysis = planScenarioGraph(analysis, templateBinding);
     }
     if (useTemplateEngine) validateTemplateAnalysis(analysis, templateBinding);
     checkCancelled();
 
-    onProgress({ percent: 80, stage: 'Building the SCORM package', detail: 'Combining course content, images, varied layouts, quiz explanations and tracking into the learner package.' });
+    onProgress({ percent: 80, stage: 'Building the SCORM package', detail: 'Combining course content, images, branding, varied layouts, quiz explanations and tracking into the learner package.' });
     let zipBuf = await buildScormPackageZip(analysis, {
         templateId: selectedThemeId,
-        logoDataUrl: logoDataUrl || null,
+        logoDataUrl: courseBranding.logoDataUrl || null,
         replicateMediaFiles: media.files
     });
     if (useTemplateEngine) {
@@ -183,6 +200,8 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
         zipBuf = await applyCourseChromeRuntimeToZip(zipBuf, analysis);
         zipBuf = await applyScenarioDecisionUxRuntimeToZip(zipBuf, analysis);
     }
+    const branded = await applyCourseBrandingToZip(zipBuf, courseBranding);
+    zipBuf = branded.zipBuffer;
     checkCancelled();
 
     const replaceId = payload.replacePackageId || payload.packageId || null;
@@ -197,7 +216,7 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
     }
 
     checkCancelled();
-    onProgress({ percent: 86, stage: 'Saving generated course', detail: 'Saving the SCORM package and course metadata.' });
+    onProgress({ percent: 86, stage: 'Saving generated course', detail: 'Saving the branded SCORM package and course metadata.' });
     if (!pkg) {
         pkg = await ScormPackage.create({
             hostId: userId,
@@ -246,6 +265,14 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
             hostId: userId,
             title: pkg.title
         });
+        if (course) {
+            const settings = course.settings && typeof course.settings === 'object' ? course.settings : {};
+            course.settings = {
+                ...settings,
+                branding: publicBranding(courseBranding)
+            };
+            await course.save();
+        }
         checkCancelled();
     }
 
@@ -260,6 +287,7 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
         title: pkg.title,
         templateId: selectedThemeId,
         theme: { id: selectedThemeId, name: selectedTheme.name, slug: selectedTheme.slug },
+        branding: publicBranding(courseBranding),
         courseTemplate: useTemplateEngine ? publicTemplateBinding(templateBinding) : null,
         media: media.metadata || null,
         errorMessage: pkg.errorMessage
