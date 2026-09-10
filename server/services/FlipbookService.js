@@ -2,8 +2,17 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const Flipbook = require('../models/Flipbook');
 const FlipbookEntitlement = require('../models/FlipbookEntitlement');
+const FlipbookTenantLink = require('../models/FlipbookTenantLink');
 const { getObjectStorage } = require('../storage/ObjectStorage');
 const { getAccessRole } = require('./scorm/ScormAccessService');
+const {
+    ensureFlipbookTenantSchema,
+    resolveFlipbookScope,
+    getTenantQuota,
+    assertTenantCanCreate,
+    linkFlipbookToTenant,
+    adoptLegacyFlipbooks
+} = require('./FlipbookTenantService');
 
 const DEFAULT_FREE_FLIPBOOKS = 3;
 const MAX_PAGES = 100;
@@ -26,7 +35,8 @@ async function ensureFlipbookSchema() {
     if (!schemaPromise) {
         schemaPromise = Promise.all([
             Flipbook.sync(),
-            FlipbookEntitlement.sync()
+            FlipbookEntitlement.sync(),
+            ensureFlipbookTenantSchema()
         ]).catch((err) => {
             schemaPromise = null;
             throw err;
@@ -64,19 +74,40 @@ async function getUserEntitlement(user) {
 }
 
 async function getQuota(user) {
+    await ensureFlipbookSchema();
+    if (await isSuperAdmin(user)) {
+        const used = await Flipbook.count({ where: { ownerUserId: user.id } });
+        return { mode: 'personal', used, max: null, remaining: null, unlimited: true, protected: true, enabled: true };
+    }
+
+    const scope = await resolveFlipbookScope(user);
+    if (scope.mode === 'tenant') {
+        await adoptLegacyFlipbooks(user, scope);
+        const quota = await getTenantQuota(scope);
+        return { ...quota, protected: false };
+    }
+
     const entitlement = await getUserEntitlement(user);
     const used = await Flipbook.count({ where: { ownerUserId: user.id } });
     const max = entitlement.maxFlipbooks;
     return {
+        mode: 'personal',
         used,
         max,
         remaining: max === null ? null : Math.max(0, max - used),
         unlimited: max === null,
-        protected: entitlement.protected
+        protected: entitlement.protected,
+        enabled: true
     };
 }
 
 async function assertCanCreate(user) {
+    await ensureFlipbookSchema();
+    const scope = await resolveFlipbookScope(user);
+    if (scope.mode === 'tenant' && !(await isSuperAdmin(user))) {
+        await adoptLegacyFlipbooks(user, scope);
+        return assertTenantCanCreate(scope);
+    }
     const quota = await getQuota(user);
     if (quota.max !== null && quota.used >= quota.max) {
         const err = new Error(`Flipbook allowance reached (${quota.used}/${quota.max}). Delete an existing flipbook or ask the Super Admin to increase the limit.`);
@@ -88,6 +119,13 @@ async function assertCanCreate(user) {
     return quota;
 }
 
+async function registerCreatedFlipbook(user, flipbook) {
+    const scope = await resolveFlipbookScope(user);
+    if (scope.mode !== 'tenant') return { scope, link: null };
+    const link = await linkFlipbookToTenant({ flipbook, user, scope });
+    return { scope, link };
+}
+
 async function setUserLimit({ userId, maxFlipbooks, actorUserId, actorEmail }) {
     await ensureFlipbookSchema();
     const user = await User.findByPk(userId);
@@ -95,6 +133,13 @@ async function setUserLimit({ userId, maxFlipbooks, actorUserId, actorEmail }) {
     if (await isSuperAdmin(user)) {
         const err = new Error('The Super Admin always has unlimited flipbook access.');
         err.status = 400;
+        throw err;
+    }
+    const scope = await resolveFlipbookScope(user);
+    if (scope.mode === 'tenant') {
+        const err = new Error('This account belongs to a tenant. Manage its Flipbook allowance from Tenant Management instead of a personal user limit.');
+        err.status = 409;
+        err.code = 'FLIPBOOK_TENANT_MANAGED';
         throw err;
     }
     const email = normaliseEmail(user.email) || null;
@@ -177,6 +222,7 @@ async function clearPages(flipbook) {
 
 async function deleteFlipbook(flipbook) {
     await clearPages(flipbook);
+    await FlipbookTenantLink.destroy({ where: { flipbookId: flipbook.id } }).catch(() => null);
     await flipbook.destroy();
 }
 
@@ -188,13 +234,18 @@ async function listAdminUsers(search = '') {
         if (!query) return true;
         return [user.email, user.username].some((value) => String(value || '').toLowerCase().includes(query));
     });
-    return Promise.all(filtered.map(async (user) => ({
-        id: user.id,
-        username: user.username || null,
-        email: user.email || null,
-        isSuperAdmin: await isSuperAdmin(user),
-        quota: await getQuota(user)
-    })));
+    return Promise.all(filtered.map(async (user) => {
+        const scope = await resolveFlipbookScope(user);
+        return {
+            id: user.id,
+            username: user.username || null,
+            email: user.email || null,
+            isSuperAdmin: await isSuperAdmin(user),
+            tenantManaged: scope.mode === 'tenant',
+            tenant: scope.mode === 'tenant' ? { id: scope.workspaceId, name: scope.workspace?.name || 'Tenant' } : null,
+            quota: await getQuota(user)
+        };
+    }));
 }
 
 module.exports = {
@@ -204,6 +255,7 @@ module.exports = {
     isSuperAdmin,
     getQuota,
     assertCanCreate,
+    registerCreatedFlipbook,
     setUserLimit,
     createShareToken,
     appendPage,
