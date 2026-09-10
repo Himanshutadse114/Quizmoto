@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import {
+  BarChart3,
   BookOpenCheck,
   Copy,
   ExternalLink,
@@ -75,9 +76,10 @@ function FlipbookCard({ book, onDelete, onCopied }) {
           <h3>{book.title}</h3>
           <p>{book.description || 'Interactive page-flipping publication'}</p>
         </div>
-        <div className="flip-card-meta"><span>{book.pageCount} pages</span><span><Eye size={12} /> {book.viewCount || 0} views</span></div>
+        <div className="flip-card-meta"><span>{book.pageCount} pages</span><span><Eye size={12} /> {book.viewCount || 0} reader opens</span></div>
         <div className="flip-card-actions">
           <Link to={`/scorm/flipbooks/${book.id}/edit`} className="flip-button-secondary"><Pencil size={14} /> Edit</Link>
+          <Link to={`/scorm/flipbooks/${book.id}/analytics`} className="flip-button-secondary"><BarChart3 size={14} /> Analytics</Link>
           {published && <button type="button" className="flip-icon-button" onClick={copy} title="Copy share link"><Copy size={14} /></button>}
           {published && <button type="button" className="flip-icon-button" onClick={nativeShare} title="Share"><Share2 size={14} /></button>}
           {published && <a href={shareUrl(book)} target="_blank" rel="noreferrer" className="flip-icon-button" title="Open published flipbook"><ExternalLink size={14} /></a>}
@@ -195,6 +197,7 @@ export default function Flipbooks() {
         </div>
         <div className="flip-header-actions">
           <QuotaCard quota={quota} />
+          <Link to="/scorm/flipbooks/analytics" className="flip-button-secondary"><BarChart3 size={16} /> Library analytics</Link>
           <Link to="/scorm/flipbooks/new" className={`flip-button-primary ${atLimit ? 'is-disabled' : ''}`} aria-disabled={atLimit} onClick={(e) => atLimit && e.preventDefault()}><FilePlus2 size={16} /> Create flipbook</Link>
         </div>
       </div>
