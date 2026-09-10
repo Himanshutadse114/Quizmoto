@@ -18,9 +18,6 @@ function repairServedScormHtml(req, res, next) {
             const isHtml = contentType.includes('text/html');
             if (isHtml && (typeof body === 'string' || Buffer.isBuffer(body))) {
                 const source = Buffer.isBuffer(body) ? body.toString('utf8') : body;
-                // Only LMSGEN/Quizmoto packages use this generated wrapper. Do not
-                // rewrite arbitrary third-party HTML that happens to be served by
-                // the content router.
                 if (/scorm_api_wrapper\.js|\bdoLMSInitialize\b|quizmoto[-_]scorm/i.test(source)) {
                     const patched = injectCourseUiPolish(injectRuntimeRepair(source));
                     if (patched !== source) {
@@ -48,27 +45,16 @@ router.use((req, res, next) => {
     next();
 });
 
-// Public email verification endpoints. Rate limits and one-time hashing are
-// enforced inside the router; verification codes are never stored in plaintext.
 router.use('/otp', require('./mailOtp'));
-
-// SMTP connection and delivery test endpoints are protected by the normal SCORM
-// Admin middleware and never expose mailbox credentials.
 router.use('/mail', require('./mailAdmin'));
-
-// Workspace-specific staff sign-in is public by design. Each provider endpoint
-// verifies the IdP token and then requires an existing Admin/Co-admin/Analytics
-// Viewer workspace membership before a protected SCORM session is issued.
 router.use('/staff-auth', require('./staffAuthPublic'));
 
-// Analytics wraps the existing public reader before it is served so the mature
-// page-flip UI stays unchanged while reader identity and page events are added.
+// Super Admin tenant-level Flipbook controls use the normal LMSGEN auth context.
+router.use('/flipbook-tenants', require('./flipbookTenants'));
+
+// Public and platform Flipbook surfaces.
 router.use('/flipbooks', require('../flipbookAnalytics'));
-// The library router adds a second public share surface without changing each
-// individual flipbook share token or reader route.
 router.use('/flipbooks', require('../flipbookLibrary'));
-// Flipbooks are a platform-level free feature. This router owns its own generic
-// JWT checks so Quizmoto-only/free accounts do not need paid LMSGEN entitlement.
 router.use('/flipbooks', require('../flipbooks'));
 
 router.use('/packages', require('./packages'));
@@ -86,20 +72,11 @@ router.use('/runtime', require('./runtime'));
 router.use('/content', repairServedScormHtml, require('./content'));
 router.use('/play', require('./play'));
 router.use('/xapi', require('./xapi'));
-// Template discovery is isolated from generation routes so new authoring clients
-// can opt into the versioned template engine without changing legacy API calls.
 router.use('/author', require('./authorTemplates'));
-// Rebuild interception must run before the normal author route so edits reuse
-// the existing packaged visuals instead of calling image generation again.
 router.use('/author', require('./authorRebuild'));
-// New AI course generation requests are accepted immediately and run in an
-// isolated child process. This keeps Gemini/FAL/ZIP work off the web request
-// process so dashboard, campaign and tracking APIs remain responsive.
 router.use('/author', require('./authorAsync'));
 router.use('/author', require('./author'));
 router.use('/team', require('./team'));
-// Super Admin global user directory. This is intentionally separate from tenant
-// team management because it can see and bind platform users across all tenants.
 router.use('/platform-users', require('./platformUsers'));
 router.use('/access', require('./access'));
 
@@ -117,6 +94,8 @@ router.get('/features', (req, res) => {
         emailOtp: true,
         emailHealthCheck: true,
         flipbooks: true,
+        flipbookAssignments: true,
+        tenantFlipbookManagement: true,
         standards: {
             scorm12: true,
             scorm2004: true,
