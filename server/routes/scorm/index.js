@@ -3,6 +3,7 @@ const router = express.Router();
 const { featureFlags } = require('../../config/featureFlags');
 const { injectRuntimeRepair } = require('../../services/scorm/ScormRuntimeRepair');
 const { injectCourseUiPolish } = require('../../services/scorm/ScormCourseUiPolish');
+const { injectMobileRuntime } = require('../../services/scorm/ScormMobileResponsiveRuntime');
 const { startCampaignPerformanceIndexEnsure } = require('../../services/scorm/ScormCampaignPerformanceIndexService');
 
 startCampaignPerformanceIndexEnsure();
@@ -16,7 +17,7 @@ function repairServedScormHtml(req, res, next) {
             if (isHtml && (typeof body === 'string' || Buffer.isBuffer(body))) {
                 const source = Buffer.isBuffer(body) ? body.toString('utf8') : body;
                 if (/scorm_api_wrapper\.js|\bdoLMSInitialize\b|quizmoto[-_]scorm/i.test(source)) {
-                    const patched = injectCourseUiPolish(injectRuntimeRepair(source));
+                    const patched = injectMobileRuntime(injectCourseUiPolish(injectRuntimeRepair(source)));
                     if (patched !== source) {
                         body = Buffer.isBuffer(body) ? Buffer.from(patched, 'utf8') : patched;
                         res.setHeader('Cache-Control', 'private, no-store');
