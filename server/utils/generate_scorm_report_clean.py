@@ -1,151 +1,152 @@
-import sys
 import json
+import sys
+from datetime import datetime, timezone
 
-from reportlab.lib import colors
-from reportlab.lib.units import inch
-from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether
-from reportlab.graphics.shapes import Drawing, Rect
-
-import generate_scorm_report as base
+import generate_lmsgen_report as lmsgen
 
 
-TRACK = colors.HexColor('#ECEAF0')
-PANEL = colors.HexColor('#FBFAFC')
+FINISHED = {'completed', 'passed', 'failed'}
 
 
-def clamp_percent(value):
+def number(value):
     try:
-        return max(0.0, min(100.0, float(value or 0)))
+        return float(value)
     except (TypeError, ValueError):
-        return 0.0
+        return None
 
 
-def progress_bar(value, accent, width=3.65 * inch, height=0.19 * inch):
-    pct = clamp_percent(value)
-    drawing = Drawing(width, height)
-    track_height = 9
-    y = (height - track_height) / 2
-    radius = track_height / 2
-    drawing.add(Rect(0, y, width, track_height, rx=radius, ry=radius, fillColor=TRACK, strokeColor=None))
-    if pct > 0:
-        progress_width = max(track_height, width * pct / 100.0)
-        drawing.add(Rect(0, y, progress_width, track_height, rx=radius, ry=radius, fillColor=accent, strokeColor=None))
-    return drawing
+def status_label(registration):
+    lesson = str(registration.get('lastLessonStatus') or registration.get('lessonStatus') or '').strip().lower()
+    status = str(registration.get('status') or '').strip().lower()
+    if lesson == 'passed':
+        return 'Passed'
+    if lesson == 'failed':
+        return 'Failed'
+    if lesson == 'completed' or status == 'completed':
+        return 'Completed'
+    if lesson in {'incomplete', 'browsed'} or status in {'active', 'launched', 'started', 'in_progress'}:
+        return 'In progress'
+    return 'Not started'
 
 
-class CleanScormReport(base.ScormReport):
-    """SCORM report with a compact, zero-safe analytics performance panel."""
-
-    def performance_row(self, label, value, accent, available=True):
-        display = f'{clamp_percent(value):.1f}%' if available else '—'
-        label_cell = Paragraph(
-            f'<b>{base.ptxt(label)}</b><br/><font size="6.8" color="#777777">0–100% scale</font>',
-            self.styles['BodyCustom']
-        )
-        value_cell = Paragraph(
-            f'<font color="{accent.hexval()}" size="13"><b>{display}</b></font>',
-            self.styles['BodyCustom']
-        )
-        return [label_cell, progress_bar(value if available else 0, accent), value_cell]
-
-    def create_analytics(self):
-        st = self.meta['stats']
-        avg = st['averageScore'] or 0
-        rate = st['completionRate'] or 0
-
-        self.elements.append(
-            self.section_header(
-                '02',
-                'High-Level Learning Analytics',
-                'learning_summary',
-                'PERFORMANCE & COMPLETION'
-            )
-        )
-
-        cards = [[
-            self.kpi_card('Learners', st['total'], base.PURPLE),
-            self.kpi_card('Completed', st['completed'], base.GREEN),
-            self.kpi_card('In Progress', st['progress'], base.YELLOW),
-            self.kpi_card('Not Attempted', st['notAttempted'], base.MID),
-        ]]
-        card_table = Table(cards, colWidths=[1.75 * inch] * 4)
-        card_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 3),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-        ]))
-        self.elements.extend([card_table, Spacer(1, 0.22 * inch)])
-
-        panel_title = Table([[
-            Paragraph('<b>Performance Overview</b>', self.styles['SectionTitle']),
-            Paragraph(
-                '<font color="#777777">Latest recorded learner outcomes</font>',
-                self.styles['BodyMuted']
-            )
-        ]], colWidths=[3.25 * inch, 3.75 * inch])
-        panel_title.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), PANEL),
-            ('BOX', (0, 0), (-1, -1), 0.5, base.LIGHT),
-            ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 12),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 12),
-            ('TOPPADDING', (0, 0), (-1, -1), 9),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ]))
-
-        rows = [
-            self.performance_row(
-                'Average Score',
-                avg,
-                base.BLUE,
-                st['averageScore'] is not None
-            ),
-            self.performance_row(
-                'Completion Rate',
-                rate,
-                base.GREEN,
-                st['completionRate'] is not None
-            ),
-        ]
-        metrics = Table(rows, colWidths=[1.65 * inch, 4.15 * inch, 1.20 * inch])
-        metrics.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), base.WHITE),
-            ('BOX', (0, 0), (-1, -1), 0.5, base.LIGHT),
-            ('LINEBELOW', (0, 0), (-1, 0), 0.4, base.LIGHT),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('ALIGN', (2, 0), (2, -1), 'RIGHT'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 12),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 12),
-            ('TOPPADDING', (0, 0), (-1, -1), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
-        ]))
-
-        note = Table([[
-            Paragraph(
-                'A zero completion rate is shown as an empty progress track rather than a zero-width chart bar.',
-                self.styles['BodyMuted']
-            )
-        ]], colWidths=[7.0 * inch])
-        note.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), PANEL),
-            ('BOX', (0, 0), (-1, -1), 0.5, base.LIGHT),
-            ('LEFTPADDING', (0, 0), (-1, -1), 12),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 12),
-            ('TOPPADDING', (0, 0), (-1, -1), 6),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ]))
-
-        self.elements.extend([
-            KeepTogether([panel_title, metrics, note]),
-            Spacer(1, 0.20 * inch),
-            PageBreak(),
-        ])
+def is_completed(registration):
+    lesson = str(registration.get('lastLessonStatus') or registration.get('lessonStatus') or '').strip().lower()
+    return lesson in FINISHED or str(registration.get('status') or '').strip().lower() == 'completed'
 
 
-def has_answer_details(data):
+def progress_label(registration):
+    if registration.get('progressAvailable') is False:
+        return '—'
+    value = number(registration.get('progressPercent'))
+    if value is None:
+        return '100%' if is_completed(registration) else '—'
+    value = max(0.0, min(100.0, value))
+    return f'{value:.0f}%'
+
+
+def score_label(registration):
+    value = number(registration.get('lastScoreRaw'))
+    if value is None:
+        value = number(registration.get('score'))
+    if value is None:
+        return '—'
+    if float(value).is_integer():
+        return str(int(value))
+    return f'{value:.1f}'.rstrip('0').rstrip('.')
+
+
+def answer_summary(registration):
+    summary = registration.get('answerSummary') or {}
+    captured = int(number(summary.get('captured')) or 0)
+    graded = int(number(summary.get('graded')) or 0)
+    correct = int(number(summary.get('correct')) or 0)
+    if not captured:
+        interactions = registration.get('interactions') or []
+        if isinstance(interactions, list):
+            captured = len(interactions)
+            graded = sum(1 for row in interactions if isinstance(row, dict) and row.get('result') not in (None, '', 'unknown'))
+            correct = sum(1 for row in interactions if isinstance(row, dict) and str(row.get('result') or '').lower() == 'correct')
+    return captured, graded, correct
+
+
+def build_report(data):
+    title = str(data.get('title') or 'Untitled course')
+    package = data.get('package') or {}
     registrations = data.get('registrations') or []
-    return any(isinstance(row.get('interactions'), list) and row.get('interactions') for row in registrations if isinstance(row, dict))
+    registrations = [row for row in registrations if isinstance(row, dict) and not row.get('isPreview') and not row.get('campaignId')]
+
+    completed = sum(1 for row in registrations if is_completed(row))
+    in_progress = sum(1 for row in registrations if status_label(row) == 'In progress')
+    scores = []
+    rows = []
+    questions = 0
+    graded_questions = 0
+    correct_answers = 0
+
+    for registration in registrations:
+        score = number(registration.get('lastScoreRaw'))
+        if score is None:
+            score = number(registration.get('score'))
+        if score is not None:
+            scores.append(score)
+        captured, graded, correct = answer_summary(registration)
+        questions += captured
+        graded_questions += graded
+        correct_answers += correct
+        rows.append({
+            'learner': registration.get('learnerName') or 'Learner',
+            'email': registration.get('learnerEmail') or '',
+            'status': status_label(registration),
+            'progress': progress_label(registration),
+            'score': score_label(registration),
+            'learningTime': registration.get('lastTotalTime') or registration.get('totalTime') or '—',
+            'questions': captured if captured else '—',
+            'correct': correct if graded else '—',
+            'lastActivity': registration.get('lastCommitAt') or registration.get('lastActivityAt') or registration.get('updatedAt') or ''
+        })
+
+    rows.sort(key=lambda row: (str(row.get('email') or '').lower(), str(row.get('learner') or '').lower()))
+    average_score = round(sum(scores) / len(scores), 1) if scores else '—'
+    completion_rate = round((completed / len(registrations)) * 100, 1) if registrations else 0
+    accuracy = round((correct_answers / graded_questions) * 100, 1) if graded_questions else '—'
+
+    standard = package.get('standard') or 'SCORM'
+    subtitle = f'Detailed learner evidence for {title} · {standard}'
+    return {
+        'schemaVersion': 'lmsgen-report-v2',
+        'reportType': 'course',
+        'generatedAt': datetime.now(timezone.utc).isoformat(),
+        'tenant': None,
+        'title': f'Course Learning Report — {title}',
+        'subtitle': subtitle,
+        'summary': [
+            {'label': 'Learners', 'value': len(registrations)},
+            {'label': 'Completed', 'value': completed},
+            {'label': 'In progress', 'value': in_progress},
+            {'label': 'Completion', 'value': f'{completion_rate:g}%'},
+            {'label': 'Average score', 'value': average_score}
+        ],
+        'columns': [
+            {'key': 'learner', 'label': 'Learner'},
+            {'key': 'email', 'label': 'Email'},
+            {'key': 'status', 'label': 'Status'},
+            {'key': 'progress', 'label': 'Progress'},
+            {'key': 'score', 'label': 'Score'},
+            {'key': 'learningTime', 'label': 'Learning time'},
+            {'key': 'questions', 'label': 'Questions'},
+            {'key': 'correct', 'label': 'Correct'},
+            {'key': 'lastActivity', 'label': 'Last activity'}
+        ],
+        'rows': rows,
+        'meta': {
+            'courseStatus': data.get('status') or '',
+            'packageTitle': package.get('title') or '',
+            'standard': standard,
+            'questionsCaptured': questions,
+            'gradedQuestions': graded_questions,
+            'answerAccuracy': accuracy
+        }
+    }
 
 
 def main():
@@ -157,18 +158,11 @@ def main():
     with open(input_path, 'r', encoding='utf-8') as handle:
         data = json.load(handle)
 
-    # The Node renderer contains the answer-level PDF/Excel layouts. Returning a
-    # non-zero status here intentionally activates ScormReportService's existing
-    # Node fallback whenever interaction evidence is present, while keeping the
-    # polished Python renderer for older aggregate-only reports.
-    if has_answer_details(data):
-        print('Answer-level evidence detected; using answer-aware Node report renderer.', file=sys.stderr)
-        return 3
-
+    report = build_report(data)
     if kind == 'pdf':
-        CleanScormReport(output_path, data).build()
+        lmsgen.generate_pdf(report, output_path)
     elif kind == 'excel':
-        base.generate_excel(data, output_path)
+        lmsgen.generate_excel(report, output_path)
     else:
         print(f'Unsupported format: {kind}', file=sys.stderr)
         return 2
