@@ -47,6 +47,7 @@ router.use('/flipbooks', require('../flipbookAnalytics'));
 router.use('/flipbooks', require('../flipbookLibrary'));
 router.use('/flipbooks', require('../flipbooks'));
 
+router.use('/reports', require('./reportsV2'));
 router.use('/packages', require('./packages'));
 router.use('/courses', require('./courses'));
 router.use('/tracking', require('./tracking'));
@@ -55,9 +56,6 @@ router.use('/slide-preview', require('./slidePreview'));
 router.use('/registrations', require('./registrations'));
 router.use('/roster', require('./roster'));
 router.use('/assignments', require('./assignments'));
-// Exact campaign create/list/start routes are intercepted here to add Flipbook
-// learning items while every other campaign route continues through the mature
-// campaign router below.
 router.use('/campaigns', require('./campaignFlipbooks'));
 router.use('/campaigns', require('./campaigns'));
 router.use('/learner-access', require('./authConfig'));
@@ -90,6 +88,7 @@ router.get('/features', (req, res) => {
         flipbooks: true,
         flipbookAssignments: true,
         tenantFlipbookManagement: true,
+        reportsV2: true,
         standards: {
             scorm12: true,
             scorm2004: true,
