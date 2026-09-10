@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Building2, Mail } from 'lucide-react';
+import { Building2, Mail, UsersRound } from 'lucide-react';
 import TenantAdmin from './TenantAdmin';
+import PlatformUsersAdmin from './PlatformUsersAdmin';
 import SuperAdminMailPanel from './SuperAdminMailPanel';
 import EmailTemplatesPanel from './EmailTemplatesPanel';
 
@@ -10,12 +11,12 @@ export default function AccessAdmin() {
   return (
     <div className="pt-4 md:pt-5">
       <div className="px-4 md:px-8 max-w-[1280px] mx-auto">
-        <div className="flex items-center justify-between gap-3 pb-4 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 pb-4 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
           <div>
             <div className="scorm-micro text-[9px] uppercase font-semibold">Super Admin</div>
             <div className="mt-1 text-[10px]" style={{ color: 'var(--scorm-muted)' }}>Platform-wide administration</div>
           </div>
-          <div className="inline-flex rounded-xl border p-1" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
+          <div className="inline-flex flex-wrap rounded-xl border p-1 self-start lg:self-auto" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
             <button
               type="button"
               onClick={() => setTab('tenants')}
@@ -26,6 +27,17 @@ export default function AccessAdmin() {
               }}
             >
               <Building2 size={13} /> Tenant Management
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab('users')}
+              className="h-9 px-3.5 rounded-lg text-[10px] font-semibold inline-flex items-center gap-2 transition"
+              style={{
+                background: tab === 'users' ? 'rgba(79,201,191,.12)' : 'transparent',
+                color: tab === 'users' ? '#4FC9BF' : 'var(--scorm-muted)'
+              }}
+            >
+              <UsersRound size={13} /> Platform Users
             </button>
             <button
               type="button"
@@ -44,6 +56,8 @@ export default function AccessAdmin() {
 
       {tab === 'tenants' ? (
         <TenantAdmin />
+      ) : tab === 'users' ? (
+        <PlatformUsersAdmin />
       ) : (
         <div className="px-4 py-6 md:px-8 md:py-8 max-w-[1280px] mx-auto space-y-4">
           <div className="mb-5">
