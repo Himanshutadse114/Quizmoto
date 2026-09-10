@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { startBackgroundCourseGeneration } from '../../services/courseGenerationJobs';
 import { apiUrl } from '../../config';
 import AuthorVisual from './AuthorVisual';
+import CourseBrandingPanel, { DEFAULT_BRANDING } from './CourseBrandingPanel';
 
 const EDITORIAL_THEME_ID = 1;
 const DEFAULT_COURSE_TEMPLATE_ID = 'professional-classic';
@@ -40,76 +41,9 @@ const interactionLabels = {
   high: { label: 'High', copy: 'More reveals, hotspots, decisions and interactive screens.' }
 };
 
-function VisualProductTemplatePreview({ selected }) {
-  const accent = 'var(--scorm-accent)';
-  const surface = 'var(--scorm-surface)';
-  const soft = 'var(--scorm-surface-soft)';
-  const line = 'var(--scorm-line)';
-  const muted = 'var(--scorm-muted)';
-
-  return (
-    <div
-      aria-hidden="true"
-      className="relative rounded-2xl border overflow-hidden min-h-[168px] p-3"
-      style={{
-        borderColor: selected ? accent : line,
-        background: `radial-gradient(circle at 75% 18%, color-mix(in srgb, ${accent} 18%, transparent), transparent 33%), linear-gradient(145deg, ${surface}, ${soft})`,
-        boxShadow: selected ? `0 18px 42px color-mix(in srgb, ${accent} 15%, transparent)` : 'none'
-      }}
-    >
-      <div className="h-7 rounded-lg border flex items-center px-2.5 gap-1.5" style={{ borderColor: line, background: surface }}>
-        <span className="w-1.5 h-1.5 rounded-full" style={{ background: accent }} />
-        <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--scorm-muted)' }} />
-        <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--scorm-line-strong, var(--scorm-line))' }} />
-        <div className="h-1.5 w-20 rounded-full ml-2" style={{ background: line }} />
-      </div>
-
-      <div className="grid grid-cols-[minmax(0,1fr)_104px] gap-2 mt-2 h-[111px]">
-        <div className="relative rounded-xl border overflow-hidden" style={{ borderColor: line, background: `linear-gradient(145deg, color-mix(in srgb, ${accent} 8%, ${surface}), ${soft})` }}>
-          <div className="absolute inset-x-[18%] top-[18%] bottom-[16%] rounded-[20px] border" style={{ borderColor: `color-mix(in srgb, ${accent} 40%, ${line})`, background: surface }}>
-            <div className="absolute left-3 right-3 top-3 h-2 rounded-full" style={{ background: line }} />
-            <div className="absolute left-3 top-8 w-[42%] bottom-3 rounded-lg" style={{ background: `color-mix(in srgb, ${accent} 11%, ${soft})` }} />
-            <div className="absolute right-3 top-8 w-[43%] h-3 rounded-full" style={{ background: line }} />
-            <div className="absolute right-3 top-14 w-[35%] h-3 rounded-full" style={{ background: line }} />
-            <div className="absolute right-3 bottom-4 w-[40%] h-5 rounded-lg" style={{ background: `color-mix(in srgb, ${accent} 18%, ${soft})` }} />
-          </div>
-          {[
-            ['16%', '24%', '01'],
-            ['auto', '24%', '02'],
-            ['28%', 'auto', '03'],
-            ['auto', 'auto', '04']
-          ].map(([left, top, label], index) => (
-            <span
-              key={label}
-              className="absolute w-7 h-7 rounded-full grid place-items-center text-[8px] font-bold border-2"
-              style={{
-                left: left === 'auto' ? undefined : left,
-                right: left === 'auto' ? (index === 1 ? '15%' : '23%') : undefined,
-                top: top === 'auto' ? undefined : top,
-                bottom: top === 'auto' ? '16%' : undefined,
-                background: accent,
-                color: 'white',
-                borderColor: surface,
-                boxShadow: `0 0 0 5px color-mix(in srgb, ${accent} 13%, transparent)`
-              }}
-            >
-              {label}
-            </span>
-          ))}
-        </div>
-
-        <div className="rounded-xl border p-2 flex flex-col gap-2" style={{ borderColor: line, background: surface }}>
-          {[1, 2, 3].map((step) => (
-            <div key={step} className="rounded-lg border px-2 py-2 flex items-center gap-2" style={{ borderColor: step === 1 ? accent : line, background: step === 1 ? `color-mix(in srgb, ${accent} 9%, ${surface})` : soft }}>
-              <span className="w-5 h-5 shrink-0 rounded-md grid place-items-center text-[7px] font-bold" style={{ background: step === 1 ? accent : soft, color: step === 1 ? 'white' : accent, border: `1px solid ${step === 1 ? accent : line}` }}>0{step}</span>
-              <span className="h-1.5 rounded-full flex-1" style={{ background: step === 1 ? `color-mix(in srgb, ${accent} 55%, ${line})` : line }} />
-            </div>
-          ))}
-          <div className="mt-auto text-[7px] uppercase tracking-[.12em] font-semibold" style={{ color: muted }}>Guided tour</div>
-        </div>
-      </div>
-    </div>
-  );
+function usableTemplates(items) {
+  const next = (Array.isArray(items) ? items : []).filter((item) => item?.id !== 'visual-product-training');
+  return next.length ? next : [FALLBACK_TEMPLATE];
 }
 
 export default function CourseGenerator() {
@@ -126,6 +60,8 @@ export default function CourseGenerator() {
   const [templateEngineAvailable, setTemplateEngineAvailable] = useState(false);
   const [courseTemplateId, setCourseTemplateId] = useState(DEFAULT_COURSE_TEMPLATE_ID);
   const [interactionLevel, setInteractionLevel] = useState('balanced');
+  const [branding, setBranding] = useState({ ...DEFAULT_BRANDING });
+  const [brandingError, setBrandingError] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -143,20 +79,16 @@ export default function CourseGenerator() {
     })
       .then((res) => {
         if (cancelled) return;
-        const templates = Array.isArray(res.data?.templates) ? res.data.templates : [];
-        if (!templates.length) return;
+        const templates = usableTemplates(res.data?.templates);
         setCourseTemplates(templates);
         setTemplateEngineAvailable(Number(res.data?.templateEngineVersion || 0) >= 1);
         if (!templates.some((item) => item.id === courseTemplateId)) {
-          const first = templates[0];
+          const first = templates[0] || FALLBACK_TEMPLATE;
           setCourseTemplateId(first.id);
           setInteractionLevel(first.defaultInteractionLevel || 'balanced');
         }
       })
       .catch(() => {
-        // During a rolling deployment an older API can briefly serve the newer
-        // frontend. In that compatibility window expose only the existing course
-        // style and omit versioned-template fields from the generation request.
         if (!cancelled) {
           setCourseTemplates([FALLBACK_TEMPLATE]);
           setTemplateEngineAvailable(false);
@@ -184,7 +116,7 @@ export default function CourseGenerator() {
   };
 
   const generateCourse = () => {
-    if (!hasSource || busy || !token) return;
+    if (!hasSource || busy || !token || brandingError) return;
     setError('');
     setBusy(true);
 
@@ -202,6 +134,11 @@ export default function CourseGenerator() {
           mimeType: file?.type || '',
           detailLevel,
           templateId: EDITORIAL_THEME_ID,
+          branding: {
+            logoDataUrl: branding.logoDataUrl || '',
+            primaryColor: branding.primaryColor,
+            accentColor: branding.accentColor
+          },
           ...(templateEngineAvailable ? {
             courseTemplateId,
             interactionLevel
@@ -209,9 +146,6 @@ export default function CourseGenerator() {
         }
       });
 
-      // Navigation is intentionally immediate. Source-file reading and the API
-      // request continue from the background-generation service after this
-      // component unmounts.
       navigate('/scorm/courses', {
         state: {
           generationStarted: true,
@@ -237,7 +171,7 @@ export default function CourseGenerator() {
           <div className="scorm-micro text-[10px] uppercase font-semibold">Course builder</div>
           <h1 className="scorm-display text-[42px] md:text-[56px] mt-2" style={ink}>Create a course</h1>
           <p className="text-sm mt-3 leading-relaxed max-w-2xl" style={muted}>
-            Add a topic, learning goal or source file, then choose how the learning experience should feel. Generation runs in the background while you continue using the platform.
+            Add a topic, learning goal or source file, choose the learning experience and apply your course branding. Generation runs in the background while you continue using the platform.
           </p>
         </div>
         <button
@@ -281,10 +215,7 @@ export default function CourseGenerator() {
 
               <div className="min-w-0">
                 <div className="scorm-micro text-[9px] uppercase font-semibold h-4 flex items-center mb-2">Source file</div>
-                <label
-                  className="scorm-course-generator-upload h-14 rounded-lg border px-3 flex items-center gap-3 cursor-pointer transition-colors"
-                  style={softSurface}
-                >
+                <label className="scorm-course-generator-upload h-14 rounded-lg border px-3 flex items-center gap-3 cursor-pointer transition-colors" style={softSurface}>
                   <FileUp size={16} className="shrink-0" style={{ color: 'var(--scorm-accent)' }} />
                   <span className="text-xs truncate flex-1" style={{ color: file ? 'var(--scorm-ink-soft)' : 'var(--scorm-muted)' }}>
                     {file ? file.name : 'Upload source file (optional)'}
@@ -313,7 +244,6 @@ export default function CourseGenerator() {
                   <div className="text-xs mt-1" style={muted}>Choose how much detail the generated course should include.</div>
                 </div>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {depthOptions.map((option) => {
                   const selected = detailLevel === option.value;
@@ -323,10 +253,7 @@ export default function CourseGenerator() {
                       type="button"
                       onClick={() => setDetailLevel(option.value)}
                       className={`scorm-course-generator-depth ${selected ? 'is-selected' : ''} text-left rounded-xl border p-4 transition-all min-h-[104px]`}
-                      style={{
-                        background: selected ? 'var(--scorm-accent-soft)' : 'var(--scorm-surface-soft)',
-                        borderColor: selected ? 'var(--scorm-accent)' : 'var(--scorm-line)'
-                      }}
+                      style={{ background: selected ? 'var(--scorm-accent-soft)' : 'var(--scorm-surface-soft)', borderColor: selected ? 'var(--scorm-accent)' : 'var(--scorm-line)' }}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-sm font-semibold" style={ink}>{option.label}</span>
@@ -339,6 +266,13 @@ export default function CourseGenerator() {
               </div>
             </div>
 
+            <CourseBrandingPanel
+              value={branding}
+              onChange={setBranding}
+              error={brandingError}
+              onError={setBrandingError}
+            />
+
             <div>
               <div className="flex items-end justify-between gap-4 mb-3">
                 <div>
@@ -350,59 +284,13 @@ export default function CourseGenerator() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {courseTemplates.map((template) => {
                   const selected = courseTemplateId === template.id;
-                  const isVisualProduct = template.id === 'visual-product-training';
-
-                  if (isVisualProduct) {
-                    return (
-                      <button
-                        key={template.id}
-                        type="button"
-                        onClick={() => selectTemplate(template)}
-                        className="md:col-span-2 text-left rounded-2xl border p-0 transition-all overflow-hidden"
-                        style={{
-                          borderColor: selected ? 'var(--scorm-accent)' : 'var(--scorm-line)',
-                          background: selected
-                            ? 'linear-gradient(135deg, var(--scorm-accent-soft), var(--scorm-surface-soft))'
-                            : 'linear-gradient(135deg, var(--scorm-surface), var(--scorm-surface-soft))',
-                          boxShadow: selected ? '0 18px 46px color-mix(in srgb, var(--scorm-accent) 11%, transparent)' : 'none'
-                        }}
-                      >
-                        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,.78fr)_minmax(360px,1.22fr)] gap-0 min-h-[218px]">
-                          <div className="p-5 md:p-6 flex flex-col justify-center">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <div className="text-[10px] uppercase tracking-[.1em] font-semibold" style={{ color: 'var(--scorm-accent)' }}>{template.experience || 'See and explore'}</div>
-                                <div className="text-[18px] font-semibold mt-1" style={ink}>{template.name}</div>
-                              </div>
-                              {selected && <CheckCircle2 size={19} className="shrink-0" style={{ color: 'var(--scorm-accent)' }} />}
-                            </div>
-                            <div className="text-[12px] leading-relaxed mt-3 max-w-md" style={muted}>{template.description}</div>
-                            <div className="flex flex-wrap gap-2 mt-5">
-                              {['Hotspot callouts', 'Guided steps', 'Visual compare'].map((label) => (
-                                <span key={label} className="px-2.5 py-1.5 rounded-full border text-[9px] font-semibold" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface)', color: 'var(--scorm-ink-soft)' }}>
-                                  {label}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="p-4 md:p-5 border-t md:border-t-0 md:border-l" style={{ borderColor: 'var(--scorm-line)' }}>
-                            <VisualProductTemplatePreview selected={selected} />
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  }
-
                   return (
                     <button
                       key={template.id}
                       type="button"
                       onClick={() => selectTemplate(template)}
                       className="text-left rounded-xl border p-4 transition-all min-h-[132px]"
-                      style={{
-                        background: selected ? 'var(--scorm-accent-soft)' : 'var(--scorm-surface-soft)',
-                        borderColor: selected ? 'var(--scorm-accent)' : 'var(--scorm-line)'
-                      }}
+                      style={{ background: selected ? 'var(--scorm-accent-soft)' : 'var(--scorm-surface-soft)', borderColor: selected ? 'var(--scorm-accent)' : 'var(--scorm-line)' }}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
@@ -433,11 +321,7 @@ export default function CourseGenerator() {
                             type="button"
                             onClick={() => setInteractionLevel(level)}
                             className="px-3 py-2 rounded-lg border text-[11px] font-semibold transition-colors"
-                            style={{
-                              background: active ? 'var(--scorm-accent)' : 'var(--scorm-surface)',
-                              color: active ? 'var(--scorm-accent-ink, #07110f)' : 'var(--scorm-ink-soft)',
-                              borderColor: active ? 'var(--scorm-accent)' : 'var(--scorm-line)'
-                            }}
+                            style={{ background: active ? 'var(--scorm-accent)' : 'var(--scorm-surface)', color: active ? 'var(--scorm-accent-ink, #07110f)' : 'var(--scorm-ink-soft)', borderColor: active ? 'var(--scorm-accent)' : 'var(--scorm-line)' }}
                           >
                             {interactionLabels[level]?.label || level}
                           </button>
@@ -452,12 +336,12 @@ export default function CourseGenerator() {
 
           <div className="scorm-course-generator-footer px-5 md:px-6 py-5 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" style={{ ...softSurface, borderColor: 'var(--scorm-line)' }}>
             <div className="text-[11px] leading-relaxed max-w-xl" style={muted}>
-              You can leave this page after generation starts. Progress remains visible from Courses and you will be notified when the course is ready.
+              Your selected branding is embedded in the generated course and downloaded SCORM package. You can leave this page after generation starts.
             </div>
             <button
               type="button"
               onClick={generateCourse}
-              disabled={busy || !hasSource}
+              disabled={busy || !hasSource || Boolean(brandingError)}
               className="scorm-button-primary inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {busy ? <Loader2 size={17} className="animate-spin" /> : <Sparkles size={17} />}
@@ -478,8 +362,16 @@ export default function CourseGenerator() {
                 <span className="text-[10px] uppercase tracking-[.08em] font-semibold" style={muted}>Interaction</span>
                 <span className="text-xs font-semibold" style={ink}>{interactionLabels[interactionLevel]?.label || 'Balanced'}</span>
               </div>
+              <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--scorm-line)' }}>
+                <div className="text-[10px] uppercase tracking-[.08em] font-semibold" style={muted}>Brand colours</div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="w-6 h-6 rounded-full border" style={{ background: branding.primaryColor, borderColor: 'var(--scorm-line)' }} />
+                  <span className="w-6 h-6 rounded-full border" style={{ background: branding.accentColor, borderColor: 'var(--scorm-line)' }} />
+                  <span className="text-[10px]" style={muted}>{branding.logoDataUrl ? 'Custom logo added' : 'No custom logo'}</span>
+                </div>
+              </div>
               <div className="mt-3 text-[10px] leading-relaxed" style={muted}>
-                Template identity and version are saved with the course. Editing or rebuilding the course will not switch it to another template.
+                Template identity, version and course branding are saved with the course so rebuilds can retain the same identity.
               </div>
             </div>
           </section>
@@ -492,9 +384,9 @@ export default function CourseGenerator() {
             <div className="p-5 space-y-4">
               {[
                 ['1', 'Course content', 'The learning structure and knowledge checks are prepared.'],
-                ['2', 'Template layout', 'Content is mapped only to layouts allowed by the selected course style.'],
-                ['3', 'Course visuals', 'Supporting visuals are created for the selected layouts.'],
-                ['4', 'Course package', 'The fixed-stage learner package is assembled and saved.']
+                ['2', 'Template layout', 'Content is mapped to the selected course style.'],
+                ['3', 'Brand application', 'Your logo and colours are applied across the learner experience.'],
+                ['4', 'Course package', 'The branded SCORM package is assembled and saved.']
               ].map(([number, title, copy]) => (
                 <div key={number} className="flex gap-3">
                   <div className="scorm-course-generator-step w-7 h-7 rounded-lg border grid place-items-center text-[10px] font-semibold shrink-0" style={{ ...softSurface, color: 'var(--scorm-accent)' }}>{number}</div>
@@ -511,9 +403,9 @@ export default function CourseGenerator() {
             <div className="flex items-start gap-3">
               <CheckCircle2 size={17} className="shrink-0 mt-0.5" style={{ color: 'var(--scorm-accent)' }} />
               <div>
-                <div className="text-xs font-semibold" style={ink}>No need to wait on this page</div>
+                <div className="text-xs font-semibold" style={ink}>Branding travels with the course</div>
                 <div className="text-[11px] leading-relaxed mt-1" style={muted}>
-                  Once generation begins, continue working anywhere in the platform. Your course will appear in Courses when it is ready.
+                  The logo and colours are written into the SCORM package, so the branding is retained when the package is downloaded and uploaded to another LMS.
                 </div>
               </div>
             </div>
