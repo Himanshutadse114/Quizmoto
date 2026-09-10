@@ -116,6 +116,7 @@ let currentIndex=0;
 let audioCtx=null;
 let hintTimer=null;
 let zoomLevel=1;
+let fullscreenPreviousZoom=1;
 let baseFrameWidth=0;
 let baseFrameHeight=0;
 
@@ -310,7 +311,8 @@ function init(){
 }
 
 window.addEventListener('load',init,{once:true});
-document.getElementById('fullBtn').onclick=async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen()}catch(_){}};
+document.getElementById('fullBtn').onclick=async()=>{try{if(!document.fullscreenElement){fullscreenPreviousZoom=zoomLevel;await document.documentElement.requestFullscreen()}else await document.exitFullscreen()}catch(_){}};
+document.addEventListener('fullscreenchange',()=>{if(isMobile())return;if(document.fullscreenElement)applyZoom(1.25);else applyZoom(fullscreenPreviousZoom||1)});
 document.getElementById('shareBtn').onclick=async()=>{const url=location.href;try{if(navigator.share)await navigator.share({title:DATA.title,url});else{await navigator.clipboard.writeText(url);const b=document.getElementById('shareBtn');const old=b.innerHTML;b.textContent='Copied';setTimeout(()=>b.innerHTML=old,1200)}}catch(_){} };
 try{const key='lmsgen-flipbook-viewed:'+DATA.token;if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');fetch(location.pathname,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',keepalive:true}).catch(()=>{})}}catch(_){}
 </script>
