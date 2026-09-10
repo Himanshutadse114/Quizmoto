@@ -1,6 +1,7 @@
 'use strict';
 
 const JSZip = require('jszip');
+const { applyCourseBrandingToZip } = require('./ScormCourseBrandingService');
 
 const STYLE_ID = 'quizmoto-scenario-decision-ux-v3';
 const SCRIPT_ID = 'quizmoto-scenario-decision-ux-script-v3';
@@ -69,15 +70,23 @@ function inject(html) {
 }
 
 async function applyScenarioDecisionUxRuntimeToZip(zipBuffer, analysis = {}) {
+    let result = zipBuffer;
     const templateId = String(analysis?.templateBinding?.templateId || '');
-    if (templateId !== 'scenario-learning' && !analysis?.scenarioGraph) return zipBuffer;
+    if (templateId === 'scenario-learning' || analysis?.scenarioGraph) {
+        const zip = await JSZip.loadAsync(result);
+        const entry = zip.file('index.html');
+        if (entry) {
+            const html = await entry.async('string');
+            zip.file('index.html', inject(html));
+            result = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+        }
+    }
 
-    const zip = await JSZip.loadAsync(zipBuffer);
-    const entry = zip.file('index.html');
-    if (!entry) return zipBuffer;
-    const html = await entry.async('string');
-    zip.file('index.html', inject(html));
-    return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+    if (analysis?.branding) {
+        const branded = await applyCourseBrandingToZip(result, analysis.branding);
+        result = branded.zipBuffer;
+    }
+    return result;
 }
 
 module.exports = {
