@@ -4,12 +4,13 @@ import TenantAdmin from './TenantAdmin';
 import PlatformUsersAdmin from './PlatformUsersAdmin';
 import SuperAdminMailPanel from './SuperAdminMailPanel';
 import EmailTemplatesPanel from './EmailTemplatesPanel';
+import './accessAdminCompact.css';
 
 export default function AccessAdmin() {
   const [tab, setTab] = useState('tenants');
 
   return (
-    <div className="pt-4 md:pt-5">
+    <div className="pt-4 md:pt-5 access-admin-compact">
       <div className="px-4 md:px-8 max-w-[1280px] mx-auto">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 pb-4 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
           <div>
