@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware');
 const { featureFlags, scormMaxUploadMb } = require('../../config/featureFlags');
-const { cleanId, getProgress } = require('../../services/scorm/ScormGenerationProgress');
+const { cleanId } = require('../../services/scorm/ScormGenerationProgress');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
 const ScormAiGenerationManager = require('../../jobs/ScormAiGenerationManager');
 
@@ -43,7 +43,7 @@ router.post(
     }
 );
 
-router.post('/generate', auth, (req, res) => {
+router.post('/generate', auth, async (req, res) => {
     if (!featureFlags.scormAiAuthor) return res.status(403).json({ message: 'AI author is disabled.' });
 
     const progressId = cleanId(req.body?.progressId);
@@ -55,7 +55,7 @@ router.post('/generate', auth, (req, res) => {
     }
 
     try {
-        const queued = ScormAiGenerationManager.enqueue({
+        const queued = await ScormAiGenerationManager.enqueue({
             progressId,
             userId: req.userId,
             payload: req.body || {}
@@ -64,28 +64,48 @@ router.post('/generate', auth, (req, res) => {
         return res.status(202).json({
             ok: true,
             accepted: true,
-            status: 'queued',
+            status: queued.status || 'queued',
             progressId,
             duplicate: Boolean(queued.duplicate),
             worker: ScormAiGenerationManager.stats()
         });
     } catch (error) {
-        return res.status(500).json({
+        const status = error.code === 'SCORM_PROGRESS_FORBIDDEN' ? 403 : 500;
+        return res.status(status).json({
             message: error.message || 'Unable to queue course generation.',
             code: error.code || 'SCORM_GENERATION_QUEUE_FAILED'
         });
     }
 });
 
-router.post('/progress/:progressId/cancel', auth, (req, res, next) => {
-    const progress = getProgress(req.params.progressId, req.userId);
-    if (!progress) return next();
-    if (progress.status === 'complete') return res.status(409).json({ ok: false, message: 'This course is already complete.', progress });
-    if (progress.status === 'error') return res.status(409).json({ ok: false, message: 'This generation has already failed.', progress });
+// This route is mounted before the older in-memory author route. New jobs are
+// read from the durable generation table when the current process has restarted,
+// so a deployment no longer turns an active course into a false 404/failure.
+router.get('/progress/:progressId', auth, async (req, res, next) => {
+    try {
+        const progress = await ScormAiGenerationManager.getProgress(req.params.progressId, req.userId);
+        if (!progress) return next();
+        res.setHeader('Cache-Control', 'no-store');
+        return res.json({ ok: true, progress });
+    } catch (_) {
+        return next();
+    }
+});
 
-    const cancelled = ScormAiGenerationManager.cancel(req.params.progressId, req.userId);
-    res.setHeader('Cache-Control', 'no-store');
-    return res.json({ ok: true, progress: cancelled || progress });
+router.post('/progress/:progressId/cancel', auth, async (req, res, next) => {
+    try {
+        const progress = await ScormAiGenerationManager.getProgress(req.params.progressId, req.userId);
+        if (!progress) return next();
+        if (progress.status === 'complete') return res.status(409).json({ ok: false, message: 'This course is already complete.', progress });
+        if (progress.status === 'error') return res.status(409).json({ ok: false, message: 'This generation has already failed.', progress });
+        if (progress.status === 'cancelled') return res.json({ ok: true, progress });
+
+        const cancelled = await ScormAiGenerationManager.cancel(req.params.progressId, req.userId);
+        res.setHeader('Cache-Control', 'no-store');
+        return res.json({ ok: true, progress: cancelled || progress });
+    } catch (_) {
+        return next();
+    }
 });
 
 module.exports = router;
