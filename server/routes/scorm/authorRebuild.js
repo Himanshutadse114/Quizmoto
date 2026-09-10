@@ -25,12 +25,17 @@ const { applyScenarioLearningRuntimeToZip } = require('../../services/scorm/Scor
 const { applyScenarioBranchingRuntimeToZip } = require('../../services/scorm/ScormScenarioBranchingRuntime');
 const { applyCourseChromeRuntimeToZip } = require('../../services/scorm/ScormCourseChromeRuntime');
 const { applyScenarioDecisionUxRuntimeToZip } = require('../../services/scorm/ScormScenarioDecisionUxRuntime');
-const { ScormPackage } = require('../../models/scorm');
+const { ScormPackage, ScormCourse } = require('../../models/scorm');
 const { ensureCourseForPackage } = require('../../services/scorm/ScormCourseWorkspaceService');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
 const { packageZipKey } = require('../../services/scorm/storageKeys');
 const { unpackPackage } = require('../../services/scorm/ScormUnpackService');
 const { reuseExistingCourseMedia } = require('../../services/scorm/ScormCourseMediaReuseService');
+const {
+    normaliseCourseBranding,
+    publicBranding,
+    applyCourseBrandingToZip
+} = require('../../services/scorm/ScormCourseBrandingService');
 const {
     cleanId: cleanProgressId,
     setProgress,
@@ -51,6 +56,7 @@ function reporter(progressId, userId) {
 function errorStatus(code) {
     if (code === 'SCORM_REBUILD_MEDIA_MISSING' || code === 'SCORM_TEMPLATE_LOCKED') return 409;
     if (code === 'SCORM_QUIZ_INCOMPLETE' || code === 'SCORM_TEMPLATE_SCHEMA_INVALID') return 422;
+    if (code === 'SCORM_BRANDING_LOGO_TOO_LARGE' || code === 'SCORM_BRANDING_LOGO_INVALID') return 422;
     return 500;
 }
 
@@ -61,6 +67,30 @@ function parseStoredAnalysis(pkg) {
     } catch (_) {
         return {};
     }
+}
+
+function courseSettings(course) {
+    const settings = course?.settings;
+    return settings && typeof settings === 'object' && !Array.isArray(settings) ? settings : {};
+}
+
+function resolveRebuildBranding({ requestBody, editedAnalysis, storedAnalysis, course }) {
+    const settings = courseSettings(course);
+    const candidates = [
+        requestBody?.branding,
+        editedAnalysis?.branding,
+        storedAnalysis?.branding,
+        settings.branding,
+        requestBody?.logoDataUrl || requestBody?.primaryColor || requestBody?.accentColor || requestBody?.secondaryColor
+            ? {
+                logoDataUrl: requestBody?.logoDataUrl || '',
+                primaryColor: requestBody?.primaryColor,
+                accentColor: requestBody?.accentColor || requestBody?.secondaryColor
+            }
+            : null
+    ];
+    const selected = candidates.find((value) => value && typeof value === 'object');
+    return selected ? normaliseCourseBranding(selected) : null;
 }
 
 function stripV7CourseFormatMetadata(rawAnalysis) {
@@ -144,6 +174,18 @@ router.post('/generate', auth, async (req, res, next) => {
         }
 
         const storedAnalysis = parseStoredAnalysis(pkg);
+        const existingCourse = await ScormCourse.findOne({
+            where: { packageId: pkg.id, hostId: req.userId },
+            order: [['createdAt', 'ASC']]
+        });
+        const courseBranding = resolveRebuildBranding({
+            requestBody: req.body || {},
+            editedAnalysis: analysis,
+            storedAnalysis,
+            course: existingCourse
+        });
+        const brandingForAnalysis = courseBranding ? publicBranding(courseBranding) : null;
+
         const migration = resolveRebuildTemplateBinding({ analysis: storedAnalysis, pkg });
         const binding = migration.binding;
         const upgradeCopy = upgradeProgressCopy(migration);
@@ -158,13 +200,10 @@ router.post('/generate', auth, async (req, res, next) => {
             stage: migration.templateUpgraded ? upgradeCopy.stage : 'Checking edited course content',
             detail: migration.templateUpgraded
                 ? upgradeCopy.detail
-                : 'Validating content while keeping the saved template, slide layouts and interactions locked.'
+                : 'Validating content while keeping the saved template, slide layouts, branding and interactions locked.'
         });
 
         if (migration.templateUpgraded) {
-            // A versioned template upgrade deliberately changes presentation
-            // behaviour. Re-run its planner instead of preserving the old slide
-            // layouts; reusable raster media is still kept below.
             analysis = stripV7CourseFormatMetadata(analysis);
             analysis = planExperienceForTemplate(analysis, binding);
             templateEngineVersion = 1;
@@ -195,7 +234,8 @@ router.post('/generate', auth, async (req, res, next) => {
             ...(analysis || {}),
             themeId: selectedThemeId,
             themeName: selectedTheme.name,
-            experienceVersion: 5
+            experienceVersion: 5,
+            ...(brandingForAnalysis ? { branding: brandingForAnalysis } : {})
         };
         if (templateEngineVersion >= 1) validateTemplateAnalysis(analysis, binding);
         if (req.body?.title) analysis.title = req.body.title;
@@ -207,9 +247,13 @@ router.post('/generate', auth, async (req, res, next) => {
             storage,
             onProgress: report
         });
-        analysis = media.analysis;
+        analysis = {
+            ...(media.analysis || analysis),
+            ...(brandingForAnalysis ? { branding: brandingForAnalysis } : {})
+        };
         if (binding?.templateId === 'scenario-learning') {
             analysis = planScenarioGraph(analysis, binding);
+            if (brandingForAnalysis) analysis.branding = brandingForAnalysis;
         }
         if (templateEngineVersion >= 1) validateTemplateAnalysis(analysis, binding);
 
@@ -218,12 +262,12 @@ router.post('/generate', auth, async (req, res, next) => {
             stage: 'Rebuilding course package',
             detail: migration.templateUpgraded
                 ? upgradeCopy.packageDetail
-                : 'Combining the updated content with the saved template, layouts and existing visuals.'
+                : 'Combining the updated content with the saved template, branding, layouts and existing visuals.'
         });
 
         let zipBuf = await buildScormPackageZip(analysis, {
             templateId: selectedThemeId,
-            logoDataUrl: req.body?.logoDataUrl || null,
+            logoDataUrl: courseBranding?.logoDataUrl || req.body?.logoDataUrl || null,
             replicateMediaFiles: media.files
         });
         if (templateEngineVersion >= 1) {
@@ -235,12 +279,20 @@ router.post('/generate', auth, async (req, res, next) => {
             zipBuf = await applyScenarioDecisionUxRuntimeToZip(zipBuf, analysis);
         }
 
+        // Branding is deliberately the final presentation layer. This is not
+        // conditional on templateEngineVersion so legacy courses and upgraded
+        // templates keep exactly the same logo and colours after a rebuild.
+        if (courseBranding) {
+            const branded = await applyCourseBrandingToZip(zipBuf, courseBranding);
+            zipBuf = branded.zipBuffer;
+        }
+
         report({
             percent: 86,
             stage: 'Saving course update',
             detail: migration.templateUpgraded
                 ? upgradeCopy.savedDetail
-                : 'Replacing the existing package without changing its course template.'
+                : 'Replacing the existing package without changing its course template or branding.'
         });
 
         pkg.title = String(analysis.title || pkg.title || 'Course').slice(0, 200);
@@ -275,13 +327,22 @@ router.post('/generate', auth, async (req, res, next) => {
         }
         await pkg.reload();
 
-        let course = null;
+        let course = existingCourse;
         if (pkg.status === 'ready') {
             course = await ensureCourseForPackage({
                 packageId: pkg.id,
                 hostId: req.userId,
                 title: pkg.title
             });
+        }
+
+        if (course && brandingForAnalysis) {
+            const settings = courseSettings(course);
+            course.settings = {
+                ...settings,
+                branding: brandingForAnalysis
+            };
+            await course.save();
         }
 
         if (progressId) {
@@ -292,7 +353,7 @@ router.post('/generate', auth, async (req, res, next) => {
                 stage: 'Course updated',
                 detail: migration.templateUpgraded
                     ? upgradeCopy.completeDetail
-                    : 'Your edits are saved and the original template, layouts and visuals were preserved.'
+                    : 'Your edits are saved and the original template, branding, layouts and visuals were preserved.'
             });
         }
 
@@ -311,6 +372,7 @@ router.post('/generate', auth, async (req, res, next) => {
                 name: selectedTheme.name,
                 slug: selectedTheme.slug
             },
+            branding: brandingForAnalysis,
             courseTemplate: publicTemplateBinding(binding),
             templateUpgraded: migration.templateUpgraded,
             previousTemplateVersion: migration.previousVersion,
