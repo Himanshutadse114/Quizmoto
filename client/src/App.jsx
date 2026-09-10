@@ -39,6 +39,7 @@ const Flipbooks = lazy(() => import('./pages/Scorm/Flipbooks'));
 const FlipbookEditor = lazy(() => import('./pages/Scorm/FlipbookEditor'));
 const FlipbookAnalytics = lazy(() => import('./pages/Scorm/FlipbookAnalytics'));
 const FlipbookViewer = lazy(() => import('./pages/Public/FlipbookViewer'));
+const FlipbookLibraryViewer = lazy(() => import('./pages/Public/FlipbookLibraryViewer'));
 const ScormCourses = lazy(() => import('./pages/Scorm/Courses'));
 const ScormTracking = lazy(() => import('./pages/Scorm/Tracking'));
 const ScormLearnerRoster = lazy(() => import('./pages/Scorm/LearnerRoster'));
@@ -234,6 +235,7 @@ function AppRoutes() {
         <Route path="/host/game-old/:pin" element={<LegacyQuizRedirect kind="game" />} />
 
         <Route path="/flipbook/:shareToken" element={<FlipbookViewer />} />
+        <Route path="/flipbook-library/:shareToken" element={<FlipbookLibraryViewer />} />
         <Route path="/learn" element={<ScormUniversalLearnerPortal />} />
         <Route path="/learn/microsoft" element={<MicrosoftDiscovery />} />
         <Route path="/learn/:workspaceId" element={<ScormLearnerPortal />} />
