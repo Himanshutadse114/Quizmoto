@@ -4,6 +4,7 @@ import { BarChart3, Copy, ExternalLink, Library, RefreshCw, Share2 } from 'lucid
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import './flipbookLibraryShare.css';
 
 const API = '/api/scorm/flipbooks';
 
