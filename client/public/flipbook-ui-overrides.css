@@ -1,0 +1,11 @@
+/* Compact visual overrides for Flipbook analytics and the public Flipbook Library. */
+.flip-analytics-page .flipbooks-header h1{font-size:24px!important;line-height:1.15!important;font-weight:600!important;letter-spacing:-.02em!important}
+.flip-analytics-page .flip-analytics-panel .flip-section-heading h2{font-size:17px!important;line-height:1.25!important;font-weight:600!important;letter-spacing:-.01em!important}
+.flip-analytics-page .flip-analytics-book-title h2{font-size:18px!important;line-height:1.25!important;font-weight:600!important;letter-spacing:-.01em!important}
+.flip-analytics-page .flip-section-heading p{font-size:10px!important;line-height:1.5!important}
+.flip-analytics-page .flip-analytics-value{font-size:20px!important;font-weight:700!important}
+.flip-analytics-page .flip-analytics-panel .flip-section-heading{padding:14px 16px!important}
+.public-flip-library-cover{aspect-ratio:1/1.16!important}
+.public-flip-library-body{padding:12px!important}
+.public-flip-library-heading h1{font-size:24px!important;font-weight:600!important;line-height:1.15!important;letter-spacing:-.02em!important}
+@media(max-width:760px){.flip-analytics-page .flipbooks-header h1{font-size:21px!important}.flip-analytics-page .flip-analytics-panel .flip-section-heading h2{font-size:16px!important}.public-flip-library-cover{aspect-ratio:1/1.12!important}.public-flip-library-heading h1{font-size:21px!important}}
