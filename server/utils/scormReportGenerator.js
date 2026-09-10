@@ -1,11 +1,16 @@
 /**
- * SCORM AI report generator (PDF + Excel).
+ * LMSGEN course report generator (PDF + Excel).
  * Admin QA previews are intentionally excluded from all report output.
  */
 
 const fs = require('fs');
 const PDFDocument = require('pdfkit');
 const ExcelJS = require('exceljs');
+
+const BRAND = '#16988F';
+const BRAND_SOFT = '#EAF9F7';
+const INK = '#183334';
+const MUTED = '#6E8584';
 
 function safeStr(v, fallback = '') {
     if (v === null || v === undefined) return fallback;
@@ -58,18 +63,18 @@ function courseMeta(course) {
 function writeInteractionsPdf(doc, learner) {
     const interactions = Array.isArray(learner.interactions) ? learner.interactions : [];
     if (!interactions.length) {
-        doc.fillColor('#888888').fontSize(8).text('   Question-level answers were not captured for this attempt.');
+        doc.fillColor(MUTED).fontSize(8).text('   Question-level answers were not captured for this attempt.');
         return;
     }
 
-    doc.fillColor('#46178f').fontSize(9).font('Helvetica-Bold').text(`   Knowledge checks (${interactions.length})`);
+    doc.fillColor(BRAND).fontSize(9).font('Helvetica-Bold').text(`   Knowledge checks (${interactions.length})`);
     interactions.forEach((item, index) => {
         if (doc.y > 720) doc.addPage();
-        doc.fillColor('#222222').fontSize(8.5).font('Helvetica-Bold').text(`   Q${index + 1}. ${safeStr(item.question, `Question ${index + 1}`)}`);
-        doc.fillColor(item.result === 'Correct' ? '#26890c' : item.result === 'Incorrect' ? '#e21b3c' : '#666666')
+        doc.fillColor(INK).fontSize(8.5).font('Helvetica-Bold').text(`   Q${index + 1}. ${safeStr(item.question, `Question ${index + 1}`)}`);
+        doc.fillColor(item.result === 'Correct' ? BRAND : item.result === 'Incorrect' ? '#D65367' : MUTED)
             .fontSize(8).font('Helvetica').text(`      Learner answer: ${safeStr(item.selectedAnswer, '—')} · ${safeStr(item.result, 'Recorded')}`);
-        doc.fillColor('#555555').text(`      Correct answer: ${safeStr(item.correctAnswer, '—')}`);
-        if (item.explanation) doc.fillColor('#777777').text(`      Explanation: ${item.explanation}`);
+        doc.fillColor('#496361').text(`      Correct answer: ${safeStr(item.correctAnswer, '—')}`);
+        if (item.explanation) doc.fillColor(MUTED).text(`      Explanation: ${item.explanation}`);
         doc.moveDown(0.25);
     });
 }
@@ -82,31 +87,31 @@ function generatePdf(course, outputPath) {
             const stream = fs.createWriteStream(outputPath);
             doc.pipe(stream);
 
-            doc.fillColor('#46178f').fontSize(22).font('Helvetica-Bold').text('SCORM AI Learning Report', { align: 'left' });
-            doc.moveDown(0.3);
-            doc.fillColor('#333333').fontSize(14).text(`Course: ${meta.title}`);
-            doc.fontSize(10).fillColor('#666666').font('Helvetica');
+            doc.fillColor(BRAND).fontSize(10).font('Helvetica-Bold').text('LMSGEN · COURSE LEARNING REPORT');
+            doc.moveDown(0.35);
+            doc.fillColor(INK).fontSize(22).font('Helvetica-Bold').text(meta.title, { align: 'left' });
+            doc.moveDown(0.2);
+            doc.fontSize(9).fillColor(MUTED).font('Helvetica');
             if (meta.packageTitle) doc.text(`Package: ${meta.packageTitle}`);
-            doc.text(`Invite code: ${meta.inviteCode}`);
-            doc.text(`Status: ${meta.status}`);
+            doc.text(`Course status: ${meta.status || '—'}`);
             if (meta.publishedAt) doc.text(`Published: ${new Date(meta.publishedAt).toLocaleString()}`);
             doc.text(`Generated: ${new Date().toLocaleString()}`);
             doc.moveDown();
 
-            doc.fillColor('#46178f').fontSize(14).font('Helvetica-Bold').text('Summary');
+            doc.fillColor(BRAND).fontSize(13).font('Helvetica-Bold').text('Learning summary');
             doc.moveDown(0.3);
-            doc.fillColor('#333333').fontSize(11).font('Helvetica');
+            doc.fillColor(INK).fontSize(10.5).font('Helvetica');
             doc.text(`Learners: ${meta.stats.totalLearners}`);
             doc.text(`Completed: ${meta.stats.completed}`);
             if (meta.stats.completionRate != null) doc.text(`Completion rate: ${meta.stats.completionRate}%`);
             if (meta.stats.averageScore != null) doc.text(`Average score: ${meta.stats.averageScore}`);
             doc.moveDown();
 
-            doc.fillColor('#46178f').fontSize(14).font('Helvetica-Bold').text('Learner audit and answers');
+            doc.fillColor(BRAND).fontSize(13).font('Helvetica-Bold').text('Detailed learner evidence');
             doc.moveDown(0.4);
 
             if (meta.learners.length === 0) {
-                doc.fillColor('#333333').fontSize(9).font('Helvetica').text('No learners registered yet.');
+                doc.fillColor(INK).fontSize(9).font('Helvetica').text('No learners registered yet.');
             } else {
                 meta.learners.forEach((r, i) => {
                     if (doc.y > 680) doc.addPage();
@@ -118,9 +123,9 @@ function generatePdf(course, outputPath) {
                     const updated = r.lastCommitAt
                         ? new Date(r.lastCommitAt).toLocaleString()
                         : r.updatedAt ? new Date(r.updatedAt).toLocaleString() : '—';
-                    doc.fillColor('#111111').fontSize(10).font('Helvetica-Bold').text(`${i + 1}. ${name}${email}`);
-                    doc.fillColor('#555555').fontSize(9).font('Helvetica').text(`   Status: ${safeStr(r.status, '—')}  |  Lesson: ${lesson}  |  Score: ${score}  |  Time: ${time}`);
-                    doc.fillColor('#888888').fontSize(8).text(`   Last update: ${updated}`);
+                    doc.fillColor(INK).fontSize(10).font('Helvetica-Bold').text(`${i + 1}. ${name}${email}`);
+                    doc.fillColor('#496361').fontSize(9).font('Helvetica').text(`   Status: ${safeStr(r.status, '—')}  |  Lesson: ${lesson}  |  Score: ${score}  |  Time: ${time}`);
+                    doc.fillColor(MUTED).fontSize(8).text(`   Last update: ${updated}`);
                     writeInteractionsPdf(doc, r);
                     doc.moveDown(0.5);
                 });
@@ -138,14 +143,13 @@ function generatePdf(course, outputPath) {
 async function generateExcel(course, outputPath) {
     const meta = courseMeta(course);
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'SCORM AI';
+    workbook.creator = 'LMSGEN';
     workbook.created = new Date();
 
     const ws1 = workbook.addWorksheet('Overview');
-    ws1.addRow(['SCORM AI Learning Report']);
+    ws1.addRow(['LMSGEN Course Learning Report']);
     ws1.addRow(['Course', meta.title]);
     ws1.addRow(['Description', meta.description]);
-    ws1.addRow(['Invite code', meta.inviteCode]);
     ws1.addRow(['Status', meta.status]);
     ws1.addRow(['Package', meta.packageTitle || '']);
     ws1.addRow(['Published', meta.publishedAt ? new Date(meta.publishedAt).toISOString() : '']);
@@ -156,11 +160,12 @@ async function generateExcel(course, outputPath) {
     if (meta.stats.completionRate != null) ws1.addRow(['Completion rate %', meta.stats.completionRate]);
     if (meta.stats.averageScore != null) ws1.addRow(['Average score', meta.stats.averageScore]);
     ws1.columns = [{ width: 24 }, { width: 55 }];
-    ws1.getRow(1).font = { bold: true, size: 18 };
+    ws1.getRow(1).font = { bold: true, size: 18, color: { argb: 'FF16988F' } };
 
     const ws2 = workbook.addWorksheet('Learners');
     ws2.addRow(['Rank', 'Name', 'Email', 'Registration status', 'Lesson status', 'Score', 'Total time', 'Last update', 'Questions captured', 'Correct answers', 'Answer accuracy %']);
-    ws2.getRow(1).font = { bold: true };
+    ws2.getRow(1).font = { bold: true, color: { argb: 'FF183334' } };
+    ws2.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEAF9F7' } };
     ws2.columns = [
         { width: 7 }, { width: 24 }, { width: 32 }, { width: 20 }, { width: 18 }, { width: 10 }, { width: 16 }, { width: 24 }, { width: 18 }, { width: 15 }, { width: 16 }
     ];
@@ -178,7 +183,8 @@ async function generateExcel(course, outputPath) {
 
     const ws3 = workbook.addWorksheet('Question Answers');
     ws3.addRow(['Learner', 'Email', 'Question #', 'Question', 'Learner Answer', 'Correct Answer', 'Result', 'Explanation']);
-    ws3.getRow(1).font = { bold: true };
+    ws3.getRow(1).font = { bold: true, color: { argb: 'FF183334' } };
+    ws3.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEAF9F7' } };
     ws3.columns = [
         { width: 24 }, { width: 30 }, { width: 10 }, { width: 55 }, { width: 35 }, { width: 35 }, { width: 14 }, { width: 55 }
     ];
@@ -194,7 +200,8 @@ async function generateExcel(course, outputPath) {
 
     const ws4 = workbook.addWorksheet('Completions');
     ws4.addRow(['Name', 'Email', 'Lesson status', 'Score', 'Total time', 'Completed']);
-    ws4.getRow(1).font = { bold: true };
+    ws4.getRow(1).font = { bold: true, color: { argb: 'FF183334' } };
+    ws4.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEAF9F7' } };
     meta.learners.forEach((r) => {
         ws4.addRow([
             r.learnerName || '', r.learnerEmail || '', r.lastLessonStatus || '',
