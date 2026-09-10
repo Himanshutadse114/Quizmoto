@@ -13,6 +13,7 @@ const { planExperienceV5 } = require('../../services/scorm/ScormExperiencePlanne
 const { ensureQuizIntegrity } = require('../../services/scorm/ScormQuizQualityService');
 const { buildScormPackageZip } = require('../../services/scorm/ScormReplicateMediaFinalizer');
 const { getTheme, listThemes, normalizeThemeId } = require('../../services/scorm/ScormThemeCatalog');
+const { resolveCourseBranding, applyCourseBranding } = require('../../services/scorm/ScormCourseBranding');
 const { ScormPackage } = require('../../models/scorm');
 const { ensureCourseForPackage } = require('../../services/scorm/ScormCourseWorkspaceService');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
@@ -33,6 +34,8 @@ function aiErrorStatus(code) {
     if (code === 'SCORM_GENERATION_CANCELLED') return 409;
     if (code === 'QUIZ_AI_SOURCE_REQUIRED') return 400;
     if (code === 'QUIZ_AI_FILE_TOO_LARGE') return 413;
+    if (code === 'SCORM_BRANDING_LOGO_INVALID') return 400;
+    if (code === 'SCORM_BRANDING_LOGO_TOO_LARGE') return 413;
     if (code === 'GEMINI_KEY_MISSING' || code === 'REPLICATE_KEY_MISSING') return 503;
     if (code === 'GEMINI_QUOTA' || code === 'REPLICATE_RATE_LIMIT') return 429;
     if (code === 'REPLICATE_BILLING') return 402;
@@ -144,7 +147,19 @@ router.post('/analyze', auth, async (req, res) => {
     }
 
     try {
-        const { fileBase64, mimeType, detailLevel, titleHint, templateId, themeId, topic, description } = req.body || {};
+        const {
+            fileBase64,
+            mimeType,
+            detailLevel,
+            titleHint,
+            templateId,
+            themeId,
+            topic,
+            description,
+            courseTheme,
+            customTheme,
+            logoDataUrl
+        } = req.body || {};
         const cleanTopic = String(topic || '').trim();
         const cleanDescription = String(description || '').trim();
         const brief = [
@@ -184,6 +199,9 @@ router.post('/analyze', auth, async (req, res) => {
         analysis.themeName = selectedTheme.name;
         analysis.experienceVersion = 5;
 
+        const branding = resolveCourseBranding({ analysis, courseTheme, customTheme, logoDataUrl });
+        analysis = applyCourseBranding(analysis, branding);
+
         checkpoint(progressId, req.userId);
         if (progressId) {
             setProgress(progressId, req.userId, {
@@ -201,7 +219,12 @@ router.post('/analyze', auth, async (req, res) => {
             aiProvider: analysis.aiProvider || 'gemini',
             aiModel: analysis.aiModel || null,
             templateId: selectedThemeId,
-            theme: { id: selectedThemeId, name: selectedTheme.name, slug: selectedTheme.slug }
+            theme: { id: selectedThemeId, name: selectedTheme.name, slug: selectedTheme.slug },
+            branding: {
+                courseTheme: branding.courseTheme,
+                customTheme: branding.customTheme,
+                hasLogo: Boolean(branding.logoDataUrl)
+            }
         });
     } catch (err) {
         sendAuthorError(res, err, progressId, req.userId, 'scorm_ai_analyze_failed');
@@ -223,7 +246,19 @@ router.post('/generate', auth, async (req, res) => {
 
     try {
         let analysis = req.body?.analysis;
-        const { fileBase64, mimeType, detailLevel, templateId, themeId, logoDataUrl, title, topic, description } = req.body || {};
+        const {
+            fileBase64,
+            mimeType,
+            detailLevel,
+            templateId,
+            themeId,
+            logoDataUrl,
+            title,
+            topic,
+            description,
+            courseTheme,
+            customTheme
+        } = req.body || {};
         const selectedThemeId = normalizeThemeId(themeId || templateId || analysis?.themeId || 1);
         const selectedTheme = getTheme(selectedThemeId);
 
@@ -260,6 +295,9 @@ router.post('/generate', auth, async (req, res) => {
         };
         if (title) analysis.title = title;
 
+        const branding = resolveCourseBranding({ analysis, courseTheme, customTheme, logoDataUrl });
+        analysis = applyCourseBranding(analysis, branding);
+
         checkpoint(progressId, req.userId);
         // Only raster imagery is generated externally. Audio/TTS is intentionally
         // disabled so generated courses remain visual, lightweight and low-cost.
@@ -267,13 +305,13 @@ router.post('/generate', auth, async (req, res) => {
             onProgress: report,
             checkCancelled: () => checkpoint(progressId, req.userId)
         });
-        analysis = media.analysis;
+        analysis = applyCourseBranding(media.analysis, branding);
         checkpoint(progressId, req.userId);
 
-        report({ percent: 80, stage: 'Building the SCORM package', detail: 'Combining course content, images, varied layouts, quiz explanations and tracking into the learner package.' });
+        report({ percent: 80, stage: 'Building the SCORM package', detail: 'Combining course content, images, varied layouts, quiz explanations, branding and tracking into the learner package.' });
         const zipBuf = await buildScormPackageZip(analysis, {
             templateId: selectedThemeId,
-            logoDataUrl: logoDataUrl || null,
+            logoDataUrl: branding.logoDataUrl || null,
             replicateMediaFiles: media.files
         });
         checkpoint(progressId, req.userId);
@@ -360,6 +398,11 @@ router.post('/generate', auth, async (req, res) => {
             title: pkg.title,
             templateId: selectedThemeId,
             theme: { id: selectedThemeId, name: selectedTheme.name, slug: selectedTheme.slug },
+            branding: {
+                courseTheme: branding.courseTheme,
+                customTheme: branding.customTheme,
+                hasLogo: Boolean(branding.logoDataUrl)
+            },
             media: media.metadata || null,
             errorMessage: pkg.errorMessage
         });
