@@ -6,6 +6,10 @@ const { cleanId } = require('../../services/scorm/ScormGenerationProgress');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
 const ScormAiGenerationManager = require('../../jobs/ScormAiGenerationManager');
 
+// Routes are mounted after database initialisation, so starting the recovery
+// loop here safely resumes any generation lease left behind by a deployment.
+ScormAiGenerationManager.stats();
+
 function sourceKey(userId, progressId) {
     return `ai-author/source/${String(userId || 'unknown')}/${progressId}.bin`;
 }
