@@ -10,6 +10,7 @@ const {
     getBookAnalytics,
     getLibraryAnalytics
 } = require('../services/FlipbookAnalyticsService');
+const { backfillDesktopSpreadSessions } = require('../services/FlipbookAnalyticsBackfillService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
@@ -194,6 +195,7 @@ router.get('/:id/analytics', genericPlatformAuth, async (req, res, next) => {
     try {
         const book = await Flipbook.findOne({ where: { id: req.params.id, ownerUserId: req.flipbookAnalyticsUser.id } });
         if (!book) return res.status(404).json({ message: 'Flipbook not found.' });
+        await backfillDesktopSpreadSessions(book.id);
         const analytics = await getBookAnalytics({ book, days: req.query.days });
         res.json({ analytics });
     } catch (err) {
