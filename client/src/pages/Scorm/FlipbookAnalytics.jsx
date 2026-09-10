@@ -6,6 +6,8 @@ import {
   BarChart3,
   BookOpenCheck,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Eye,
   Flame,
@@ -20,6 +22,7 @@ import './flipbookAnalytics.css';
 
 const API = '/api/scorm/flipbooks';
 const RANGES = [7, 30, 90, 365];
+const PAGE_ROWS_PER_VIEW = 10;
 
 function durationLabel(seconds) {
   const value = Math.max(0, Number(seconds || 0));
@@ -49,6 +52,114 @@ function Metric({ icon: Icon, label, value, help }) {
 
 function EmptyAnalytics() {
   return <div className="flip-empty-inline flip-analytics-empty">No reader activity is available for this period yet.</div>;
+}
+
+function PagePerformance({ pages }) {
+  const [pageGroup, setPageGroup] = useState(0);
+  const [jumpValue, setJumpValue] = useState('');
+  const totalPages = pages.length;
+  const groupCount = Math.max(1, Math.ceil(totalPages / PAGE_ROWS_PER_VIEW));
+  const safeGroup = Math.min(pageGroup, groupCount - 1);
+  const startIndex = safeGroup * PAGE_ROWS_PER_VIEW;
+  const endIndex = Math.min(totalPages, startIndex + PAGE_ROWS_PER_VIEW);
+  const visiblePages = pages.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    setPageGroup((current) => Math.min(current, Math.max(0, groupCount - 1)));
+  }, [groupCount]);
+
+  const goToPage = (pageNumber) => {
+    const target = Math.max(1, Math.min(totalPages, Math.floor(Number(pageNumber) || 1)));
+    setPageGroup(Math.floor((target - 1) / PAGE_ROWS_PER_VIEW));
+    setJumpValue(String(target));
+  };
+
+  const submitJump = (event) => {
+    event.preventDefault();
+    if (!jumpValue) return;
+    goToPage(jumpValue);
+  };
+
+  if (!pages.length) return <EmptyAnalytics />;
+
+  return (
+    <>
+      {totalPages > PAGE_ROWS_PER_VIEW && (
+        <div className="flip-page-overview">
+          <div className="flip-page-overview-head">
+            <div>
+              <strong>Page reach overview</strong>
+              <span>All {totalPages} pages at a glance. Select a page to inspect its detailed metrics.</span>
+            </div>
+            <div className="flip-page-overview-legend"><i /> Higher reach</div>
+          </div>
+          <div className="flip-page-heatmap" role="list" aria-label="Page reach overview">
+            {pages.map((page, index) => {
+              const reach = Math.max(0, Math.min(100, Number(page.reachRate || 0)));
+              const active = index >= startIndex && index < endIndex;
+              return (
+                <button
+                  type="button"
+                  key={page.page}
+                  className={`flip-page-heat-cell ${active ? 'is-active' : ''}`}
+                  style={{ '--reach-opacity': String(0.18 + (reach / 100) * 0.82) }}
+                  onClick={() => goToPage(page.page)}
+                  title={`${page.label}: ${reach}% reach · ${page.uniqueReaders} reader${page.uniqueReaders === 1 ? '' : 's'}`}
+                  aria-label={`${page.label}, ${reach}% reach`}
+                  role="listitem"
+                >
+                  <span>{page.page}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="flip-page-detail-toolbar">
+        <div className="flip-page-detail-copy">
+          <strong>{totalPages <= PAGE_ROWS_PER_VIEW ? `${totalPages} page${totalPages === 1 ? '' : 's'}` : `Pages ${startIndex + 1}–${endIndex} of ${totalPages}`}</strong>
+          {totalPages > PAGE_ROWS_PER_VIEW && <span>Showing {PAGE_ROWS_PER_VIEW} detailed rows at a time</span>}
+        </div>
+        {totalPages > PAGE_ROWS_PER_VIEW && (
+          <div className="flip-page-detail-actions">
+            <form onSubmit={submitJump} className="flip-page-jump-form">
+              <label htmlFor="flipPageAnalyticsJump">Jump to</label>
+              <input
+                id="flipPageAnalyticsJump"
+                type="number"
+                min="1"
+                max={totalPages}
+                value={jumpValue}
+                onChange={(event) => setJumpValue(event.target.value)}
+                placeholder="Page"
+                aria-label="Jump to analytics page"
+              />
+              <button type="submit" disabled={!jumpValue}>Go</button>
+            </form>
+            <div className="flip-page-pager">
+              <button type="button" onClick={() => setPageGroup((current) => Math.max(0, current - 1))} disabled={safeGroup === 0} aria-label="Previous page group"><ChevronLeft size={14} /></button>
+              <span>{safeGroup + 1} / {groupCount}</span>
+              <button type="button" onClick={() => setPageGroup((current) => Math.min(groupCount - 1, current + 1))} disabled={safeGroup >= groupCount - 1} aria-label="Next page group"><ChevronRight size={14} /></button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="flip-page-analytics-list">
+        {visiblePages.map((page) => (
+          <div className="flip-page-analytics-row" key={page.page}>
+            <div className="flip-page-analytics-label">
+              <strong>{page.label}</strong>
+              <span>{page.uniqueReaders} readers · {page.views} sessions reached · {page.exitReaders ?? page.exits ?? 0} reader exits</span>
+            </div>
+            <div className="flip-page-analytics-bar"><span style={{ width: `${Math.min(100, page.reachRate || 0)}%` }} /></div>
+            <div className="flip-page-analytics-rate">{page.reachRate || 0}%</div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
 }
 
 function LibraryAnalytics({ analytics }) {
@@ -161,20 +272,7 @@ function SingleAnalytics({ analytics }) {
             <p>Reach uses unique email identities. A page is counted once per reading session even if the reader turns back to it repeatedly.</p>
           </div>
         </div>
-        {pages.length ? (
-          <div className="flip-page-analytics-list">
-            {pages.map((page) => (
-              <div className="flip-page-analytics-row" key={page.page}>
-                <div className="flip-page-analytics-label">
-                  <strong>{page.label}</strong>
-                  <span>{page.uniqueReaders} readers · {page.views} sessions reached · {page.exitReaders ?? page.exits ?? 0} reader exits</span>
-                </div>
-                <div className="flip-page-analytics-bar"><span style={{ width: `${Math.min(100, page.reachRate || 0)}%` }} /></div>
-                <div className="flip-page-analytics-rate">{page.reachRate || 0}%</div>
-              </div>
-            ))}
-          </div>
-        ) : <EmptyAnalytics />}
+        <PagePerformance pages={pages} />
       </section>
 
       <section className="flip-analytics-panel">
