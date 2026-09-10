@@ -61,6 +61,9 @@ router.use('/mail', require('./mailAdmin'));
 // Viewer workspace membership before a protected SCORM session is issued.
 router.use('/staff-auth', require('./staffAuthPublic'));
 
+// Analytics wraps the existing public reader before it is served so the mature
+// page-flip UI stays unchanged while reader identity and page events are added.
+router.use('/flipbooks', require('../flipbookAnalytics'));
 // Flipbooks are a platform-level free feature. This router owns its own generic
 // JWT checks so Quizmoto-only/free accounts do not need paid LMSGEN entitlement.
 router.use('/flipbooks', require('../flipbooks'));
