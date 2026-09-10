@@ -14,6 +14,12 @@ const DESIGN_FIELDS = Object.freeze([
     'interactionVersion'
 ]);
 
+function clone(value) {
+    if (value === undefined) return undefined;
+    if (value === null || typeof value !== 'object') return value;
+    return JSON.parse(JSON.stringify(value));
+}
+
 function hasPlannedSlideDesign(analysis) {
     const slides = Array.isArray(analysis?.slides) ? analysis.slides : [];
     return slides.length > 0 && slides.every((slide) => Boolean(slide?.layout && slide?.screenType));
@@ -32,6 +38,7 @@ function preserveCourseDesign(editedAnalysis, storedAnalysis) {
 
     const preserved = {
         ...edited,
+        ...(stored.branding !== undefined ? { branding: clone(stored.branding) } : {}),
         slides: (Array.isArray(edited.slides) ? edited.slides : []).map((slide, index) => {
             const current = slide && typeof slide === 'object' ? slide : {};
             const previous = byKey.get(slideKey(current, index)) || storedSlides[index];
@@ -39,11 +46,7 @@ function preserveCourseDesign(editedAnalysis, storedAnalysis) {
 
             const next = { ...current };
             DESIGN_FIELDS.forEach((field) => {
-                if (previous[field] !== undefined) {
-                    next[field] = previous[field] && typeof previous[field] === 'object'
-                        ? JSON.parse(JSON.stringify(previous[field]))
-                        : previous[field];
-                }
+                if (previous[field] !== undefined) next[field] = clone(previous[field]);
             });
             return next;
         })
