@@ -1,4 +1,8 @@
 // Compatibility entry point retained for existing SCORM routes and tests.
-// All course text and visual-prompt generation now goes through Gemini on
-// Google Vertex AI using the configured service-account credentials only.
-module.exports = require('./GeminiServiceAccountCourseAiService');
+// Course generation uses the Gemini Developer API with a server-side API key.
+// A Google Cloud project ID is not required for this mode.
+if (!process.env.GEMINI_MODEL) {
+    process.env.GEMINI_MODEL = String(process.env.GOOGLE_TEXT_MODEL || 'gemini-2.5-flash').trim();
+}
+
+module.exports = require('./PolicyAnalysisService');
