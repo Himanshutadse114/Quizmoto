@@ -1,8 +1,13 @@
 const express = require('express');
+const {
+    expressModelUrl,
+    transportName,
+    useVertexExpress
+} = require('../../services/scorm/GoogleGenAiTransport');
 
 const router = express.Router();
 
-const DIAGNOSTIC_RELEASE = 'gemini-api-diagnostic-v4';
+const DIAGNOSTIC_RELEASE = 'vertex-express-diagnostic-v5';
 const CACHE_MS = 5 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 15000;
 let cached = null;
@@ -33,7 +38,12 @@ function redact(value) {
     return clean(value)
         .replace(/AIza[A-Za-z0-9_-]{20,}/g, '[redacted]')
         .replace(/([?&]key=)[^&\s]+/gi, '$1[redacted]')
-        .slice(0, 420);
+        .slice(0, 500);
+}
+
+function modelMethodUrl(model, method, apiKey) {
+    if (useVertexExpress()) return expressModelUrl(model, method, apiKey);
+    return `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:${method}?key=${encodeURIComponent(apiKey)}`;
 }
 
 async function requestJson(url, options = {}) {
@@ -63,20 +73,20 @@ function failure(result, fallbackCode) {
     };
 }
 
-async function probeModel(apiKey, model) {
+async function probeModelAccess(apiKey, model) {
     try {
-        const result = await requestJson(
-            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}?key=${encodeURIComponent(apiKey)}`,
-            { headers: { Accept: 'application/json' } }
-        );
+        const result = await requestJson(modelMethodUrl(model, 'countTokens', apiKey), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ role: 'user', parts: [{ text: 'health check' }] }]
+            })
+        });
         if (!result.response.ok) return failure(result, 'MODEL_ACCESS_FAILED');
         return {
             ok: true,
             httpStatus: result.response.status,
-            name: clean(result.json?.name || `models/${model}`),
-            methods: Array.isArray(result.json?.supportedGenerationMethods)
-                ? result.json.supportedGenerationMethods
-                : []
+            totalTokens: Number(result.json?.totalTokens || result.json?.total_tokens || 0) || null
         };
     } catch (error) {
         return { ok: false, httpStatus: null, code: 'NETWORK_ERROR', message: redact(error.message) };
@@ -84,16 +94,17 @@ async function probeModel(apiKey, model) {
 }
 
 async function probeTextGeneration(apiKey, model, structured = false) {
+    const schema = {
+        type: 'object',
+        properties: { ok: { type: 'boolean' } },
+        required: ['ok']
+    };
     const generationConfig = structured
         ? {
             temperature: 0,
             maxOutputTokens: 32,
             responseMimeType: 'application/json',
-            responseJsonSchema: {
-                type: 'object',
-                properties: { ok: { type: 'boolean' } },
-                required: ['ok']
-            }
+            responseJsonSchema: schema
         }
         : { temperature: 0, maxOutputTokens: 16 };
 
@@ -102,18 +113,17 @@ async function probeTextGeneration(apiKey, model, structured = false) {
         : 'Reply with exactly OK.';
 
     try {
-        const result = await requestJson(
-            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig
-                })
-            }
-        );
-        if (!result.response.ok) return failure(result, structured ? 'STRUCTURED_OUTPUT_FAILED' : 'TEXT_GENERATION_FAILED');
+        const result = await requestJson(modelMethodUrl(model, 'generateContent', apiKey), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                generationConfig
+            })
+        });
+        if (!result.response.ok) {
+            return failure(result, structured ? 'STRUCTURED_OUTPUT_FAILED' : 'TEXT_GENERATION_FAILED');
+        }
         const parts = result.json?.candidates?.[0]?.content?.parts || [];
         const output = parts.map((part) => part?.text || '').join('').trim();
         return {
@@ -132,6 +142,7 @@ async function runProbe() {
     const configuredTextModel = textModel();
     const configuredImageModel = imageModel();
     const checkedAt = new Date().toISOString();
+    const transport = transportName();
 
     if (!keyInfo.key) {
         return {
@@ -140,7 +151,7 @@ async function runProbe() {
             checkedAt,
             apiKeyConfigured: false,
             keySource: null,
-            transport: 'Gemini Developer API',
+            transport,
             textModel: configuredTextModel,
             imageModel: configuredImageModel,
             error: 'No GEMINI_API_KEY or GOOGLE_API_KEY is configured on the backend.'
@@ -148,8 +159,8 @@ async function runProbe() {
     }
 
     const [textModelAccess, imageModelAccess] = await Promise.all([
-        probeModel(keyInfo.key, configuredTextModel),
-        probeModel(keyInfo.key, configuredImageModel)
+        probeModelAccess(keyInfo.key, configuredTextModel),
+        probeModelAccess(keyInfo.key, configuredImageModel)
     ]);
 
     const textGeneration = textModelAccess.ok
@@ -166,14 +177,17 @@ async function runProbe() {
         checkedAt,
         apiKeyConfigured: true,
         keySource: keyInfo.source,
-        transport: 'Gemini Developer API',
+        transport,
+        endpoint: useVertexExpress() ? 'aiplatform.googleapis.com' : 'generativelanguage.googleapis.com',
+        projectRequired: false,
+        serviceAccountJsonRequired: false,
         textModel: configuredTextModel,
         imageModel: configuredImageModel,
         textModelAccess,
         textGeneration,
         structuredOutput,
         imageModelAccess,
-        note: 'Image model access is checked without generating a billable diagnostic image.'
+        note: 'Image-model access is checked with countTokens; no diagnostic image is generated.'
     };
 }
 
@@ -193,7 +207,8 @@ router.get('/', async (req, res) => {
             ok: false,
             release: DIAGNOSTIC_RELEASE,
             checkedAt: new Date().toISOString(),
-            error: redact(error.message || 'Gemini diagnostic failed unexpectedly.')
+            transport: transportName(),
+            error: redact(error.message || 'Google GenAI diagnostic failed unexpectedly.')
         });
     }
 });
