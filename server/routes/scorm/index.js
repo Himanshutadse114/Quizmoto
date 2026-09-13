@@ -42,6 +42,7 @@ router.use('/otp', require('./mailOtp'));
 router.use('/mail', require('./mailAdmin'));
 router.use('/staff-auth', require('./staffAuthPublic'));
 router.use('/flipbook-tenants', require('./flipbookTenants'));
+router.use('/ai-health', require('./aiHealth'));
 
 router.use('/flipbooks', require('../flipbookAssignmentTracking'));
 router.use('/flipbooks', require('../flipbookAnalytics'));
