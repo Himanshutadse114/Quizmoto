@@ -2,13 +2,23 @@ const VERTEX_EXPRESS_BASE = 'https://aiplatform.googleapis.com/v1/publishers/goo
 const GEMINI_DEVELOPER_HOST = 'generativelanguage.googleapis.com';
 const INSTALL_MARKER = Symbol.for('quizmoto.vertexExpressFetchAdapter');
 
-function normalizeBool(value, fallback = true) {
-    if (value === undefined || value === null || String(value).trim() === '') return fallback;
-    return ['true', '1', 'yes', 'y', 'on'].includes(String(value).trim().toLowerCase());
+function requestedTransport() {
+    return String(process.env.GOOGLE_GENAI_TRANSPORT || '').trim().toLowerCase();
 }
 
 function useVertexExpress() {
-    return normalizeBool(process.env.GOOGLE_GENAI_USE_VERTEXAI, true);
+    const transport = requestedTransport();
+
+    // Vertex AI Express Mode is the canonical LMSGEN transport. The legacy
+    // GOOGLE_GENAI_USE_VERTEXAI flag is intentionally ignored here because older
+    // Render environments may still contain GOOGLE_GENAI_USE_VERTEXAI=false from
+    // the previous Gemini Developer API implementation. Falling back to the
+    // Developer API now requires an explicit GOOGLE_GENAI_TRANSPORT=developer.
+    if (['developer', 'gemini-developer', 'gemini_developer', 'developer-api'].includes(transport)) {
+        return false;
+    }
+
+    return true;
 }
 
 function transportName() {
