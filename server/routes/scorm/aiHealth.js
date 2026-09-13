@@ -1,13 +1,15 @@
 const express = require('express');
 const {
-    expressModelUrl,
+    modelMethodUrl,
     transportName,
-    useVertexExpress
+    useVertexExpress,
+    cloudProject,
+    isImageModel
 } = require('../../services/scorm/GoogleGenAiTransport');
 
 const router = express.Router();
 
-const DIAGNOSTIC_RELEASE = 'vertex-express-diagnostic-v6';
+const DIAGNOSTIC_RELEASE = 'vertex-express-diagnostic-v7';
 const CACHE_MS = 5 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 15000;
 let cached = null;
@@ -39,11 +41,6 @@ function redact(value) {
         .replace(/AIza[A-Za-z0-9_-]{20,}/g, '[redacted]')
         .replace(/([?&]key=)[^&\s]+/gi, '$1[redacted]')
         .slice(0, 500);
-}
-
-function modelMethodUrl(model, method, apiKey) {
-    if (useVertexExpress()) return expressModelUrl(model, method, apiKey);
-    return `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:${method}?key=${encodeURIComponent(apiKey)}`;
 }
 
 async function requestJson(url, options = {}) {
@@ -102,11 +99,19 @@ async function probeTextGeneration(apiKey, model, structured = false) {
     const generationConfig = structured
         ? {
             temperature: 0,
-            maxOutputTokens: 32,
+            maxOutputTokens: 128,
             responseMimeType: 'application/json',
             responseJsonSchema: schema
         }
-        : { temperature: 0, maxOutputTokens: 16 };
+        : { temperature: 0, maxOutputTokens: 128 };
+
+    // Gemini 2.5 Flash defaults to dynamic thinking. A tiny health probe can spend
+    // its entire output allowance on thoughts and return MAX_TOKENS with no visible
+    // text. Disable thinking for this diagnostic only; the course generator keeps
+    // its own production thinking configuration.
+    if (/^gemini-2\.5-flash(?:$|-)/i.test(clean(model))) {
+        generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
 
     const prompt = structured
         ? 'Return one JSON object with ok set to true.'
@@ -145,6 +150,7 @@ async function runProbe() {
     const transport = transportName();
     const transportOverride = clean(process.env.GOOGLE_GENAI_TRANSPORT) || null;
     const legacyVertexFlag = clean(process.env.GOOGLE_GENAI_USE_VERTEXAI) || null;
+    const projectConfigured = Boolean(cloudProject());
 
     if (!keyInfo.key) {
         return {
@@ -156,6 +162,7 @@ async function runProbe() {
             transport,
             transportOverride,
             legacyVertexFlag,
+            cloudProjectConfigured: projectConfigured,
             textModel: configuredTextModel,
             imageModel: configuredImageModel,
             error: 'No GEMINI_API_KEY or GOOGLE_API_KEY is configured on the backend.'
@@ -175,6 +182,8 @@ async function runProbe() {
         ? await probeTextGeneration(keyInfo.key, configuredTextModel, true)
         : { ok: false, code: 'TEXT_GENERATION_UNAVAILABLE', message: 'Basic text generation failed before the structured-output probe.' };
 
+    const imageUsesGlobalVertex = Boolean(useVertexExpress() && isImageModel(configuredImageModel) && projectConfigured);
+
     return {
         ok: Boolean(textModelAccess.ok && imageModelAccess.ok && textGeneration.ok && structuredOutput.ok),
         release: DIAGNOSTIC_RELEASE,
@@ -185,7 +194,11 @@ async function runProbe() {
         transportOverride,
         legacyVertexFlag,
         endpoint: useVertexExpress() ? 'aiplatform.googleapis.com' : 'generativelanguage.googleapis.com',
-        projectRequired: false,
+        textRoute: useVertexExpress() ? 'Vertex AI Express Mode' : 'Gemini Developer API',
+        imageRoute: imageUsesGlobalVertex ? 'Vertex AI global publisher endpoint' : (useVertexExpress() ? 'Vertex AI Express Mode' : 'Gemini Developer API'),
+        cloudProjectConfigured: projectConfigured,
+        projectRequiredForText: false,
+        projectRequiredForGlobalImage: true,
         serviceAccountJsonRequired: false,
         textModel: configuredTextModel,
         imageModel: configuredImageModel,
@@ -193,7 +206,9 @@ async function runProbe() {
         textGeneration,
         structuredOutput,
         imageModelAccess,
-        note: 'Image-model access is checked with countTokens; no diagnostic image is generated.'
+        note: projectConfigured
+            ? 'Image-model access is checked on the Vertex global route with countTokens; no diagnostic image is generated.'
+            : 'Set GOOGLE_CLOUD_PROJECT to route image generation to Vertex global. The Express account location may not serve this image model.'
     };
 }
 
