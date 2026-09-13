@@ -50,6 +50,10 @@ function rewriteGeminiUrl(input) {
 }
 
 function installVertexExpressFetchAdapter() {
+    // The application transport is installed only in runtime processes. Unit tests
+    // frequently replace global.fetch with Sinon stubs; wrapping fetch during module
+    // import would capture the pre-stub implementation and leak across test files.
+    if (String(process.env.NODE_ENV || '').trim().toLowerCase() === 'test') return false;
     if (!useVertexExpress()) return false;
     if (globalThis[INSTALL_MARKER]) return true;
     if (typeof globalThis.fetch !== 'function') return false;
