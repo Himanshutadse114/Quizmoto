@@ -49,41 +49,13 @@ function rewriteGeminiUrl(input) {
     return new Request(rewritten.toString(), input);
 }
 
-function rewriteGeminiInit(input, init) {
-    if (!useVertexExpress() || !init || typeof init.body !== 'string') return init;
-
-    const raw = typeof input === 'string' || input instanceof URL ? String(input) : String(input?.url || '');
-    let url;
-    try {
-        url = new URL(raw);
-    } catch (_) {
-        return init;
-    }
-    if (url.hostname !== GEMINI_DEVELOPER_HOST) return init;
-
-    try {
-        const payload = JSON.parse(init.body);
-        const generationConfig = payload?.generationConfig;
-        if (generationConfig?.responseJsonSchema && !generationConfig.responseSchema) {
-            generationConfig.responseSchema = generationConfig.responseJsonSchema;
-            delete generationConfig.responseJsonSchema;
-        }
-        return { ...init, body: JSON.stringify(payload) };
-    } catch (_) {
-        return init;
-    }
-}
-
 function installVertexExpressFetchAdapter() {
     if (!useVertexExpress()) return false;
     if (globalThis[INSTALL_MARKER]) return true;
     if (typeof globalThis.fetch !== 'function') return false;
 
     const originalFetch = globalThis.fetch.bind(globalThis);
-    globalThis.fetch = (input, init) => originalFetch(
-        rewriteGeminiUrl(input),
-        rewriteGeminiInit(input, init)
-    );
+    globalThis.fetch = (input, init) => originalFetch(rewriteGeminiUrl(input), init);
     globalThis[INSTALL_MARKER] = { originalFetch };
     return true;
 }
@@ -95,6 +67,5 @@ module.exports = {
     transportName,
     expressModelUrl,
     rewriteGeminiUrl,
-    rewriteGeminiInit,
     installVertexExpressFetchAdapter
 };
