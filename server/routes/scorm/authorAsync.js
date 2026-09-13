@@ -4,6 +4,7 @@ const auth = require('../middleware');
 const { featureFlags, scormMaxUploadMb } = require('../../config/featureFlags');
 const { cleanId } = require('../../services/scorm/ScormGenerationProgress');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
+const ScormGenerationJob = require('../../models/scorm/ScormGenerationJob');
 const ScormAiGenerationManager = require('../../jobs/ScormAiGenerationManager');
 
 // Routes are mounted after database initialisation, so starting the recovery
@@ -12,6 +13,40 @@ ScormAiGenerationManager.stats();
 
 function sourceKey(userId, progressId) {
     return `ai-author/source/${String(userId || 'unknown')}/${progressId}.bin`;
+}
+
+function storageUnavailableError(cause = null) {
+    const error = new Error('Course generation storage is temporarily unavailable. Please retry in a moment.');
+    error.code = 'SCORM_GENERATION_STORAGE_UNAVAILABLE';
+    if (cause) error.cause = cause;
+    return error;
+}
+
+async function assertDurableGenerationJob(progressId, userId) {
+    try {
+        const row = await ScormGenerationJob.findByPk(progressId, {
+            attributes: ['progressId', 'userId']
+        });
+        if (!row || String(row.userId || '') !== String(userId || '')) {
+            throw storageUnavailableError();
+        }
+        return true;
+    } catch (error) {
+        if (error?.code === 'SCORM_GENERATION_STORAGE_UNAVAILABLE') throw error;
+        throw storageUnavailableError(error);
+    }
+}
+
+async function durableStoreAvailable(progressId) {
+    try {
+        await ScormGenerationJob.findByPk(progressId, {
+            attributes: ['progressId'],
+            raw: true
+        });
+        return true;
+    } catch (_) {
+        return false;
+    }
 }
 
 router.post(
@@ -64,6 +99,16 @@ router.post('/generate', auth, async (req, res) => {
             userId: req.userId,
             payload: req.body || {}
         });
+
+        // A 202 means the browser is safe to poll this job from any service
+        // instance. Never acknowledge the request until its durable row exists.
+        try {
+            await assertDurableGenerationJob(progressId, req.userId);
+        } catch (error) {
+            await ScormAiGenerationManager.cancel(progressId, req.userId).catch(() => {});
+            throw error;
+        }
+
         res.setHeader('Cache-Control', 'no-store');
         return res.status(202).json({
             ok: true,
@@ -74,7 +119,11 @@ router.post('/generate', auth, async (req, res) => {
             worker: ScormAiGenerationManager.stats()
         });
     } catch (error) {
-        const status = error.code === 'SCORM_PROGRESS_FORBIDDEN' ? 403 : 500;
+        const status = error.code === 'SCORM_PROGRESS_FORBIDDEN'
+            ? 403
+            : error.code === 'SCORM_GENERATION_STORAGE_UNAVAILABLE'
+                ? 503
+                : 500;
         return res.status(status).json({
             message: error.message || 'Unable to queue course generation.',
             code: error.code || 'SCORM_GENERATION_QUEUE_FAILED'
@@ -86,13 +135,36 @@ router.post('/generate', auth, async (req, res) => {
 // read from the durable generation table when the current process has restarted,
 // so a deployment no longer turns an active course into a false 404/failure.
 router.get('/progress/:progressId', auth, async (req, res, next) => {
+    const progressId = cleanId(req.params.progressId);
+    if (!progressId) return res.status(400).json({ ok: false, message: 'Invalid progressId.', code: 'SCORM_PROGRESS_ID_REQUIRED' });
+
     try {
-        const progress = await ScormAiGenerationManager.getProgress(req.params.progressId, req.userId);
-        if (!progress) return next();
-        res.setHeader('Cache-Control', 'no-store');
-        return res.json({ ok: true, progress });
-    } catch (_) {
+        const progress = await ScormAiGenerationManager.getProgress(progressId, req.userId);
+        if (progress) {
+            res.setHeader('Cache-Control', 'no-store');
+            return res.json({ ok: true, progress });
+        }
+
+        // getProgress deliberately tolerates database errors so workers can keep
+        // running. Before falling through to the legacy 404 route, distinguish a
+        // missing job from an unavailable durable progress store.
+        if (!(await durableStoreAvailable(progressId))) {
+            res.setHeader('Cache-Control', 'no-store');
+            return res.status(503).json({
+                ok: false,
+                message: 'Course generation progress is temporarily unavailable. Please retry.',
+                code: 'SCORM_GENERATION_STORAGE_UNAVAILABLE'
+            });
+        }
+
         return next();
+    } catch (error) {
+        res.setHeader('Cache-Control', 'no-store');
+        return res.status(503).json({
+            ok: false,
+            message: 'Course generation progress is temporarily unavailable. Please retry.',
+            code: error.code || 'SCORM_GENERATION_STORAGE_UNAVAILABLE'
+        });
     }
 });
 
