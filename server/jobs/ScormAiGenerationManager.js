@@ -40,6 +40,13 @@ function generationError(value = {}) {
     return error;
 }
 
+function durableStorageError(cause = null) {
+    const error = new Error('Course generation storage is temporarily unavailable. Please retry.');
+    error.code = 'SCORM_GENERATION_STORAGE_UNAVAILABLE';
+    if (cause) error.cause = cause;
+    return error;
+}
+
 function clampPercent(value, fallback = 1) {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return Math.max(1, Number(fallback) || 1);
@@ -482,10 +489,12 @@ async function enqueue({ progressId, userId, payload }) {
     try {
         await createDurableJob(job, stage, detail);
     } catch (error) {
-        // Keep the existing in-process path as a compatibility fallback if the
-        // durable table cannot be reached. Normal production operation uses the
-        // database row so deployments no longer erase the job.
-        logger.warn('scorm_ai_durable_enqueue_failed', { module: 'scorm', progressId: id, error: error.message });
+        logger.error('scorm_ai_durable_enqueue_failed', {
+            module: 'scorm',
+            progressId: id,
+            error: error.message
+        });
+        throw durableStorageError(error);
     }
 
     queued.set(id, job);

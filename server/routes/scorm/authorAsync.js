@@ -7,6 +7,9 @@ const { getObjectStorage } = require('../../storage/ObjectStorage');
 const ScormGenerationJob = require('../../models/scorm/ScormGenerationJob');
 const ScormAiGenerationManager = require('../../jobs/ScormAiGenerationManager');
 
+const COURSE_GENERATION_RELEASE = 'gemini-course-durable-v3';
+let generationStoreReadyPromise = null;
+
 // Routes are mounted after database initialisation, so starting the recovery
 // loop here safely resumes any generation lease left behind by a deployment.
 ScormAiGenerationManager.stats();
@@ -20,6 +23,17 @@ function storageUnavailableError(cause = null) {
     error.code = 'SCORM_GENERATION_STORAGE_UNAVAILABLE';
     if (cause) error.cause = cause;
     return error;
+}
+
+async function ensureGenerationStoreReady() {
+    if (!generationStoreReadyPromise) {
+        generationStoreReadyPromise = ScormGenerationJob.sync()
+            .catch((error) => {
+                generationStoreReadyPromise = null;
+                throw storageUnavailableError(error);
+            });
+    }
+    return generationStoreReadyPromise;
 }
 
 async function assertDurableGenerationJob(progressId, userId) {
@@ -48,6 +62,19 @@ async function durableStoreAvailable(progressId) {
         return false;
     }
 }
+
+// Lightweight public marker for confirming which course-generation backend is
+// actually serving the custom API domain. It never exposes credentials.
+router.get('/version', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({
+        ok: true,
+        release: COURSE_GENERATION_RELEASE,
+        commit: process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || null,
+        textModel: process.env.GOOGLE_TEXT_MODEL || process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+        imageModel: process.env.GOOGLE_IMAGE_MODEL || process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image'
+    });
+});
 
 router.post(
     '/source/:progressId',
@@ -94,6 +121,10 @@ router.post('/generate', auth, async (req, res) => {
     }
 
     try {
+        // The durable generation table is required for every accepted background
+        // job. sync() is create-if-missing only here; it does not alter columns.
+        await ensureGenerationStoreReady();
+
         const queued = await ScormAiGenerationManager.enqueue({
             progressId,
             userId: req.userId,
@@ -115,6 +146,7 @@ router.post('/generate', auth, async (req, res) => {
             accepted: true,
             status: queued.status || 'queued',
             progressId,
+            release: COURSE_GENERATION_RELEASE,
             duplicate: Boolean(queued.duplicate),
             worker: ScormAiGenerationManager.stats()
         });
@@ -126,7 +158,8 @@ router.post('/generate', auth, async (req, res) => {
                 : 500;
         return res.status(status).json({
             message: error.message || 'Unable to queue course generation.',
-            code: error.code || 'SCORM_GENERATION_QUEUE_FAILED'
+            code: error.code || 'SCORM_GENERATION_QUEUE_FAILED',
+            release: COURSE_GENERATION_RELEASE
         });
     }
 });
@@ -142,7 +175,7 @@ router.get('/progress/:progressId', auth, async (req, res, next) => {
         const progress = await ScormAiGenerationManager.getProgress(progressId, req.userId);
         if (progress) {
             res.setHeader('Cache-Control', 'no-store');
-            return res.json({ ok: true, progress });
+            return res.json({ ok: true, progress, release: COURSE_GENERATION_RELEASE });
         }
 
         // getProgress deliberately tolerates database errors so workers can keep
@@ -153,7 +186,8 @@ router.get('/progress/:progressId', auth, async (req, res, next) => {
             return res.status(503).json({
                 ok: false,
                 message: 'Course generation progress is temporarily unavailable. Please retry.',
-                code: 'SCORM_GENERATION_STORAGE_UNAVAILABLE'
+                code: 'SCORM_GENERATION_STORAGE_UNAVAILABLE',
+                release: COURSE_GENERATION_RELEASE
             });
         }
 
@@ -163,7 +197,8 @@ router.get('/progress/:progressId', auth, async (req, res, next) => {
         return res.status(503).json({
             ok: false,
             message: 'Course generation progress is temporarily unavailable. Please retry.',
-            code: error.code || 'SCORM_GENERATION_STORAGE_UNAVAILABLE'
+            code: error.code || 'SCORM_GENERATION_STORAGE_UNAVAILABLE',
+            release: COURSE_GENERATION_RELEASE
         });
     }
 });
@@ -178,7 +213,7 @@ router.post('/progress/:progressId/cancel', auth, async (req, res, next) => {
 
         const cancelled = await ScormAiGenerationManager.cancel(req.params.progressId, req.userId);
         res.setHeader('Cache-Control', 'no-store');
-        return res.json({ ok: true, progress: cancelled || progress });
+        return res.json({ ok: true, progress: cancelled || progress, release: COURSE_GENERATION_RELEASE });
     } catch (_) {
         return next();
     }
