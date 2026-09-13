@@ -7,7 +7,7 @@ const {
 
 const router = express.Router();
 
-const DIAGNOSTIC_RELEASE = 'vertex-express-diagnostic-v5';
+const DIAGNOSTIC_RELEASE = 'vertex-express-diagnostic-v6';
 const CACHE_MS = 5 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 15000;
 let cached = null;
@@ -143,6 +143,8 @@ async function runProbe() {
     const configuredImageModel = imageModel();
     const checkedAt = new Date().toISOString();
     const transport = transportName();
+    const transportOverride = clean(process.env.GOOGLE_GENAI_TRANSPORT) || null;
+    const legacyVertexFlag = clean(process.env.GOOGLE_GENAI_USE_VERTEXAI) || null;
 
     if (!keyInfo.key) {
         return {
@@ -152,6 +154,8 @@ async function runProbe() {
             apiKeyConfigured: false,
             keySource: null,
             transport,
+            transportOverride,
+            legacyVertexFlag,
             textModel: configuredTextModel,
             imageModel: configuredImageModel,
             error: 'No GEMINI_API_KEY or GOOGLE_API_KEY is configured on the backend.'
@@ -178,6 +182,8 @@ async function runProbe() {
         apiKeyConfigured: true,
         keySource: keyInfo.source,
         transport,
+        transportOverride,
+        legacyVertexFlag,
         endpoint: useVertexExpress() ? 'aiplatform.googleapis.com' : 'generativelanguage.googleapis.com',
         projectRequired: false,
         serviceAccountJsonRequired: false,
