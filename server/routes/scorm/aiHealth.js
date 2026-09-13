@@ -104,7 +104,7 @@ async function probeTextGeneration(apiKey, model, structured = false) {
             temperature: 0,
             maxOutputTokens: 32,
             responseMimeType: 'application/json',
-            ...(useVertexExpress() ? { responseSchema: schema } : { responseJsonSchema: schema })
+            responseJsonSchema: schema
         }
         : { temperature: 0, maxOutputTokens: 16 };
 
