@@ -6,7 +6,9 @@ const {
     expressModelUrl,
     globalVertexModelUrl,
     modelMethodUrl,
-    rewriteGeminiUrl
+    rewriteGeminiUrl,
+    rewriteVertexRequestBody,
+    normalizeVertexRequest
 } = require('../services/scorm/GoogleGenAiTransport');
 
 describe('GoogleGenAiTransport', () => {
@@ -107,6 +109,53 @@ describe('GoogleGenAiTransport', () => {
             rewriteGeminiUrl(input),
             'https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.5-flash:generateContent?key=test-key'
         );
+    });
+
+    it('preserves responseJsonSchema while converting text/plain inline data to a text part', () => {
+        const schema = {
+            type: 'object',
+            properties: { title: { type: 'string' } },
+            required: ['title']
+        };
+        const body = JSON.stringify({
+            contents: [{
+                parts: [{
+                    inlineData: {
+                        mimeType: 'text/plain',
+                        data: Buffer.from('Topic: Demo course', 'utf8').toString('base64')
+                    }
+                }]
+            }],
+            generationConfig: {
+                responseMimeType: 'application/json',
+                responseJsonSchema: schema
+            }
+        });
+
+        const rewritten = JSON.parse(rewriteVertexRequestBody(body));
+        assert.strictEqual(rewritten.contents[0].role, 'user');
+        assert.strictEqual(rewritten.contents[0].parts[0].text, 'Topic: Demo course');
+        assert.deepStrictEqual(rewritten.generationConfig.responseJsonSchema, schema);
+        assert.strictEqual(rewritten.generationConfig.responseSchema, undefined);
+    });
+
+    it('normalizes both the Vertex URL and request body together', () => {
+        delete process.env.GOOGLE_GENAI_TRANSPORT;
+        const input = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=test-key';
+        const init = {
+            method: 'POST',
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: 'Hello' }] }]
+            })
+        };
+        const normalized = normalizeVertexRequest(input, init);
+        assert.strictEqual(
+            normalized.input,
+            'https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.5-flash:generateContent?key=test-key'
+        );
+        const payload = JSON.parse(normalized.init.body);
+        assert.strictEqual(payload.contents[0].role, 'user');
+        assert.strictEqual(payload.contents[0].parts[0].text, 'Hello');
     });
 
     it('can explicitly fall back to the Gemini Developer API', () => {

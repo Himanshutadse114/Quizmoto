@@ -139,25 +139,33 @@ function rewriteVertexRequestBody(body) {
     }
 
     let changed = false;
-    const generationConfig = payload?.generationConfig;
-    if (generationConfig && generationConfig.responseJsonSchema && !generationConfig.responseSchema) {
-        generationConfig.responseSchema = generationConfig.responseJsonSchema;
-        delete generationConfig.responseJsonSchema;
-        changed = true;
-    }
 
+    // Vertex accepts responseJsonSchema directly. Do not convert it to
+    // responseSchema: responseJsonSchema is JSON Schema, while responseSchema is
+    // the Vertex OpenAPI Schema type and the two are not wire-compatible.
     if (Array.isArray(payload?.contents)) {
         payload.contents = payload.contents.map((content) => {
-            if (!Array.isArray(content?.parts)) return content;
+            if (!content || typeof content !== 'object') return content;
             let contentChanged = false;
-            const parts = content.parts.map((part) => {
-                const next = decodeInlineText(part);
-                if (next !== part) contentChanged = true;
-                return next;
-            });
+            const nextContent = { ...content };
+
+            if (!clean(nextContent.role)) {
+                nextContent.role = 'user';
+                contentChanged = true;
+            }
+
+            if (Array.isArray(content.parts)) {
+                const parts = content.parts.map((part) => {
+                    const next = decodeInlineText(part);
+                    if (next !== part) contentChanged = true;
+                    return next;
+                });
+                if (contentChanged) nextContent.parts = parts;
+            }
+
             if (!contentChanged) return content;
             changed = true;
-            return { ...content, parts };
+            return nextContent;
         });
     }
 
