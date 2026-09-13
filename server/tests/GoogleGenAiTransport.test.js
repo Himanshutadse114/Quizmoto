@@ -5,7 +5,6 @@ const {
     cloudProject,
     expressModelUrl,
     globalVertexModelUrl,
-    developerModelUrl,
     modelMethodUrl,
     rewriteGeminiUrl
 } = require('../services/scorm/GoogleGenAiTransport');
@@ -42,44 +41,17 @@ describe('GoogleGenAiTransport', () => {
         delete process.env.GCLOUD_PROJECT;
     }
 
-    function clearTransportEnv() {
+    it('uses Vertex AI Express Mode by default', () => {
         delete process.env.GOOGLE_GENAI_TRANSPORT;
-        delete process.env.GOOGLE_GENAI_USE_VERTEXAI;
-    }
-
-    it('uses the Gemini Developer API by default', () => {
-        clearTransportEnv();
-        assert.strictEqual(useVertexExpress(), false);
-        assert.strictEqual(transportName(), 'Gemini Developer API');
-    });
-
-    it('respects the legacy false flag', () => {
-        delete process.env.GOOGLE_GENAI_TRANSPORT;
-        process.env.GOOGLE_GENAI_USE_VERTEXAI = 'false';
-        assert.strictEqual(useVertexExpress(), false);
-        assert.strictEqual(transportName(), 'Gemini Developer API');
-    });
-
-    it('can explicitly enable Vertex using the legacy flag', () => {
-        delete process.env.GOOGLE_GENAI_TRANSPORT;
-        process.env.GOOGLE_GENAI_USE_VERTEXAI = 'true';
         assert.strictEqual(useVertexExpress(), true);
         assert.strictEqual(transportName(), 'Vertex AI Express Mode');
     });
 
-    it('can explicitly enable Vertex using the transport selector', () => {
-        process.env.GOOGLE_GENAI_TRANSPORT = 'vertex-express';
+    it('ignores the stale legacy false flag and stays on Vertex Express', () => {
+        delete process.env.GOOGLE_GENAI_TRANSPORT;
         process.env.GOOGLE_GENAI_USE_VERTEXAI = 'false';
         assert.strictEqual(useVertexExpress(), true);
         assert.strictEqual(transportName(), 'Vertex AI Express Mode');
-    });
-
-    it('builds the Gemini Developer API endpoint', () => {
-        const url = developerModelUrl('gemini-2.5-flash', 'generateContent', 'test-key');
-        assert.strictEqual(
-            url,
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=test-key'
-        );
     });
 
     it('builds the projectless Vertex Express endpoint', () => {
@@ -99,33 +71,37 @@ describe('GoogleGenAiTransport', () => {
         );
     });
 
-    it('keeps text on the Developer API by default even when a project is configured', () => {
-        clearTransportEnv();
+    it('keeps text generation on the projectless Express route even when a project is configured', () => {
+        delete process.env.GOOGLE_GENAI_TRANSPORT;
         process.env.GOOGLE_CLOUD_PROJECT = 'example-project';
         assert.strictEqual(
             modelMethodUrl('gemini-2.5-flash', 'generateContent', 'test-key'),
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=test-key'
+            'https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.5-flash:generateContent?key=test-key'
         );
     });
 
-    it('keeps image generation on the Developer API by default', () => {
-        clearTransportEnv();
+    it('routes Gemini image generation to global Vertex when the project is configured', () => {
+        delete process.env.GOOGLE_GENAI_TRANSPORT;
         process.env.GOOGLE_CLOUD_PROJECT = 'example-project';
+        const input = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:countTokens?key=test-key';
         assert.strictEqual(
-            modelMethodUrl('gemini-2.5-flash-image', 'generateContent', 'test-key'),
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=test-key'
+            rewriteGeminiUrl(input),
+            'https://aiplatform.googleapis.com/v1/projects/example-project/locations/global/publishers/google/models/gemini-2.5-flash-image:countTokens?key=test-key'
         );
     });
 
-    it('does not rewrite Developer API calls by default', () => {
-        clearTransportEnv();
+    it('falls back to Express for image models when no Cloud project is configured', () => {
+        delete process.env.GOOGLE_GENAI_TRANSPORT;
         clearProjectEnv();
-        const input = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=test-key';
-        assert.strictEqual(rewriteGeminiUrl(input), input);
+        const input = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:countTokens?key=test-key';
+        assert.strictEqual(
+            rewriteGeminiUrl(input),
+            'https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.5-flash-image:countTokens?key=test-key'
+        );
     });
 
-    it('rewrites text calls when Vertex Express is explicitly selected', () => {
-        process.env.GOOGLE_GENAI_TRANSPORT = 'vertex-express';
+    it('rewrites Gemini Developer API text calls to Vertex Express', () => {
+        delete process.env.GOOGLE_GENAI_TRANSPORT;
         const input = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=test-key';
         assert.strictEqual(
             rewriteGeminiUrl(input),
@@ -133,13 +109,11 @@ describe('GoogleGenAiTransport', () => {
         );
     });
 
-    it('routes image calls to global Vertex when Vertex and a project are explicitly configured', () => {
-        process.env.GOOGLE_GENAI_TRANSPORT = 'vertex-express';
-        process.env.GOOGLE_CLOUD_PROJECT = 'example-project';
-        const input = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:countTokens?key=test-key';
-        assert.strictEqual(
-            rewriteGeminiUrl(input),
-            'https://aiplatform.googleapis.com/v1/projects/example-project/locations/global/publishers/google/models/gemini-2.5-flash-image:countTokens?key=test-key'
-        );
+    it('can explicitly fall back to the Gemini Developer API', () => {
+        process.env.GOOGLE_GENAI_TRANSPORT = 'developer';
+        const input = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=test-key';
+        assert.strictEqual(useVertexExpress(), false);
+        assert.strictEqual(transportName(), 'Gemini Developer API');
+        assert.strictEqual(rewriteGeminiUrl(input), input);
     });
 });
