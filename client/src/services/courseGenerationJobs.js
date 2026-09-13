@@ -120,10 +120,16 @@ export function markCourseGenerationJobNotified(id) {
 export function publicGenerationError(value) {
   const raw = String(value || '').trim();
   if (!raw) return 'Course generation failed. Please try again.';
-  if (/gemini|replicate|flux|model\s*=|api\s*error/i.test(raw)) {
-    return 'Course generation failed while preparing the course. Please try again.';
-  }
-  return raw;
+  const safe = raw
+    .replace(/AIza[0-9A-Za-z_-]{20,}/g, '[REDACTED]')
+    .replace(/([?&](?:key|api_key|apikey|token)=)[^&\s]+/gi, '$1[REDACTED]')
+    .replace(/(authorization\s*[:=]\s*bearer\s+)[^\s,;]+/gi, '$1[REDACTED]')
+    .replace(/((?:GEMINI_API_KEY|GOOGLE_API_KEY|REPLICATE_API_TOKEN)\s*=\s*)[^\s,;]+/gi, '$1[REDACTED]')
+    .replace(/(["']?(?:api[_-]?key|access[_-]?token|token|authorization)["']?\s*[:=]\s*["'])[^"']+(["'])/gi, '$1[REDACTED]$2')
+    .replace(/data:[^;\s]+;base64,[A-Za-z0-9+/=]+/gi, '[REDACTED_DATA_URL]')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return safe.slice(0, 1200) || 'Course generation failed. Please try again.';
 }
 
 function publicStage(progress = {}, floorPercent = 1) {
