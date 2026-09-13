@@ -6,6 +6,11 @@ function clean(value) {
     return String(value || '').trim();
 }
 
+function normalizeBool(value, fallback = false) {
+    if (value === undefined || value === null || clean(value) === '') return fallback;
+    return ['true', '1', 'yes', 'y', 'on'].includes(clean(value).toLowerCase());
+}
+
 function requestedTransport() {
     return clean(process.env.GOOGLE_GENAI_TRANSPORT).toLowerCase();
 }
@@ -13,16 +18,19 @@ function requestedTransport() {
 function useVertexExpress() {
     const transport = requestedTransport();
 
-    // Vertex AI Express Mode is the canonical LMSGEN transport. The legacy
-    // GOOGLE_GENAI_USE_VERTEXAI flag is intentionally ignored here because older
-    // Render environments may still contain GOOGLE_GENAI_USE_VERTEXAI=false from
-    // the previous Gemini Developer API implementation. Falling back to the
-    // Developer API now requires an explicit GOOGLE_GENAI_TRANSPORT=developer.
-    if (['developer', 'gemini-developer', 'gemini_developer', 'developer-api'].includes(transport)) {
+    // Standard Gemini API-key mode is the safest default for LMSGEN because it
+    // matches google.genai Client(api_key=...) and does not require a Google
+    // Cloud project. Vertex is only enabled when it is explicitly requested.
+    if (['developer', 'gemini-developer', 'gemini_developer', 'developer-api', 'gemini developer api'].includes(transport)) {
         return false;
     }
+    if (['vertex', 'vertex-express', 'vertex_express', 'vertex-ai', 'vertex_ai', 'vertex ai', 'vertex ai express mode'].includes(transport)) {
+        return true;
+    }
 
-    return true;
+    // Keep backwards compatibility with the original boolean flag, but default
+    // it to false. An old GOOGLE_GENAI_USE_VERTEXAI=false must never be ignored.
+    return normalizeBool(process.env.GOOGLE_GENAI_USE_VERTEXAI, false);
 }
 
 function transportName() {
@@ -67,10 +75,8 @@ function developerModelUrl(model, method = 'generateContent', apiKey = '') {
 function modelMethodUrl(model, method = 'generateContent', apiKey = '') {
     if (!useVertexExpress()) return developerModelUrl(model, method, apiKey);
 
-    // Gemini image-generation models are not served from the Singapore Express
-    // location used by this account. When a Cloud project is configured, send
-    // image calls to the standard Vertex global publisher endpoint with the same
-    // service-account-bound API key. Text stays on the projectless Express route.
+    // When Vertex is explicitly enabled and a Cloud project is available, use
+    // the global publisher route for image models. Text can remain on Express.
     if (isImageModel(model) && cloudProject()) {
         return globalVertexModelUrl(model, method, apiKey);
     }
@@ -107,9 +113,7 @@ function rewriteGeminiUrl(input) {
 }
 
 function installVertexExpressFetchAdapter() {
-    // The application transport is installed only in runtime processes. Unit tests
-    // frequently replace global.fetch with Sinon stubs; wrapping fetch during module
-    // import would capture the pre-stub implementation and leak across test files.
+    // Unit tests often replace global.fetch with stubs, so never wrap it there.
     if (clean(process.env.NODE_ENV).toLowerCase() === 'test') return false;
     if (!useVertexExpress()) return false;
     if (globalThis[INSTALL_MARKER]) return true;
