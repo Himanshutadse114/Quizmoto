@@ -48,7 +48,8 @@ describe('Template course mobile responsive runtime v5', () => {
             body,
             head: { lastElementChild: null, appendChild() {} },
             readyState: 'complete',
-            getElementById() { return null; }
+            getElementById() { return null; },
+            querySelector() { return null; }
         };
         const window = {
             innerWidth: 1360,
@@ -73,10 +74,12 @@ describe('Template course mobile responsive runtime v5', () => {
         expect(cssVars['--qmx-mobile-vw']).to.equal('390px');
     });
 
-    it('constrains the whole course to the detected device width for oversized LMS iframes', () => {
+    it('uses the embedding viewport width instead of forcing screen pixels onto the course', () => {
         const css = style();
-        expect(css).to.include('width:var(--qmx-mobile-vw,100%)!important');
-        expect(css).to.include('max-width:var(--qmx-mobile-vw,100%)!important');
+        expect(css).to.include('html.qmx-mobile-layout-v5,');
+        expect(css).to.include('width:100%!important;max-width:100%!important;min-width:0!important');
+        expect(css).to.not.include('width:var(--qmx-mobile-vw,100%)!important');
+        expect(css).to.not.include('max-width:var(--qmx-mobile-vw,100%)!important');
         expect(css).to.include('overflow-x:hidden!important');
     });
 
@@ -111,6 +114,25 @@ describe('Template course mobile responsive runtime v5', () => {
         expect(css).to.include('display:none!important;visibility:hidden!important;position:absolute!important');
         expect(css).to.include('height:0!important;min-height:0!important;max-height:0!important');
         expect(css).to.include('margin:0!important;padding:0!important;gap:0!important');
+    });
+
+    it('prevents learner copy and interaction descendants from retaining desktop intrinsic width', () => {
+        const css = style();
+        expect(css).to.include('.slide .qmx-learning-shell>*');
+        expect(css).to.include('.slide .qmx-copy>*');
+        expect(css).to.include('.slide .qmx-interaction-grid>*');
+        expect(css).to.include('.slide .qmx-interaction-title');
+        expect(css).to.include('white-space:normal!important;overflow-wrap:anywhere!important');
+        expect(css).to.include('overflow-x:hidden!important');
+    });
+
+    it('contains a last-resort duplicate header logo guard for already-generated packages', () => {
+        const js = script();
+        expect(js).to.include('function dedupeHeaderLogos()');
+        expect(js).to.include("header.querySelector('.qmx-brand-logo')");
+        expect(js).to.include("String(node.tagName||'').toUpperCase()==='IMG'");
+        expect(js).to.include("node.style.display='none'");
+        expect(js).to.include('dedupeHeaderLogos();');
     });
 
     it('removes the old v4 runtime and refreshes v5 without duplication', () => {
