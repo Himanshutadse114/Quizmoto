@@ -272,6 +272,7 @@ export function invalidateScormApiCache() {
       }
       keys.forEach((key) => window.sessionStorage.removeItem(key));
     } catch (_) {}
+    window.dispatchEvent(new CustomEvent('lmsgen-platform-cache-invalidated'));
   }
 }
 
