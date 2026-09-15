@@ -132,16 +132,26 @@ export function publicGenerationError(value) {
   return safe.slice(0, 1200) || 'Course generation failed. Please try again.';
 }
 
+function publicProgressText(value, fallback) {
+  const clean = String(value || '')
+    .replace(/data:[^;\s]+;base64,[A-Za-z0-9+/=]+/gi, '[media]')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return clean.slice(0, 320) || fallback;
+}
+
 function publicStage(progress = {}, floorPercent = 1) {
   const reported = Math.max(1, Math.min(100, Math.round(Number(progress.percent) || 1)));
   const percent = Math.max(Math.max(1, Number(floorPercent) || 1), reported);
-  if (percent >= 100) return { percent, stage: 'Course ready' };
-  if (percent >= 92) return { percent, stage: 'Finalising course' };
-  if (percent >= 80) return { percent, stage: 'Building course' };
-  if (percent >= 36) return { percent, stage: 'Creating course visuals' };
-  if (percent >= 28) return { percent, stage: 'Planning course visuals' };
-  if (percent >= 8) return { percent, stage: 'Creating course content' };
-  return { percent, stage: 'Preparing source material' };
+  const serverStage = publicProgressText(progress.stage, '');
+  let fallback = 'Preparing source material';
+  if (percent >= 100) fallback = 'Course ready';
+  else if (percent >= 92) fallback = 'Finalising course';
+  else if (percent >= 80) fallback = 'Building course';
+  else if (percent >= 36) fallback = 'Creating course visuals';
+  else if (percent >= 28) fallback = 'Planning course visuals';
+  else if (percent >= 8) fallback = 'Creating course content';
+  return { percent, stage: serverStage || fallback };
 }
 
 export function startBackgroundCourseGeneration({ token, payload, title, file = null }) {
@@ -308,10 +318,14 @@ export async function refreshCourseGenerationJob(token, job) {
     }
 
     const visible = publicStage(progress, job.percent);
+    const detail = publicProgressText(progress.detail, 'Course generation continues in the background.');
     const result = progress.result || {};
     const previousPercent = Math.max(1, Number(job.percent) || 1);
     const serverStatus = String(progress.status || 'running');
-    const progressed = visible.percent > previousPercent || serverStatus !== String(job.serverStatus || 'running');
+    const progressed = visible.percent > previousPercent
+      || serverStatus !== String(job.serverStatus || 'running')
+      || visible.stage !== String(job.stage || '')
+      || detail !== String(job.detail || '');
     const progressUpdatedAt = progressed ? now : Number(job.progressUpdatedAt || job.createdAt || now);
 
     if (progress.status === 'error') {
@@ -356,7 +370,7 @@ export async function refreshCourseGenerationJob(token, job) {
       status: 'running',
       percent: visible.percent,
       stage: visible.stage,
-      detail: 'Course generation continues in the background.',
+      detail,
       progressUpdatedAt,
       missingProgressCount: 0,
       serverStatus
@@ -414,7 +428,7 @@ export function useCourseGenerationJobs(token, { poll = true } = {}) {
       if (!cancelled) setJobs(readCourseGenerationJobs());
     };
     tick();
-    const timer = window.setInterval(tick, 2500);
+    const timer = window.setInterval(tick, 2000);
     return () => {
       cancelled = true;
       window.clearInterval(timer);

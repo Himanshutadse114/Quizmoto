@@ -47,7 +47,8 @@ const ScormCourse = sequelize.define('ScormCourse', {
     indexes: [
         { fields: ['hostId'] },
         { fields: ['inviteCode'], unique: true },
-        { fields: ['hostId', 'status', 'createdAt'], name: 'scorm_courses_host_status_created_idx' }
+        { fields: ['hostId', 'status', 'createdAt'], name: 'scorm_courses_host_status_created_idx' },
+        { fields: ['hostId', 'updatedAt'], name: 'scorm_courses_host_updated_idx' }
     ]
 });
 

@@ -48,7 +48,8 @@ export default function ScormCourses() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [trackingLoading, setTrackingLoading] = useState(true);
 
   const loadCourses = useCallback(async ({ initial = false } = {}) => {
     if (!token) return;
@@ -57,25 +58,40 @@ export default function ScormCourses() {
     if (initial) {
       const cachedCourses = peekScormData('courses', token);
       const cachedTracking = peekScormData('tracking-summary', token);
-      if (cachedCourses) setCourses(Array.isArray(cachedCourses) ? cachedCourses : []);
-      if (cachedTracking) setTracking(cachedTracking || { courses: [] });
-      if (cachedCourses && cachedTracking) setLoading(false);
+      if (cachedCourses) {
+        setCourses(Array.isArray(cachedCourses) ? cachedCourses : []);
+        setCoursesLoading(false);
+      }
+      if (cachedTracking) {
+        setTracking(cachedTracking || { courses: [] });
+        setTrackingLoading(false);
+      }
     }
 
-    try {
-      const [courseData, trackingData] = await Promise.all([
-        fetchScormData('courses', token, () => axios.get(apiUrl('/api/scorm/courses'), { headers }).then((res) => res.data || [])),
-        fetchScormData('tracking-summary', token, () => axios.get(apiUrl('/api/scorm/tracking/summary'), { headers }).then((res) => res.data || { courses: [] }))
-          .catch(() => peekScormData('tracking-summary', token) || { courses: [] })
-      ]);
-      setCourses(Array.isArray(courseData) ? courseData : []);
-      setTracking(trackingData || { courses: [] });
-      setError(null);
-    } catch (err) {
-      setError(err.response?.data?.message || err.message);
-    } finally {
-      setLoading(false);
-    }
+    const courseRequest = fetchScormData(
+      'courses',
+      token,
+      () => axios.get(apiUrl('/api/scorm/courses'), { headers }).then((res) => res.data || [])
+    )
+      .then((courseData) => {
+        setCourses(Array.isArray(courseData) ? courseData : []);
+        setError(null);
+      })
+      .catch((err) => {
+        setError(err.response?.data?.message || err.message);
+      })
+      .finally(() => setCoursesLoading(false));
+
+    const trackingRequest = fetchScormData(
+      'tracking-summary',
+      token,
+      () => axios.get(apiUrl('/api/scorm/tracking/summary'), { headers }).then((res) => res.data || { courses: [] })
+    )
+      .catch(() => peekScormData('tracking-summary', token) || { courses: [] })
+      .then((trackingData) => setTracking(trackingData || { courses: [] }))
+      .finally(() => setTrackingLoading(false));
+
+    await Promise.allSettled([courseRequest, trackingRequest]);
   }, [token]);
 
   useEffect(() => {
@@ -126,10 +142,10 @@ export default function ScormCourses() {
       <BackgroundCourseJobs />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <Metric label="Total courses" value={courses.length} icon={BookOpen} loading={loading} />
-        <Metric label="Published" value={courses.filter((c) => c.status === 'published').length} icon={CheckCircle2} loading={loading} />
-        <Metric label="Draft" value={courses.filter((c) => c.status === 'draft').length} icon={Clock3} loading={loading} />
-        <Metric label="Direct learners" value={learnerCount} icon={Users} loading={loading} />
+        <Metric label="Total courses" value={courses.length} icon={BookOpen} loading={coursesLoading} />
+        <Metric label="Published" value={courses.filter((c) => c.status === 'published').length} icon={CheckCircle2} loading={coursesLoading} />
+        <Metric label="Draft" value={courses.filter((c) => c.status === 'draft').length} icon={Clock3} loading={coursesLoading} />
+        <Metric label="Direct learners" value={learnerCount} icon={Users} loading={trackingLoading} />
       </div>
 
       <div className="scorm-course-list-shell rounded-xl overflow-hidden border">
@@ -157,15 +173,15 @@ export default function ScormCourses() {
         </div>
 
         <div className="scorm-course-rows divide-y">
-          {loading && [0, 1, 2, 3].map((item) => <CourseRowSkeleton key={item} />)}
-          {!loading && filtered.length === 0 && (
+          {coursesLoading && [0, 1, 2, 3].map((item) => <CourseRowSkeleton key={item} />)}
+          {!coursesLoading && filtered.length === 0 && (
             <div className="p-10 text-center">
               <BookOpen size={23} className="mx-auto text-[#8295ae] mb-3" />
               <div className="text-sm font-semibold text-[#f1f5f9]">No courses match this view</div>
               <div className="text-xs text-[#8295ae] mt-1">Try a different search or filter.</div>
             </div>
           )}
-          {!loading && filtered.map((course) => {
+          {!coursesLoading && filtered.map((course) => {
             const stats = trackingById.get(String(course.id)) || {};
             return (
               <Link
@@ -181,15 +197,15 @@ export default function ScormCourses() {
                   <div className="scorm-micro text-[9px] text-[#8295ae] mt-1">{course.inviteCode || 'No invite code'} · {course.package?.standard || 'SCORM'}</div>
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-[#f1f5f9]">{stats.learners || 0}</div>
+                  <div className="text-sm font-semibold text-[#f1f5f9]">{trackingLoading ? '…' : (stats.learners || 0)}</div>
                   <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Direct learners</div>
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-emerald-300">{stats.completed || 0}</div>
+                  <div className="text-sm font-semibold text-emerald-300">{trackingLoading ? '…' : (stats.completed || 0)}</div>
                   <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Completed</div>
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-[#f1f5f9]">{Number(stats.averageProgress || 0).toFixed(0)}%</div>
+                  <div className="text-sm font-semibold text-[#f1f5f9]">{trackingLoading ? '…' : `${Number(stats.averageProgress || 0).toFixed(0)}%`}</div>
                   <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Direct progress</div>
                 </div>
                 <ChevronRight size={17} className="text-[#60a5fa]" />

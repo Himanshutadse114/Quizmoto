@@ -56,7 +56,10 @@ export default function ScormHome() {
   const [tracking, setTracking] = useState({ overview: {}, courses: [], learners: [] });
   const [error, setError] = useState(null);
   const [aiEnabled, setAiEnabled] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [packagesLoading, setPackagesLoading] = useState(true);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [trackingLoading, setTrackingLoading] = useState(true);
+  const [featuresLoading, setFeaturesLoading] = useState(true);
 
   useEffect(() => {
     if (!token) return navigate('/login');
@@ -68,30 +71,64 @@ export default function ScormHome() {
     const cachedTracking = peekScormData('tracking-summary', token);
     const cachedFeatures = peekScormData('features', token);
 
-    if (cachedPackages) setPackages(Array.isArray(cachedPackages) ? cachedPackages : []);
-    if (cachedCourses) setCourses(Array.isArray(cachedCourses) ? cachedCourses : []);
-    if (cachedTracking) setTracking(cachedTracking || { overview: {}, courses: [], learners: [] });
-    if (cachedFeatures) setAiEnabled(!!cachedFeatures?.scormAiAuthor);
-    if (cachedPackages && cachedCourses && cachedTracking) setLoading(false);
+    if (cachedPackages) {
+      setPackages(Array.isArray(cachedPackages) ? cachedPackages : []);
+      setPackagesLoading(false);
+    }
+    if (cachedCourses) {
+      setCourses(Array.isArray(cachedCourses) ? cachedCourses : []);
+      setCoursesLoading(false);
+    }
+    if (cachedTracking) {
+      setTracking(cachedTracking || { overview: {}, courses: [], learners: [] });
+      setTrackingLoading(false);
+    }
+    if (cachedFeatures) {
+      setAiEnabled(!!cachedFeatures?.scormAiAuthor);
+      setFeaturesLoading(false);
+    }
 
-    Promise.all([
-      fetchScormData('packages', token, () => axios.get(apiUrl('/api/scorm/packages'), { headers }).then((res) => res.data || [])),
-      fetchScormData('courses', token, () => axios.get(apiUrl('/api/scorm/courses'), { headers }).then((res) => res.data || [])),
-      fetchScormData('tracking-summary', token, () => axios.get(apiUrl('/api/scorm/tracking/summary'), { headers }).then((res) => res.data || { overview: {}, courses: [], learners: [] }))
-        .catch(() => peekScormData('tracking-summary', token) || { overview: {}, courses: [], learners: [] }),
-      fetchScormData('features', token, () => axios.get(apiUrl('/api/scorm/features')).then((res) => res.data || {}))
-        .catch(() => peekScormData('features', token) || {})
-    ])
-      .then(([packageData, courseData, trackingData, featureData]) => {
+    const packageRequest = fetchScormData(
+      'packages',
+      token,
+      () => axios.get(apiUrl('/api/scorm/packages'), { headers }).then((res) => res.data || [])
+    )
+      .then((data) => mounted && setPackages(Array.isArray(data) ? data : []))
+      .catch((err) => mounted && setError(err.response?.data?.message || err.message))
+      .finally(() => mounted && setPackagesLoading(false));
+
+    const courseRequest = fetchScormData(
+      'courses',
+      token,
+      () => axios.get(apiUrl('/api/scorm/courses'), { headers }).then((res) => res.data || [])
+    )
+      .then((data) => {
         if (!mounted) return;
-        setPackages(Array.isArray(packageData) ? packageData : []);
-        setCourses(Array.isArray(courseData) ? courseData : []);
-        setTracking(trackingData || { overview: {}, courses: [], learners: [] });
-        setAiEnabled(!!featureData?.scormAiAuthor);
+        setCourses(Array.isArray(data) ? data : []);
         setError(null);
       })
       .catch((err) => mounted && setError(err.response?.data?.message || err.message))
-      .finally(() => mounted && setLoading(false));
+      .finally(() => mounted && setCoursesLoading(false));
+
+    const trackingRequest = fetchScormData(
+      'tracking-summary',
+      token,
+      () => axios.get(apiUrl('/api/scorm/tracking/summary'), { headers }).then((res) => res.data || { overview: {}, courses: [], learners: [] })
+    )
+      .catch(() => peekScormData('tracking-summary', token) || { overview: {}, courses: [], learners: [] })
+      .then((data) => mounted && setTracking(data || { overview: {}, courses: [], learners: [] }))
+      .finally(() => mounted && setTrackingLoading(false));
+
+    const featureRequest = fetchScormData(
+      'features',
+      token,
+      () => axios.get(apiUrl('/api/scorm/features')).then((res) => res.data || {})
+    )
+      .catch(() => peekScormData('features', token) || {})
+      .then((data) => mounted && setAiEnabled(!!data?.scormAiAuthor))
+      .finally(() => mounted && setFeaturesLoading(false));
+
+    Promise.allSettled([packageRequest, courseRequest, trackingRequest, featureRequest]);
 
     return () => { mounted = false; };
   }, [token, navigate]);
@@ -125,18 +162,18 @@ export default function ScormHome() {
       </section>
 
       {error && <div className="scorm-alert scorm-alert-danger mb-5">{error}</div>}
-      {!loading && !aiEnabled && !error && (
+      {!coursesLoading && !packagesLoading && !featuresLoading && !aiEnabled && !error && (
         <div className="scorm-alert scorm-alert-info mb-5">
           AI Author is currently unavailable. Package upload, delivery and learner tracking remain available.
         </div>
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
-        <StatCard label="Courses" value={courses.length} icon={BookOpen} tone="violet" loading={loading} />
-        <StatCard label="Packages" value={packages.length} icon={Package} tone="cyan" loading={loading} />
-        <StatCard label="Direct learners" value={overview.learners || 0} icon={Users} tone="neutral" loading={loading} />
-        <StatCard label="In progress" value={overview.inProgress || 0} icon={Clock3} tone="amber" loading={loading} />
-        <StatCard label="Completed" value={overview.completed || 0} icon={CheckCircle2} tone="green" loading={loading} />
+        <StatCard label="Courses" value={courses.length} icon={BookOpen} tone="violet" loading={coursesLoading} />
+        <StatCard label="Packages" value={packages.length} icon={Package} tone="cyan" loading={packagesLoading} />
+        <StatCard label="Direct learners" value={overview.learners || 0} icon={Users} tone="neutral" loading={trackingLoading} />
+        <StatCard label="In progress" value={overview.inProgress || 0} icon={Clock3} tone="amber" loading={trackingLoading} />
+        <StatCard label="Completed" value={overview.completed || 0} icon={CheckCircle2} tone="green" loading={trackingLoading} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_.85fr] gap-5">
@@ -150,15 +187,15 @@ export default function ScormHome() {
           </div>
 
           <div className="scorm-list">
-            {loading && [0, 1, 2, 3].map((item) => <ListSkeleton key={item} />)}
-            {!loading && courses.length === 0 && (
+            {coursesLoading && [0, 1, 2, 3].map((item) => <ListSkeleton key={item} />)}
+            {!coursesLoading && courses.length === 0 && (
               <div className="p-10 text-center">
                 <div className="scorm-empty-icon mx-auto mb-3"><BookOpen size={20} /></div>
                 <div className="text-sm font-semibold">No courses yet</div>
                 <div className="text-xs text-[#667085] mt-1">Create your first course when you are ready.</div>
               </div>
             )}
-            {!loading && courses.slice(0, 6).map((course) => {
+            {!coursesLoading && courses.slice(0, 6).map((course) => {
               const stats = (tracking.courses || []).find((row) => String(row.id) === String(course.id)) || {};
               const progress = Number(stats.averageProgress || 0);
               return (
@@ -170,10 +207,10 @@ export default function ScormHome() {
                     </div>
                     <div className="scorm-meta mt-1">{course.inviteCode || 'No invite code'}</div>
                   </div>
-                  <div className="hidden md:block"><div className="font-semibold text-sm">{stats.learners || 0}</div><div className="scorm-meta mt-1">Direct learners</div></div>
+                  <div className="hidden md:block"><div className="font-semibold text-sm">{trackingLoading ? '…' : (stats.learners || 0)}</div><div className="scorm-meta mt-1">Direct learners</div></div>
                   <div className="hidden md:block">
-                    <div className="flex items-center justify-between gap-2 text-[10px] text-[#667085] mb-1.5"><span>Direct progress</span><span className="font-semibold text-[#344054]">{progress.toFixed(0)}%</span></div>
-                    <div className="scorm-progress-track"><div className="scorm-progress-fill" style={{ width: `${Math.max(0, Math.min(100, progress))}%` }} /></div>
+                    <div className="flex items-center justify-between gap-2 text-[10px] text-[#667085] mb-1.5"><span>Direct progress</span><span className="font-semibold text-[#344054]">{trackingLoading ? '…' : `${progress.toFixed(0)}%`}</span></div>
+                    <div className="scorm-progress-track"><div className="scorm-progress-fill" style={{ width: trackingLoading ? '0%' : `${Math.max(0, Math.min(100, progress))}%` }} /></div>
                   </div>
                   <ChevronRight size={15} className="text-[#98A2B3]" />
                 </Link>
@@ -189,9 +226,9 @@ export default function ScormHome() {
               <div className="scorm-progress-icon"><Activity size={18} /></div>
             </div>
             <div>
-              {loading ? <div className="h-14 w-28 rounded-lg bg-white/10 animate-pulse" /> : <div className="scorm-progress-number">{averageProgress.toFixed(0)}%</div>}
+              {trackingLoading ? <div className="h-14 w-28 rounded-lg bg-white/10 animate-pulse" /> : <div className="scorm-progress-number">{averageProgress.toFixed(0)}%</div>}
               <div className="mt-2 text-xs text-white/70">Average completion across direct published-link and direct-assignment sessions.</div>
-              <div className="scorm-progress-track is-dark mt-5"><div className="scorm-progress-fill is-light" style={{ width: loading ? '0%' : `${Math.max(0, Math.min(100, averageProgress))}%` }} /></div>
+              <div className="scorm-progress-track is-dark mt-5"><div className="scorm-progress-fill is-light" style={{ width: trackingLoading ? '0%' : `${Math.max(0, Math.min(100, averageProgress))}%` }} /></div>
             </div>
           </section>
 
@@ -201,9 +238,9 @@ export default function ScormHome() {
               <Link to="/scorm/tracking" className="scorm-text-link">Open tracking</Link>
             </div>
             <div className="scorm-list">
-              {loading && [0, 1, 2].map((item) => <div key={item} className="scorm-activity-row animate-pulse"><div className="h-3.5 w-2/3 rounded bg-current/10" /><div className="h-2.5 w-1/2 rounded bg-current/10 mt-2" /></div>)}
-              {!loading && recentLearners.length === 0 && <div className="p-6 text-center text-[#667085] text-xs">No direct learner activity yet.</div>}
-              {!loading && recentLearners.map((row) => (
+              {trackingLoading && [0, 1, 2].map((item) => <div key={item} className="scorm-activity-row animate-pulse"><div className="h-3.5 w-2/3 rounded bg-current/10" /><div className="h-2.5 w-1/2 rounded bg-current/10 mt-2" /></div>)}
+              {!trackingLoading && recentLearners.length === 0 && <div className="p-6 text-center text-[#667085] text-xs">No direct learner activity yet.</div>}
+              {!trackingLoading && recentLearners.map((row) => (
                 <div key={row.id} className="scorm-activity-row">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">

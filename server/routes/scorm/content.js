@@ -9,6 +9,7 @@ const {
     patchTrackingRuntime,
     patchMobileCourse
 } = require('../../services/scorm/ScormTrackingPackageFinalizer');
+const { injectMobileRuntime } = require('../../services/scorm/ScormMobileResponsiveRuntime');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
@@ -343,7 +344,9 @@ function patchAuthoredHtml(source) {
         else patched += authoredRuntimeBridge();
     }
 
-    return patchMobileCourse(patched);
+    // Stored AI-authored packages are patched when served, so older courses gain
+    // the same responsive runtime as newly generated/rebuilt courses immediately.
+    return injectMobileRuntime(patchMobileCourse(patched));
 }
 
 function injectUniversalProgressBridge(source) {

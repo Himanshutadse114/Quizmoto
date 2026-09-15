@@ -15,7 +15,23 @@ const ScormIndividualLearnerReportService = require('../../services/scorm/ScormI
 router.get('/', auth, async (req, res) => {
     const courses = await ScormCourse.findAll({
         where: { hostId: req.userId },
-        include: [{ model: ScormPackage, as: 'package' }],
+        attributes: [
+            'id',
+            'hostId',
+            'packageId',
+            'title',
+            'description',
+            'inviteCode',
+            'status',
+            'publishedAt',
+            'createdAt',
+            'updatedAt'
+        ],
+        include: [{
+            model: ScormPackage,
+            as: 'package',
+            attributes: ['id', 'title', 'standard', 'status', 'source', 'templateId', 'byteSize', 'entryHref']
+        }],
         order: [['createdAt', 'DESC']]
     });
     res.json(

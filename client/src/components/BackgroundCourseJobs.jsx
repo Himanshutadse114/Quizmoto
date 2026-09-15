@@ -40,14 +40,14 @@ export default function BackgroundCourseJobs() {
   };
 
   return (
-    <section className="scorm-panel rounded-2xl border mb-6 overflow-hidden">
+    <section className="scorm-panel rounded-2xl border mb-6 overflow-hidden" aria-live="polite" aria-label="Course creation progress">
       <div className="px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <div className="scorm-micro text-[9px] uppercase font-semibold">Background creation</div>
           <h3 className="text-[18px] font-semibold mt-1">Creating courses</h3>
-          <p className="text-xs mt-1">Course creation continues while you explore other parts of the platform.</p>
+          <p className="text-xs mt-1">Live progress is shown below. You can continue using the platform while the course is created.</p>
         </div>
-        {active.length > 0 && <div className="text-[10px] font-semibold text-[#7BDCD3]">{active.length} in progress</div>}
+        {active.length > 0 && <div className="text-[10px] font-semibold text-[#7BDCD3]">{active.length} active</div>}
       </div>
 
       {actionError && (
@@ -58,23 +58,43 @@ export default function BackgroundCourseJobs() {
         {active.map((job) => {
           const percent = Math.max(1, Math.min(100, Number(job.percent) || 1));
           const stopping = job.status === 'cancelling' || busyIds.has(job.id);
+          const stateLabel = stopping
+            ? 'Stopping'
+            : job.serverStatus === 'queued' || job.status === 'queued'
+              ? 'Queued'
+              : percent >= 80
+                ? 'Building'
+                : 'Creating';
           return (
-            <div key={job.id} className="px-5 py-4 grid md:grid-cols-[1fr_220px_auto] gap-4 items-center">
+            <div key={job.id} className="px-5 py-4 grid md:grid-cols-[minmax(0,1fr)_240px_auto] gap-4 items-center">
               <div className="min-w-0 flex items-start gap-3">
                 <div className="w-9 h-9 rounded-xl border grid place-items-center shrink-0">
                   <Loader2 size={16} className="animate-spin" />
                 </div>
                 <div className="min-w-0">
-                  <div className="font-semibold text-sm truncate">{job.title || 'New course'}</div>
-                  <div className="text-[11px] mt-1 opacity-70">{stopping ? 'Stopping generation' : (job.stage || 'Creating course')}</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="font-semibold text-sm truncate">{job.title || 'New course'}</div>
+                    <span className="px-2 py-0.5 rounded-full border text-[9px] font-semibold uppercase tracking-wide opacity-80">{stateLabel}</span>
+                  </div>
+                  <div className="text-[11px] mt-1 font-semibold opacity-85">{stopping ? 'Stopping generation' : (job.stage || 'Creating course')}</div>
+                  <div className="text-[10px] leading-relaxed mt-1 opacity-60 line-clamp-2">
+                    {stopping ? 'Stopping this course generation process.' : (job.detail || 'The course is actively being created in the background.')}
+                  </div>
                 </div>
               </div>
               <div>
                 <div className="flex items-center justify-between text-[10px] mb-2">
-                  <span className="font-semibold">{Math.round(percent)}%</span>
-                  <span className="opacity-60">{stopping ? 'Stopping' : 'Running in background'}</span>
+                  <span className="font-semibold tabular-nums">{Math.round(percent)}%</span>
+                  <span className="opacity-60">{stopping ? 'Stopping' : 'Live progress'}</span>
                 </div>
-                <div className="h-2 rounded-full bg-white/[.07] overflow-hidden">
+                <div
+                  className="h-2 rounded-full bg-white/[.07] overflow-hidden"
+                  role="progressbar"
+                  aria-label={`${job.title || 'Course'} creation progress`}
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow={Math.round(percent)}
+                >
                   <div className="h-full rounded-full bg-[#4FC9BF] transition-[width] duration-500" style={{ width: `${percent}%` }} />
                 </div>
               </div>

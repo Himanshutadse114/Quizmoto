@@ -37,6 +37,7 @@ function mediaConfig() {
         maxImages: clampInt(process.env.GEMINI_SCORM_MAX_IMAGES, 8, 1, 8),
         minImages: clampInt(process.env.GEMINI_SCORM_MIN_IMAGES, 6, 1, 8),
         imageRetries: clampInt(process.env.GEMINI_SCORM_IMAGE_RETRIES, 2, 0, 4),
+        imageConcurrency: clampInt(process.env.GEMINI_SCORM_IMAGE_CONCURRENCY, 2, 1, 3),
         timeoutMs: clampInt(process.env.GEMINI_SCORM_IMAGE_TIMEOUT_MS, 180000, 30000, 300000),
         retryBaseMs: clampInt(process.env.GEMINI_SCORM_IMAGE_RETRY_BASE_MS, 1500, 500, 10000)
     };
@@ -53,6 +54,21 @@ function emit(onProgress, patch) {
     } catch (error) {
         if (isGenerationCancelled(error)) throw error;
     }
+}
+
+async function runWithConcurrency(items, concurrency, worker) {
+    const queue = Array.isArray(items) ? items : [];
+    if (!queue.length) return;
+    let cursor = 0;
+    const workerCount = Math.min(queue.length, Math.max(1, Number(concurrency) || 1));
+    await Promise.all(Array.from({ length: workerCount }, async () => {
+        while (true) {
+            const position = cursor;
+            cursor += 1;
+            if (position >= queue.length) return;
+            await worker(queue[position], position);
+        }
+    }));
 }
 
 function imageSlideIndexes(slides, count) {
@@ -345,14 +361,15 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
     }
 
     let completedJobs = 0;
-    for (const slideIndex of selectedIndexes) {
+    await runWithConcurrency(selectedIndexes, config.imageConcurrency, async (slideIndex, jobPosition) => {
         checkCancelled();
+        const startedAtCompleted = completedJobs;
+        const basePercent = 22 + Math.round((startedAtCompleted / Math.max(1, selectedIndexes.length)) * 40);
         try {
-            const basePercent = 22 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 40);
             emit(onProgress, {
                 percent: basePercent,
                 stage: `Planning slide ${slideIndex + 1} image with Gemini`,
-                detail: `Preparing and rendering image ${completedJobs + 1} of ${selectedIndexes.length}.`
+                detail: `Preparing image ${jobPosition + 1} of ${selectedIndexes.length}; up to ${config.imageConcurrency} image jobs run in parallel.`
             });
             const promptInfo = await generateSlideVisualPrompt(slides[slideIndex], { ...analysis, slides }, slideIndex);
             promptModel = promptModel || promptInfo.model;
@@ -397,7 +414,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
                 detail: `${completedJobs} of ${selectedIndexes.length} Gemini image jobs completed.`
             });
         }
-    }
+    });
 
     if (coverGenerated && slideImagesGenerated < requiredSlideImages) {
         const recoveryCandidates = [
@@ -451,6 +468,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
         totalImagesGenerated,
         maxImages: config.maxImages,
         minImages: requiredImages,
+        imageConcurrency: config.imageConcurrency,
         selectedSlideIndexes: selectedIndexes,
         successfulSlideIndexes: Array.from(successfulSlideIndexes).sort((a, b) => a - b),
         imageStyle: 'gemini_generated_16_9_non_human_no_text',
@@ -484,6 +502,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
         slideImagesGenerated,
         totalImagesGenerated,
         requiredImages,
+        imageConcurrency: config.imageConcurrency,
         files: files.length,
         warnings: warnings.length
     });
@@ -512,6 +531,7 @@ module.exports = {
     prepareReplicateCourseMedia: prepareGeminiCourseMedia,
     mediaConfig,
     getApiKey,
+    runWithConcurrency,
     imageSlideIndexes,
     sentenceExcerpt,
     coverImagePrompt,
