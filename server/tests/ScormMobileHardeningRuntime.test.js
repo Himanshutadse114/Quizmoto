@@ -10,18 +10,18 @@ const {
 } = require('../services/scorm/ScormMobileHardeningRuntime');
 
 describe('Template course mobile responsive runtime v7', () => {
-    it('preserves the LMS flex viewport and uses a full-height scrollable active slide', () => {
+    it('preserves the LMS flex viewport and keeps the active slide in normal flow', () => {
         const css = style();
         expect(STYLE_ID).to.equal('quizmoto-mobile-course-responsive-v7');
         expect(SCRIPT_ID).to.equal('quizmoto-mobile-course-responsive-script-v7');
         expect(css).to.include('.qmx-course-body');
-        expect(css).to.include('display:flex!important;flex:1 1 auto!important');
-        expect(css).to.include('height:100%!important;min-height:0!important;max-height:100%!important;overflow:hidden!important');
-        expect(css).to.include('position:absolute!important;inset:0!important');
-        expect(css).to.include('overflow-y:auto!important');
+        expect(css).to.include('display:flex!important;flex-direction:column!important;flex:1 1 0!important');
+        expect(css).to.include('overflow-x:hidden!important;overflow-y:auto!important');
+        expect(css).to.include('position:relative!important;inset:auto!important');
+        expect(css).to.include('height:auto!important;min-height:100%!important;max-height:none!important');
     });
 
-    it('does not globally hide all slides and supports native current-slide states plus a fallback', () => {
+    it('does not globally hide every slide and supports native current-slide states plus a fallback', () => {
         const css = style();
         const js = script();
         const baseStart = css.indexOf('html.qmx-mobile-layout-v7 body .slide,');
