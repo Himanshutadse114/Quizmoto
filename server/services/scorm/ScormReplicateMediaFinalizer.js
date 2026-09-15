@@ -2,6 +2,7 @@ const JSZip = require('jszip');
 const { buildScormPackageZip: buildLegacyPackage } = require('./ScormAnswerTrackingPackageFinalizer');
 const { buildRasterCoursePackageZip } = require('./ScormRasterCoursePackageBuilder');
 const { injectCourseInteractionsUi } = require('./ScormCourseInteractionService');
+const { applyMobileResponsiveRuntimeToZip } = require('./ScormMobileResponsiveRuntime');
 
 const REPLICATE_MEDIA_CSS = '<style id="quizmoto-replicate-media-v3"></style>';
 const BROWSER_NARRATION_SCRIPT_ID = 'quizmoto-browser-narration-v2';
@@ -348,7 +349,9 @@ async function addBrowserNarrationToZip(zipBuffer) {
     html = injectCourseInteractionsUi(html);
     html = injectBrowserNarrationUi(html);
     zip.file('index.html', html);
-    return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+    // Course images are already compressed PNG/WebP/JPEG assets. STORE avoids a
+    // redundant CPU-heavy DEFLATE pass before the later template runtimes run.
+    return zip.generateAsync({ type: 'nodebuffer', compression: 'STORE' });
 }
 
 function injectManifestFiles(manifest, paths) {
@@ -366,6 +369,7 @@ function injectManifestFiles(manifest, paths) {
 async function buildScormPackageZip(analysis, opts = {}) {
     const mediaFiles = Array.isArray(opts.replicateMediaFiles) ? opts.replicateMediaFiles : [];
     const validation = validateRasterMedia(analysis, mediaFiles);
+    let packageBuffer;
 
     if (validation.raster) {
         const rasterZip = await buildRasterCoursePackageZip(analysis, {
@@ -373,10 +377,15 @@ async function buildScormPackageZip(analysis, opts = {}) {
             logoDataUrl: opts.logoDataUrl || null,
             mediaFiles
         });
-        return addBrowserNarrationToZip(rasterZip);
+        packageBuffer = await addBrowserNarrationToZip(rasterZip);
+    } else {
+        packageBuffer = await buildLegacyPackage(analysis, opts);
     }
 
-    return buildLegacyPackage(analysis, opts);
+    // This common finalizer is used by both first-time generation and course
+    // rebuilds. Inject once here so every Quizmoto-authored format receives the
+    // same responsive baseline without template-by-template mobile patches.
+    return applyMobileResponsiveRuntimeToZip(packageBuffer);
 }
 
 module.exports = {
