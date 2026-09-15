@@ -12,7 +12,7 @@ function style() {
 /* Structural mobile layout for generated template courses. */
 html.qmx-mobile-layout-v5,
 html.qmx-mobile-layout-v5 body{
-  width:var(--qmx-mobile-vw,100%)!important;max-width:var(--qmx-mobile-vw,100%)!important;min-width:0!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;
   margin:0!important;padding:0!important;overflow-x:hidden!important;box-sizing:border-box!important
 }
 html.qmx-mobile-layout-v5{height:100%!important;min-height:100%!important}
@@ -94,7 +94,7 @@ html.qmx-mobile-layout-v5 body .qmx-copy,
 html.qmx-mobile-layout-v5 body .qmx-cover-copy,
 html.qmx-mobile-layout-v5 body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell .qmx-copy{
   display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;max-height:none!important;
-  padding:0!important;margin:0!important;align-self:auto!important
+  padding:0!important;margin:0!important;align-self:auto!important;overflow-x:hidden!important
 }
 html.qmx-mobile-layout-v5 body .qmx-copy h2,
 html.qmx-mobile-layout-v5 body .qmx-cover-copy h2,
@@ -102,14 +102,14 @@ html.qmx-mobile-layout-v5 body .qmx-quiz-shell h2,
 html.qmx-mobile-layout-v5 body .qmx-final-shell h2,
 html.qmx-mobile-layout-v5 body[data-qmx-course-template="highly-interactive"] .qmx-copy h2{
   width:100%!important;max-width:100%!important;margin:0 0 10px!important;font-size:clamp(22px,7vw,32px)!important;line-height:1.12!important;
-  letter-spacing:-.024em!important;overflow-wrap:anywhere!important;word-break:normal!important;text-wrap:balance!important
+  letter-spacing:-.024em!important;overflow-wrap:anywhere!important;word-break:normal!important;text-wrap:balance!important;white-space:normal!important
 }
 html.qmx-mobile-layout-v5 body .qmx-cover-copy h2{font-size:clamp(25px,8vw,35px)!important}
 html.qmx-mobile-layout-v5 body .qmx-copy>p,
 html.qmx-mobile-layout-v5 body .qmx-cover-copy>p,
 html.qmx-mobile-layout-v5 body .qmx-quiz-shell>p,
 html.qmx-mobile-layout-v5 body .qmx-final-shell>p{
-  width:100%!important;max-width:100%!important;margin-left:0!important;margin-right:0!important;font-size:14px!important;line-height:1.5!important;overflow-wrap:anywhere!important
+  width:100%!important;max-width:100%!important;margin-left:0!important;margin-right:0!important;font-size:14px!important;line-height:1.5!important;overflow-wrap:anywhere!important;white-space:normal!important
 }
 html.qmx-mobile-layout-v5 body .eyebrow{font-size:9px!important;line-height:1.25!important;margin-bottom:8px!important}
 html.qmx-mobile-layout-v5 body .qmx-meta{display:flex!important;flex-wrap:wrap!important;gap:6px!important;margin-top:16px!important}
@@ -142,7 +142,7 @@ html.qmx-mobile-layout-v5 body .qmx-scenario-options,
 html.qmx-mobile-layout-v5 body .qmx-branch-options{
   display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto!important;grid-auto-columns:minmax(0,1fr)!important;
   grid-auto-rows:auto!important;width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;
-  max-height:none!important;gap:10px!important;margin-top:14px!important;align-items:stretch!important;justify-content:stretch!important
+  max-height:none!important;gap:10px!important;margin-top:14px!important;align-items:stretch!important;justify-content:stretch!important;overflow-x:hidden!important
 }
 
 /* Interaction runtimes replace the source cards/process with a new mobile grid. Keep the replaced source out of layout. */
@@ -156,6 +156,41 @@ html.qmx-mobile-layout-v5 body[data-qmx-course-template="highly-interactive"] .q
   margin:0!important;padding:0!important;gap:0!important;overflow:hidden!important;pointer-events:none!important
 }
 
+/* Device width activates mobile mode. Layout width always follows the real embedding viewport. */
+html.qmx-mobile-layout-v5 body .slide .qmx-cover-shell>*,
+html.qmx-mobile-layout-v5 body .slide .qmx-learning-shell>*,
+html.qmx-mobile-layout-v5 body .slide .qmx-quiz-shell>*,
+html.qmx-mobile-layout-v5 body .slide .qmx-final-shell>*,
+html.qmx-mobile-layout-v5 body .slide .qmx-copy>*,
+html.qmx-mobile-layout-v5 body .slide .qmx-interaction-grid>*,
+html.qmx-mobile-layout-v5 body .slide .qmx-step-grid-v2>*,
+html.qmx-mobile-layout-v5 body .slide .qmx-explore-grid-v2>*,
+html.qmx-mobile-layout-v5 body .slide .qmx-compare-grid-v2>*,
+html.qmx-mobile-layout-v5 body .slide .qmx-decision-grid-v2>*{
+  min-width:0!important;max-width:100%!important;box-sizing:border-box!important
+}
+html.qmx-mobile-layout-v5 body .slide .qmx-copy h1,
+html.qmx-mobile-layout-v5 body .slide .qmx-copy h2,
+html.qmx-mobile-layout-v5 body .slide .qmx-copy h3,
+html.qmx-mobile-layout-v5 body .slide .qmx-copy h4,
+html.qmx-mobile-layout-v5 body .slide .qmx-copy p,
+html.qmx-mobile-layout-v5 body .slide .qmx-copy li,
+html.qmx-mobile-layout-v5 body .slide .qmx-card,
+html.qmx-mobile-layout-v5 body .slide .qmx-card p,
+html.qmx-mobile-layout-v5 body .slide .qmx-step,
+html.qmx-mobile-layout-v5 body .slide .qmx-step p,
+html.qmx-mobile-layout-v5 body .slide .qmx-compare-col,
+html.qmx-mobile-layout-v5 body .slide .qmx-compare-col p,
+html.qmx-mobile-layout-v5 body .slide .qmx-interaction-panel,
+html.qmx-mobile-layout-v5 body .slide .qmx-interaction-title,
+html.qmx-mobile-layout-v5 body .slide .qmx-interaction-copy,
+html.qmx-mobile-layout-v5 body .slide .qmx-option-label,
+html.qmx-mobile-layout-v5 body .slide .qmx-explore-label,
+html.qmx-mobile-layout-v5 body .slide .qmx-reveal-face,
+html.qmx-mobile-layout-v5 body .slide .qmx-reveal-face *{
+  min-width:0!important;max-width:100%!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important;box-sizing:border-box!important
+}
+
 html.qmx-mobile-layout-v5 body .qmx-card,
 html.qmx-mobile-layout-v5 body .qmx-step,
 html.qmx-mobile-layout-v5 body .qmx-compare-col,
@@ -166,7 +201,7 @@ html.qmx-mobile-layout-v5 body .qmx-interaction-panel,
 html.qmx-mobile-layout-v5 body .quiz-option{
   width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;max-height:none!important;box-sizing:border-box!important
 }
-html.qmx-mobile-layout-v5 body .quiz-option{min-height:54px!important;padding:12px 13px!important;font-size:13px!important;line-height:1.35!important}
+html.qmx-mobile-layout-v5 body .quiz-option{min-height:54px!important;padding:12px 13px!important;font-size:13px!important;line-height:1.35!important;white-space:normal!important;overflow-wrap:anywhere!important}
 html.qmx-mobile-layout-v5 body .qmx-flip-card,
 html.qmx-mobile-layout-v5 body .qmx-flip-inner,
 html.qmx-mobile-layout-v5 body .qmx-flip-face,
@@ -178,7 +213,7 @@ html.qmx-mobile-layout-v5 body .qmx-reveal-face{
 html.qmx-mobile-layout-v5 body .qmx-quiz-shell,
 html.qmx-mobile-layout-v5 body .qmx-final-shell{
   width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;max-height:none!important;
-  padding:18px 14px!important;border-radius:16px!important;text-align:left!important
+  padding:18px 14px!important;border-radius:16px!important;text-align:left!important;overflow-x:hidden!important
 }
 html.qmx-mobile-layout-v5 body .qmx-final-shell{text-align:center!important}
 html.qmx-mobile-layout-v5 body .qmx-template-layer{
@@ -220,6 +255,21 @@ function script() {
   }
   function setCssWidth(w){if(root&&root.style)root.style.setProperty('--qmx-mobile-vw',Math.max(280,Math.ceil(w))+'px');}
   function moveStyleLast(){var node=document.getElementById('${STYLE_ID}');if(node&&document.head&&node.parentNode===document.head&&document.head.lastElementChild!==node)document.head.appendChild(node);}
+  function dedupeHeaderLogos(){
+    var header=document.querySelector('#app>header,header');
+    if(!header)return;
+    var branded=header.querySelector('.qmx-brand-logo');
+    if(!branded)return;
+    var children=header.children||[];
+    for(var i=0;i<children.length;i++){
+      var node=children[i];
+      if(node!==branded&&node&&String(node.tagName||'').toUpperCase()==='IMG'){
+        node.hidden=true;
+        node.setAttribute&&node.setAttribute('aria-hidden','true');
+        if(node.style)node.style.display='none';
+      }
+    }
+  }
   function apply(){
     var w=viewportWidth();
     var mobile=w<=1024;
@@ -229,6 +279,7 @@ function script() {
       if(mobile)document.body.setAttribute('data-qmx-mobile-responsive','v5');else document.body.removeAttribute('data-qmx-mobile-responsive');
     }
     if(mobile)setCssWidth(w);else if(root&&root.style)root.style.removeProperty('--qmx-mobile-vw');
+    dedupeHeaderLogos();
     moveStyleLast();
   }
   function schedule(){if(queued)return;queued=true;(window.requestAnimationFrame||function(fn){return setTimeout(fn,16);})(function(){queued=false;apply();});}
