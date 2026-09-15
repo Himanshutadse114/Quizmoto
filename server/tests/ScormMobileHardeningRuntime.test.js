@@ -1,5 +1,6 @@
 const { expect } = require('chai');
 const JSZip = require('jszip');
+const vm = require('vm');
 const {
     STYLE_ID,
     SCRIPT_ID,
@@ -22,6 +23,54 @@ describe('Template course mobile responsive runtime v5', () => {
         expect(js).to.include('window.visualViewport&&window.visualViewport.width');
         expect(js).to.include("root.style.setProperty('--qmx-mobile-vw'");
         expect(js).to.include("classList.toggle('qmx-mobile-layout-v5',mobile)");
+    });
+
+    it('detects a 390px phone even when the LMS iframe reports 1360px', () => {
+        const source = script().replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+        const classes = new Set();
+        const bodyClasses = new Set();
+        const cssVars = {};
+        const root = {
+            clientWidth: 1360,
+            classList: { toggle(name, on) { on ? classes.add(name) : classes.delete(name); } },
+            style: {
+                setProperty(name, value) { cssVars[name] = value; },
+                removeProperty(name) { delete cssVars[name]; }
+            }
+        };
+        const body = {
+            classList: { toggle(name, on) { on ? bodyClasses.add(name) : bodyClasses.delete(name); } },
+            setAttribute() {},
+            removeAttribute() {}
+        };
+        const document = {
+            documentElement: root,
+            body,
+            head: { lastElementChild: null, appendChild() {} },
+            readyState: 'complete',
+            getElementById() { return null; }
+        };
+        const window = {
+            innerWidth: 1360,
+            visualViewport: { width: 1360, addEventListener() {} },
+            screen: { width: 390 },
+            requestAnimationFrame(fn) { fn(); },
+            addEventListener() {},
+            MutationObserver: function MutationObserver() { this.observe = () => {}; }
+        };
+        window.document = document;
+        vm.runInNewContext(source, {
+            window,
+            document,
+            Number,
+            Math,
+            setTimeout(fn) { fn(); },
+            MutationObserver: window.MutationObserver
+        });
+        expect(classes.has('qmx-mobile-layout-v5')).to.equal(true);
+        expect(classes.has('qmx-mobile-narrow-v5')).to.equal(true);
+        expect(bodyClasses.has('qmx-mobile-layout-v5')).to.equal(true);
+        expect(cssVars['--qmx-mobile-vw']).to.equal('390px');
     });
 
     it('constrains the whole course to the detected device width for oversized LMS iframes', () => {
