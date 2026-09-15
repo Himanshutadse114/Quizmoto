@@ -144,6 +144,18 @@ html.qmx-mobile-layout-v5 body .qmx-branch-options{
   grid-auto-rows:auto!important;width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;
   max-height:none!important;gap:10px!important;margin-top:14px!important;align-items:stretch!important;justify-content:stretch!important
 }
+
+/* Interaction runtimes replace the source cards/process with a new mobile grid. Keep the replaced source out of layout. */
+html.qmx-mobile-layout-v5 body[data-qmx-course-template="highly-interactive"] .qmx-interaction-source,
+html.qmx-mobile-layout-v5 body[data-qmx-course-template="highly-interactive"] .qmx-process.qmx-interaction-source,
+html.qmx-mobile-layout-v5 body[data-qmx-course-template="highly-interactive"] .qmx-cards.qmx-interaction-source,
+html.qmx-mobile-layout-v5 body[data-qmx-course-template="highly-interactive"] .qmx-static-cards.qmx-interaction-source,
+html.qmx-mobile-layout-v5 body[data-qmx-course-template="highly-interactive"] .qmx-compare.qmx-interaction-source{
+  display:none!important;visibility:hidden!important;position:absolute!important;
+  width:0!important;max-width:0!important;height:0!important;min-height:0!important;max-height:0!important;
+  margin:0!important;padding:0!important;gap:0!important;overflow:hidden!important;pointer-events:none!important
+}
+
 html.qmx-mobile-layout-v5 body .qmx-card,
 html.qmx-mobile-layout-v5 body .qmx-step,
 html.qmx-mobile-layout-v5 body .qmx-compare-col,
