@@ -3,6 +3,7 @@
 const JSZip = require('jszip');
 const { applyCourseBrandingToZip } = require('./ScormCourseBrandingService');
 const { applyMobileResponsiveRuntimeToZip } = require('./ScormMobileResponsiveRuntime');
+const { applyMobileHardeningRuntimeToZip } = require('./ScormMobileHardeningRuntime');
 
 const STYLE_ID = 'quizmoto-scenario-decision-ux-v3';
 const SCRIPT_ID = 'quizmoto-scenario-decision-ux-script-v3';
@@ -88,10 +89,11 @@ async function applyScenarioDecisionUxRuntimeToZip(zipBuffer, analysis = {}) {
         result = branded.zipBuffer;
     }
 
-    // This is deliberately the final learner-package pass. Template runtimes can
-    // contain desktop-first fixed-stage CSS, so the responsive guard must be
-    // embedded after them to ensure exported SCORM packages reflow on phones too.
     result = await applyMobileResponsiveRuntimeToZip(result);
+    // This pass is intentionally separate from v3. It is always refreshed and
+    // reinserted after the template stack so rebuilds cannot preserve a desktop
+    // interaction rule that wins over the mobile layout.
+    result = await applyMobileHardeningRuntimeToZip(result);
     return result;
 }
 
