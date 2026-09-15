@@ -18,6 +18,7 @@ function resolveRebuildTemplateBinding({ analysis, pkg } = {}) {
     const existing = resolveExistingCourseTemplateBinding({ analysis, pkg });
     const currentVersion = currentCourseTemplateVersion(existing?.templateId);
     const upgradeableTemplate = existing?.templateId === 'professional-classic'
+        || existing?.templateId === 'highly-interactive'
         || existing?.templateId === 'visual-product-training';
     const shouldUpgrade = upgradeableTemplate
         && Boolean(currentVersion)
@@ -41,7 +42,11 @@ function resolveRebuildTemplateBinding({ analysis, pkg } = {}) {
     return {
         binding,
         templateUpgraded: true,
-        upgradeKind: existing.templateId === 'visual-product-training' ? 'visual-product' : 'professional',
+        upgradeKind: existing.templateId === 'visual-product-training'
+            ? 'visual-product'
+            : existing.templateId === 'highly-interactive'
+                ? 'highly-interactive'
+                : 'professional',
         previousVersion: existing.templateVersion,
         currentVersion: binding.templateVersion
     };

@@ -105,6 +105,8 @@ describe('SCORM template fixed-stage rendering', () => {
         expect(patched).to.include('grid-auto-rows:1fr!important');
         expect(patched).to.include('.qmx-quiz-shell');
         expect(patched).to.include('data-qmx-stage-size');
+        expect(patched).to.include('function mobileFlow()');
+        expect(patched).to.include("setProperty('--qmx-stage-height','auto')");
     });
 
     it('emits syntactically valid browser runtime JavaScript', () => {

@@ -188,7 +188,9 @@ function templatePlan(templateId, slide, index, interactionLevel) {
     return null;
 }
 
-function alternateInteractivePlan(templateId, slide, index, previousType) {
+const SELECT_EXPLORE_FAMILY = new Set(['step_explore', 'hotspot_explore']);
+
+function alternateInteractivePlan(templateId, slide, index, disallowedTypes = []) {
     const points = Array.isArray(slide?.keyPoints) ? slide.keyPoints.filter(Boolean) : [];
     const options = templateId === 'scenario-learning'
         ? [
@@ -202,10 +204,9 @@ function alternateInteractivePlan(templateId, slide, index, previousType) {
             { layout: 'spotlight', screenType: 'concept', interaction: interaction('focus_reveal', 'Review the lesson and reveal the action to remember.') }
         ];
     if (points.length < 2) return null;
-    const rotated = options[(index + 1) % options.length];
-    return (rotated && rotated.interaction.type !== previousType)
-        ? rotated
-        : options.find((item) => item.interaction.type !== previousType) || null;
+    const disallowed = new Set(disallowedTypes.filter(Boolean));
+    const eligible = options.filter((item) => !disallowed.has(item.interaction.type));
+    return eligible.length ? eligible[(index + 1) % eligible.length] : null;
 }
 
 function applyStableDesignIdentity(slide, template, binding) {
@@ -228,7 +229,13 @@ function planExperienceForTemplate(rawAnalysis, binding) {
     const base = planExperienceV5(rawAnalysis);
 
     let previousInteraction = '';
-    const slides = (Array.isArray(base.slides) ? base.slides : []).map((slide, index) => {
+    let selectExploreCount = 0;
+    const sourceSlides = Array.isArray(base.slides) ? base.slides : [];
+    // Step and hotspot activities share the same select-an-item/reveal-a-panel
+    // mechanic. Keep that whole family to roughly thirty percent of an
+    // interactive course so semantic labels do not produce repetitive UX.
+    const maxSelectExplore = Math.max(2, Math.ceil(sourceSlides.length * 0.3));
+    const slides = sourceSlides.map((slide, index) => {
         if (template.id === 'professional-classic') {
             if (template.version === '1.1.0') {
                 return applyStableDesignIdentity({ ...slide, ...classicFlipCardPlan() }, template, binding);
@@ -242,11 +249,22 @@ function planExperienceForTemplate(rawAnalysis, binding) {
         const currentType = planned?.interaction?.type || '';
         const genuineDecision = template.id === 'scenario-learning' && currentType === 'decision_explore';
         const shouldDiversify = template.id === 'highly-interactive' || template.id === 'scenario-learning';
-        if (shouldDiversify && !genuineDecision && currentType && currentType === previousInteraction) {
-            const alternative = alternateInteractivePlan(template.id, slide, index, previousInteraction);
+        const repeatedType = shouldDiversify && !genuineDecision && currentType && currentType === previousInteraction;
+        const exceedsSelectExploreLimit = template.id === 'highly-interactive'
+            && SELECT_EXPLORE_FAMILY.has(currentType)
+            && selectExploreCount >= maxSelectExplore;
+        if (repeatedType || exceedsSelectExploreLimit) {
+            const disallowed = [
+                ...(repeatedType ? [previousInteraction] : []),
+                ...(exceedsSelectExploreLimit ? Array.from(SELECT_EXPLORE_FAMILY) : [])
+            ];
+            const alternative = alternateInteractivePlan(template.id, slide, index, disallowed);
             if (alternative) planned = alternative;
         }
         previousInteraction = planned?.interaction?.type || currentType;
+        if (template.id === 'highly-interactive' && SELECT_EXPLORE_FAMILY.has(previousInteraction)) {
+            selectExploreCount += 1;
+        }
         return applyStableDesignIdentity({ ...slide, ...planned }, template, binding);
     });
 

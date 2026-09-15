@@ -134,6 +134,30 @@ const COURSE_TEMPLATE_VERSIONS = Object.freeze({
                 maxPoints: 4,
                 maxInteractionItems: 4
             }
+        }),
+        '1.1.0': template({
+            id: 'highly-interactive',
+            version: '1.1.0',
+            rendererVersion: 2,
+            name: 'Highly Interactive',
+            shortName: 'Interactive',
+            description: 'Varied activity-led learning with balanced reveals, comparisons, guided sequences and focused takeaways.',
+            experience: 'Interact in different ways',
+            defaultInteractionLevel: 'high',
+            layoutIds: {
+                spotlight: 'highly-interactive.focus-reveal.v2',
+                cards: 'highly-interactive.flip-cards.v2',
+                process: 'highly-interactive.stepper.v2',
+                timeline: 'highly-interactive.timeline.v2',
+                comparison: 'highly-interactive.compare-reveal.v2',
+                hub: 'highly-interactive.hotspot.v2'
+            },
+            contentBudgets: {
+                maxTitleChars: 68,
+                maxBodyWords: 115,
+                maxPoints: 4,
+                maxInteractionItems: 4
+            }
         })
     }),
     'scenario-learning': versionSet({
@@ -222,7 +246,7 @@ const COURSE_TEMPLATE_VERSIONS = Object.freeze({
 
 const CURRENT_TEMPLATE_VERSIONS = Object.freeze({
     'professional-classic': '1.2.0',
-    'highly-interactive': '1.0.0',
+    'highly-interactive': '1.1.0',
     'scenario-learning': '1.0.0',
     'visual-product-training': '1.1.0'
 });

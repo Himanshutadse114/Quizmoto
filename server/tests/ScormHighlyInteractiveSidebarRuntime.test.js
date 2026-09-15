@@ -72,8 +72,12 @@ describe('Highly Interactive learner sidebar runtime', () => {
         expect(css).to.include('padding:12px 22px!important');
         expect(js).to.include('Reveal the key takeaways to continue');
         expect(js).to.include('Reveal all ');
-        expect(js).to.include('Select to explore');
+        expect(js).to.include('Open step');
+        expect(js).to.include('Inspect point');
         expect(js).to.include('Select to compare');
+        expect(js).to.include('Choose option');
+        expect(js).to.not.include("optionButton('qmx-step-option',i,item.label,'Select to explore')");
+        expect(js).to.not.include("optionButton('qmx-explore-option-v2',i,item.label,'Select to explore')");
     });
 
     it('makes Highly Interactive the single owner of Next progression gating', () => {

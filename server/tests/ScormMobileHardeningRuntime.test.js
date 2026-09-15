@@ -51,6 +51,8 @@ describe('Template course mobile responsive runtime v7', () => {
         expect(css).to.include('display:none!important;visibility:hidden!important;position:absolute!important');
         expect(css).to.include('height:0!important;min-height:0!important;max-height:0!important');
         expect(css).to.include('aspect-ratio:16/9!important');
+        expect(css).to.include('body[data-qmx-course-template="highly-interactive"] .slide[data-qmx-template-stage="true"][data-qmx-interaction]>.qmx-learning-shell.has-image');
+        expect(css).to.include('[data-qmx-interaction] .qmx-explore-grid-v2');
     });
 
     it('removes every older mobile runtime before injecting v7', () => {

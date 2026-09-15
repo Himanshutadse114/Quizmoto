@@ -84,6 +84,24 @@ html.qmx-mobile-layout-v7 body .slide[data-qmx-template-stage="true"]>.qmx-final
   grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto!important;grid-template-areas:none!important;gap:13px!important;
   width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;max-height:none!important;margin:0!important;align-items:start!important;align-content:start!important
 }
+/* Highly Interactive has interaction-specific desktop columns with greater
+   selector weight than the generic mobile shell. Override them explicitly so
+   image-led hotspot slides (such as Section 3) cannot retain a 430px column. */
+html.qmx-mobile-layout-v7 body[data-qmx-course-template="highly-interactive"] .slide[data-qmx-template-stage="true"][data-qmx-interaction]>.qmx-learning-shell.has-image{
+  display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto!important;gap:13px!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;max-height:none!important;align-items:start!important
+}
+html.qmx-mobile-layout-v7 body[data-qmx-course-template="highly-interactive"] .slide[data-qmx-template-stage="true"][data-qmx-interaction]>.qmx-learning-shell.has-image>.qmx-copy,
+html.qmx-mobile-layout-v7 body[data-qmx-course-template="highly-interactive"] .slide[data-qmx-template-stage="true"][data-qmx-interaction]>.qmx-learning-shell.has-image>.qmx-native-media{
+  grid-column:1!important;width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;transform:none!important
+}
+html.qmx-mobile-layout-v7 body[data-qmx-course-template="highly-interactive"] .slide[data-qmx-template-stage="true"][data-qmx-interaction] .qmx-interaction-grid,
+html.qmx-mobile-layout-v7 body[data-qmx-course-template="highly-interactive"] .slide[data-qmx-template-stage="true"][data-qmx-interaction] .qmx-step-grid-v2,
+html.qmx-mobile-layout-v7 body[data-qmx-course-template="highly-interactive"] .slide[data-qmx-template-stage="true"][data-qmx-interaction] .qmx-explore-grid-v2,
+html.qmx-mobile-layout-v7 body[data-qmx-course-template="highly-interactive"] .slide[data-qmx-template-stage="true"][data-qmx-interaction] .qmx-compare-grid-v2,
+html.qmx-mobile-layout-v7 body[data-qmx-course-template="highly-interactive"] .slide[data-qmx-template-stage="true"][data-qmx-interaction] .qmx-decision-grid-v2{
+  grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto!important;width:100%!important;max-width:100%!important;min-width:0!important
+}
 html.qmx-mobile-layout-v7 body .qmx-cover-shell{padding:14px 12px!important;border-radius:15px!important}
 html.qmx-mobile-layout-v7 body .qmx-copy,
 html.qmx-mobile-layout-v7 body .qmx-cover-copy{display:block!important;visibility:visible!important;opacity:1!important;width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;padding:0!important;margin:0!important;overflow:visible!important}

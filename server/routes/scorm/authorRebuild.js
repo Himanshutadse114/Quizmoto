@@ -130,6 +130,15 @@ function upgradeProgressCopy(migration) {
             completeDetail: 'Visual Product Training now uses the dedicated media-first walkthrough experience with callouts, guided steps and visual comparisons.'
         };
     }
+    if (migration?.upgradeKind === 'highly-interactive') {
+        return {
+            stage: 'Balancing Highly Interactive activities',
+            detail: 'Replacing repeated select-to-explore screens with a varied activity sequence while keeping the existing course media.',
+            packageDetail: 'Combining the balanced interaction plan with the latest mobile learner runtime and existing images.',
+            savedDetail: `Highly Interactive was upgraded from ${migration.previousVersion} to ${migration.currentVersion}.`,
+            completeDetail: 'Highly Interactive now uses varied activity patterns and fully stacked mobile layouts.'
+        };
+    }
     return {
         stage: 'Updating Clean & Professional layout',
         detail: 'Applying the restored classic flip-card course layout while keeping the existing course media and menu.',

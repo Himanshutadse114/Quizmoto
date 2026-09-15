@@ -12,6 +12,7 @@ const {
 const { planExperienceForTemplate } = require('../services/scorm/ScormTemplateExperiencePlanner');
 const { validateTemplateAnalysis } = require('../services/scorm/ScormTemplateValidator');
 const { preserveCourseDesign } = require('../services/scorm/ScormRebuildDesignPreserver');
+const { resolveRebuildTemplateBinding } = require('../services/scorm/ScormTemplateRebuildMigration');
 const {
     injectTemplateRuntime,
     shouldUseTemplateRuntime
@@ -136,6 +137,47 @@ describe('SCORM versioned template architecture', () => {
         expect(maxSameRun(types)).to.be.at.most(1);
         expect(planned.slides.every((slide) => slide.content.includes('Pause, inspect'))).to.equal(true);
         expect(() => validateTemplateAnalysis(planned, binding)).not.to.throw();
+    });
+
+    it('caps the repeated select-and-explore interaction family across a full interactive course', () => {
+        const binding = createTemplateBinding('highly-interactive', { interactionLevel: 'high' });
+        const repeatedExploreCourse = {
+            ...sourceAnalysis(),
+            slides: Array.from({ length: 10 }, (_, index) => ({
+                title: index % 2 ? `Warning signs ${index + 1}` : `Learning process ${index + 1}`,
+                content: index % 2
+                    ? 'Review the indicators, signals, features and components that matter in this lesson.'
+                    : 'Follow the process step by step and apply each action in sequence.',
+                keyPoints: ['First point', 'Second point', 'Third point', 'Fourth point'],
+                layout: index % 2 ? 'hub' : 'process'
+            }))
+        };
+        const planned = planExperienceForTemplate(repeatedExploreCourse, binding);
+        const selectExplore = planned.slides.filter((slide) => ['step_explore', 'hotspot_explore'].includes(slide.interaction.type));
+
+        expect(binding.templateVersion).to.equal('1.1.0');
+        expect(selectExplore.length).to.be.at.most(Math.ceil(planned.slides.length * 0.3));
+        expect(new Set(planned.slides.map((slide) => slide.interaction.type)).size).to.be.at.least(3);
+        expect(() => validateTemplateAnalysis(planned, binding)).not.to.throw();
+    });
+
+    it('upgrades existing interactive courses so rebuilds receive the balanced activity plan', () => {
+        const migration = resolveRebuildTemplateBinding({
+            analysis: {
+                templateBinding: {
+                    templateId: 'highly-interactive',
+                    templateVersion: '1.0.0',
+                    rendererVersion: 1,
+                    interactionLevel: 'high',
+                    locked: true
+                }
+            },
+            pkg: { templateId: 1 }
+        });
+
+        expect(migration.templateUpgraded).to.equal(true);
+        expect(migration.upgradeKind).to.equal('highly-interactive');
+        expect(migration.binding.templateVersion).to.equal('1.1.0');
     });
 
     it('rejects cross-template layout contamination instead of trying to render it', () => {
