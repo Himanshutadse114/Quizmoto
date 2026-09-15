@@ -260,7 +260,13 @@ function scheduleRevalidate(config) {
   return request;
 }
 
-export function invalidateScormApiCache() {
+function notifyInvalidated() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('lmsgen-platform-cache-invalidated'));
+  }
+}
+
+export function invalidateScormApiCache({ notify = true } = {}) {
   cache.clear();
   revalidating.clear();
   if (typeof window !== 'undefined') {
@@ -272,8 +278,8 @@ export function invalidateScormApiCache() {
       }
       keys.forEach((key) => window.sessionStorage.removeItem(key));
     } catch (_) {}
-    window.dispatchEvent(new CustomEvent('lmsgen-platform-cache-invalidated'));
   }
+  if (notify) notifyInvalidated();
 }
 
 async function warmDataset(token, dataset, { force = false } = {}) {
@@ -380,9 +386,10 @@ export function installScormApiCache() {
     const method = methodOf(config);
     const url = urlOf(config);
 
-    // Any platform mutation invalidates prepared reads so creates, edits, starts,
-    // stops and deletes cannot leave stale list/count data visible.
-    if (method !== 'get' && isPlatformCacheUrl(url)) invalidateScormApiCache();
+    // Clear prepared reads before the mutation goes to the API, but rewarming is
+    // deliberately deferred until the successful response so old DB state cannot
+    // be cached again while the write is still in flight.
+    if (method !== 'get' && isPlatformCacheUrl(url)) invalidateScormApiCache({ notify: false });
 
     if (!isCacheable(config) || config.__lmsgenForceRefresh) return config;
     const cached = read(config);
@@ -407,13 +414,17 @@ export function installScormApiCache() {
   axios.interceptors.response.use(
     (response) => {
       const config = response?.config || {};
-      const eligible = methodOf(config) === 'get'
-        && isPlatformCacheUrl(urlOf(config))
-        && !isRealtimeUrl(urlOf(config))
+      const method = methodOf(config);
+      const url = urlOf(config);
+      const success = Number(response?.status || 0) >= 200 && Number(response?.status || 0) < 300;
+
+      const eligible = method === 'get'
+        && isPlatformCacheUrl(url)
+        && !isRealtimeUrl(url)
         && Boolean(authHeader(config));
-      if (eligible && !config.__lmsgenCacheHit && Number(response?.status || 0) >= 200 && Number(response?.status || 0) < 300) {
-        write(config, response);
-      }
+      if (eligible && !config.__lmsgenCacheHit && success) write(config, response);
+
+      if (method !== 'get' && isPlatformCacheUrl(url) && success) notifyInvalidated();
       return response;
     },
     (error) => Promise.reject(error)
