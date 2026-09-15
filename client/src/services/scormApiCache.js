@@ -10,7 +10,7 @@ import { setScormData } from './scormDataCache';
 // and invalidate it after mutations. Real-time learner/player runtime endpoints are
 // deliberately excluded.
 
-const MAX_ENTRIES = 140;
+const MAX_ENTRIES = 160;
 const SESSION_PREFIX = 'lmsgen_api_cache_v3:';
 const HARD_EXPIRE_MS = 10 * 60 * 1000;
 const cache = new Map();
@@ -23,11 +23,18 @@ const REALTIME_FRAGMENTS = [
   '/player/',
   '/play/',
   '/launch/',
+  '/runtime',
   '/auth/',
   '/otp/',
   '/access/',
   '/public/',
   '/portal/'
+];
+
+// Most /access routes are authentication/permission checks and must remain live.
+// Tenant administration is a normal list page, so it is the one safe exception.
+const CACHEABLE_REALTIME_OVERRIDES = [
+  '/api/scorm/access/tenants'
 ];
 
 const PERSISTABLE_PATHS = [
@@ -38,6 +45,12 @@ const PERSISTABLE_PATHS = [
   '/api/scorm/roster',
   '/api/scorm/features',
   '/api/scorm/team',
+  '/api/scorm/learner-access',
+  '/api/scorm/access/tenants',
+  '/api/scorm/platform-users',
+  '/api/scorm/flipbook-tenants',
+  '/api/scorm/mail/templates',
+  '/api/scorm/mail/status',
   '/api/scorm/flipbooks',
   '/api/scorm/courses/reports/all',
   '/api/quizzes',
@@ -63,6 +76,19 @@ const ANALYTICS_DATASETS = [
   { path: '/api/scorm/tracking/summary', dataKey: 'tracking-summary', label: 'Preparing learner tracking', priority: 1 },
   { path: '/api/scorm/campaigns', label: 'Loading campaigns', priority: 2 },
   { path: '/api/scorm/features', dataKey: 'features', label: 'Checking workspace features', priority: 2 }
+];
+
+const WORKSPACE_ADMIN_DATASETS = [
+  { path: '/api/scorm/team', label: 'Preparing team access', priority: 3 },
+  { path: '/api/scorm/learner-access', label: 'Preparing authentication settings', priority: 3 }
+];
+
+const SUPER_ADMIN_DATASETS = [
+  { path: '/api/scorm/access/tenants', label: 'Loading tenant administration', priority: 3 },
+  { path: '/api/scorm/platform-users', params: { q: undefined, scope: 'all' }, label: 'Preparing platform users', priority: 3 },
+  { path: '/api/scorm/flipbook-tenants', label: 'Preparing Flipbook controls', priority: 3 },
+  { path: '/api/scorm/mail/templates', label: 'Loading email templates', priority: 4 },
+  { path: '/api/scorm/mail/status', label: 'Checking email service', priority: 4 }
 ];
 
 const HEAVY_DATASETS = [
@@ -94,13 +120,22 @@ function isRealtimeUrl(url) {
   return REALTIME_FRAGMENTS.some((fragment) => clean.includes(fragment));
 }
 
+function isRealtimeCacheOverride(url) {
+  const clean = String(url || '').split('?')[0];
+  return CACHEABLE_REALTIME_OVERRIDES.some((path) => clean.endsWith(path));
+}
+
+function isReadCacheEligibleUrl(url) {
+  return isPlatformCacheUrl(url) && (!isRealtimeUrl(url) || isRealtimeCacheOverride(url));
+}
+
 function authHeader(config) {
   return config?.headers?.Authorization || config?.headers?.authorization || '';
 }
 
 function isCacheable(config) {
   const url = urlOf(config);
-  if (methodOf(config) !== 'get' || !isPlatformCacheUrl(url) || isRealtimeUrl(url)) return false;
+  if (methodOf(config) !== 'get' || !isReadCacheEligibleUrl(url)) return false;
   if (config?.headers?.['X-LMSGEN-No-Cache'] || config?.headers?.['x-lmsgen-no-cache']) return false;
   return Boolean(authHeader(config));
 }
@@ -139,9 +174,18 @@ function freshFor(url) {
     clean.includes('/packages') ||
     clean.includes('/library') ||
     clean.includes('/flipbooks') ||
-    clean.includes('/quizzes')
+    clean.includes('/quizzes') ||
+    clean.includes('/platform-users') ||
+    clean.includes('/access/tenants')
   ) return 60_000;
-  if (clean.includes('/team') || clean.includes('/features')) return 2 * 60_000;
+  if (
+    clean.includes('/team') ||
+    clean.includes('/features') ||
+    clean.includes('/learner-access') ||
+    clean.includes('/mail/templates') ||
+    clean.includes('/mail/status') ||
+    clean.includes('/flipbook-tenants')
+  ) return 2 * 60_000;
   return 45_000;
 }
 
@@ -288,6 +332,7 @@ async function warmDataset(token, dataset, { force = false } = {}) {
   try {
     const response = await axios.get(apiUrl(dataset.path), {
       headers,
+      params: dataset.params || undefined,
       timeout: 25_000,
       __lmsgenForceRefresh: force,
       __lmsgenBackgroundRefresh: true
@@ -306,8 +351,10 @@ function wait(ms) {
 function uniqueDatasets(datasets) {
   const seen = new Set();
   return datasets.filter((dataset) => {
-    if (!dataset?.path || seen.has(dataset.path)) return false;
-    seen.add(dataset.path);
+    if (!dataset?.path) return false;
+    const key = `${dataset.path}?${stableParams(dataset.params)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
 }
@@ -330,7 +377,10 @@ export async function warmScormPlatformData(token, options = {}) {
   if (scormAccess && !quizmotoOnly) {
     datasets.push(...(analyticsOnly ? ANALYTICS_DATASETS : SCORM_DATASETS));
     if (['admin', 'super_admin'].includes(normalizedRole)) {
-      datasets.push({ path: '/api/scorm/team', label: 'Preparing team access', priority: 3 });
+      datasets.push(...WORKSPACE_ADMIN_DATASETS);
+    }
+    if (normalizedRole === 'super_admin') {
+      datasets.push(...SUPER_ADMIN_DATASETS);
     }
     if (includeHeavy) datasets.push(...HEAVY_DATASETS);
   }
@@ -386,10 +436,9 @@ export function installScormApiCache() {
     const method = methodOf(config);
     const url = urlOf(config);
 
-    // Clear prepared reads before the mutation goes to the API, but rewarming is
-    // deliberately deferred until the successful response so old DB state cannot
-    // be cached again while the write is still in flight.
-    if (method !== 'get' && isPlatformCacheUrl(url)) invalidateScormApiCache({ notify: false });
+    // Clear prepared reads before a data-changing platform request, but never let
+    // high-frequency learner runtime/auth traffic churn the whole admin cache.
+    if (method !== 'get' && isReadCacheEligibleUrl(url)) invalidateScormApiCache({ notify: false });
 
     if (!isCacheable(config) || config.__lmsgenForceRefresh) return config;
     const cached = read(config);
@@ -419,12 +468,11 @@ export function installScormApiCache() {
       const success = Number(response?.status || 0) >= 200 && Number(response?.status || 0) < 300;
 
       const eligible = method === 'get'
-        && isPlatformCacheUrl(url)
-        && !isRealtimeUrl(url)
+        && isReadCacheEligibleUrl(url)
         && Boolean(authHeader(config));
       if (eligible && !config.__lmsgenCacheHit && success) write(config, response);
 
-      if (method !== 'get' && isPlatformCacheUrl(url) && success) notifyInvalidated();
+      if (method !== 'get' && isReadCacheEligibleUrl(url) && success) notifyInvalidated();
       return response;
     },
     (error) => Promise.reject(error)
