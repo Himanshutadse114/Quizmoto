@@ -96,9 +96,19 @@ function script(branding) {
 (function(){
   var logo=${logo};
   if(!logo)return;
+  function applyLogo(img){
+    if(!img)return false;
+    if(img.classList&&!img.classList.contains('qmx-brand-logo'))img.classList.add('qmx-brand-logo');
+    img.src=logo;img.alt='Course brand logo';img.decoding='async';
+    return true;
+  }
   function install(){
     var header=document.querySelector('#app>header,header');
-    if(!header||header.querySelector('.qmx-brand-logo'))return;
+    if(!header)return;
+    var branded=header.querySelector('.qmx-brand-logo');
+    if(branded){applyLogo(branded);return;}
+    var existing=header.querySelector('img');
+    if(existing){applyLogo(existing);return;}
     var img=document.createElement('img');
     img.className='qmx-brand-logo';img.src=logo;img.alt='Course brand logo';img.decoding='async';
     var mark=header.querySelector('.brand-mark');
