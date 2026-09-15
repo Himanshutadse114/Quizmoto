@@ -104,6 +104,15 @@ describe('Template course mobile responsive runtime v5', () => {
         expect(css).to.include('grid-template-columns:minmax(0,1fr)!important');
     });
 
+    it('keeps replaced interaction sources completely out of mobile layout', () => {
+        const css = style();
+        expect(css).to.include('.qmx-process.qmx-interaction-source');
+        expect(css).to.include('.qmx-cards.qmx-interaction-source');
+        expect(css).to.include('display:none!important;visibility:hidden!important;position:absolute!important');
+        expect(css).to.include('height:0!important;min-height:0!important;max-height:0!important');
+        expect(css).to.include('margin:0!important;padding:0!important;gap:0!important');
+    });
+
     it('removes the old v4 runtime and refreshes v5 without duplication', () => {
         const legacy = '<style id="quizmoto-mobile-course-hardening-v4">old</style><script id="quizmoto-mobile-course-hardening-script-v4">old</script>';
         const source = `<!doctype html><html><head><style id="template-after">x{display:none}</style>${legacy}</head><body data-qmx-course-template="highly-interactive"></body></html>`;
