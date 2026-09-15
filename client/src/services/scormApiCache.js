@@ -2,16 +2,16 @@ import axios from 'axios';
 import { apiUrl } from '../config';
 import { setScormData } from './scormDataCache';
 
-// Shared LMSGEN read cache.
+// Shared LMSGEN / Quizmoto read cache.
 //
-// The platform is a client-side React app, so switching routes remounts page
-// components. Without a shared data layer each remount repeats the same API and
-// database reads. This cache gives LMSGEN a stale-while-revalidate behaviour:
-// render cached admin data immediately, refresh it quietly in the background and
-// invalidate it after mutations. Real-time learner/player endpoints are excluded.
+// Route changes remount page components and many of those pages perform the same
+// authenticated reads again. This layer gives the platform stale-while-revalidate
+// behaviour: serve prepared data immediately, refresh it quietly in the background
+// and invalidate it after mutations. Real-time learner/player runtime endpoints are
+// deliberately excluded.
 
-const MAX_ENTRIES = 100;
-const SESSION_PREFIX = 'lmsgen_api_cache_v2:';
+const MAX_ENTRIES = 140;
+const SESSION_PREFIX = 'lmsgen_api_cache_v3:';
 const HARD_EXPIRE_MS = 10 * 60 * 1000;
 const cache = new Map();
 const revalidating = new Map();
@@ -37,16 +37,36 @@ const PERSISTABLE_PATHS = [
   '/api/scorm/campaigns',
   '/api/scorm/roster',
   '/api/scorm/features',
-  '/api/scorm/team'
+  '/api/scorm/team',
+  '/api/scorm/flipbooks',
+  '/api/scorm/courses/reports/all',
+  '/api/quizzes',
+  '/api/quizzes/active-sessions'
 ];
 
-const WARM_DATASETS = [
-  { path: '/api/scorm/courses', dataKey: 'courses', priority: 1 },
-  { path: '/api/scorm/packages', dataKey: 'packages', priority: 1 },
-  { path: '/api/scorm/tracking/summary', dataKey: 'tracking-summary', priority: 1 },
-  { path: '/api/scorm/campaigns', priority: 2 },
-  { path: '/api/scorm/roster', priority: 2 },
-  { path: '/api/scorm/features', dataKey: 'features', priority: 2 }
+const FREE_TOOL_DATASETS = [
+  { path: '/api/scorm/flipbooks', label: 'Preparing Flipbooks', priority: 1 },
+  { path: '/api/quizzes', label: 'Preparing Quizmoto', priority: 1 },
+  { path: '/api/quizzes/active-sessions', label: 'Checking live sessions', priority: 2 }
+];
+
+const SCORM_DATASETS = [
+  { path: '/api/scorm/courses', dataKey: 'courses', label: 'Loading courses', priority: 1 },
+  { path: '/api/scorm/packages', dataKey: 'packages', label: 'Loading SCORM library', priority: 1 },
+  { path: '/api/scorm/tracking/summary', dataKey: 'tracking-summary', label: 'Preparing learner tracking', priority: 1 },
+  { path: '/api/scorm/campaigns', label: 'Loading campaigns', priority: 2 },
+  { path: '/api/scorm/roster', label: 'Loading learner roster', priority: 2 },
+  { path: '/api/scorm/features', dataKey: 'features', label: 'Checking workspace features', priority: 2 }
+];
+
+const ANALYTICS_DATASETS = [
+  { path: '/api/scorm/tracking/summary', dataKey: 'tracking-summary', label: 'Preparing learner tracking', priority: 1 },
+  { path: '/api/scorm/campaigns', label: 'Loading campaigns', priority: 2 },
+  { path: '/api/scorm/features', dataKey: 'features', label: 'Checking workspace features', priority: 2 }
+];
+
+const HEAVY_DATASETS = [
+  { path: '/api/scorm/courses/reports/all', label: 'Preparing reports', priority: 4 }
 ];
 
 function methodOf(config) {
@@ -61,6 +81,14 @@ function isScormUrl(url) {
   return url.includes('/api/scorm/');
 }
 
+function isQuizmotoUrl(url) {
+  return url.includes('/api/quizzes');
+}
+
+function isPlatformCacheUrl(url) {
+  return isScormUrl(url) || isQuizmotoUrl(url);
+}
+
 function isRealtimeUrl(url) {
   const clean = String(url || '').toLowerCase();
   return REALTIME_FRAGMENTS.some((fragment) => clean.includes(fragment));
@@ -72,7 +100,7 @@ function authHeader(config) {
 
 function isCacheable(config) {
   const url = urlOf(config);
-  if (methodOf(config) !== 'get' || !isScormUrl(url) || isRealtimeUrl(url)) return false;
+  if (methodOf(config) !== 'get' || !isPlatformCacheUrl(url) || isRealtimeUrl(url)) return false;
   if (config?.headers?.['X-LMSGEN-No-Cache'] || config?.headers?.['x-lmsgen-no-cache']) return false;
   return Boolean(authHeader(config));
 }
@@ -102,10 +130,17 @@ function cacheKey(config) {
 
 function freshFor(url) {
   const clean = String(url || '').toLowerCase();
-  // Learner activity changes more frequently than library/configuration data.
-  if (clean.includes('/tracking') || clean.includes('/analytics')) return 15_000;
+  if (clean.includes('/tracking') || clean.includes('/analytics') || clean.includes('/active-sessions')) return 15_000;
   if (clean.includes('/reports')) return 30_000;
-  if (clean.includes('/courses') || clean.includes('/campaigns') || clean.includes('/roster') || clean.includes('/packages') || clean.includes('/library')) return 60_000;
+  if (
+    clean.includes('/courses') ||
+    clean.includes('/campaigns') ||
+    clean.includes('/roster') ||
+    clean.includes('/packages') ||
+    clean.includes('/library') ||
+    clean.includes('/flipbooks') ||
+    clean.includes('/quizzes')
+  ) return 60_000;
   if (clean.includes('/team') || clean.includes('/features')) return 2 * 60_000;
   return 45_000;
 }
@@ -131,8 +166,8 @@ function persist(key, entry, url) {
       statusText: entry.statusText
     }));
   } catch (_) {
-    // Session storage is an optimisation only. Large tenants can exceed browser
-    // quota, in which case the in-memory cache remains active.
+    // Session storage is an optimisation only. Large report datasets can exceed
+    // browser quota; in that case the in-memory cache remains active.
   }
 }
 
@@ -225,7 +260,13 @@ function scheduleRevalidate(config) {
   return request;
 }
 
-export function invalidateScormApiCache() {
+function notifyInvalidated() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('lmsgen-platform-cache-invalidated'));
+  }
+}
+
+export function invalidateScormApiCache({ notify = true } = {}) {
   cache.clear();
   revalidating.clear();
   if (typeof window !== 'undefined') {
@@ -238,22 +279,23 @@ export function invalidateScormApiCache() {
       keys.forEach((key) => window.sessionStorage.removeItem(key));
     } catch (_) {}
   }
+  if (notify) notifyInvalidated();
 }
 
 async function warmDataset(token, dataset, { force = false } = {}) {
-  if (!token || !dataset?.path) return null;
+  if (!token || !dataset?.path) return { ok: false, data: null };
   const headers = { Authorization: `Bearer ${token}` };
   try {
     const response = await axios.get(apiUrl(dataset.path), {
       headers,
-      timeout: 20_000,
+      timeout: 25_000,
       __lmsgenForceRefresh: force,
       __lmsgenBackgroundRefresh: true
     });
     if (dataset.dataKey) setScormData(dataset.dataKey, token, response.data);
-    return response.data;
+    return { ok: true, data: response.data };
   } catch (_) {
-    return null;
+    return { ok: false, data: null };
   }
 }
 
@@ -261,24 +303,62 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function uniqueDatasets(datasets) {
+  const seen = new Set();
+  return datasets.filter((dataset) => {
+    if (!dataset?.path || seen.has(dataset.path)) return false;
+    seen.add(dataset.path);
+    return true;
+  });
+}
+
 export async function warmScormPlatformData(token, options = {}) {
-  if (!token) return;
+  if (!token) return { completed: 0, total: 0, failed: 0 };
   const {
     force = false,
     includeHeavy = false,
-    role = ''
+    role = '',
+    scormAccess = true,
+    quizmotoOnly = false,
+    onProgress = null
   } = options;
 
-  const datasets = [...WARM_DATASETS];
-  if (['admin', 'super_admin'].includes(String(role || '').toLowerCase())) {
-    datasets.push({ path: '/api/scorm/team', priority: 3 });
-  }
-  if (includeHeavy) {
-    datasets.push({ path: '/api/scorm/courses/reports/all', priority: 4 });
+  const normalizedRole = String(role || '').toLowerCase();
+  const analyticsOnly = normalizedRole === 'analytics_viewer';
+  let datasets = [...FREE_TOOL_DATASETS];
+
+  if (scormAccess && !quizmotoOnly) {
+    datasets.push(...(analyticsOnly ? ANALYTICS_DATASETS : SCORM_DATASETS));
+    if (['admin', 'super_admin'].includes(normalizedRole)) {
+      datasets.push({ path: '/api/scorm/team', label: 'Preparing team access', priority: 3 });
+    }
+    if (includeHeavy) datasets.push(...HEAVY_DATASETS);
   }
 
-  // Warm in small groups instead of firing every database query at once. This
-  // keeps login/navigation responsive while the rest of the workspace becomes hot.
+  datasets = uniqueDatasets(datasets);
+  const total = datasets.length;
+  let completed = 0;
+  let failed = 0;
+
+  const notify = (dataset, result) => {
+    completed += 1;
+    if (!result?.ok) failed += 1;
+    if (typeof onProgress === 'function') {
+      onProgress({
+        completed,
+        total,
+        failed,
+        percent: total ? Math.round((completed / total) * 100) : 100,
+        label: dataset?.label || 'Preparing workspace',
+        path: dataset?.path || ''
+      });
+    }
+  };
+
+  if (typeof onProgress === 'function') {
+    onProgress({ completed: 0, total, failed: 0, percent: 0, label: 'Connecting to your workspace', path: '' });
+  }
+
   const groups = new Map();
   datasets.forEach((dataset) => {
     const priority = Number(dataset.priority || 9);
@@ -287,9 +367,15 @@ export async function warmScormPlatformData(token, options = {}) {
   });
 
   for (const priority of [...groups.keys()].sort((a, b) => a - b)) {
-    await Promise.all(groups.get(priority).map((dataset) => warmDataset(token, dataset, { force })));
-    if (priority < 4) await wait(120);
+    await Promise.all(groups.get(priority).map(async (dataset) => {
+      const result = await warmDataset(token, dataset, { force });
+      notify(dataset, result);
+      return result;
+    }));
+    if (priority < 4) await wait(80);
   }
+
+  return { completed, total, failed };
 }
 
 export function installScormApiCache() {
@@ -300,17 +386,17 @@ export function installScormApiCache() {
     const method = methodOf(config);
     const url = urlOf(config);
 
-    // Writes invalidate cached admin reads. This guarantees that create, update,
-    // start, stop, add/remove learner and delete operations cannot leave old data
-    // visible simply because the user navigated to another cached page.
-    if (method !== 'get' && isScormUrl(url)) invalidateScormApiCache();
+    // Clear prepared reads before the mutation goes to the API, but rewarming is
+    // deliberately deferred until the successful response so old DB state cannot
+    // be cached again while the write is still in flight.
+    if (method !== 'get' && isPlatformCacheUrl(url)) invalidateScormApiCache({ notify: false });
 
     if (!isCacheable(config) || config.__lmsgenForceRefresh) return config;
     const cached = read(config);
     if (!cached) return config;
 
-    // Stale-while-revalidate: return the old-but-valid response immediately and
-    // refresh the same request in the background. The user never waits for the DB.
+    // Stale-while-revalidate: return the valid cached response immediately and
+    // refresh the same request in the background.
     if (cached.stale) scheduleRevalidate(config);
 
     config.__lmsgenCacheHit = true;
@@ -328,21 +414,24 @@ export function installScormApiCache() {
   axios.interceptors.response.use(
     (response) => {
       const config = response?.config || {};
-      const eligible = methodOf(config) === 'get'
-        && isScormUrl(urlOf(config))
-        && !isRealtimeUrl(urlOf(config))
+      const method = methodOf(config);
+      const url = urlOf(config);
+      const success = Number(response?.status || 0) >= 200 && Number(response?.status || 0) < 300;
+
+      const eligible = method === 'get'
+        && isPlatformCacheUrl(url)
+        && !isRealtimeUrl(url)
         && Boolean(authHeader(config));
-      if (eligible && !config.__lmsgenCacheHit && Number(response?.status || 0) >= 200 && Number(response?.status || 0) < 300) {
-        write(config, response);
-      }
+      if (eligible && !config.__lmsgenCacheHit && success) write(config, response);
+
+      if (method !== 'get' && isPlatformCacheUrl(url) && success) notifyInvalidated();
       return response;
     },
     (error) => Promise.reject(error)
   );
 
-  // A completed background generation creates new course/library data without
-  // an admin mutation occurring in the current route. Clear cached lists so the
-  // next warm/read picks up the generated course immediately.
+  // Background course generation changes course/library data without a mutation
+  // in the current route. Clear prepared lists so the next warm/read is current.
   if (typeof window !== 'undefined') {
     window.addEventListener('quizmoto-course-generation-jobs', (event) => {
       const jobs = Array.isArray(event?.detail) ? event.detail : [];
