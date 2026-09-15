@@ -364,6 +364,7 @@ export async function warmScormPlatformData(token, options = {}) {
   const {
     force = false,
     includeHeavy = false,
+    essentialOnly = false,
     role = '',
     scormAccess = true,
     quizmotoOnly = false,
@@ -386,6 +387,12 @@ export async function warmScormPlatformData(token, options = {}) {
   }
 
   datasets = uniqueDatasets(datasets);
+  if (essentialOnly) {
+    // The visible startup loader only waits for the datasets needed by the main
+    // workspace. Admin, email, access and report configuration is intentionally
+    // left to the quiet background warm-up.
+    datasets = datasets.filter((dataset) => Number(dataset.priority || 9) <= 1);
+  }
   const total = datasets.length;
   let completed = 0;
   let failed = 0;

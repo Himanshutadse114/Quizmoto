@@ -4,9 +4,9 @@ import { warmScormPlatformData } from '../services/scormApiCache';
 
 const TOKEN_CHECK_MS = 250;
 const BACKGROUND_REFRESH_MS = 45_000;
-const MAX_PREPARATION_BLOCK_MS = 30_000;
-const MIN_PREPARATION_VISIBLE_MS = 900;
-const READY_HOLD_MS = 500;
+const MAX_PREPARATION_BLOCK_MS = 4_000;
+const MIN_PREPARATION_VISIBLE_MS = 600;
+const READY_HOLD_MS = 250;
 const INITIAL_PROGRESS_PERCENT = 8;
 const DATA_PROGRESS_START = 8;
 const DATA_PROGRESS_END = 94;
@@ -74,6 +74,12 @@ function datasetProgressPercent(completed, total) {
   return Math.min(DATA_PROGRESS_END, DATA_PROGRESS_START + Math.round(ratio * (DATA_PROGRESS_END - DATA_PROGRESS_START)));
 }
 
+function publicProgressLabel(percent) {
+  if (percent >= 90) return 'Almost ready';
+  if (percent >= 55) return 'Preparing your dashboard';
+  return 'Loading your workspace';
+}
+
 const INITIAL_STATE = {
   active: false,
   percent: INITIAL_PROGRESS_PERCENT,
@@ -130,11 +136,17 @@ export default function PlatformDataBootstrap() {
       let releasedToBackground = false;
       let completedSuccessfully = false;
 
+      // Record the first preparation attempt immediately. A browser refresh, or
+      // React StrictMode's development remount, must never restart the blocking
+      // loader or reset its percentage. Data can safely continue warming in the
+      // background because each platform page retains its own loading state.
+      markPrepared(token);
+
       setPreparation({
         ...INITIAL_STATE,
         active: true,
         percent: INITIAL_PROGRESS_PERCENT,
-        label: 'Connecting to your workspace'
+        label: 'Loading your workspace'
       });
 
       window.clearTimeout(maxBlockTimer);
@@ -157,6 +169,7 @@ export default function PlatformDataBootstrap() {
         const result = await warmScormPlatformData(token, {
           force: false,
           includeHeavy: false,
+          essentialOnly: true,
           role: user?.role || '',
           scormAccess,
           quizmotoOnly,
@@ -168,7 +181,7 @@ export default function PlatformDataBootstrap() {
               completed: Number(progress?.completed || 0),
               total: Number(progress?.total || 0),
               failed: Number(progress?.failed || 0),
-              label: progress?.label || current.label,
+              label: publicProgressLabel(mappedPercent),
               active: !releasedToBackground,
               background: releasedToBackground,
               percent: Math.max(clampPercent(current.percent), mappedPercent)
@@ -202,10 +215,6 @@ export default function PlatformDataBootstrap() {
           await wait(READY_HOLD_MS);
         }
 
-        // Only remember the workspace as prepared after the warm-up actually
-        // completed. A refresh during an unfinished/stuck preparation will now
-        // restart preparation instead of incorrectly skipping straight to Dashboard.
-        if (completedSuccessfully) markPrepared(token);
         scheduleHeavyWarm();
       } finally {
         window.clearTimeout(maxBlockTimer);
@@ -229,8 +238,9 @@ export default function PlatformDataBootstrap() {
       warmedToken = token;
 
       if (wasPrepared(token)) {
-        // A successfully prepared session can open immediately on refresh. The
-        // cache is refreshed quietly so navigation does not repeat database reads.
+        // Once preparation has started in this tab, refreshes open immediately.
+        // Any missing or stale data is refreshed quietly in the background.
+        setPreparation(INITIAL_STATE);
         runBackgroundWarm({ force: false, includeHeavy: false });
         scheduleHeavyWarm();
         return;
@@ -311,7 +321,7 @@ export default function PlatformDataBootstrap() {
           <div className="min-w-0 flex-1">
             <div className="text-[11px] font-semibold uppercase tracking-[.16em] text-cyan-200/80">LMSGEN Workspace</div>
             <h1 className="mt-1.5 text-2xl font-semibold tracking-[-.03em] text-white">Preparing your platform</h1>
-            <p className="mt-2 text-sm leading-relaxed text-slate-400">We are loading the data you use most so Dashboard, Courses, Learners, Campaigns, Reports, Flipbooks and Quizmoto can open without waiting for fresh database reads.</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-400">Your workspace is getting ready. You can start as soon as the essential information is available.</p>
           </div>
         </div>
 
