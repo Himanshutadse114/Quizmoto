@@ -59,6 +59,7 @@ export default function ScormHome() {
   const [packagesLoading, setPackagesLoading] = useState(true);
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [trackingLoading, setTrackingLoading] = useState(true);
+  const [featuresLoading, setFeaturesLoading] = useState(true);
 
   useEffect(() => {
     if (!token) return navigate('/login');
@@ -82,7 +83,10 @@ export default function ScormHome() {
       setTracking(cachedTracking || { overview: {}, courses: [], learners: [] });
       setTrackingLoading(false);
     }
-    if (cachedFeatures) setAiEnabled(!!cachedFeatures?.scormAiAuthor);
+    if (cachedFeatures) {
+      setAiEnabled(!!cachedFeatures?.scormAiAuthor);
+      setFeaturesLoading(false);
+    }
 
     const packageRequest = fetchScormData(
       'packages',
@@ -121,7 +125,8 @@ export default function ScormHome() {
       () => axios.get(apiUrl('/api/scorm/features')).then((res) => res.data || {})
     )
       .catch(() => peekScormData('features', token) || {})
-      .then((data) => mounted && setAiEnabled(!!data?.scormAiAuthor));
+      .then((data) => mounted && setAiEnabled(!!data?.scormAiAuthor))
+      .finally(() => mounted && setFeaturesLoading(false));
 
     Promise.allSettled([packageRequest, courseRequest, trackingRequest, featureRequest]);
 
@@ -157,7 +162,7 @@ export default function ScormHome() {
       </section>
 
       {error && <div className="scorm-alert scorm-alert-danger mb-5">{error}</div>}
-      {!coursesLoading && !packagesLoading && !aiEnabled && !error && (
+      {!coursesLoading && !packagesLoading && !featuresLoading && !aiEnabled && !error && (
         <div className="scorm-alert scorm-alert-info mb-5">
           AI Author is currently unavailable. Package upload, delivery and learner tracking remain available.
         </div>
