@@ -59,7 +59,7 @@ function metaphorFor(slide) {
     if (/deepfake|voice clone|audio clone|synthetic voice|synthetic video|artificial intelligence|\bai\b/.test(text)) return 'ai-wave';
     if (/smish|sms|text message|whatsapp|messaging app/.test(text)) return 'phone';
     if (/vish|phone call|caller|callback|pretext|pretexting/.test(text)) return 'phone';
-    if (/phish|fraudulent email|suspicious email|inbox|sender address|email message/.test(text)) return 'email';
+    if (/phish|fraudulent email|suspicious email|\bemail\b|inbox|sender address|email message/.test(text)) return 'email';
     if (/bait|usb|removable media|malicious attachment|attachment/.test(text)) return 'file';
     if (/tailgat|physical access|restricted area|badge|impersonat|identity/.test(text)) return 'identity';
     if (/browser|website|url|domain|sign-in page|login page/.test(text)) return 'browser';
@@ -78,9 +78,12 @@ function semanticLayout(slide) {
     // Infer structure from the title and visual points rather than every word in
     // the body. Professional prose often says "works by", which previously made
     // unrelated lessons look like Process slides throughout the course.
-    if (/timeline|history|phase|sequence|journey|before.*after|from .* to /.test(structureText)) return 'timeline';
+    // A before/after construction is a comparison unless the author explicitly
+    // describes a chronological journey. Previously it was swallowed by the
+    // timeline check, so visual comparison screens never received compare UI.
+    if (/versus|\bvs\b|difference between|compare|comparison|before.*after|safe .* unsafe|recommended .* avoid|do .* don.?t|smishing and vishing|vishing and smishing/.test(structureText)) return 'comparison';
+    if (/timeline|history|phase|sequence|journey|from .* to /.test(structureText)) return 'timeline';
     if (/step|process|workflow|how .* works|lifecycle|flow|reporting process|response process|verification process/.test(structureText)) return 'process';
-    if (/versus|\bvs\b|difference between|compare|comparison|safe .* unsafe|recommended .* avoid|do .* don.?t|smishing and vishing|vishing and smishing/.test(structureText)) return 'comparison';
     if (/types of|categories|channels|pillars|components|warning signs|red flags|indicators|signals|checklist/.test(structureText)) return 'hub';
     if (/tips|rules|principles|things to|actions to|ways to|key behaviours|key behaviors/.test(title)) return 'cards';
 
@@ -91,9 +94,12 @@ function semanticLayout(slide) {
 
 function chooseBalancedLayouts(slides) {
     const total = slides.length;
-    const maxCards = Math.max(1, Math.min(2, Math.ceil(total * 0.18)));
-    const maxHubs = Math.max(1, Math.min(2, Math.ceil(total * 0.18)));
+    // Cards and hubs both become click/reveal interactions in the learner. Cap
+    // them as one family so a course cannot meet two separate quotas and still
+    // feel like the same interaction is being repeated every few slides.
+    const maxCardFamily = Math.max(1, Math.min(2, Math.ceil(total * 0.2)));
     const counts = Object.create(null);
+    let cardFamilyCount = 0;
     let previous = '';
     let sameRun = 0;
 
@@ -108,8 +114,7 @@ function chooseBalancedLayouts(slides) {
             layout = explicit;
         }
 
-        if (layout === 'cards' && (counts.cards || 0) >= maxCards) layout = 'spotlight';
-        if (layout === 'hub' && (counts.hub || 0) >= maxHubs) layout = 'spotlight';
+        if (['cards', 'hub'].includes(layout) && cardFamilyCount >= maxCardFamily) layout = 'spotlight';
 
         // Never place two card-family screens beside each other. This keeps the
         // course from feeling like an endless set of flip/reveal tiles.
@@ -121,10 +126,8 @@ function chooseBalancedLayouts(slides) {
         if (prospectiveRun > 2) {
             if (layout !== 'spotlight') {
                 layout = 'spotlight';
-            } else if ((counts.cards || 0) < maxCards && previous !== 'cards') {
+            } else if (cardFamilyCount < maxCardFamily && previous !== 'cards') {
                 layout = 'cards';
-            } else if ((counts.hub || 0) < maxHubs && previous !== 'hub') {
-                layout = 'hub';
             }
         }
 
@@ -134,6 +137,7 @@ function chooseBalancedLayouts(slides) {
             sameRun = 1;
         }
         counts[layout] = (counts[layout] || 0) + 1;
+        if (['cards', 'hub'].includes(layout)) cardFamilyCount += 1;
         return layout;
     });
 }
@@ -214,9 +218,15 @@ function planExperienceV5(rawAnalysis) {
 
     const planned = canonicalSlides.map((slide, index) => {
         const layout = layouts[index] || 'spotlight';
-        const type = preferredType(slide, layout, index, interactiveUsed);
+        const explicitType = clean(slide?.screenType).toLowerCase();
+        const type = SCREEN_TYPES.includes(explicitType)
+            ? explicitType
+            : preferredType(slide, layout, index, interactiveUsed);
         if (type === 'reveal' || type === 'hotspot') interactiveUsed += 1;
-        const background = backgroundFor(type, index, previousBackground);
+        const explicitBackground = clean(slide?.backgroundStyle).toLowerCase();
+        const background = BACKGROUNDS.includes(explicitBackground)
+            ? explicitBackground
+            : backgroundFor(type, index, previousBackground);
         const result = {
             ...slide,
             layout,

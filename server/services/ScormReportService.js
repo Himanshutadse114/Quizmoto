@@ -191,9 +191,9 @@ async function listCourseReports(hostId) {
             const completed = regs.filter((r) => isCompletedStatus(r.lastLessonStatus));
             const inProgress = regs.filter((r) => learnerResult(r) === 'In Progress');
             const notAttempted = regs.filter((r) => learnerResult(r) === 'Not Attempted');
-            const withScore = regs.filter((r) => r.lastScoreRaw != null && !Number.isNaN(Number(r.lastScoreRaw)));
+            const withScore = regs.filter((r) => r.scorePercent != null && !Number.isNaN(Number(r.scorePercent)));
             const avgScore = withScore.length > 0
-                ? Math.round((withScore.reduce((s, r) => s + Number(r.lastScoreRaw), 0) / withScore.length) * 100) / 100
+                ? Math.round((withScore.reduce((s, r) => s + Number(r.scorePercent), 0) / withScore.length) * 100) / 100
                 : null;
             const learners = regs
                 .map((r) => ({
@@ -203,7 +203,10 @@ async function listCourseReports(hostId) {
                     status: r.status,
                     lessonStatus: r.lastLessonStatus,
                     result: learnerResult(r),
-                    score: r.lastScoreRaw,
+                    score: r.scorePercent,
+                    scoreRaw: r.lastScoreRaw,
+                    scoreMin: r.scoreMin,
+                    scoreMax: r.scoreMax,
                     totalTime: r.lastTotalTime,
                     progressPercent: r.progressPercent,
                     progressAvailable: r.progressAvailable,
@@ -321,7 +324,11 @@ async function buildLearnerReport({ hostId, email }) {
     }
 
     attempts.sort((a, b) => new Date(b.lastActivity || 0).getTime() - new Date(a.lastActivity || 0).getTime());
-    const scores = attempts.map((a) => Number(a.score)).filter(Number.isFinite);
+    const scores = attempts
+        .map((attempt) => attempt.score)
+        .filter((score) => score != null && String(score).trim() !== '')
+        .map(Number)
+        .filter(Number.isFinite);
     const questionsCaptured = attempts.reduce((sum, a) => sum + Number(a.answerSummary?.captured || 0), 0);
     const graded = attempts.reduce((sum, a) => sum + Number(a.answerSummary?.graded || 0), 0);
     const correctAnswers = attempts.reduce((sum, a) => sum + Number(a.answerSummary?.correct || 0), 0);

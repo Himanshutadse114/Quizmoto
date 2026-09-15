@@ -3,7 +3,7 @@ const router = express.Router();
 const { featureFlags } = require('../../config/featureFlags');
 const { injectRuntimeRepair } = require('../../services/scorm/ScormRuntimeRepair');
 const { injectCourseUiPolish } = require('../../services/scorm/ScormCourseUiPolish');
-const { injectMobileRuntime } = require('../../services/scorm/ScormMobileResponsiveRuntime');
+const { inject: injectMobileHardeningRuntime } = require('../../services/scorm/ScormMobileHardeningRuntime');
 const { startCampaignPerformanceIndexEnsure } = require('../../services/scorm/ScormCampaignPerformanceIndexService');
 
 startCampaignPerformanceIndexEnsure();
@@ -17,7 +17,13 @@ function repairServedScormHtml(req, res, next) {
             if (isHtml && (typeof body === 'string' || Buffer.isBuffer(body))) {
                 const source = Buffer.isBuffer(body) ? body.toString('utf8') : body;
                 if (/scorm_api_wrapper\.js|\bdoLMSInitialize\b|quizmoto[-_]scorm/i.test(source)) {
-                    const patched = injectMobileRuntime(injectCourseUiPolish(injectRuntimeRepair(source)));
+                    let patched = injectCourseUiPolish(injectRuntimeRepair(source));
+                    // Only LMSGEN-authored players should receive our structural
+                    // mobile CSS. Imported Storyline/Rise packages own their DOM
+                    // and responsive runtime; rewriting their layout can break it.
+                    if (/__quizmotoData|quizmoto-authored-runtime|data-qmx-course-template|qmx-learning-shell/i.test(source)) {
+                        patched = injectMobileHardeningRuntime(patched);
+                    }
                     if (patched !== source) {
                         body = Buffer.isBuffer(body) ? Buffer.from(patched, 'utf8') : patched;
                         res.setHeader('Cache-Control', 'private, no-store');

@@ -41,6 +41,8 @@ describe('SCORM authored interaction responsiveness', () => {
         expect(patched).to.include("target.matches('.quiz-option')");
         expect(patched).to.include("doLMSSetValue('cmi.core.score.raw',String(provisional))");
         expect(patched).to.include('quizmoto-mobile-course-css');
+        expect(patched).to.include('quizmoto-mobile-course-responsive-v7');
+        expect(patched).to.not.include('quizmoto-mobile-course-runtime-v3');
     });
 
     it('repairs the self-observing flip-card runtime in already stored course packages', () => {

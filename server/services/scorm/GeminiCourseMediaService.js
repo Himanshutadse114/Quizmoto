@@ -8,6 +8,7 @@ const {
     slideInstruction,
     sharedVisualRules
 } = require('./GeminiSlideVisualPromptService');
+const { optimizeCourseMedia } = require('./ScormImageOptimizationService');
 
 const DEFAULT_IMAGE_MODEL = 'gemini-2.5-flash-image';
 const DEFAULT_TEXT_MODEL = 'gemini-2.5-flash';
@@ -290,7 +291,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
 
     const source = rawAnalysis && typeof rawAnalysis === 'object' ? { ...rawAnalysis } : {};
     const slides = (Array.isArray(source.slides) ? source.slides : []).map(clearLegacyVisuals);
-    const analysis = { ...source, slides };
+    let analysis = { ...source, slides };
     delete analysis.narrationAsset;
     delete analysis.narrationText;
     delete analysis.coverImageAsset;
@@ -308,7 +309,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
     const availableImageSlots = 1 + selectedIndexes.length;
     const requiredImages = Math.min(availableImageSlots, config.maxImages, config.minImages);
     const requiredSlideImages = Math.max(0, requiredImages - 1);
-    const files = [];
+    let files = [];
     const warnings = [];
     const successfulSlideIndexes = new Set();
     let coverGenerated = false;
@@ -455,6 +456,15 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
         throw error;
     }
 
+    emit(onProgress, {
+        percent: 73,
+        stage: 'Optimising course images',
+        detail: 'Resizing every visual to the same lightweight 16:9 WebP profile.'
+    });
+    const optimizedMedia = await optimizeCourseMedia(analysis, files);
+    analysis = optimizedMedia.analysis;
+    files = optimizedMedia.files;
+
     const totalImagesGenerated = (coverGenerated ? 1 : 0) + slideImagesGenerated;
     const mediaMetadata = {
         provider: 'gemini',
@@ -473,6 +483,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
         successfulSlideIndexes: Array.from(successfulSlideIndexes).sort((a, b) => a - b),
         imageStyle: 'gemini_generated_16_9_non_human_no_text',
         canonicalVisualAssets: true,
+        optimization: optimizedMedia.metadata,
         legacySvgFallback: false,
         audio: false,
         warnings
@@ -480,7 +491,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
 
     const updated = {
         ...analysis,
-        slides,
+        slides: analysis.slides,
         visualMode: 'raster',
         visualProvider: 'gemini',
         visualPromptProvider: 'gemini',
@@ -504,6 +515,8 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
         requiredImages,
         imageConcurrency: config.imageConcurrency,
         files: files.length,
+        optimizedBytes: optimizedMedia.metadata.optimizedBytes,
+        imageSavingsPercent: optimizedMedia.metadata.savingsPercent,
         warnings: warnings.length
     });
 

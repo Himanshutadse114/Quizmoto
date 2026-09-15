@@ -15,7 +15,7 @@ const COMMON_SCREEN_TYPES = Object.freeze([
 ]);
 
 const COMMON_INTERACTIONS = Object.freeze([
-    'focus_reveal', 'click_reveal', 'hotspot_explore', 'step_explore', 'compare_reveal', 'decision_explore'
+    'none', 'focus_reveal', 'click_reveal', 'hotspot_explore', 'step_explore', 'compare_reveal', 'decision_explore'
 ]);
 
 function template(definition) {
@@ -77,6 +77,31 @@ const COURSE_TEMPLATE_VERSIONS = Object.freeze({
             layoutIds: {
                 spotlight: 'professional-classic.flip-cards',
                 cards: 'professional-classic.flip-cards'
+            },
+            contentBudgets: {
+                maxTitleChars: 78,
+                maxBodyWords: 150,
+                maxPoints: 4,
+                maxInteractionItems: 4
+            }
+        }),
+        '1.2.0': template({
+            id: 'professional-classic',
+            version: '1.2.0',
+            name: 'Clean & Professional',
+            shortName: 'Professional',
+            description: 'Balanced corporate learning with immediately readable content and occasional, purposeful interactions.',
+            experience: 'Balanced corporate',
+            defaultInteractionLevel: 'balanced',
+            interactionLevels: Object.freeze(['light', 'balanced', 'high']),
+            allowedInteractions: Object.freeze(['none', 'click_reveal', 'hotspot_explore', 'step_explore', 'compare_reveal', 'decision_explore']),
+            layoutIds: {
+                spotlight: 'professional-classic.image-text.v2',
+                cards: 'professional-classic.cards.v2',
+                process: 'professional-classic.process.v2',
+                timeline: 'professional-classic.timeline.v2',
+                comparison: 'professional-classic.comparison.v2',
+                hub: 'professional-classic.topic-hub.v2'
             },
             contentBudgets: {
                 maxTitleChars: 78,
@@ -196,7 +221,7 @@ const COURSE_TEMPLATE_VERSIONS = Object.freeze({
 });
 
 const CURRENT_TEMPLATE_VERSIONS = Object.freeze({
-    'professional-classic': '1.1.0',
+    'professional-classic': '1.2.0',
     'highly-interactive': '1.0.0',
     'scenario-learning': '1.0.0',
     'visual-product-training': '1.1.0'

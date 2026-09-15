@@ -47,6 +47,18 @@ function sourceAnalysis() {
     };
 }
 
+function maxSameRun(values) {
+    let maximum = 0;
+    let current = 0;
+    let previous = null;
+    values.forEach((value) => {
+        current = value === previous ? current + 1 : 1;
+        previous = value;
+        maximum = Math.max(maximum, current);
+    });
+    return maximum;
+}
+
 describe('SCORM versioned template architecture', () => {
     it('publishes four isolated course templates while keeping the current style as the default', () => {
         const templates = listCourseTemplates();
@@ -84,6 +96,46 @@ describe('SCORM versioned template architecture', () => {
         expect(scenarioCourse.slides.every((slide) => slide.layoutId.startsWith('scenario-learning.'))).to.equal(true);
         expect(() => validateTemplateAnalysis(interactiveCourse, interactive)).not.to.throw();
         expect(() => validateTemplateAnalysis(scenarioCourse, scenario)).not.to.throw();
+    });
+
+    it('keeps the normal format readable instead of adding an interaction after every slide', () => {
+        const binding = createTemplateBinding('professional-classic', { interactionLevel: 'balanced' });
+        const repeatedCards = {
+            ...sourceAnalysis(),
+            slides: Array.from({ length: 10 }, (_, index) => ({
+                title: `Practical rule ${index + 1}`,
+                content: 'Apply the rule in context, verify the request and report anything suspicious.',
+                keyPoints: ['Pause', 'Check context', 'Verify independently', 'Report'],
+                layout: 'cards'
+            }))
+        };
+        const planned = planExperienceForTemplate(repeatedCards, binding);
+        const interactive = planned.slides.filter((slide) => slide.interaction.type !== 'none');
+
+        expect(binding.templateVersion).to.equal('1.2.0');
+        expect(interactive.length).to.be.at.most(2);
+        expect(planned.slides.filter((slide) => slide.interaction.type === 'none').length).to.be.greaterThan(0);
+        expect(() => validateTemplateAnalysis(planned, binding)).not.to.throw();
+    });
+
+    it('varies repeated highly-interactive source structures without changing their facts', () => {
+        const binding = createTemplateBinding('highly-interactive', { interactionLevel: 'high' });
+        const repeatedProcess = {
+            ...sourceAnalysis(),
+            slides: Array.from({ length: 8 }, (_, index) => ({
+                title: `Response process ${index + 1}`,
+                content: 'Pause, inspect the request, verify it through a trusted route and report concerns.',
+                keyPoints: ['Pause', 'Inspect', 'Verify', 'Report'],
+                layout: 'process'
+            }))
+        };
+        const planned = planExperienceForTemplate(repeatedProcess, binding);
+        const types = planned.slides.map((slide) => slide.interaction.type);
+
+        expect(new Set(types).size).to.be.greaterThan(1);
+        expect(maxSameRun(types)).to.be.at.most(1);
+        expect(planned.slides.every((slide) => slide.content.includes('Pause, inspect'))).to.equal(true);
+        expect(() => validateTemplateAnalysis(planned, binding)).not.to.throw();
     });
 
     it('rejects cross-template layout contamination instead of trying to render it', () => {

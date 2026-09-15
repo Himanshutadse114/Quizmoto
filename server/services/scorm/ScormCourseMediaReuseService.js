@@ -1,4 +1,5 @@
 const JSZip = require('jszip');
+const { optimizeCourseMedia } = require('./ScormImageOptimizationService');
 
 const COVER_FIELDS = [
     'coverImageAsset',
@@ -118,14 +119,14 @@ async function reuseExistingCourseMedia({ pkg, analysis, storage, onProgress }) 
         throw mediaReuseError('The existing course does not contain reusable visual metadata.');
     }
 
-    const mergedAnalysis = mergeExistingVisuals(analysis, previousAnalysis);
+    let mergedAnalysis = mergeExistingVisuals(analysis, previousAnalysis);
     const paths = referencedRasterPaths(mergedAnalysis);
     const coverPath = clean(mergedAnalysis.coverVisualAsset || mergedAnalysis.coverImageAsset || mergedAnalysis.coverMobileVisualAsset);
     if (!coverPath) {
         throw mediaReuseError('The existing course cover image is missing. The rebuild was stopped instead of generating a new image.');
     }
 
-    const files = [];
+    let files = [];
     for (const path of paths) {
         const entry = zip.file(path);
         if (!entry) {
@@ -138,6 +139,10 @@ async function reuseExistingCourseMedia({ pkg, analysis, storage, onProgress }) 
         });
     }
 
+    const optimizedMedia = await optimizeCourseMedia(mergedAnalysis, files);
+    mergedAnalysis = optimizedMedia.analysis;
+    files = optimizedMedia.files;
+
     const previousMetadata = previousAnalysis.replicateMedia && typeof previousAnalysis.replicateMedia === 'object'
         ? previousAnalysis.replicateMedia
         : {};
@@ -146,7 +151,8 @@ async function reuseExistingCourseMedia({ pkg, analysis, storage, onProgress }) 
         reusedOnRebuild: true,
         reusedImages: files.length,
         totalImagesGenerated: 0,
-        estimatedImageCostUsd: 0
+        estimatedImageCostUsd: 0,
+        optimization: optimizedMedia.metadata
     };
     mergedAnalysis.replicateMedia = metadata;
 

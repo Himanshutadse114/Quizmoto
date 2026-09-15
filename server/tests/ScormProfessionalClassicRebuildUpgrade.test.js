@@ -17,26 +17,26 @@ function analysisWithBinding(templateId, templateVersion, interactionLevel = 'ba
 }
 
 describe('Professional classic rebuild upgrade', () => {
-    it('upgrades an existing Professional 1.0 course to the current flip-card template on rebuild', () => {
+    it('upgrades an existing Professional 1.0 course to the current balanced template on rebuild', () => {
         const migration = resolveRebuildTemplateBinding({
             analysis: analysisWithBinding('professional-classic', '1.0.0')
         });
 
         expect(migration.templateUpgraded).to.equal(true);
         expect(migration.previousVersion).to.equal('1.0.0');
-        expect(migration.currentVersion).to.equal('1.1.0');
+        expect(migration.currentVersion).to.equal('1.2.0');
         expect(migration.binding.templateId).to.equal('professional-classic');
-        expect(migration.binding.templateVersion).to.equal('1.1.0');
+        expect(migration.binding.templateVersion).to.equal('1.2.0');
         expect(migration.binding.interactionLevel).to.equal('balanced');
     });
 
     it('does not repeatedly migrate a Professional course already on the current version', () => {
         const migration = resolveRebuildTemplateBinding({
-            analysis: analysisWithBinding('professional-classic', '1.1.0')
+            analysis: analysisWithBinding('professional-classic', '1.2.0')
         });
 
         expect(migration.templateUpgraded).to.equal(false);
-        expect(migration.binding.templateVersion).to.equal('1.1.0');
+        expect(migration.binding.templateVersion).to.equal('1.2.0');
     });
 
     it('does not change the version of other course styles during rebuild', () => {

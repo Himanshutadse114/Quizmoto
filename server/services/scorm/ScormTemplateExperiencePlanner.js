@@ -16,10 +16,14 @@ function slideText(slide) {
 function semanticKind(slide) {
     const text = slideText(slide);
     const explicit = String(slide?.layout || '').toLowerCase();
-    if (explicit === 'timeline' || /timeline|history|sequence|journey|phase/.test(text)) return 'timeline';
+    if (explicit === 'timeline') return 'timeline';
+    if (explicit === 'comparison') return 'comparison';
+    if (/versus|\bvs\b|compare|comparison|before.*after|safe .* unsafe|do .* don.?t/.test(text)) return 'comparison';
+    if (/timeline|history|sequence|journey|phase/.test(text)) return 'timeline';
+    // Decision language must win over incidental words such as "process" in a
+    // genuine workplace situation (for example, "follow the visitor process").
+    if (/scenario|case study|imagine|suppose|you receive|you notice|you are asked|someone asks|a colleague asks|what would you|what should you|need to decide|choose (?:a|the|your) response|decision/.test(text)) return 'scenario';
     if (explicit === 'process' || /step|process|workflow|lifecycle|how .* works/.test(text)) return 'process';
-    if (explicit === 'comparison' || /versus|\bvs\b|compare|comparison|safe .* unsafe|do .* don.?t/.test(text)) return 'comparison';
-    if (/scenario|case study|imagine|suppose|you receive|you notice|you are asked|you see|someone asks|a colleague asks|what would you|what should you|decision/.test(text)) return 'scenario';
     if (/warning signs|red flags|indicators|signals|types of|categories|components|features|controls|buttons|areas|parts|functions/.test(text)) return 'hub';
     return explicit || 'spotlight';
 }
@@ -34,6 +38,29 @@ function classicFlipCardPlan() {
         screenType: 'reveal',
         interaction: interaction('click_reveal', 'Reveal each key point before continuing.')
     };
+}
+
+function professionalPlan(slide, level) {
+    const type = String(slide?.screenType || 'concept');
+    const layout = String(slide?.layout || 'spotlight');
+    const purposeful = ['reveal', 'hotspot'].includes(type);
+
+    if (level === 'light') {
+        return { layout, screenType: type, interaction: interaction('none', '') };
+    }
+    if (purposeful) {
+        return {
+            layout,
+            screenType: type,
+            interaction: interaction(type === 'hotspot' ? 'hotspot_explore' : 'click_reveal', type === 'hotspot'
+                ? 'Explore the key signals when you are ready.'
+                : 'Reveal the key points when you are ready.')
+        };
+    }
+    if (level === 'high' && type === 'process') return { layout, screenType: type, interaction: interaction('step_explore', 'Explore the process in order.') };
+    if (level === 'high' && type === 'comparison') return { layout, screenType: type, interaction: interaction('compare_reveal', 'Compare the important differences.') };
+    if (level === 'high' && type === 'scenario') return { layout, screenType: type, interaction: interaction('decision_explore', 'Consider the situation and choose a response.') };
+    return { layout, screenType: type, interaction: interaction('none', '') };
 }
 
 function highInteractivePlan(slide, index, level) {
@@ -161,6 +188,26 @@ function templatePlan(templateId, slide, index, interactionLevel) {
     return null;
 }
 
+function alternateInteractivePlan(templateId, slide, index, previousType) {
+    const points = Array.isArray(slide?.keyPoints) ? slide.keyPoints.filter(Boolean) : [];
+    const options = templateId === 'scenario-learning'
+        ? [
+            { layout: 'spotlight', screenType: 'takeaway', interaction: interaction('focus_reveal', 'Reveal the coach’s note before continuing.') },
+            { layout: 'cards', screenType: 'reveal', interaction: interaction('click_reveal', 'Explore the learner cues before continuing.') },
+            { layout: 'hub', screenType: 'hotspot', interaction: interaction('hotspot_explore', 'Explore the clues and reflect on what you notice.') }
+        ]
+        : [
+            { layout: 'cards', screenType: 'reveal', interaction: interaction('click_reveal', 'Open each card to reveal the practical learning point.') },
+            { layout: 'hub', screenType: 'hotspot', interaction: interaction('hotspot_explore', 'Explore the key points before continuing.') },
+            { layout: 'spotlight', screenType: 'concept', interaction: interaction('focus_reveal', 'Review the lesson and reveal the action to remember.') }
+        ];
+    if (points.length < 2) return null;
+    const rotated = options[(index + 1) % options.length];
+    return (rotated && rotated.interaction.type !== previousType)
+        ? rotated
+        : options.find((item) => item.interaction.type !== previousType) || null;
+}
+
 function applyStableDesignIdentity(slide, template, binding) {
     const layout = String(slide.layout || 'spotlight').toLowerCase();
     const layoutId = template.layoutIds[layout] || template.layoutIds.spotlight;
@@ -180,14 +227,26 @@ function planExperienceForTemplate(rawAnalysis, binding) {
     if (!template) throw new Error(`Course template ${binding?.templateId || 'unknown'}@${binding?.templateVersion || 'unknown'} is unavailable.`);
     const base = planExperienceV5(rawAnalysis);
 
+    let previousInteraction = '';
     const slides = (Array.isArray(base.slides) ? base.slides : []).map((slide, index) => {
         if (template.id === 'professional-classic') {
             if (template.version === '1.1.0') {
                 return applyStableDesignIdentity({ ...slide, ...classicFlipCardPlan() }, template, binding);
             }
-            return applyStableDesignIdentity(slide, template, binding);
+            const planned = template.version === '1.2.0'
+                ? professionalPlan(slide, binding.interactionLevel)
+                : {};
+            return applyStableDesignIdentity({ ...slide, ...planned }, template, binding);
         }
-        const planned = templatePlan(template.id, slide, index, binding.interactionLevel) || {};
+        let planned = templatePlan(template.id, slide, index, binding.interactionLevel) || {};
+        const currentType = planned?.interaction?.type || '';
+        const genuineDecision = template.id === 'scenario-learning' && currentType === 'decision_explore';
+        const shouldDiversify = template.id === 'highly-interactive' || template.id === 'scenario-learning';
+        if (shouldDiversify && !genuineDecision && currentType && currentType === previousInteraction) {
+            const alternative = alternateInteractivePlan(template.id, slide, index, previousInteraction);
+            if (alternative) planned = alternative;
+        }
+        previousInteraction = planned?.interaction?.type || currentType;
         return applyStableDesignIdentity({ ...slide, ...planned }, template, binding);
     });
 

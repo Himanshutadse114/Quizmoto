@@ -99,4 +99,15 @@ describe('ScormCanonicalProgressService', () => {
 
         expect(effectiveProgressPercent(state)).to.equal(67);
     });
+
+    it('uses the same normalized score in learner dashboards as tracking reports', () => {
+        const state = {
+            lessonStatus: 'passed',
+            scoreRaw: 16,
+            scoreMin: 0,
+            scoreMax: 20,
+            values: { 'cmi.core.lesson_status': 'passed' }
+        };
+        expect(registrationProgress({ status: 'completed' }, state).score).to.equal(80);
+    });
 });

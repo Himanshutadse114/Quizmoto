@@ -40,32 +40,32 @@ function sourceAnalysis() {
     };
 }
 
-describe('Professional classic flip-card course', () => {
-    it('publishes Professional 1.1 as a balanced flip-card-only experience', () => {
-        expect(currentCourseTemplateVersion('professional-classic')).to.equal('1.1.0');
-        const template = getCourseTemplate('professional-classic', '1.1.0');
-        expect([...template.interactionLevels]).to.deep.equal(['balanced']);
-        expect([...template.allowedInteractions]).to.deep.equal(['click_reveal']);
-        expect(template.layoutIds.cards).to.equal('professional-classic.flip-cards');
+describe('Professional classic course', () => {
+    it('publishes Professional 1.2 as a balanced experience with optional interactions', () => {
+        expect(currentCourseTemplateVersion('professional-classic')).to.equal('1.2.0');
+        const template = getCourseTemplate('professional-classic', '1.2.0');
+        expect([...template.interactionLevels]).to.deep.equal(['light', 'balanced', 'high']);
+        expect([...template.allowedInteractions]).to.include('none');
+        expect([...template.allowedInteractions]).to.include('click_reveal');
+        expect(template.layoutIds.cards).to.equal('professional-classic.cards.v2');
 
         const listed = listCourseTemplates().find((item) => item.id === 'professional-classic');
-        expect(listed.version).to.equal('1.1.0');
-        expect(listed.description).to.match(/flip-card reveals/i);
+        expect(listed.version).to.equal('1.2.0');
+        expect(listed.description).to.match(/occasional, purposeful interactions/i);
     });
 
-    it('forces every learning slide in a fresh Professional course into the classic flip-card layout', () => {
-        const binding = createTemplateBinding('professional-classic', { interactionLevel: 'high' });
-        expect(binding.templateVersion).to.equal('1.1.0');
+    it('does not force the same flip-card interaction onto every fresh Professional slide', () => {
+        const binding = createTemplateBinding('professional-classic', { interactionLevel: 'balanced' });
+        expect(binding.templateVersion).to.equal('1.2.0');
         expect(binding.interactionLevel).to.equal('balanced');
 
         const planned = planExperienceForTemplate(sourceAnalysis(), binding);
-        expect(planned.templateBinding.templateVersion).to.equal('1.1.0');
+        expect(planned.templateBinding.templateVersion).to.equal('1.2.0');
         expect(planned.slides).to.have.length(3);
-        expect(planned.slides.every((slide) => slide.layout === 'cards')).to.equal(true);
-        expect(planned.slides.every((slide) => slide.layoutId === 'professional-classic.flip-cards')).to.equal(true);
-        expect(planned.slides.every((slide) => slide.screenType === 'reveal')).to.equal(true);
-        expect(planned.slides.every((slide) => slide.interaction?.type === 'click_reveal')).to.equal(true);
-        expect(planned.slides.every((slide) => slide.interaction?.prompt === 'Reveal each key point before continuing.')).to.equal(true);
+        expect(new Set(planned.slides.map((slide) => slide.layout)).size).to.be.greaterThan(1);
+        expect(planned.slides.some((slide) => slide.interaction?.type === 'none')).to.equal(true);
+        expect(planned.slides.every((slide) => slide.interaction?.type === 'click_reveal')).to.equal(false);
+        expect(planned.slides.every((slide) => slide.layoutId.startsWith('professional-classic.'))).to.equal(true);
         expect(() => validateTemplateAnalysis(planned, binding)).not.to.throw();
     });
 

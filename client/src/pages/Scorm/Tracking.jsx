@@ -280,7 +280,7 @@ export default function ScormTracking() {
 
                 <div className="lg:text-center">
                   <div className="scorm-micro lg:hidden text-[8px] uppercase mb-1">Score</div>
-                  <div className="text-sm font-semibold">{row.lastScoreRaw != null ? row.lastScoreRaw : '—'}</div>
+                  <div className="text-sm font-semibold">{row.scorePercent != null ? `${Number(row.scorePercent).toFixed(0)}%` : (row.lastScoreRaw != null ? row.lastScoreRaw : '—')}</div>
                 </div>
 
                 <div>

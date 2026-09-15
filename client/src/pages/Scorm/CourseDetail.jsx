@@ -475,7 +475,7 @@ export default function ScormCourseDetail() {
                       </td>
                       <td className="p-4 text-[11px] font-medium text-[#475467] max-w-[180px] break-words">{r.lastLocation || 'Not started'}</td>
                       <td className="p-4 text-[11px] font-mono text-[#475467]">{r.lastLessonStatus || '—'}</td>
-                      <td className="p-4 font-semibold text-[#101828]">{r.lastScoreRaw != null ? r.lastScoreRaw : '—'}</td>
+                      <td className="p-4 font-semibold text-[#101828]">{r.scorePercent != null ? `${Number(r.scorePercent).toFixed(0)}%` : (r.lastScoreRaw != null ? r.lastScoreRaw : '—')}</td>
                       <td className="p-4 font-mono text-[11px] text-[#475467]">{r.lastTotalTime || '—'}</td>
                       <td className="p-4 text-[11px] leading-relaxed text-[#475467]">{r.lastCommitAt ? new Date(r.lastCommitAt).toLocaleString() : r.updatedAt ? new Date(r.updatedAt).toLocaleString() : '—'}</td>
                       <td className="p-4">

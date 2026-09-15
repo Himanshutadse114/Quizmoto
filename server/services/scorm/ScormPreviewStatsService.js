@@ -127,7 +127,20 @@ function serializePreviewStats(registration, course) {
     // The v2 state layer can also contain a legacy row-level 0 before a score key
     // has ever been written. For Admin Preview, derive a live provisional score
     // from the captured interaction results until an explicit SCORM score exists.
-    const explicitScoreRaw = stateValue(primaryState, ['cmi.core.score.raw', 'cmi.score.raw']);
+    // Persisted scoreRaw is an explicit LMS score too; it is not necessarily
+    // duplicated in rawMapJson on older/manual packages. Prefer it over a
+    // provisional interaction-derived score so Preview, Tracking and Reports
+    // all show the same result.
+    const scoreFromMap = stateValue(primaryState, ['cmi.core.score.raw', 'cmi.score.raw']);
+    const persistedScore = finiteNumber(primaryState?.scoreRaw);
+    const persistedScoreIsFinal = ['passed', 'failed', 'completed'].includes(
+        String(primaryState?.lessonStatus || '').toLowerCase()
+    );
+    // An uncompleted v2 row may contain its initialization placeholder (zero)
+    // before the package writes any real score. In that one case interaction
+    // results are a more truthful live QA score.
+    const explicitScoreRaw = scoreFromMap
+        ?? (persistedScore !== 0 || persistedScoreIsFinal ? persistedScore : null);
     const provisionalInteractionScore = explicitScoreRaw == null
         ? liveInteractionScore(primaryState, course)
         : null;

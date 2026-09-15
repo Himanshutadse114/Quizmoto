@@ -4,7 +4,8 @@ const {
     locationLabel,
     serializeRegistration,
     authoredPartCount,
-    packageAnalysis
+    packageAnalysis,
+    normalizedScorePercent
 } = require('../services/scorm/ScormProgressService');
 
 function packageRow(overrides = {}) {
@@ -111,6 +112,46 @@ describe('ScormProgressService', () => {
             },
             packageRow: { analysisJson: null }
         })).to.equal(62.5);
+    });
+
+    it('uses bridge progress for manually uploaded packages in direct tracking', () => {
+        const state = {
+            lessonStatus: 'incomplete',
+            lessonLocation: 'chapter-two',
+            values: { 'quizmoto.progress_percent': '47.5' }
+        };
+        expect(deriveProgress({
+            registration: { status: 'active' },
+            cmiState: state,
+            packageRow: { source: 'upload', analysisJson: null }
+        })).to.equal(47.5);
+
+        const row = serializeRegistration({
+            id: 'manual-reg',
+            status: 'active',
+            learningStateV2: state
+        }, { title: 'Uploaded course', package: { source: 'upload', analysisJson: null } });
+        expect(row.progressAvailable).to.equal(true);
+        expect(row.progressPercent).to.equal(47.5);
+    });
+
+    it('normalizes an imported raw score against its LMS score range', () => {
+        const state = {
+            lessonStatus: 'completed',
+            scoreRaw: 8,
+            scoreMin: 0,
+            scoreMax: 10,
+            values: {}
+        };
+        expect(normalizedScorePercent(state)).to.equal(80);
+        const row = serializeRegistration({
+            id: 'scaled-reg',
+            status: 'completed',
+            learningStateV2: state
+        }, { title: 'Uploaded assessment', package: { source: 'upload', analysisJson: null } });
+        expect(row.lastScoreRaw).to.equal(8);
+        expect(row.scorePercent).to.equal(80);
+        expect(row.score).to.equal(80);
     });
 
     it('returns 100 percent for a finished registration', () => {

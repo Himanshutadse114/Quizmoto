@@ -58,7 +58,7 @@ function summarizeEntries(entries) {
     const notStartedCount = Math.max(0, rows.length - completedCount - inProgressCount);
     const passedCount = rows.filter((entry) => String(entry.result || '').toLowerCase() === 'passed').length;
     const failedCount = rows.filter((entry) => String(entry.result || '').toLowerCase() === 'failed').length;
-    const scores = rows.map((entry) => numericScore(entry.lastScoreRaw ?? entry.score)).filter((value) => value != null);
+    const scores = rows.map((entry) => numericScore(entry.scorePercent ?? entry.score)).filter((value) => value != null);
     const progressValues = rows.map(entryProgressPercent);
     const questionsCaptured = rows.reduce((sum, entry) => sum + Number(entry.answerSummary?.captured || 0), 0);
     const gradedQuestions = rows.reduce((sum, entry) => sum + Number(entry.answerSummary?.graded || 0), 0);
@@ -115,6 +115,10 @@ function serializeAnalyticsEntry(registration) {
         progressPercent: enriched.progressPercent,
         progressAvailable: enriched.progressAvailable,
         lastScoreRaw: enriched.lastScoreRaw,
+        scoreMin: enriched.scoreMin,
+        scoreMax: enriched.scoreMax,
+        scorePercent: enriched.scorePercent,
+        score: enriched.score,
         lastTotalTime: enriched.lastTotalTime,
         lastLessonStatus: enriched.lastLessonStatus,
         lastLocation: enriched.lastLocation,

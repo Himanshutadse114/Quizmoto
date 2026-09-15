@@ -9,6 +9,10 @@ const {
     injectReplicateMediaUi,
     REPLICATE_MEDIA_CSS
 } = require('../services/scorm/ScormReplicateMediaFinalizer');
+const {
+    buildIndexHtml,
+    COURSE_THEMES
+} = require('../services/scorm/ScormRasterCoursePackageBuilder');
 
 function teachingCopy(topic = 'the request') {
     return `Attackers can manipulate ${topic} to create pressure and reduce careful checking. This creates risk because employees may act before confirming who is really making the request. For example, a colleague may receive an unexpected message that appears to come from a trusted person. The learner should pause and verify the request using an official contact method before proceeding. Reporting suspicious activity helps the organisation investigate quickly and protect other employees. This behaviour reduces the chance of fraud, data loss or unauthorised access.`;
@@ -103,13 +107,31 @@ describe('SCORM generated-course audit guards', () => {
     });
 
     it('keeps raster rendering universal and contains no audio UI', () => {
-        const html = injectReplicateMediaUi('<html><head></head><body><script>window.__quizmotoData={slides:[],quiz:[]}</script></body></html>');
-        expect(html).to.include('quizmoto-replicate-media-v2');
-        expect(html).to.include('qmx-raster-panel');
-        expect(html).to.include("stage.classList.add('qmx-raster-stage')");
-        expect(html).to.include('qmx-feedback-explanation');
+        const shimmed = injectReplicateMediaUi('<html><head></head><body></body></html>');
+        const html = buildIndexHtml({
+            title: 'Responsive raster course',
+            coverVisualAsset: 'media/cover.webp',
+            slides: [{
+                title: 'Verify the request',
+                content: teachingCopy('urgent requests'),
+                keyPoints: ['Pause', 'Verify'],
+                visualAsset: 'media/slide-1.webp'
+            }],
+            quiz: [{
+                question: 'What should you do?',
+                options: ['Pause and verify', 'Act immediately'],
+                correctAnswer: 0,
+                explanation: 'Use an official channel to verify the request before taking action.'
+            }]
+        }, COURSE_THEMES.teal, '');
+
+        expect(shimmed).to.include('quizmoto-replicate-media-v3');
+        expect(REPLICATE_MEDIA_CSS).to.include('quizmoto-replicate-media-v3');
+        expect(html).to.include('qmx-native-media');
+        expect(html).to.include('qmx-learning-shell has-image');
+        expect(html).to.include('@media(max-width:620px)');
+        expect(html).to.include('class="feedback"');
         expect(html).to.not.include('<audio');
         expect(html).to.not.include('qmx-narration');
-        expect(REPLICATE_MEDIA_CSS).to.include('grid-template-areas:"head image" "body image"');
     });
 });

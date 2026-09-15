@@ -1,5 +1,6 @@
 const { expect } = require('chai');
 const JSZip = require('jszip');
+const sharp = require('sharp');
 const {
     mergeExistingVisuals,
     reuseExistingCourseMedia
@@ -51,10 +52,16 @@ describe('SCORM course media reuse', () => {
             ]
         };
 
+        const coverImage = await sharp({
+            create: { width: 64, height: 64, channels: 3, background: '#177b72' }
+        }).webp().toBuffer();
+        const slideImage = await sharp({
+            create: { width: 64, height: 64, channels: 3, background: '#d5a94c' }
+        }).webp().toBuffer();
         const zip = new JSZip();
         zip.file('content.json', JSON.stringify(previous));
-        zip.file('assets/media/course-cover.webp', Buffer.from('cover-image-data'));
-        zip.file('assets/media/slide-001.webp', Buffer.from('slide-image-data'));
+        zip.file('assets/media/course-cover.webp', coverImage);
+        zip.file('assets/media/slide-001.webp', slideImage);
         const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
 
         const pkg = {
@@ -77,6 +84,9 @@ describe('SCORM course media reuse', () => {
         expect(result.metadata.reusedImages).to.equal(2);
         expect(result.metadata.totalImagesGenerated).to.equal(0);
         expect(result.metadata.estimatedImageCostUsd).to.equal(0);
+        expect(result.metadata.optimization.width).to.equal(1280);
+        expect(result.metadata.optimization.height).to.equal(720);
+        expect(result.files.every((file) => file.byteSize <= result.metadata.optimization.maxBytesPerImage)).to.equal(true);
     });
 
     it('fails instead of silently generating a replacement when an existing visual is missing', async () => {

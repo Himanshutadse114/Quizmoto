@@ -168,6 +168,15 @@ function deriveProgress({ registration, cmiState, packageRow }) {
         zeroSignal = 0;
     }
 
+    // Imported/manual packages use the universal bridge when their own SCORM
+    // edition does not expose a native progress field. This value is canonical
+    // runtime data and must be read by the direct Tracking/report serializer too.
+    const customProgress = clampPercent(map['quizmoto.progress_percent'] ?? map['quizmoto.progress']);
+    if (customProgress != null) {
+        if (customProgress > 0) return customProgress;
+        zeroSignal = 0;
+    }
+
     const location = cmiState?.lessonLocation || map['cmi.location'] || map['cmi.core.lesson_location'] || null;
     const fromLocation = progressFromLocation(location, packageRow);
     if (fromLocation != null) {
@@ -240,6 +249,7 @@ function serializeRegistration(registration, course = null) {
     const progressPercent = deriveProgress({ registration: plain, cmiState, packageRow });
     const lastLocation = locationLabel({ registration: plain, cmiState, packageRow });
     const lastScoreRaw = resolvedScoreRaw(cmiState, plain.lastScoreRaw, packageRow);
+    const scorePercent = normalizedScorePercent(cmiState, plain.lastScoreRaw, packageRow);
 
     delete plain.learningStateV2;
     return {
@@ -251,12 +261,54 @@ function serializeRegistration(registration, course = null) {
         lastLocationRaw: cmiState?.lessonLocation || null,
         lastLessonStatus: cmiState?.lessonStatus || plain.lastLessonStatus || null,
         lastScoreRaw,
-        score: lastScoreRaw,
+        scoreMin: scoreBound(cmiState, 'min'),
+        scoreMax: scoreBound(cmiState, 'max'),
+        scorePercent,
+        // Public dashboards and reports label score as a percentage. Keep the
+        // original LMS value separately in lastScoreRaw for audit/detail views.
+        score: scorePercent,
         lastTotalTime: cmiState?.totalTime || plain.lastTotalTime || null,
         courseTitle,
         courseStatus,
         inviteCode
     };
+}
+
+function finiteNumber(value) {
+    if (value == null || String(value).trim() === '') return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+}
+
+function scoreBound(cmiState, kind) {
+    const map = stateValues(cmiState);
+    const key = kind === 'min' ? 'min' : 'max';
+    return finiteNumber(
+        cmiState?.[`score${key === 'min' ? 'Min' : 'Max'}`] ??
+        map[`cmi.core.score.${key}`] ??
+        map[`cmi.score.${key}`]
+    );
+}
+
+function normalizedScorePercent(cmiState, fallback = null, packageRow = null) {
+    const map = stateValues(cmiState);
+    const scaled = finiteNumber(map['cmi.score.scaled']);
+    if (scaled != null && scaled >= -1 && scaled <= 1) {
+        return clampPercent(scaled * 100);
+    }
+
+    const raw = resolvedScoreRaw(cmiState, fallback, packageRow);
+    if (raw == null) return null;
+    const min = scoreBound(cmiState, 'min');
+    const max = scoreBound(cmiState, 'max');
+    if (min != null && max != null && max > min) {
+        return clampPercent(((raw - min) / (max - min)) * 100);
+    }
+
+    // Interaction-derived scores and the common 0-100 raw convention are
+    // already percentages. Without a range, larger/negative raw values cannot
+    // be labelled accurately as percentages.
+    return raw >= 0 && raw <= 100 ? clampPercent(raw) : null;
 }
 
 module.exports = {
@@ -268,6 +320,8 @@ module.exports = {
     liveScoreProgress,
     liveInteractionScore,
     resolvedScoreRaw,
+    normalizedScorePercent,
+    scoreBound,
     authoredPartCount,
     packageAnalysis
 };

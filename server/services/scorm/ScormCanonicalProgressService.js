@@ -1,5 +1,5 @@
 const LearningState = require('./ScormLearningStateService');
-const { deriveProgress, liveInteractionScore } = require('./ScormProgressService');
+const { deriveProgress, liveInteractionScore, normalizedScorePercent } = require('./ScormProgressService');
 
 const FINISHED_STATUSES = new Set(['completed', 'passed', 'failed']);
 const EMPTY_STATUSES = new Set(['', 'unknown', 'not attempted', 'not_attempted']);
@@ -150,18 +150,14 @@ function hasCanonicalActivity(state, progressPercent = null, lessonStatus = null
 }
 
 function resolvedScore(state, registration, packageRow) {
-    if (state?.scoreRaw != null && Number(state.scoreRaw) !== 0) return Number(state.scoreRaw);
-    const values = stateValues(state);
-    const explicit = finiteNumber(values['cmi.core.score.raw'] ?? values['cmi.score.raw']);
-    if (explicit != null && (values['cmi.core.score.raw'] != null || values['cmi.score.raw'] != null)) {
-        return explicit;
-    }
+    const normalized = normalizedScorePercent(
+        state,
+        registration?.lastScoreRaw ?? registration?.score ?? null,
+        packageRow
+    );
+    if (normalized != null) return normalized;
     const fromInteractions = liveInteractionScore(state, packageRow);
-    if (fromInteractions != null) return fromInteractions;
-    if (state?.scoreRaw != null) return Number(state.scoreRaw);
-    if (registration?.lastScoreRaw != null) return Number(registration.lastScoreRaw);
-    if (registration?.score != null) return Number(registration.score);
-    return null;
+    return fromInteractions != null ? fromInteractions : null;
 }
 
 function registrationProgress(registration, state = null) {
