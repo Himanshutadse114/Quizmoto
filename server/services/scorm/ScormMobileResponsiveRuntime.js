@@ -203,7 +203,11 @@ async function applyMobileResponsiveRuntimeToZip(zipBuffer) {
     if (!entry) return zipBuffer;
     const html = await entry.async('string');
     zip.file('index.html', injectMobileRuntime(html));
-    return zip.generateAsync({ type: 'nodebuffer', compression: 'STORE' });
+    return zip.generateAsync({
+        type: 'nodebuffer',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 3 }
+    });
 }
 
 module.exports = {
