@@ -20,7 +20,7 @@ const LEGACY_SCRIPT_IDS = [
 
 function style() {
     return `<style id="${STYLE_ID}">
-/* V7 keeps the LMS player's flex/absolute-slide geometry and only makes slide content responsive. */
+/* V7 preserves the LMS flex chrome and keeps the active slide in normal mobile flow. */
 html.qmx-mobile-layout-v7,
 html.qmx-mobile-layout-v7 body{
   width:100%!important;max-width:100%!important;min-width:0!important;height:100%!important;min-height:100%!important;
@@ -45,7 +45,7 @@ html.qmx-mobile-layout-v7 body #qmx-narration-toggle{min-width:34px!important;ma
 
 html.qmx-mobile-layout-v7 body .qmx-course-body,
 html.qmx-mobile-layout-v7 body .qmx-scenario-body{
-  display:flex!important;flex:1 1 auto!important;position:relative!important;width:100%!important;max-width:100%!important;min-width:0!important;
+  display:flex!important;flex-direction:column!important;flex:1 1 0!important;position:relative!important;width:100%!important;max-width:100%!important;min-width:0!important;
   height:auto!important;min-height:0!important;max-height:none!important;overflow:hidden!important
 }
 html.qmx-mobile-layout-v7 body .qmx-course-sidebar,
@@ -54,23 +54,22 @@ html.qmx-mobile-layout-v7 body main,
 html.qmx-mobile-layout-v7 body #content-area,
 html.qmx-mobile-layout-v7 body .qmx-course-main,
 html.qmx-mobile-layout-v7 body .qmx-scenario-main{
-  display:block!important;position:relative!important;flex:1 1 auto!important;width:100%!important;max-width:100%!important;min-width:0!important;
-  height:100%!important;min-height:0!important;max-height:100%!important;overflow:hidden!important
+  display:block!important;position:relative!important;flex:1 1 0!important;width:100%!important;max-width:100%!important;min-width:0!important;
+  height:auto!important;min-height:0!important;max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important
 }
 
-/* The native player decides which slide is current. V7 guarantees that current slide fills the viewport and scrolls. */
+/* The native player owns current-slide state. Current mobile slide stays in normal flow so content can never collapse out of view. */
 html.qmx-mobile-layout-v7 body .slide,
-html.qmx-mobile-layout-v7 body .slide[data-qmx-template-stage="true"]{--qmx-stage-width:100%!important;--qmx-stage-height:100%!important;width:100%!important;max-width:100%!important;min-width:0!important}
+html.qmx-mobile-layout-v7 body .slide[data-qmx-template-stage="true"]{--qmx-stage-width:100%!important;--qmx-stage-height:auto!important;width:100%!important;max-width:100%!important;min-width:0!important}
 html.qmx-mobile-layout-v7 body .slide.active,
 html.qmx-mobile-layout-v7 body .slide.is-active,
 html.qmx-mobile-layout-v7 body .slide[data-active="true"],
 html.qmx-mobile-layout-v7 body .slide[data-current="true"],
 html.qmx-mobile-layout-v7 body .slide[aria-hidden="false"],
 html.qmx-mobile-layout-v7 body .slide.qmx-mobile-visible-v7{
-  display:block!important;visibility:visible!important;opacity:1!important;position:absolute!important;inset:0!important;
-  width:100%!important;max-width:100%!important;min-width:0!important;height:100%!important;min-height:0!important;max-height:100%!important;
-  margin:0!important;padding:10px 9px 16px!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;
-  overscroll-behavior:contain!important;transform:none!important;scale:1!important
+  display:block!important;visibility:visible!important;opacity:1!important;position:relative!important;inset:auto!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:100%!important;max-height:none!important;
+  margin:0!important;padding:10px 9px 16px!important;overflow:visible!important;transform:none!important;scale:1!important
 }
 
 html.qmx-mobile-layout-v7 body .slide>.qmx-cover-shell,
