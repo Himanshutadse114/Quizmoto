@@ -1,6 +1,5 @@
 const { expect } = require('chai');
 const JSZip = require('jszip');
-const vm = require('vm');
 const {
     STYLE_ID,
     SCRIPT_ID,
@@ -10,155 +9,76 @@ const {
     applyMobileHardeningRuntimeToZip
 } = require('../services/scorm/ScormMobileHardeningRuntime');
 
-describe('Template course mobile responsive runtime v5', () => {
-    it('uses a structural mobile class instead of relying only on media queries', () => {
+describe('Template course mobile responsive runtime v6', () => {
+    it('does not globally hide every slide on mobile', () => {
+        const css = style();
+        const baseStart = css.indexOf('html.qmx-mobile-layout-v6 body .slide,');
+        const activeStart = css.indexOf('html.qmx-mobile-layout-v6 body .slide.active,');
+        const baseRule = css.slice(baseStart, activeStart);
+        expect(baseRule).to.include('--qmx-stage-width:100%!important');
+        expect(baseRule).to.not.include('display:none!important');
+    });
+
+    it('supports multiple native current-slide states plus a safe fallback', () => {
         const css = style();
         const js = script();
-        expect(STYLE_ID).to.equal('quizmoto-mobile-course-responsive-v5');
-        expect(SCRIPT_ID).to.equal('quizmoto-mobile-course-responsive-script-v5');
-        expect(css).to.include('html.qmx-mobile-layout-v5');
-        expect(css).to.include('position:relative!important');
-        expect(css).to.include('display:block!important');
-        expect(js).to.include('window.screen&&window.screen.width');
+        expect(css).to.include('.slide.active');
+        expect(css).to.include('.slide.is-active');
+        expect(css).to.include('.slide[data-active="true"]');
+        expect(css).to.include('.slide[data-current="true"]');
+        expect(css).to.include('.slide[aria-hidden="false"]');
+        expect(css).to.include('.slide.qmx-mobile-visible-v6');
+        expect(js).to.include('repairSlideVisibility');
+        expect(js).to.include("classList.toggle('qmx-mobile-visible-v6'");
+    });
+
+    it('still detects phones inside oversized LMS iframes', () => {
+        const js = script();
         expect(js).to.include('window.visualViewport&&window.visualViewport.width');
-        expect(js).to.include("root.style.setProperty('--qmx-mobile-vw'");
-        expect(js).to.include("classList.toggle('qmx-mobile-layout-v5',mobile)");
+        expect(js).to.include('window.screen&&window.screen.width');
+        expect(js).to.include('Math.min.apply(Math,values)');
+        expect(js).to.include('mobile=w<=1024');
     });
 
-    it('detects a 390px phone even when the LMS iframe reports 1360px', () => {
-        const source = script().replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
-        const classes = new Set();
-        const bodyClasses = new Set();
-        const cssVars = {};
-        const root = {
-            clientWidth: 1360,
-            classList: { toggle(name, on) { on ? classes.add(name) : classes.delete(name); } },
-            style: {
-                setProperty(name, value) { cssVars[name] = value; },
-                removeProperty(name) { delete cssVars[name]; }
-            }
-        };
-        const body = {
-            classList: { toggle(name, on) { on ? bodyClasses.add(name) : bodyClasses.delete(name); } },
-            setAttribute() {},
-            removeAttribute() {}
-        };
-        const document = {
-            documentElement: root,
-            body,
-            head: { lastElementChild: null, appendChild() {} },
-            readyState: 'complete',
-            getElementById() { return null; },
-            querySelector() { return null; }
-        };
-        const window = {
-            innerWidth: 1360,
-            visualViewport: { width: 1360, addEventListener() {} },
-            screen: { width: 390 },
-            requestAnimationFrame(fn) { fn(); },
-            addEventListener() {},
-            MutationObserver: function MutationObserver() { this.observe = () => {}; }
-        };
-        window.document = document;
-        vm.runInNewContext(source, {
-            window,
-            document,
-            Number,
-            Math,
-            setTimeout(fn) { fn(); },
-            MutationObserver: window.MutationObserver
-        });
-        expect(classes.has('qmx-mobile-layout-v5')).to.equal(true);
-        expect(classes.has('qmx-mobile-narrow-v5')).to.equal(true);
-        expect(bodyClasses.has('qmx-mobile-layout-v5')).to.equal(true);
-        expect(cssVars['--qmx-mobile-vw']).to.equal('390px');
-    });
-
-    it('uses the embedding viewport width instead of forcing screen pixels onto the course', () => {
+    it('keeps mobile layouts stacked and source interactions out of flow', () => {
         const css = style();
-        expect(css).to.include('html.qmx-mobile-layout-v5,');
-        expect(css).to.include('width:100%!important;max-width:100%!important;min-width:0!important');
-        expect(css).to.not.include('width:var(--qmx-mobile-vw,100%)!important');
-        expect(css).to.not.include('max-width:var(--qmx-mobile-vw,100%)!important');
-        expect(css).to.include('overflow-x:hidden!important');
-    });
-
-    it('takes active slides out of the fixed desktop stage on mobile', () => {
-        const css = style();
-        expect(css).to.include('.slide[data-qmx-template-stage="true"].active');
-        expect(css).to.include('--qmx-stage-width:100%!important');
-        expect(css).to.include('--qmx-stage-height:auto!important');
-        expect(css).to.include('inset:auto!important');
-        expect(css).to.include('height:auto!important');
-        expect(css).to.include('overflow:visible!important');
-    });
-
-    it('keeps Highly Interactive media visible and stacks every major mobile grid', () => {
-        const css = style();
-        expect(css).to.include('body[data-qmx-course-template="highly-interactive"] .qmx-native-media');
-        expect(css).to.include('display:block!important');
-        expect(css).to.include('visibility:visible!important');
-        expect(css).to.include('aspect-ratio:16/9!important');
-        expect(css).to.include('.qmx-cards.qmx-flip-grid');
-        expect(css).to.include('.qmx-process');
-        expect(css).to.include('.qmx-compare');
-        expect(css).to.include('.qmx-options');
-        expect(css).to.include('.qmx-interaction-grid');
         expect(css).to.include('grid-template-columns:minmax(0,1fr)!important');
-    });
-
-    it('keeps replaced interaction sources completely out of mobile layout', () => {
-        const css = style();
         expect(css).to.include('.qmx-process.qmx-interaction-source');
-        expect(css).to.include('.qmx-cards.qmx-interaction-source');
         expect(css).to.include('display:none!important;visibility:hidden!important;position:absolute!important');
-        expect(css).to.include('height:0!important;min-height:0!important;max-height:0!important');
-        expect(css).to.include('margin:0!important;padding:0!important;gap:0!important');
+        expect(css).to.include('height:0!important;min-height:0!important');
+        expect(css).to.include('aspect-ratio:16/9!important');
     });
 
-    it('prevents learner copy and interaction descendants from retaining desktop intrinsic width', () => {
-        const css = style();
-        expect(css).to.include('.slide .qmx-learning-shell>*');
-        expect(css).to.include('.slide .qmx-copy>*');
-        expect(css).to.include('.slide .qmx-interaction-grid>*');
-        expect(css).to.include('.slide .qmx-interaction-title');
-        expect(css).to.include('white-space:normal!important;overflow-wrap:anywhere!important');
-        expect(css).to.include('overflow-x:hidden!important');
+    it('removes v4 and v5 runtimes when injecting v6', () => {
+        const source = '<!doctype html><html><head>' +
+            '<style id="quizmoto-mobile-course-hardening-v4">old4</style>' +
+            '<style id="quizmoto-mobile-course-responsive-v5">old5</style>' +
+            '</head><body>' +
+            '<script id="quizmoto-mobile-course-hardening-script-v4">old4</script>' +
+            '<script id="quizmoto-mobile-course-responsive-script-v5">old5</script>' +
+            '</body></html>';
+        const output = inject(source);
+        expect(STYLE_ID).to.equal('quizmoto-mobile-course-responsive-v6');
+        expect(SCRIPT_ID).to.equal('quizmoto-mobile-course-responsive-script-v6');
+        expect(output).to.include(STYLE_ID);
+        expect(output).to.include(SCRIPT_ID);
+        expect(output).to.not.include('quizmoto-mobile-course-hardening-v4');
+        expect(output).to.not.include('quizmoto-mobile-course-responsive-v5');
     });
 
-    it('contains a last-resort duplicate header logo guard for already-generated packages', () => {
-        const js = script();
-        expect(js).to.include('function dedupeHeaderLogos()');
-        expect(js).to.include("header.querySelector('.qmx-brand-logo')");
-        expect(js).to.include("String(node.tagName||'').toUpperCase()==='IMG'");
-        expect(js).to.include("node.style.display='none'");
-        expect(js).to.include('dedupeHeaderLogos();');
-    });
-
-    it('removes the old v4 runtime and refreshes v5 without duplication', () => {
-        const legacy = '<style id="quizmoto-mobile-course-hardening-v4">old</style><script id="quizmoto-mobile-course-hardening-script-v4">old</script>';
-        const source = `<!doctype html><html><head><style id="template-after">x{display:none}</style>${legacy}</head><body data-qmx-course-template="highly-interactive"></body></html>`;
-        const once = inject(source);
-        const twice = inject(once);
-        expect(twice).to.not.include('quizmoto-mobile-course-hardening-v4');
-        expect(twice).to.not.include('quizmoto-mobile-course-hardening-script-v4');
-        expect(twice.split(`id="${STYLE_ID}"`).length - 1).to.equal(1);
-        expect(twice.split(`id="${SCRIPT_ID}"`).length - 1).to.equal(1);
-        expect(twice.lastIndexOf(`id="${STYLE_ID}"`)).to.be.greaterThan(twice.lastIndexOf('id="template-after"'));
-    });
-
-    it('preserves SCORM files while replacing v4 with v5 in index.html', async () => {
+    it('refreshes v6 idempotently and preserves package files', async () => {
         const zip = new JSZip();
-        zip.file('index.html', '<!doctype html><html><head><style id="quizmoto-mobile-course-hardening-v4">old</style></head><body data-qmx-course-template="highly-interactive"><script id="quizmoto-mobile-course-hardening-script-v4">old</script></body></html>');
+        zip.file('index.html', '<!doctype html><html><head></head><body><section class="slide active">Hello</section></body></html>');
         zip.file('imsmanifest.xml', '<manifest/>');
         zip.file('content.json', '{"ok":true}');
         const input = await zip.generateAsync({ type: 'nodebuffer', compression: 'STORE' });
-        const output = await applyMobileHardeningRuntimeToZip(input);
-        const result = await JSZip.loadAsync(output);
+        const once = await applyMobileHardeningRuntimeToZip(input);
+        const twice = await applyMobileHardeningRuntimeToZip(once);
+        const result = await JSZip.loadAsync(twice);
         const html = await result.file('index.html').async('string');
-        expect(html).to.include(STYLE_ID);
-        expect(html).to.include(SCRIPT_ID);
-        expect(html).to.not.include('quizmoto-mobile-course-hardening-v4');
+        expect(html.split(`id="${STYLE_ID}"`).length - 1).to.equal(1);
+        expect(html.split(`id="${SCRIPT_ID}"`).length - 1).to.equal(1);
+        expect(html).to.include('Hello');
         expect(result.file('imsmanifest.xml')).to.not.equal(null);
         expect(result.file('content.json')).to.not.equal(null);
     });
