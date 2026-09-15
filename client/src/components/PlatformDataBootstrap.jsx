@@ -6,13 +6,11 @@ const TOKEN_CHECK_MS = 250;
 const BACKGROUND_REFRESH_MS = 45_000;
 const MAX_PREPARATION_BLOCK_MS = 30_000;
 const MIN_PREPARATION_VISIBLE_MS = 900;
-const READY_HOLD_MS = 550;
-const FINALISING_HOLD_MS = 140;
-const INITIAL_PROGRESS_PERCENT = 5;
+const READY_HOLD_MS = 500;
+const INITIAL_PROGRESS_PERCENT = 8;
 const DATA_PROGRESS_START = 8;
-const DATA_PROGRESS_END = 96;
-const PROGRESS_TICK_MS = 38;
-const PREPARED_PREFIX = 'lmsgen_platform_prepared_v1:';
+const DATA_PROGRESS_END = 94;
+const PREPARED_PREFIX = 'lmsgen_platform_prepared_v2:';
 
 function readSession() {
   let user = null;
@@ -88,22 +86,6 @@ const INITIAL_STATE = {
 
 export default function PlatformDataBootstrap() {
   const [preparation, setPreparation] = useState(INITIAL_STATE);
-  const [displayPercent, setDisplayPercent] = useState(INITIAL_PROGRESS_PERCENT);
-
-  useEffect(() => {
-    if (!preparation.active) return undefined;
-    const target = clampPercent(preparation.percent);
-    const timer = window.setInterval(() => {
-      setDisplayPercent((current) => {
-        const safeCurrent = clampPercent(current);
-        if (safeCurrent >= target) return safeCurrent;
-        const gap = target - safeCurrent;
-        const step = Math.max(1, Math.ceil(gap * 0.18));
-        return Math.min(target, safeCurrent + step);
-      });
-    }, PROGRESS_TICK_MS);
-    return () => window.clearInterval(timer);
-  }, [preparation.active, preparation.percent]);
 
   useEffect(() => {
     let disposed = false;
@@ -113,7 +95,7 @@ export default function PlatformDataBootstrap() {
     let maxBlockTimer = null;
     let warmPromise = null;
 
-    const runWarm = async ({ force = false, includeHeavy = false, onProgress = null } = {}) => {
+    const runBackgroundWarm = async ({ force = false, includeHeavy = false } = {}) => {
       if (disposed || !platformRoute()) return null;
       const { token, user, scormAccess, quizmotoOnly } = readSession();
       if (!token) return null;
@@ -124,12 +106,21 @@ export default function PlatformDataBootstrap() {
         includeHeavy,
         role: user?.role || '',
         scormAccess,
-        quizmotoOnly,
-        onProgress
+        quizmotoOnly
       }).finally(() => {
         warmPromise = null;
       });
       return warmPromise;
+    };
+
+    const scheduleHeavyWarm = () => {
+      if (!connectionAllowsHeavyWarmup()) return;
+      window.clearTimeout(heavyTimer);
+      heavyTimer = window.setTimeout(() => {
+        if (!disposed && document.visibilityState === 'visible' && platformRoute()) {
+          runBackgroundWarm({ force: false, includeHeavy: true });
+        }
+      }, 1500);
     };
 
     const prepareWorkspace = async (token) => {
@@ -139,7 +130,6 @@ export default function PlatformDataBootstrap() {
       let releasedToBackground = false;
       let completedSuccessfully = false;
 
-      setDisplayPercent(INITIAL_PROGRESS_PERCENT);
       setPreparation({
         ...INITIAL_STATE,
         active: true,
@@ -160,15 +150,25 @@ export default function PlatformDataBootstrap() {
       }, MAX_PREPARATION_BLOCK_MS);
 
       try {
-        await runWarm({
+        // The visible loader must own its warm-up request. Previously it could join
+        // a background promise that had no progress callback, leaving the UI at 5%
+        // even while the cache finished preparing in the background.
+        const { user, scormAccess, quizmotoOnly } = readSession();
+        const result = await warmScormPlatformData(token, {
           force: false,
-          includeHeavy: connectionAllowsHeavyWarmup(),
+          includeHeavy: false,
+          role: user?.role || '',
+          scormAccess,
+          quizmotoOnly,
           onProgress: (progress) => {
             if (disposed || preparingToken !== token) return;
             const mappedPercent = datasetProgressPercent(progress?.completed, progress?.total);
             setPreparation((current) => ({
               ...current,
-              ...progress,
+              completed: Number(progress?.completed || 0),
+              total: Number(progress?.total || 0),
+              failed: Number(progress?.failed || 0),
+              label: progress?.label || current.label,
               active: !releasedToBackground,
               background: releasedToBackground,
               percent: Math.max(clampPercent(current.percent), mappedPercent)
@@ -176,26 +176,22 @@ export default function PlatformDataBootstrap() {
           }
         });
 
+        completedSuccessfully = Boolean(result && (Number(result.total || 0) === 0 || Number(result.completed || 0) >= Number(result.total || 0)));
+
         if (!releasedToBackground && !disposed && preparingToken === token) {
           setPreparation((current) => ({
             ...current,
             active: true,
             background: false,
-            percent: Math.max(clampPercent(current.percent), 98),
+            percent: 98,
             label: 'Finalising your workspace'
           }));
-          await wait(FINALISING_HOLD_MS);
-        }
 
-        markPrepared(token);
-        completedSuccessfully = true;
+          const elapsed = Date.now() - startedAt;
+          if (elapsed < MIN_PREPARATION_VISIBLE_MS) {
+            await wait(MIN_PREPARATION_VISIBLE_MS - elapsed);
+          }
 
-        const elapsed = Date.now() - startedAt;
-        if (elapsed < MIN_PREPARATION_VISIBLE_MS) {
-          await wait(MIN_PREPARATION_VISIBLE_MS - elapsed);
-        }
-
-        if (!releasedToBackground && !disposed && preparingToken === token) {
           setPreparation((current) => ({
             ...current,
             active: true,
@@ -205,6 +201,12 @@ export default function PlatformDataBootstrap() {
           }));
           await wait(READY_HOLD_MS);
         }
+
+        // Only remember the workspace as prepared after the warm-up actually
+        // completed. A refresh during an unfinished/stuck preparation will now
+        // restart preparation instead of incorrectly skipping straight to Dashboard.
+        if (completedSuccessfully) markPrepared(token);
+        scheduleHeavyWarm();
       } finally {
         window.clearTimeout(maxBlockTimer);
         if (!disposed && preparingToken === token) {
@@ -220,16 +222,6 @@ export default function PlatformDataBootstrap() {
       }
     };
 
-    const scheduleHeavyWarm = () => {
-      if (!connectionAllowsHeavyWarmup()) return;
-      window.clearTimeout(heavyTimer);
-      heavyTimer = window.setTimeout(() => {
-        if (!disposed && document.visibilityState === 'visible' && platformRoute()) {
-          runWarm({ force: false, includeHeavy: true });
-        }
-      }, 2500);
-    };
-
     const ensureWarm = () => {
       if (disposed || !platformRoute()) return;
       const { token } = readSession();
@@ -237,9 +229,9 @@ export default function PlatformDataBootstrap() {
       warmedToken = token;
 
       if (wasPrepared(token)) {
-        // Session storage already contains the prepared read cache. Open the app
-        // immediately, then refresh quietly behind the visible UI.
-        runWarm({ force: false, includeHeavy: false });
+        // A successfully prepared session can open immediately on refresh. The
+        // cache is refreshed quietly so navigation does not repeat database reads.
+        runBackgroundWarm({ force: false, includeHeavy: false });
         scheduleHeavyWarm();
         return;
       }
@@ -251,7 +243,7 @@ export default function PlatformDataBootstrap() {
       if (disposed || document.visibilityState !== 'visible' || !platformRoute()) return;
       const { token } = readSession();
       if (!token || preparingToken === token) return;
-      runWarm({ force: true, includeHeavy: false });
+      runBackgroundWarm({ force: true, includeHeavy: false });
     };
 
     const onFocus = () => {
@@ -272,9 +264,10 @@ export default function PlatformDataBootstrap() {
     };
 
     const onCacheInvalidated = () => {
-      if (!disposed && platformRoute()) {
-        runWarm({ force: true, includeHeavy: false });
-      }
+      if (disposed || !platformRoute()) return;
+      const { token } = readSession();
+      if (!token || preparingToken === token) return;
+      runBackgroundWarm({ force: true, includeHeavy: false });
     };
 
     ensureWarm();
@@ -305,8 +298,8 @@ export default function PlatformDataBootstrap() {
 
   if (!preparation.active || !platformRoute()) return null;
 
-  const percent = clampPercent(displayPercent);
-  const ready = percent >= 100 && preparation.percent >= 100;
+  const percent = clampPercent(preparation.percent);
+  const ready = percent >= 100;
 
   return (
     <div className="fixed inset-0 z-[100000] grid place-items-center bg-[#050b12] px-5" role="status" aria-live="polite">
@@ -338,7 +331,7 @@ export default function PlatformDataBootstrap() {
             aria-valuemax={100}
             aria-valuenow={percent}
           >
-            <div className="h-full rounded-full bg-cyan-300" style={{ width: `${percent}%` }} />
+            <div className="h-full rounded-full bg-cyan-300 transition-[width] duration-300 ease-out" style={{ width: `${percent}%` }} />
           </div>
           <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500">
             <span>{preparation.total ? `${preparation.completed} of ${preparation.total} data sets prepared` : 'Starting workspace preparation'}</span>
