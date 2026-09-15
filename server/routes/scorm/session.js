@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const LearningState = require('../../services/scorm/ScormLearningStateService');
+const Realtime = require('../../services/scorm/ScormRealtime');
 const { ScormAttempt } = require('../../models/scorm');
 
 function tokenFor(req) {
@@ -65,8 +66,17 @@ router.post('/:regId', express.json({ limit: '2mb' }), async (req, res) => {
         if (!token) return res.status(401).json({ message: 'Missing token' });
         const result = await LearningState.saveState(req.params.regId, token, req.body || {});
         await finishOpenAttempt(req.params.regId, req.body?.event, result?.summary);
+        if (result?.registration?.courseId) {
+            Realtime.emitRegistrationUpdate({
+                courseId: result.registration.courseId,
+                event: result.event,
+                registration: result.registration
+            });
+        }
+        const publicResult = { ...result };
+        delete publicResult.registration;
         res.setHeader('Cache-Control', 'no-store');
-        res.json(result);
+        res.json(publicResult);
     } catch (err) {
         console.error('[scorm-state-v4] save failed', {
             registrationId: req.params.regId,

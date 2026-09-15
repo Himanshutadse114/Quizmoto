@@ -19,6 +19,7 @@ let installed = false;
 
 const REALTIME_FRAGMENTS = [
   '/author/progress/',
+  '/preview/',
   '/session/',
   '/player/',
   '/play/',

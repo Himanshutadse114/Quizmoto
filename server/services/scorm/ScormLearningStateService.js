@@ -385,7 +385,20 @@ async function saveState(registrationId, token, payload = {}) {
         ok: true,
         degraded: false,
         event: String(payload.event || 'commit').slice(0, 40),
-        summary: state
+        summary: state,
+        registration: {
+            id: registration.id,
+            courseId: registration.courseId,
+            learnerName: registration.learnerName,
+            learnerEmail: registration.learnerEmail,
+            status: registration.status,
+            isPreview: registration.isPreview,
+            lastLessonStatus: registration.lastLessonStatus,
+            lastScoreRaw: registration.lastScoreRaw,
+            lastTotalTime: registration.lastTotalTime,
+            lastCommitAt: registration.lastCommitAt,
+            updatedAt: registration.updatedAt
+        }
     };
 }
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -118,6 +118,7 @@ export default function ScormCourseDetail() {
   const [previewStatsLoaded, setPreviewStatsLoaded] = useState(false);
   const [previewStatsLoading, setPreviewStatsLoading] = useState(false);
   const [expandedRegId, setExpandedRegId] = useState(null);
+  const previewRequestRef = useRef(0);
   const socket = useSocket();
   const [live, setLive] = useState(false);
 
@@ -140,13 +141,23 @@ export default function ScormCourseDetail() {
   }, [id, token]);
 
   const loadPreviewStats = useCallback(async ({ silent = true } = {}) => {
+    const requestId = ++previewRequestRef.current;
     if (!silent) setPreviewStatsLoading(true);
     try {
-      const res = await axios.get(apiUrl(`/api/scorm/preview/course/${id}`), { headers });
+      const res = await axios.get(apiUrl(`/api/scorm/preview/course/${id}`), {
+        headers: {
+          ...headers,
+          'X-LMSGEN-No-Cache': '1'
+        },
+        params: { refresh: Date.now() }
+      });
+      if (requestId !== previewRequestRef.current) return;
       setPreviewStats(res.data?.available ? res.data.preview : null);
       setPreviewStatsLoaded(true);
     } catch (err) {
-      if (!silent) setMsg(err.response?.data?.message || err.message);
+      if (!silent && requestId === previewRequestRef.current) {
+        setMsg(err.response?.data?.message || err.message);
+      }
     } finally {
       if (!silent) setPreviewStatsLoading(false);
     }
