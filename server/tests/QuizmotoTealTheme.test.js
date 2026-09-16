@@ -54,4 +54,14 @@ describe('Quizmoto teal product theme', () => {
         expect(theme).to.include('@media (max-width: 840px)');
         expect(theme).to.include('@media (prefers-reduced-motion: reduce)');
     });
+
+    it('keeps lobby copy readable and removes floating shapes from host questions', () => {
+        const lobby = source(path.join('pages', 'Host', 'Lobby.jsx'));
+        const app = source('App.jsx');
+        expect(lobby).to.include('quizmoto-host-lobby');
+        expect(lobby).to.include('text-[#dcf5f1]');
+        expect(lobby).not.to.include("'bg-white/10 text-white/20 cursor-not-allowed");
+        expect(app).to.include("isQuizGameStage && !pathname.startsWith('/host/game')");
+        expect(app).to.include('{showQuizBackgroundShapes && (');
+    });
 });

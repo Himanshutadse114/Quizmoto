@@ -255,11 +255,12 @@ function AppRoutes() {
 function AppSurface() {
   const { pathname } = useLocation();
   const isQuizGameStage = pathname.startsWith('/host/lobby') || pathname.startsWith('/host/game') || pathname === '/join' || pathname.startsWith('/player/');
+  const showQuizBackgroundShapes = isQuizGameStage && !pathname.startsWith('/host/game');
   const surfaceClass = isQuizGameStage ? 'bg-quizmoto-darkPurple live-quiz-stage quizmoto-classic-live-stage' : 'bg-[#0A0F0E]';
 
   return (
     <div className={`min-h-screen text-white relative ${surfaceClass}`}>
-      {isQuizGameStage && (
+      {showQuizBackgroundShapes && (
         <>
           <div className="bg-shape shape-1 w-64 h-64 border-[32px] border-white rounded-full" />
           <div className="bg-shape shape-2 w-48 h-48 border-[24px] border-quizmoto-yellow rotate-45" />

@@ -2,8 +2,10 @@ const { expect } = require('chai');
 const sharp = require('sharp');
 const {
     presentationKind,
-    processRasterSlides
+    processRasterSlides,
+    sanitizePptxForCompatibility
 } = require('../services/scorm/ScormPresentationRenderer');
+const JSZip = require('jszip');
 
 async function sampleSlide(accent) {
     return sharp({
@@ -51,5 +53,25 @@ describe('ScormPresentationRenderer', () => {
         }
         expect(result.theme.primary).to.match(/^#[0-9a-f]{6}$/);
         expect(result.theme.background).to.match(/^#[0-9a-f]{6}$/);
+    });
+
+    it('creates a visual-only compatibility copy when exported notes are malformed', async () => {
+        const archive = new JSZip();
+        archive.file('[Content_Types].xml', '<?xml version="1.0"?><Types><Override PartName="/ppt/notesSlides/notesSlide1.xml" ContentType="notes"/><Override PartName="/ppt/slides/slide1.xml" ContentType="slide"/></Types>');
+        archive.file('ppt/slides/slide1.xml', '<slide>Visible slide</slide>');
+        archive.file('ppt/slides/_rels/slide1.xml.rels', '<?xml version="1.0"?><Relationships><Relationship Id="note" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide1.xml"/><Relationship Id="image" Type="image" Target="../media/image.png"/></Relationships>');
+        archive.file('ppt/notesSlides/notesSlide1.xml', '<notes>Broken note</notes>');
+
+        const compatible = await sanitizePptxForCompatibility(await archive.generateAsync({ type: 'nodebuffer' }));
+        const repaired = await JSZip.loadAsync(compatible);
+        const names = Object.keys(repaired.files);
+        const rels = await repaired.file('ppt/slides/_rels/slide1.xml.rels').async('string');
+        const contentTypes = await repaired.file('[Content_Types].xml').async('string');
+
+        expect(names).to.include('ppt/slides/slide1.xml');
+        expect(names).not.to.include('ppt/notesSlides/notesSlide1.xml');
+        expect(rels).not.to.include('notesSlide');
+        expect(rels).to.include('Target="../media/image.png"');
+        expect(contentTypes).not.to.include('/ppt/notesSlides/');
     });
 });

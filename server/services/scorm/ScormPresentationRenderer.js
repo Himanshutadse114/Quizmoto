@@ -5,7 +5,9 @@ const os = require('os');
 const path = require('path');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
+const { pathToFileURL } = require('url');
 const sharp = require('sharp');
+const JSZip = require('jszip');
 
 const execFileAsync = promisify(execFile);
 
@@ -293,36 +295,148 @@ async function renderPdfPages(pdfPath, tempDir) {
     return Promise.all(names.map((name) => fs.readFile(path.join(tempDir, name))));
 }
 
-async function convertPptxToPdf(sourcePath, tempDir) {
-    const soffice = process.env.LIBREOFFICE_PATH || 'soffice';
-    const profileDir = path.join(tempDir, 'libreoffice-profile');
-    await fs.mkdir(profileDir, { recursive: true });
-    const profileUrl = `file://${profileDir.replace(/\\/g, '/')}`;
-    await runCommand(soffice, [
-        '--headless',
-        '--nologo',
-        '--nodefault',
-        '--nofirststartwizard',
-        `-env:UserInstallation=${profileUrl}`,
-        '--convert-to',
-        'pdf',
-        '--outdir',
-        tempDir,
-        sourcePath
-    ], {
-        timeout: 240000,
-        label: 'PowerPoint renderer',
-        missingCode: 'SCORM_PRESENTATION_LIBREOFFICE_MISSING'
-    });
-    const expected = path.join(tempDir, `${path.basename(sourcePath, path.extname(sourcePath))}.pdf`);
-    try {
-        await fs.access(expected);
-        return expected;
-    } catch (_) {
-        const pdfName = (await fs.readdir(tempDir)).find((name) => /\.pdf$/i.test(name));
-        if (pdfName) return path.join(tempDir, pdfName);
-        throw commandError('PowerPoint conversion did not produce a PDF.', 'SCORM_PRESENTATION_RENDER_FAILED');
+async function sanitizePptxForCompatibility(sourceBuffer) {
+    const archive = await JSZip.loadAsync(sourceBuffer);
+    const names = Object.keys(archive.files);
+
+    names
+        .filter((name) => /^ppt\/notes(?:Slides|Masters)\//i.test(name))
+        .forEach((name) => archive.remove(name));
+
+    const relationshipNames = names.filter((name) => /\.rels$/i.test(name));
+    for (const name of relationshipNames) {
+        const entry = archive.file(name);
+        if (!entry) continue;
+        const xml = await entry.async('string');
+        const cleaned = xml.replace(
+            /<Relationship\b(?=[^>]*\bType="[^"]*\/notes(?:Slide|Master)")(?:(?:"[^"]*")|[^>])*\/?>(?:<\/Relationship>)?/gi,
+            ''
+        );
+        if (cleaned !== xml) archive.file(name, cleaned);
     }
+
+    const contentTypes = archive.file('[Content_Types].xml');
+    if (contentTypes) {
+        const xml = await contentTypes.async('string');
+        archive.file('[Content_Types].xml', xml.replace(
+            /<Override\b(?=[^>]*\bPartName="\/ppt\/notes(?:Slides|Masters)\/[^\"]+")(?:(?:"[^"]*")|[^>])*\/?>(?:<\/Override>)?/gi,
+            ''
+        ));
+    }
+
+    return archive.generateAsync({
+        type: 'nodebuffer',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 }
+    });
+}
+
+async function findConvertedPdf(sourcePath, tempDir) {
+    const expected = path.join(tempDir, `${path.basename(sourcePath, path.extname(sourcePath))}.pdf`);
+    const candidates = [expected];
+    const names = await fs.readdir(tempDir);
+    for (const name of names) {
+        const candidate = path.join(tempDir, name);
+        if (/\.pdf$/i.test(name) && candidate !== expected) candidates.push(candidate);
+    }
+
+    for (const candidate of candidates) {
+        try {
+            const handle = await fs.open(candidate, 'r');
+            const header = Buffer.alloc(5);
+            await handle.read(header, 0, header.length, 0);
+            await handle.close();
+            const stat = await fs.stat(candidate);
+            if (stat.size > 100 && header.toString('ascii') === '%PDF-') return candidate;
+        } catch {
+            // Try the next possible output path.
+        }
+    }
+    return null;
+}
+
+async function runLibreOfficeConversion(command, sourcePath, tempDir, profileSuffix) {
+    const profileDir = path.join(tempDir, `libreoffice-profile-${profileSuffix}`);
+    const runtimeDir = path.join(tempDir, `runtime-${profileSuffix}`);
+    await fs.mkdir(profileDir, { recursive: true });
+    await fs.mkdir(runtimeDir, { recursive: true });
+    await fs.chmod(runtimeDir, 0o700);
+    const profileUrl = pathToFileURL(profileDir).href;
+    let commandFailure = null;
+
+    try {
+        await runCommand(command, [
+            '--headless',
+            '--invisible',
+            '--nologo',
+            '--nodefault',
+            '--nolockcheck',
+            '--norestore',
+            '--nofirststartwizard',
+            `-env:UserInstallation=${profileUrl}`,
+            '--convert-to',
+            'pdf:impress_pdf_Export',
+            '--outdir',
+            tempDir,
+            sourcePath
+        ], {
+            timeout: 240000,
+            label: 'PowerPoint renderer',
+            missingCode: 'SCORM_PRESENTATION_LIBREOFFICE_MISSING',
+            env: {
+                HOME: tempDir,
+                TMPDIR: tempDir,
+                XDG_CACHE_HOME: path.join(tempDir, 'cache'),
+                XDG_RUNTIME_DIR: runtimeDir
+            }
+        });
+    } catch (error) {
+        commandFailure = error;
+    }
+
+    // LibreOffice can return a warning exit code after successfully writing the
+    // PDF, particularly when an exported deck references unavailable fonts.
+    const renderedPdf = await findConvertedPdf(sourcePath, tempDir);
+    if (renderedPdf) return renderedPdf;
+    if (commandFailure) throw commandFailure;
+    throw commandError('PowerPoint conversion did not produce a valid PDF.', 'SCORM_PRESENTATION_RENDER_FAILED');
+}
+
+async function convertPptxToPdf(sourcePath, tempDir) {
+    const configured = String(process.env.LIBREOFFICE_PATH || '').trim();
+    const commands = [configured || 'soffice'];
+    const originalBuffer = await fs.readFile(sourcePath);
+    let compatibilityPath = '';
+    let lastError = null;
+
+    // First preserve the source byte-for-byte. If an exporter produced malformed
+    // speaker-note relationships, retry a presentation-only copy; notes are not
+    // visible on slides and removing them does not change the learner artwork.
+    try {
+        const compatible = await sanitizePptxForCompatibility(originalBuffer);
+        compatibilityPath = path.join(tempDir, 'source-compatible.pptx');
+        await fs.writeFile(compatibilityPath, compatible);
+    } catch {
+        compatibilityPath = '';
+    }
+
+    const sources = [sourcePath, compatibilityPath].filter(Boolean);
+    for (const command of commands) {
+        for (let index = 0; index < sources.length; index += 1) {
+            try {
+                return await runLibreOfficeConversion(command, sources[index], tempDir, `${commands.indexOf(command)}-${index}`);
+            } catch (error) {
+                lastError = error;
+            }
+        }
+    }
+
+    const error = commandError(
+        'The PowerPoint deck could not be rendered. Exporting the deck as PDF will preserve the same slide design.',
+        lastError?.code || 'SCORM_PRESENTATION_RENDER_FAILED',
+        lastError
+    );
+    throw error;
 }
 
 async function renderPresentation({ sourceBuffer, mimeType, fileName }) {
@@ -353,5 +467,6 @@ module.exports = {
     sortRenderedPages,
     extractTheme,
     processRasterSlides,
+    sanitizePptxForCompatibility,
     renderPresentation
 };
