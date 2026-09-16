@@ -3,6 +3,16 @@ const fs = require('fs');
 const path = require('path');
 
 describe('SCORM author rebuild runtime pipeline', () => {
+    it('passes presentation edits to the dedicated durable presentation generator', () => {
+        const routePath = path.join(__dirname, '../routes/scorm/authorRebuild.js');
+        const source = fs.readFileSync(routePath, 'utf8');
+        const presentationBypass = source.indexOf('if (isPresentationMode(req.body)) return next();');
+        const legacyAnalysisValidation = source.indexOf("return res.status(400).json({ message: 'Edited course content is required.' });");
+
+        expect(presentationBypass).to.be.greaterThan(-1);
+        expect(legacyAnalysisValidation).to.be.greaterThan(presentationBypass);
+    });
+
     it('replans Scenario decisions and reapplies the complete learner runtime stack on rebuild', () => {
         const routePath = path.join(__dirname, '../routes/scorm/authorRebuild.js');
         const source = fs.readFileSync(routePath, 'utf8');

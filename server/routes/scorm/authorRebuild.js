@@ -53,6 +53,12 @@ function reporter(progressId, userId) {
     });
 }
 
+function isPresentationMode(body = {}) {
+    return ['presentation', 'presentation-preserve'].includes(
+        String(body?.courseMode || '').trim().toLowerCase()
+    );
+}
+
 function errorStatus(code) {
     if (code === 'SCORM_REBUILD_MEDIA_MISSING' || code === 'SCORM_TEMPLATE_LOCKED') return 409;
     if (code === 'SCORM_QUIZ_INCOMPLETE' || code === 'SCORM_TEMPLATE_SCHEMA_INVALID') return 422;
@@ -149,6 +155,12 @@ function upgradeProgressCopy(migration) {
 }
 
 router.post('/generate', auth, async (req, res, next) => {
+    // Presentation packages have their own rebuild service. They intentionally
+    // send an edited quiz and optional replacement deck instead of the normal
+    // AI-author `analysis` object, so let the durable generation route handle
+    // them before this legacy content-rebuild validator checks `analysis`.
+    if (isPresentationMode(req.body)) return next();
+
     const replaceId = req.body?.replacePackageId || req.body?.packageId || null;
     if (!replaceId) return next();
 
