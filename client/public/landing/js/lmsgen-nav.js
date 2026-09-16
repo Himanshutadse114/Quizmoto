@@ -416,7 +416,11 @@
       section.parentElement && section.parentElement.classList.contains("pin-spacer")
         ? section.parentElement
         : section;
-    host.insertAdjacentElement("afterend", block);
+    const publicaSection =
+      host.nextElementSibling && host.nextElementSibling.classList.contains("lmsgen-pdf-course-section")
+        ? host.nextElementSibling
+        : null;
+    (publicaSection || host).insertAdjacentElement("afterend", block);
 
     const following = block.nextElementSibling;
     if (following) following.classList.add("lmsgen-after-qm");
