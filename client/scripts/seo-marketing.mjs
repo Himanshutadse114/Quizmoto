@@ -103,18 +103,28 @@ const PDF_COURSE_SECTION = `
             </div>
           </div>
           <button type="button" class="publica-turn-control publica-next" aria-label="Next comic page"><b>Next</b><span aria-hidden="true">›</span></button>
+          <button type="button" class="publica-book-switch" data-publica-switch data-next-set="archive" aria-label="Open The Midnight Archive">
+            <small>SWITCH STORY</small>
+            <span class="publica-mini-cover"><i aria-hidden="true"></i><b data-publica-switch-title>The Midnight Archive</b></span>
+          </button>
         </div>
         <div class="publica-reader-footer">
           <span data-publica-status>Page 1 of 6</span>
           <div class="publica-reader-dots" aria-hidden="true"><i></i><i></i><i></i></div>
           <strong>Tap or click to turn the page</strong>
         </div>
-        <template data-publica-page><div class="publica-cover"><span>ORBITAL INK · ISSUE 01</span><h4>The Signal<br>in Sector 9</h4><p>A short comic about one message that changed an entire city.</p><b>READ NOW →</b></div></template>
-        <template data-publica-page><div class="publica-panel-grid"><div class="publica-panel publica-night"><em>09:17 PM</em><strong>The city went silent.</strong></div><div class="publica-panel publica-hero"><span class="publica-bubble">Did anyone else hear that?</span><b>!</b></div><div class="publica-caption">Every great story deserves a reading experience that pulls the audience forward.</div></div></template>
-        <template data-publica-page><div class="publica-panel-grid publica-action-grid"><div class="publica-panel publica-signal"><em>SECTOR 9</em><strong>THE SIGNAL<br>RETURNED.</strong></div><div class="publica-panel publica-run"><span class="publica-bubble">Move—now!</span><b>RUN</b></div><div class="publica-sfx">KRRR—SHHH!</div></div></template>
-        <template data-publica-page><div class="publica-panel-grid"><div class="publica-panel publica-lab"><em>ARCHIVE 404</em><strong>It was never a warning.</strong></div><div class="publica-panel publica-face"><span class="publica-bubble">It was an invitation.</span></div><div class="publica-caption publica-caption-teal">Publica preserves every designed page while making the whole story effortless to explore.</div></div></template>
-        <template data-publica-page><div class="publica-panel-grid publica-action-grid"><div class="publica-panel publica-portal"><em>FINAL TRANSMISSION</em><strong>OPEN<br>THE GATE</strong></div><div class="publica-panel publica-impact"><b>WHAM!</b><span class="publica-bubble">We write the ending.</span></div><div class="publica-sfx publica-sfx-yellow">TO BE CONTINUED…</div></div></template>
-        <template data-publica-page><div class="publica-back-cover"><span>YOUR AUDIENCE IS WAITING</span><h4>Publish your next world with LMSGEN Publica.</h4><ul><li>One branded library</li><li>Beautiful page-turn reading</li><li>Real audience insight</li></ul><b>LMSGEN PUBLICA</b></div></template>
+        <template data-publica-page data-publica-set="signal"><div class="publica-cover"><span>ORBITAL INK · ISSUE 01</span><h4>The Signal<br>in Sector 9</h4><p>A short comic about one message that changed an entire city.</p><b>READ NOW →</b></div></template>
+        <template data-publica-page data-publica-set="signal"><div class="publica-panel-grid"><div class="publica-panel publica-night"><em>09:17 PM</em><strong>The city went silent.</strong></div><div class="publica-panel publica-hero"><span class="publica-bubble">Did anyone else hear that?</span><b>!</b></div><div class="publica-caption">Every great story deserves a reading experience that pulls the audience forward.</div></div></template>
+        <template data-publica-page data-publica-set="signal"><div class="publica-panel-grid publica-action-grid"><div class="publica-panel publica-signal"><em>SECTOR 9</em><strong>THE SIGNAL<br>RETURNED.</strong></div><div class="publica-panel publica-run"><span class="publica-bubble">Move—now!</span><b>RUN</b></div><div class="publica-sfx">KRRR—SHHH!</div></div></template>
+        <template data-publica-page data-publica-set="signal"><div class="publica-panel-grid"><div class="publica-panel publica-lab"><em>ARCHIVE 404</em><strong>It was never a warning.</strong></div><div class="publica-panel publica-face"><span class="publica-bubble">It was an invitation.</span></div><div class="publica-caption publica-caption-teal">Publica preserves every designed page while making the whole story effortless to explore.</div></div></template>
+        <template data-publica-page data-publica-set="signal"><div class="publica-panel-grid publica-action-grid"><div class="publica-panel publica-portal"><em>FINAL TRANSMISSION</em><strong>OPEN<br>THE GATE</strong></div><div class="publica-panel publica-impact"><b>WHAM!</b><span class="publica-bubble">We write the ending.</span></div><div class="publica-sfx publica-sfx-yellow">TO BE CONTINUED…</div></div></template>
+        <template data-publica-page data-publica-set="signal"><div class="publica-back-cover"><span>YOUR AUDIENCE IS WAITING</span><h4>Publish your next world with LMSGEN Publica.</h4><ul><li>One branded library</li><li>Beautiful page-turn reading</li><li>Real audience insight</li></ul><b>LMSGEN PUBLICA</b></div></template>
+        <template data-publica-page data-publica-set="archive"><div class="publica-novel-cover"><span>A MOONLIT MYSTERY · BOOK ONE</span><h4>The Midnight Archive</h4><p>Every lost story waits for someone brave enough to open it.</p><b>ENTER THE ARCHIVE →</b></div></template>
+        <template data-publica-page data-publica-set="archive"><div class="publica-novel-page publica-novel-chapter"><span>CHAPTER ONE</span><h4>The door appeared at midnight.</h4><p>Mara had passed the empty wall a thousand times. Tonight, a brass handle waited beneath the moonlight.</p><b>01</b></div></template>
+        <template data-publica-page data-publica-set="archive"><div class="publica-novel-page publica-novel-city"><span>THE CITY BELOW</span><h4>Every window held a different century.</h4><p>Above the rooftops, paper birds carried unfinished sentences into the stars.</p><b>02</b></div></template>
+        <template data-publica-page data-publica-set="archive"><div class="publica-novel-page publica-novel-letter"><span>FOUND BETWEEN PAGES</span><blockquote>“The story remembers the reader.”</blockquote><p>The ink was still warm.</p><b>03</b></div></template>
+        <template data-publica-page data-publica-set="archive"><div class="publica-novel-page publica-novel-library"><span>THE LAST SHELF</span><h4>One book carried her name.</h4><p>Its final page was blank—and the archive was waiting.</p><b>04</b></div></template>
+        <template data-publica-page data-publica-set="archive"><div class="publica-novel-cover publica-novel-back"><span>DISCOVER WHAT COMES NEXT</span><h4>Your story belongs in motion.</h4><p>Publish novels, comics and visual worlds with LMSGEN Publica.</p><b>LMSGEN PUBLICA</b></div></template>
       </div>
       <div class="lmsgen-publica-copy">
         <div class="lmsgen-pdf-course-header">
@@ -135,7 +145,161 @@ const PDF_COURSE_SECTION = `
   </div>
 </section>
 <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js"></script>
-<script id="lmsgen-publica-demo-script">(function(){document.querySelectorAll('[data-publica-demo]').forEach(function(demo){if(demo.dataset.ready)return;demo.dataset.ready='1';var pages=Array.from(demo.querySelectorAll('template[data-publica-page]')).map(function(item){return item.innerHTML});var book=demo.querySelector('[data-publica-book]');var viewport=demo.querySelector('.publica-book-viewport');var status=demo.querySelector('[data-publica-status]');var prev=demo.querySelector('.publica-prev');var next=demo.querySelector('.publica-next');var dots=Array.from(demo.querySelectorAll('.publica-reader-dots i'));var pageFlip=null;var current=0;var portrait=window.matchMedia('(max-width:640px)').matches;var resizeTimer=null;function dimensions(){var isPortrait=window.matchMedia('(max-width:640px)').matches;var available=Math.max(220,viewport.parentElement.clientWidth-(isPortrait?24:150));var width=isPortrait?Math.min(430,available):Math.min(390,Math.floor(available/2));return{width:Math.max(220,width),height:Math.max(306,Math.round(width/.72)),portrait:isPortrait}}function update(index){current=Math.max(0,Math.min(pages.length-1,Number(index)||0));status.textContent='Page '+(current+1)+' of '+pages.length;prev.disabled=current===0;next.disabled=current>=pages.length-1;dots.forEach(function(dot,dotIndex){dot.classList.toggle('is-active',dotIndex===Math.min(dots.length-1,Math.floor(current/2)))})}function build(){var dims=dimensions();portrait=dims.portrait;if(pageFlip){try{pageFlip.destroy()}catch(_){}}book.classList.remove('is-ready','is-fallback');book.innerHTML=pages.map(function(content,index){return '<article class="publica-comic-page'+(index===0?' publica-front-cover':'')+(index===pages.length-1?' publica-back-cover-page':'')+'">'+content+'</article>'}).join('');viewport.style.width=(dims.width*(dims.portrait?1:2))+'px';viewport.style.height=dims.height+'px';if(!window.St||!window.St.PageFlip){book.classList.add('is-fallback');update(0);return}pageFlip=new window.St.PageFlip(book,{width:dims.width,height:dims.height,size:'fixed',minWidth:dims.width,maxWidth:dims.width,minHeight:dims.height,maxHeight:dims.height,drawShadow:true,flippingTime:window.matchMedia('(prefers-reduced-motion:reduce)').matches?0:900,usePortrait:dims.portrait,startPage:current,autoSize:false,maxShadowOpacity:.5,showCover:true,mobileScrollSupport:true,swipeDistance:24,clickEventForward:true,useMouseEvents:true,showPageCorners:true,disableFlipByClick:false});pageFlip.on('init',function(event){book.classList.add('is-ready');update(event.data&&event.data.page)});pageFlip.on('flip',function(event){update(event.data)});pageFlip.loadFromHTML(Array.from(book.querySelectorAll('.publica-comic-page')))}prev.addEventListener('click',function(){if(pageFlip)pageFlip.flipPrev('top')});next.addEventListener('click',function(){if(pageFlip)pageFlip.flipNext('top')});demo.addEventListener('keydown',function(event){if(!pageFlip)return;if(event.key==='ArrowLeft')pageFlip.flipPrev('top');if(event.key==='ArrowRight')pageFlip.flipNext('top')});window.addEventListener('resize',function(){clearTimeout(resizeTimer);resizeTimer=setTimeout(function(){var nextPortrait=window.matchMedia('(max-width:640px)').matches;if(nextPortrait!==portrait)build()},180)});build()})})();</script>`;
+<script id="lmsgen-publica-demo-script">
+(function () {
+  document.querySelectorAll('[data-publica-demo]').forEach(function (demo) {
+    if (demo.dataset.ready) return;
+    demo.dataset.ready = '1';
+
+    var bookSets = {};
+    Array.from(demo.querySelectorAll('template[data-publica-page]')).forEach(function (item) {
+      var setName = item.getAttribute('data-publica-set') || 'signal';
+      if (!bookSets[setName]) bookSets[setName] = [];
+      bookSets[setName].push(item.innerHTML);
+    });
+
+    var titles = {
+      signal: 'The Signal in Sector 9',
+      archive: 'The Midnight Archive'
+    };
+    var book = demo.querySelector('[data-publica-book]');
+    var viewport = demo.querySelector('.publica-book-viewport');
+    var status = demo.querySelector('[data-publica-status]');
+    var prev = demo.querySelector('.publica-prev');
+    var next = demo.querySelector('.publica-next');
+    var switcher = demo.querySelector('[data-publica-switch]');
+    var switchTitle = demo.querySelector('[data-publica-switch-title]');
+    var dots = Array.from(demo.querySelectorAll('.publica-reader-dots i'));
+    var currentSet = 'signal';
+    var pages = bookSets[currentSet] || [];
+    var pageFlip = null;
+    var current = 0;
+    var portrait = window.matchMedia('(max-width:640px)').matches;
+    var resizeTimer = null;
+    var switchTimer = null;
+
+    function alternateSet() {
+      return currentSet === 'signal' ? 'archive' : 'signal';
+    }
+
+    function updateSwitcher() {
+      var alternate = alternateSet();
+      switcher.setAttribute('data-next-set', alternate);
+      switcher.setAttribute('aria-label', 'Open ' + titles[alternate]);
+      switchTitle.textContent = titles[alternate];
+    }
+
+    function dimensions() {
+      var isPortrait = window.matchMedia('(max-width:640px)').matches;
+      var available = Math.max(220, viewport.parentElement.clientWidth - (isPortrait ? 24 : 96));
+      var width = isPortrait ? Math.min(430, available) : Math.min(420, Math.floor(available / 2));
+      return {
+        width: Math.max(220, width),
+        height: Math.max(306, Math.round(width / .72)),
+        portrait: isPortrait
+      };
+    }
+
+    function update(index) {
+      current = Math.max(0, Math.min(pages.length - 1, Number(index) || 0));
+      status.textContent = titles[currentSet] + ' · Page ' + (current + 1) + ' of ' + pages.length;
+      prev.disabled = current === 0;
+      next.disabled = current >= pages.length - 1;
+      dots.forEach(function (dot, dotIndex) {
+        dot.classList.toggle('is-active', dotIndex === Math.min(dots.length - 1, Math.floor(current / 2)));
+      });
+    }
+
+    function build() {
+      var dims = dimensions();
+      portrait = dims.portrait;
+      if (pageFlip) {
+        try { pageFlip.destroy(); } catch (_) {}
+      }
+      pageFlip = null;
+      viewport.innerHTML = '';
+      book = document.createElement('div');
+      book.className = 'publica-comic-book';
+      book.setAttribute('data-publica-book', '');
+      book.setAttribute('aria-live', 'polite');
+      viewport.appendChild(book);
+      book.setAttribute('aria-label', titles[currentSet] + ' interactive preview');
+      book.innerHTML = pages.map(function (content, index) {
+        return '<article class="publica-comic-page' +
+          (index === 0 ? ' publica-front-cover' : '') +
+          (index === pages.length - 1 ? ' publica-back-cover-page' : '') +
+          '">' + content + '</article>';
+      }).join('');
+      viewport.style.width = (dims.width * (dims.portrait ? 1 : 2)) + 'px';
+      viewport.style.height = dims.height + 'px';
+
+      if (!window.St || !window.St.PageFlip) {
+        book.classList.add('is-fallback');
+        update(0);
+        demo.classList.remove('is-changing-book');
+        return;
+      }
+
+      pageFlip = new window.St.PageFlip(book, {
+        width: dims.width,
+        height: dims.height,
+        size: 'fixed',
+        minWidth: dims.width,
+        maxWidth: dims.width,
+        minHeight: dims.height,
+        maxHeight: dims.height,
+        drawShadow: true,
+        flippingTime: window.matchMedia('(prefers-reduced-motion:reduce)').matches ? 0 : 900,
+        usePortrait: dims.portrait,
+        startPage: current,
+        autoSize: false,
+        maxShadowOpacity: .5,
+        showCover: true,
+        mobileScrollSupport: true,
+        swipeDistance: 24,
+        clickEventForward: true,
+        useMouseEvents: true,
+        showPageCorners: true,
+        disableFlipByClick: false
+      });
+      pageFlip.on('init', function (event) {
+        book.classList.add('is-ready');
+        update(event.data && event.data.page);
+        demo.classList.remove('is-changing-book');
+      });
+      pageFlip.on('flip', function (event) { update(event.data); });
+      pageFlip.loadFromHTML(Array.from(book.querySelectorAll('.publica-comic-page')));
+    }
+
+    prev.addEventListener('click', function () { if (pageFlip) pageFlip.flipPrev('top'); });
+    next.addEventListener('click', function () { if (pageFlip) pageFlip.flipNext('top'); });
+    switcher.addEventListener('click', function () {
+      clearTimeout(switchTimer);
+      demo.classList.add('is-changing-book');
+      currentSet = alternateSet();
+      pages = bookSets[currentSet] || [];
+      current = 0;
+      updateSwitcher();
+      switchTimer = setTimeout(build, 180);
+    });
+    demo.addEventListener('keydown', function (event) {
+      if (!pageFlip) return;
+      if (event.key === 'ArrowLeft') pageFlip.flipPrev('top');
+      if (event.key === 'ArrowRight') pageFlip.flipNext('top');
+    });
+    window.addEventListener('resize', function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function () {
+        var nextPortrait = window.matchMedia('(max-width:640px)').matches;
+        if (nextPortrait !== portrait) build();
+      }, 180);
+    });
+
+    updateSwitcher();
+    build();
+  });
+})();
+</script>`;
 
 const FAQ_ITEMS = [
   ['What is LMSGEN?', 'LMSGEN is an AI-powered learning management platform for creating, delivering and tracking workplace learning. It combines AI-assisted course authoring, SCORM delivery, learner campaigns, live Quizmoto sessions and reporting in one workspace.'],
@@ -181,7 +345,7 @@ const SEO_STYLE = `<style id="lmsgen-seo-content-style">
 const PDF_COURSE_STYLE = `<style id="lmsgen-pdf-course-style">
   .lmsgen-pdf-course-section{background:#073f3b;color:#fff;font-family:"Open Sans",Arial,sans-serif!important}
   .lmsgen-pdf-course-section .lmsgen-seo-kicker{color:#7ce3d9}
-  .lmsgen-publica-layout{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(32rem,.92fr);gap:4.5rem;align-items:center}
+  .lmsgen-publica-layout{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(32rem,.82fr);gap:4rem;align-items:center}
   .lmsgen-publica-copy{min-width:0}
   .lmsgen-pdf-course-section h2{max-width:60rem;color:#fff;font-family:"Montserrat",Arial,sans-serif!important;font-size:clamp(3.2rem,3.2vw,4.7rem)!important;font-weight:600!important;line-height:1.08!important;letter-spacing:-.035em!important;text-transform:none!important;text-wrap:balance}
   .lmsgen-pdf-course-header{display:block}
@@ -213,26 +377,30 @@ const PDF_COURSE_STYLE = `<style id="lmsgen-pdf-course-style">
   .lmsgen-pdf-proof-copy ul{display:grid;gap:1.15rem;margin:0;padding:0;list-style:none}
   .lmsgen-pdf-proof-copy li{position:relative;padding-left:2.6rem;font-size:1.4rem;line-height:1.45;color:#385c58}
   .lmsgen-pdf-proof-copy li:before{content:'✓';position:absolute;left:0;top:-.1rem;display:grid;width:1.8rem;height:1.8rem;place-items:center;border-radius:50%;background:#d2f3ef;color:#087d73;font-size:1rem;font-weight:900}
-  .publica-demo-shell{display:block!important;width:100%;max-width:none;margin:0!important;padding:1.35rem!important;border-radius:2rem!important;background:#eaf8f6!important;overflow:hidden;box-sizing:border-box}
-  .publica-demo-topbar{min-height:4.5rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;padding:0 .6rem 1.1rem;color:#003f3a}
+  .publica-demo-shell{display:block!important;width:100%;max-width:none;margin:0!important;padding:0!important;border-radius:0!important;background:transparent!important;overflow:visible;box-sizing:border-box}
+  .publica-demo-topbar{display:none}
   .publica-demo-topbar>div{display:flex;align-items:center;gap:.9rem}.publica-demo-topbar strong{font-family:"Montserrat",Arial,sans-serif!important;font-size:1.3rem}.publica-demo-topbar small{font-size:.95rem;color:#52726e}
   .publica-demo-mark{width:3rem;height:3rem;display:grid;place-items:center;border-radius:.85rem;background:#0a5d56;color:#8af0e5;font-family:"Montserrat",Arial,sans-serif;font-size:1.25rem;font-weight:800}
   .publica-demo-live{display:inline-flex;align-items:center;gap:.7rem;padding:.8rem 1.1rem;border:1px solid rgba(0,63,58,.12);border-radius:999px;background:#fff;font-size:1.05rem;font-weight:700;color:#426560}.publica-demo-live i{width:.7rem;height:.7rem;border-radius:50%;background:#1bb7aa;box-shadow:0 0 0 .4rem rgba(27,183,170,.12)}
-  .publica-reader-stage{position:relative;min-height:0;display:grid;grid-template-columns:4.5rem minmax(0,1fr) 4.5rem;grid-template-areas:"prev book next";align-items:center;gap:1rem;padding:1.7rem;border-radius:1.7rem;background:radial-gradient(circle at 50% 40%,#174e55 0,#082f33 58%,#041d21 100%);overflow:hidden;perspective:180rem}
-  .publica-reader-stage:before{content:'';position:absolute;inset:0;background:linear-gradient(115deg,rgba(101,212,202,.08),transparent 36%,rgba(255,210,77,.07));pointer-events:none}
-  .publica-book-viewport{grid-area:book;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;width:min(100%,39rem);max-width:100%;aspect-ratio:.72;margin:auto;filter:drop-shadow(0 2.8rem 2.5rem rgba(0,0,0,.42));transition:width .2s ease,height .2s ease}
+  .publica-reader-stage{position:relative;min-height:0;display:grid;grid-template-columns:4rem minmax(0,1fr) 4rem;grid-template-areas:"prev book next";align-items:center;gap:.8rem;padding:0;border-radius:0;background:transparent;overflow:visible;perspective:180rem}
+  .publica-reader-stage:before{display:none}
+  .publica-book-viewport{grid-area:book;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;width:min(100%,42rem);max-width:100%;aspect-ratio:.72;margin:auto;filter:drop-shadow(0 2.2rem 2.2rem rgba(0,0,0,.38));transition:width .2s ease,height .2s ease,opacity .18s ease,transform .18s ease}
+  .publica-demo-shell.is-changing-book .publica-book-viewport{opacity:0;transform:translateY(.8rem) scale(.96)}
   .publica-comic-book{width:100%;height:100%;opacity:1;transition:opacity .2s ease}
   .publica-comic-page{position:relative;width:100%;height:100%;min-width:0;overflow:hidden;background:#f8f1dd;color:#092f31;border:1px solid rgba(0,0,0,.12)}.publica-front-cover,.publica-back-cover-page{box-shadow:inset 0 0 2rem rgba(7,27,53,.18)}.publica-comic-book.is-fallback .publica-comic-page:not(:first-child){display:none}
+  .publica-book-switch{position:absolute;z-index:9;top:-1.4rem;right:-.6rem;width:8.4rem;padding:0;border:0;background:transparent;color:#fff;text-align:left;cursor:pointer;transform:rotate(3deg);transition:transform .24s ease,filter .24s ease}.publica-book-switch:hover{transform:translateY(-.5rem) rotate(0);filter:brightness(1.08)}.publica-book-switch:focus-visible{outline:.2rem solid #8af0e5;outline-offset:.5rem;border-radius:.8rem}.publica-book-switch small{display:block;margin:0 0 .45rem;font:800 .68rem/1.2 "Montserrat",Arial,sans-serif;letter-spacing:.1em;color:#9be8e1;text-align:center}.publica-mini-cover{position:relative;display:flex;min-height:11.5rem;padding:1rem .75rem;box-sizing:border-box;align-items:flex-end;overflow:hidden;border:.12rem solid rgba(255,255,255,.7);border-radius:.45rem;box-shadow:0 1rem 2.2rem rgba(0,0,0,.38);background:#17324a}.publica-mini-cover:before{content:'';position:absolute;inset:0;opacity:.95}.publica-mini-cover i{position:absolute;z-index:1;width:3rem;height:3rem;right:.65rem;top:.8rem;border-radius:50%;background:#f7d76d;box-shadow:0 0 0 .8rem rgba(247,215,109,.12)}.publica-mini-cover b{position:relative;z-index:2;font:800 .78rem/.95 "Montserrat",Arial,sans-serif;letter-spacing:-.02em;text-transform:uppercase;color:#fff}.publica-book-switch[data-next-set="archive"] .publica-mini-cover:before{background:linear-gradient(155deg,transparent,rgba(5,7,28,.84)),linear-gradient(135deg,#684c9d,#16264a 65%,#07101e)}.publica-book-switch[data-next-set="signal"] .publica-mini-cover:before{background:linear-gradient(155deg,transparent,rgba(0,20,37,.88)),radial-gradient(circle at 70% 25%,#ef5d43 0 18%,transparent 19%),linear-gradient(145deg,#16a89a,#08647c 48%,#071b35)}.publica-book-switch[data-next-set="signal"] .publica-mini-cover i{background:#ef5d43;box-shadow:0 0 0 .8rem rgba(239,93,67,.16)}
   .publica-turn-control{position:relative;z-index:6;width:4.2rem;height:4.2rem;border:1px solid rgba(137,239,229,.35);border-radius:50%;background:rgba(4,29,33,.78);color:#8af0e5;display:inline-flex;align-items:center;justify-content:center;gap:.6rem;cursor:pointer;transition:transform .2s ease,background .2s ease,border-color .2s ease}.publica-turn-control span{font:400 2.8rem/1 Arial}.publica-turn-control b{display:none;font:750 1rem/1 "Montserrat",Arial,sans-serif}.publica-prev{grid-area:prev}.publica-next{grid-area:next}.publica-turn-control:hover:not(:disabled){transform:scale(1.08);background:#0b635b;border-color:#8af0e5}.publica-turn-control:disabled{opacity:.22;cursor:default}
   .publica-cover,.publica-back-cover{height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end;padding:8%;color:#fff;background:linear-gradient(155deg,rgba(1,18,30,.08),rgba(1,18,30,.88)),radial-gradient(circle at 72% 25%,#ffcf42 0 5%,#ef5d43 6% 18%,transparent 19%),linear-gradient(145deg,#16a89a,#08647c 48%,#071b35);position:relative;overflow:hidden}.publica-cover:before{content:'';position:absolute;width:65%;aspect-ratio:1;right:-15%;top:-10%;border:2rem solid rgba(255,255,255,.12);transform:rotate(24deg)}
   .publica-cover span,.publica-back-cover span{position:relative;font-size:clamp(.75rem,1vw,1.2rem);font-weight:900;letter-spacing:.14em;color:#ffdf68}.publica-cover h4,.publica-back-cover h4{position:relative;margin:1rem 0;font-family:"Montserrat",Arial,sans-serif!important;font-size:clamp(2.5rem,4.2vw,6rem);font-weight:800;line-height:.88;letter-spacing:-.045em;text-transform:uppercase}.publica-cover p{position:relative;max-width:38rem;margin:.8rem 0 2rem;font-size:clamp(.9rem,1.2vw,1.4rem);line-height:1.45;color:#d8f5f1}.publica-cover>b,.publica-back-cover>b{position:relative;align-self:flex-start;padding:.8rem 1.1rem;border:1px solid rgba(255,255,255,.45);font-size:.9rem;letter-spacing:.1em}
+  .publica-novel-cover{position:relative;height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;padding:9%;color:#fff;background:radial-gradient(circle at 72% 20%,#f7db87 0 7%,rgba(247,219,135,.18) 8% 17%,transparent 18%),linear-gradient(160deg,transparent 48%,rgba(3,7,24,.94)),linear-gradient(135deg,#76569e,#253560 52%,#070e1e)}.publica-novel-cover:before{content:'';position:absolute;left:-10%;right:-10%;bottom:13%;height:25%;background:linear-gradient(145deg,transparent 18%,#090d1d 19% 33%,transparent 34%),linear-gradient(35deg,transparent 58%,#11172d 59% 70%,transparent 71%);opacity:.95}.publica-novel-cover:after{content:'✦  ·  ✧  ·  ✦';position:absolute;left:8%;top:8%;font-size:1.1rem;letter-spacing:.7rem;color:rgba(255,255,255,.68)}.publica-novel-cover span,.publica-novel-cover h4,.publica-novel-cover p,.publica-novel-cover>b{position:relative;z-index:2}.publica-novel-cover span{font-size:clamp(.68rem,.9vw,1rem);font-weight:800;letter-spacing:.14em;color:#f7db87}.publica-novel-cover h4{max-width:90%;margin:1rem 0;font:700 clamp(2.3rem,3.4vw,4.8rem)/.92 Georgia,"Times New Roman",serif;letter-spacing:-.04em}.publica-novel-cover p{max-width:85%;margin:.6rem 0 1.8rem;font:400 clamp(.85rem,1.05vw,1.25rem)/1.5 Georgia,"Times New Roman",serif;color:#e8e4f2}.publica-novel-cover>b{align-self:flex-start;padding:.75rem 1rem;border:1px solid rgba(247,219,135,.58);font-size:.78rem;letter-spacing:.12em;color:#f7db87}.publica-novel-back{justify-content:center;background:radial-gradient(circle at 50% 25%,rgba(247,219,135,.2),transparent 28%),linear-gradient(145deg,#19294d,#5c3f79)}
+  .publica-novel-page{position:relative;height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden;padding:11%;background:#f4eedf;color:#1d2740}.publica-novel-page span{position:relative;z-index:2;font:800 clamp(.65rem,.8vw,.9rem)/1.2 "Montserrat",Arial,sans-serif;letter-spacing:.16em;color:#75538d}.publica-novel-page h4{position:relative;z-index:2;max-width:92%;margin:1.2rem 0;font:700 clamp(2rem,3vw,4rem)/.98 Georgia,"Times New Roman",serif;letter-spacing:-.03em}.publica-novel-page p{position:relative;z-index:2;max-width:85%;margin:0;font:400 clamp(.82rem,1vw,1.15rem)/1.6 Georgia,"Times New Roman",serif;color:#4c5161}.publica-novel-page>b{position:absolute;z-index:2;right:8%;bottom:6%;font:700 1rem/1 Georgia,serif;color:#8b7795}.publica-novel-chapter:after{content:'';position:absolute;width:52%;aspect-ratio:1;right:-12%;top:-8%;border-radius:50%;background:radial-gradient(circle,#f7db87 0 18%,#7e669b 19% 32%,transparent 33%),repeating-radial-gradient(circle,rgba(117,83,141,.14) 0 .25rem,transparent .3rem 1.1rem)}.publica-novel-city{justify-content:flex-end;color:#fff;background:linear-gradient(180deg,rgba(7,15,34,.06),rgba(7,15,34,.9)),radial-gradient(circle at 70% 18%,#f7db87 0 7%,transparent 8%),linear-gradient(145deg,#895c8f,#24365c 55%,#071326)}.publica-novel-city:after{content:'';position:absolute;left:-5%;right:-5%;bottom:0;height:48%;background:repeating-linear-gradient(90deg,#0b142a 0 9%,transparent 9% 12%);clip-path:polygon(0 32%,8% 38%,8% 16%,18% 29%,18% 8%,29% 35%,39% 17%,49% 39%,58% 6%,67% 34%,78% 18%,88% 38%,100% 22%,100% 100%,0 100%)}.publica-novel-city span,.publica-novel-city p{color:#e8e4f2}.publica-novel-letter{background:linear-gradient(135deg,rgba(117,83,141,.08),transparent),#f7f0df}.publica-novel-letter:before{content:'';position:absolute;inset:8%;border:.1rem solid rgba(117,83,141,.28);box-shadow:inset 0 0 0 .5rem rgba(255,255,255,.42)}.publica-novel-letter blockquote{position:relative;z-index:2;margin:1.8rem 0;font:italic 700 clamp(2.1rem,3vw,4.2rem)/1.05 Georgia,serif;color:#433252}.publica-novel-library{color:#fff;background:linear-gradient(90deg,rgba(5,10,25,.88),rgba(5,10,25,.18)),repeating-linear-gradient(90deg,#392849 0 10%,#a67c52 10% 12%,#59406a 12% 21%,#d2a76a 21% 23%)}.publica-novel-library:after{content:'';position:absolute;inset:9% 7%;border:.15rem solid rgba(247,219,135,.7);box-shadow:0 0 3rem rgba(247,219,135,.28)}.publica-novel-library span,.publica-novel-library p{color:#f3e9d4}
   .publica-panel-grid{height:100%;box-sizing:border-box;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr auto;gap:1.1%;padding:2%;background:#fff8df}.publica-panel{position:relative;overflow:hidden;border:.3rem solid #0b2529;padding:7%;display:flex;flex-direction:column;justify-content:flex-end}.publica-panel:after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(125deg,transparent 0 1rem,rgba(255,255,255,.04) 1rem 1.2rem);pointer-events:none}.publica-panel em{font-size:clamp(.65rem,.8vw,.95rem);font-style:normal;font-weight:900;letter-spacing:.12em;color:#72e3d7}.publica-panel strong{margin-top:.5rem;font-family:"Montserrat",Arial,sans-serif!important;font-size:clamp(1.5rem,2.25vw,3rem);line-height:.95;color:#fff;text-shadow:0 .2rem 0 rgba(0,0,0,.2)}.publica-night{grid-row:span 2;background:linear-gradient(160deg,transparent 45%,rgba(2,10,27,.9)),radial-gradient(circle at 70% 22%,#ffd75e 0 4%,transparent 5%),linear-gradient(145deg,#174d69,#08182d)}.publica-hero{background:radial-gradient(circle at 55% 72%,#ffbd3f 0 9%,transparent 10%),linear-gradient(145deg,#db4b3c,#6d1433)}.publica-hero>b{font:900 clamp(5rem,8vw,10rem)/.7 "Montserrat",Arial;color:#ffdd55;transform:rotate(-9deg)}
   .publica-bubble{position:absolute;z-index:2;top:8%;left:8%;max-width:75%;padding:.8rem 1rem;border:.22rem solid #102b30;border-radius:50%;background:#fff;color:#102b30;font-size:clamp(.72rem,1vw,1.15rem);font-weight:800;line-height:1.2}.publica-caption{grid-column:1/-1;padding:1rem 1.2rem;background:#0c292e;color:#fff;font-size:clamp(.75rem,1vw,1.1rem);font-weight:700;line-height:1.35}.publica-caption-teal{background:#087d73}
   .publica-action-grid{grid-template-rows:1fr 1fr auto}.publica-signal{grid-column:1/-1;background:linear-gradient(25deg,rgba(0,0,0,.7),transparent),repeating-radial-gradient(circle at 78% 45%,#ffdb49 0 .4rem,#e64c35 .5rem 1.2rem,#172d43 1.3rem 2rem)}.publica-run{background:linear-gradient(135deg,#0f766e,#062f43)}.publica-run>b{font:900 clamp(3rem,6vw,8rem)/.8 "Montserrat",Arial;color:#fff;transform:skew(-10deg)}.publica-sfx{display:grid;place-items:center;padding:1rem;background:#e83f36;color:#fff;font:900 clamp(1.1rem,2vw,2.4rem)/1 "Montserrat",Arial;letter-spacing:.08em}.publica-sfx-yellow{background:#ffd34e;color:#102b30}.publica-lab{grid-row:span 2;background:linear-gradient(160deg,transparent,rgba(0,0,0,.85)),linear-gradient(135deg,#427d88,#102d43)}.publica-face{background:radial-gradient(circle at 50% 70%,#ffc252 0 16%,#db503e 17% 32%,#202040 33%)}.publica-portal{grid-column:1/-1;background:radial-gradient(circle at 70% 48%,#fff 0 3%,#6ff0e1 4% 14%,#146a72 15% 30%,#081b35 31%)}.publica-impact{background:linear-gradient(145deg,#f24b3e,#ffcb48)}.publica-impact>b{font:900 clamp(2.5rem,5vw,6rem)/.8 "Montserrat",Arial;color:#fff;transform:rotate(-12deg);text-shadow:.4rem .4rem 0 #122b36}.publica-back-cover{justify-content:center;background:linear-gradient(145deg,#062f2c,#0b6e65)}.publica-back-cover h4{font-size:clamp(2rem,3vw,4rem);line-height:1}.publica-back-cover ul{margin:1.5rem 0 2rem;padding-left:1.8rem;font-size:clamp(.85rem,1.1vw,1.25rem);line-height:1.7;color:#c9f4ef}
-  .publica-reader-footer{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:1rem;padding:1.1rem .6rem .1rem;color:#426560;font-size:.95rem}.publica-reader-footer>strong{text-align:right;color:#087d73}.publica-reader-dots{display:flex;gap:.6rem}.publica-reader-dots i{width:.7rem;height:.7rem;border-radius:50%;background:#bad7d3}.publica-reader-dots i.is-active{width:2rem;border-radius:99px;background:#18aa9d}
+  .publica-reader-footer{display:none}.publica-reader-footer>strong{text-align:right;color:#087d73}.publica-reader-dots{display:flex;gap:.6rem}.publica-reader-dots i{width:.7rem;height:.7rem;border-radius:50%;background:#bad7d3}.publica-reader-dots i.is-active{width:2rem;border-radius:99px;background:#18aa9d}
   @media(max-width:1100px){.lmsgen-publica-layout{grid-template-columns:1fr;gap:3.5rem}.lmsgen-publica-copy{order:1}.publica-demo-shell{order:2;max-width:86rem;margin:0 auto!important}.lmsgen-pdf-course-section h2{max-width:82rem}.lmsgen-pdf-course-summary{max-width:76rem}.lmsgen-pdf-course-benefits{grid-template-columns:repeat(3,minmax(0,1fr))}.lmsgen-pdf-course-benefits li{padding:1.8rem}.lmsgen-pdf-course-proof{grid-template-columns:1fr}.lmsgen-pdf-proof-copy{padding:1rem 1rem 2rem}}
   @media(max-width:760px){.lmsgen-pdf-course-benefits{grid-template-columns:1fr}.publica-reader-stage{grid-template-columns:4rem minmax(0,1fr) 4rem;gap:.7rem;padding:1.5rem}.publica-turn-control{width:3.8rem;height:3.8rem}.publica-turn-control span{font-size:2.5rem}.publica-demo-topbar small{display:none}}
-  @media(max-width:640px){.lmsgen-publica-layout{gap:2.8rem}.lmsgen-pdf-course-summary{margin-top:2rem}.lmsgen-pdf-course-benefits{margin-top:2.5rem}.lmsgen-pdf-course-benefits li{padding:1.6rem}.lmsgen-pdf-course-proof{padding:1rem;gap:1.5rem}.lmsgen-pdf-proof-screen{min-height:29rem;grid-template-columns:7.5rem 1fr}.lmsgen-pdf-proof-rail{padding:1.3rem .8rem}.lmsgen-pdf-proof-rail strong{font-size:.9rem}.lmsgen-pdf-proof-rail span{font-size:.75rem}.lmsgen-pdf-proof-slide{padding:.8rem}.lmsgen-pdf-proof-toolbar{font-size:.75rem}.lmsgen-pdf-proof-page{min-height:20rem;padding:1.8rem}.lmsgen-pdf-proof-page strong{font-size:2.7rem}.lmsgen-pdf-proof-page p{font-size:.9rem}.lmsgen-pdf-proof-copy{padding:1.5rem}.lmsgen-pdf-proof-copy h3{font-size:2.5rem}.publica-demo-shell{padding:1rem!important}.publica-demo-topbar{padding:.2rem .2rem 1rem;gap:.7rem}.publica-demo-topbar strong{font-size:1.1rem}.publica-demo-mark{width:3rem;height:3rem;border-radius:.8rem}.publica-demo-live{padding:.6rem .75rem;font-size:.75rem}.publica-reader-stage{grid-template-columns:1fr 1fr;grid-template-areas:"book book" "prev next";gap:1rem;padding:1.2rem}.publica-book-viewport{max-width:100%;filter:drop-shadow(0 1.5rem 1.6rem rgba(0,0,0,.38))}.publica-turn-control{position:static;width:100%;height:3.4rem;border-radius:.9rem;background:rgba(11,99,91,.85)}.publica-turn-control span{font-size:1.8rem}.publica-turn-control b{display:inline;font-size:.9rem}.publica-turn-control:hover:not(:disabled){transform:none}.publica-reader-footer{grid-template-columns:1fr auto;padding:1rem .3rem .2rem}.publica-reader-footer>strong{display:none}.publica-reader-dots{justify-self:end}.publica-panel-grid{gap:.8%;padding:1.5%}.publica-panel{border-width:.22rem}}
+  @media(max-width:640px){.lmsgen-publica-layout{gap:2.8rem}.lmsgen-pdf-course-summary{margin-top:2rem}.lmsgen-pdf-course-benefits{margin-top:2.5rem}.lmsgen-pdf-course-benefits li{padding:1.6rem}.lmsgen-pdf-course-proof{padding:1rem;gap:1.5rem}.lmsgen-pdf-proof-screen{min-height:29rem;grid-template-columns:7.5rem 1fr}.lmsgen-pdf-proof-rail{padding:1.3rem .8rem}.lmsgen-pdf-proof-rail strong{font-size:.9rem}.lmsgen-pdf-proof-rail span{font-size:.75rem}.lmsgen-pdf-proof-slide{padding:.8rem}.lmsgen-pdf-proof-toolbar{font-size:.75rem}.lmsgen-pdf-proof-page{min-height:20rem;padding:1.8rem}.lmsgen-pdf-proof-page strong{font-size:2.7rem}.lmsgen-pdf-proof-page p{font-size:.9rem}.lmsgen-pdf-proof-copy{padding:1.5rem}.lmsgen-pdf-proof-copy h3{font-size:2.5rem}.publica-demo-shell{padding:0!important}.publica-demo-topbar{padding:.2rem .2rem 1rem;gap:.7rem}.publica-demo-topbar strong{font-size:1.1rem}.publica-demo-mark{width:3rem;height:3rem;border-radius:.8rem}.publica-demo-live{padding:.6rem .75rem;font-size:.75rem}.publica-reader-stage{grid-template-columns:1fr 1fr;grid-template-areas:"book book" "prev next";gap:1rem;padding:0}.publica-book-viewport{max-width:100%;filter:drop-shadow(0 1.5rem 1.6rem rgba(0,0,0,.38))}.publica-book-switch{top:.7rem;right:.7rem;width:6.2rem}.publica-book-switch small{display:none}.publica-mini-cover{min-height:8.5rem;padding:.75rem .55rem}.publica-mini-cover i{width:2rem;height:2rem;right:.5rem;top:.55rem}.publica-mini-cover b{font-size:.62rem}.publica-turn-control{position:static;width:100%;height:3.4rem;border-radius:.9rem;background:rgba(11,99,91,.85)}.publica-turn-control span{font-size:1.8rem}.publica-turn-control b{display:inline;font-size:.9rem}.publica-turn-control:hover:not(:disabled){transform:none}.publica-reader-footer{grid-template-columns:1fr auto;padding:1rem .3rem .2rem}.publica-reader-footer>strong{display:none}.publica-reader-dots{justify-self:end}.publica-panel-grid{gap:.8%;padding:1.5%}.publica-panel{border-width:.22rem}}
 </style>`;
 
 function escapeRegExp(value) {
