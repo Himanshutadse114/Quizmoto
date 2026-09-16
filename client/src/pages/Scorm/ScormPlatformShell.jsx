@@ -129,7 +129,7 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess, role, quizmotoOnly 
         <div key={group.label} className={groupIndex ? 'mt-6' : ''}>
           <div className="scorm-nav-section px-3 pb-2.5 text-[10px] uppercase font-semibold">{group.label}</div>
           <div className="space-y-1">
-            {group.items.map(({ to, end, label, icon: Icon, requiresScorm, unlocked }) => {
+            {group.items.map(({ to, end, label, icon, requiresScorm, unlocked }) => {
               const locked = Boolean(requiresScorm && !scormAccess);
               return (
                 <NavLink
@@ -141,7 +141,7 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess, role, quizmotoOnly 
                 >
                   {({ isActive }) => (
                     <>
-                      <span className="scorm-nav-icon w-8 h-8 rounded-lg grid place-items-center shrink-0"><Icon size={16} strokeWidth={isActive ? 2.2 : 1.9} /></span>
+                      <span className="scorm-nav-icon w-8 h-8 rounded-lg grid place-items-center shrink-0">{React.createElement(icon, { size: 16, strokeWidth: isActive ? 2.2 : 1.9 })}</span>
                       <span className="flex-1 truncate">{label}</span>
                       {unlocked && !scormAccess && !quizmotoOnly && <span className="text-[8px] uppercase tracking-[.08em] font-bold text-[#60a5fa]">Open</span>}
                       {locked ? <LockKeyhole size={12} className="text-[#71839c]" /> : isActive ? <ChevronRight size={14} className="scorm-nav-chevron" /> : null}
@@ -198,7 +198,7 @@ function MobileTabBar({ scormAccess, role, quizmotoOnly }) {
           { to: '/scorm/author', label: scormAccess ? 'Create' : 'Locked', icon: scormAccess ? Sparkles : LockKeyhole }
         ];
   const gridClass = quizmotoOnly ? 'grid-cols-2' : analyticsOnly ? 'grid-cols-3' : 'grid-cols-4';
-  return <div className={`scorm-mobile-tabbar lg:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40 grid ${gridClass} p-1.5`}>{items.map(({ to, end, label, icon: Icon }) => <NavLink key={to} to={to} end={end} className={({ isActive }) => `scorm-mobile-tab ${isActive ? 'is-active' : ''} flex flex-col items-center justify-center gap-1 px-3 py-2`}><Icon size={17} strokeWidth={2} /><span>{label}</span></NavLink>)}</div>;
+  return <div className={`scorm-mobile-tabbar lg:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40 grid ${gridClass} p-1.5`}>{items.map(({ to, end, label, icon }) => <NavLink key={to} to={to} end={end} className={({ isActive }) => `scorm-mobile-tab ${isActive ? 'is-active' : ''} flex flex-col items-center justify-center gap-1 px-3 py-2`}>{React.createElement(icon, { size: 17, strokeWidth: 2 })}<span>{label}</span></NavLink>)}</div>;
 }
 
 export default function ScormPlatformShell() {
@@ -247,7 +247,7 @@ export default function ScormPlatformShell() {
         <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} quizmotoOnly={quizmotoOnly} />
         <div className="scorm-sidebar-footer p-3 border-t space-y-2.5">
           {(scormAccess || quizmotoOnly) && (
-            <div className="rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
+            <div className="scorm-sidebar-profile rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
               <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]">
                 {quizmotoOnly ? <BookOpenCheck size={13} /> : analyticsOnly ? <BarChart3 size={13} /> : <ShieldCheck size={13} />} {roleName}
               </div>
@@ -261,7 +261,7 @@ export default function ScormPlatformShell() {
               <div className="mt-1.5 text-[10px] leading-relaxed">Quizmoto and Flipbooks are available on this account. LMSGEN tenant features unlock after the Super Admin assigns this email to a tenant.</div>
             </div>
           ) : !scormAccess ? (
-            <div className="rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
+            <div className="scorm-sidebar-profile rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
               <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={13} /> Approval pending</div>
               <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae]">Quizmoto and Flipbooks are unlocked. LMSGEN features unlock after administrator approval and tenant assignment.</div>
               <button type="button" onClick={refreshApproval} disabled={checkingAccess} className="mt-2 inline-flex items-center gap-1.5 text-[9px] font-semibold text-[#60a5fa] disabled:opacity-50"><RefreshCw size={11} className={checkingAccess ? 'animate-spin' : ''} /> Refresh access</button>

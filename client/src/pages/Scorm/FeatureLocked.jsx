@@ -28,7 +28,7 @@ export default function ScormFeatureLocked({ featureId }) {
   };
 
   return (
-    <div className="p-4 md:p-7 lg:p-8 max-w-[1180px] mx-auto">
+    <div className="scorm-light-adapted p-4 md:p-7 lg:p-8 max-w-[1180px] mx-auto">
       <section className="scorm-page-hero mb-5">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
           <div className="max-w-3xl">
@@ -78,7 +78,7 @@ export default function ScormFeatureLocked({ featureId }) {
             {notice && <div className="mt-3 text-xs leading-relaxed text-[#93c5fd]">{notice}</div>}
           </section>
 
-          <section className="rounded-2xl border border-[#315a8b] bg-[linear-gradient(145deg,#0b213c,#071426)] p-5">
+          <section className="scorm-light-feature-hero rounded-2xl border border-[#315a8b] bg-[linear-gradient(145deg,#0b213c,#071426)] p-5">
             <div className="flex items-center gap-2 text-[#93c5fd] text-xs font-semibold"><Sparkles size={15} /> Available now</div>
             <h3 className="text-lg mt-3 text-[#f8fafc]">Quizmoto Live Quiz</h3>
             <p className="mt-2 text-xs leading-relaxed text-[#b8c7da]">Create quizzes, generate questions with AI, launch live sessions and review Quizmoto reports while your SCORM AI approval is pending.</p>

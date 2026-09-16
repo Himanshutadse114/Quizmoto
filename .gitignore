@@ -9,6 +9,8 @@ mysql_data_local/
 .idea
 .vscode
 *.log
+__pycache__/
+tmp/
 
 # Phase 0 & 1 Artifacts
 ffmpeg.zip

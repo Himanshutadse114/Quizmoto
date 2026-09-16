@@ -72,7 +72,7 @@ export default function LearnerAuditDetail({ learnerName, learnerEmail, entries 
   };
 
   return (
-    <div className={`rounded-2xl border overflow-hidden ${palette.shell}`}>
+    <div className={`scorm-light-adapted scorm-learner-audit rounded-2xl border overflow-hidden ${palette.shell}`}>
       {showIdentity && <div className={`p-4 md:p-5 border-b ${palette.line}`}><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"><div className="flex items-center gap-3 min-w-0"><div className={`w-11 h-11 rounded-xl border grid place-items-center font-black text-sm shrink-0 ${palette.icon}`}>{initials(learnerName, learnerEmail)}</div><div className="min-w-0"><div className={`text-[9px] uppercase tracking-[0.12em] font-bold ${palette.muted}`}>Learner identity</div><div className={`mt-1 font-semibold text-base truncate ${palette.text}`}>{learnerName || 'Learner'}</div></div></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:min-w-[420px]"><div className={`rounded-lg border px-3 py-2.5 ${palette.soft}`}><div className={`text-[8px] uppercase tracking-[0.11em] font-bold ${palette.muted}`}>Learner name</div><div className={`mt-1 text-xs font-semibold break-words ${palette.text}`}>{learnerName || 'Learner'}</div></div><div className={`rounded-lg border px-3 py-2.5 ${palette.soft}`}><div className={`text-[8px] uppercase tracking-[0.11em] font-bold ${palette.muted}`}>Email address</div><div className={`mt-1 text-xs font-medium break-all ${palette.text}`}>{learnerEmail || 'No email'}</div></div></div></div></div>}
 
       <div className="p-4 md:p-5">

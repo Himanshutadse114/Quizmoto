@@ -447,7 +447,7 @@ export default function ScormCourseDetail() {
       </section>
 
       {course.status === 'published' && (
-        <div className="rounded-[18px] bg-[#101828] border border-[#344054] p-4 md:p-5 mb-6 text-white">
+        <div className="scorm-invite-panel rounded-[18px] bg-[#101828] border border-[#344054] p-4 md:p-5 mb-6 text-white">
           <div className="scorm-micro text-[9px] uppercase font-semibold text-[#A5B4FC] mb-2">Learner invite link</div>
           <div className="flex flex-col sm:flex-row gap-2">
             <input readOnly value={inviteUrl} className="flex-1 px-3 py-2.5 text-xs font-mono" />
@@ -558,7 +558,7 @@ export default function ScormCourseDetail() {
                       </td>
                     </tr>
                     {isExpanded && (
-                      <tr className="bg-[#050B14] border-b border-[#243751]">
+                      <tr className="scorm-learner-expanded-row bg-[#050B14] border-b border-[#243751]">
                         <td colSpan={9} className="p-3 md:p-4">
                           <LearnerAuditDetail
                             learnerName={r.learnerName}

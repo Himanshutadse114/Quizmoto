@@ -492,7 +492,7 @@ export default function AuthorVisual() {
   };
 
   return (
-    <div className="min-h-screen max-w-[1450px] mx-auto p-4 md:p-7 pb-24 relative">
+    <div className="scorm-light-adapted scorm-author-visual min-h-screen max-w-[1450px] mx-auto p-4 md:p-7 pb-24 relative">
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">SCORM AI · Content Editor</div>

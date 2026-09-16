@@ -17,7 +17,7 @@ export default function PendingScormHome() {
   const { user } = useAuth();
 
   return (
-    <div className="p-4 md:p-7 lg:p-8 max-w-[1440px] mx-auto">
+    <div className="scorm-light-adapted p-4 md:p-7 lg:p-8 max-w-[1440px] mx-auto">
       <section className="scorm-page-hero mb-6 md:mb-7">
         <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-6">
           <div className="max-w-3xl">
@@ -37,7 +37,7 @@ export default function PendingScormHome() {
       </section>
 
       <div className="grid lg:grid-cols-[1.15fr_.85fr] gap-5 mb-6">
-        <section className="rounded-3xl border border-[#315a8b] bg-[radial-gradient(circle_at_85%_15%,rgba(59,130,246,.18),transparent_35%),linear-gradient(145deg,#0b213c,#071426)] p-6 md:p-7 min-h-[260px] flex flex-col justify-between">
+        <section className="scorm-light-feature-hero rounded-3xl border border-[#315a8b] bg-[radial-gradient(circle_at_85%_15%,rgba(59,130,246,.18),transparent_35%),linear-gradient(145deg,#0b213c,#071426)] p-6 md:p-7 min-h-[260px] flex flex-col justify-between">
           <div>
             <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[.12em] font-semibold text-[#93c5fd]"><Gamepad2 size={14} /> Unlocked now</div>
             <h2 className="text-3xl md:text-4xl font-semibold tracking-[-.045em] text-[#f8fafc] mt-3">Quizmoto Live Quiz</h2>

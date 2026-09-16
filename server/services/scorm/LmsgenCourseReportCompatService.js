@@ -55,7 +55,15 @@ function learnerRows(course) {
         learningTime: learner.totalTime || '—',
         questions: Number(learner.answerSummary?.captured || 0),
         correct: Number(learner.answerSummary?.correct || 0),
-        lastActivity: learner.lastActivity || ''
+        lastActivity: learner.lastActivity || '',
+        slideTimings: (Array.isArray(learner.slideTimings) ? learner.slideTimings : []).map((timing) => ({
+            slideNumber: Number(timing.slideNumber) || 0,
+            label: String(timing.label || `Slide ${Number(timing.slideNumber) || ''}`).trim(),
+            timeSpent: timing.timeSpent || '',
+            milliseconds: Math.max(0, Number(timing.milliseconds) || 0),
+            visits: Math.max(0, Number(timing.visits) || 0),
+            status: timing.status || 'Not visited'
+        }))
     }));
 }
 
@@ -165,6 +173,7 @@ function safeUnlink(filePath) {
 }
 
 module.exports = {
+    learnerRows,
     buildCourseReport,
     generateCourseReportFile,
     safeUnlink

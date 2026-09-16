@@ -144,7 +144,7 @@ export default function PresentationEditor() {
   }
 
   return (
-    <div className="scorm-editorial scorm-theme-dark p-4 md:p-7 lg:p-9 max-w-7xl mx-auto pb-24">
+    <div className="scorm-presentation-editor p-4 md:p-7 lg:p-9 max-w-7xl mx-auto pb-24">
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-5 mb-7 pb-7 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
         <div className="max-w-3xl">
           <button type="button" onClick={() => navigate(-1)} className="scorm-button-secondary inline-flex items-center gap-2 px-3 py-2 text-[10px] font-semibold"><ArrowLeft size={13} /> Back</button>

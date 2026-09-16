@@ -34,6 +34,14 @@ def num(v):
 def generated(v,short=False):
     try:return datetime.fromisoformat(txt(v).replace('Z','+00:00')).strftime('%d %b %Y' if short else '%d %b %Y, %H:%M UTC')
     except:return txt(v)
+def duration_ms(v,fallback=''):
+    n=num(v)
+    if n is None:return txt(fallback) or '-'
+    n=max(0,int(round(n))); seconds=n//1000; ms=n%1000; minutes=seconds//60; seconds%=60; hours=minutes//60; minutes%=60
+    if hours:return f'{hours:d}h {minutes:02d}m {seconds:02d}s'
+    if minutes:return f'{minutes:d}m {seconds:02d}s'
+    if seconds:return f'{seconds:d}.{ms//100:d}s' if ms else f'{seconds:d}s'
+    return f'{ms:d}ms' if ms else '0s'
 def rtype(r):return txt(r.get('reportType') or 'overview').lower()
 def smap(r):return {txt(x.get('label')).strip().lower():x.get('value') for x in (r.get('summary') or [])}
 def pick(m,*keys):
@@ -44,8 +52,8 @@ def scol(v):
     k=txt(v).lower().replace('_',' ')
     if 'fail' in k or 'error' in k or 'overdue' in k:return RED
     if 'complete' in k or 'pass' in k or 'active' in k or 'published' in k:return GREEN
-    if 'progress' in k or 'start' in k or 'pending' in k or 'launch' in k:return AMBER
-    if 'not attempted' in k or 'draft' in k or 'inactive' in k:return GREY
+    if 'progress' in k or 'start' in k or 'pending' in k or 'launch' in k or 'skip' in k:return AMBER
+    if 'not attempted' in k or 'not visited' in k or 'draft' in k or 'inactive' in k:return GREY
     return TD
 
 def stats(r):
@@ -166,6 +174,18 @@ def learner_card(row,i,s):
     detail.setStyle(TableStyle([('BOX',(0,0),(-1,-1),.4,LINE),('INNERGRID',(0,0),(-1,-1),.3,LINE),('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),6),('RIGHTPADDING',(0,0),(-1,-1),6),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
     outer=Table([[head],[detail]],colWidths=[126*mm]); outer.setStyle(TableStyle([('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0),('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0)])); return outer
 
+def slide_timing_table(row,i,s):
+    timings=row.get('slideTimings') or []; name=row.get('learner') or row.get('name') or 'Learner'; email=row.get('email') or ''
+    heading=Table([[Paragraph(f'<b>{i:02d}. {safe(name)}</b><br/><font size="6" color="#6E8584">{safe(email)}</font>',s['ct']),Paragraph(f'{len(timings)} SLIDES',s['kick'])]],colWidths=[210*mm,42*mm])
+    heading.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),SOFT),('LINEABOVE',(0,0),(-1,0),2.4,TEAL),('BOX',(0,0),(-1,-1),.45,LINE),('ALIGN',(1,0),(1,0),'RIGHT'),('VALIGN',(0,0),(-1,-1),'MIDDLE'),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5)]))
+    data=[[Paragraph('SLIDE',s['th']),Paragraph('TIME SPENT',s['th']),Paragraph('VISITS',s['th']),Paragraph('ENGAGEMENT',s['th'])]]
+    for timing in timings:
+        status=timing.get('status') or ('Visited' if num(timing.get('visits')) else 'Not visited')
+        data.append([Paragraph(safe(timing.get('label') or f'Slide {timing.get("slideNumber") or "-"}'),s['tc']),Paragraph(safe(duration_ms(timing.get('milliseconds'),timing.get('timeSpent'))),s['tc']),Paragraph(safe(timing.get('visits') if timing.get('visits') not in (None,'') else 0),s['tc']),Paragraph(f'<font color="{scol(status).hexval()}"><b>{safe(status)}</b></font>',s['tc'])])
+    table=Table(data,colWidths=[132*mm,45*mm,28*mm,47*mm],repeatRows=1)
+    table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),TS),('LINEBELOW',(0,0),(-1,0),1,TD),('ROWBACKGROUNDS',(0,1),(-1,-1),[WHITE,SOFT]),('GRID',(0,0),(-1,-1),.3,LINE),('VALIGN',(0,0),(-1,-1),'MIDDLE'),('LEFTPADDING',(0,0),(-1,-1),6),('RIGHTPADDING',(0,0),(-1,-1),6),('TOPPADDING',(0,0),(-1,-1),4.5),('BOTTOMPADDING',(0,0),(-1,-1),4.5),('ALIGN',(1,1),(2,-1),'CENTER')]))
+    return [heading,table,Spacer(1,4*mm)]
+
 def table_detail(r,s):
     cols=r.get('columns') or []; rows=r.get('rows') or []; avail=landscape(A4)[0]-28*mm
     if not cols or not rows:return Table([[Paragraph(safe(r.get('emptyMessage') or 'No matching data is available for this report.'),s['body'])]],colWidths=[240*mm],rowHeights=[26*mm],style=[('BACKGROUND',(0,0),(-1,-1),SOFT),('BOX',(0,0),(-1,-1),.5,LINE),('ALIGN',(0,0),(-1,-1),'CENTER'),('VALIGN',(0,0),(-1,-1),'MIDDLE')])
@@ -200,11 +220,15 @@ def generate_pdf(r,out):
         for i in range(0,len(rows),2):
             pair=Table([[learner_card(rows[i],i+1,s),learner_card(rows[i+1],i+2,s) if i+1<len(rows) else '']],colWidths=[128*mm,128*mm]); pair.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),2),('RIGHTPADDING',(0,0),(-1,-1),2),('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2)])); story += [pair,Spacer(1,2*mm)]
     else:story.append(table_detail(r,s))
+    timed=[(i,row) for i,row in enumerate(rows,1) if row.get('slideTimings')]
+    if rtype(r)=='course' and timed:
+        story += [PageBreak(),section('03','SLIDE-LEVEL EVIDENCE','Time Spent Per Slide',s),Paragraph('Visits and active viewing time captured for each presentation slide. Slides with no recorded activity remain visible for skip analysis.',s['sub']),Spacer(1,4*mm)]
+        for i,row in timed:story += slide_timing_table(row,i,s)
     story += [Spacer(1,4*mm),Paragraph('Generated from LMSGEN current-platform data. The report reflects evidence available at the generation time.',s['mut'])]
     doc.build(story,onFirstPage=lambda c,d:footer(c,d,r),onLaterPages=lambda c,d:footer(c,d,r))
 
 def generate_excel(r,out):
-    wb=xlsxwriter.Workbook(out); wb.set_properties({'title':txt(r.get('title')),'author':'LMSGEN'}); dash=wb.add_worksheet('Dashboard'); data=wb.add_worksheet('Detailed Data'); dash.hide_gridlines(2); data.hide_gridlines(2)
+    wb=xlsxwriter.Workbook(out); wb.set_properties({'title':txt(r.get('title')),'author':'LMSGEN'}); dash=wb.add_worksheet('Dashboard'); data=wb.add_worksheet('Detailed Data'); slide_data=wb.add_worksheet('Slide Timing'); dash.hide_gridlines(2); data.hide_gridlines(2); slide_data.hide_gridlines(2)
     brand=wb.add_format({'bold':True,'font_size':22,'font_color':'#FFFFFF','bg_color':'#183334'}); sub=wb.add_format({'font_size':9,'font_color':'#6E8584'}); title=wb.add_format({'bold':True,'font_size':18,'font_color':'#183334'}); sec=wb.add_format({'bold':True,'font_color':'#16988F','bottom':2,'bottom_color':'#4FC9BF'}); ml=wb.add_format({'bold':True,'font_size':8,'font_color':'#6E8584','border':1,'border_color':'#D9E9E6','align':'center'}); mv=wb.add_format({'bold':True,'font_size':15,'font_color':'#183334','border':1,'border_color':'#D9E9E6','align':'center'}); th=wb.add_format({'bold':True,'font_size':8,'font_color':'#284B4B','bg_color':'#EAF9F7','border':1,'border_color':'#D9E9E6','text_wrap':True}); cell=wb.add_format({'font_size':9,'font_color':'#183334','border':1,'border_color':'#E3EFED','text_wrap':True,'valign':'top'}); alt=wb.add_format({'font_size':9,'font_color':'#183334','bg_color':'#F8FBFA','border':1,'border_color':'#E3EFED','text_wrap':True,'valign':'top'})
     dash.set_column('A:A',3); dash.set_column('B:K',13); dash.merge_range('B1:K2','LMSGEN',brand); dash.merge_range('B4:K4',txt(r.get('title')),title); dash.merge_range('B5:K5',txt(r.get('subtitle')),sub); dash.merge_range('B7:K7','PERFORMANCE SNAPSHOT',sec)
     for i,x in enumerate((r.get('summary') or [])[:5]):c=1+i*2; dash.merge_range(8,c,8,c+1,txt(x.get('label')).upper(),ml); dash.merge_range(9,c,9,c+1,txt(x.get('value')),mv)
@@ -223,7 +247,19 @@ def generate_excel(r,out):
         f=alt if ri%2==0 else cell
         for ci,c in enumerate(cols):data.write(ri,ci,txt(row.get(c.get('key'))),f)
     if cols:data.autofilter(4,0,max(4,4+len(rows)),len(cols)-1)
-    data.set_landscape(); data.fit_to_pages(1,0); wb.close()
+    data.set_landscape(); data.fit_to_pages(1,0)
+    slide_headers=['Learner','Email','Slide','Time spent','Milliseconds','Visits','Engagement']; slide_data.merge_range(0,0,0,len(slide_headers)-1,txt(r.get('title')),title); slide_data.merge_range(1,0,1,len(slide_headers)-1,'SLIDE-LEVEL EVIDENCE',sec); slide_data.freeze_panes(4,0)
+    for ci,label in enumerate(slide_headers):slide_data.write(3,ci,label,th)
+    timing_row=4
+    for row in rows:
+        for timing in (row.get('slideTimings') or []):
+            f=alt if timing_row%2==0 else cell; values=[row.get('learner') or row.get('name') or 'Learner',row.get('email') or '',timing.get('label') or f'Slide {timing.get("slideNumber") or "-"}',duration_ms(timing.get('milliseconds'),timing.get('timeSpent')),max(0,num(timing.get('milliseconds')) or 0),max(0,num(timing.get('visits')) or 0),timing.get('status') or 'Not visited']
+            for ci,value in enumerate(values):slide_data.write(timing_row,ci,value,f)
+            timing_row+=1
+    slide_data.set_column(0,0,24); slide_data.set_column(1,1,30); slide_data.set_column(2,2,18); slide_data.set_column(3,3,15); slide_data.set_column(4,5,14); slide_data.set_column(6,6,18)
+    if timing_row>4:slide_data.autofilter(3,0,timing_row-1,len(slide_headers)-1)
+    else:slide_data.merge_range(5,0,5,len(slide_headers)-1,'No slide timing evidence has been captured for this report.',sub)
+    slide_data.set_landscape(); slide_data.fit_to_pages(1,0); wb.close()
 
 def main():
     if len(sys.argv)!=4:return 2

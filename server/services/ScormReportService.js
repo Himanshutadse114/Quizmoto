@@ -16,6 +16,7 @@ const {
 const LearningState = require('./scorm/ScormLearningStateService');
 const { serializeRegistration } = require('./scorm/ScormProgressService');
 const { extractInteractions, answerSummary } = require('./scorm/ScormInteractionReportService');
+const { slideTimingRows } = require('./scorm/ScormPreviewStatsService');
 const { generateScormReportNode } = require('../utils/scormReportGenerator');
 const { generateScormLearnerReport } = require('../utils/scormLearnerReportGenerator');
 
@@ -80,15 +81,17 @@ function registrationState(registration) {
 }
 
 function enrichedRegistration(registration, course) {
+    const state = registrationState(registration);
     const serialized = serializeRegistration(registration, course);
     const interactions = extractInteractions({
-        state: registrationState(registration),
+        state,
         packageRow: course?.package || null
     });
     return {
         ...serialized,
         interactions,
-        answerSummary: answerSummary(interactions)
+        answerSummary: answerSummary(interactions),
+        slideTimings: slideTimingRows(state, course?.package || null)
     };
 }
 
@@ -213,7 +216,8 @@ async function listCourseReports(hostId) {
                     lastLocation: r.lastLocation,
                     lastActivity: r.lastCommitAt || r.updatedAt,
                     interactions: r.interactions || [],
-                    answerSummary: r.answerSummary || answerSummary([])
+                    answerSummary: r.answerSummary || answerSummary([]),
+                    slideTimings: r.slideTimings || []
                 }))
                 .sort((a, b) => {
                     const scoreA = a.score != null ? Number(a.score) : -1;
@@ -312,7 +316,8 @@ async function buildLearnerReport({ hostId, email }) {
                 lastLocation: learner.lastLocation,
                 lastActivity: learner.lastActivity,
                 interactions: learner.interactions || [],
-                answerSummary: learner.answerSummary || answerSummary([])
+                answerSummary: learner.answerSummary || answerSummary([]),
+                slideTimings: learner.slideTimings || []
             });
         });
     });
