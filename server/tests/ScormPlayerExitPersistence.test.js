@@ -73,6 +73,8 @@ describe('SCORM player local-first persistence', () => {
         expect(source).to.include('#bar{position:fixed;z-index:10');
         expect(source).to.include('#status{position:absolute!important;width:1px!important');
         expect(source).to.not.include('height:calc(100% - 42px)');
+        expect(source).to.include('#bar>div{display:flex;align-items:center;gap:6px}');
+        expect(source).to.include('min-width:64px;min-height:36px');
     });
 
     it('uses a light Quizmoto shell for presentation courses without changing other course formats', () => {

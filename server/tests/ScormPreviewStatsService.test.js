@@ -291,4 +291,26 @@ describe('SCORM admin preview stats', () => {
 
         expect(result.currentRunTime).to.equal('00:04:30.00');
     });
+
+    it('lists every presentation slide from saved timing arrays when interaction rows are absent', () => {
+        const packageRow = {
+            analysisJson: JSON.stringify({
+                courseMode: 'presentation',
+                presentation: { slideCount: 3 }
+            })
+        };
+        const state = {
+            suspendData: JSON.stringify({
+                slideTimesMs: [5200, 700, 0],
+                slideVisits: [1, 1, 0]
+            }),
+            values: {}
+        };
+
+        expect(slideTimingRows(state, packageRow)).to.deep.equal([
+            { slideNumber: 1, label: 'Slide 1', timeSpent: null, milliseconds: 5200, visits: 1, status: 'Viewed' },
+            { slideNumber: 2, label: 'Slide 2', timeSpent: null, milliseconds: 700, visits: 1, status: 'Skipped' },
+            { slideNumber: 3, label: 'Slide 3', timeSpent: null, milliseconds: 0, visits: 0, status: 'Not visited' }
+        ]);
+    });
 });

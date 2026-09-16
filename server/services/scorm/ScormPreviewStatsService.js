@@ -1,4 +1,4 @@
-const { serializeRegistration, locationLabel } = require('./ScormProgressService');
+const { serializeRegistration, locationLabel, packageAnalysis } = require('./ScormProgressService');
 const RuntimeStore = require('./ScormRuntimeSnapshotStore');
 const { extractInteractions } = require('./ScormInteractionReportService');
 
@@ -66,21 +66,47 @@ function hasElapsedTime(value) {
 
 function slideTimingRows(state, packageRow) {
     const values = stateMap(state);
-    return extractInteractions({ state: { values }, packageRow })
-        .filter((item) => item.category === 'slide')
-        .map((item) => {
-            const zeroBasedIndex = Math.max(0, Number(item.slideNumber || 1) - 1);
-            const milliseconds = finiteNumber(values[`quizmoto.slide_time.${zeroBasedIndex}.milliseconds`]);
-            const visits = finiteNumber(values[`quizmoto.slide_time.${zeroBasedIndex}.visits`]);
-            return {
-                slideNumber: item.slideNumber || zeroBasedIndex + 1,
-                label: item.question || `Slide ${zeroBasedIndex + 1}`,
-                timeSpent: item.latency || null,
-                milliseconds,
-                visits: visits == null ? null : Math.max(0, Math.round(visits)),
-                status: String(item.selectedAnswer || '').toLowerCase() === 'skipped' ? 'Skipped' : 'Viewed'
-            };
-        });
+    const interactions = extractInteractions({ state: { values }, packageRow })
+        .filter((item) => item.category === 'slide');
+    const bySlide = new Map(interactions.map((item) => [Number(item.slideNumber), item]));
+    const analysis = packageAnalysis(packageRow) || {};
+    let suspended = {};
+    try {
+        suspended = JSON.parse(String(state?.suspendData || values['cmi.suspend_data'] || '{}'));
+    } catch (_) {
+        suspended = {};
+    }
+    const savedTimes = Array.isArray(suspended?.slideTimesMs) ? suspended.slideTimesMs : [];
+    const savedVisits = Array.isArray(suspended?.slideVisits) ? suspended.slideVisits : [];
+    const highestInteractionSlide = interactions.reduce((highest, item) => Math.max(highest, Number(item.slideNumber) || 0), 0);
+    const slideCount = Math.max(
+        0,
+        Number(analysis?.presentation?.slideCount) || 0,
+        savedTimes.length,
+        savedVisits.length,
+        highestInteractionSlide
+    );
+
+    return Array.from({ length: slideCount }, (_, zeroBasedIndex) => {
+        const slideNumber = zeroBasedIndex + 1;
+        const item = bySlide.get(slideNumber) || null;
+        const customMilliseconds = finiteNumber(values[`quizmoto.slide_time.${zeroBasedIndex}.milliseconds`]);
+        const customVisits = finiteNumber(values[`quizmoto.slide_time.${zeroBasedIndex}.visits`]);
+        const milliseconds = customMilliseconds ?? finiteNumber(savedTimes[zeroBasedIndex]) ?? 0;
+        const visits = Math.max(0, Math.round(customVisits ?? finiteNumber(savedVisits[zeroBasedIndex]) ?? 0));
+        const response = String(item?.selectedAnswer || '').toLowerCase();
+        const status = visits <= 0
+            ? 'Not visited'
+            : response === 'skipped' || milliseconds < 1500 ? 'Skipped' : 'Viewed';
+        return {
+            slideNumber,
+            label: item?.question || `Slide ${slideNumber}`,
+            timeSpent: item?.latency || null,
+            milliseconds,
+            visits,
+            status
+        };
+    });
 }
 
 function liveInteractionScore(state, course) {

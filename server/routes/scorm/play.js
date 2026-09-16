@@ -105,13 +105,14 @@ router.get('/:regId', async (req, res) => {
 <title>${escapeHtml(courseTitle)}</title>
 <style>
 html,body{margin:0;height:100%;overflow:hidden;background:${shellTheme.background};color:${shellTheme.text};font-family:system-ui,sans-serif}
-#bar{position:fixed;z-index:10;top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));display:flex;align-items:center;gap:6px;padding:5px;border:1px solid ${shellTheme.barBorder};border-radius:12px;background:${shellTheme.barBackground};box-shadow:0 8px 28px ${shellTheme.barShadow};backdrop-filter:blur(10px)}
-#bar button{min-height:32px;background:${shellTheme.buttonBackground};border:1px solid ${shellTheme.buttonBorder};color:${shellTheme.buttonText};padding:6px 11px;border-radius:8px;font-weight:750;cursor:pointer;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+#bar{position:fixed;z-index:10;top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));display:flex;align-items:center;padding:6px;border:1px solid ${shellTheme.barBorder};border-radius:14px;background:${shellTheme.barBackground};box-shadow:0 8px 28px ${shellTheme.barShadow};backdrop-filter:blur(10px)}
+#bar>div{display:flex;align-items:center;gap:6px}
+#bar button{min-width:64px;min-height:36px;background:${shellTheme.buttonBackground};border:1px solid ${shellTheme.buttonBorder};color:${shellTheme.buttonText};padding:7px 14px;border-radius:9px;font-weight:700;cursor:pointer;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
 #bar button:hover,#bar button:focus-visible{background:${shellTheme.buttonHover};outline:none}
 #bar button:focus-visible{box-shadow:0 0 0 2px #56d7cf}
 #frame{border:0;width:100%;height:100%;display:block;background:${shellTheme.frameBackground}}
 #status{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
-@media(max-width:520px){#bar{${shellTheme.mobileBar};right:max(6px,env(safe-area-inset-right));padding:4px}#bar button{min-height:30px;padding:5px 9px;font-size:9px}}
+@media(max-width:520px){#bar{${shellTheme.mobileBar};right:max(6px,env(safe-area-inset-right));padding:5px}#bar>div{gap:5px}#bar button{min-width:58px;min-height:32px;padding:6px 11px;font-size:9px}}
 </style>
 <script>
 (function(){
