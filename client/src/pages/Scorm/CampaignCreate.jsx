@@ -37,6 +37,8 @@ export default function CampaignCreate() {
   const [dueAt, setDueAt] = useState('');
   const [required, setRequired] = useState(true);
   const [authMode, setAuthMode] = useState('email_code');
+  const [mailBatchCount, setMailBatchCount] = useState(5);
+  const [mailBatchDelaySeconds, setMailBatchDelaySeconds] = useState(60);
 
   useEffect(() => {
     if (!token) return;
@@ -54,6 +56,8 @@ export default function CampaignCreate() {
   }, [token]);
 
   const learnerCount = learnerEntryMode === 'manual' ? manualLearners.length : Number(csvPreview?.validLearners || 0);
+  const effectiveBatchCount = learnerCount ? Math.min(mailBatchCount, learnerCount) : mailBatchCount;
+  const estimatedBatchSize = learnerCount ? Math.ceil(learnerCount / effectiveBatchCount) : 0;
   const toggleCourse = (id) => setSelectedCourses((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
 
   const readCsv = async (file) => {
@@ -101,7 +105,7 @@ export default function CampaignCreate() {
     setBusy(true);
     try {
       const learnerCsvText = learnerEntryMode === 'manual' ? manualLearnersToCsv(manualLearners) : csvText;
-      const response = await axios.post(apiUrl('/api/scorm/campaigns'), { name: name.trim(), csvText: learnerCsvText, courseIds: selectedCourses, dueAt: dueAt || null, required, authMode }, { headers });
+      const response = await axios.post(apiUrl('/api/scorm/campaigns'), { name: name.trim(), csvText: learnerCsvText, courseIds: selectedCourses, dueAt: dueAt || null, required, authMode, mailBatchCount, mailBatchDelaySeconds }, { headers });
       const campaign = response.data?.campaign;
       navigate('/scorm/assignments', { replace: true, state: { campaignMessage: `Campaign “${campaign?.name || name.trim()}” created as a draft.` } });
     } catch (err) {
@@ -145,6 +149,20 @@ export default function CampaignCreate() {
               <div><div className="scorm-micro text-[9px] uppercase font-semibold">Learning setup</div><h2 className="text-lg font-semibold mt-1">What should learners receive?</h2></div>
               <div><div className="flex items-center justify-between gap-3 mb-3"><div><div className="font-semibold text-sm">Published courses</div><div className="text-[11px] mt-1" style={{ color: 'var(--scorm-muted)' }}>{selectedCourses.length} selected</div></div><BookOpen size={17} /></div><div className="campaign-course-list rounded-2xl border overflow-hidden max-h-[340px] overflow-y-auto divide-y" style={{ borderColor: 'var(--scorm-line)' }}>{courses.length ? courses.map((course) => <label key={course.id} className="campaign-course-row p-3.5 md:p-4 flex items-center gap-3 cursor-pointer"><input type="checkbox" checked={selectedCourses.includes(course.id)} onChange={() => toggleCourse(course.id)} /><span className="w-9 h-9 rounded-xl border grid place-items-center"><BookOpen size={15} /></span><span className="min-w-0"><span className="block text-sm font-semibold truncate">{course.title}</span><span className="block text-[10px] uppercase mt-0.5" style={{ color: 'var(--scorm-accent-strong)' }}>Published</span></span></label>) : <div className="p-8 text-center text-sm" style={{ color: 'var(--scorm-muted)' }}>Create and publish a course first.</div>}</div></div>
               <div><div className="scorm-micro text-[9px] uppercase font-semibold mb-2">Learner sign-in</div><div className="grid gap-2">{authCards.map((option) => { const selected = authMode === option.id; return <button key={option.id} type="button" disabled={!option.enabled} onClick={() => option.enabled && setAuthMode(option.id)} className="w-full rounded-xl border px-3.5 py-3 text-left disabled:opacity-45" style={{ borderColor: selected ? 'var(--scorm-accent-strong)' : 'var(--scorm-line)', background: selected ? 'rgba(79,201,191,.08)' : 'var(--scorm-surface-soft)' }}><span className="flex gap-3"><span className="w-8 h-8 rounded-lg border grid place-items-center shrink-0">{option.icon}</span><span className="min-w-0 flex-1"><span className="flex justify-between gap-3"><span className="text-xs font-semibold">{option.title}</span><span className="text-[9px] uppercase font-semibold" style={{ color: selected ? 'var(--scorm-accent-strong)' : 'var(--scorm-muted)' }}>{selected ? 'Selected' : option.enabled ? 'Available' : 'Not configured'}</span></span><span className="block text-[10px] leading-relaxed mt-1" style={{ color: 'var(--scorm-muted)' }}>{option.description}</span></span></span></button>; })}</div></div>
+              <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
+                <div className="flex items-start gap-3">
+                  <span className="w-9 h-9 rounded-xl border grid place-items-center shrink-0"><Mail size={15} /></span>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-sm">Email delivery batches</div>
+                    <div className="text-[11px] leading-relaxed mt-1" style={{ color: 'var(--scorm-muted)' }}>Spread invitation emails over time to protect sender reputation and reduce quarantine risk.</div>
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3 mt-4">
+                  <label><span className="scorm-micro block text-[8px] uppercase mb-1.5">Number of batches</span><input type="number" min="1" max="50" value={mailBatchCount} onChange={(event) => setMailBatchCount(Math.min(50, Math.max(1, Number(event.target.value) || 1)))} className="w-full px-3 py-2.5 text-sm" /></label>
+                  <label><span className="scorm-micro block text-[8px] uppercase mb-1.5">Wait between batches</span><select value={mailBatchDelaySeconds} onChange={(event) => setMailBatchDelaySeconds(Number(event.target.value))} className="w-full px-3 py-2.5 text-sm"><option value={30}>30 seconds</option><option value={60}>1 minute</option><option value={120}>2 minutes</option><option value={300}>5 minutes</option><option value={600}>10 minutes</option></select></label>
+                </div>
+                <div className="mt-3 text-[10px] leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>{learnerCount ? `${learnerCount} invitation${learnerCount === 1 ? '' : 's'} will be divided into ${effectiveBatchCount} batch${effectiveBatchCount === 1 ? '' : 'es'} of up to ${estimatedBatchSize}. Emails inside each batch are paced one at a time.` : 'Add learners to preview the delivery plan.'}</div>
+              </div>
               <div className="campaign-soft-card rounded-xl border p-4 text-[11px] leading-relaxed flex gap-2" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)', color: 'var(--scorm-muted)' }}><ShieldCheck size={14} className="shrink-0 mt-0.5" /><span>{authMode === 'email_code' ? 'Learners use their assigned email plus a unique campaign access code.' : `${authCards.find((item) => item.id === authMode)?.title || 'SSO'} will be required for learner access.`}</span></div>
             </section>
           </div>

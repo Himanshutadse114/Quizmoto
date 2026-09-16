@@ -1,5 +1,6 @@
 const logger = require('../../utils/logger');
 const MailService = require('./MailService');
+const { sendInBatches } = require('./MailBatchDeliveryService');
 const {
     normalizeStoredAuthMode,
     campaignAccessCode
@@ -34,13 +35,6 @@ function runLater(options, task) {
     }
 }
 
-async function sendInBatches(items, sender, batchSize = 10) {
-    for (let i = 0; i < items.length; i += batchSize) {
-        const batch = items.slice(i, i + batchSize);
-        await Promise.all(batch.map((item) => sender(item)));
-    }
-}
-
 function memberNotification(member) {
     const email = String(member.email || '').trim().toLowerCase();
     const superAdminEmail = String(process.env.SCORM_SUPER_ADMIN_EMAIL || 'tadsehimanshu@gmail.com').trim().toLowerCase();
@@ -69,7 +63,7 @@ function register(models = {}) {
     registered = true;
 
     ScormRegistration.addHook('afterCreate', 'mail-course-assignment', (registration, options) => {
-        if (registration.isPreview || registration.campaignId || !registration.learnerEmail) return;
+        if (options?.skipAssignmentMail || registration.isPreview || registration.campaignId || !registration.learnerEmail) return;
         runLater(options, async () => {
             const course = await ScormCourse.findByPk(registration.courseId);
             if (!course || course.status !== 'published') return;
@@ -104,7 +98,7 @@ function register(models = {}) {
             const learners = await ScormCampaignLearner.findAll({ where: { campaignId: liveCampaign.id } });
             const authMode = normalizeStoredAuthMode(liveCampaign.authMode);
             const portalUrl = campaignPublicUrl(liveCampaign.id);
-            await sendInBatches(learners, async (learner) => MailService.safeSend({
+            const delivery = await sendInBatches(learners, async (learner) => MailService.safeSend({
                 to: learner.email,
                 template: 'campaign_invitation',
                 data: {
@@ -118,7 +112,23 @@ function register(models = {}) {
                     // to an old frontend/database.
                     path: portalUrl
                 }
-            }));
+            }), {
+                batchCount: liveCampaign.mailBatchCount,
+                delaySeconds: liveCampaign.mailBatchDelaySeconds
+            }, {
+                context: `campaign:${liveCampaign.id}:invitation`,
+                shouldContinue: async () => {
+                    const current = await ScormCampaign.findByPk(liveCampaign.id, { attributes: ['status'] });
+                    return String(current?.status || '').toLowerCase() === 'active';
+                }
+            });
+            logger.info('campaign_invitation_delivery_complete', {
+                module: 'mail',
+                campaignId: liveCampaign.id,
+                recipients: learners.length,
+                batches: delivery.plan.batchCount,
+                sent: delivery.results.filter((result) => result?.sent).length
+            });
         });
     });
 

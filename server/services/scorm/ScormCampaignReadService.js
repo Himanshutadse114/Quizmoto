@@ -10,6 +10,7 @@ const {
     normalizeStoredAuthMode,
     authModeLabel
 } = require('./ScormCampaignAuthPolicy');
+const { deliveryPlan } = require('../mail/MailBatchDeliveryService');
 
 const ACTIVE_REGISTRATION_STATUSES = { [Op.notIn]: ['revoked', 'superseded'] };
 
@@ -23,7 +24,7 @@ function fail(message, code, status = 400) {
 async function findCampaign({ campaignId, hostId, workspaceId }) {
     const campaign = await ScormCampaign.findOne({
         where: { id: campaignId, hostId, workspaceId },
-        attributes: ['id', 'name', 'status', 'authMode', 'dueAt', 'required', 'createdAt', 'startedAt'],
+        attributes: ['id', 'name', 'status', 'authMode', 'dueAt', 'required', 'mailBatchCount', 'mailBatchDelaySeconds', 'createdAt', 'startedAt'],
         raw: true
     });
     if (!campaign) throw fail('Campaign not found.', 'SCORM_CAMPAIGN_NOT_FOUND', 404);
@@ -81,6 +82,10 @@ function baseCampaign(campaign, learners, courses, progressRows) {
         authModeLabel: authModeLabel(mode),
         dueAt: campaign.dueAt || null,
         required: campaign.required !== false,
+        mailDelivery: deliveryPlan(learners.length, {
+            batchCount: campaign.mailBatchCount,
+            delaySeconds: campaign.mailBatchDelaySeconds
+        }),
         createdAt: campaign.createdAt,
         startedAt: campaign.startedAt || null,
         learnerCount: learners.length,

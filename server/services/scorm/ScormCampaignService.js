@@ -26,6 +26,7 @@ const {
     campaignAccessCode,
     verifyCampaignAccessCode
 } = require('./ScormCampaignAuthPolicy');
+const { deliveryPlan } = require('../mail/MailBatchDeliveryService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const MAX_CAMPAIGN_COMBINATIONS = 5000;
@@ -229,6 +230,10 @@ async function campaignSummary(campaign) {
         authModeLabel: authModeLabel(authMode),
         dueAt: campaign.dueAt || null,
         required: campaign.required !== false,
+        mailDelivery: deliveryPlan(learnerCount, {
+            batchCount: campaign.mailBatchCount,
+            delaySeconds: campaign.mailBatchDelaySeconds
+        }),
         createdAt: campaign.createdAt,
         startedAt: campaign.startedAt || null,
         learnerCount,
@@ -266,7 +271,7 @@ async function listCampaigns({ hostId, workspaceId }) {
     };
 }
 
-async function createCampaign({ workspaceId, hostId, actorUserId, name, csvText, courseIds, dueAt, required = true, authMode }) {
+async function createCampaign({ workspaceId, hostId, actorUserId, name, csvText, courseIds, dueAt, required = true, authMode, mailBatchCount, mailBatchDelaySeconds }) {
     const cleanName = String(name || '').trim().slice(0, 180);
     if (cleanName.length < 2) throw fail('Enter a campaign name.', 'SCORM_CAMPAIGN_NAME_REQUIRED', 400);
     if (!workspaceId) throw fail('Workspace is required.', 'SCORM_WORKSPACE_REQUIRED', 400);
@@ -276,6 +281,10 @@ async function createCampaign({ workspaceId, hostId, actorUserId, name, csvText,
     const { config } = await getWorkspaceAndConfig(workspaceId);
     const selectedAuthMode = assertAuthModeAvailable(authMode, config);
     const parsed = parseCampaignCsv(csvText);
+    const mailDelivery = deliveryPlan(parsed.learners.length, {
+        batchCount: mailBatchCount,
+        delaySeconds: mailBatchDelaySeconds
+    });
     const selectedCourseIds = [...new Set((Array.isArray(courseIds) ? courseIds : []).map(String).filter(Boolean))];
     if (!selectedCourseIds.length) throw fail('Select at least one published course.', 'SCORM_CAMPAIGN_COURSE_REQUIRED', 400);
     if (parsed.learners.length * selectedCourseIds.length > MAX_CAMPAIGN_COMBINATIONS) {
@@ -298,6 +307,8 @@ async function createCampaign({ workspaceId, hostId, actorUserId, name, csvText,
             authMode: selectedAuthMode,
             dueAt: parsedDueAt,
             required: required !== false,
+            mailBatchCount: mailDelivery.batchCount,
+            mailBatchDelaySeconds: mailDelivery.delaySeconds,
             createdByUserId: actorUserId || hostId
         }, { transaction });
 

@@ -184,6 +184,8 @@ function campaignColumns() {
         authMode: { type: DataTypes.STRING(32), allowNull: false, defaultValue: 'sso_any' },
         dueAt: { type: DataTypes.DATE, allowNull: true },
         required: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+        mailBatchCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 5 },
+        mailBatchDelaySeconds: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 60 },
         createdByUserId: { type: DataTypes.INTEGER, allowNull: true },
         startedAt: { type: DataTypes.DATE, allowNull: true },
         endedAt: { type: DataTypes.DATE, allowNull: true },

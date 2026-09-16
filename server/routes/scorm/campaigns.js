@@ -87,7 +87,9 @@ router.post('/', auth, async (req, res) => {
             courseIds: req.body?.courseIds,
             dueAt: req.body?.dueAt,
             required: req.body?.required !== false,
-            authMode: req.body?.authMode
+            authMode: req.body?.authMode,
+            mailBatchCount: req.body?.mailBatchCount,
+            mailBatchDelaySeconds: req.body?.mailBatchDelaySeconds
         });
         res.status(201).json({ ok: true, ...result });
     } catch (err) {

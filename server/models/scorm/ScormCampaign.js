@@ -38,6 +38,16 @@ const ScormCampaign = sequelize.define('ScormCampaign', {
         allowNull: false,
         defaultValue: true
     },
+    mailBatchCount: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 5
+    },
+    mailBatchDelaySeconds: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 60
+    },
     createdByUserId: {
         type: DataTypes.INTEGER,
         allowNull: true

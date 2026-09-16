@@ -11,6 +11,8 @@ const {
 } = require('../../models/scorm');
 const { getAccessRole } = require('../../services/scorm/ScormAccessService');
 const { getEntitlement } = require('../../services/scorm/ScormEntitlementService');
+const MailService = require('../../services/mail/MailService');
+const { deliveryPlan, runInBackground, sendInBatches } = require('../../services/mail/MailBatchDeliveryService');
 
 const MAX_ASSIGNMENT_COMBINATIONS = 5000;
 const INACTIVE_ASSIGNMENT_STATUSES = ['revoked', 'superseded'];
@@ -185,6 +187,7 @@ router.post('/bulk', auth, async (req, res) => {
         let created = 0;
         let updated = 0;
         let superseded = 0;
+        const assignmentMail = [];
         await sequelize.transaction(async (transaction) => {
             for (const learner of learners) {
                 const email = normalizeEmail(learner.email);
@@ -233,7 +236,13 @@ router.post('/bulk', auth, async (req, res) => {
                             dueAt,
                             assignmentSource: 'admin',
                             required
-                        }, { transaction });
+                        }, { transaction, skipAssignmentMail: true });
+                        assignmentMail.push({
+                            learnerEmail: email,
+                            learnerName: learner.learnerName || 'Learner',
+                            courseTitle: course.title,
+                            dueAt
+                        });
                         created += 1;
                     } else {
                         registration.learnerEmail = email;
@@ -249,6 +258,28 @@ router.post('/bulk', auth, async (req, res) => {
             }
         });
 
+        const mailDelivery = deliveryPlan(assignmentMail.length, {
+            batchCount: req.body?.mailBatchCount,
+            delaySeconds: req.body?.mailBatchDelaySeconds
+        });
+        if (assignmentMail.length) {
+            runInBackground(() => sendInBatches(
+                assignmentMail,
+                (assignment) => MailService.safeSend({
+                    to: assignment.learnerEmail,
+                    template: 'course_assignment',
+                    data: {
+                        learnerName: assignment.learnerName,
+                        courseTitle: assignment.courseTitle,
+                        dueAt: assignment.dueAt,
+                        path: '/learn'
+                    }
+                }),
+                mailDelivery,
+                { context: `direct-assignments:${req.userId}` }
+            ), { hostId: req.userId, delivery: 'direct-assignments' });
+        }
+
         res.status(created ? 201 : 200).json({
             ok: true,
             scope: 'direct_learning',
@@ -258,6 +289,8 @@ router.post('/bulk', auth, async (req, res) => {
             learners: learners.length,
             courses: courses.length,
             combinations: learners.length * courses.length,
+            invitationQueued: assignmentMail.length,
+            mailDelivery,
             learnerPortalPath: '/learn'
         });
     } catch (err) {

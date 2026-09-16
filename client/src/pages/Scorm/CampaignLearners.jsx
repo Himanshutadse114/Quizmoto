@@ -67,8 +67,8 @@ export default function CampaignLearners() {
       const response = await axios.post(apiUrl(`/api/scorm/campaigns/${campaignId}/learners`), { learners: [{ email: cleanEmail, learnerName: name.trim() }] }, { headers });
       setDetail(response.data?.campaign || null);
       setName(''); setEmail('');
-      const sent = Number(response.data?.invitationSent || 0);
-      setNotice({ type: 'success', text: response.data?.added ? `Learner added.${sent ? ' Invitation email sent.' : ''}` : 'This learner is already in the campaign.' });
+      const queued = Number(response.data?.invitationQueued || 0);
+      setNotice({ type: 'success', text: response.data?.added ? `Learner added.${queued ? ' Invitation email queued.' : ''}` : 'This learner is already in the campaign.' });
     } catch (error) {
       setNotice({ type: 'error', text: error.response?.data?.message || 'Unable to add this learner.' });
     } finally { setBusy(''); }
@@ -94,7 +94,8 @@ export default function CampaignLearners() {
     try {
       const response = await axios.post(apiUrl(`/api/scorm/campaigns/${campaignId}/reminders`), { emails }, { headers });
       const result = response.data || {};
-      setNotice({ type: result.failed ? 'error' : 'success', text: `Reminder run: ${result.sent || 0} sent, ${result.skippedCompleted || 0} completed skipped${result.failed ? `, ${result.failed} failed.` : '.'}` });
+      const batches = Number(result.mailDelivery?.batchCount || 0);
+      setNotice({ type: 'success', text: `${result.queued || 0} reminder${Number(result.queued || 0) === 1 ? '' : 's'} queued${batches ? ` in ${batches} controlled batch${batches === 1 ? '' : 'es'}` : ''}; ${result.skippedCompleted || 0} completed skipped.` });
       setSelected([]);
     } catch (error) {
       setNotice({ type: 'error', text: error.response?.data?.message || 'Unable to send campaign reminders.' });
@@ -132,7 +133,7 @@ export default function CampaignLearners() {
                 <label className="block"><span className="scorm-micro block text-[8px] uppercase mb-1.5">Email address</span><input value={email} onChange={(event) => setEmail(event.target.value)} className="w-full px-3 py-2.5 text-sm" placeholder="learner@company.com" type="email" /></label>
                 <button type="submit" disabled={busy === 'add'} className="scorm-button-primary h-10 px-4 inline-flex items-center gap-2 text-xs font-semibold disabled:opacity-50"><UserPlus size={13} /> {busy === 'add' ? 'Adding…' : 'Add learner'}</button>
               </form>
-              <div className="mt-4 rounded-xl border p-3.5 text-[11px] leading-relaxed" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)', color: 'var(--scorm-muted)' }}>The learner receives every course already assigned to this campaign and the campaign invitation email is sent automatically.</div>
+              <div className="mt-4 rounded-xl border p-3.5 text-[11px] leading-relaxed" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)', color: 'var(--scorm-muted)' }}>The learner receives every course already assigned to this campaign. Invitations and reminders use this campaign’s paced email delivery settings.</div>
               <div className="mt-4 grid grid-cols-2 gap-2"><div className="rounded-xl border p-3" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}><div className="scorm-micro text-[8px] uppercase">Learners</div><div className="text-xl font-semibold mt-1">{learners.length}</div></div><div className="rounded-xl border p-3" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}><div className="scorm-micro text-[8px] uppercase">Incomplete</div><div className="text-xl font-semibold mt-1">{incompleteEmails.length}</div></div></div>
             </section>
 

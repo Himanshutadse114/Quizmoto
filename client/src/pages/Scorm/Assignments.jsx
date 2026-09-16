@@ -105,17 +105,19 @@ export default function Assignments() {
 
   const startCampaign = async (campaign) => {
     const method = authLabel(campaign.authMode);
+    const delivery = campaign.mailDelivery || {};
+    const mailPlan = `${delivery.batchCount || 1} email batch${Number(delivery.batchCount || 1) === 1 ? '' : 'es'}${Number(delivery.batchCount || 1) > 1 ? ` with ${delivery.delaySeconds || 60} seconds between batches` : ''}`;
     const extra = campaign.authMode === 'email_code'
       ? 'Learners will use their assigned email and unique access code.'
       : `Learners will be required to use ${method}.`;
-    if (!window.confirm(`Start “${campaign.name}”? This creates a tracked course instance for every learner-course combination. ${extra}`)) return;
+    if (!window.confirm(`Start “${campaign.name}”? This creates a tracked course instance for every learner-course combination and queues invitations in ${mailPlan}. ${extra}`)) return;
     setActionBusy(campaign.id);
     setError('');
     setMessage('');
     try {
       const response = await axios.post(apiUrl(`/api/scorm/campaigns/${campaign.id}/start`), {}, { headers });
       const started = response.data?.campaign;
-      setMessage(`Campaign “${started?.name || campaign.name}” is active and learner tracking has started.`);
+      setMessage(`Campaign “${started?.name || campaign.name}” is active. Invitations are queued in ${started?.mailDelivery?.batchCount || delivery.batchCount || 1} controlled email batch${Number(started?.mailDelivery?.batchCount || delivery.batchCount || 1) === 1 ? '' : 'es'}.`);
       await load({ showLoader: false });
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to start campaign.');
@@ -253,7 +255,7 @@ export default function Assignments() {
                         <Link to={`/scorm/campaigns/${campaign.id}`} className="text-sm font-semibold truncate hover:underline">{campaign.name}</Link>
                         <span className="px-2 py-1 rounded-full text-[8px] uppercase tracking-[.08em] font-bold border shrink-0" style={statusStyle(campaign.status)}>{statusLabel(campaign.status)}</span>
                       </div>
-                      <div className="text-[11px] mt-1.5 truncate" style={{ color: 'var(--scorm-muted)' }}>Created {formatDate(campaign.createdAt)} · {formatDate(campaign.dueAt)} · {campaign.authModeLabel || authLabel(campaign.authMode)}</div>
+                      <div className="text-[11px] mt-1.5 truncate" style={{ color: 'var(--scorm-muted)' }}>Created {formatDate(campaign.createdAt)} · {formatDate(campaign.dueAt)} · {campaign.authModeLabel || authLabel(campaign.authMode)} · {campaign.mailDelivery?.batchCount || 1} mail batch{Number(campaign.mailDelivery?.batchCount || 1) === 1 ? '' : 'es'}</div>
                     </div>
                     <div><div className="scorm-micro text-[8px] uppercase">Learners</div><div className="text-sm font-semibold mt-1 flex items-center gap-1.5"><Users size={13} />{campaign.learnerCount}</div></div>
                     <div><div className="scorm-micro text-[8px] uppercase">Courses</div><div className="text-sm font-semibold mt-1 flex items-center gap-1.5"><BookOpen size={13} />{campaign.courseCount}</div></div>

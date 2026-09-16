@@ -16,6 +16,7 @@ const {
     campaignAccessCode
 } = require('./ScormCampaignAuthPolicy');
 const MailService = require('../mail/MailService');
+const { deliveryPlan, runInBackground, sendInBatches } = require('../mail/MailBatchDeliveryService');
 const { getCampaignManageDetail } = require('./ScormCampaignReadService');
 
 const MAX_CAMPAIGN_COMBINATIONS = 5000;
@@ -205,17 +206,28 @@ async function addLearners({ campaignId, hostId, workspaceId, actorUserId, learn
         await ScormRegistration.bulkCreate(registrations, { transaction });
     });
 
-    let invitationSent = 0;
-    for (let index = 0; index < additions.length; index += 10) {
-        const batch = additions.slice(index, index + 10);
-        const results = await Promise.all(batch.map((learner) => sendCampaignMail(campaign, learner, 'campaign_invitation')));
-        invitationSent += results.filter((result) => result?.sent).length;
-    }
+    const mailDelivery = deliveryPlan(additions.length, {
+        batchCount: campaign.mailBatchCount,
+        delaySeconds: campaign.mailBatchDelaySeconds
+    });
+    runInBackground(() => sendInBatches(
+        additions,
+        (learner) => sendCampaignMail(campaign, learner, 'campaign_invitation'),
+        mailDelivery,
+        {
+            context: `campaign:${campaign.id}:added-learners`,
+            shouldContinue: async () => Boolean(await ScormCampaign.findOne({
+                where: { id: campaign.id, status: 'active' },
+                attributes: ['id']
+            }))
+        }
+    ), { campaignId: campaign.id, delivery: 'added-learners' });
 
     return {
         added: additions.length,
         existing: requested.length - additions.length,
-        invitationSent,
+        invitationQueued: additions.length,
+        mailDelivery,
         campaign: await getCampaignManageDetail({ campaignId, hostId, workspaceId })
     };
 }
@@ -289,30 +301,30 @@ async function sendReminders({ campaignId, hostId, workspaceId, emails = [] }) {
     });
     const skippedCompleted = learners.length - targets.length;
 
-    let sent = 0;
-    let failed = 0;
-    const failures = [];
-    for (let index = 0; index < targets.length; index += 10) {
-        const batch = targets.slice(index, index + 10);
-        const results = await Promise.all(batch.map(async (learner) => ({
-            learner,
-            result: await sendCampaignMail(campaign, learner, 'campaign_reminder')
-        })));
-        for (const item of results) {
-            if (item.result?.sent) sent += 1;
-            else {
-                failed += 1;
-                failures.push({ email: item.learner.email, reason: item.result?.reason || 'MAIL_SEND_FAILED' });
+    const mailDelivery = deliveryPlan(targets.length, {
+        batchCount: campaign.mailBatchCount,
+        delaySeconds: campaign.mailBatchDelaySeconds
+    });
+    if (targets.length) {
+        runInBackground(() => sendInBatches(
+            targets,
+            (learner) => sendCampaignMail(campaign, learner, 'campaign_reminder'),
+            mailDelivery,
+            {
+                context: `campaign:${campaign.id}:reminders`,
+                shouldContinue: async () => Boolean(await ScormCampaign.findOne({
+                    where: { id: campaign.id, status: 'active' },
+                    attributes: ['id']
+                }))
             }
-        }
+        ), { campaignId: campaign.id, delivery: 'reminders' });
     }
 
     return {
         targeted: targets.length,
-        sent,
-        failed,
+        queued: targets.length,
         skippedCompleted,
-        failures: failures.slice(0, 50)
+        mailDelivery
     };
 }
 
