@@ -14,7 +14,7 @@ const section = `
       <div class="lmsgen-pain-kicker">THE WORK BEHIND TRAINING SHOULD BE EASIER</div>
       <h2 id="lmsgen-pain-title">Less admin. Fewer tools. Clearer learning outcomes.</h2>
       <p>Learning teams are expected to create more content, launch it faster and prove it worked. LMSGEN brings authoring, SCORM delivery, campaigns, engagement and reporting into one connected workflow.</p>
-      <a href="/solutions" class="lmsgen-pain-cta">See how LMSGEN works <span aria-hidden="true">→</span></a>
+      <a href="/contact" class="lmsgen-pain-cta">See how LMSGEN works <span aria-hidden="true">→</span></a>
     </div>
 
     <div class="lmsgen-pain-grid-v2">

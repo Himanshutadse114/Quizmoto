@@ -36,6 +36,29 @@ function check(ok, message) {
   if (!ok) failures.push(message);
 }
 
+function attribute(tag, name) {
+  return (tag.match(new RegExp(`\\b${name}=["']([^"']*)["']`, 'i')) || [])[1] || '';
+}
+
+function isConversionCta(tag) {
+  const className = attribute(tag, 'class');
+  const href = attribute(tag, 'href');
+  const control = attribute(tag, 'cd');
+  if (/\bfs-cc(?:-|\b)/i.test(className) || /\bsubmit\b/i.test(className) || /^\/category\//i.test(href)) return false;
+  return /\bbtn-primary\b/i.test(className)
+    || /(?:^|[\s_-])cta(?:[\s_-]|$)/i.test(className)
+    || /book-a-demo/i.test(control);
+}
+
+function auditCtaRoutes(html, label) {
+  const ctas = (html.match(/<a\b[^>]*>/gi) || []).filter(isConversionCta);
+  check(ctas.length > 0, `${label} has no detectable conversion CTA.`);
+  for (const tag of ctas) {
+    check(attribute(tag, 'href') === '/contact', `${label} contains a conversion CTA that does not route to /contact.`);
+    check(attribute(tag, 'data-lmsgen-cta-route') === 'contact', `${label} contains a conversion CTA without the contact-route marker.`);
+  }
+}
+
 async function read(filePath) {
   return fs.readFile(filePath, 'utf8');
 }
@@ -54,6 +77,7 @@ for (const page of pages) {
     check(!html.includes('/landing/js/nav-menu.js'), `${label} ${kind} copy still loads legacy nav-menu.js.`);
     check(!html.includes('id="lmsgen-anti-fouc"'), `${label} ${kind} copy still contains the global anti-FOUC style.`);
     check(html.includes('/branding/lmsgen-logo-light.png'), `${label} ${kind} copy does not use the shared light-background LMSGEN logo.`);
+    auditCtaRoutes(html, `${label} ${kind} copy`);
   }
 
   if (page.homeCss) {

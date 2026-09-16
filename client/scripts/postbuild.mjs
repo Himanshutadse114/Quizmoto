@@ -6,6 +6,7 @@ const steps = [
   './remove-home-metrics.mjs',
   './marketing-audit-polish.mjs',
   './stabilize-marketing-ui.mjs',
+  './route-marketing-ctas.mjs',
   './prepare-static-entrypoints.mjs',
   './marketing-seo-guard.mjs',
   './audit-marketing-ui.mjs',

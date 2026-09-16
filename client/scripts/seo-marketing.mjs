@@ -96,7 +96,7 @@ const PDF_COURSE_SECTION = `
       </div>
       <div class="lmsgen-pdf-course-summary">
         <p>Transform approved decks into polished, trackable learning with built-in assessment and reporting—without compromising the design.</p>
-        <a href="/scorm/author">Turn my PDF into a course <span aria-hidden="true">→</span></a>
+        <a class="lmsgen-conversion-cta" href="/contact">Turn my PDF into a course <span aria-hidden="true">→</span></a>
       </div>
     </div>
     <ul class="lmsgen-pdf-course-benefits" aria-label="Benefits of a trackable presentation course">
