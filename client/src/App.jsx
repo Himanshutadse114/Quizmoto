@@ -12,6 +12,7 @@ import './pages/Host/quizmotoCreateWorkbench.css';
 import './pages/Host/quizmotoElectricArena.css';
 import './pages/Host/quizmotoArenaPolish.css';
 import './pages/Host/quizmotoClassicBoundary.css';
+import './pages/Host/quizmotoTealTheme.css';
 import './pages/Scorm/scormVisualStudioFixes.css';
 import './pages/Scorm/scormReferenceTheme.css';
 import './pages/Scorm/scormReferencePolish.css';

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSocket } from '../../context/SocketContext';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 
 const Join = () => {
     const [searchParams] = useSearchParams();
@@ -29,40 +29,54 @@ const Join = () => {
     const [resuming, setResuming] = useState(false);
 
     useEffect(() => {
-        try {
-            const raw = localStorage.getItem('player_info');
-            if (!raw) return;
-            const info = JSON.parse(raw);
-            if (info && info.pin && info.nickname && info.token) {
-                setResumeInfo(info);
-                if (!pin) setPin(String(info.pin));
-                if (!nickname) setNickname(info.nickname);
-                if (info.avatar) setSelectedAvatar(info.avatar);
+        const restoreTimer = window.setTimeout(() => {
+            try {
+                const raw = localStorage.getItem('player_info');
+                if (!raw) return;
+                const info = JSON.parse(raw);
+                if (info && info.pin && info.nickname && info.token) {
+                    setResumeInfo(info);
+                    setPin(currentPin => currentPin || String(info.pin));
+                    setNickname(currentNickname => currentNickname || info.nickname);
+                    if (info.avatar) setSelectedAvatar(info.avatar);
+                }
+            } catch {
+                // Ignore malformed or unavailable local resume data.
             }
-        } catch (_) {}
+        }, 0);
+
+        return () => window.clearTimeout(restoreTimer);
     }, []);
 
     useEffect(() => {
-        const storedProfile = localStorage.getItem('playerProfile');
-        if (storedProfile) {
-            try {
-                const profile = JSON.parse(storedProfile);
-                setNickname(profile.username);
-                setIsLoggedIn(true);
-                if (profile.avatar && profile.avatar !== 'default_avatar.png') {
-                    setSelectedAvatar(profile.avatar);
+        const profileTimer = window.setTimeout(() => {
+            const storedProfile = localStorage.getItem('playerProfile');
+            if (storedProfile) {
+                try {
+                    const profile = JSON.parse(storedProfile);
+                    setNickname(profile.username);
+                    setIsLoggedIn(true);
+                    if (profile.avatar && profile.avatar !== 'default_avatar.png') {
+                        setSelectedAvatar(profile.avatar);
+                    }
+                } catch {
+                    console.error('Error parsing profile');
                 }
-            } catch (e) {
-                console.error('Error parsing profile');
             }
-        }
+        }, 0);
+
+        return () => window.clearTimeout(profileTimer);
     }, []);
 
     useEffect(() => {
         if (!socket) return;
 
         const onJoined = (data) => {
-            try { sessionStorage.removeItem('pending_question_started'); } catch (_) {}
+            try {
+                sessionStorage.removeItem('pending_question_started');
+            } catch {
+                // Session storage can be unavailable in privacy-restricted browsers.
+            }
             const info = {
                 pin: data.pin || pin,
                 nickname: data.nickname || nickname,
@@ -84,7 +98,9 @@ const Join = () => {
                 } else if (data.status === 'finished') {
                     navigate('/player/game');
                 }
-            } catch (_) {}
+            } catch {
+                // Navigation state is best-effort while the session reconnects.
+            }
         };
 
         const onRoomInfo = (data) => {
@@ -95,7 +111,11 @@ const Join = () => {
             setResuming(false);
             setError(typeof msg === 'string' ? msg : (msg && msg.message) || 'Join failed');
             if (msg === 'Game not found' || msg === 'Game is already finished') {
-                try { localStorage.removeItem('player_info'); } catch (_) {}
+                try {
+                    localStorage.removeItem('player_info');
+                } catch {
+                    // A failed cleanup should not hide the join error.
+                }
                 setResumeInfo(null);
             }
         };
@@ -132,7 +152,11 @@ const Join = () => {
     };
 
     const dismissResume = () => {
-        try { localStorage.removeItem('player_info'); } catch (_) {}
+        try {
+            localStorage.removeItem('player_info');
+        } catch {
+            // The in-memory dismissal still works when storage is unavailable.
+        }
         setResumeInfo(null);
     };
 
@@ -183,12 +207,12 @@ const Join = () => {
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-quizmoto-purple">
-            <motion.div
+            <Motion.div
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 className="w-full max-w-sm bg-white p-6 md:p-10 rounded-[32px] shadow-2xl text-gray-800 mx-auto relative overflow-hidden"
             >
-                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-red-500 via-blue-500 to-green-500 opacity-20" />
+                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#E95F6F] via-[#4FC9BF] to-[#C8EF6B]" />
 
                 <h1 className="text-3xl md:text-3xl font-black text-center mb-8 text-quizmoto-purple italic tracking-tighter">Quizmoto<span className="text-quizmoto-yellow">!</span></h1>
 
@@ -262,7 +286,7 @@ const Join = () => {
                         <input
                             type="text"
                             placeholder="Game PIN"
-                            className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-center font-black text-2xl focus:border-quizmoto-purple outline-none transition-all uppercase placeholder:text-gray-200"
+                            className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-center font-black text-2xl focus:border-quizmoto-purple outline-none transition-all uppercase placeholder:text-gray-400"
                             value={pin}
                             onChange={(e) => setPin(e.target.value)}
                             required
@@ -277,7 +301,7 @@ const Join = () => {
                         <input
                             type="text"
                             placeholder="Nickname"
-                            className={`w-full p-4 border-2 rounded-2xl text-center font-black text-xl outline-none transition-all placeholder:text-gray-200 ${
+                            className={`w-full p-4 border-2 rounded-2xl text-center font-black text-xl outline-none transition-all placeholder:text-gray-400 ${
                                 isLoggedIn
                                 ? 'bg-quizmoto-purple/10 border-quizmoto-purple/30 text-quizmoto-purple cursor-not-allowed'
                                 : 'bg-gray-50 border-gray-100 focus:border-quizmoto-purple text-gray-800'
@@ -302,7 +326,7 @@ const Join = () => {
                         </p>
                     )}
                 </form>
-            </motion.div>
+            </Motion.div>
         </div>
     );
 };

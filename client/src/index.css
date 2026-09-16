@@ -12,13 +12,13 @@
 @import "./pages/Scorm/lmsgenPlatformFont.css";
 
 @theme {
-  --color-quizmoto-red: #eb1736;
-  --color-quizmoto-blue: #1368ce;
-  --color-quizmoto-yellow: #ffa602;
-  --color-quizmoto-green: #26890c;
-  --color-quizmoto-purple: #46178f;
-  --color-quizmoto-lightPurple: #864cbf;
-  --color-quizmoto-darkPurple: #25076b;
+  --color-quizmoto-red: #c94458;
+  --color-quizmoto-blue: #0f766e;
+  --color-quizmoto-yellow: #f2bd3f;
+  --color-quizmoto-green: #238653;
+  --color-quizmoto-purple: #0f6f67;
+  --color-quizmoto-lightPurple: #2ca99e;
+  --color-quizmoto-darkPurple: #062f2b;
 
   --animate-bounce-slow: bounce 3s infinite;
 }

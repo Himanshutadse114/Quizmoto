@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -19,6 +19,7 @@ import { apiUrl } from '../../config';
 import FreeGamesSection, { GeometryPhysicsWorkspace } from './FreeGamesSection';
 
 const TERMINAL_SESSION_STATES = new Set(['FINISHED', 'CANCELLED']);
+const API_BASE_URL = apiUrl('/api/quizzes');
 
 export default function QuizmotoModule() {
   const { token } = useAuth();
@@ -29,14 +30,12 @@ export default function QuizmotoModule() {
   const [query, setQuery] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [geometryOpen, setGeometryOpen] = useState(false);
-  const API_BASE_URL = apiUrl('/api/quizzes');
-
-  const fetchQuizzes = async () => {
+  const fetchQuizzes = useCallback(async () => {
     const res = await axios.get(API_BASE_URL, { headers: { Authorization: `Bearer ${token}` } });
     setQuizzes(res.data || []);
-  };
+  }, [token]);
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/active-sessions`, { headers: { Authorization: `Bearer ${token}` } });
       setActiveSessions((res.data || []).filter((session) => {
@@ -44,15 +43,18 @@ export default function QuizmotoModule() {
         const state = String(session?.state || '').toUpperCase();
         return status !== 'finished' && !TERMINAL_SESSION_STATES.has(state);
       }));
-    } catch (_) {
+    } catch {
       setActiveSessions([]);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
-    Promise.all([fetchQuizzes(), fetchSessions()]).catch((err) => setMessage(err.response?.data?.message || 'Could not load Quizmoto.'));
-  }, [token]);
+    const timer = window.setTimeout(() => {
+      Promise.all([fetchQuizzes(), fetchSessions()]).catch((err) => setMessage(err.response?.data?.message || 'Could not load Quizmoto.'));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [token, fetchQuizzes, fetchSessions]);
 
   const totalQuestions = useMemo(() => quizzes.reduce((sum, quiz) => sum + (quiz.questions?.length || 0), 0), [quizzes]);
   const shownQuizzes = useMemo(() => {
@@ -114,7 +116,7 @@ export default function QuizmotoModule() {
       }
       setGeometryOpen(true);
       setMessage('');
-    } catch (_) {
+    } catch {
       setMessage('Geometry Physics can only be played in fullscreen. Please allow fullscreen and click Play again.');
     }
   };
@@ -129,7 +131,7 @@ export default function QuizmotoModule() {
         <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5">
           <div className="max-w-3xl">
             <div className="scorm-eyebrow inline-flex items-center gap-2"><Gamepad2 size={13} /> Live engagement · Unlocked</div>
-            <h1 className="scorm-display mt-2"><span>Quizmoto</span> <span className="text-blue-400">Live Quiz</span></h1>
+            <h1 className="scorm-display mt-2"><span>Quizmoto</span> <span style={{ color: 'var(--scorm-accent)' }}>Live Quiz</span></h1>
             <p className="mt-3 text-sm md:text-[15px] max-w-2xl">Create quizzes, generate questions with AI, run real-time sessions and access interactive learning games from inside LMSGEN.</p>
           </div>
           <div className="flex flex-wrap gap-2.5">
@@ -140,7 +142,7 @@ export default function QuizmotoModule() {
         </div>
       </section>
 
-      {message && <div className="rounded-xl border border-[#29405f] bg-[#081321] px-4 py-3 mb-5 text-xs text-[#cbd5e1] flex items-center justify-between gap-3"><span>{message}</span><button type="button" onClick={() => setMessage('')} className="font-semibold text-[#60a5fa]">Dismiss</button></div>}
+      {message && <div className="rounded-xl border border-[var(--scorm-line)] bg-[var(--scorm-accent-soft)] px-4 py-3 mb-5 text-xs text-[var(--scorm-ink-soft)] flex items-center justify-between gap-3"><span>{message}</span><button type="button" onClick={() => setMessage('')} className="font-semibold text-[var(--scorm-accent-strong)]">Dismiss</button></div>}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <div className="scorm-metric-card"><div className="flex items-start justify-between"><div><div className="scorm-metric-value">{quizzes.length}</div><div className="scorm-metric-label">Quizzes</div></div><div className="scorm-metric-icon"><BookOpenCheck size={17} /></div></div></div>
@@ -152,13 +154,13 @@ export default function QuizmotoModule() {
         <div className="scorm-panel-header flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div><div className="scorm-eyebrow">Quiz management</div><h2 className="text-[18px] mt-1">Quiz library</h2></div>
           <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
-            <label className="rounded-xl border border-[#263950] bg-[#07111f] px-3 flex items-center gap-2 min-w-[260px]"><Search size={14} className="text-[#8295ae]" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search quizzes" className="w-full bg-transparent border-0 p-2 text-xs outline-none" /></label>
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="rounded-xl border border-[#263950] bg-[#07111f] px-3 py-2.5 text-xs"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="az">A–Z title</option></select>
+            <label className="rounded-xl border border-[var(--scorm-line)] bg-[var(--scorm-surface-soft)] px-3 flex items-center gap-2 min-w-[260px] focus-within:border-[var(--scorm-accent)]"><Search size={14} className="text-[var(--scorm-muted)]" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search quizzes" className="w-full bg-transparent border-0 p-2 text-xs outline-none" /></label>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="rounded-xl border border-[var(--scorm-line)] bg-[var(--scorm-surface-soft)] px-3 py-2.5 text-xs"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="az">A–Z title</option></select>
           </div>
         </div>
 
         <div className="scorm-list">
-          {shownQuizzes.length === 0 && <div className="p-10 text-center text-xs text-[#8295ae]">{quizzes.length ? 'No quizzes match your search.' : 'No quizzes yet. Create one or import the starter set.'}</div>}
+          {shownQuizzes.length === 0 && <div className="p-10 text-center text-xs text-[var(--scorm-muted)]">{quizzes.length ? 'No quizzes match your search.' : 'No quizzes yet. Create one or import the starter set.'}</div>}
           {shownQuizzes.map((quiz) => (
             <article key={quiz.id} className="scorm-course-row grid md:grid-cols-[1fr_100px_110px_auto] gap-4 items-center">
               <div className="min-w-0"><div className="font-semibold text-sm truncate">{quiz.title}</div><div className="scorm-meta mt-1">Created {quiz.createdAt ? new Date(quiz.createdAt).toLocaleDateString() : '—'}</div></div>
