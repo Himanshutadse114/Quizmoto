@@ -13,7 +13,7 @@ export default function AccessAdmin() {
   const tabs = [
     ['tenants', 'Tenant Management', Building2],
     ['users', 'Platform Users', UsersRound],
-    ['flipbooks', 'Flipbook Controls', BookOpenCheck],
+    ['flipbooks', 'Publica Controls', BookOpenCheck],
     ['email', 'Email Templates', Mail]
   ];
 

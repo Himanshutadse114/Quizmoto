@@ -37,7 +37,7 @@ router.post('/public/:shareToken/session', async (req, res, next) => {
     try {
         await ensureFlipbookAssignmentSchema();
         const book = await publicBook(req.params.shareToken);
-        if (!book) return res.status(404).json({ message: 'This Flipbook is not available.' });
+        if (!book) return res.status(404).json({ message: 'This publication is not available.' });
         const assignment = await resolveAssignmentToken({ token: assignmentToken, flipbookId: book.id });
         const sessionResult = await startReaderSession({
             book,
@@ -67,7 +67,7 @@ router.post('/public/:shareToken/session/:sessionToken/events', async (req, res,
         const context = await FlipbookReaderContext.findOne({ where: { sessionId: session.id, sourceType: 'assignment' } });
         if (!context) return next();
         const book = await publicBook(req.params.shareToken);
-        if (!book || String(book.id) !== String(session.flipbookId)) return res.status(404).json({ message: 'This Flipbook is not available.' });
+        if (!book || String(book.id) !== String(session.flipbookId)) return res.status(404).json({ message: 'This publication is not available.' });
         const result = await recordReaderEvents({
             book,
             sessionToken: req.params.sessionToken,
@@ -84,7 +84,7 @@ router.use((err, req, res, next) => {
     if (res.headersSent) return next(err);
     console.error('[flipbook-assignment-tracking]', err);
     res.status(err.status || 500).json({
-        message: err.message || 'Assigned Flipbook tracking failed.',
+        message: err.message || 'Assigned publication tracking failed.',
         code: err.code || 'SCORM_FLIPBOOK_ASSIGNMENT_TRACKING_ERROR'
     });
 });

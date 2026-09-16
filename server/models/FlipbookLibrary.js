@@ -19,7 +19,7 @@ const FlipbookLibrary = sequelize.define('FlipbookLibrary', {
     title: {
         type: DataTypes.STRING(180),
         allowNull: false,
-        defaultValue: 'Flipbook Library'
+        defaultValue: 'Publica Library'
     },
     description: {
         type: DataTypes.TEXT,

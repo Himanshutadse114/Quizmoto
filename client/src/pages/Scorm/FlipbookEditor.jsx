@@ -105,7 +105,7 @@ async function filesToPages(files, onProgress) {
   }
   const images = list.filter((file) => /^image\/(jpeg|png|webp)$/i.test(file.type));
   if (images.length !== list.length) throw new Error('Use a PDF, JPEG, PNG or WebP file.');
-  if (images.length > MAX_PAGES) throw new Error(`A flipbook can contain up to ${MAX_PAGES} pages.`);
+  if (images.length > MAX_PAGES) throw new Error(`A publication can contain up to ${MAX_PAGES} pages.`);
   const pages = [];
   for (let index = 0; index < images.length; index += 1) {
     pages.push(await imageFileToPage(images[index]));
@@ -140,7 +140,7 @@ export default function FlipbookEditor() {
       if (!live) return;
       const item = res.data.flipbook;
       setBook(item); setTitle(item.title || ''); setDescription(item.description || '');
-    }).catch((err) => live && setError(err.response?.data?.message || 'Could not load this flipbook.')).finally(() => live && setLoading(false));
+    }).catch((err) => live && setError(err.response?.data?.message || 'Could not load this publication.')).finally(() => live && setLoading(false));
     return () => { live = false; };
   }, [editing, id, headers]);
 
@@ -159,7 +159,7 @@ export default function FlipbookEditor() {
     let createdHere = false;
     try {
       if (!activeBook) {
-        const created = await axios.post(apiUrl(API), { title: title.trim() || 'Untitled flipbook', description }, { headers });
+        const created = await axios.post(apiUrl(API), { title: title.trim() || 'Untitled publication', description }, { headers });
         activeBook = created.data.flipbook;
         setBook(activeBook);
         createdHere = true;
@@ -181,7 +181,7 @@ export default function FlipbookEditor() {
       const pageCount = files.length ? activeBook.pageCount : Number(activeBook.pageCount || 0);
       if (status === 'published' && pageCount < 1) throw new Error('Upload a PDF or image pages before publishing.');
       const updated = await axios.patch(apiUrl(`${API}/${activeBook.id}`), {
-        title: title.trim() || 'Untitled flipbook',
+        title: title.trim() || 'Untitled publication',
         description,
         status,
         shareEnabled: true
@@ -196,7 +196,7 @@ export default function FlipbookEditor() {
       }
       if (createdHere) navigate(`/scorm/flipbooks/${activeBook.id}/edit`, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Could not save this flipbook.');
+      setError(err.response?.data?.message || err.message || 'Could not save this publication.');
     } finally { setBusy(false); }
   };
 
@@ -216,13 +216,13 @@ export default function FlipbookEditor() {
   return (
     <div className="flip-editor-page">
       <div className="flip-editor-topbar">
-        <Link to="/scorm/flipbooks" className="flip-back"><ArrowLeft size={15} /> Flipbooks</Link>
+        <Link to="/scorm/flipbooks" className="flip-back"><ArrowLeft size={15} /> Publica</Link>
         <div className="flip-editor-state">{editing ? 'Edit publication' : 'New publication'}</div>
       </div>
 
       <div className="flip-editor-grid">
         <section className="flip-editor-panel">
-          <div className="flip-section-heading compact"><div><div className="flip-kicker">Publication details</div><h1>{editing ? 'Edit flipbook' : 'Create flipbook'}</h1><p>Upload a PDF or image pages. Page conversion happens in your browser before secure storage.</p></div></div>
+          <div className="flip-section-heading compact"><div><div className="flip-kicker">LMSGEN Publica</div><h1>{editing ? 'Edit publication' : 'Create publication'}</h1><p>Upload a PDF or image pages. Page conversion happens in your browser before secure storage.</p></div></div>
           <label className="flip-field"><span>Title</span><input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={180} placeholder="Employee Security Handbook" /></label>
           <label className="flip-field"><span>Description</span><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} maxLength={3000} placeholder="Optional short description for readers" /></label>
 
@@ -234,7 +234,7 @@ export default function FlipbookEditor() {
             {book?.pageCount > 0 && !files.length && <em>{book.pageCount} pages currently stored</em>}
           </div>
 
-          {files.length > 0 && <div className="flip-file-note"><FileText size={14} /><span>{replacePages ? 'These files will replace the current pages when you save.' : 'These files will become the flipbook pages.'}</span></div>}
+          {files.length > 0 && <div className="flip-file-note"><FileText size={14} /><span>{replacePages ? 'These files will replace the current pages when you save.' : 'These files will become the publication pages.'}</span></div>}
 
           {progress && <div className="flip-progress"><div className="flip-progress-row"><span>{progressText}</span><strong>{progressPercent}%</strong></div><div className="flip-progress-track"><span style={{ width: `${progressPercent}%` }} /></div></div>}
           {error && <div className="flip-error">{error}</div>}
@@ -250,7 +250,7 @@ export default function FlipbookEditor() {
           <div className="flip-preview-book">
             <div className="flip-preview-page">
               <FileImage size={34} />
-              <strong>{title || 'Your flipbook'}</strong>
+              <strong>{title || 'Your publication'}</strong>
               <span>{files.length ? fileSummary : book?.pageCount ? `${book.pageCount} pages` : 'Upload pages to begin'}</span>
             </div>
           </div>

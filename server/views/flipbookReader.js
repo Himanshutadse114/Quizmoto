@@ -14,7 +14,7 @@ function safeJson(value) {
 function renderFlipbookReader(book) {
     const pageCount = Math.max(0, Number(book.pageCount || 0));
     const shareToken = String(book.shareToken || '');
-    const title = escapeHtml(book.title || 'Flipbook');
+    const title = escapeHtml(book.title || 'Publication');
     const description = escapeHtml(book.description || '');
     const storedPages = Array.isArray(book.pages) ? book.pages : [];
     const firstWidth = Number(storedPages[0]?.width || 0);
@@ -27,7 +27,7 @@ function renderFlipbookReader(book) {
         (_, index) => `/api/scorm/flipbooks/public/${shareToken}/pages/${index}`
     );
     const payload = {
-        title: String(book.title || 'Flipbook'),
+        title: String(book.title || 'Publication'),
         description: String(book.description || ''),
         pageCount,
         token: shareToken,
@@ -51,7 +51,7 @@ function renderFlipbookReader(book) {
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes">
 <meta name="robots" content="noindex,nofollow,noarchive">
 <meta name="theme-color" content="#f4fbfa">
-<title>${title} | LMSGEN Flipbook</title>
+<title>${title} | LMSGEN Publica</title>
 <meta name="description" content="${description}">
 <style>
 :root{--canvas:#f4fbfa;--surface:#ffffff;--line:#d7ece8;--ink:#17313a;--muted:#6a8588;--accent:#17b6b0;--accent-dark:#0f9a95;--accent-soft:#e8f8f7;--teal:#17b6b0}
@@ -243,7 +243,7 @@ function applyZoom(next){
 }
 
 function init(){
-  if(!DATA.pageCount){bookEl.style.opacity='1';bookEl.innerHTML='<div class="empty">This flipbook has no pages.</div>';updateControls(0);return}
+  if(!DATA.pageCount){bookEl.style.opacity='1';bookEl.innerHTML='<div class="empty">This publication has no pages.</div>';updateControls(0);return}
   if(!window.St||!window.St.PageFlip){bookEl.style.opacity='1';bookEl.innerHTML='<div class="empty">The page-turn engine could not load. Please refresh.</div>';return}
   const dims=pageDimensions();
   baseFrameWidth=dims.width*(dims.mobile?1:2);

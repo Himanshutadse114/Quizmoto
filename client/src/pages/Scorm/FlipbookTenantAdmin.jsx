@@ -29,7 +29,7 @@ export default function FlipbookTenantAdmin() {
       });
       setDrafts(next);
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not load tenant Flipbook controls.');
+      setError(err.response?.data?.message || 'Could not load tenant Publica controls.');
     } finally { setLoading(false); }
   }, [headers]);
 
@@ -43,10 +43,10 @@ export default function FlipbookTenantAdmin() {
         enabled: draft.enabled !== false,
         maxFlipbooks: draft.maxFlipbooks === '' ? null : Math.max(0, Math.floor(Number(draft.maxFlipbooks) || 0))
       }, { headers });
-      setMessage(`${tenant.name} Flipbook controls updated.`);
+      setMessage(`${tenant.name} Publica controls updated.`);
       await load();
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not update tenant Flipbook controls.');
+      setError(err.response?.data?.message || 'Could not update tenant Publica controls.');
     } finally { setSaving(''); }
   };
 
@@ -55,8 +55,8 @@ export default function FlipbookTenantAdmin() {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-5">
         <div>
           <div className="text-[#4FC9BF] text-[9px] uppercase tracking-[.15em] font-semibold">Tenant content controls</div>
-          <h1 className="mt-2 text-xl md:text-2xl font-semibold tracking-[-.02em]">Flipbook Management</h1>
-          <p className="mt-2 text-xs max-w-3xl leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>Control Flipbook availability and storage allowance for each tenant. Tenant usage is shared across its linked authors while personal free accounts keep their own allowance.</p>
+          <h1 className="mt-2 text-xl md:text-2xl font-semibold tracking-[-.02em]">Publica Management</h1>
+          <p className="mt-2 text-xs max-w-3xl leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>Control LMSGEN Publica availability and storage allowance for each tenant. Tenant usage is shared across its linked authors while personal free accounts keep their own allowance.</p>
         </div>
         <button type="button" onClick={load} disabled={loading} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2"><RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh</button>
       </div>
@@ -81,7 +81,7 @@ export default function FlipbookTenantAdmin() {
                     <div className="rounded-xl border px-3 py-2.5 col-span-2 md:col-span-1"><div className="text-[8px] uppercase opacity-45">Published / total</div><div className="mt-1 text-base font-semibold"><BookOpenCheck size={13} className="inline mr-1.5" />{(tenant.flipbooks || []).filter((book) => book.status === 'published').length} / {(tenant.flipbooks || []).length}</div></div>
                   </div>
                   <div className="flex flex-wrap items-end gap-2 xl:justify-end">
-                    <label className="block"><span className="text-[8px] uppercase opacity-45">Max Flipbooks</span><input type="number" min="0" value={draft.maxFlipbooks} onChange={(event) => setDrafts((current) => ({ ...current, [tenant.id]: { ...draft, maxFlipbooks: event.target.value } }))} placeholder="Unlimited" className="mt-1 w-28 h-9 rounded-lg border bg-transparent px-2.5 text-[10px] outline-none" /></label>
+                    <label className="block"><span className="text-[8px] uppercase opacity-45">Max publications</span><input type="number" min="0" value={draft.maxFlipbooks} onChange={(event) => setDrafts((current) => ({ ...current, [tenant.id]: { ...draft, maxFlipbooks: event.target.value } }))} placeholder="Unlimited" className="mt-1 w-28 h-9 rounded-lg border bg-transparent px-2.5 text-[10px] outline-none" /></label>
                     <button type="button" onClick={() => setDrafts((current) => ({ ...current, [tenant.id]: { ...draft, enabled: !draft.enabled } }))} className="scorm-button-secondary h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2">{draft.enabled ? <ToggleRight size={16} className="text-[#4FC9BF]" /> : <ToggleLeft size={16} />} {draft.enabled ? 'Enabled' : 'Disabled'}</button>
                     <button type="button" onClick={() => save(tenant)} disabled={saving === tenant.id} className="scorm-button-primary h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2 disabled:opacity-50"><Save size={12} /> {saving === tenant.id ? 'Saving…' : 'Save'}</button>
                   </div>

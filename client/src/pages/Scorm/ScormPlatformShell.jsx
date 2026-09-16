@@ -45,7 +45,7 @@ const OPERATIONAL_NAV_GROUPS = [
     items: [
       { to: '/scorm', end: true, label: 'Overview', icon: LayoutDashboard },
       { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2, unlocked: true },
-      { to: '/scorm/flipbooks', label: 'Flipbooks', icon: BookOpenCheck, unlocked: true }
+      { to: '/scorm/flipbooks', label: 'Publica', icon: BookOpenCheck, unlocked: true }
     ]
   },
   {
@@ -66,7 +66,7 @@ const OPERATIONAL_NAV_GROUPS = [
 const ANALYTICS_NAV_GROUPS = [
   {
     label: 'Free tools',
-    items: [{ to: '/scorm/flipbooks', label: 'Flipbooks', icon: BookOpenCheck, unlocked: true }]
+    items: [{ to: '/scorm/flipbooks', label: 'Publica', icon: BookOpenCheck, unlocked: true }]
   },
   {
     label: 'Analytics',
@@ -82,7 +82,7 @@ const QUIZMOTO_ONLY_GROUPS = [
     label: 'Free tools',
     items: [
       { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2, unlocked: true },
-      { to: '/scorm/flipbooks', label: 'Flipbooks', icon: BookOpenCheck, unlocked: true }
+      { to: '/scorm/flipbooks', label: 'Publica', icon: BookOpenCheck, unlocked: true }
     ]
   }
 ];
@@ -183,18 +183,18 @@ function MobileTabBar({ scormAccess, role, quizmotoOnly }) {
   const items = quizmotoOnly
     ? [
         { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2 },
-        { to: '/scorm/flipbooks', label: 'Flipbooks', icon: BookOpenCheck }
+        { to: '/scorm/flipbooks', label: 'Publica', icon: BookOpenCheck }
       ]
     : analyticsOnly
       ? [
-          { to: '/scorm/flipbooks', label: 'Flipbooks', icon: BookOpenCheck },
+          { to: '/scorm/flipbooks', label: 'Publica', icon: BookOpenCheck },
           { to: '/scorm/tracking', label: 'Tracking', icon: Activity },
           { to: '/scorm/reports', label: 'Reports', icon: BarChart3 }
         ]
       : [
           { to: '/scorm', end: true, label: 'Home', icon: LayoutDashboard },
           { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2 },
-          { to: '/scorm/flipbooks', label: 'Flipbooks', icon: BookOpenCheck },
+          { to: '/scorm/flipbooks', label: 'Publica', icon: BookOpenCheck },
           { to: '/scorm/author', label: scormAccess ? 'Create' : 'Locked', icon: scormAccess ? Sparkles : LockKeyhole }
         ];
   const gridClass = quizmotoOnly ? 'grid-cols-2' : analyticsOnly ? 'grid-cols-3' : 'grid-cols-4';
@@ -258,12 +258,12 @@ export default function ScormPlatformShell() {
           {quizmotoOnly ? (
             <div className="scorm-status-card rounded-xl px-3.5 py-3">
               <div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />Free tools access</div>
-              <div className="mt-1.5 text-[10px] leading-relaxed">Quizmoto and Flipbooks are available on this account. LMSGEN tenant features unlock after the Super Admin assigns this email to a tenant.</div>
+              <div className="mt-1.5 text-[10px] leading-relaxed">Quizmoto and LMSGEN Publica are available on this account. LMSGEN tenant features unlock after the Super Admin assigns this email to a tenant.</div>
             </div>
           ) : !scormAccess ? (
             <div className="scorm-sidebar-profile rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
               <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={13} /> Approval pending</div>
-              <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae]">Quizmoto and Flipbooks are unlocked. LMSGEN features unlock after administrator approval and tenant assignment.</div>
+              <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae]">Quizmoto and LMSGEN Publica are unlocked. LMSGEN features unlock after administrator approval and tenant assignment.</div>
               <button type="button" onClick={refreshApproval} disabled={checkingAccess} className="mt-2 inline-flex items-center gap-1.5 text-[9px] font-semibold text-[#60a5fa] disabled:opacity-50"><RefreshCw size={11} className={checkingAccess ? 'animate-spin' : ''} /> Refresh access</button>
             </div>
           ) : null}
@@ -277,24 +277,24 @@ export default function ScormPlatformShell() {
         <header className="scorm-topbar sticky top-0 z-30 min-h-[64px] border-b px-4 md:px-7 py-2.5 flex items-center gap-3 md:gap-4">
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open LMSGEN navigation" className="scorm-topbar-icon lg:hidden w-10 h-10 grid place-items-center shrink-0"><Menu size={18} /></button>
           {!scormAccess && !quizmotoOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> LMSGEN approval / tenant assignment pending · Free tools available</div>}
-          {quizmotoOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><BookOpenCheck size={12} /> Free tools · Quizmoto and Flipbooks</div>}
+          {quizmotoOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><BookOpenCheck size={12} /> Free tools · Quizmoto and Publica</div>}
           {analyticsOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><BarChart3 size={12} /> Read-only analytics access</div>}
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
             {quizmotoOnly ? (
               <>
-                <Link to="/scorm/flipbooks" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Flipbooks</span></Link>
+                <Link to="/scorm/flipbooks" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Publica</span></Link>
                 <Link to="/scorm/quizmoto" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
               </>
             ) : analyticsOnly ? (
               <>
-                <Link to="/scorm/flipbooks" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Flipbooks</span></Link>
+                <Link to="/scorm/flipbooks" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Publica</span></Link>
                 <Link to="/scorm/tracking" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Activity size={14} /><span>Tracking</span></Link>
                 <Link to="/scorm/reports" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold"><BarChart3 size={14} /><span>Reports</span></Link>
               </>
             ) : (
               <>
-                <Link to="/scorm/flipbooks" className="scorm-button-secondary hidden lg:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Flipbooks</span></Link>
+                <Link to="/scorm/flipbooks" className="scorm-button-secondary hidden lg:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Publica</span></Link>
                 <Link to="/scorm/quizmoto" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
                 {isWorkspaceAdmin && <Link to="/scorm/team" className="scorm-button-secondary hidden xl:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Users size={14} /> Team</Link>}
                 {isSuperAdmin && <Link to="/scorm/access" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><ShieldCheck size={14} /> Tenants</Link>}

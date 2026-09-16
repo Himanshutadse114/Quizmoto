@@ -110,7 +110,7 @@ async function assertCanCreate(user) {
     }
     const quota = await getQuota(user);
     if (quota.max !== null && quota.used >= quota.max) {
-        const err = new Error(`Flipbook allowance reached (${quota.used}/${quota.max}). Delete an existing flipbook or ask the Super Admin to increase the limit.`);
+        const err = new Error(`Publica allowance reached (${quota.used}/${quota.max}). Delete an existing publication or ask the Super Admin to increase the limit.`);
         err.status = 403;
         err.code = 'FLIPBOOK_LIMIT_REACHED';
         err.quota = quota;
@@ -131,13 +131,13 @@ async function setUserLimit({ userId, maxFlipbooks, actorUserId, actorEmail }) {
     const user = await User.findByPk(userId);
     if (!user) throw Object.assign(new Error('User not found.'), { status: 404 });
     if (await isSuperAdmin(user)) {
-        const err = new Error('The Super Admin always has unlimited flipbook access.');
+        const err = new Error('The Super Admin always has unlimited Publica access.');
         err.status = 400;
         throw err;
     }
     const scope = await resolveFlipbookScope(user);
     if (scope.mode === 'tenant') {
-        const err = new Error('This account belongs to a tenant. Manage its Flipbook allowance from Tenant Management instead of a personal user limit.');
+        const err = new Error('This account belongs to a tenant. Manage its Publica allowance from Tenant Management instead of a personal user limit.');
         err.status = 409;
         err.code = 'FLIPBOOK_TENANT_MANAGED';
         throw err;
@@ -174,7 +174,7 @@ function parsePageData(dataUrl) {
     }
     const body = Buffer.from(match[2], 'base64');
     if (!body.length || body.length > MAX_PAGE_BYTES) {
-        const err = new Error(`Each flipbook page must be smaller than ${Math.floor(MAX_PAGE_BYTES / (1024 * 1024))} MB.`);
+        const err = new Error(`Each publication page must be smaller than ${Math.floor(MAX_PAGE_BYTES / (1024 * 1024))} MB.`);
         err.status = 413;
         throw err;
     }
@@ -190,7 +190,7 @@ function extensionFor(contentType) {
 async function appendPage({ flipbook, dataUrl, width, height }) {
     const pages = Array.isArray(flipbook.pages) ? [...flipbook.pages] : [];
     if (pages.length >= MAX_PAGES) {
-        const err = new Error(`A flipbook can contain up to ${MAX_PAGES} pages.`);
+        const err = new Error(`A publication can contain up to ${MAX_PAGES} pages.`);
         err.status = 400;
         err.code = 'FLIPBOOK_PAGE_LIMIT_REACHED';
         throw err;

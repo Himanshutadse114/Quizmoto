@@ -14,15 +14,15 @@ function reportContext(req) {
 
 router.get('/catalog', auth, async (req, res) => {
     const types = [
-        { id: 'overview', label: 'Overview', description: 'Tenant-wide learning, campaigns and Flipbook performance.' },
+        { id: 'overview', label: 'Overview', description: 'Tenant-wide learning, campaigns and Publica performance.' },
         { id: 'courses', label: 'Courses', description: 'Course learner counts, completion and average scores.' },
-        { id: 'learners', label: 'Learners', description: 'One consolidated record per learner across courses and Flipbooks.' },
-        { id: 'campaigns', label: 'Campaigns', description: 'Campaign delivery with course and Flipbook completion.' },
-        { id: 'flipbooks', label: 'Flipbooks', description: 'Reader reach, sessions, completion and active reading time.' },
-        { id: 'assignments', label: 'Assignments', description: 'Course and Flipbook assignment evidence in one report.' }
+        { id: 'learners', label: 'Learners', description: 'One consolidated record per learner across courses and Publica.' },
+        { id: 'campaigns', label: 'Campaigns', description: 'Campaign delivery with course and publication completion.' },
+        { id: 'flipbooks', label: 'Publica', description: 'Publication reach, sessions, completion and active reading time.' },
+        { id: 'assignments', label: 'Assignments', description: 'Course and publication assignment evidence in one report.' }
     ];
     if (req.scormRole === 'super_admin') {
-        types.push({ id: 'tenants', label: 'Tenants', description: 'Platform-wide tenant capacity, usage and Flipbook inventory.' });
+        types.push({ id: 'tenants', label: 'Tenants', description: 'Platform-wide tenant capacity, usage and Publica inventory.' });
     }
     res.json({ schemaVersion: 'lmsgen-report-v2', reportTypes: types });
 });

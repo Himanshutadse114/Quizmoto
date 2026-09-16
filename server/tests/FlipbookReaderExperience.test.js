@@ -18,6 +18,10 @@ describe('Flipbook reader experience', () => {
         expect(injected.script).to.include('/^\\S+@\\S+\\.\\S+$/');
         expect(injected.script).not.to.include('/^S+@S+.S+$/');
         expect(injected.script).to.include('try{await startSession(email,name);return}catch(_){}');
+        expect(injected.script).to.include("document.visibilityState!=='visible'");
+        expect(injected.script).to.include('document.hasFocus&&!document.hasFocus()');
+        expect(injected.script).to.include('send(visiblePageEvents());');
+        expect(injected.html).to.include('Open this publication');
         expect(injected.script).to.include('restoreReader();');
         expect(() => new Function(browserScript)).not.to.throw();
     });

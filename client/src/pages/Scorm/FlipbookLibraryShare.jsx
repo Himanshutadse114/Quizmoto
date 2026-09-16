@@ -22,7 +22,7 @@ export default function FlipbookLibraryShare() {
       const res = await axios.get(apiUrl(`${API}/library`), { headers });
       setLibrary(res.data?.library || null);
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not load your shared flipbook library.');
+      setError(err.response?.data?.message || 'Could not load your shared Publica library.');
     } finally { setLoading(false); }
   }, [headers]);
 
@@ -48,7 +48,7 @@ export default function FlipbookLibraryShare() {
   return (
     <section className="flip-admin-panel flip-library-share-panel">
       <div className="flip-section-heading">
-        <div><div className="flip-kicker"><Library size={13} /> Shared library</div><h2>{library.title}</h2><p>One permanent link that automatically shows all of your published flipbooks. Individual flipbook links continue to work as before.</p></div>
+        <div><div className="flip-kicker"><Library size={13} /> Shared Publica library</div><h2>{library.title}</h2><p>One permanent link that automatically shows all of your published publications. Individual publication links continue to work as before.</p></div>
         <div className="flip-header-actions">
           <Link to="/scorm/flipbooks/analytics" className="flip-button-secondary"><BarChart3 size={14} /> Library analytics</Link>
           <button type="button" onClick={copy} className="flip-button-secondary"><Copy size={14} /> {copied ? 'Copied' : 'Copy library link'}</button>
@@ -56,7 +56,7 @@ export default function FlipbookLibraryShare() {
           {library.shareUrl && <a href={library.shareUrl} target="_blank" rel="noreferrer" className="flip-button-primary"><ExternalLink size={14} /> Open library</a>}
         </div>
       </div>
-      <div className="flip-library-share-summary"><strong>{library.bookCount}</strong><span>published flipbook{library.bookCount === 1 ? '' : 's'} currently visible in this shared library</span></div>
+      <div className="flip-library-share-summary"><strong>{library.bookCount}</strong><span>published publication{library.bookCount === 1 ? '' : 's'} currently visible in this shared library</span></div>
     </section>
   );
 }

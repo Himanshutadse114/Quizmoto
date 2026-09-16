@@ -220,7 +220,7 @@ function reportDefinition(type) {
     const definitions = {
         overview: {
             title: 'LMSGEN Learning Overview',
-            subtitle: 'Current tenant learning, campaign and Flipbook performance',
+            subtitle: 'Current tenant learning, campaign and Publica performance',
             columns: [
                 { key: 'area', label: 'Area' }, { key: 'items', label: 'Items' }, { key: 'learners', label: 'Learners' }, { key: 'completed', label: 'Completed' }, { key: 'engagement', label: 'Engagement' }
             ]
@@ -234,37 +234,37 @@ function reportDefinition(type) {
         },
         learners: {
             title: 'Learner Learning Record',
-            subtitle: 'Consolidated learner activity across courses and Flipbooks',
+            subtitle: 'Consolidated learner activity across courses and Publica',
             columns: [
-                { key: 'name', label: 'Learner' }, { key: 'email', label: 'Email' }, { key: 'courses', label: 'Courses' }, { key: 'coursesCompleted', label: 'Courses completed' }, { key: 'averageScore', label: 'Avg. score' }, { key: 'flipbooks', label: 'Flipbooks' }, { key: 'flipbooksCompleted', label: 'Flipbooks completed' }, { key: 'flipbookActiveTime', label: 'Flipbook time' }
+                { key: 'name', label: 'Learner' }, { key: 'email', label: 'Email' }, { key: 'courses', label: 'Courses' }, { key: 'coursesCompleted', label: 'Courses completed' }, { key: 'averageScore', label: 'Avg. score' }, { key: 'flipbooks', label: 'Publications' }, { key: 'flipbooksCompleted', label: 'Publications completed' }, { key: 'flipbookActiveTime', label: 'Publica time' }
             ]
         },
         campaigns: {
             title: 'Campaign Performance Report',
-            subtitle: 'Campaign delivery across courses and Flipbooks',
+            subtitle: 'Campaign delivery across courses and Publica',
             columns: [
-                { key: 'name', label: 'Campaign' }, { key: 'status', label: 'Status' }, { key: 'learners', label: 'Learners' }, { key: 'courses', label: 'Courses' }, { key: 'flipbooks', label: 'Flipbooks' }, { key: 'courseCompletion', label: 'Course completion' }, { key: 'flipbookCompletion', label: 'Flipbook completion' }, { key: 'dueAt', label: 'Due' }
+                { key: 'name', label: 'Campaign' }, { key: 'status', label: 'Status' }, { key: 'learners', label: 'Learners' }, { key: 'courses', label: 'Courses' }, { key: 'flipbooks', label: 'Publications' }, { key: 'courseCompletion', label: 'Course completion' }, { key: 'flipbookCompletion', label: 'Publication completion' }, { key: 'dueAt', label: 'Due' }
             ]
         },
         flipbooks: {
-            title: 'Flipbook Engagement Report',
+            title: 'LMSGEN Publica Engagement Report',
             subtitle: 'Reader reach, completion and active reading engagement',
             columns: [
-                { key: 'title', label: 'Flipbook' }, { key: 'status', label: 'Status' }, { key: 'pages', label: 'Pages' }, { key: 'readers', label: 'Readers' }, { key: 'sessions', label: 'Sessions' }, { key: 'completion', label: 'Completion %' }, { key: 'activeTime', label: 'Active time' }, { key: 'lifetimeOpens', label: 'Lifetime opens' }
+                { key: 'title', label: 'Publication' }, { key: 'status', label: 'Status' }, { key: 'pages', label: 'Pages' }, { key: 'readers', label: 'Readers' }, { key: 'sessions', label: 'Sessions' }, { key: 'completion', label: 'Completion %' }, { key: 'activeTime', label: 'Active time' }, { key: 'lifetimeOpens', label: 'Lifetime opens' }
             ]
         },
         assignments: {
             title: 'Assignment Completion Report',
-            subtitle: 'Course and Flipbook learner assignment evidence',
+            subtitle: 'Course and publication learner assignment evidence',
             columns: [
                 { key: 'type', label: 'Type' }, { key: 'item', label: 'Learning item' }, { key: 'learner', label: 'Learner' }, { key: 'email', label: 'Email' }, { key: 'status', label: 'Status' }, { key: 'progress', label: 'Progress' }, { key: 'score', label: 'Score' }, { key: 'activeTime', label: 'Active time' }, { key: 'context', label: 'Context' }
             ]
         },
         tenants: {
             title: 'Tenant Platform Report',
-            subtitle: 'Tenant capacity, learning usage and Flipbook controls',
+            subtitle: 'Tenant capacity, learning usage and Publica controls',
             columns: [
-                { key: 'name', label: 'Tenant' }, { key: 'status', label: 'Status' }, { key: 'admin', label: 'Admin' }, { key: 'courses', label: 'Courses' }, { key: 'learners', label: 'Learners' }, { key: 'staff', label: 'Staff' }, { key: 'campaigns', label: 'Campaigns' }, { key: 'assignments', label: 'Assignments' }, { key: 'flipbooks', label: 'Flipbooks' }
+                { key: 'name', label: 'Tenant' }, { key: 'status', label: 'Status' }, { key: 'admin', label: 'Admin' }, { key: 'courses', label: 'Courses' }, { key: 'learners', label: 'Learners' }, { key: 'staff', label: 'Staff' }, { key: 'campaigns', label: 'Campaigns' }, { key: 'assignments', label: 'Assignments' }, { key: 'flipbooks', label: 'Publications' }
             ]
         }
     };
@@ -288,7 +288,7 @@ function workspaceRows(type, data) {
             type: 'Course', item: course.title, learner: learner.learnerName || 'Learner', email: learner.learnerEmail || '', status: learner.result || learner.lessonStatus || '', progress: learner.progressAvailable === false ? '' : `${number(learner.progressPercent)}%`, score: learner.score ?? '', activeTime: learner.totalTime || '', context: 'Direct learning'
         })));
         const flipbookRows = (data.flipbookAssignments || []).map((row) => ({
-            type: 'Flipbook', item: row.flipbookTitle, learner: row.learnerName || 'Learner', email: row.learnerEmail, status: row.status, progress: `${row.progressPercent}%`, score: '', activeTime: durationLabel(row.activeSeconds), context: row.courseId ? 'Course-linked campaign' : row.campaignId ? 'Campaign' : 'Direct'
+            type: 'Publica', item: row.flipbookTitle, learner: row.learnerName || 'Learner', email: row.learnerEmail, status: row.status, progress: `${row.progressPercent}%`, score: '', activeTime: durationLabel(row.activeSeconds), context: row.courseId ? 'Course-linked campaign' : row.campaignId ? 'Campaign' : 'Direct'
         }));
         return [...courseRows, ...flipbookRows];
     }
@@ -299,7 +299,7 @@ function workspaceRows(type, data) {
         return [
             { area: 'Courses', items: data.courseReports.length, learners: data.learners.length, completed: completedCourses, engagement: `${percent(completedCourses, courseAssignments)}% completion` },
             { area: 'Campaigns', items: data.campaigns.length, learners: data.learners.length, completed: '', engagement: `${data.campaigns.filter((row) => row.status === 'active').length} active` },
-            { area: 'Flipbooks', items: data.books.length, learners: new Set((data.flipbookAssignments || []).map((row) => normaliseEmail(row.learnerEmail)).filter(Boolean)).size, completed: completedFlipbooks, engagement: `${percent(completedFlipbooks, data.flipbookAssignments.length)}% assignment completion` }
+            { area: 'Publica', items: data.books.length, learners: new Set((data.flipbookAssignments || []).map((row) => normaliseEmail(row.learnerEmail)).filter(Boolean)).size, completed: completedFlipbooks, engagement: `${percent(completedFlipbooks, data.flipbookAssignments.length)}% assignment completion` }
         ];
     }
     return [];
@@ -310,8 +310,8 @@ function summaryFor(type, data, rows) {
         { label: 'Courses', value: data.courseReports.length },
         { label: 'Learners', value: data.learners.length },
         { label: 'Campaigns', value: data.campaigns.length },
-        { label: 'Flipbooks', value: data.books.length },
-        { label: 'Flipbook assignments', value: data.flipbookAssignments.length }
+        { label: 'Publications', value: data.books.length },
+        { label: 'Publication assignments', value: data.flipbookAssignments.length }
     ];
     if (type === 'courses') {
         const assigned = rows.reduce((sum, row) => sum + number(row.learners), 0);
@@ -326,7 +326,7 @@ function summaryFor(type, data, rows) {
             { label: 'Avg. score', value: scored.length ? Math.round((scored.reduce((sum, value) => sum + value, 0) / scored.length) * 10) / 10 : '—' }
         ];
     }
-    if (type === 'learners') return [{ label: 'Learners', value: rows.length }, { label: 'Courses', value: data.courseReports.length }, { label: 'Flipbooks', value: data.books.length }];
+    if (type === 'learners') return [{ label: 'Learners', value: rows.length }, { label: 'Courses', value: data.courseReports.length }, { label: 'Publications', value: data.books.length }];
     if (type === 'campaigns') return [
         { label: 'Campaigns', value: rows.length },
         { label: 'Active', value: rows.filter((row) => row.status === 'active').length },
@@ -340,7 +340,7 @@ function summaryFor(type, data, rows) {
         const completedReaderPairs = stats.reduce((sum, row) => sum + number(row.completedReaders), 0);
         const activeSeconds = stats.reduce((sum, row) => sum + number(row.activeSeconds), 0);
         return [
-            { label: 'Flipbooks', value: rows.length },
+            { label: 'Publications', value: rows.length },
             { label: 'Readers', value: readerEmails.size },
             { label: 'Sessions', value: stats.reduce((sum, row) => sum + number(row.sessions), 0) },
             { label: 'Completion', value: `${percent(completedReaderPairs, readerPairs)}%` },
@@ -353,7 +353,7 @@ function summaryFor(type, data, rows) {
             { label: 'Assignments', value: rows.length },
             { label: 'Completed', value: completed },
             { label: 'Completion', value: `${percent(completed, rows.length)}%` },
-            { label: 'Flipbook assignments', value: data.flipbookAssignments.length }
+            { label: 'Publication assignments', value: data.flipbookAssignments.length }
         ];
     }
     return [];

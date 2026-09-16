@@ -25,7 +25,7 @@ const PAGES = [
     file: 'index.html',
     route: '/',
     title: 'AI LMS for SCORM Course Creation & Learner Tracking | LMSGEN',
-    description: 'Create SCORM-ready training with AI or turn a landscape PDF into a trackable course with an editable quiz, per-slide timing and learner reporting.',
+    description: 'Create SCORM-ready training with AI and publish presentations, comics, guides and visual stories through LMSGEN Publica with audience engagement analytics.',
     type: 'home',
   },
   {
@@ -67,7 +67,7 @@ const PAGES = [
 
 const HOME_HERO_HEADING = 'AI-powered LMS for SCORM course creation, delivery and learner tracking.';
 const HOME_HERO_EYEBROW = 'For L&D, compliance and security awareness teams';
-const HOME_HERO_DESCRIPTION = 'Turn policies, documents and ideas into structured learning, convert landscape PDFs into trackable courses, launch learner campaigns, run live Quizmoto sessions and measure learning from one connected workspace.';
+const HOME_HERO_DESCRIPTION = 'Turn policies, documents and ideas into structured learning, publish visual content through LMSGEN Publica, launch learner campaigns, run live Quizmoto sessions and measure engagement from one connected workspace.';
 
 const PAIN_SECTION = `
 <section class="lmsgen-seo-section lmsgen-pain-section" aria-labelledby="lmsgen-pain-title">
@@ -91,37 +91,37 @@ const PDF_COURSE_SECTION = `
   <div class="lmsgen-seo-inner">
     <div class="lmsgen-pdf-course-header">
       <div>
-        <div class="lmsgen-seo-kicker">TURN PRESENTATIONS INTO MEASURABLE LEARNING</div>
-        <h2 id="lmsgen-pdf-course-title">Your best presentations deserve more than a download link.</h2>
+        <div class="lmsgen-seo-kicker">INTRODUCING LMSGEN PUBLICA</div>
+        <h2 id="lmsgen-pdf-course-title">Publish beautifully. Build an audience. Know what keeps them reading.</h2>
       </div>
       <div class="lmsgen-pdf-course-summary">
-        <p>Transform approved decks into polished, trackable learning with built-in assessment and reporting—without compromising the design.</p>
-        <a class="lmsgen-conversion-cta" href="/contact">Turn my PDF into a course <span aria-hidden="true">→</span></a>
+        <p>Give presentations, comics, guides and visual stories a premium digital home—with a shareable library and meaningful audience insight built in.</p>
+        <a class="lmsgen-conversion-cta" href="/contact">Let's discuss LMSGEN Publica <span aria-hidden="true">→</span></a>
       </div>
     </div>
-    <ul class="lmsgen-pdf-course-benefits" aria-label="Benefits of a trackable presentation course">
-      <li><strong>Keep the presentation your team approved.</strong><p>Deliver the visual experience exactly as intended in a professional learning format.</p></li>
-      <li><strong>Add intelligence, not production overhead.</strong><p>Turn existing content into an assessed learning experience with an editable AI-generated quiz.</p></li>
-      <li><strong>Prove engagement with real evidence.</strong><p>See completion, scores and slide-level attention instead of relying on a simple file download.</p></li>
+    <ul class="lmsgen-pdf-course-benefits" aria-label="Benefits of LMSGEN Publica">
+      <li><strong>Build a library your audience remembers.</strong><p>Writers, comic creators and publishers can bring every issue, chapter or collection together under one professional link.</p></li>
+      <li><strong>Let the work keep its visual impact.</strong><p>Present every page as designed in an elegant, mobile-ready reading experience that feels made for the content.</p></li>
+      <li><strong>See what a download can never tell you.</strong><p>Understand reader reach, page-by-page attention, active reading time and completion without guessing.</p></li>
     </ul>
     <div class="lmsgen-pdf-course-proof">
-      <div class="lmsgen-pdf-proof-screen" aria-label="Trackable presentation course preview">
+      <div class="lmsgen-pdf-proof-screen" aria-label="LMSGEN Publica digital publication preview">
         <div class="lmsgen-pdf-proof-rail">
-          <small>PRESENTATION COURSE</small><strong>Security awareness</strong>
-          <div class="lmsgen-pdf-proof-progress"><i></i></div><span>68% complete</span>
+          <small>LMSGEN PUBLICA</small><strong>Creator library</strong>
+          <div class="lmsgen-pdf-proof-progress"><i></i></div><span>68% explored</span>
         </div>
         <div class="lmsgen-pdf-proof-slide">
-          <div class="lmsgen-pdf-proof-toolbar"><span>Slide 4 of 8</span><b>02:18 on this slide</b></div>
-          <div class="lmsgen-pdf-proof-page"><small>SECURITY AWARENESS</small><strong>Verify before you trust.</strong><p>Exact PDF page, scaled cleanly for every screen.</p></div>
+          <div class="lmsgen-pdf-proof-toolbar"><span>Page 14 of 32</span><b>02:18 reading time</b></div>
+          <div class="lmsgen-pdf-proof-page"><small>NEW RELEASE</small><strong>Your story, presented like it deserves.</strong><p>A polished reading experience for every screen.</p></div>
         </div>
       </div>
       <div class="lmsgen-pdf-proof-copy">
-        <span>FROM SLIDES TO LEARNING EVIDENCE</span>
-        <h3>Know who engaged, what they learned and where attention dropped.</h3>
+        <span>ONE LINK. YOUR COMPLETE PUBLICATION WORLD.</span>
+        <h3>Turn individual files into a destination readers can return to.</h3>
         <ul>
-          <li>Preserve the presentation your team approved</li>
-          <li>Add an editable, AI-generated knowledge check</li>
-          <li>Capture completion, score and slide-level engagement</li>
+          <li>Create a shareable library for books, comics, magazines and guides</li>
+          <li>Showcase every publication in one consistent branded experience</li>
+          <li>Measure audience interest down to individual pages</li>
         </ul>
       </div>
     </div>
@@ -135,6 +135,7 @@ const FAQ_ITEMS = [
   ['Can LMSGEN track learner answers and scores?', 'LMSGEN tracks the SCORM data a course sends. Depending on the package, this can include completion, score, learning time, attempts, learner response, correct response, result and compatible question-level interaction data.'],
   ['How do learner campaigns work in LMSGEN?', 'Admins can create a campaign, assign published courses and learners, start or stop the campaign, add or remove learners while it is running and send reminder emails. Campaign analytics are kept separate from direct course-link tracking.'],
   ['Is Quizmoto part of the SCORM course player?', 'Quizmoto is a separate live-quiz feature inside the LMSGEN workspace. Hosts run a real-time session, participants join with a code and the group plays together live.'],
+  ['What is LMSGEN Publica?', 'LMSGEN Publica is a digital publication experience for presentations, visual guides, magazines, comics and illustrated stories. Creators can publish their work in a polished reader, bring multiple titles together in one shareable library and understand audience engagement through page-level analytics.'],
   ['How do I turn a presentation into a trackable course?', 'Create the presentation in your preferred tool, export it as a landscape PDF, then upload the PDF to LMSGEN. Each PDF page becomes a preserved course slide, LMSGEN adds an editable AI-generated quiz, and learner progress, scores and time spent per slide are tracked.'],
 ];
 

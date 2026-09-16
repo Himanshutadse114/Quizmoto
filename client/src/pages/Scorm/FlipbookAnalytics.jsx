@@ -193,7 +193,7 @@ function LibraryAnalytics({ analytics }) {
   return (
     <>
       <div className="flip-analytics-grid">
-        <Metric icon={BookOpenCheck} label="Flipbooks" value={summary.flipbooks || 0} />
+        <Metric icon={BookOpenCheck} label="Publications" value={summary.flipbooks || 0} />
         <Metric icon={UsersRound} label="Unique readers" value={summary.uniqueReaders || 0} help="One reader per email" />
         <Metric icon={Eye} label="Reading sessions" value={summary.sessions || 0} />
         <Metric icon={MousePointerClick} label="Page turns" value={summary.totalFlips || 0} help="Duplicate callbacks removed" />
@@ -205,14 +205,14 @@ function LibraryAnalytics({ analytics }) {
         <div className="flip-section-heading">
           <div>
             <div className="flip-kicker"><Flame size={12} /> Trending</div>
-            <h2>Trending flipbooks</h2>
+            <h2>Trending publications</h2>
             <p>Ranking prioritises unique readers, reader completion and reading depth. Repeat opens from one email do not inflate the ranking.</p>
           </div>
         </div>
         {trending.length ? (
           <div className="flip-analytics-table-wrap">
             <table className="flip-analytics-table">
-              <thead><tr><th>Flipbook</th><th>Readers</th><th>Sessions</th><th>Page turns</th><th>Completion</th><th>Avg. active time</th><th>Trend</th><th /></tr></thead>
+              <thead><tr><th>Publication</th><th>Readers</th><th>Sessions</th><th>Page turns</th><th>Completion</th><th>Avg. active time</th><th>Trend</th><th /></tr></thead>
               <tbody>{trending.map((book, index) => (
                 <tr key={book.id}>
                   <td><strong>#{index + 1} {book.title}</strong><span>{book.pageCount} pages · {book.lifetimeViews} lifetime reader opens</span></td>
@@ -241,7 +241,7 @@ function LibraryAnalytics({ analytics }) {
         {readers.length ? (
           <div className="flip-analytics-table-wrap">
             <table className="flip-analytics-table">
-              <thead><tr><th>Reader</th><th>Flipbooks read</th><th>Sessions</th><th>Pages reached</th><th>Page turns</th><th>Active time</th><th>Completed</th><th>Last active</th></tr></thead>
+              <thead><tr><th>Reader</th><th>Publications read</th><th>Sessions</th><th>Pages reached</th><th>Page turns</th><th>Active time</th><th>Completed</th><th>Last active</th></tr></thead>
               <tbody>{readers.map((reader) => (
                 <tr key={reader.email}>
                   <td><strong>{reader.name || reader.email}</strong><span>{reader.email}</span></td>
@@ -272,8 +272,8 @@ function SingleAnalytics({ analytics }) {
     <>
       <div className="flip-analytics-book-title">
         <div>
-          <div className="flip-kicker">Single flipbook analytics</div>
-          <h2>{book.title || 'Flipbook'}</h2>
+          <div className="flip-kicker">Single publication analytics</div>
+          <h2>{book.title || 'Publication'}</h2>
           <p>{book.pageCount || 0} pages · {book.lifetimeViews || 0} lifetime reader opens</p>
         </div>
       </div>
@@ -347,7 +347,7 @@ export default function FlipbookAnalytics() {
       const res = await axios.get(apiUrl(endpoint), { headers, params: { days } });
       setAnalytics(res.data?.analytics || null);
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not load flipbook analytics.');
+      setError(err.response?.data?.message || 'Could not load Publica analytics.');
     } finally { setLoading(false); }
   }, [days, headers, id]);
 
@@ -357,9 +357,9 @@ export default function FlipbookAnalytics() {
     <div className="flipbooks-page flip-analytics-page">
       <div className="flipbooks-header flip-analytics-header">
         <div>
-          <Link to="/scorm/flipbooks" className="flip-analytics-back"><ArrowLeft size={13} /> Back to Flipbooks</Link>
+          <Link to="/scorm/flipbooks" className="flip-analytics-back"><ArrowLeft size={13} /> Back to Publica</Link>
           <div className="flip-kicker">Reader intelligence</div>
-          <h1>{id ? 'Flipbook Analytics' : 'Library Analytics'}</h1>
+          <h1>{id ? 'Publication Analytics' : 'Publica Library Analytics'}</h1>
           <p>{id ? 'Accurate reader-level engagement, page reach, page turns, completion and active reading time.' : 'Reader-level performance across your library with de-duplicated identities and page turns.'}</p>
         </div>
         <div className="flip-analytics-toolbar">

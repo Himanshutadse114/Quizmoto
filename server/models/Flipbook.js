@@ -18,7 +18,7 @@ const Flipbook = sequelize.define('Flipbook', {
     title: {
         type: DataTypes.STRING(180),
         allowNull: false,
-        defaultValue: 'Untitled flipbook'
+        defaultValue: 'Untitled publication'
     },
     description: {
         type: DataTypes.TEXT,

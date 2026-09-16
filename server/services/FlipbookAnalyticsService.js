@@ -6,6 +6,8 @@ const FlipbookReaderEvent = require('../models/FlipbookReaderEvent');
 
 const ALLOWED_EVENTS = new Set(['page_view', 'flip', 'heartbeat', 'complete', 'share']);
 const SESSION_RESUME_WINDOW_MS = 90 * 1000;
+const MAX_TRACKABLE_GAP_SECONDS = 75;
+const SERVER_CLOCK_GRACE_SECONDS = 5;
 let analyticsSchemaPromise = null;
 
 function normaliseEmail(value) {
@@ -49,6 +51,24 @@ function average(values) {
     const list = values.map(Number).filter(Number.isFinite);
     if (!list.length) return 0;
     return Math.round(list.reduce((sum, value) => sum + value, 0) / list.length);
+}
+
+function credibleDurationSeconds(session, reportedSeconds, now = new Date()) {
+    const current = Math.max(0, Math.floor(Number(session?.durationSeconds) || 0));
+    const reported = Number(reportedSeconds);
+    if (!Number.isFinite(reported) || reported <= current) return current;
+
+    const nowMs = now.getTime();
+    const startedMs = new Date(session?.startedAt || now).getTime();
+    const lastSeenMs = new Date(session?.lastSeenAt || session?.startedAt || now).getTime();
+    const secondsSinceLastEvent = Math.max(0, Math.min(
+        MAX_TRACKABLE_GAP_SECONDS,
+        Math.floor((nowMs - lastSeenMs) / 1000)
+    ));
+    const wallClockSeconds = Math.max(0, Math.floor((nowMs - startedMs) / 1000));
+    const incrementalCeiling = current + secondsSinceLastEvent + SERVER_CLOCK_GRACE_SECONDS;
+    const wallClockCeiling = wallClockSeconds + SERVER_CLOCK_GRACE_SECONDS;
+    return Math.max(current, Math.min(Math.floor(reported), incrementalCeiling, wallClockCeiling));
 }
 
 function pageSetForSession(session) {
@@ -101,7 +121,7 @@ async function startReaderSession({ book, email, name = null, source = 'share', 
     await ensureAnalyticsSchema();
     const readerEmail = normaliseEmail(email);
     if (!isValidEmail(readerEmail)) {
-        const err = new Error('Enter a valid email address to open this flipbook.');
+        const err = new Error('Enter a valid email address to open this publication.');
         err.status = 400;
         err.code = 'FLIPBOOK_READER_EMAIL_INVALID';
         throw err;
@@ -134,6 +154,10 @@ async function startReaderSession({ book, email, name = null, source = 'share', 
                 readerEmail: recent.readerEmail,
                 readerName: recent.readerName,
                 startedAt: recent.startedAt,
+                durationSeconds: Number(recent.durationSeconds || 0),
+                lastPageIndex: Number(recent.lastPageIndex || 0),
+                uniquePages: [...pageSetForSession(recent)].sort((a, b) => a - b),
+                completed: Boolean(recent.completedAt),
                 resumed: true
             };
         }
@@ -192,6 +216,10 @@ async function startReaderSession({ book, email, name = null, source = 'share', 
         readerEmail: session.readerEmail,
         readerName: session.readerName,
         startedAt: session.startedAt,
+        durationSeconds: 0,
+        lastPageIndex: 0,
+        uniquePages: pageCount ? [0] : [],
+        completed: false,
         resumed: false
     };
 }
@@ -220,7 +248,7 @@ async function recordReaderEvents({ book, sessionToken, events = [] }) {
         where: { sessionToken: String(sessionToken || ''), flipbookId: book.id }
     });
     if (!session) {
-        const err = new Error('Reader session expired. Reopen the shared flipbook link.');
+        const err = new Error('Reader session expired. Reopen the shared Publica link.');
         err.status = 404;
         err.code = 'FLIPBOOK_READER_SESSION_NOT_FOUND';
         throw err;
@@ -239,15 +267,20 @@ async function recordReaderEvents({ book, sessionToken, events = [] }) {
     let flipCount = Number(session.flipCount || 0);
     let durationSeconds = Number(session.durationSeconds || 0);
     let completedAt = session.completedAt || null;
+    const recordedAt = new Date();
+    const reportedDuration = cleaned.reduce((maximum, event) => (
+        event.elapsedSeconds === null ? maximum : Math.max(maximum, event.elapsedSeconds)
+    ), durationSeconds);
+    durationSeconds = credibleDurationSeconds(session, reportedDuration, recordedAt);
 
     const rows = [];
     for (const event of cleaned) {
-        if (event.elapsedSeconds !== null) durationSeconds = Math.max(durationSeconds, event.elapsedSeconds);
-
         if (event.eventType === 'heartbeat') continue;
 
         if (event.eventType === 'page_view') {
-            if (event.pageIndex === null || uniquePages.has(event.pageIndex)) continue;
+            if (event.pageIndex === null) continue;
+            lastPageIndex = event.pageIndex;
+            if (uniquePages.has(event.pageIndex)) continue;
             uniquePages.add(event.pageIndex);
             maxPageIndex = Math.max(maxPageIndex, event.pageIndex);
         }
@@ -260,15 +293,10 @@ async function recordReaderEvents({ book, sessionToken, events = [] }) {
             flipCount += 1;
         }
 
-        if (event.eventType === 'complete') {
-            if (event.pageIndex !== null) {
-                uniquePages.add(event.pageIndex);
-                lastPageIndex = event.pageIndex;
-                maxPageIndex = Math.max(maxPageIndex, event.pageIndex);
-            }
-            if (completedAt) continue;
-            completedAt = new Date();
-        }
+        // Completion is derived server-side after every page has genuinely
+        // appeared in this session. A client cannot complete a publication by
+        // jumping to the final page or by posting a forged complete event.
+        if (event.eventType === 'complete') continue;
 
         rows.push({
             sessionId: session.id,
@@ -278,8 +306,23 @@ async function recordReaderEvents({ book, sessionToken, events = [] }) {
             eventType: event.eventType,
             pageIndex: event.pageIndex,
             direction: event.direction,
-            occurredAt: new Date(),
+            occurredAt: recordedAt,
             metadata: event.metadata
+        });
+    }
+
+    if (!completedAt && pageCount > 0 && uniquePages.size >= pageCount) {
+        completedAt = recordedAt;
+        rows.push({
+            sessionId: session.id,
+            flipbookId: book.id,
+            ownerUserId: book.ownerUserId,
+            readerEmail: session.readerEmail,
+            eventType: 'complete',
+            pageIndex: lastPageIndex,
+            direction: null,
+            occurredAt: recordedAt,
+            metadata: { serverVerified: true, pagesViewed: uniquePages.size, pageCount }
         });
     }
 
@@ -290,7 +333,7 @@ async function recordReaderEvents({ book, sessionToken, events = [] }) {
     session.flipCount = flipCount;
     session.durationSeconds = durationSeconds;
     session.completedAt = completedAt;
-    session.lastSeenAt = new Date();
+    session.lastSeenAt = recordedAt;
     await session.save();
 
     return {
@@ -505,5 +548,6 @@ module.exports = {
     startReaderSession,
     recordReaderEvents,
     getBookAnalytics,
-    getLibraryAnalytics
+    getLibraryAnalytics,
+    _testing: { credibleDurationSeconds }
 };

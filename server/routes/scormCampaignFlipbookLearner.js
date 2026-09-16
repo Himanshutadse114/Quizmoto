@@ -41,7 +41,7 @@ router.post('/session/flipbooks/:assignmentId/launch', campaignAuthMiddleware, a
         }
         res.json({ ...result, url: url.toString() });
     } catch (err) {
-        res.status(err.status || 500).json({ message: err.message || 'Unable to launch this Flipbook.', code: err.code });
+        res.status(err.status || 500).json({ message: err.message || 'Unable to launch this publication.', code: err.code });
     }
 });
 

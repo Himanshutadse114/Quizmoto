@@ -83,7 +83,7 @@ function FlipbookCard({ book, onDelete, onCopied }) {
           <Link to={`/scorm/flipbooks/${book.id}/analytics`} className="flip-button-secondary"><BarChart3 size={14} /> Analytics</Link>
           {published && <button type="button" className="flip-icon-button" onClick={copy} title="Copy share link"><Copy size={14} /></button>}
           {published && <button type="button" className="flip-icon-button" onClick={nativeShare} title="Share"><Share2 size={14} /></button>}
-          {published && <a href={shareUrl(book)} target="_blank" rel="noreferrer" className="flip-icon-button" title="Open published flipbook"><ExternalLink size={14} /></a>}
+          {published && <a href={shareUrl(book)} target="_blank" rel="noreferrer" className="flip-icon-button" title="Open published publication"><ExternalLink size={14} /></a>}
           <button type="button" className="flip-icon-button is-danger" onClick={() => onDelete(book)} title="Delete"><Trash2 size={14} /></button>
         </div>
       </div>
@@ -109,7 +109,7 @@ function AdminLimits({ token }) {
       (res.data.users || []).forEach((item) => { next[item.id] = item.quota?.max === null ? '' : String(item.quota?.max ?? 3); });
       setDrafts(next);
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not load user flipbook limits.');
+      setError(err.response?.data?.message || 'Could not load user Publica limits.');
     } finally { setLoading(false); }
   }, [headers, query]);
 
@@ -130,7 +130,7 @@ function AdminLimits({ token }) {
   return (
     <section className="flip-admin-panel">
       <div className="flip-section-heading">
-        <div><div className="flip-kicker"><ShieldCheck size={13} /> Super Admin</div><h2>User flipbook limits</h2><p>Set how many flipbooks each account can keep and share. Leave blank for unlimited.</p></div>
+        <div><div className="flip-kicker"><ShieldCheck size={13} /> Super Admin</div><h2>User Publica limits</h2><p>Set how many publications each account can keep and share. Leave blank for unlimited.</p></div>
         <div className="flip-search"><Search size={14} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search user or email" /></div>
       </div>
       {error && <div className="flip-error">{error}</div>}
@@ -171,7 +171,7 @@ export default function Flipbooks() {
       setBooks(res.data.flipbooks || []);
       setQuota(res.data.quota || null);
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not load your flipbooks.');
+      setError(err.response?.data?.message || 'Could not load your publications.');
     } finally { setLoading(false); }
   }, [headers]);
 
@@ -182,7 +182,7 @@ export default function Flipbooks() {
     try {
       await axios.delete(apiUrl(`${API}/${book.id}`), { headers });
       await load();
-    } catch (err) { setError(err.response?.data?.message || 'Could not delete this flipbook.'); }
+    } catch (err) { setError(err.response?.data?.message || 'Could not delete this publication.'); }
   };
 
   const atLimit = quota?.max !== null && quota?.max !== undefined && (quota?.used || 0) >= quota.max;
@@ -192,26 +192,26 @@ export default function Flipbooks() {
     <div className="flipbooks-page">
       <div className="flipbooks-header">
         <div>
-          <div className="flip-kicker">Free publishing tool</div>
-          <h1>Flipbooks</h1>
-          <p>Turn a PDF or image set into a mobile-ready page-flipping publication, then share one link with employees, learners or customers.</p>
+          <div className="flip-kicker">Secure digital publishing</div>
+          <h1>LMSGEN Publica</h1>
+          <p>Turn a PDF or image set into a mobile-ready, trackable publication, then share one secure link with employees, learners or customers.</p>
         </div>
         <div className="flip-header-actions">
           <QuotaCard quota={quota} />
           <Link to="/scorm/flipbooks/analytics" className="flip-button-secondary"><BarChart3 size={16} /> Library analytics</Link>
-          <Link to="/scorm/flipbooks/new" className={`flip-button-primary ${atLimit ? 'is-disabled' : ''}`} aria-disabled={atLimit} onClick={(e) => atLimit && e.preventDefault()}><FilePlus2 size={16} /> Create flipbook</Link>
+          <Link to="/scorm/flipbooks/new" className={`flip-button-primary ${atLimit ? 'is-disabled' : ''}`} aria-disabled={atLimit} onClick={(e) => atLimit && e.preventDefault()}><FilePlus2 size={16} /> Create publication</Link>
         </div>
       </div>
 
       <FlipbookLibraryShare />
-      {atLimit && <div className="flip-limit-banner"><Gauge size={15} /><span>You have reached your flipbook allowance. Delete a flipbook or ask the Super Admin to increase the limit.</span></div>}
+      {atLimit && <div className="flip-limit-banner"><Gauge size={15} /><span>You have reached your Publica allowance. Delete a publication or ask the Super Admin to increase the limit.</span></div>}
       {copied && <div className="flip-toast">Share link copied</div>}
       {error && <div className="flip-error">{error}</div>}
 
-      {loading ? <div className="flip-loading"><RefreshCw size={20} className="animate-spin" /><span>Loading flipbooks…</span></div> : books.length ? (
+      {loading ? <div className="flip-loading"><RefreshCw size={20} className="animate-spin" /><span>Loading publications…</span></div> : books.length ? (
         <div className="flip-grid">{books.map((book) => <FlipbookCard key={book.id} book={book} onDelete={remove} onCopied={markCopied} />)}</div>
       ) : (
-        <div className="flip-empty"><div className="flip-empty-icon"><BookOpenCheck size={30} /></div><h2>Create your first flipbook</h2><p>Upload a PDF or a set of images. Quizmoto will build the reader and give you a public sharing link.</p><Link to="/scorm/flipbooks/new" className="flip-button-primary"><FilePlus2 size={16} /> Create flipbook</Link></div>
+        <div className="flip-empty"><div className="flip-empty-icon"><BookOpenCheck size={30} /></div><h2>Create your first publication</h2><p>Upload a PDF or a set of images. LMSGEN Publica will build the reader and give you a secure sharing link.</p><Link to="/scorm/flipbooks/new" className="flip-button-primary"><FilePlus2 size={16} /> Create publication</Link></div>
       )}
 
       {isSuperAdmin && <AdminLimits token={token} />}

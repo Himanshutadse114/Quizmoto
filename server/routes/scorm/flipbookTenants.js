@@ -22,7 +22,7 @@ router.get('/', auth, requireSuperAdmin, async (req, res) => {
         res.json({ tenants: await listTenantFlipbookManagement(), defaultLimit: 3 });
     } catch (err) {
         console.error('[flipbook-tenants] list failed', err);
-        res.status(err.status || 500).json({ message: err.message || 'Could not load tenant Flipbook controls.', code: err.code });
+        res.status(err.status || 500).json({ message: err.message || 'Could not load tenant Publica controls.', code: err.code });
     }
 });
 
@@ -38,7 +38,7 @@ router.patch('/:workspaceId', auth, requireSuperAdmin, async (req, res) => {
         res.json({ tenant: { id: result.workspace.id, name: result.workspace.name, quota: result.quota } });
     } catch (err) {
         console.error('[flipbook-tenants] update failed', err);
-        res.status(err.status || 500).json({ message: err.message || 'Could not update tenant Flipbook controls.', code: err.code });
+        res.status(err.status || 500).json({ message: err.message || 'Could not update tenant Publica controls.', code: err.code });
     }
 });
 

@@ -31,7 +31,7 @@ function trackingInjection(shareToken) {
 #lmsgenReaderGate{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;padding:18px;background:rgba(235,248,246,.96);backdrop-filter:blur(10px);font-family:Inter,Arial,sans-serif;color:#17313a}
 #lmsgenReaderGate.is-hidden{display:none}#lmsgenReaderGate.is-restoring .lmsgen-reader-card{opacity:0;pointer-events:none}.lmsgen-reader-card{width:min(440px,100%);background:#fff;border:1px solid #d7ece8;border-radius:22px;box-shadow:0 24px 70px rgba(23,49,58,.16);padding:24px;transition:opacity .12s ease}.lmsgen-reader-mark{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:#e8f8f7;color:#0f9a95;font-size:21px;font-weight:800}.lmsgen-reader-card h2{margin:16px 0 7px;font-size:20px;line-height:1.15}.lmsgen-reader-card p{margin:0;color:#6a8588;font-size:12px;line-height:1.6}.lmsgen-reader-field{display:block;margin-top:16px}.lmsgen-reader-field span{display:block;margin-bottom:6px;font-size:10px;font-weight:800;color:#45666a;text-transform:uppercase;letter-spacing:.06em}.lmsgen-reader-field input{width:100%;height:45px;border:1px solid #d7ece8;border-radius:11px;background:#fff;color:#17313a;padding:0 12px;font:600 13px Inter,Arial,sans-serif;outline:none}.lmsgen-reader-field input:focus{border-color:#17b6b0;box-shadow:0 0 0 3px rgba(23,182,176,.12)}#lmsgenReaderSubmit{margin-top:18px;width:100%;height:46px;border:0;border-radius:11px;background:#17b6b0;color:#fff;font:800 13px Inter,Arial,sans-serif;cursor:pointer}#lmsgenReaderSubmit:hover{background:#0f9a95}#lmsgenReaderSubmit:disabled{opacity:.55;cursor:wait}.lmsgen-reader-privacy{margin-top:12px!important;font-size:10px!important;color:#789194!important}.lmsgen-reader-error{display:none;margin-top:10px;padding:9px 10px;border-radius:9px;background:#fff1f2;color:#be123c;font-size:11px}.lmsgen-reader-error.is-visible{display:block}
 </style>`,
-        html: `<div id="lmsgenReaderGate" class="is-restoring"><form class="lmsgen-reader-card" id="lmsgenReaderForm"><div class="lmsgen-reader-mark">L</div><h2>Open this flipbook</h2><p>Enter your details to continue reading.</p><label class="lmsgen-reader-field"><span>Email address</span><input id="lmsgenReaderEmail" type="email" autocomplete="email" required placeholder="name@company.com"></label><label class="lmsgen-reader-field"><span>Name (optional)</span><input id="lmsgenReaderName" type="text" autocomplete="name" maxlength="160" placeholder="Your name"></label><div class="lmsgen-reader-error" id="lmsgenReaderError"></div><button id="lmsgenReaderSubmit" type="submit">Open flipbook</button><p class="lmsgen-reader-privacy">Your email and reading activity are shared with the flipbook author for engagement analytics. This browser will remember your access.</p></form></div>`,
+        html: `<div id="lmsgenReaderGate" class="is-restoring"><form class="lmsgen-reader-card" id="lmsgenReaderForm"><div class="lmsgen-reader-mark">L</div><h2>Open this publication</h2><p>Enter your details to continue reading.</p><label class="lmsgen-reader-field"><span>Email address</span><input id="lmsgenReaderEmail" type="email" autocomplete="email" required placeholder="name@company.com"></label><label class="lmsgen-reader-field"><span>Name (optional)</span><input id="lmsgenReaderName" type="text" autocomplete="name" maxlength="160" placeholder="Your name"></label><div class="lmsgen-reader-error" id="lmsgenReaderError"></div><button id="lmsgenReaderSubmit" type="submit">Open publication</button><p class="lmsgen-reader-privacy">Your email and reading activity are shared with the publication author for engagement analytics. This browser will remember your access.</p></form></div>`,
         script: `<script id="lmsgen-flipbook-analytics-script">
 (()=>{
   const BASE=${JSON.stringify(basePath)};
@@ -57,7 +57,6 @@ function trackingInjection(shareToken) {
   let activeStartedAt=0;
   let active=false;
   let readerActivated=false;
-  const seenPages=new Set([0]);
   try{emailInput.value=localStorage.getItem(EMAIL_KEY)||'';nameInput.value=localStorage.getItem(NAME_KEY)||''}catch(_){}
 
   function activeSeconds(){
@@ -75,7 +74,7 @@ function trackingInjection(shareToken) {
     idleTimer=setTimeout(()=>pauseActive(),60000);
   }
   function markActivity(){
-    if(!sessionToken||document.visibilityState!=='visible')return;
+    if(!sessionToken||document.visibilityState!=='visible'||(document.hasFocus&&!document.hasFocus()))return;
     if(!active){active=true;activeStartedAt=performance.now()}
     scheduleIdle();
   }
@@ -102,8 +101,6 @@ function trackingInjection(shareToken) {
     const events=[];
     const pages=visiblePages();
     pages.forEach(pageIndex=>{
-      if(seenPages.has(pageIndex))return;
-      seenPages.add(pageIndex);
       events.push({eventType:'page_view',pageIndex,elapsedSeconds:activeSeconds()});
     });
     const lastPage=(typeof DATA!=='undefined'&&DATA.pageCount)?DATA.pageCount-1:null;
@@ -133,7 +130,7 @@ function trackingInjection(shareToken) {
       if(typeof pageFlip==='undefined'||!pageFlip)return false;
       attached=true;
       try{lastIndex=Number(pageFlip.getCurrentPageIndex?.()||0)}catch(_){}
-      visiblePages().forEach(page=>seenPages.add(page));
+      send(visiblePageEvents());
       pageFlip.on('flip',event=>trackFlip(Number(event.data)||0));
       pageFlip.on('changeOrientation',()=>requestAnimationFrame(()=>send(visiblePageEvents())));
       const share=document.getElementById('shareBtn');
@@ -144,7 +141,7 @@ function trackingInjection(shareToken) {
   function startHeartbeat(){
     if(heartbeatTimer)clearInterval(heartbeatTimer);
     heartbeatTimer=setInterval(()=>{
-      if(!sessionToken)return;
+      if(!sessionToken||!active||document.visibilityState!=='visible'||(document.hasFocus&&!document.hasFocus()))return;
       send([{eventType:'heartbeat',pageIndex:lastIndex,elapsedSeconds:activeSeconds()}]);
     },15000);
   }
@@ -156,6 +153,11 @@ function trackingInjection(shareToken) {
         send([{eventType:'heartbeat',pageIndex:lastIndex,elapsedSeconds:activeSeconds()}],true);
       }else markActivity();
     });
+    window.addEventListener('blur',()=>{
+      pauseActive();
+      if(sessionToken)send([{eventType:'heartbeat',pageIndex:lastIndex,elapsedSeconds:activeSeconds()}],true);
+    });
+    window.addEventListener('focus',markActivity);
   }
 
   function storedProfile(){
@@ -178,6 +180,7 @@ function trackingInjection(shareToken) {
     readerActivated=true;
     sessionToken=String(data.sessionToken||'');
     activeBaseSeconds=Math.max(0,Number(data.durationSeconds)||0);
+    lastIndex=Math.max(0,Number(data.lastPageIndex)||0);
     rememberProfile(String(data.readerEmail||email||'').trim().toLowerCase(),String(data.readerName||name||'').trim());
     gate.classList.add('is-hidden');
     gate.classList.remove('is-restoring');
@@ -211,7 +214,7 @@ function trackingInjection(shareToken) {
     submit.disabled=true;submit.textContent='Opening…';
     try{
       await startSession(email,name);
-    }catch(err){errorBox.textContent=err.message||'Could not open this flipbook.';errorBox.classList.add('is-visible');submit.disabled=false;submit.textContent='Open flipbook'}
+    }catch(err){errorBox.textContent=err.message||'Could not open this publication.';errorBox.classList.add('is-visible');submit.disabled=false;submit.textContent='Open publication'}
   });
   window.addEventListener('pagehide',()=>{
     pauseActive();
@@ -252,7 +255,7 @@ router.post('/public/:shareToken/session', async (req, res, next) => {
     try {
         await ensureAnalyticsSchema();
         const book = await publicBook(req.params.shareToken);
-        if (!book) return res.status(404).json({ message: 'This flipbook is not available.' });
+        if (!book) return res.status(404).json({ message: 'This publication is not available.' });
         const session = await startReaderSession({
             book,
             email: req.body?.email,
@@ -271,7 +274,7 @@ router.post('/public/:shareToken/session', async (req, res, next) => {
 router.post('/public/:shareToken/session/:sessionToken/events', async (req, res, next) => {
     try {
         const book = await publicBook(req.params.shareToken);
-        if (!book) return res.status(404).json({ message: 'This flipbook is not available.' });
+        if (!book) return res.status(404).json({ message: 'This publication is not available.' });
         const result = await recordReaderEvents({
             book,
             sessionToken: req.params.sessionToken,
@@ -312,7 +315,7 @@ router.get('/analytics/library', genericPlatformAuth, async (req, res, next) => 
 router.get('/:id/analytics', genericPlatformAuth, async (req, res, next) => {
     try {
         const book = await Flipbook.findOne({ where: { id: req.params.id, ownerUserId: req.flipbookAnalyticsUser.id } });
-        if (!book) return res.status(404).json({ message: 'Flipbook not found.' });
+        if (!book) return res.status(404).json({ message: 'Publication not found.' });
         const analytics = await getBookAnalytics({ book, days: req.query.days });
         res.json({ analytics });
     } catch (err) {
@@ -324,7 +327,7 @@ router.use((err, req, res, next) => {
     if (res.headersSent) return next(err);
     console.error('[flipbook-analytics]', err);
     res.status(err.status || 500).json({
-        message: err.message || 'Flipbook analytics request failed.',
+        message: err.message || 'Publica analytics request failed.',
         code: err.code || 'FLIPBOOK_ANALYTICS_ERROR'
     });
 });

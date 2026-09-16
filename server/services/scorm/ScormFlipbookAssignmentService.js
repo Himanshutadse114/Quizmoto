@@ -111,12 +111,12 @@ async function validateSelections({ workspaceId, hostId, selections }) {
     const available = await listPublishedTenantFlipbooks({ workspaceId, hostId });
     const availableIds = new Set(available.map((book) => String(book.id)));
     const invalid = normalized.filter((item) => !availableIds.has(String(item.flipbookId)));
-    if (invalid.length) throw fail('One or more selected Flipbooks are not published tenant Flipbooks.', 'SCORM_FLIPBOOK_ASSIGNMENT_INVALID', 400);
+    if (invalid.length) throw fail("One or more selected publications are not available in this tenant's Publica library.", 'SCORM_FLIPBOOK_ASSIGNMENT_INVALID', 400);
 
     const courseIds = [...new Set(normalized.map((item) => item.courseId).filter(Boolean))];
     if (courseIds.length) {
         const courses = await ScormCourse.findAll({ where: { id: { [Op.in]: courseIds }, hostId } });
-        if (courses.length !== courseIds.length) throw fail('A Flipbook is linked to a course outside this tenant.', 'SCORM_FLIPBOOK_COURSE_INVALID', 400);
+        if (courses.length !== courseIds.length) throw fail('A publication is linked to a course outside this tenant.', 'SCORM_FLIPBOOK_COURSE_INVALID', 400);
     }
     return normalized;
 }
@@ -151,7 +151,7 @@ async function campaignFlipbooks(campaignId) {
             flipbookId: link.flipbookId,
             courseId: link.courseId || null,
             required: link.required !== false,
-            title: book?.title || 'Flipbook',
+            title: book?.title || 'Publication',
             description: book?.description || null,
             pageCount: Number(book?.pageCount || 0),
             status: book?.status || null
@@ -212,7 +212,7 @@ async function resolveAssignmentToken({ token, flipbookId = null }) {
     const where = { assignmentToken: String(token || ''), status: { [Op.ne]: 'revoked' } };
     if (flipbookId) where.flipbookId = flipbookId;
     const assignment = await ScormFlipbookAssignment.findOne({ where });
-    if (!assignment) throw fail('This Flipbook assignment is no longer available.', 'SCORM_FLIPBOOK_ASSIGNMENT_NOT_FOUND', 404);
+    if (!assignment) throw fail('This publication assignment is no longer available.', 'SCORM_FLIPBOOK_ASSIGNMENT_NOT_FOUND', 404);
     const campaign = assignment.campaignId ? await ScormCampaign.findByPk(assignment.campaignId) : null;
     if (campaign && campaign.status !== 'active') throw fail('This learning campaign is not active.', 'SCORM_CAMPAIGN_NOT_ACTIVE', 403);
     return assignment;
@@ -317,9 +317,9 @@ async function launchCampaignFlipbook(context, assignmentId) {
             status: { [Op.ne]: 'revoked' }
         }
     });
-    if (!assignment) throw fail('Flipbook assignment not found.', 'SCORM_FLIPBOOK_ASSIGNMENT_NOT_FOUND', 404);
+    if (!assignment) throw fail('Publication assignment not found.', 'SCORM_FLIPBOOK_ASSIGNMENT_NOT_FOUND', 404);
     const book = await Flipbook.findOne({ where: { id: assignment.flipbookId, status: 'published', shareEnabled: true } });
-    if (!book) throw fail('This Flipbook is no longer published.', 'SCORM_FLIPBOOK_NOT_AVAILABLE', 404);
+    if (!book) throw fail('This publication is no longer published.', 'SCORM_FLIPBOOK_NOT_AVAILABLE', 404);
     return {
         assignmentId: assignment.id,
         flipbookId: book.id,
@@ -345,7 +345,7 @@ async function listAssignmentAnalytics({ workspaceId = null, campaignId = null, 
             campaignId: assignment.campaignId || null,
             courseId: assignment.courseId || null,
             flipbookId: assignment.flipbookId,
-            flipbookTitle: progress.book?.title || 'Flipbook',
+            flipbookTitle: progress.book?.title || 'Publication',
             learnerEmail: assignment.learnerEmail,
             learnerName: assignment.learnerName || null,
             status: assignment.status,

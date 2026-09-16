@@ -35,7 +35,7 @@ function publicFlipbookUrl(book) {
 
 function renderPublicReader(book) {
     const publicUrl = publicFlipbookUrl(book);
-    const publicTitle = String(book.title || 'Flipbook');
+    const publicTitle = String(book.title || 'Publication');
     const mobileOverrides = `
 <style id="lmsgen-public-flipbook-mobile-overrides">
 @media(max-width:760px){
@@ -141,7 +141,7 @@ async function findOwnedBook(req, res, next) {
     try {
         await ensureFlipbookSchema();
         const book = await Flipbook.findOne({ where: { id: req.params.id, ownerUserId: req.flipbookUser.id } });
-        if (!book) return res.status(404).json({ message: 'Flipbook not found.' });
+        if (!book) return res.status(404).json({ message: 'Publication not found.' });
         req.flipbook = book;
         next();
     } catch (err) {
@@ -157,7 +157,7 @@ router.get('/public/:shareToken/view', async (req, res, next) => {
             where: { shareToken: req.params.shareToken, status: 'published', shareEnabled: true }
         });
         if (!book) {
-            return res.status(404).type('html').send('<!doctype html><html><body style="font-family:Arial;padding:40px"><h1>Flipbook unavailable</h1><p>This link is invalid, unpublished or has been disabled.</p></body></html>');
+            return res.status(404).type('html').send('<!doctype html><html><body style="font-family:Arial;padding:40px"><h1>Publication unavailable</h1><p>This link is invalid, unpublished or has been disabled.</p></body></html>');
         }
         res.setHeader('Cache-Control', 'private, no-store');
         res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
@@ -173,7 +173,7 @@ router.get('/public/:shareToken', async (req, res, next) => {
         const book = await Flipbook.findOne({
             where: { shareToken: req.params.shareToken, status: 'published', shareEnabled: true }
         });
-        if (!book) return res.status(404).json({ message: 'This flipbook is not available.' });
+        if (!book) return res.status(404).json({ message: 'This publication is not available.' });
         res.json({ flipbook: publicPayload(book) });
     } catch (err) {
         next(err);
@@ -207,7 +207,7 @@ router.post('/public/:shareToken/view', async (req, res, next) => {
         const book = await Flipbook.findOne({
             where: { shareToken: req.params.shareToken, status: 'published', shareEnabled: true }
         });
-        if (!book) return res.status(404).json({ message: 'This flipbook is not available.' });
+        if (!book) return res.status(404).json({ message: 'This publication is not available.' });
         book.viewCount = Number(book.viewCount || 0) + 1;
         book.lastViewedAt = new Date();
         await book.save();
@@ -278,7 +278,7 @@ router.post('/', async (req, res, next) => {
     try {
         await ensureFlipbookSchema();
         await assertCanCreate(req.flipbookUser);
-        const title = sanitiseText(req.body?.title, 180) || 'Untitled flipbook';
+        const title = sanitiseText(req.body?.title, 180) || 'Untitled publication';
         const description = sanitiseText(req.body?.description, 3000) || null;
         const book = await Flipbook.create({
             ownerUserId: req.flipbookUser.id,
@@ -328,7 +328,7 @@ router.delete('/:id/pages', findOwnedBook, async (req, res, next) => {
 router.patch('/:id', findOwnedBook, async (req, res, next) => {
     try {
         if (Object.prototype.hasOwnProperty.call(req.body || {}, 'title')) {
-            req.flipbook.title = sanitiseText(req.body.title, 180) || 'Untitled flipbook';
+            req.flipbook.title = sanitiseText(req.body.title, 180) || 'Untitled publication';
         }
         if (Object.prototype.hasOwnProperty.call(req.body || {}, 'description')) {
             req.flipbook.description = sanitiseText(req.body.description, 3000) || null;
@@ -380,7 +380,7 @@ router.use((err, req, res, next) => {
     console.error('[flipbooks]', err);
     if (res.headersSent) return next(err);
     res.status(err.status || 500).json({
-        message: err.message || 'Flipbook request failed.',
+        message: err.message || 'Publica request failed.',
         code: err.code || 'FLIPBOOK_ERROR',
         quota: err.quota || undefined
     });

@@ -59,7 +59,7 @@ const PERSISTABLE_PATHS = [
 ];
 
 const FREE_TOOL_DATASETS = [
-  { path: '/api/scorm/flipbooks', label: 'Preparing Flipbooks', priority: 1 },
+  { path: '/api/scorm/flipbooks', label: 'Preparing Publica', priority: 1 },
   { path: '/api/quizzes', label: 'Preparing Quizmoto', priority: 1 },
   { path: '/api/quizzes/active-sessions', label: 'Checking live sessions', priority: 2 }
 ];
@@ -87,7 +87,7 @@ const WORKSPACE_ADMIN_DATASETS = [
 const SUPER_ADMIN_DATASETS = [
   { path: '/api/scorm/access/tenants', label: 'Loading tenant administration', priority: 3 },
   { path: '/api/scorm/platform-users', params: { q: undefined, scope: 'all' }, label: 'Preparing platform users', priority: 3 },
-  { path: '/api/scorm/flipbook-tenants', label: 'Preparing Flipbook controls', priority: 3 },
+  { path: '/api/scorm/flipbook-tenants', label: 'Preparing Publica controls', priority: 3 },
   { path: '/api/scorm/mail/templates', label: 'Loading email templates', priority: 4 },
   { path: '/api/scorm/mail/status', label: 'Checking email service', priority: 4 }
 ];

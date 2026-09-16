@@ -161,13 +161,13 @@ async function assertTenantCanCreate(scope) {
     if (!scope?.workspaceId) return null;
     const quota = await getTenantQuota(scope);
     if (!quota.enabled) {
-        const err = new Error('Flipbooks have been disabled for this tenant by the Super Admin.');
+        const err = new Error('LMSGEN Publica has been disabled for this tenant by the Super Admin.');
         err.status = 403;
         err.code = 'FLIPBOOK_TENANT_DISABLED';
         throw err;
     }
     if (quota.max !== null && quota.used >= quota.max) {
-        const err = new Error(`Tenant Flipbook allowance reached (${quota.used}/${quota.max}). Ask the Super Admin to increase the tenant limit.`);
+        const err = new Error(`Tenant Publica allowance reached (${quota.used}/${quota.max}). Ask the Super Admin to increase the tenant limit.`);
         err.status = 403;
         err.code = 'FLIPBOOK_TENANT_LIMIT_REACHED';
         err.quota = quota;
