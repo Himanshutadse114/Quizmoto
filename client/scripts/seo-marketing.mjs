@@ -89,44 +89,48 @@ const PAIN_SECTION = `
 const PDF_COURSE_SECTION = `
 <section class="lmsgen-seo-section lmsgen-pdf-course-section" aria-labelledby="lmsgen-pdf-course-title">
   <div class="lmsgen-seo-inner">
-    <div class="lmsgen-pdf-course-header">
-      <div>
-        <div class="lmsgen-seo-kicker">INTRODUCING LMSGEN PUBLICA</div>
-        <h2 id="lmsgen-pdf-course-title">Publish beautifully. Build an audience. Know what keeps them reading.</h2>
-      </div>
-      <div class="lmsgen-pdf-course-summary">
-        <p>Give presentations, comics, guides and visual stories a premium digital home—with a shareable library and meaningful audience insight built in.</p>
-        <a class="lmsgen-conversion-cta" href="/contact">Let's discuss LMSGEN Publica <span aria-hidden="true">→</span></a>
-      </div>
-    </div>
-    <ul class="lmsgen-pdf-course-benefits" aria-label="Benefits of LMSGEN Publica">
-      <li><strong>Build a library your audience remembers.</strong><p>Writers, comic creators and publishers can bring every issue, chapter or collection together under one professional link.</p></li>
-      <li><strong>Let the work keep its visual impact.</strong><p>Present every page as designed in an elegant, mobile-ready reading experience that feels made for the content.</p></li>
-      <li><strong>See what a download can never tell you.</strong><p>Understand reader reach, page-by-page attention, active reading time and completion without guessing.</p></li>
-    </ul>
-    <div class="lmsgen-pdf-course-proof publica-demo-shell" data-publica-demo>
-      <div class="publica-demo-topbar">
-        <div><span class="publica-demo-mark">P</span><strong>LMSGEN Publica</strong><small>Interactive comic preview</small></div>
-        <span class="publica-demo-live"><i></i> Page-level tracking</span>
-      </div>
-      <div class="publica-reader-stage">
-        <button type="button" class="publica-turn-control publica-prev" aria-label="Previous comic page"><span aria-hidden="true">‹</span><b>Previous</b></button>
-        <div class="publica-book-viewport">
-          <div class="publica-comic-book" data-publica-book aria-live="polite"></div>
+    <div class="lmsgen-publica-layout">
+      <div class="lmsgen-pdf-course-proof publica-demo-shell" data-publica-demo>
+        <div class="publica-demo-topbar">
+          <div><span class="publica-demo-mark">P</span><strong>LMSGEN Publica</strong><small>Interactive comic preview</small></div>
+          <span class="publica-demo-live"><i></i> Page-level tracking</span>
         </div>
-        <button type="button" class="publica-turn-control publica-next" aria-label="Next comic page"><b>Next</b><span aria-hidden="true">›</span></button>
+        <div class="publica-reader-stage">
+          <button type="button" class="publica-turn-control publica-prev" aria-label="Previous comic page"><span aria-hidden="true">‹</span><b>Previous</b></button>
+          <div class="publica-book-viewport">
+            <div class="publica-comic-book is-fallback" data-publica-book aria-live="polite">
+              <article class="publica-comic-page publica-front-cover"><div class="publica-cover"><span>ORBITAL INK · ISSUE 01</span><h4>The Signal<br>in Sector 9</h4><p>A short comic about one message that changed an entire city.</p><b>READ NOW →</b></div></article>
+            </div>
+          </div>
+          <button type="button" class="publica-turn-control publica-next" aria-label="Next comic page"><b>Next</b><span aria-hidden="true">›</span></button>
+        </div>
+        <div class="publica-reader-footer">
+          <span data-publica-status>Page 1 of 6</span>
+          <div class="publica-reader-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+          <strong>Tap or click to turn the page</strong>
+        </div>
+        <template data-publica-page><div class="publica-cover"><span>ORBITAL INK · ISSUE 01</span><h4>The Signal<br>in Sector 9</h4><p>A short comic about one message that changed an entire city.</p><b>READ NOW →</b></div></template>
+        <template data-publica-page><div class="publica-panel-grid"><div class="publica-panel publica-night"><em>09:17 PM</em><strong>The city went silent.</strong></div><div class="publica-panel publica-hero"><span class="publica-bubble">Did anyone else hear that?</span><b>!</b></div><div class="publica-caption">Every great story deserves a reading experience that pulls the audience forward.</div></div></template>
+        <template data-publica-page><div class="publica-panel-grid publica-action-grid"><div class="publica-panel publica-signal"><em>SECTOR 9</em><strong>THE SIGNAL<br>RETURNED.</strong></div><div class="publica-panel publica-run"><span class="publica-bubble">Move—now!</span><b>RUN</b></div><div class="publica-sfx">KRRR—SHHH!</div></div></template>
+        <template data-publica-page><div class="publica-panel-grid"><div class="publica-panel publica-lab"><em>ARCHIVE 404</em><strong>It was never a warning.</strong></div><div class="publica-panel publica-face"><span class="publica-bubble">It was an invitation.</span></div><div class="publica-caption publica-caption-teal">Publica preserves every designed page while making the whole story effortless to explore.</div></div></template>
+        <template data-publica-page><div class="publica-panel-grid publica-action-grid"><div class="publica-panel publica-portal"><em>FINAL TRANSMISSION</em><strong>OPEN<br>THE GATE</strong></div><div class="publica-panel publica-impact"><b>WHAM!</b><span class="publica-bubble">We write the ending.</span></div><div class="publica-sfx publica-sfx-yellow">TO BE CONTINUED…</div></div></template>
+        <template data-publica-page><div class="publica-back-cover"><span>YOUR AUDIENCE IS WAITING</span><h4>Publish your next world with LMSGEN Publica.</h4><ul><li>One branded library</li><li>Beautiful page-turn reading</li><li>Real audience insight</li></ul><b>LMSGEN PUBLICA</b></div></template>
       </div>
-      <div class="publica-reader-footer">
-        <span data-publica-status>Pages 1–2 of 6</span>
-        <div class="publica-reader-dots" aria-hidden="true"><i></i><i></i><i></i></div>
-        <strong>Tap or click to turn the page</strong>
+      <div class="lmsgen-publica-copy">
+        <div class="lmsgen-pdf-course-header">
+          <div class="lmsgen-seo-kicker">INTRODUCING LMSGEN PUBLICA</div>
+          <h2 id="lmsgen-pdf-course-title">Publish beautifully. Build an audience. Know what keeps them reading.</h2>
+        </div>
+        <div class="lmsgen-pdf-course-summary">
+          <p>Give presentations, comics, guides and visual stories a premium digital home—with a shareable library and meaningful audience insight built in.</p>
+          <a class="lmsgen-conversion-cta" href="/contact">Let's discuss LMSGEN Publica <span aria-hidden="true">→</span></a>
+        </div>
+        <ul class="lmsgen-pdf-course-benefits" aria-label="Benefits of LMSGEN Publica">
+          <li><strong>Build a library your audience remembers.</strong><p>Bring every issue, chapter or collection together under one professional link.</p></li>
+          <li><strong>Keep every page visually powerful.</strong><p>Present the work in a polished reader designed for every screen.</p></li>
+          <li><strong>Understand what readers value.</strong><p>See page attention, active reading time and completion without guessing.</p></li>
+        </ul>
       </div>
-      <template data-publica-page><div class="publica-cover"><span>ORBITAL INK · ISSUE 01</span><h4>The Signal<br>in Sector 9</h4><p>A short comic about one message that changed an entire city.</p><b>READ NOW →</b></div></template>
-      <template data-publica-page><div class="publica-panel-grid"><div class="publica-panel publica-night"><em>09:17 PM</em><strong>The city went silent.</strong></div><div class="publica-panel publica-hero"><span class="publica-bubble">Did anyone else hear that?</span><b>!</b></div><div class="publica-caption">Every great story deserves a reading experience that pulls the audience forward.</div></div></template>
-      <template data-publica-page><div class="publica-panel-grid publica-action-grid"><div class="publica-panel publica-signal"><em>SECTOR 9</em><strong>THE SIGNAL<br>RETURNED.</strong></div><div class="publica-panel publica-run"><span class="publica-bubble">Move—now!</span><b>RUN</b></div><div class="publica-sfx">KRRR—SHHH!</div></div></template>
-      <template data-publica-page><div class="publica-panel-grid"><div class="publica-panel publica-lab"><em>ARCHIVE 404</em><strong>It was never a warning.</strong></div><div class="publica-panel publica-face"><span class="publica-bubble">It was an invitation.</span></div><div class="publica-caption publica-caption-teal">Publica preserves every designed page while making the whole story effortless to explore.</div></div></template>
-      <template data-publica-page><div class="publica-panel-grid publica-action-grid"><div class="publica-panel publica-portal"><em>FINAL TRANSMISSION</em><strong>OPEN<br>THE GATE</strong></div><div class="publica-panel publica-impact"><b>WHAM!</b><span class="publica-bubble">We write the ending.</span></div><div class="publica-sfx publica-sfx-yellow">TO BE CONTINUED…</div></div></template>
-      <template data-publica-page><div class="publica-back-cover"><span>YOUR AUDIENCE IS WAITING</span><h4>Publish your next world with LMSGEN Publica.</h4><ul><li>One branded library</li><li>Beautiful page-turn reading</li><li>Real audience insight</li></ul><b>LMSGEN PUBLICA</b></div></template>
     </div>
   </div>
 </section>
@@ -177,14 +181,17 @@ const SEO_STYLE = `<style id="lmsgen-seo-content-style">
 const PDF_COURSE_STYLE = `<style id="lmsgen-pdf-course-style">
   .lmsgen-pdf-course-section{background:#073f3b;color:#fff;font-family:"Open Sans",Arial,sans-serif!important}
   .lmsgen-pdf-course-section .lmsgen-seo-kicker{color:#7ce3d9}
-  .lmsgen-pdf-course-section h2{max-width:78rem;color:#fff;font-family:"Montserrat",Arial,sans-serif!important;font-size:clamp(3.6rem,3vw,4.8rem)!important;font-weight:600!important;line-height:1.1!important;letter-spacing:-.035em!important;text-transform:none!important;text-wrap:balance}
-  .lmsgen-pdf-course-header{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(30rem,.8fr);gap:6rem;align-items:end}
-  .lmsgen-pdf-course-summary p{margin:0 0 2.4rem;font-size:1.85rem;line-height:1.6;color:#c8dedb}
+  .lmsgen-publica-layout{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(32rem,.92fr);gap:4.5rem;align-items:center}
+  .lmsgen-publica-copy{min-width:0}
+  .lmsgen-pdf-course-section h2{max-width:60rem;color:#fff;font-family:"Montserrat",Arial,sans-serif!important;font-size:clamp(3.2rem,3.2vw,4.7rem)!important;font-weight:600!important;line-height:1.08!important;letter-spacing:-.035em!important;text-transform:none!important;text-wrap:balance}
+  .lmsgen-pdf-course-header{display:block}
+  .lmsgen-pdf-course-summary{margin-top:2.4rem}
+  .lmsgen-pdf-course-summary p{margin:0 0 2.4rem;font-size:1.65rem;line-height:1.6;color:#c8dedb}
   .lmsgen-pdf-course-summary a{display:inline-flex;align-items:center;gap:.8rem;padding:1.45rem 2rem;border-radius:999px;background:#65d4ca;color:#003f3a;text-decoration:none;font-family:"Montserrat",Arial,sans-serif!important;font-size:1.5rem;font-weight:700}
-  .lmsgen-pdf-course-benefits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2rem;margin:5rem 0 0;padding:0;list-style:none}
-  .lmsgen-pdf-course-benefits li{min-height:19rem;padding:2.8rem;border:1px solid rgba(124,227,217,.24);border-radius:2rem;background:rgba(255,255,255,.055)}
-  .lmsgen-pdf-course-benefits strong{display:block;font-family:"Montserrat",Arial,sans-serif!important;font-size:2.05rem;font-weight:600;line-height:1.24;letter-spacing:-.02em;color:#fff}
-  .lmsgen-pdf-course-benefits p{margin:1.3rem 0 0;font-size:1.45rem;line-height:1.6;color:#bad2cf}
+  .lmsgen-pdf-course-benefits{display:grid;grid-template-columns:1fr;gap:1rem;margin:3rem 0 0;padding:0;list-style:none}
+  .lmsgen-pdf-course-benefits li{min-height:0;padding:1.6rem 1.8rem;border:1px solid rgba(124,227,217,.24);border-radius:1.5rem;background:rgba(255,255,255,.055)}
+  .lmsgen-pdf-course-benefits strong{display:block;font-family:"Montserrat",Arial,sans-serif!important;font-size:1.6rem;font-weight:600;line-height:1.28;letter-spacing:-.015em;color:#fff}
+  .lmsgen-pdf-course-benefits p{margin:.65rem 0 0;font-size:1.25rem;line-height:1.5;color:#bad2cf}
   .lmsgen-pdf-course-proof{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(30rem,.65fr);gap:4rem;align-items:center;margin-top:2rem;padding:2rem;border-radius:2.8rem;background:#f4fbfa;color:#003f3a}
   .lmsgen-pdf-proof-screen{min-height:43rem;display:grid;grid-template-columns:14rem 1fr;overflow:hidden;border-radius:1.8rem;background:#fff;box-shadow:0 2rem 5rem rgba(0,31,29,.18)}
   .lmsgen-pdf-proof-rail{padding:2.4rem 1.7rem;background:#062f2c;color:#fff}
@@ -206,15 +213,15 @@ const PDF_COURSE_STYLE = `<style id="lmsgen-pdf-course-style">
   .lmsgen-pdf-proof-copy ul{display:grid;gap:1.15rem;margin:0;padding:0;list-style:none}
   .lmsgen-pdf-proof-copy li{position:relative;padding-left:2.6rem;font-size:1.4rem;line-height:1.45;color:#385c58}
   .lmsgen-pdf-proof-copy li:before{content:'✓';position:absolute;left:0;top:-.1rem;display:grid;width:1.8rem;height:1.8rem;place-items:center;border-radius:50%;background:#d2f3ef;color:#087d73;font-size:1rem;font-weight:900}
-  .publica-demo-shell{display:block!important;width:min(100%,1120px);max-width:1120px;margin:3rem auto 0!important;padding:1.35rem!important;border-radius:2rem!important;background:#eaf8f6!important;overflow:hidden;box-sizing:border-box}
+  .publica-demo-shell{display:block!important;width:100%;max-width:none;margin:0!important;padding:1.35rem!important;border-radius:2rem!important;background:#eaf8f6!important;overflow:hidden;box-sizing:border-box}
   .publica-demo-topbar{min-height:4.5rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;padding:0 .6rem 1.1rem;color:#003f3a}
   .publica-demo-topbar>div{display:flex;align-items:center;gap:.9rem}.publica-demo-topbar strong{font-family:"Montserrat",Arial,sans-serif!important;font-size:1.3rem}.publica-demo-topbar small{font-size:.95rem;color:#52726e}
   .publica-demo-mark{width:3rem;height:3rem;display:grid;place-items:center;border-radius:.85rem;background:#0a5d56;color:#8af0e5;font-family:"Montserrat",Arial,sans-serif;font-size:1.25rem;font-weight:800}
   .publica-demo-live{display:inline-flex;align-items:center;gap:.7rem;padding:.8rem 1.1rem;border:1px solid rgba(0,63,58,.12);border-radius:999px;background:#fff;font-size:1.05rem;font-weight:700;color:#426560}.publica-demo-live i{width:.7rem;height:.7rem;border-radius:50%;background:#1bb7aa;box-shadow:0 0 0 .4rem rgba(27,183,170,.12)}
   .publica-reader-stage{position:relative;min-height:0;display:grid;grid-template-columns:4.5rem minmax(0,1fr) 4.5rem;grid-template-areas:"prev book next";align-items:center;gap:1rem;padding:1.7rem;border-radius:1.7rem;background:radial-gradient(circle at 50% 40%,#174e55 0,#082f33 58%,#041d21 100%);overflow:hidden;perspective:180rem}
   .publica-reader-stage:before{content:'';position:absolute;inset:0;background:linear-gradient(115deg,rgba(101,212,202,.08),transparent 36%,rgba(255,210,77,.07));pointer-events:none}
-  .publica-book-viewport{grid-area:book;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;max-width:100%;margin:auto;filter:drop-shadow(0 2.8rem 2.5rem rgba(0,0,0,.42));transition:width .2s ease,height .2s ease}
-  .publica-comic-book{width:100%;height:100%;opacity:0;transition:opacity .2s ease}.publica-comic-book.is-ready,.publica-comic-book.is-fallback{opacity:1}
+  .publica-book-viewport{grid-area:book;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;width:min(100%,39rem);max-width:100%;aspect-ratio:.72;margin:auto;filter:drop-shadow(0 2.8rem 2.5rem rgba(0,0,0,.42));transition:width .2s ease,height .2s ease}
+  .publica-comic-book{width:100%;height:100%;opacity:1;transition:opacity .2s ease}
   .publica-comic-page{position:relative;width:100%;height:100%;min-width:0;overflow:hidden;background:#f8f1dd;color:#092f31;border:1px solid rgba(0,0,0,.12)}.publica-front-cover,.publica-back-cover-page{box-shadow:inset 0 0 2rem rgba(7,27,53,.18)}.publica-comic-book.is-fallback .publica-comic-page:not(:first-child){display:none}
   .publica-turn-control{position:relative;z-index:6;width:4.2rem;height:4.2rem;border:1px solid rgba(137,239,229,.35);border-radius:50%;background:rgba(4,29,33,.78);color:#8af0e5;display:inline-flex;align-items:center;justify-content:center;gap:.6rem;cursor:pointer;transition:transform .2s ease,background .2s ease,border-color .2s ease}.publica-turn-control span{font:400 2.8rem/1 Arial}.publica-turn-control b{display:none;font:750 1rem/1 "Montserrat",Arial,sans-serif}.publica-prev{grid-area:prev}.publica-next{grid-area:next}.publica-turn-control:hover:not(:disabled){transform:scale(1.08);background:#0b635b;border-color:#8af0e5}.publica-turn-control:disabled{opacity:.22;cursor:default}
   .publica-cover,.publica-back-cover{height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end;padding:8%;color:#fff;background:linear-gradient(155deg,rgba(1,18,30,.08),rgba(1,18,30,.88)),radial-gradient(circle at 72% 25%,#ffcf42 0 5%,#ef5d43 6% 18%,transparent 19%),linear-gradient(145deg,#16a89a,#08647c 48%,#071b35);position:relative;overflow:hidden}.publica-cover:before{content:'';position:absolute;width:65%;aspect-ratio:1;right:-15%;top:-10%;border:2rem solid rgba(255,255,255,.12);transform:rotate(24deg)}
@@ -223,9 +230,9 @@ const PDF_COURSE_STYLE = `<style id="lmsgen-pdf-course-style">
   .publica-bubble{position:absolute;z-index:2;top:8%;left:8%;max-width:75%;padding:.8rem 1rem;border:.22rem solid #102b30;border-radius:50%;background:#fff;color:#102b30;font-size:clamp(.72rem,1vw,1.15rem);font-weight:800;line-height:1.2}.publica-caption{grid-column:1/-1;padding:1rem 1.2rem;background:#0c292e;color:#fff;font-size:clamp(.75rem,1vw,1.1rem);font-weight:700;line-height:1.35}.publica-caption-teal{background:#087d73}
   .publica-action-grid{grid-template-rows:1fr 1fr auto}.publica-signal{grid-column:1/-1;background:linear-gradient(25deg,rgba(0,0,0,.7),transparent),repeating-radial-gradient(circle at 78% 45%,#ffdb49 0 .4rem,#e64c35 .5rem 1.2rem,#172d43 1.3rem 2rem)}.publica-run{background:linear-gradient(135deg,#0f766e,#062f43)}.publica-run>b{font:900 clamp(3rem,6vw,8rem)/.8 "Montserrat",Arial;color:#fff;transform:skew(-10deg)}.publica-sfx{display:grid;place-items:center;padding:1rem;background:#e83f36;color:#fff;font:900 clamp(1.1rem,2vw,2.4rem)/1 "Montserrat",Arial;letter-spacing:.08em}.publica-sfx-yellow{background:#ffd34e;color:#102b30}.publica-lab{grid-row:span 2;background:linear-gradient(160deg,transparent,rgba(0,0,0,.85)),linear-gradient(135deg,#427d88,#102d43)}.publica-face{background:radial-gradient(circle at 50% 70%,#ffc252 0 16%,#db503e 17% 32%,#202040 33%)}.publica-portal{grid-column:1/-1;background:radial-gradient(circle at 70% 48%,#fff 0 3%,#6ff0e1 4% 14%,#146a72 15% 30%,#081b35 31%)}.publica-impact{background:linear-gradient(145deg,#f24b3e,#ffcb48)}.publica-impact>b{font:900 clamp(2.5rem,5vw,6rem)/.8 "Montserrat",Arial;color:#fff;transform:rotate(-12deg);text-shadow:.4rem .4rem 0 #122b36}.publica-back-cover{justify-content:center;background:linear-gradient(145deg,#062f2c,#0b6e65)}.publica-back-cover h4{font-size:clamp(2rem,3vw,4rem);line-height:1}.publica-back-cover ul{margin:1.5rem 0 2rem;padding-left:1.8rem;font-size:clamp(.85rem,1.1vw,1.25rem);line-height:1.7;color:#c9f4ef}
   .publica-reader-footer{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:1rem;padding:1.1rem .6rem .1rem;color:#426560;font-size:.95rem}.publica-reader-footer>strong{text-align:right;color:#087d73}.publica-reader-dots{display:flex;gap:.6rem}.publica-reader-dots i{width:.7rem;height:.7rem;border-radius:50%;background:#bad7d3}.publica-reader-dots i.is-active{width:2rem;border-radius:99px;background:#18aa9d}
-  @media(max-width:991px){.lmsgen-pdf-course-header,.lmsgen-pdf-course-proof{grid-template-columns:1fr}.lmsgen-pdf-course-benefits{grid-template-columns:1fr}.lmsgen-pdf-course-benefits li{min-height:0}.lmsgen-pdf-proof-copy{padding:1rem 1rem 2rem}}
-  @media(max-width:760px){.publica-reader-stage{grid-template-columns:4rem minmax(0,1fr) 4rem;gap:.7rem;padding:1.5rem}.publica-turn-control{width:3.8rem;height:3.8rem}.publica-turn-control span{font-size:2.5rem}.publica-demo-topbar small{display:none}}
-  @media(max-width:640px){.lmsgen-pdf-course-header{gap:2.5rem}.lmsgen-pdf-course-benefits{margin-top:3.5rem}.lmsgen-pdf-course-benefits li{padding:2.2rem}.lmsgen-pdf-course-proof{padding:1rem;gap:1.5rem}.lmsgen-pdf-proof-screen{min-height:29rem;grid-template-columns:7.5rem 1fr}.lmsgen-pdf-proof-rail{padding:1.3rem .8rem}.lmsgen-pdf-proof-rail strong{font-size:.9rem}.lmsgen-pdf-proof-rail span{font-size:.75rem}.lmsgen-pdf-proof-slide{padding:.8rem}.lmsgen-pdf-proof-toolbar{font-size:.75rem}.lmsgen-pdf-proof-page{min-height:20rem;padding:1.8rem}.lmsgen-pdf-proof-page strong{font-size:2.7rem}.lmsgen-pdf-proof-page p{font-size:.9rem}.lmsgen-pdf-proof-copy{padding:1.5rem}.lmsgen-pdf-proof-copy h3{font-size:2.5rem}.publica-demo-shell{padding:1rem!important}.publica-demo-topbar{padding:.2rem .2rem 1rem;gap:.7rem}.publica-demo-topbar strong{font-size:1.1rem}.publica-demo-mark{width:3rem;height:3rem;border-radius:.8rem}.publica-demo-live{padding:.6rem .75rem;font-size:.75rem}.publica-reader-stage{grid-template-columns:1fr 1fr;grid-template-areas:"book book" "prev next";gap:1rem;padding:1.2rem}.publica-book-viewport{max-width:100%;filter:drop-shadow(0 1.5rem 1.6rem rgba(0,0,0,.38))}.publica-turn-control{position:static;width:100%;height:3.4rem;border-radius:.9rem;background:rgba(11,99,91,.85)}.publica-turn-control span{font-size:1.8rem}.publica-turn-control b{display:inline;font-size:.9rem}.publica-turn-control:hover:not(:disabled){transform:none}.publica-reader-footer{grid-template-columns:1fr auto;padding:1rem .3rem .2rem}.publica-reader-footer>strong{display:none}.publica-reader-dots{justify-self:end}.publica-panel-grid{gap:.8%;padding:1.5%}.publica-panel{border-width:.22rem}}
+  @media(max-width:1100px){.lmsgen-publica-layout{grid-template-columns:1fr;gap:3.5rem}.lmsgen-publica-copy{order:1}.publica-demo-shell{order:2;max-width:86rem;margin:0 auto!important}.lmsgen-pdf-course-section h2{max-width:82rem}.lmsgen-pdf-course-summary{max-width:76rem}.lmsgen-pdf-course-benefits{grid-template-columns:repeat(3,minmax(0,1fr))}.lmsgen-pdf-course-benefits li{padding:1.8rem}.lmsgen-pdf-course-proof{grid-template-columns:1fr}.lmsgen-pdf-proof-copy{padding:1rem 1rem 2rem}}
+  @media(max-width:760px){.lmsgen-pdf-course-benefits{grid-template-columns:1fr}.publica-reader-stage{grid-template-columns:4rem minmax(0,1fr) 4rem;gap:.7rem;padding:1.5rem}.publica-turn-control{width:3.8rem;height:3.8rem}.publica-turn-control span{font-size:2.5rem}.publica-demo-topbar small{display:none}}
+  @media(max-width:640px){.lmsgen-publica-layout{gap:2.8rem}.lmsgen-pdf-course-summary{margin-top:2rem}.lmsgen-pdf-course-benefits{margin-top:2.5rem}.lmsgen-pdf-course-benefits li{padding:1.6rem}.lmsgen-pdf-course-proof{padding:1rem;gap:1.5rem}.lmsgen-pdf-proof-screen{min-height:29rem;grid-template-columns:7.5rem 1fr}.lmsgen-pdf-proof-rail{padding:1.3rem .8rem}.lmsgen-pdf-proof-rail strong{font-size:.9rem}.lmsgen-pdf-proof-rail span{font-size:.75rem}.lmsgen-pdf-proof-slide{padding:.8rem}.lmsgen-pdf-proof-toolbar{font-size:.75rem}.lmsgen-pdf-proof-page{min-height:20rem;padding:1.8rem}.lmsgen-pdf-proof-page strong{font-size:2.7rem}.lmsgen-pdf-proof-page p{font-size:.9rem}.lmsgen-pdf-proof-copy{padding:1.5rem}.lmsgen-pdf-proof-copy h3{font-size:2.5rem}.publica-demo-shell{padding:1rem!important}.publica-demo-topbar{padding:.2rem .2rem 1rem;gap:.7rem}.publica-demo-topbar strong{font-size:1.1rem}.publica-demo-mark{width:3rem;height:3rem;border-radius:.8rem}.publica-demo-live{padding:.6rem .75rem;font-size:.75rem}.publica-reader-stage{grid-template-columns:1fr 1fr;grid-template-areas:"book book" "prev next";gap:1rem;padding:1.2rem}.publica-book-viewport{max-width:100%;filter:drop-shadow(0 1.5rem 1.6rem rgba(0,0,0,.38))}.publica-turn-control{position:static;width:100%;height:3.4rem;border-radius:.9rem;background:rgba(11,99,91,.85)}.publica-turn-control span{font-size:1.8rem}.publica-turn-control b{display:inline;font-size:.9rem}.publica-turn-control:hover:not(:disabled){transform:none}.publica-reader-footer{grid-template-columns:1fr auto;padding:1rem .3rem .2rem}.publica-reader-footer>strong{display:none}.publica-reader-dots{justify-self:end}.publica-panel-grid{gap:.8%;padding:1.5%}.publica-panel{border-width:.22rem}}
 </style>`;
 
 function escapeRegExp(value) {
