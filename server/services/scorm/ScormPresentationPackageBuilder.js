@@ -1,6 +1,7 @@
 'use strict';
 
 const JSZip = require('jszip');
+const { createHash } = require('crypto');
 
 function escapeXml(value) {
     return String(value || '').replace(/[<>&"']/g, (character) => ({
@@ -66,7 +67,11 @@ function buildPlayerHtml({ title, slides, quiz, theme, passScore }) {
     const safeTitle = escapeXml(title);
     const data = JSON.stringify({
         title,
-        slides: slides.map((slide) => ({ src: slide.path, width: slide.width, height: slide.height })),
+        slides: slides.map((slide) => ({
+            src: `${slide.path}?v=${createHash('sha256').update(slide.body).digest('hex').slice(0, 12)}`,
+            width: slide.width,
+            height: slide.height
+        })),
         quiz,
         passScore
     }).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');

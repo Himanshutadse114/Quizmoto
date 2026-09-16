@@ -91,6 +91,7 @@ describe('ScormPresentationPackageBuilder', () => {
         expect(content.quiz.questions).to.have.length(5);
         expect(content.passScore).to.equal(75);
         expect(content.theme).to.deep.equal(QUIZMOTO_PRESENTATION_THEME);
+        expect(html).to.match(/slides\/slide-001\.webp\?v=[0-9a-f]{12}/);
         const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
             .map((match) => match[1].trim())
             .filter(Boolean);
