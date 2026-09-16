@@ -114,7 +114,7 @@ async function analyzePolicy(args = {}) {
             startPercent: 8,
             maxPercent: 26,
             stage: 'Creating course content',
-            detail: 'Gemini is writing the learning structure, slide content and knowledge checks through the Google service account.',
+            detail: 'Organising the source into clear learning sections and knowledge checks.',
             timeoutMs: contentTimeoutMs
         });
     } catch (error) {
@@ -141,7 +141,7 @@ async function analyzePolicy(args = {}) {
             startPercent: 28,
             maxPercent: 34,
             stage: 'Planning course visuals',
-            detail: 'Gemini is preparing FLUX Schnell prompts through the Google service account.',
+            detail: 'Planning a relevant visual for each learning section.',
             timeoutMs: visualPlanTimeoutMs,
             timeoutCode: 'GEMINI_VISUAL_PLAN_TIMEOUT'
         });
@@ -175,7 +175,7 @@ async function analyzePolicy(args = {}) {
     emit(args.onProgress, {
         percent: 36,
         stage: 'Course content ready',
-        detail: 'Course text, knowledge checks and FLUX Schnell image prompts are ready.',
+        detail: 'Course content, knowledge checks and visual plans are ready.',
         modelStatus: 'succeeded'
     });
 

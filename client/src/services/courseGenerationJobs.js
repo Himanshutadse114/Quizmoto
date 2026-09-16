@@ -163,29 +163,89 @@ export function publicGenerationError(value) {
     .replace(/data:[^;\s]+;base64,[A-Za-z0-9+/=]+/gi, '[REDACTED_DATA_URL]')
     .replace(/\s+/g, ' ')
     .trim();
-  return safe.slice(0, 1200) || 'Course generation failed. Please try again.';
+
+  if (/rate.?limit|quota|too many requests|\b429\b/i.test(safe)) {
+    return 'The course service is busy right now. Please wait a moment and try again.';
+  }
+  if (/timed? out|timeout|network error|socket|econn|fetch failed/i.test(safe)) {
+    return 'Course creation took longer than expected. Please try again.';
+  }
+  if (/pdf/i.test(safe) && /invalid|malformed|corrupt|could not|unable|failed|unsupported/i.test(safe)) {
+    return 'The selected PDF could not be read. Please export it again and retry.';
+  }
+  if (/selected (?:source )?file/i.test(safe) && /read|open|upload/i.test(safe)) {
+    return 'The selected file could not be read. Please choose it again and retry.';
+  }
+  if (
+    /backend|smtp|configuration|credentials?|api[_ -]?key|service account|replicate|gemini|vertex|fal\.ai|flux|renderer|rendering model|webp|base64|redis|database|sequelize|stack trace|node_modules|http\/?[123]|status code|environment variable|deploy|model=/i.test(safe)
+  ) {
+    return 'Course generation could not be completed. Please try again.';
+  }
+  return safe.slice(0, 280) || 'Course generation failed. Please try again.';
 }
 
-function publicProgressText(value, fallback) {
-  const clean = String(value || '')
-    .replace(/data:[^;\s]+;base64,[A-Za-z0-9+/=]+/gi, '[media]')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return clean.slice(0, 320) || fallback;
+const FRIENDLY_PROGRESS = {
+  queued: {
+    stage: 'Course queued',
+    detail: 'Your course will start shortly. You can continue using the platform.'
+  },
+  source: {
+    stage: 'Reading your source',
+    detail: 'Reviewing the material you provided for the course.'
+  },
+  content: {
+    stage: 'Creating course content',
+    detail: 'Organising the material into clear learning sections.'
+  },
+  visuals: {
+    stage: 'Preparing course visuals',
+    detail: 'Creating and optimising the visuals for fast loading.'
+  },
+  design: {
+    stage: 'Designing the learning experience',
+    detail: 'Arranging the course so it is clear and easy to follow.'
+  },
+  quiz: {
+    stage: 'Preparing the knowledge check',
+    detail: 'Creating and checking the course questions and answers.'
+  },
+  tracking: {
+    stage: 'Adding course progress tracking',
+    detail: 'Preparing completion, score and progress tracking.'
+  },
+  finishing: {
+    stage: 'Finishing your course',
+    detail: 'Completing the final checks before your course is ready.'
+  },
+  ready: {
+    stage: 'Course ready',
+    detail: 'Your course is ready to open.'
+  }
+};
+
+function progressPhase(progress = {}, percent = 1) {
+  const text = `${progress.stage || ''} ${progress.detail || ''}`.toLowerCase();
+  if (percent >= 100 || /\bcomplete(?:d)?\b|\bcourse ready\b/.test(text)) return 'ready';
+  if (/\bqueue|waiting to start/.test(text)) return 'queued';
+  if (/upload|source|document|extract|reading|presentation|slide pages?/.test(text) && percent < 35) return 'source';
+  if (/quiz|question|answer|knowledge check/.test(text)) return 'quiz';
+  if (/visual|image|media|cover|illustration|photo/.test(text)) return 'visuals';
+  if (/layout|format|design|theme|responsive/.test(text)) return 'design';
+  if (/track|scorm|package|build|assemble/.test(text)) return 'tracking';
+  if (/save|unpack|workspace|final|publish|learner files|ready/.test(text)) return 'finishing';
+  if (/content|writ|analys|structur|outline|lesson|section/.test(text)) return 'content';
+  if (percent >= 92) return 'finishing';
+  if (percent >= 80) return 'tracking';
+  if (percent >= 36) return 'visuals';
+  if (percent >= 8) return 'content';
+  return 'source';
 }
 
-function publicStage(progress = {}, floorPercent = 1) {
+export function publicCourseGenerationProgress(progress = {}, floorPercent = 1) {
   const reported = Math.max(1, Math.min(100, Math.round(Number(progress.percent) || 1)));
   const percent = Math.max(Math.max(1, Number(floorPercent) || 1), reported);
-  const serverStage = publicProgressText(progress.stage, '');
-  let fallback = 'Preparing source material';
-  if (percent >= 100) fallback = 'Course ready';
-  else if (percent >= 92) fallback = 'Finalising course';
-  else if (percent >= 80) fallback = 'Building course';
-  else if (percent >= 36) fallback = 'Creating course visuals';
-  else if (percent >= 28) fallback = 'Planning course visuals';
-  else if (percent >= 8) fallback = 'Creating course content';
-  return { percent, stage: serverStage || fallback };
+  const phase = progressPhase(progress, percent);
+  return { percent, ...FRIENDLY_PROGRESS[phase] };
 }
 
 export function startBackgroundCourseGeneration({ token, payload, title, file = null, visualPdfFile = null }) {
@@ -286,7 +346,7 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
       if (!err.response) {
         upsertCourseGenerationJob(id, {
           status: 'running',
-          detail: 'Checking the background course generation process.'
+          detail: 'Checking course creation progress.'
         });
         return;
       }
@@ -354,8 +414,8 @@ export async function refreshCourseGenerationJob(token, job) {
       return { ...job, status: 'cancelled' };
     }
 
-    const visible = publicStage(progress, job.percent);
-    const detail = publicProgressText(progress.detail, 'Course generation continues in the background.');
+    const visible = publicCourseGenerationProgress(progress, job.percent);
+    const detail = visible.detail;
     const result = progress.result || {};
     const previousPercent = Math.max(1, Number(job.percent) || 1);
     const serverStatus = String(progress.status || 'running');

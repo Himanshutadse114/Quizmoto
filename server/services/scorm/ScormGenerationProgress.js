@@ -58,7 +58,7 @@ function setProgress(progressId, userId, patch = {}) {
         ...patch,
         id,
         userId: existing.userId || String(userId || ''),
-        percent: clampPercent(patch.percent, existing.percent),
+        percent: Math.max(existing.percent, clampPercent(patch.percent, existing.percent)),
         updatedAt: Date.now()
     };
     STORE.set(id, next);

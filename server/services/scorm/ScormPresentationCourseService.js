@@ -327,8 +327,8 @@ async function generatePresentationCourse({ payload = {}, userId, onProgress = n
         checkCancelled();
         onProgress({
             percent: 78,
-            stage: 'Building tracked course',
-            detail: 'Adding responsive playback, resume data, completion, score and quiz tracking.'
+            stage: 'Adding course progress tracking',
+            detail: 'Preparing completion, score and progress tracking.'
         });
         const numericPassScore = Number(payload.passScore);
         const passScore = Math.max(0, Math.min(100, Number.isFinite(numericPassScore) ? numericPassScore : 70));
@@ -388,8 +388,8 @@ async function generatePresentationCourse({ payload = {}, userId, onProgress = n
         checkCancelled();
         onProgress({
             percent: 87,
-            stage: 'Saving course',
-            detail: 'Saving the SCORM package and presentation metadata.'
+            stage: 'Finishing your course',
+            detail: 'Completing the final checks before your course is ready.'
         });
         if (!pkg) {
             pkg = await ScormPackage.create({
@@ -435,8 +435,8 @@ async function generatePresentationCourse({ payload = {}, userId, onProgress = n
             checkCancelled();
             onProgress({
                 percent: 98,
-                stage: 'Finalising course workspace',
-                detail: 'Connecting the tracked presentation to the course workspace.'
+                stage: 'Finishing your course',
+                detail: 'Completing the final checks before your course is ready.'
             });
             course = await ensureCourseForPackage({ packageId: pkg.id, hostId: userId, title });
             if (course) {

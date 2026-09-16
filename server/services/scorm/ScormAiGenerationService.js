@@ -191,7 +191,7 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
     if (useTemplateEngine) validateTemplateAnalysis(analysis, templateBinding);
     checkCancelled();
 
-    onProgress({ percent: 80, stage: 'Building the SCORM package', detail: 'Combining course content, images, branding, varied layouts, quiz explanations and tracking into the learner package.' });
+    onProgress({ percent: 80, stage: 'Adding course progress tracking', detail: 'Preparing completion, score and progress tracking.' });
     let zipBuf = await buildScormPackageZip(analysis, {
         templateId: selectedThemeId,
         logoDataUrl: courseBranding.logoDataUrl || null,
@@ -221,7 +221,7 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
     }
 
     checkCancelled();
-    onProgress({ percent: 86, stage: 'Saving generated course', detail: 'Saving the branded SCORM package and course metadata.' });
+    onProgress({ percent: 86, stage: 'Finishing your course', detail: 'Completing the final checks before your course is ready.' });
     if (!pkg) {
         pkg = await ScormPackage.create({
             hostId: userId,
@@ -253,7 +253,7 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
     await pkg.save();
 
     checkCancelled();
-    onProgress({ percent: 92, stage: 'Preparing learner files', detail: 'Unpacking the generated SCORM so it can be previewed and launched.' });
+    onProgress({ percent: 92, stage: 'Preparing your course', detail: 'Getting the course ready for preview and learner launch.' });
     try {
         await unpackPackage(pkg.id);
     } catch (e) {
@@ -264,7 +264,7 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
 
     let course = null;
     if (pkg.status === 'ready') {
-        onProgress({ percent: 97, stage: 'Finalising course workspace', detail: 'Connecting the generated package to the course workspace.' });
+        onProgress({ percent: 97, stage: 'Finishing your course', detail: 'Completing the final checks before your course is ready.' });
         course = await ensureCourseForPackage({
             packageId: pkg.id,
             hostId: userId,

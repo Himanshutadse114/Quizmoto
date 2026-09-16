@@ -270,7 +270,7 @@ router.post('/generate', auth, async (req, res) => {
         analysis = media.analysis;
         checkpoint(progressId, req.userId);
 
-        report({ percent: 80, stage: 'Building the SCORM package', detail: 'Combining course content, images, varied layouts, quiz explanations and tracking into the learner package.' });
+        report({ percent: 80, stage: 'Adding course progress tracking', detail: 'Preparing completion, score and progress tracking.' });
         const zipBuf = await buildScormPackageZip(analysis, {
             templateId: selectedThemeId,
             logoDataUrl: logoDataUrl || null,
@@ -286,7 +286,7 @@ router.post('/generate', auth, async (req, res) => {
         }
 
         checkpoint(progressId, req.userId);
-        report({ percent: 86, stage: 'Saving generated course', detail: 'Saving the SCORM package and course metadata.' });
+        report({ percent: 86, stage: 'Finishing your course', detail: 'Completing the final checks before your course is ready.' });
         if (!pkg) {
             pkg = await ScormPackage.create({
                 hostId: req.userId,
@@ -318,7 +318,7 @@ router.post('/generate', auth, async (req, res) => {
         await pkg.save();
 
         checkpoint(progressId, req.userId);
-        report({ percent: 92, stage: 'Preparing learner files', detail: 'Unpacking the generated SCORM so it can be previewed and launched.' });
+        report({ percent: 92, stage: 'Preparing your course', detail: 'Getting the course ready for preview and learner launch.' });
         try {
             await unpackPackage(pkg.id);
         } catch (e) {
@@ -329,7 +329,7 @@ router.post('/generate', auth, async (req, res) => {
 
         let course = null;
         if (pkg.status === 'ready') {
-            report({ percent: 97, stage: 'Finalising course workspace', detail: 'Connecting the generated package to the course workspace.' });
+            report({ percent: 97, stage: 'Finishing your course', detail: 'Completing the final checks before your course is ready.' });
             course = await ensureCourseForPackage({
                 packageId: pkg.id,
                 hostId: req.userId,
@@ -344,7 +344,7 @@ router.post('/generate', auth, async (req, res) => {
                 status: 'complete',
                 percent: 100,
                 stage: 'Course ready',
-                detail: 'The generated SCORM course is ready to open.',
+                detail: 'Your course is ready to open.',
                 modelStatus: 'succeeded'
             });
         }

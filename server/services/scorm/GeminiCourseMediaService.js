@@ -282,7 +282,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
         emit(onProgress, {
             percent: 42,
             stage: 'Image generation unavailable',
-            detail: 'Gemini image generation is not configured.'
+            detail: 'Course visuals are temporarily unavailable.'
         });
         const error = new Error('Gemini image generation is required. Configure GEMINI_API_KEY (or GOOGLE_API_KEY) and keep GEMINI_SCORM_MEDIA enabled.');
         error.code = 'GEMINI_KEY_MISSING';
@@ -319,8 +319,8 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
 
     emit(onProgress, {
         percent: 7,
-        stage: 'Planning course visuals with Gemini',
-        detail: `Gemini ${process.env.GEMINI_MODEL || DEFAULT_TEXT_MODEL} is preparing prompts and ${config.imageModel} will render the course images.`
+        stage: 'Planning course visuals',
+        detail: 'Planning a relevant visual for each learning section.'
     });
 
     try {
@@ -336,12 +336,12 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
             if (state.status === 'starting') emit(onProgress, {
                 percent: 12,
                 stage: 'Generating course cover image',
-                detail: `${state.model || config.imageModel} is rendering the 16:9 cover image.`
+                detail: 'Creating the course cover visual.'
             });
             if (state.status === 'retrying') emit(onProgress, {
                 percent: 13,
                 stage: 'Retrying course cover image',
-                detail: 'Retrying the cover after a temporary Gemini image-service issue.'
+                detail: 'The cover is taking a little longer. Trying again.'
             });
         }, checkCancelled);
         imageModel = coverFile.model || imageModel;
@@ -369,8 +369,8 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
         try {
             emit(onProgress, {
                 percent: basePercent,
-                stage: `Planning slide ${slideIndex + 1} image with Gemini`,
-                detail: `Preparing image ${jobPosition + 1} of ${selectedIndexes.length}; up to ${config.imageConcurrency} image jobs run in parallel.`
+                stage: `Planning slide ${slideIndex + 1} visual`,
+                detail: `Preparing visual ${jobPosition + 1} of ${selectedIndexes.length}.`
             });
             const promptInfo = await generateSlideVisualPrompt(slides[slideIndex], { ...analysis, slides }, slideIndex);
             promptModel = promptModel || promptInfo.model;
@@ -382,12 +382,12 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
                     if (state.status === 'starting') emit(onProgress, {
                         percent: Math.min(68, basePercent + 2),
                         stage: `Generating slide ${slideIndex + 1} image`,
-                        detail: `${state.model || config.imageModel} is rendering a 16:9 learning visual.`
+                        detail: 'Creating a visual for this learning section.'
                     });
                     if (state.status === 'retrying') emit(onProgress, {
                         percent: basePercent,
                         stage: `Retrying slide ${slideIndex + 1} image`,
-                        detail: 'Retrying this image after a temporary Gemini image-service issue.'
+                        detail: 'This visual is taking a little longer. Trying again.'
                     });
                 },
                 checkCancelled
@@ -412,7 +412,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
             emit(onProgress, {
                 percent: 24 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 44),
                 stage: 'Generating learning-slide images',
-                detail: `${completedJobs} of ${selectedIndexes.length} Gemini image jobs completed.`
+                detail: `${completedJobs} of ${selectedIndexes.length} course visuals completed.`
             });
         }
     });
@@ -459,7 +459,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
     emit(onProgress, {
         percent: 73,
         stage: 'Optimising course images',
-        detail: 'Resizing every visual to the same lightweight 16:9 WebP profile.'
+        detail: 'Optimising every visual for consistent, fast loading.'
     });
     const optimizedMedia = await optimizeCourseMedia(analysis, files);
     analysis = optimizedMedia.analysis;
@@ -503,7 +503,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
     emit(onProgress, {
         percent: 76,
         stage: 'Course images ready',
-        detail: `${totalImagesGenerated} Gemini images are attached to the course.`
+        detail: `${totalImagesGenerated} course visuals are ready.`
     });
     logger.info('scorm_gemini_raster_media_ready', {
         module: 'scorm',

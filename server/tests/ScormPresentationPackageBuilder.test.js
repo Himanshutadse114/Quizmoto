@@ -82,6 +82,9 @@ describe('ScormPresentationPackageBuilder', () => {
         expect(html).to.include('height:100dvh');
         expect(html).to.include('object-position:center center');
         expect(html).to.include('@media(max-width:720px) and (orientation:portrait)');
+        expect(html).to.include('.quiz-card,.result-card{width:min(480px,100%);border-radius:16px;padding:16px}');
+        expect(html).to.include('.option{min-height:44px;padding:9px 11px;border-width:1px');
+        expect(html).to.include('@media(max-width:380px) and (orientation:portrait)');
         expect(html).to.include('.rail-heading{display:none}');
         expect(html).to.include('class="course-rail"');
         expect(html).to.include('--rail-width:clamp(168px,13vw,220px)');

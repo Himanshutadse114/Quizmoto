@@ -280,10 +280,10 @@ router.post('/generate', auth, async (req, res, next) => {
 
         report({
             percent: 78,
-            stage: 'Rebuilding course package',
+            stage: 'Adding course progress tracking',
             detail: migration.templateUpgraded
-                ? upgradeCopy.packageDetail
-                : 'Combining the updated content with the saved template, branding, layouts and existing visuals.'
+                ? 'Applying the updated course design and preparing learner progress tracking.'
+                : 'Applying your changes while keeping the course design and visuals.'
         });
 
         let zipBuf = await buildScormPackageZip(analysis, {
@@ -310,10 +310,10 @@ router.post('/generate', auth, async (req, res, next) => {
 
         report({
             percent: 86,
-            stage: 'Saving course update',
+            stage: 'Finishing your course',
             detail: migration.templateUpgraded
-                ? upgradeCopy.savedDetail
-                : 'Replacing the existing package without changing its course template or branding.'
+                ? 'Completing the final checks for the updated course.'
+                : 'Saving your changes and completing the final checks.'
         });
 
         pkg.title = String(analysis.title || pkg.title || 'Course').slice(0, 200);
@@ -333,8 +333,8 @@ router.post('/generate', auth, async (req, res, next) => {
 
         report({
             percent: 93,
-            stage: 'Preparing learner files',
-            detail: 'Refreshing the course files for preview and learner launch.'
+            stage: 'Preparing your course',
+            detail: 'Getting the updated course ready for preview and learner launch.'
         });
 
         try {

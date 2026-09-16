@@ -3,6 +3,7 @@ import { AlertCircle, Loader2, Square, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
   cancelCourseGenerationJob,
+  publicCourseGenerationProgress,
   publicGenerationError,
   removeCourseGenerationJob,
   useCourseGenerationJobs
@@ -57,6 +58,7 @@ export default function BackgroundCourseJobs() {
       <div className="divide-y">
         {active.map((job) => {
           const percent = Math.max(1, Math.min(100, Number(job.percent) || 1));
+          const visibleProgress = publicCourseGenerationProgress(job, percent);
           const stopping = job.status === 'cancelling' || busyIds.has(job.id);
           const stateLabel = stopping
             ? 'Stopping'
@@ -76,9 +78,9 @@ export default function BackgroundCourseJobs() {
                     <div className="font-semibold text-sm truncate">{job.title || 'New course'}</div>
                     <span className="px-2 py-0.5 rounded-full border text-[9px] font-semibold uppercase tracking-wide opacity-80">{stateLabel}</span>
                   </div>
-                  <div className="text-[11px] mt-1 font-semibold opacity-85">{stopping ? 'Stopping generation' : (job.stage || 'Creating course')}</div>
+                  <div className="text-[11px] mt-1 font-semibold opacity-85">{stopping ? 'Stopping generation' : visibleProgress.stage}</div>
                   <div className="text-[10px] leading-relaxed mt-1 opacity-60 line-clamp-2">
-                    {stopping ? 'Stopping this course generation process.' : (job.detail || 'The course is actively being created in the background.')}
+                    {stopping ? 'Stopping this course generation process.' : visibleProgress.detail}
                   </div>
                 </div>
               </div>

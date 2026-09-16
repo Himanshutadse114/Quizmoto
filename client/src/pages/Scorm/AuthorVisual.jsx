@@ -13,6 +13,10 @@ import {
   X
 } from 'lucide-react';
 import { apiUrl } from '../../config';
+import {
+  publicCourseGenerationProgress,
+  publicGenerationError
+} from '../../services/courseGenerationJobs';
 import AuthorQuizEditor from './AuthorQuizEditor';
 import { normalizeCourseSlide } from './courseExperienceV5';
 
@@ -64,27 +68,26 @@ function visiblePointLimit(slide) {
 
 function cleanForGenerate(analysis) {
   if (!analysis) return null;
-  const {
-    coverImageAsset,
-    replicateMedia,
-    mediaProvider,
-    ...course
-  } = analysis;
+  const course = { ...analysis };
+  delete course.coverImageAsset;
+  delete course.replicateMedia;
+  delete course.mediaProvider;
   return {
     ...course,
     themeId: EDITORIAL_THEME_ID,
     themeName: 'Editorial',
-    slides: (analysis.slides || []).map(({
-      visualAsset,
-      mobileVisualAsset,
-      rasterVisualAsset,
-      narrationAsset,
-      narrationText,
-      ...slide
-    }) => ({
-      ...slide,
-      keyPoints: (Array.isArray(slide.keyPoints) ? slide.keyPoints : []).slice(0, visiblePointLimit(slide))
-    })),
+    slides: (analysis.slides || []).map((slide) => {
+      const cleanedSlide = { ...(slide || {}) };
+      delete cleanedSlide.visualAsset;
+      delete cleanedSlide.mobileVisualAsset;
+      delete cleanedSlide.rasterVisualAsset;
+      delete cleanedSlide.narrationAsset;
+      delete cleanedSlide.narrationText;
+      return {
+        ...cleanedSlide,
+        keyPoints: (Array.isArray(cleanedSlide.keyPoints) ? cleanedSlide.keyPoints : []).slice(0, visiblePointLimit(cleanedSlide))
+      };
+    }),
     quiz: (analysis.quiz || []).map((question) => ({
       ...question,
       question: String(question.question || '').trim(),
@@ -124,7 +127,9 @@ function createProgressId(task) {
   let random = '';
   try {
     random = globalThis.crypto?.randomUUID?.() || '';
-  } catch (_) {}
+  } catch {
+    // A timestamp-based id remains available when UUID generation is unavailable.
+  }
   if (!random) random = `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
   return `scorm-${task}-${random}`.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 96);
 }
@@ -132,7 +137,7 @@ function createProgressId(task) {
 function progressTimeLabel(task, progress) {
   const percent = Number(progress?.percent || 0);
   const modelStatus = String(progress?.modelStatus || '').toLowerCase();
-  if (modelStatus === 'starting') return 'Waiting for model';
+  if (modelStatus === 'starting') return 'Getting started';
   if (percent >= 96) return 'Almost ready';
   if (task === 'analyze') {
     if (modelStatus === 'processing') return 'Usually < 2 min';
@@ -144,14 +149,11 @@ function progressTimeLabel(task, progress) {
 
 function GenerationProgressModal({ task, elapsed, progress }) {
   if (!task || typeof document === 'undefined') return null;
-  const numericPercent = Number(progress?.percent);
-  const percent = Number.isFinite(numericPercent) ? Math.max(1, Math.min(100, Math.round(numericPercent))) : 1;
+  const visibleProgress = publicCourseGenerationProgress(progress);
+  const percent = visibleProgress.percent;
   const isAnalyze = task === 'analyze';
-  const stage = progress?.stage || (isAnalyze ? 'Contacting the course-writing service' : 'Preparing final course');
-  const detail = progress?.detail || (isAnalyze
-    ? 'Waiting for the backend to report the current AI generation state.'
-    : 'Waiting for the backend to report the current image and packaging state.');
-  const modelStatus = String(progress?.modelStatus || '').trim().toLowerCase();
+  const stage = visibleProgress.stage;
+  const detail = visibleProgress.detail;
 
   return createPortal(
     <div className="fixed inset-0 z-[9998] bg-[#050807]/80 backdrop-blur-md grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Course generation progress">
@@ -162,21 +164,16 @@ function GenerationProgressModal({ task, elapsed, progress }) {
               <Loader2 size={20} className="animate-spin text-[#7BDCD3]" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[10px] uppercase tracking-[.14em] font-bold text-[#7BDCD3]">{isAnalyze ? 'Creating learning content' : 'Creating final SCORM course'}</div>
+              <div className="text-[10px] uppercase tracking-[.14em] font-bold text-[#7BDCD3]">{isAnalyze ? 'Creating learning content' : 'Creating your course'}</div>
               <h2 className="text-xl md:text-2xl font-semibold text-white mt-1">{stage}</h2>
               <p className="text-sm text-slate-400 mt-2">{detail}</p>
-              {modelStatus && (
-                <div className="mt-3 inline-flex items-center rounded-full border border-white/10 bg-white/[.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[.08em] text-slate-400">
-                  Replicate: {modelStatus}
-                </div>
-              )}
             </div>
           </div>
 
           <div className="mt-7">
             <div className="flex items-center justify-between text-xs mb-2">
               <span className="font-semibold text-slate-300">{percent}%</span>
-              <span className="text-slate-500">Live backend progress</span>
+              <span className="text-slate-500">Live progress</span>
             </div>
             <div className="h-2.5 rounded-full bg-white/[.07] overflow-hidden border border-white/[.05]">
               <div className="h-full rounded-full bg-[#4FC9BF] transition-[width] duration-500 ease-out" style={{ width: `${percent}%` }} />
@@ -195,7 +192,7 @@ function GenerationProgressModal({ task, elapsed, progress }) {
           </div>
 
           <div className="mt-4 rounded-xl bg-[#4FC9BF]/[.06] border border-[#4FC9BF]/10 px-4 py-3 text-[11px] leading-relaxed text-slate-400">
-            The progress bar now follows backend and Replicate states rather than elapsed time. Cold starts can take longer, so it will stay at the current stage until the model actually moves forward.
+            Some steps may take a little longer. Progress moves forward as each part of your course is completed.
           </div>
         </div>
       </div>
@@ -212,7 +209,7 @@ function ExactSlidePreviewModal({ src, index, total, stale, onClose }) {
       <div className="max-w-[1320px] mx-auto">
         <div className="flex items-center justify-between gap-3 mb-3 text-white">
           <div>
-            <div className="text-[10px] uppercase tracking-[.12em] text-white/45 font-bold">Exact generated course renderer</div>
+            <div className="text-[10px] uppercase tracking-[.12em] text-white/45 font-bold">Learner course preview</div>
             <div className="text-sm font-semibold mt-1">Slide {index + 1} of {total}</div>
           </div>
           <button type="button" onClick={onClose} className="scorm-button-secondary w-10 h-10 grid place-items-center" aria-label="Close preview"><X size={17} /></button>
@@ -232,7 +229,7 @@ function ExactSlidePreviewModal({ src, index, total, stale, onClose }) {
             allow="fullscreen"
           />
         </div>
-        <p className="text-center text-[11px] text-white/45 mt-3">This uses the same generated SCORM HTML, CSS and visual assets as the learner course. Navigation is locked to the selected slide.</p>
+        <p className="text-center text-[11px] text-white/45 mt-3">This preview uses the same layout and visuals learners will see. Navigation is locked to the selected slide.</p>
       </div>
     </div>
   );
@@ -273,9 +270,8 @@ export default function AuthorVisual() {
     setBusyProgressId(progressId);
     setLiveProgress({
       percent: 1,
-      stage: 'Contacting course service',
-      detail: 'Waiting for the backend to begin the generation request.',
-      modelStatus: ''
+      stage: 'Preparing your course',
+      detail: 'Getting everything ready to create your course.'
     });
     setElapsedSeconds(0);
     return progressId;
@@ -309,15 +305,17 @@ export default function AuthorVisual() {
           headers,
           timeout: 10000
         });
-        if (!cancelled && res.data?.progress) setLiveProgress(res.data.progress);
+        if (!cancelled && res.data?.progress) {
+          setLiveProgress((previous) => publicCourseGenerationProgress(res.data.progress, previous?.percent));
+        }
       } catch (err) {
         // 404 is normal during the first few milliseconds before the POST route
         // has registered the progress id. Keep the initial state and retry.
         if (!cancelled && err.response?.status && err.response.status !== 404) {
           setLiveProgress((prev) => prev || {
             percent: 1,
-            stage: 'Waiting for generation status',
-            detail: 'The course request is still running. Live status will resume when the backend responds.'
+            stage: 'Creating your course',
+            detail: 'Course creation is continuing. Progress will update here shortly.'
           });
         }
       }
@@ -340,7 +338,9 @@ export default function AuthorVisual() {
         setAnalysis(normalizeAnalysis(stored.analysis));
         setDetailLevel(stored.detailLevel || 'detailed');
       }
-    } catch (_) {}
+    } catch {
+      // A malformed local draft should not block the editor.
+    }
   }, [token, navigate, editId]);
 
   useEffect(() => {
@@ -353,13 +353,15 @@ export default function AuthorVisual() {
         setSelected(0);
         setDirty(false);
       })
-      .catch((err) => setError(err.response?.data?.message || err.message))
+      .catch((err) => setError(publicGenerationError(err.response?.data?.message || err.message)))
       .finally(() => setBusy(false));
   }, [editId, token, headers]);
 
   useEffect(() => {
     if (!analysis || editId) return;
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ analysis, detailLevel })); } catch (_) {}
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ analysis, detailLevel })); } catch {
+      // Draft persistence is best effort and must not interrupt editing.
+    }
   }, [analysis, detailLevel, editId]);
 
   const hasSource = Boolean(file || topic.trim() || description.trim());
@@ -389,10 +391,9 @@ export default function AuthorVisual() {
       setAnalysis(normalizeAnalysis(res.data.analysis));
       setSelected(0);
       setDirty(true);
-      const provider = res.data?.aiProvider === 'replicate' ? 'Replicate' : 'AI';
-      setNotice(`${provider} learning content is ready. Review and edit the learner-visible text, then generate the course. Raster images are created during final generation.`);
+      setNotice('Learning content is ready. Review and edit it, then generate the course.');
     } catch (err) {
-      setError(err.response?.data?.message || err.message);
+      setError(publicGenerationError(err.response?.data?.message || err.message));
     } finally {
       endBusyTask();
     }
@@ -426,7 +427,7 @@ export default function AuthorVisual() {
 
   const openExactPreview = async () => {
     if (!editId) {
-      setNotice('Exact slide preview is available after the course is generated because it uses the final SCORM HTML, CSS and generated visual assets.');
+      setNotice('The learner preview is available after the course is generated.');
       return;
     }
     setPreviewBusy(true);
@@ -440,7 +441,7 @@ export default function AuthorVisual() {
       setPreviewUrl(apiUrl(`/api/scorm/slide-preview/${registrationId}?${query.toString()}`));
       setPreviewOpen(true);
     } catch (err) {
-      setError(err.response?.data?.message || err.message);
+      setError(publicGenerationError(err.response?.data?.message || err.message));
     } finally {
       setPreviewBusy(false);
     }
@@ -471,18 +472,20 @@ export default function AuthorVisual() {
       }, { headers, timeout: 360000 });
 
       if (res.data?.errorMessage || (res.data?.status && res.data.status !== 'ready')) {
-        setError(res.data?.errorMessage || `Course rebuild finished with status: ${res.data.status}.`);
+        setError(publicGenerationError(res.data?.errorMessage || 'Course generation could not be completed. Please try again.'));
         return;
       }
 
-      try { localStorage.removeItem(DRAFT_KEY); } catch (_) {}
+      try { localStorage.removeItem(DRAFT_KEY); } catch {
+        // The generated course is already safe even if the local draft cannot be removed.
+      }
       setDirty(false);
       const id = res.data?.courseId || null;
       setNotice(editId ? 'Course content rebuilt successfully.' : 'Course generated successfully.');
       if (id) navigate(`/scorm/courses/${id}`);
       else navigate('/scorm/courses');
     } catch (err) {
-      setError(err.response?.data?.message || err.message);
+      setError(publicGenerationError(err.response?.data?.message || err.message));
     } finally {
       endBusyTask();
     }
@@ -504,7 +507,7 @@ export default function AuthorVisual() {
               </button>
             )}
             {slide && !editId && (
-              <button type="button" disabled title="Generate the course first to use the exact learner renderer" className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold opacity-45 cursor-not-allowed">
+              <button type="button" disabled title="Generate the course first to open the learner preview" className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold opacity-45 cursor-not-allowed">
                 <Eye size={16} /> Preview after generation
               </button>
             )}
@@ -571,7 +574,7 @@ export default function AuthorVisual() {
                         {previewBusy ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />} Preview slide
                       </button>
                     ) : (
-                      <button type="button" disabled title="Generate the course first to use the exact learner renderer" className="scorm-button-secondary inline-flex items-center gap-2 px-3 py-2.5 text-xs font-semibold opacity-45 cursor-not-allowed"><Eye size={14} /> Preview after generation</button>
+                      <button type="button" disabled title="Generate the course first to open the learner preview" className="scorm-button-secondary inline-flex items-center gap-2 px-3 py-2.5 text-xs font-semibold opacity-45 cursor-not-allowed"><Eye size={14} /> Preview after generation</button>
                     )}
                   </div>
                 </div>
