@@ -415,7 +415,7 @@ function prepareHome(html) {
     html = insertAfterSection(html, 'hp-hero-s', PAIN_SECTION);
   }
   if (!html.includes('id="lmsgen-pdf-course-title"')) {
-    html = insertAfterSection(html, 'lmsgen-seo-section lmsgen-pain-section', PDF_COURSE_SECTION);
+    html = insertAfterSection(html, 'hp-platform-s', PDF_COURSE_SECTION);
   }
   if (!html.includes('id="lmsgen-faq-title"')) {
     html = html.replace(/<\/main>/i, `${FAQ_SECTION}\n</main>`);
