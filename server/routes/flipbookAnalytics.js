@@ -29,9 +29,9 @@ function trackingInjection(shareToken) {
     return {
         style: `<style id="lmsgen-flipbook-analytics-style">
 #lmsgenReaderGate{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;padding:18px;background:rgba(235,248,246,.96);backdrop-filter:blur(10px);font-family:Inter,Arial,sans-serif;color:#17313a}
-#lmsgenReaderGate.is-hidden{display:none}.lmsgen-reader-card{width:min(440px,100%);background:#fff;border:1px solid #d7ece8;border-radius:22px;box-shadow:0 24px 70px rgba(23,49,58,.16);padding:24px}.lmsgen-reader-mark{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:#e8f8f7;color:#0f9a95;font-size:21px;font-weight:800}.lmsgen-reader-card h2{margin:16px 0 7px;font-size:20px;line-height:1.15}.lmsgen-reader-card p{margin:0;color:#6a8588;font-size:12px;line-height:1.6}.lmsgen-reader-field{display:block;margin-top:16px}.lmsgen-reader-field span{display:block;margin-bottom:6px;font-size:10px;font-weight:800;color:#45666a;text-transform:uppercase;letter-spacing:.06em}.lmsgen-reader-field input{width:100%;height:45px;border:1px solid #d7ece8;border-radius:11px;background:#fff;color:#17313a;padding:0 12px;font:600 13px Inter,Arial,sans-serif;outline:none}.lmsgen-reader-field input:focus{border-color:#17b6b0;box-shadow:0 0 0 3px rgba(23,182,176,.12)}#lmsgenReaderSubmit{margin-top:18px;width:100%;height:46px;border:0;border-radius:11px;background:#17b6b0;color:#fff;font:800 13px Inter,Arial,sans-serif;cursor:pointer}#lmsgenReaderSubmit:hover{background:#0f9a95}#lmsgenReaderSubmit:disabled{opacity:.55;cursor:wait}.lmsgen-reader-privacy{margin-top:12px!important;font-size:10px!important;color:#789194!important}.lmsgen-reader-error{display:none;margin-top:10px;padding:9px 10px;border-radius:9px;background:#fff1f2;color:#be123c;font-size:11px}.lmsgen-reader-error.is-visible{display:block}
+#lmsgenReaderGate.is-hidden{display:none}#lmsgenReaderGate.is-restoring .lmsgen-reader-card{opacity:0;pointer-events:none}.lmsgen-reader-card{width:min(440px,100%);background:#fff;border:1px solid #d7ece8;border-radius:22px;box-shadow:0 24px 70px rgba(23,49,58,.16);padding:24px;transition:opacity .12s ease}.lmsgen-reader-mark{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:#e8f8f7;color:#0f9a95;font-size:21px;font-weight:800}.lmsgen-reader-card h2{margin:16px 0 7px;font-size:20px;line-height:1.15}.lmsgen-reader-card p{margin:0;color:#6a8588;font-size:12px;line-height:1.6}.lmsgen-reader-field{display:block;margin-top:16px}.lmsgen-reader-field span{display:block;margin-bottom:6px;font-size:10px;font-weight:800;color:#45666a;text-transform:uppercase;letter-spacing:.06em}.lmsgen-reader-field input{width:100%;height:45px;border:1px solid #d7ece8;border-radius:11px;background:#fff;color:#17313a;padding:0 12px;font:600 13px Inter,Arial,sans-serif;outline:none}.lmsgen-reader-field input:focus{border-color:#17b6b0;box-shadow:0 0 0 3px rgba(23,182,176,.12)}#lmsgenReaderSubmit{margin-top:18px;width:100%;height:46px;border:0;border-radius:11px;background:#17b6b0;color:#fff;font:800 13px Inter,Arial,sans-serif;cursor:pointer}#lmsgenReaderSubmit:hover{background:#0f9a95}#lmsgenReaderSubmit:disabled{opacity:.55;cursor:wait}.lmsgen-reader-privacy{margin-top:12px!important;font-size:10px!important;color:#789194!important}.lmsgen-reader-error{display:none;margin-top:10px;padding:9px 10px;border-radius:9px;background:#fff1f2;color:#be123c;font-size:11px}.lmsgen-reader-error.is-visible{display:block}
 </style>`,
-        html: `<div id="lmsgenReaderGate"><form class="lmsgen-reader-card" id="lmsgenReaderForm"><div class="lmsgen-reader-mark">L</div><h2>Open this flipbook</h2><p>Enter your details to continue reading.</p><label class="lmsgen-reader-field"><span>Email address</span><input id="lmsgenReaderEmail" type="email" autocomplete="email" required placeholder="name@company.com"></label><label class="lmsgen-reader-field"><span>Name (optional)</span><input id="lmsgenReaderName" type="text" autocomplete="name" maxlength="160" placeholder="Your name"></label><div class="lmsgen-reader-error" id="lmsgenReaderError"></div><button id="lmsgenReaderSubmit" type="submit">Open flipbook</button><p class="lmsgen-reader-privacy">Your email and reading activity are shared with the flipbook author for engagement analytics.</p></form></div>`,
+        html: `<div id="lmsgenReaderGate" class="is-restoring"><form class="lmsgen-reader-card" id="lmsgenReaderForm"><div class="lmsgen-reader-mark">L</div><h2>Open this flipbook</h2><p>Enter your details to continue reading.</p><label class="lmsgen-reader-field"><span>Email address</span><input id="lmsgenReaderEmail" type="email" autocomplete="email" required placeholder="name@company.com"></label><label class="lmsgen-reader-field"><span>Name (optional)</span><input id="lmsgenReaderName" type="text" autocomplete="name" maxlength="160" placeholder="Your name"></label><div class="lmsgen-reader-error" id="lmsgenReaderError"></div><button id="lmsgenReaderSubmit" type="submit">Open flipbook</button><p class="lmsgen-reader-privacy">Your email and reading activity are shared with the flipbook author for engagement analytics. This browser will remember your access.</p></form></div>`,
         script: `<script id="lmsgen-flipbook-analytics-script">
 (()=>{
   const BASE=${JSON.stringify(basePath)};
@@ -42,6 +42,9 @@ function trackingInjection(shareToken) {
   const nameInput=document.getElementById('lmsgenReaderName');
   const submit=document.getElementById('lmsgenReaderSubmit');
   const errorBox=document.getElementById('lmsgenReaderError');
+  const PROFILE_KEY='lmsgen-flipbook-reader-profile';
+  const EMAIL_KEY='lmsgen-flipbook-reader-email';
+  const NAME_KEY='lmsgen-flipbook-reader-name';
   let sessionToken='';
   let lastIndex=0;
   let attached=false;
@@ -53,8 +56,9 @@ function trackingInjection(shareToken) {
   let activeAccumulatedMs=0;
   let activeStartedAt=0;
   let active=false;
+  let readerActivated=false;
   const seenPages=new Set([0]);
-  try{emailInput.value=localStorage.getItem('lmsgen-flipbook-reader-email')||'';nameInput.value=localStorage.getItem('lmsgen-flipbook-reader-name')||''}catch(_){}
+  try{emailInput.value=localStorage.getItem(EMAIL_KEY)||'';nameInput.value=localStorage.getItem(NAME_KEY)||''}catch(_){}
 
   function activeSeconds(){
     let total=activeAccumulatedMs;
@@ -154,6 +158,50 @@ function trackingInjection(shareToken) {
     });
   }
 
+  function storedProfile(){
+    try{
+      const value=JSON.parse(localStorage.getItem(PROFILE_KEY)||'null');
+      if(value&&/^\\S+@\\S+\\.\\S+$/.test(String(value.email||'')))return value;
+      const email=String(localStorage.getItem(EMAIL_KEY)||'').trim().toLowerCase();
+      return /^\\S+@\\S+\\.\\S+$/.test(email)?{email,name:localStorage.getItem(NAME_KEY)||''}:null;
+    }catch(_){return null}
+  }
+  function rememberProfile(email,name){
+    try{
+      localStorage.setItem(EMAIL_KEY,email);
+      if(name)localStorage.setItem(NAME_KEY,name);else localStorage.removeItem(NAME_KEY);
+      localStorage.setItem(PROFILE_KEY,JSON.stringify({email,name,savedAt:Date.now()}));
+    }catch(_){}
+  }
+  function activateReader(data,email,name){
+    if(readerActivated)return;
+    readerActivated=true;
+    sessionToken=String(data.sessionToken||'');
+    activeBaseSeconds=Math.max(0,Number(data.durationSeconds)||0);
+    rememberProfile(String(data.readerEmail||email||'').trim().toLowerCase(),String(data.readerName||name||'').trim());
+    gate.classList.add('is-hidden');
+    gate.classList.remove('is-restoring');
+    markActivity();
+    attachActivityListeners();
+    window.setTimeout(()=>{if(!attachFlipTracking()){const timer=setInterval(()=>{if(attachFlipTracking())clearInterval(timer)},150)}},0);
+    startHeartbeat();
+  }
+  async function startSession(email,name){
+    const response=await fetch(BASE+'/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,name,source:SOURCE,referrer:document.referrer||''})});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data.message||'Could not start the reader session.');
+    activateReader(data,email,name);
+  }
+  async function restoreReader(){
+    const saved=storedProfile();
+    const email=String(saved?.email||emailInput.value||'').trim().toLowerCase();
+    const name=String(saved?.name||nameInput.value||'').trim();
+    if(/^\\S+@\\S+\\.\\S+$/.test(email)){
+      try{await startSession(email,name);return}catch(_){}
+    }
+    gate.classList.remove('is-restoring');
+  }
+
   form?.addEventListener('submit',async event=>{
     event.preventDefault();
     errorBox.classList.remove('is-visible');
@@ -162,23 +210,14 @@ function trackingInjection(shareToken) {
     if(!/^\\S+@\\S+\\.\\S+$/.test(email)){errorBox.textContent='Enter a valid email address.';errorBox.classList.add('is-visible');return}
     submit.disabled=true;submit.textContent='Opening…';
     try{
-      const response=await fetch(BASE+'/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,name,source:SOURCE,referrer:document.referrer||''})});
-      const data=await response.json().catch(()=>({}));
-      if(!response.ok)throw new Error(data.message||'Could not start the reader session.');
-      sessionToken=data.sessionToken;
-      activeBaseSeconds=Math.max(0,Number(data.durationSeconds)||0);
-      try{localStorage.setItem('lmsgen-flipbook-reader-email',email);if(name)localStorage.setItem('lmsgen-flipbook-reader-name',name)}catch(_){}
-      gate.classList.add('is-hidden');
-      markActivity();
-      attachActivityListeners();
-      window.setTimeout(()=>{if(!attachFlipTracking()){const timer=setInterval(()=>{if(attachFlipTracking())clearInterval(timer)},150)}},0);
-      startHeartbeat();
+      await startSession(email,name);
     }catch(err){errorBox.textContent=err.message||'Could not open this flipbook.';errorBox.classList.add('is-visible');submit.disabled=false;submit.textContent='Open flipbook'}
   });
   window.addEventListener('pagehide',()=>{
     pauseActive();
     if(sessionToken)send([{eventType:'heartbeat',pageIndex:lastIndex,elapsedSeconds:activeSeconds()}],true);
   });
+  restoreReader();
 })();
 </script>`
     };
@@ -291,3 +330,4 @@ router.use((err, req, res, next) => {
 });
 
 module.exports = router;
+module.exports.trackingInjection = trackingInjection;
