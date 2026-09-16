@@ -41,10 +41,12 @@ function loadService() {
     const ScormCourse = { update: sinon.stub().resolves([0]) };
     const ScormCampaign = { update: sinon.stub().resolves([0]) };
     const ScormLearnerRoster = { update: sinon.stub().resolves([0]) };
+    const ScormAiUsageEvent = { update: sinon.stub().resolves([0]) };
     const addGrant = sinon.stub().resolves({});
     const updateEntitlement = sinon.stub().resolves({});
     const entitlement = {
         maxCourses: 5,
+        maxActiveCourses: 3,
         maxLearners: 20,
         maxStaff: 3,
         maxCampaigns: 4,
@@ -52,6 +54,7 @@ function loadService() {
         permissions: { courseAuthoring: true }
     };
     const usage = {
+        aiCourseGenerations: 2,
         courseCreations: 2,
         activeCourses: 1,
         learners: 10,
@@ -65,7 +68,7 @@ function loadService() {
         '../../models/User': User,
         '../../models/scorm': {
             ScormWorkspace, ScormWorkspaceMember, ScormWorkspaceAuthConfig,
-            ScormPackage, ScormCourse, ScormCampaign, ScormLearnerRoster
+            ScormPackage, ScormCourse, ScormCampaign, ScormLearnerRoster, ScormAiUsageEvent
         },
         './ScormAccessService': {
             normalizeEmail: (value) => String(value || '').trim().toLowerCase(),
@@ -83,7 +86,7 @@ function loadService() {
 
     return {
         service, User, ScormWorkspace, ScormWorkspaceMember, ScormWorkspaceAuthConfig,
-        ScormPackage, ScormCourse, ScormCampaign, ScormLearnerRoster,
+        ScormPackage, ScormCourse, ScormCampaign, ScormLearnerRoster, ScormAiUsageEvent,
         addGrant, updateEntitlement, hostUser, workspace, adminMember
     };
 }
@@ -112,13 +115,13 @@ describe('ScormTenantService', () => {
         expect(ctx.addGrant.calledOnce).to.equal(true);
         expect(result.hostId).to.equal(901);
         expect(result.admin.email).to.equal('admin@acme.com');
-        expect(result.usage).to.deep.equal({ staff: 1, courses: 1, courseCreations: 2, learners: 10, rosterLearners: 10, campaigns: 3, assignments: 12 });
+        expect(result.usage).to.deep.equal({ staff: 1, courses: 1, aiCourseGenerations: 2, courseCreations: 2, learners: 10, rosterLearners: 10, campaigns: 3, assignments: 12 });
 
         // The Tenant Admin (userId 44) already existed and may already own SCORM
         // data recorded under their own user id from before tenants existed.
         // That data must move to the new tenant host or it silently disappears
         // from every hostId-scoped tracking/report query.
-        for (const model of [ctx.ScormPackage, ctx.ScormCourse, ctx.ScormCampaign, ctx.ScormLearnerRoster]) {
+        for (const model of [ctx.ScormPackage, ctx.ScormCourse, ctx.ScormCampaign, ctx.ScormLearnerRoster, ctx.ScormAiUsageEvent]) {
             expect(model.update.calledOnceWith({ hostId: ctx.hostUser.id }, { where: { hostId: 44 } })).to.equal(true);
         }
     });

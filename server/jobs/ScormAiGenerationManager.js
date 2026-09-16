@@ -13,6 +13,10 @@ const {
 const ScormGenerationJob = require('../models/scorm/ScormGenerationJob');
 const { getObjectStorage } = require('../storage/ObjectStorage');
 const logger = require('../utils/logger');
+const {
+    finalizeAiCourseGeneration,
+    usageOperationKey
+} = require('../services/scorm/ScormAiUsageService');
 
 const queue = [];
 const active = new Map();
@@ -214,6 +218,7 @@ async function recoverPersistedJobs() {
                     leaseOwner: null,
                     leaseExpiresAt: null
                 }, false);
+                finalizeAiCourseGeneration(usageOperationKey(id), { status: 'failed' }).catch(() => {});
                 continue;
             }
 
@@ -330,6 +335,11 @@ function startJob(job) {
                 leaseOwner: null,
                 leaseExpiresAt: null
             }, false).catch(() => {});
+            finalizeAiCourseGeneration(usageOperationKey(job.progressId), {
+                status: 'completed',
+                packageId: payload?.packageId || null,
+                courseId: payload?.courseId || null
+            }).catch(() => {});
             logger.info('scorm_ai_worker_complete', {
                 module: 'scorm',
                 progressId: job.progressId,
@@ -347,6 +357,7 @@ function startJob(job) {
                 leaseOwner: null,
                 leaseExpiresAt: null
             }, false).catch(() => {});
+            finalizeAiCourseGeneration(usageOperationKey(job.progressId), { status: 'cancelled' }).catch(() => {});
             logger.info('scorm_ai_worker_cancelled', { module: 'scorm', progressId: job.progressId });
         } else {
             const error = generationError(payload || {});
@@ -360,6 +371,7 @@ function startJob(job) {
                 leaseOwner: null,
                 leaseExpiresAt: null
             }, false).catch(() => {});
+            finalizeAiCourseGeneration(usageOperationKey(job.progressId), { status: 'failed' }).catch(() => {});
             logger.error('scorm_ai_worker_failed', {
                 module: 'scorm',
                 progressId: job.progressId,
@@ -473,6 +485,9 @@ async function enqueue({ progressId, userId, payload }) {
             if (status === 'complete') {
                 return { accepted: true, progressId: id, duplicate: true, status: 'complete' };
             }
+            if (['error', 'failed', 'cancelled'].includes(status)) {
+                return { accepted: true, progressId: id, duplicate: true, status };
+            }
         }
     } catch (error) {
         if (error.code === 'SCORM_PROGRESS_FORBIDDEN') throw error;
@@ -567,6 +582,7 @@ async function cancel(progressId, userId) {
         leaseOwner: null,
         leaseExpiresAt: null
     }, false);
+    await finalizeAiCourseGeneration(usageOperationKey(id), { status: 'cancelled' }).catch(() => {});
     cleanupSource(payload);
     return cancelled;
 }

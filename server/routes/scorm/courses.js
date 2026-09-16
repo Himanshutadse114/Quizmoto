@@ -11,6 +11,7 @@ const { prepareCoursePreview } = require('../../services/scorm/ScormPreviewServi
 const { resolveCourseOrPackageId } = require('../../services/scorm/ScormCourseWorkspaceService');
 const ScormReportService = require('../../services/ScormReportService');
 const ScormIndividualLearnerReportService = require('../../services/scorm/ScormIndividualLearnerReportService');
+const { assertActiveCourseCapacity } = require('../../services/scorm/ScormAiUsageService');
 
 router.get('/', auth, async (req, res) => {
     const courses = await ScormCourse.findAll({
@@ -110,7 +111,7 @@ router.post('/', auth, async (req, res) => {
         });
         res.status(201).json(course);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status(err.status || 500).json({ message: err.message, code: err.code || undefined });
     }
 });
 
@@ -185,6 +186,9 @@ router.patch('/:id', auth, async (req, res) => {
             if (!['draft', 'published', 'archived'].includes(status)) {
                 return res.status(400).json({ message: 'Invalid status' });
             }
+            if (course.status === 'archived' && status !== 'archived') {
+                await assertActiveCourseCapacity(req.userId, req.scormEntitlement);
+            }
             if (status === 'published') {
                 const pkg = await ScormPackage.findByPk(course.packageId);
                 if (!pkg || pkg.status !== 'ready') {
@@ -198,7 +202,7 @@ router.patch('/:id', auth, async (req, res) => {
         await course.save();
         res.json(course);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status(err.status || 500).json({ message: err.message, code: err.code || undefined });
     }
 });
 

@@ -1,4 +1,4 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Op } = require('sequelize');
 const { sequelize } = require('../../config/database');
 const {
     ScormWorkspace,
@@ -6,7 +6,10 @@ const {
     ScormPackage,
     ScormCourse,
     ScormCampaign,
-    ScormLearnerRoster
+    ScormLearnerRoster,
+    ScormUserEntitlement,
+    ScormAiUsageEvent,
+    ScormGenerationJob
 } = require('../../models/scorm');
 
 const queryInterface = () => sequelize.getQueryInterface();
@@ -157,6 +160,7 @@ function entitlementColumns() {
         id: { type: DataTypes.UUID, allowNull: false, primaryKey: true },
         email: { type: DataTypes.STRING(320), allowNull: false, unique: true },
         maxCourses: { type: DataTypes.INTEGER, allowNull: true },
+        maxActiveCourses: { type: DataTypes.INTEGER, allowNull: true },
         maxLearners: { type: DataTypes.INTEGER, allowNull: true },
         maxStaff: { type: DataTypes.INTEGER, allowNull: true },
         maxCampaigns: { type: DataTypes.INTEGER, allowNull: true },
@@ -164,6 +168,23 @@ function entitlementColumns() {
         permissions: { type: DataTypes.JSON, allowNull: false, defaultValue: {} },
         updatedByUserId: { type: DataTypes.INTEGER, allowNull: true },
         updatedByEmail: { type: DataTypes.STRING(320), allowNull: true },
+        ...timestampColumns()
+    };
+}
+
+function aiUsageEventColumns() {
+    return {
+        id: { type: DataTypes.UUID, allowNull: false, primaryKey: true },
+        hostId: { type: DataTypes.INTEGER, allowNull: false },
+        entitlementEmail: { type: DataTypes.STRING(320), allowNull: true },
+        operationKey: { type: DataTypes.STRING(180), allowNull: false, unique: true },
+        kind: { type: DataTypes.STRING(40), allowNull: false, defaultValue: 'course_generation' },
+        source: { type: DataTypes.STRING(40), allowNull: false, defaultValue: 'ai_author' },
+        status: { type: DataTypes.STRING(32), allowNull: false, defaultValue: 'reserved' },
+        reservesActiveSlot: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+        packageId: { type: DataTypes.UUID, allowNull: true },
+        courseId: { type: DataTypes.UUID, allowNull: true },
+        metadata: { type: DataTypes.JSON, allowNull: true, defaultValue: {} },
         ...timestampColumns()
     };
 }
@@ -251,12 +272,116 @@ async function ensureWorkspaceSchema() {
 async function ensureEntitlementSchema() {
     const changes = [];
     const columns = entitlementColumns();
-    if (await ensureTable('scorm_user_entitlements', columns)) changes.push('scorm_user_entitlements');
-    else changes.push(...await ensureColumns('scorm_user_entitlements', columns));
+    if (await ensureTable('scorm_user_entitlements', columns)) {
+        changes.push('scorm_user_entitlements');
+    } else {
+        const activeLimitAdded = await ensureColumn('scorm_user_entitlements', 'maxActiveCourses', columns.maxActiveCourses);
+        if (activeLimitAdded) {
+            changes.push('scorm_user_entitlements.maxActiveCourses');
+            await ScormUserEntitlement.update(
+                { maxActiveCourses: sequelize.col('maxCourses') },
+                { where: { maxActiveCourses: null } }
+            );
+        }
+        const remaining = { ...columns };
+        delete remaining.maxActiveCourses;
+        changes.push(...await ensureColumns('scorm_user_entitlements', remaining));
+    }
     if (await ensureIndex('scorm_user_entitlements', ['email'], { name: 'scorm_user_entitlements_email_uq', unique: true })) {
         changes.push('scorm_user_entitlements_email_uq');
     }
     return changes;
+}
+
+async function ensureAiUsageSchema() {
+    const changes = [];
+    const columns = aiUsageEventColumns();
+    if (await ensureTable('scorm_ai_usage_events', columns)) changes.push('scorm_ai_usage_events');
+    else changes.push(...await ensureColumns('scorm_ai_usage_events', columns));
+    const indexes = [
+        [['operationKey'], { name: 'scorm_ai_usage_events_operation_uq', unique: true }],
+        [['hostId'], { name: 'scorm_ai_usage_events_host_idx' }],
+        [['hostId', 'status'], { name: 'scorm_ai_usage_events_host_status_idx' }]
+    ];
+    for (const [fields, options] of indexes) {
+        if (await ensureIndex('scorm_ai_usage_events', fields, options)) changes.push(options.name);
+    }
+    return changes;
+}
+
+async function backfillAiUsageEvents() {
+    const packages = await ScormPackage.findAll({
+        where: { source: { [Op.in]: ['ai_author', 'presentation_import'] } },
+        attributes: ['id', 'hostId', 'source', 'createdAt'],
+        raw: true
+    }).catch(() => []);
+    if (!packages.length) return [];
+    const packageIds = packages.map((pkg) => pkg.id);
+    const courses = await ScormCourse.findAll({
+        where: { packageId: { [Op.in]: packageIds } },
+        attributes: ['id', 'packageId'],
+        order: [['createdAt', 'ASC']],
+        raw: true
+    }).catch(() => []);
+    const courseByPackage = new Map();
+    courses.forEach((course) => {
+        if (!courseByPackage.has(String(course.packageId))) courseByPackage.set(String(course.packageId), course.id);
+    });
+    let created = 0;
+    for (const pkg of packages) {
+        const [, wasCreated] = await ScormAiUsageEvent.findOrCreate({
+            where: { operationKey: `legacy-package:${pkg.id}` },
+            defaults: {
+                hostId: pkg.hostId,
+                operationKey: `legacy-package:${pkg.id}`,
+                kind: 'course_generation',
+                source: pkg.source === 'presentation_import' ? 'presentation' : 'ai_author',
+                status: 'completed',
+                reservesActiveSlot: false,
+                packageId: pkg.id,
+                courseId: courseByPackage.get(String(pkg.id)) || null,
+                metadata: { migrated: true }
+            }
+        });
+        if (wasCreated) created += 1;
+    }
+    return created ? [`scorm_ai_usage_events:backfilled:${created}`] : [];
+}
+
+async function reconcileAiUsageReservations() {
+    const reservations = await ScormAiUsageEvent.findAll({
+        where: { kind: 'course_generation', status: 'reserved' }
+    }).catch(() => []);
+    if (!reservations.length) return [];
+    const orphanCutoff = Date.now() - (30 * 60 * 1000);
+    let reconciled = 0;
+    for (const event of reservations) {
+        const prefix = 'course-generation:';
+        const operationKey = String(event.operationKey || '');
+        if (!operationKey.startsWith(prefix)) continue;
+        const progressId = operationKey.slice(prefix.length);
+        const job = await ScormGenerationJob.findByPk(progressId).catch(() => null);
+        if (!job) {
+            if (new Date(event.createdAt || 0).getTime() > orphanCutoff) continue;
+            event.status = 'released';
+            await event.save();
+            reconciled += 1;
+            continue;
+        }
+        const jobStatus = String(job.status || '').toLowerCase();
+        if (!['complete', 'error', 'failed', 'cancelled'].includes(jobStatus)) continue;
+        event.status = jobStatus === 'complete' ? 'completed' : jobStatus === 'cancelled' ? 'cancelled' : 'failed';
+        if (jobStatus === 'complete' && job.resultJson) {
+            try {
+                const result = typeof job.resultJson === 'string' ? JSON.parse(job.resultJson) : job.resultJson;
+                event.packageId = result?.packageId || event.packageId || null;
+                event.courseId = result?.courseId || event.courseId || null;
+            } catch (_) {}
+        }
+        await event.save();
+        reconciled += 1;
+    }
+    return reconciled ? [`scorm_ai_usage_events:reconciled:${reconciled}`] : [];
 }
 
 async function ensureCampaignSchema() {
@@ -306,7 +431,8 @@ async function backfillTenantHostData() {
             ScormPackage.update({ hostId }, { where: { hostId: adminUserId } }),
             ScormCourse.update({ hostId }, { where: { hostId: adminUserId } }),
             ScormCampaign.update({ hostId }, { where: { hostId: adminUserId } }),
-            ScormLearnerRoster.update({ hostId }, { where: { hostId: adminUserId } })
+            ScormLearnerRoster.update({ hostId }, { where: { hostId: adminUserId } }),
+            ScormAiUsageEvent.update({ hostId }, { where: { hostId: adminUserId } })
         ]);
         const migratedRows = results.reduce((sum, [count]) => sum + (Number(count) || 0), 0);
         if (migratedRows > 0) changes.push(`tenant:${member.workspaceId}:reattached:${migratedRows}`);
@@ -320,6 +446,7 @@ async function ensurePlatformSchema() {
     const changes = [];
     changes.push(...await ensureWorkspaceSchema());
     changes.push(...await ensureEntitlementSchema());
+    changes.push(...await ensureAiUsageSchema());
     changes.push(...await ensureCampaignSchema());
 
     const registrationColumns = [
@@ -343,8 +470,10 @@ async function ensurePlatformSchema() {
     }
 
     changes.push(...await backfillTenantHostData());
+    changes.push(...await backfillAiUsageEvents());
+    changes.push(...await reconcileAiUsageReservations());
 
     return { changed: changes.length > 0, changes };
 }
 
-module.exports = { ensurePlatformSchema, backfillTenantHostData };
+module.exports = { ensurePlatformSchema, backfillTenantHostData, backfillAiUsageEvents, reconcileAiUsageReservations };

@@ -14,6 +14,7 @@ const ScormCampaign = require('./ScormCampaign');
 const ScormCampaignLearner = require('./ScormCampaignLearner');
 const ScormCampaignCourse = require('./ScormCampaignCourse');
 const ScormGenerationJob = require('./ScormGenerationJob');
+const ScormAiUsageEvent = require('./ScormAiUsageEvent');
 const ScormAccessGrant = require('../ScormAccessGrant');
 const ScormAccessRequest = require('../ScormAccessRequest');
 const MailOtp = require('../MailOtp');
@@ -88,6 +89,7 @@ const models = {
     ScormCampaignLearner,
     ScormCampaignCourse,
     ScormGenerationJob,
+    ScormAiUsageEvent,
     ScormAccessGrant,
     ScormAccessRequest,
     MailOtp,

@@ -84,3 +84,122 @@ body.atelora-home-page .hp-insights-s h3.h5 {
     font-size: clamp(2.3rem, 6vw, 2.8rem) !important;
   }
 }
+
+.lmsgen-pdf-course-s {
+  padding: clamp(7rem, 9vw, 12rem) 4vw;
+  background: #eef9f7;
+  color: #003f3a;
+  overflow: hidden;
+}
+
+.lmsgen-pdf-course-grid {
+  display: grid;
+  grid-template-columns: minmax(0, .86fr) minmax(52rem, 1.14fr);
+  align-items: center;
+  gap: clamp(5rem, 7vw, 10rem);
+}
+
+.lmsgen-pdf-course-copy h2 {
+  margin: 1.6rem 0 2rem;
+  max-width: 64rem;
+  font-family: "National 2 Condensed", sans-serif !important;
+  font-size: clamp(5rem, 5.5vw, 7.8rem) !important;
+  font-weight: 500 !important;
+  line-height: .94 !important;
+  letter-spacing: -.025em !important;
+  text-wrap: balance;
+}
+
+.lmsgen-pdf-course-copy > p {
+  max-width: 60rem;
+  font-size: clamp(1.65rem, 1.4vw, 2rem);
+  line-height: 1.55;
+}
+
+.lmsgen-pdf-course-list {
+  display: grid;
+  gap: 1.2rem;
+  margin: 3.2rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lmsgen-pdf-course-list li {
+  display: grid;
+  grid-template-columns: 4.2rem 1fr;
+  column-gap: 1.4rem;
+  padding: 1.5rem 0;
+  border-top: 1px solid rgba(0, 63, 58, .16);
+}
+
+.lmsgen-pdf-course-list li > span {
+  grid-row: span 2;
+  width: 4.2rem;
+  height: 4.2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #003f3a;
+  color: #7be2d8;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.lmsgen-pdf-course-list strong { font-size: 1.7rem; line-height: 1.25; }
+.lmsgen-pdf-course-list small { margin-top: .35rem; font-size: 1.35rem; line-height: 1.4; opacity: .7; }
+
+.lmsgen-pdf-course-preview {
+  min-height: 54rem;
+  display: grid;
+  grid-template-columns: 17rem 1fr;
+  border: 1px solid rgba(0, 63, 58, .18);
+  border-radius: 2.8rem;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 3rem 8rem rgba(0, 63, 58, .14);
+  transform: rotate(1.25deg);
+}
+
+.lmsgen-pdf-preview-sidebar { padding: 3rem 2.2rem; background: #003f3a; color: white; }
+.lmsgen-pdf-preview-label { color: #69d9ce; font-size: .95rem; font-weight: 700; letter-spacing: .12em; }
+.lmsgen-pdf-preview-title { margin-top: 1.4rem; font-size: 1.65rem; font-weight: 650; line-height: 1.2; }
+.lmsgen-pdf-preview-progress { height: .7rem; margin: 3rem 0 1.2rem; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.15); }
+.lmsgen-pdf-preview-progress span { display: block; width: 62%; height: 100%; border-radius: inherit; background: #69d9ce; }
+.lmsgen-pdf-preview-stat { margin-top: 2.5rem; display: grid; gap: .35rem; }
+.lmsgen-pdf-preview-stat strong { font-size: 2rem; }
+.lmsgen-pdf-preview-stat small { font-size: 1rem; opacity: .65; }
+.lmsgen-pdf-preview-stage { min-width: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 2.2rem; background: #f8faf9; }
+.lmsgen-pdf-preview-toolbar, .lmsgen-pdf-preview-controls { display: flex; align-items: center; justify-content: space-between; gap: 1rem; font-size: 1.05rem; color: rgba(0,63,58,.65); }
+.lmsgen-pdf-preview-toolbar span:last-child { color: #087f75; font-weight: 700; }
+.lmsgen-pdf-preview-slide { align-self: center; min-height: 32rem; display: grid; grid-template-columns: 1.2fr .8fr; overflow: hidden; background: #fff8e7; box-shadow: 0 1.2rem 3rem rgba(0,63,58,.11); }
+.lmsgen-pdf-preview-slide-copy { padding: clamp(3rem, 4vw, 5.5rem); display: flex; flex-direction: column; justify-content: center; }
+.lmsgen-pdf-preview-slide-copy small { font-size: 1rem; letter-spacing: .12em; color: #087f75; font-weight: 700; }
+.lmsgen-pdf-preview-slide-copy strong { margin-top: 1.3rem; font-size: clamp(3rem, 3.6vw, 5.2rem); line-height: .95; font-family: "National 2 Condensed", sans-serif; font-weight: 500; }
+.lmsgen-pdf-preview-slide-copy p { margin-top: 1.8rem; font-size: 1.25rem; line-height: 1.5; }
+.lmsgen-pdf-preview-art { display: grid; place-items: center; background: #f2c500; }
+.lmsgen-pdf-preview-art span { width: 10rem; height: 10rem; display: grid; place-items: center; border-radius: 50%; background: #003f3a; color: #69d9ce; font-size: 5rem; }
+.lmsgen-pdf-preview-controls { padding-top: 2rem; justify-content: flex-end; }
+.lmsgen-pdf-preview-controls button { min-width: 8rem; padding: 1rem 1.3rem; border: 1px solid rgba(0,63,58,.2); border-radius: 999px; background: white; color: #003f3a; font: inherit; font-weight: 650; }
+.lmsgen-pdf-preview-controls button:last-child { background: #0d8f85; border-color: #0d8f85; color: white; }
+
+@media screen and (max-width: 991px) {
+  .lmsgen-pdf-course-grid { grid-template-columns: 1fr; }
+  .lmsgen-pdf-course-preview { width: 100%; min-height: 48rem; transform: none; }
+}
+
+@media screen and (max-width: 600px) {
+  .lmsgen-pdf-course-s { padding: 6rem 2rem; }
+  .lmsgen-pdf-course-copy h2 { font-size: clamp(4.2rem, 14vw, 5.6rem) !important; }
+  .lmsgen-pdf-course-preview { min-height: 38rem; grid-template-columns: 9rem 1fr; border-radius: 1.8rem; }
+  .lmsgen-pdf-preview-sidebar { padding: 1.6rem 1rem; }
+  .lmsgen-pdf-preview-title { font-size: 1.05rem; }
+  .lmsgen-pdf-preview-stat strong { font-size: 1.3rem; }
+  .lmsgen-pdf-preview-stat small { font-size: .8rem; }
+  .lmsgen-pdf-preview-stage { padding: 1rem; }
+  .lmsgen-pdf-preview-slide { min-height: 25rem; }
+  .lmsgen-pdf-preview-slide-copy { padding: 1.8rem; }
+  .lmsgen-pdf-preview-slide-copy strong { font-size: 2.6rem; }
+  .lmsgen-pdf-preview-slide-copy p { font-size: .9rem; }
+  .lmsgen-pdf-preview-art span { width: 5rem; height: 5rem; font-size: 2.6rem; }
+  .lmsgen-pdf-preview-controls { display: none; }
+}

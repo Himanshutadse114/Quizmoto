@@ -9,6 +9,10 @@ const {
     ScormWorkspace,
     ScormWorkspaceMember
 } = require('../../models/scorm');
+const {
+    countAiGenerations,
+    assertActiveCourseCapacity
+} = require('./ScormAiUsageService');
 
 const INACTIVE_ASSIGNMENT_STATUSES = ['revoked', 'superseded'];
 
@@ -53,6 +57,7 @@ function serializeEntitlement(row, role = 'user') {
     if (role === 'super_admin') {
         return {
             maxCourses: null,
+            maxActiveCourses: null,
             maxLearners: null,
             maxStaff: null,
             maxCampaigns: null,
@@ -64,6 +69,7 @@ function serializeEntitlement(row, role = 'user') {
     }
     return {
         maxCourses: normalizeLimit(row?.maxCourses),
+        maxActiveCourses: normalizeLimit(row?.maxActiveCourses),
         maxLearners: normalizeLimit(row?.maxLearners),
         maxStaff: normalizeLimit(row?.maxStaff),
         maxCampaigns: normalizeLimit(row?.maxCampaigns),
@@ -78,6 +84,7 @@ function entitlementDefaults(email) {
     return {
         email,
         maxCourses: null,
+        maxActiveCourses: null,
         maxLearners: null,
         maxStaff: null,
         maxCampaigns: null,
@@ -103,7 +110,7 @@ async function updateEntitlement(email, patch = {}, actor = {}) {
     const normalized = normalizeEmail(email);
     if (!normalized) throw new Error('Entitlement owner email is required.');
     const [row] = await ScormUserEntitlement.findOrCreate({ where: { email: normalized }, defaults: entitlementDefaults(normalized) });
-    for (const field of ['maxCourses', 'maxLearners', 'maxStaff', 'maxCampaigns', 'maxAssignments']) {
+    for (const field of ['maxCourses', 'maxActiveCourses', 'maxLearners', 'maxStaff', 'maxCampaigns', 'maxAssignments']) {
         if (Object.prototype.hasOwnProperty.call(patch, field)) row[field] = normalizeLimit(patch[field]);
     }
     row.permissions = patch.permissions && typeof patch.permissions === 'object'
@@ -148,13 +155,14 @@ async function activeAssignmentCount(hostId) {
 }
 
 async function getUsageForHost(hostId, workspaceId = null) {
-    if (!hostId) return { courseCreations: 0, activeCourses: 0, learners: 0, rosterLearners: 0, staff: 0, campaigns: 0, assignments: 0 };
+    if (!hostId) return { aiCourseGenerations: 0, courseCreations: 0, activeCourses: 0, learners: 0, rosterLearners: 0, staff: 0, campaigns: 0, assignments: 0 };
     let resolvedWorkspaceId = workspaceId;
     if (!resolvedWorkspaceId) {
         const workspace = await ScormWorkspace.findOne({ where: { ownerUserId: hostId }, attributes: ['id'], raw: true });
         resolvedWorkspaceId = workspace?.id || null;
     }
-    const [courseCreations, activeCourses, learners, rosterLearners, staff, campaigns, assignments] = await Promise.all([
+    const [aiCourseGenerations, courseCreations, activeCourses, learners, rosterLearners, staff, campaigns, assignments] = await Promise.all([
+        countAiGenerations(hostId),
         ScormCourse.count({ where: { hostId } }),
         ScormCourse.count({ where: { hostId, status: { [Op.ne]: 'archived' } } }),
         enrolledLearnerCount(hostId),
@@ -163,13 +171,13 @@ async function getUsageForHost(hostId, workspaceId = null) {
         resolvedWorkspaceId ? ScormCampaign.count({ where: { workspaceId: resolvedWorkspaceId } }) : 0,
         activeAssignmentCount(hostId)
     ]);
-    return { courseCreations, activeCourses, learners, rosterLearners, staff, campaigns, assignments };
+    return { aiCourseGenerations, courseCreations, activeCourses, learners, rosterLearners, staff, campaigns, assignments };
 }
 
 async function getUsageForEmail(email) {
     const normalized = normalizeEmail(email);
     const user = normalized ? await User.findOne({ where: { email: normalized } }) : null;
-    if (!user) return { courses: 0, courseCreations: 0, activeCourses: 0, learners: 0, rosterLearners: 0, staff: 0, campaigns: 0, assignments: 0 };
+    if (!user) return { courses: 0, aiCourseGenerations: 0, courseCreations: 0, activeCourses: 0, learners: 0, rosterLearners: 0, staff: 0, campaigns: 0, assignments: 0 };
     const usage = await getUsageForHost(user.id);
     return { ...usage, courses: usage.activeCourses };
 }
@@ -197,15 +205,6 @@ function capabilityForRequest(req) {
     if (/\/api\/scorm\/courses\/[^/]+\/preview$/.test(path) && method === 'POST') return 'coursePreview';
     if (/\/api\/scorm\/courses\/[^/]+$/.test(path) && method === 'PATCH' && req.body?.status === 'published') return 'coursePublishing';
     return null;
-}
-
-async function assertCourseLimit(hostId, entitlement) {
-    const max = normalizeLimit(entitlement?.maxCourses);
-    if (max === null) return;
-    const consumed = await ScormCourse.count({ where: { hostId } });
-    if (consumed >= max) {
-        throw deny(`Course creation allowance reached (${consumed}/${max}). Deleted or archived courses still count towards the tenant's lifetime allowance.`, 'SCORM_COURSE_LIMIT_REACHED');
-    }
 }
 
 async function assertStaffLimit(workspaceId, entitlement) {
@@ -333,8 +332,7 @@ async function enforceRequestEntitlement(req, { userId, email, role }) {
     }
     const path = String(req.originalUrl || '').split('?')[0];
     const method = String(req.method || 'GET').toUpperCase();
-    if (method === 'POST' && path === '/api/scorm/courses') await assertCourseLimit(userId, entitlement);
-    if (method === 'POST' && path === '/api/scorm/author/generate' && !req.body?.replacePackageId && !req.body?.packageId) await assertCourseLimit(userId, entitlement);
+    if (method === 'POST' && path === '/api/scorm/courses') await assertActiveCourseCapacity(userId, entitlement);
     if (path.startsWith('/api/scorm/roster')) await assertLearnerLimit(req, userId, entitlement);
     if (method === 'POST' && path === '/api/scorm/team') await assertStaffLimit(req.scormWorkspaceId, entitlement);
     if (method === 'POST' && path === '/api/scorm/campaigns') await assertCampaignLimit(req.scormWorkspaceId, entitlement);
@@ -351,6 +349,7 @@ module.exports = {
     getUsageForEmail,
     getUsageForHost,
     activeAssignmentCount,
+    assertActiveCourseCapacity,
     assertEnrollmentAllowed,
     enforceRequestEntitlement
 };

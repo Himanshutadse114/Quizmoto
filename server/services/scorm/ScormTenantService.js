@@ -7,7 +7,8 @@ const {
     ScormPackage,
     ScormCourse,
     ScormCampaign,
-    ScormLearnerRoster
+    ScormLearnerRoster,
+    ScormAiUsageEvent
 } = require('../../models/scorm');
 const {
     normalizeEmail,
@@ -19,6 +20,7 @@ const {
     getEntitlement,
     updateEntitlement,
     getUsageForHost = async () => ({
+        aiCourseGenerations: 0,
         courseCreations: 0,
         activeCourses: 0,
         learners: 0,
@@ -47,7 +49,7 @@ function cleanTenantName(value) {
 
 function validateEntitlementPatch(patch = {}, { creating = false } = {}) {
     const normalized = { ...patch };
-    for (const field of ['maxCourses', 'maxLearners', 'maxStaff', 'maxCampaigns', 'maxAssignments']) {
+    for (const field of ['maxCourses', 'maxActiveCourses', 'maxLearners', 'maxStaff', 'maxCampaigns', 'maxAssignments']) {
         if (Object.prototype.hasOwnProperty.call(normalized, field)) normalized[field] = normalizeLimit(normalized[field]);
     }
     if (creating && normalized.maxStaff !== null && normalized.maxStaff !== undefined && normalized.maxStaff < 1) {
@@ -67,6 +69,7 @@ async function tenantUsage(workspace) {
     return {
         staff: usage.staff,
         courses: usage.activeCourses,
+        aiCourseGenerations: usage.aiCourseGenerations,
         courseCreations: usage.courseCreations,
         learners: usage.learners,
         rosterLearners: usage.rosterLearners,
@@ -140,7 +143,8 @@ async function migrateExistingHostData(fromUserId, toUserId) {
         ScormPackage.update({ hostId: toUserId }, { where: { hostId: fromUserId } }),
         ScormCourse.update({ hostId: toUserId }, { where: { hostId: fromUserId } }),
         ScormCampaign.update({ hostId: toUserId }, { where: { hostId: fromUserId } }),
-        ScormLearnerRoster.update({ hostId: toUserId }, { where: { hostId: fromUserId } })
+        ScormLearnerRoster.update({ hostId: toUserId }, { where: { hostId: fromUserId } }),
+        ScormAiUsageEvent.update({ hostId: toUserId }, { where: { hostId: fromUserId } })
     ]);
 }
 

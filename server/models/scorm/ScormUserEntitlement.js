@@ -15,9 +15,15 @@ const ScormUserEntitlement = sequelize.define('ScormUserEntitlement', {
             this.setDataValue('email', String(value || '').trim().toLowerCase());
         }
     },
-    // Lifetime course-creation allowance. Deleting/archiving a course does not
-    // refund this allowance because historical ScormCourse rows remain counted.
+    // Lifetime AI course-generation credits. Deleting/archiving a generated
+    // course never refunds the underlying AI work recorded in the usage ledger.
     maxCourses: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    // Maximum courses currently available in the tenant library. Archiving or
+    // deleting a course frees this capacity without refunding AI credits.
+    maxActiveCourses: {
         type: DataTypes.INTEGER,
         allowNull: true
     },

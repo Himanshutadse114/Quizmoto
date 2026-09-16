@@ -6,6 +6,13 @@ const { cleanId } = require('../../services/scorm/ScormGenerationProgress');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
 const ScormGenerationJob = require('../../models/scorm/ScormGenerationJob');
 const ScormAiGenerationManager = require('../../jobs/ScormAiGenerationManager');
+const {
+    isBillableAiGenerationPayload,
+    generationSource,
+    reserveAiCourseGeneration,
+    finalizeAiCourseGeneration,
+    usageOperationKey
+} = require('../../services/scorm/ScormAiUsageService');
 
 const COURSE_GENERATION_RELEASE = 'gemini-course-durable-v5';
 let generationStoreReadyPromise = null;
@@ -163,16 +170,35 @@ router.post('/generate', auth, async (req, res) => {
         });
     }
 
+    const payload = req.body || {};
+    const operationKey = usageOperationKey(progressId);
+    let usageReserved = false;
+    let enqueued = false;
     try {
         // The durable generation table is required for every accepted background
         // job. sync() is create-if-missing only here; it does not alter columns.
         await ensureGenerationStoreReady();
 
+        if (isBillableAiGenerationPayload(payload)) {
+            const isReplacement = Boolean(payload.replacePackageId || payload.packageId);
+            const reservation = await reserveAiCourseGeneration({
+                hostId: req.userId,
+                entitlementEmail: req.scormEntitlementEmail,
+                entitlement: req.scormEntitlement,
+                operationKey,
+                source: generationSource(payload),
+                reserveActiveSlot: !isReplacement,
+                metadata: { courseMode: String(payload.courseMode || 'generated').slice(0, 40) }
+            });
+            usageReserved = !reservation.duplicate;
+        }
+
         const queued = await ScormAiGenerationManager.enqueue({
             progressId,
             userId: req.userId,
-            payload: req.body || {}
+            payload
         });
+        enqueued = true;
 
         // A 202 means the browser is safe to poll this job from any service
         // instance. Never acknowledge the request until its durable row exists.
@@ -194,11 +220,14 @@ router.post('/generate', auth, async (req, res) => {
             worker: ScormAiGenerationManager.stats()
         });
     } catch (error) {
-        const status = error.code === 'SCORM_PROGRESS_FORBIDDEN'
+        if (usageReserved && !enqueued) {
+            await finalizeAiCourseGeneration(operationKey, { status: 'released' }).catch(() => {});
+        }
+        const status = Number(error.status) || (error.code === 'SCORM_PROGRESS_FORBIDDEN'
             ? 403
             : error.code === 'SCORM_GENERATION_STORAGE_UNAVAILABLE'
                 ? 503
-                : 500;
+                : 500);
         return res.status(status).json({
             message: error.message || 'Unable to queue course generation.',
             code: error.code || 'SCORM_GENERATION_QUEUE_FAILED',

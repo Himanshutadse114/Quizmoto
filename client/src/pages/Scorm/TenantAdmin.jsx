@@ -54,7 +54,8 @@ const PERMISSION_LABELS = [
 ];
 
 const LIMIT_FIELDS = [
-  ['maxCourses', 'Lifetime course creations', 'Generated or manually created courses. Deleting or archiving does not refund this allowance.'],
+  ['maxCourses', 'AI generation credits', 'Accepted new AI-generated or PDF-to-course jobs. Deleting or archiving never refunds a used credit.'],
+  ['maxActiveCourses', 'Active course capacity', 'Generated and manually added courses currently in the library. Archiving or deleting frees a slot.'],
   ['maxLearners', 'Learner capacity', 'Maximum unique learners that can be assigned learning.'],
   ['maxStaff', 'Staff seats', 'Tenant Admin, Co-admins and Analytics Viewers.'],
   ['maxCampaigns', 'Campaigns', 'Maximum campaigns stored in the tenant.'],
@@ -62,7 +63,7 @@ const LIMIT_FIELDS = [
 ];
 
 function blankLimits() {
-  return { maxCourses: '', maxLearners: '', maxStaff: '', maxCampaigns: '', maxAssignments: '' };
+  return { maxCourses: '', maxActiveCourses: '', maxLearners: '', maxStaff: '', maxCampaigns: '', maxAssignments: '' };
 }
 
 function emptyForm() {
@@ -100,7 +101,7 @@ function showLimit(value) {
 function Metric({ icon: Icon, label, value, limit, emphasise = false }) {
   return (
     <div className={`rounded-xl border px-3 py-2.5 ${emphasise ? 'border-[#4FC9BF]/30 bg-[#4FC9BF]/5' : 'border-[var(--scorm-border,#29405f)] bg-[var(--scorm-panel-soft,rgba(79,201,191,.04))]'}`}>
-      <div className="flex items-center gap-2 text-[10px] opacity-60"><Icon size={13} /> {label}</div>
+      <div className="flex items-center gap-2 text-[10px] opacity-60">{React.createElement(Icon, { size: 13 })} {label}</div>
       <div className="mt-1 text-lg font-semibold">
         {value ?? 0}
         {limit !== undefined && <span className="ml-1 text-[10px] font-medium opacity-45">/ {showLimit(limit)}</span>}
@@ -111,7 +112,7 @@ function Metric({ icon: Icon, label, value, limit, emphasise = false }) {
 
 function LimitInputs({ value, onChange }) {
   return (
-    <div className="grid sm:grid-cols-2 xl:grid-cols-5 gap-3">
+    <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
       {LIMIT_FIELDS.map(([key, label, help]) => (
         <label key={key} className="block rounded-xl border p-3 bg-[rgba(79,201,191,.025)]">
           <span className="text-[9px] uppercase tracking-[.07em] opacity-60">{label}</span>
@@ -193,7 +194,7 @@ function TenantCard({ tenant, onRefresh }) {
   };
 
   const copyLogin = async () => {
-    try { await navigator.clipboard.writeText(`${window.location.origin}/login`); setCopied(true); window.setTimeout(() => setCopied(false), 1400); } catch (_) {}
+    try { await navigator.clipboard.writeText(`${window.location.origin}/login`); setCopied(true); window.setTimeout(() => setCopied(false), 1400); } catch { setCopied(false); }
   };
 
   const e = tenant.entitlement || {};
@@ -223,15 +224,15 @@ function TenantCard({ tenant, onRefresh }) {
 
       <div className="p-4 md:p-5">
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5">
-          <Metric icon={BookOpen} label="Course creations used" value={u.courseCreations ?? u.courses} limit={e.maxCourses} emphasise />
-          <Metric icon={BookOpen} label="Active courses" value={u.courses} />
+          <Metric icon={BookOpen} label="AI generations used" value={u.aiCourseGenerations ?? 0} limit={e.maxCourses} emphasise />
+          <Metric icon={BookOpen} label="Active courses" value={u.courses} limit={e.maxActiveCourses} />
           <Metric icon={UserCheck} label="Learners" value={u.learners} limit={e.maxLearners} />
           <Metric icon={Users} label="Staff" value={u.staff} limit={e.maxStaff} />
           <Metric icon={Megaphone} label="Campaigns" value={u.campaigns} limit={e.maxCampaigns} />
           <Metric icon={Link2} label="Assignments" value={u.assignments} limit={e.maxAssignments} />
         </div>
 
-        {!tenant.protected && <div className="mt-3 rounded-xl border border-[#4FC9BF]/20 bg-[#4FC9BF]/5 px-3.5 py-3 text-[10px] leading-relaxed"><strong>Course allowance is lifetime consumption.</strong> Archiving or deleting a course removes it from the active library but does not return a course creation slot.</div>}
+        {!tenant.protected && <div className="mt-3 rounded-xl border border-[#4FC9BF]/20 bg-[#4FC9BF]/5 px-3.5 py-3 text-[10px] leading-relaxed"><strong>AI credits and active capacity are separate.</strong> Every accepted new AI or PDF-to-course generation uses one AI credit permanently. Manual SCORM courses do not use AI credits. Archiving or deleting any course frees active capacity.</div>}
 
         {editingEntitlement && <div className="mt-4 rounded-xl border p-4 bg-[rgba(79,201,191,.025)]">
           <div className="flex items-center gap-2"><Gauge size={15} className="text-[#4FC9BF]" /><div className="text-xs font-semibold">Tenant limits</div></div>
@@ -298,7 +299,7 @@ export default function TenantAdmin() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl grid place-items-center bg-[#4FC9BF]/10 text-[#4FC9BF] border border-[#4FC9BF]/20"><Plus size={18} /></div><div><h2 className="text-base font-semibold">Create Tenant</h2><p className="mt-0.5 text-[10px] opacity-55">Define the tenant, Admin, capacity and enabled features before it goes live.</p></div></div><button type="button" onClick={() => setAdvanced((value) => !value)} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2"><Settings2 size={13} /> {advanced ? 'Hide advanced configuration' : 'Show advanced configuration'}</button></div>
         <form onSubmit={create} className="mt-4">
           <div className="grid md:grid-cols-3 gap-3"><label className="block"><span className="text-[9px] uppercase tracking-[.08em] opacity-55">Tenant name</span><input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required minLength={2} placeholder="Acme Corporation" className="mt-1.5 w-full rounded-lg border px-3 py-2.5 text-xs bg-transparent outline-none focus:border-[#4FC9BF]" /></label><label className="block"><span className="text-[9px] uppercase tracking-[.08em] opacity-55">Tenant Admin email</span><input type="email" value={form.adminEmail} onChange={(event) => setForm((current) => ({ ...current, adminEmail: event.target.value }))} required placeholder="admin@company.com" className="mt-1.5 w-full rounded-lg border px-3 py-2.5 text-xs bg-transparent outline-none focus:border-[#4FC9BF]" /></label><label className="block"><span className="text-[9px] uppercase tracking-[.08em] opacity-55">Admin name (optional)</span><input value={form.adminName} onChange={(event) => setForm((current) => ({ ...current, adminName: event.target.value }))} placeholder="Admin name" className="mt-1.5 w-full rounded-lg border px-3 py-2.5 text-xs bg-transparent outline-none focus:border-[#4FC9BF]" /></label></div>
-          {advanced && <div className="mt-5 border-t pt-5"><div className="flex items-center gap-2"><Gauge size={15} className="text-[#4FC9BF]" /><div className="text-xs font-semibold">Capacity limits</div></div><p className="mt-1 text-[10px] opacity-55">Blank means unlimited. Course creation is a lifetime allowance and is not restored by deleting a course.</p><div className="mt-3"><LimitInputs value={form} onChange={(next) => setForm((current) => ({ ...current, ...next }))} /></div><div className="mt-5 text-xs font-semibold">Enabled tenant features</div><p className="mt-1 text-[10px] opacity-55">The first 25 Geometry Physics levels are always free. Enable full access only for tenants that should receive Levels 26–132.</p><div className="mt-3"><PermissionGrid permissions={form.permissions} onChange={(permissions) => setForm((current) => ({ ...current, permissions }))} /></div></div>}
+          {advanced && <div className="mt-5 border-t pt-5"><div className="flex items-center gap-2"><Gauge size={15} className="text-[#4FC9BF]" /><div className="text-xs font-semibold">Capacity limits</div></div><p className="mt-1 text-[10px] opacity-55">Blank means unlimited. AI generation credits are permanent consumption; active course capacity is restored when a course is archived or deleted.</p><div className="mt-3"><LimitInputs value={form} onChange={(next) => setForm((current) => ({ ...current, ...next }))} /></div><div className="mt-5 text-xs font-semibold">Enabled tenant features</div><p className="mt-1 text-[10px] opacity-55">The first 25 Geometry Physics levels are always free. Enable full access only for tenants that should receive Levels 26–132.</p><div className="mt-3"><PermissionGrid permissions={form.permissions} onChange={(permissions) => setForm((current) => ({ ...current, permissions }))} /></div></div>}
           <div className="mt-4 flex justify-end"><button type="submit" disabled={creating} className="scorm-button-primary min-h-10 px-4 text-[10px] font-semibold inline-flex items-center gap-2 disabled:opacity-50"><Building2 size={14} /> {creating ? 'Creating…' : 'Create Tenant'}</button></div>
         </form>
       </section>
