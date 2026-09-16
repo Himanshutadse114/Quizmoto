@@ -6,6 +6,7 @@ import { CheckCircle, XCircle, MinusCircle, Flame, Sparkles } from 'lucide-react
 import confetti from 'canvas-confetti';
 import ReactionBar from '../../components/ReactionBar';
 import FinalPodium from '../../components/FinalPodium';
+import CountdownDisplay from '../../components/CountdownDisplay';
 import { audio } from '../../utils/audioEngine';
 import { exitLiveQuizFullscreen } from '../../utils/fullscreen';
 
@@ -466,7 +467,7 @@ const PlayerGame = () => {
                 {gameState === 'countdown' && (
                     <Motion.div key="countdown" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         className="flex-1 flex flex-col items-center justify-center">
-                        <div className="text-[9rem] leading-none font-black tabular-nums">{countdown}</div>
+                        <CountdownDisplay value={countdown} />
                         <p className="text-white/70 text-xl font-medium tracking-widest uppercase mt-4">Get Ready!</p>
                     </Motion.div>
                 )}

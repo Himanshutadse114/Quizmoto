@@ -52,4 +52,15 @@ describe('Quizmoto live-session client safeguards', () => {
         expect(lobby).to.include("socket.on('host_control_denied'");
         expect(app).to.include("pathname !== '/player/game'");
     });
+
+    it('uses one synchronized, reduced-motion-safe countdown on host and player screens', () => {
+        const gameView = source(path.join('pages', 'Host', 'GameView.jsx'));
+        const playerGame = source(path.join('pages', 'Player', 'PlayerGame.jsx'));
+        const countdown = source(path.join('components', 'CountdownDisplay.jsx'));
+        expect(gameView).to.include('<CountdownDisplay value={countdown} />');
+        expect(playerGame).to.include('<CountdownDisplay value={countdown} />');
+        expect(countdown).to.include('useReducedMotion');
+        expect(countdown).to.include('duration: reduceMotion ? 0 : 0.96');
+        expect(countdown).to.include('aria-live="polite"');
+    });
 });

@@ -8,6 +8,7 @@ import confetti from 'canvas-confetti';
 import ReactionCanvas from '../../components/ReactionCanvas';
 import AvatarDisplay from '../../components/AvatarDisplay';
 import FinalPodium from '../../components/FinalPodium';
+import CountdownDisplay from '../../components/CountdownDisplay';
 import { audio } from '../../utils/audioEngine';
 
 const GameView = () => {
@@ -412,9 +413,7 @@ const GameView = () => {
         <div className="min-h-screen flex flex-col items-center justify-center relative z-10 px-4">
             <ReactionCanvas />
             {sessionMessage && <div role="alert" className="absolute top-4 left-4 right-4 rounded-xl border border-amber-200/40 bg-amber-950/50 px-4 py-3 text-center text-sm font-semibold text-amber-50">{sessionMessage}</div>}
-            <div className="text-[6rem] sm:text-[9rem] leading-none font-black text-white tabular-nums drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]">
-                {countdown}
-            </div>
+            <CountdownDisplay value={countdown} />
             <p className="text-white/70 text-base sm:text-xl font-medium tracking-widest uppercase mt-4">Get Ready!</p>
             <button type="button" onClick={abortSession} className="mt-8 min-h-11 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-red-400/40 text-red-300 bg-red-500/10 hover:bg-red-500/20">
                 Abort Session
