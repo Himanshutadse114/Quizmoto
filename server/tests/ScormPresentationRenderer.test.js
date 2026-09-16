@@ -3,7 +3,8 @@ const sharp = require('sharp');
 const {
     presentationKind,
     processRasterSlides,
-    sanitizePptxForCompatibility
+    sanitizePptxForCompatibility,
+    normalizePptxSvgFontFamilies
 } = require('../services/scorm/ScormPresentationRenderer');
 const JSZip = require('jszip');
 const fs = require('fs');
@@ -77,14 +78,23 @@ describe('ScormPresentationRenderer', () => {
         expect(contentTypes).not.to.include('/ppt/notesSlides/');
     });
 
-    it('ships an independent PPTX renderer before the LibreOffice fallback', () => {
+    it('keeps PowerPoint bold face names on their real CSS font family', () => {
+        const svg = '<svg><text font-family="Calibri, sans-serif">Body</text><tspan font-weight="bold" font-family="Lato Bold, Lato Bold, sans-serif">Title</tspan></svg>';
+        const normalized = normalizePptxSvgFontFamilies(svg);
+
+        expect(normalized).to.include('font-family="Calibri, sans-serif"');
+        expect(normalized).to.include('font-weight="bold" font-family="Lato, Lato, sans-serif"');
+        expect(normalized).not.to.include('Lato Bold');
+    });
+
+    it('prefers the fidelity-preserving office renderer before the compatibility fallback', () => {
         const rendererSource = fs.readFileSync(path.join(__dirname, '..', 'services', 'scorm', 'ScormPresentationRenderer.js'), 'utf8');
         const runnerSource = fs.readFileSync(path.join(__dirname, '..', 'utils', 'render_pptx_svg.mjs'), 'utf8');
-        const directRender = rendererSource.indexOf('rawSlides = await renderPptxWithSvgEngine');
-        const officeRender = rendererSource.indexOf('const pdfPath = await convertPptxToPdf', directRender);
+        const officeRender = rendererSource.indexOf('const pdfPath = await convertPptxToPdf');
+        const directRender = rendererSource.indexOf('rawSlides = await renderPptxWithSvgEngine', officeRender);
 
-        expect(directRender).to.be.greaterThan(-1);
-        expect(officeRender).to.be.greaterThan(directRender);
+        expect(officeRender).to.be.greaterThan(-1);
+        expect(directRender).to.be.greaterThan(officeRender);
         expect(rendererSource).to.include('--experimental-wasm-imported-strings');
         expect(runnerSource).to.include("import { PptxRenderer } from 'pptx-svg'");
         expect(runnerSource).to.include('renderer.renderSlideSvg(index)');

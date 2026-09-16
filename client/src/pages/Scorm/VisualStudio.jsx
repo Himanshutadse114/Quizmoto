@@ -173,7 +173,7 @@ export default function VisualStudio() {
   }
 
   const editablePackages = useMemo(
-    () => packages.filter((item) => item.source === 'ai_author' && item.status !== 'deleted'),
+    () => packages.filter((item) => ['ai_author', 'presentation_import'].includes(item.source) && item.status !== 'deleted'),
     [packages]
   );
 
@@ -329,7 +329,7 @@ export default function VisualStudio() {
                   </div>
                   <div className="min-w-0">
                     <div className="font-semibold text-[14px] truncate">{item.title || 'Untitled course'}</div>
-                    <div className="scorm-micro text-[9px] text-[#8295ae] mt-1">Edit content or change the learner-course colour theme</div>
+                    <div className="scorm-micro text-[9px] text-[#8295ae] mt-1">{item.source === 'presentation_import' ? 'Replace the deck or edit its generated quiz' : 'Edit content or change the learner-course colour theme'}</div>
                   </div>
                 </div>
                 <div>
@@ -343,10 +343,10 @@ export default function VisualStudio() {
                   <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Status</div>
                 </div>
                 <div className="flex items-center gap-2 justify-start md:justify-end">
-                  <button type="button" onClick={() => openTheme(item)} disabled={item.status !== 'ready'} className="scorm-button-secondary inline-flex items-center gap-2 px-3 py-2.5 text-xs font-semibold disabled:opacity-40">
+                  {item.source !== 'presentation_import' && <button type="button" onClick={() => openTheme(item)} disabled={item.status !== 'ready'} className="scorm-button-secondary inline-flex items-center gap-2 px-3 py-2.5 text-xs font-semibold disabled:opacity-40">
                     <Palette size={14} /> Theme
-                  </button>
-                  <button type="button" onClick={() => navigate(`/scorm/author?edit=${encodeURIComponent(item.id)}`)} className="scorm-button-primary inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold">
+                  </button>}
+                  <button type="button" onClick={() => navigate(item.source === 'presentation_import' ? `/scorm/presentation/edit/${encodeURIComponent(item.id)}` : `/scorm/author?edit=${encodeURIComponent(item.id)}`)} className="scorm-button-primary inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold">
                     Edit <ChevronRight size={14} />
                   </button>
                 </div>

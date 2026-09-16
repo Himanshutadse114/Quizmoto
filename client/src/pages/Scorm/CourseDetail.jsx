@@ -15,6 +15,7 @@ import {
   RefreshCw,
   ShieldCheck,
   MousePointerClick,
+  Pencil,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
@@ -279,6 +280,9 @@ export default function ScormCourseDetail() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          {course.package?.source === 'presentation_import' && (
+            <button type="button" onClick={() => navigate(`/scorm/presentation/edit/${course.package.id}`)} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center gap-2"><Pencil size={14} /> Edit presentation</button>
+          )}
           {course.status !== 'published' ? (
             <button onClick={publish} className="scorm-button-primary px-4 py-2.5 text-xs font-semibold">Publish</button>
           ) : (

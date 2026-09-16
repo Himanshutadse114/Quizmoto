@@ -295,6 +295,34 @@ async function renderPdfPages(pdfPath, tempDir) {
     return Promise.all(names.map((name) => fs.readFile(path.join(tempDir, name))));
 }
 
+function normalizePptxSvgFontFamilies(svg) {
+    return String(svg || '').replace(/<[^>]+\bfont-family="[^"]+"[^>]*>/gi, (tag) => {
+        const bold = /\bfont-weight="(?:bold|[6-9]00)"/i.test(tag);
+        const italic = /\bfont-style="(?:italic|oblique)"/i.test(tag);
+        if (!bold && !italic) return tag;
+
+        return tag.replace(/\bfont-family="([^"]+)"/i, (attribute, familyList) => {
+            const normalized = familyList.split(',').map((entry) => {
+                const leading = entry.match(/^\s*/)?.[0] || '';
+                const trailing = entry.match(/\s*$/)?.[0] || '';
+                const raw = entry.trim();
+                const quote = raw.startsWith("'") && raw.endsWith("'") ? "'" : '';
+                let family = quote ? raw.slice(1, -1) : raw;
+
+                // pptx-svg emits face names such as "Lato Bold" as CSS family
+                // names. Fontconfig knows that face as family "Lato" plus a
+                // bold weight, so leaving the suffix causes a much wider
+                // fallback font and clipped PowerPoint text boxes.
+                if (bold) family = family.replace(/\s+(?:extra\s*bold|semi\s*bold|semibold|demi\s*bold|bold)$/i, '');
+                if (italic) family = family.replace(/\s+(?:italic|oblique)$/i, '');
+
+                return `${leading}${quote}${family}${quote}${trailing}`;
+            }).join(',');
+            return `font-family="${normalized}"`;
+        });
+    });
+}
+
 async function renderPptxWithSvgEngine(sourcePath, tempDir) {
     const outputDir = path.join(tempDir, 'pptx-svg-output');
     const runnerPath = path.join(__dirname, '..', '..', 'utils', 'render_pptx_svg.mjs');
@@ -323,7 +351,10 @@ async function renderPptxWithSvgEngine(sourcePath, tempDir) {
         throw error;
     }
 
-    return Promise.all(names.map((name) => fs.readFile(path.join(outputDir, name))));
+    return Promise.all(names.map(async (name) => {
+        const svg = await fs.readFile(path.join(outputDir, name), 'utf8');
+        return Buffer.from(normalizePptxSvgFontFamilies(svg), 'utf8');
+    }));
 }
 
 async function sanitizePptxForCompatibility(sourceBuffer) {
@@ -479,30 +510,30 @@ async function renderPresentation({ sourceBuffer, mimeType, fileName }) {
         await fs.writeFile(sourcePath, sourceBuffer);
         let pdfBuffer = null;
         let rawSlides = null;
-        let renderEngine = kind === 'pdf' ? 'pdf' : 'pptx-svg';
+        let renderEngine = kind === 'pdf' ? 'pdf' : 'libreoffice';
 
         if (kind === 'pdf') {
             pdfBuffer = await fs.readFile(sourcePath);
             rawSlides = await renderPdfPages(sourcePath, tempDir);
         } else {
             try {
-                // Render OOXML directly first. This preserves Gamma/PowerPoint
-                // exports that LibreOffice rejects and avoids a heavyweight
-                // office-process startup for every uploaded deck.
-                rawSlides = await renderPptxWithSvgEngine(sourcePath, tempDir);
-            } catch (svgError) {
+                // The office/PDF path respects PowerPoint text fitting, embedded
+                // fonts and clipping more closely. The SVG engine remains a
+                // compatibility fallback for malformed Gamma/OOXML exports.
+                const pdfPath = await convertPptxToPdf(sourcePath, tempDir);
+                pdfBuffer = await fs.readFile(pdfPath);
+                rawSlides = await renderPdfPages(pdfPath, tempDir);
+            } catch (officeError) {
                 try {
-                    const pdfPath = await convertPptxToPdf(sourcePath, tempDir);
-                    pdfBuffer = await fs.readFile(pdfPath);
-                    rawSlides = await renderPdfPages(pdfPath, tempDir);
-                    renderEngine = 'libreoffice';
-                } catch (officeError) {
+                    rawSlides = await renderPptxWithSvgEngine(sourcePath, tempDir);
+                    renderEngine = 'pptx-svg';
+                } catch (svgError) {
                     const error = commandError(
                         'The PowerPoint deck could not be rendered by either available presentation engine.',
                         'SCORM_PRESENTATION_RENDER_FAILED',
-                        officeError
+                        svgError
                     );
-                    error.svgError = svgError;
+                    error.officeError = officeError;
                     throw error;
                 }
             }
@@ -536,6 +567,7 @@ module.exports = {
     extractTheme,
     processRasterSlides,
     sanitizePptxForCompatibility,
+    normalizePptxSvgFontFamilies,
     renderPptxWithSvgEngine,
     renderPresentation
 };

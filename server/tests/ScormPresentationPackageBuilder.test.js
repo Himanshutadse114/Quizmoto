@@ -3,7 +3,9 @@ const JSZip = require('jszip');
 const vm = require('vm');
 const {
     buildPresentationScormZip,
-    normalizeQuiz
+    normalizeQuiz,
+    normalizeTheme,
+    QUIZMOTO_PRESENTATION_THEME
 } = require('../services/scorm/ScormPresentationPackageBuilder');
 
 function quiz() {
@@ -29,7 +31,12 @@ describe('ScormPresentationPackageBuilder', () => {
         });
     });
 
-    it('packages slide images, a theme-matched quiz and complete SCORM tracking', async () => {
+    it('always applies the Quizmoto teal presentation theme', () => {
+        expect(normalizeTheme({ primary: '#ff0000', background: '#ffffff' }))
+            .to.deep.equal(QUIZMOTO_PRESENTATION_THEME);
+    });
+
+    it('packages slide images, a Quizmoto-themed quiz and complete SCORM tracking', async () => {
         const slides = [1, 2].map((number) => ({
             path: `slides/slide-00${number}.webp`,
             body: Buffer.from(`slide-${number}`),
@@ -61,10 +68,12 @@ describe('ScormPresentationPackageBuilder', () => {
         expect(zip.file('slides/slide-002.webp')).to.not.equal(null);
         expect(manifest).to.include('adlcp:scormtype="sco"');
         expect(manifest).to.include('slides/slide-001.webp');
-        expect(html).to.include('--primary:#f97316');
+        expect(html).to.include('--primary:#4fc9bf');
+        expect(html).to.include('--background:#061b18');
+        expect(html).to.not.include('--primary:#f97316');
         expect(html).to.include('object-fit:contain');
         expect(html).to.include('class="course-rail"');
-        expect(html).to.include('grid-template-columns:clamp(184px,16vw,236px) minmax(0,1fr)');
+        expect(html).to.include('grid-template-columns:clamp(124px,9vw,144px) minmax(0,1fr)');
         expect(html).to.include('id="presentation"');
         expect(html).to.include('root.requestFullscreen||root.webkitRequestFullscreen');
         expect(html).to.not.include('class="topbar"');
@@ -79,6 +88,7 @@ describe('ScormPresentationPackageBuilder', () => {
         expect(content.generatedBy).to.equal('lmsgen-presentation-import');
         expect(content.quiz.questions).to.have.length(5);
         expect(content.passScore).to.equal(75);
+        expect(content.theme).to.deep.equal(QUIZMOTO_PRESENTATION_THEME);
         const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
             .map((match) => match[1].trim())
             .filter(Boolean);

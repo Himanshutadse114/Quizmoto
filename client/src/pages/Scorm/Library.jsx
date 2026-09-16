@@ -59,7 +59,8 @@ export default function ScormLibrary() {
     return () => window.clearInterval(timer);
   }, [token, packages]);
 
-  const isQuizmotoAi = (p) => p?.source === 'ai_author' || (p?.analysisJson && String(p.analysisJson).includes('quizmoto'));
+  const isPresentation = (p) => p?.source === 'presentation_import';
+  const isQuizmotoAi = (p) => p?.source === 'ai_author' || isPresentation(p) || (p?.analysisJson && String(p.analysisJson).includes('quizmoto'));
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -130,7 +131,7 @@ export default function ScormLibrary() {
       setMsg('This package was not created by Quizmoto AI Author, so it cannot be edited here. Download the ZIP and edit it in the original authoring tool, or create a new course from policy.');
       return;
     }
-    navigate(`/scorm/author?edit=${p.id}`);
+    navigate(isPresentation(p) ? `/scorm/presentation/edit/${p.id}` : `/scorm/author?edit=${p.id}`);
   };
 
   const removePkg = async (id) => {

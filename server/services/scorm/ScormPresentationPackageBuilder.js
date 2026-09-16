@@ -12,22 +12,22 @@ function escapeXml(value) {
     }[character]));
 }
 
-function safeHex(value, fallback) {
-    const candidate = String(value || '').trim();
-    return /^#[0-9a-f]{6}$/i.test(candidate) ? candidate.toLowerCase() : fallback;
-}
+const QUIZMOTO_PRESENTATION_THEME = Object.freeze({
+    background: '#061b18',
+    surface: '#0b2925',
+    primary: '#4fc9bf',
+    secondary: '#c8ef6b',
+    text: '#f4fffd',
+    muted: '#9bc1bb',
+    primaryText: '#041815',
+    mode: 'dark'
+});
 
-function normalizeTheme(theme = {}) {
-    return {
-        background: safeHex(theme.background, '#f8fafc'),
-        surface: safeHex(theme.surface, '#ffffff'),
-        primary: safeHex(theme.primary, '#147882'),
-        secondary: safeHex(theme.secondary, '#4fc9bf'),
-        text: safeHex(theme.text, '#111827'),
-        muted: safeHex(theme.muted, '#475467'),
-        primaryText: safeHex(theme.primaryText, '#ffffff'),
-        mode: theme.mode === 'dark' ? 'dark' : 'light'
-    };
+// Presentation artwork remains byte-for-byte visual content. The surrounding
+// player and generated quiz always use Quizmoto's teal identity so a deck can
+// never recolour the product chrome or make assessment text inaccessible.
+function normalizeTheme() {
+    return { ...QUIZMOTO_PRESENTATION_THEME };
 }
 
 function normalizeQuiz(quiz = {}) {
@@ -84,7 +84,7 @@ function buildPlayerHtml({ title, slides, quiz, theme, passScore }) {
 *{box-sizing:border-box}
 html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#080b10;color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 button{font:inherit}
-#app{height:100%;display:grid;grid-template-columns:clamp(184px,16vw,236px) minmax(0,1fr);background:#080b10}
+#app{height:100%;display:grid;grid-template-columns:clamp(124px,9vw,144px) minmax(0,1fr);background:#080b10}
 .course-rail{position:relative;z-index:2;min-width:0;padding:max(18px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:20px;background:color-mix(in srgb,var(--background) 94%,#000);border-right:1px solid color-mix(in srgb,var(--text) 14%,transparent);box-shadow:10px 0 32px rgba(0,0,0,.18)}
 .rail-heading{min-width:0}
 .rail-kicker{display:block;margin-bottom:8px;color:var(--primary);font-size:.65rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase}
@@ -119,20 +119,24 @@ main{position:relative;min-height:0;overflow:hidden}
 .score-value{grid-area:1/1;z-index:1;font-size:2.1rem;font-weight:900;color:var(--text)}
 .result-title{margin:0;font-size:clamp(1.7rem,4vw,2.6rem);color:var(--text)}
 .result-copy{margin:10px auto 0;max-width:520px;color:var(--muted);line-height:1.5}
-.rail-controls{margin-top:auto;display:grid;gap:10px}
+.rail-controls{min-width:0;margin-top:auto;display:grid;gap:10px}
 .counter{padding:0 2px;font-size:.72rem;font-weight:800;color:var(--muted);text-align:left;white-space:nowrap}
-.nav-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.btn{min-height:42px;padding:10px 12px;border:1px solid transparent;border-radius:12px;font-weight:850;cursor:pointer}
+.nav-buttons{display:grid;grid-template-columns:1fr;gap:8px}
+.btn{min-width:0;min-height:42px;padding:10px 9px;border:1px solid transparent;border-radius:12px;font-size:.75rem;font-weight:850;cursor:pointer}
 .btn:focus-visible{outline:3px solid color-mix(in srgb,var(--secondary) 62%,transparent);outline-offset:2px}
 .btn:disabled{opacity:.38;cursor:not-allowed}
 .btn-secondary{background:color-mix(in srgb,var(--text) 10%,transparent);color:var(--text)}
 .btn-primary{background:var(--primary);color:var(--primary-text)}
-.btn-presentation{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:transparent;border-color:color-mix(in srgb,var(--text) 22%,transparent);color:var(--text)}
+.btn-presentation{width:100%;display:flex;align-items:center;justify-content:center;gap:5px;padding-inline:6px;background:transparent;border-color:color-mix(in srgb,var(--text) 22%,transparent);color:var(--text);font-size:.66rem}
 .btn-presentation:hover{background:color-mix(in srgb,var(--text) 8%,transparent)}
 .btn-presentation svg{width:17px;height:17px;flex:0 0 auto}
 .shortcut{margin:0;text-align:center;color:var(--muted);font-size:.62rem;line-height:1.35}
 @media(max-width:720px) and (orientation:portrait){#app{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.course-rail{padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 10px max(12px,env(safe-area-inset-left));display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"heading controls" "progress progress";gap:8px 12px;border-right:0;border-bottom:1px solid color-mix(in srgb,var(--text) 14%,transparent);box-shadow:0 8px 24px rgba(0,0,0,.18)}.rail-heading{grid-area:heading;align-self:center}.rail-kicker{display:none}.title{-webkit-line-clamp:1;font-size:.78rem}.rail-progress{grid-area:progress;gap:5px}.rail-controls{grid-area:controls;margin:0;display:flex;align-items:center;gap:6px}.counter,.shortcut{display:none}.nav-buttons{display:flex;gap:6px}.btn{min-height:36px;padding:7px 10px;border-radius:9px;font-size:.72rem}.btn-presentation{width:auto}.btn-presentation span{display:none}.presentation-page{padding:2px}.options{grid-template-columns:1fr}.quiz-page,.result-page{padding:10px}.quiz-card,.result-card{border-radius:18px;padding:20px}.question{margin-bottom:18px}}
-@media(max-height:520px) and (orientation:landscape){#app{grid-template-columns:156px minmax(0,1fr)}.course-rail{padding:10px;gap:10px}.rail-kicker{display:none}.title{font-size:.72rem;-webkit-line-clamp:2}.rail-progress{gap:5px}.rail-controls{gap:6px}.btn{min-height:34px;padding:6px 7px;border-radius:8px;font-size:.66rem}.btn-presentation{gap:5px}.btn-presentation svg{width:14px;height:14px}.shortcut{display:none}.quiz-page,.result-page{align-items:flex-start;padding:8px}.quiz-card,.result-card{padding:16px}.options{gap:7px}.option{min-height:42px;padding:9px 11px}.question{font-size:1.15rem;margin-bottom:12px}}
+@media(max-height:520px) and (orientation:landscape){#app{grid-template-columns:132px minmax(0,1fr)}.course-rail{padding:10px;gap:10px}.rail-kicker{display:none}.title{font-size:.72rem;-webkit-line-clamp:2}.rail-progress{gap:5px}.rail-controls{gap:6px}.btn{min-height:34px;padding:6px 7px;border-radius:8px;font-size:.66rem}.btn-presentation{gap:4px;font-size:.59rem}.btn-presentation svg{width:13px;height:13px}.shortcut{display:none}.quiz-page,.result-page{align-items:flex-start;padding:8px}.quiz-card,.result-card{padding:16px}.options{gap:7px}.option{min-height:42px;padding:9px 11px}.question{font-size:1.15rem;margin-bottom:12px}}
+html:fullscreen #app,html:-webkit-full-screen #app{grid-template-columns:1fr}
+html:fullscreen main,html:-webkit-full-screen main{grid-column:1;grid-row:1}
+html:fullscreen .course-rail,html:-webkit-full-screen .course-rail{position:fixed;z-index:20;inset:0 auto 0 0;width:156px;transform:translateX(-146px);opacity:.45;transition:transform .18s ease,opacity .18s ease}
+html:fullscreen .course-rail:hover,html:fullscreen .course-rail:focus-within,html:-webkit-full-screen .course-rail:hover,html:-webkit-full-screen .course-rail:focus-within{transform:translateX(0);opacity:1}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 </style>
 </head>
@@ -195,7 +199,7 @@ main{position:relative;min-height:0;overflow:hidden}
 </html>`;
 }
 
-async function buildPresentationScormZip({ title, slides, quiz, theme, passScore = 70 }) {
+async function buildPresentationScormZip({ title, slides, quiz, passScore = 70 }) {
     if (!Array.isArray(slides) || !slides.length) {
         const error = new Error('At least one rendered slide is required.');
         error.code = 'SCORM_PRESENTATION_EMPTY';
@@ -207,8 +211,9 @@ async function buildPresentationScormZip({ title, slides, quiz, theme, passScore
         error.code = 'SCORM_PRESENTATION_QUIZ_EMPTY';
         throw error;
     }
-    const normalizedTheme = normalizeTheme(theme);
-    const normalizedPassScore = Math.max(0, Math.min(100, Number(passScore) || 70));
+    const normalizedTheme = normalizeTheme();
+    const numericPassScore = Number(passScore);
+    const normalizedPassScore = Math.max(0, Math.min(100, Number.isFinite(numericPassScore) ? numericPassScore : 70));
     const zip = new JSZip();
     slides.forEach((slide) => zip.file(slide.path, slide.body));
     zip.file('index.html', buildPlayerHtml({
@@ -258,6 +263,7 @@ ${resourceFiles}
 
 module.exports = {
     SCORM_WRAPPER,
+    QUIZMOTO_PRESENTATION_THEME,
     escapeXml,
     normalizeTheme,
     normalizeQuiz,
