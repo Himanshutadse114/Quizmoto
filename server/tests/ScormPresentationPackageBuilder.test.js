@@ -63,6 +63,12 @@ describe('ScormPresentationPackageBuilder', () => {
         expect(manifest).to.include('slides/slide-001.webp');
         expect(html).to.include('--primary:#f97316');
         expect(html).to.include('object-fit:contain');
+        expect(html).to.include('class="course-rail"');
+        expect(html).to.include('grid-template-columns:clamp(184px,16vw,236px) minmax(0,1fr)');
+        expect(html).to.include('id="presentation"');
+        expect(html).to.include('root.requestFullscreen||root.webkitRequestFullscreen');
+        expect(html).to.not.include('class="topbar"');
+        expect(html).to.not.include('class="controls"');
         expect(html).to.include("cmi.core.lesson_location");
         expect(html).to.include("cmi.suspend_data");
         expect(html).to.include("cmi.core.score.raw");

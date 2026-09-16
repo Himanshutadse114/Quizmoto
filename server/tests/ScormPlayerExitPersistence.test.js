@@ -18,11 +18,12 @@ describe('SCORM player local-first persistence', () => {
         expect(source).to.include('LMSInitialize:function(){');
         expect(source).to.include('localValues[key]=v==null?"":String(v)');
         expect(source).to.include('Object.prototype.hasOwnProperty.call(localValues,key)');
-        expect(source).to.include('LMSCommit:function(){if(initialized){dirty=true;revision++;persist("commit",false);}');
+        expect(source).to.include('LMSCommit:function(){if(stateLoaded){dirty=true;revision++;persist("commit",false);}');
     });
 
     it('loads saved attempt state before loading SCORM content', () => {
         expect(source).to.include('src="about:blank"');
+        expect(source).to.include('allow="autoplay; fullscreen" allowfullscreen');
         expect(source).to.include('function loadSavedState()');
         expect(source).to.include('.finally(loadContent)');
         expect(source).to.include('frame.src=BOOT.contentSrc');
@@ -31,10 +32,10 @@ describe('SCORM player local-first persistence', () => {
     });
 
     it('persists a full versioned state document asynchronously', () => {
-        expect(source).to.include('clientVersion:3,clientRevision:revision,values:snapshotValues()');
+        expect(source).to.include('clientVersion:4,clientRevision:revision,values:snapshotValues()');
         expect(source).to.include('fetch(SESSION,{method:"POST"');
         expect(source).to.include('scheduleSave(900,"autosave")');
-        expect(source).to.include('setInterval(function(){if(stateLoaded&&initialized&&!saveInFlight)persist("heartbeat",false);},5000)');
+        expect(source).to.include('setInterval(function(){if(stateLoaded&&!saveInFlight){dirty=true;revision++;persist("heartbeat",false);}},5000)');
     });
 
     it('tracks elapsed learner time independently from generated course code', () => {
@@ -65,5 +66,12 @@ describe('SCORM player local-first persistence', () => {
         const block = source.slice(start, end);
         expect(block.indexOf('flushFrameState()')).to.be.greaterThan(-1);
         expect(block.indexOf('window.API.LMSFinish')).to.be.greaterThan(block.indexOf('flushFrameState()'));
+    });
+
+    it('keeps the course at full viewport height while retaining accessible save and exit controls', () => {
+        expect(source).to.include('#frame{border:0;width:100%;height:100%');
+        expect(source).to.include('#bar{position:fixed;z-index:10');
+        expect(source).to.include('#status{position:absolute!important;width:1px!important');
+        expect(source).to.not.include('height:calc(100% - 42px)');
     });
 });

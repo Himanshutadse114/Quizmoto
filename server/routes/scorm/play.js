@@ -76,12 +76,14 @@ router.get('/:regId', async (req, res) => {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${escapeHtml(courseTitle)}</title>
 <style>
-html,body{margin:0;height:100%;background:#0d0618;color:#fff;font-family:system-ui,sans-serif}
-#bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:#000;border-bottom:1px solid #ffffff22;font-size:12px;height:42px;box-sizing:border-box}
-#bar button{background:#ffffff18;border:0;color:#fff;padding:6px 12px;border-radius:8px;font-weight:700;cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
-#bar button:hover{background:#ffffff28}
-#frame{border:0;width:100%;height:calc(100% - 42px);display:block;background:#111}
-#status{opacity:.78}
+html,body{margin:0;height:100%;overflow:hidden;background:#080b10;color:#fff;font-family:system-ui,sans-serif}
+#bar{position:fixed;z-index:10;top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));display:flex;align-items:center;gap:6px;padding:5px;border:1px solid #ffffff24;border-radius:12px;background:#07100fe8;box-shadow:0 8px 28px #0007;backdrop-filter:blur(10px)}
+#bar button{min-height:32px;background:#ffffff12;border:1px solid #ffffff12;color:#fff;padding:6px 11px;border-radius:8px;font-weight:750;cursor:pointer;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+#bar button:hover,#bar button:focus-visible{background:#ffffff25;outline:none}
+#bar button:focus-visible{box-shadow:0 0 0 2px #56d7cf}
+#frame{border:0;width:100%;height:100%;display:block;background:#111}
+#status{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+@media(max-width:520px){#bar{top:auto;right:max(6px,env(safe-area-inset-right));bottom:max(6px,env(safe-area-inset-bottom));padding:4px}#bar button{min-height:30px;padding:5px 9px;font-size:9px}}
 </style>
 <script>
 (function(){
