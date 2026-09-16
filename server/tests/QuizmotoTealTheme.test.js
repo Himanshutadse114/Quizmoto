@@ -61,7 +61,15 @@ describe('Quizmoto teal product theme', () => {
         expect(lobby).to.include('quizmoto-host-lobby');
         expect(lobby).to.include('text-[#dcf5f1]');
         expect(lobby).not.to.include("'bg-white/10 text-white/20 cursor-not-allowed");
-        expect(app).to.include("isQuizGameStage && !pathname.startsWith('/host/game')");
+        expect(app).to.include("!pathname.startsWith('/host/game') && pathname !== '/player/game'");
         expect(app).to.include('{showQuizBackgroundShapes && (');
+    });
+
+    it('uses accessible dark teal text on white live-game controls', () => {
+        const theme = source(path.join('pages', 'Host', 'quizmotoTealTheme.css'));
+        expect(contrast('#075e57', '#ffffff')).to.be.at.least(4.5);
+        expect(theme).to.include('.bg-white.text-quizmoto-purple');
+        expect(theme).to.include('color: #075e57 !important');
+        expect(theme).to.include('[class*="text-white/50"]');
     });
 });

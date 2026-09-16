@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../context/SocketContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, MinusCircle, Flame, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import ReactionBar from '../../components/ReactionBar';
 import FinalPodium from '../../components/FinalPodium';
 import { audio } from '../../utils/audioEngine';
+import { exitLiveQuizFullscreen } from '../../utils/fullscreen';
 
 const ANSWER_META = [
     { label: 'A', symbol: '▲' },
@@ -15,25 +16,29 @@ const ANSWER_META = [
     { label: 'D', symbol: '■' }
 ];
 
+function readStoredPlayerInfo() {
+    try {
+        return JSON.parse(localStorage.getItem('player_info')) || null;
+    } catch {
+        return null;
+    }
+}
+
 const PlayerGame = () => {
     const socket = useSocket();
     const navigate = useNavigate();
     const [question, setQuestion] = useState(null);
     const [gameState, setGameState] = useState('loading');
-    const [playerInfo, setPlayerInfo] = useState(null);
+    const [playerInfo] = useState(readStoredPlayerInfo);
     const [countdown, setCountdown] = useState(0);
-    const [clockOffset, setClockOffset] = useState(0);
     const [result, setResult] = useState(null);
     const [timeLeft, setTimeLeft] = useState(0);
     const [lastAnswer, setLastAnswer] = useState(-1);
     const [streak, setStreak] = useState(0);
     const [pointsWon, setPointsWon] = useState(0);
     const [leaderboard, setLeaderboard] = useState([]);
-    const [teamStandings, setTeamStandings] = useState([]);
-    const [viewMode, setViewMode] = useState('players');
     const [isHostDisconnected, setIsHostDisconnected] = useState(false);
 
-    const timerRef = useRef(null);
     const lastAnswerRef = useRef(-1);
     const resultRef = useRef(null);
     const skipLeaveRef = useRef(false);
@@ -54,13 +59,14 @@ const PlayerGame = () => {
                 });
             }
             if (clearStorage) localStorage.removeItem('player_info');
-        } catch (_) {}
+        } catch {
+            // Invalid local state is treated as an already-ended session.
+        }
     }, [socket]);
 
     const applyQuestion = useCallback((data) => {
         const offset = (data.serverTime != null) ? (data.serverTime - Date.now()) : 0;
         offsetRef.current = offset;
-        setClockOffset(offset);
         const syncedNow = Date.now() + offset;
         const startTime = data.startTime || (syncedNow + 3000);
         questionIndexRef.current = data.index != null ? data.index : questionIndexRef.current;
@@ -85,13 +91,13 @@ const PlayerGame = () => {
     }, []);
 
     useEffect(() => {
-        const info = JSON.parse(localStorage.getItem('player_info'));
+        const info = playerInfo;
         if (!info) {
             navigate('/join');
             return;
         }
-        setPlayerInfo(info);
         if (!socket) return;
+        let effectActive = true;
 
         const recoverFromApi = async () => {
             if (!info.sessionId || !info.token) return false;
@@ -107,12 +113,13 @@ const PlayerGame = () => {
 
                 if (recovery.state === 'CANCELLED') {
                     skipLeaveRef.current = true;
-                    try { localStorage.removeItem('player_info'); } catch (_) {}
+                    try { localStorage.removeItem('player_info'); } catch { /* Storage can be unavailable in private browsing. */ }
                     const reason = recovery.lastErrorCode === 'HOST_TIMEOUT'
                         ? 'Host did not reconnect. The session has ended.'
                         : 'The host ended this session.';
+                    await exitLiveQuizFullscreen();
                     alert(reason);
-                    navigate('/');
+                    navigate('/', { replace: true });
                     return true;
                 }
 
@@ -171,24 +178,24 @@ const PlayerGame = () => {
             const pending = sessionStorage.getItem('pending_question_started');
             if (pending) {
                 sessionStorage.removeItem('pending_question_started');
-                applyQuestion(JSON.parse(pending));
+                const pendingQuestion = JSON.parse(pending);
+                queueMicrotask(() => {
+                    if (effectActive) applyQuestion(pendingQuestion);
+                });
             }
         } catch (e) {
             console.error('pending question handoff failed', e);
         }
 
-        socket.on('question_started', (data) => {
-            applyQuestion(data);
-        });
+        const onQuestionStarted = (data) => applyQuestion(data);
 
-        socket.on('countdown_tick', (data) => {
+        const onCountdownTick = (data) => {
             if (!data) return;
             if (data.index != null && questionIndexRef.current >= 0 && data.index !== questionIndexRef.current) {
                 return;
             }
             if (data.serverTime != null) {
                 offsetRef.current = data.serverTime - Date.now();
-                setClockOffset(offsetRef.current);
             }
             const v = data.value != null ? Number(data.value) : 0;
             const now = Date.now() + offsetRef.current;
@@ -203,9 +210,9 @@ const PlayerGame = () => {
                 setGameState('countdown');
                 setCountdown(v);
             }
-        });
+        };
 
-        socket.on('question_ended', () => {
+        const onQuestionEnded = () => {
             if (!resultRef.current) {
                 const fallback = {
                     correct: false,
@@ -218,15 +225,15 @@ const PlayerGame = () => {
             }
             setGameState('result');
             setTimeLeft(0);
-        });
+        };
 
-        socket.on('question_result', (data) => {
+        const onQuestionResult = (data) => {
             try {
                 const info2 = JSON.parse(localStorage.getItem('player_info') || '{}');
                 if (data && data.nickname && info2.nickname && data.nickname !== info2.nickname) {
                     return;
                 }
-            } catch (_) {}
+            } catch { /* Celebration effects are non-essential. */ }
             setResult(data);
             resultRef.current = data;
             setGameState('result');
@@ -234,12 +241,13 @@ const PlayerGame = () => {
             if (data && data.correct) {
                 try {
                     confetti({ particleCount: 80, spread: 70, origin: { y: 0.7 } });
-                } catch (_) {}
+                } catch { /* Celebration effects are non-essential. */ }
             }
-        });
+        };
 
-        socket.on('session_info', (data) => {
+        const onSessionInfo = (data) => {
             try {
+                setStreak(Math.max(0, Number(data.streak) || 0));
                 if (data.status === 'question' && data.currentQuestion) {
                     const qPayload = {
                         ...data.currentQuestion,
@@ -263,7 +271,7 @@ const PlayerGame = () => {
                     setGameState('result');
                 } else if (data.status === 'lobby') {
                     skipLeaveRef.current = true;
-                    navigate('/player/lobby');
+                    navigate('/player/lobby', { replace: true });
                 } else if (data.status === 'finished') {
                     const finalPlayers = data.players || data.podium || [];
                     setLeaderboard(finalPlayers);
@@ -272,42 +280,40 @@ const PlayerGame = () => {
             } catch (err) {
                 console.error('session_info error', err);
             }
-        });
+        };
 
         const onGameFinished = (data) => {
             const finalPlayers = Array.isArray(data) ? data : (data.players || data.podium || []);
             setLeaderboard(finalPlayers);
-            setTeamStandings((data && data.teamStandings) || []);
             setGameState('finished');
             try {
                 confetti({ particleCount: 120, spread: 60, origin: { y: 0.6 } });
-            } catch (_) {}
+            } catch { /* Celebration effects are non-essential. */ }
         };
-        socket.on('game_finished', onGameFinished);
-        socket.on('game_over', onGameFinished);
-
-        socket.on('answer_confirmed', (data) => {
+        const onAnswerConfirmed = (data) => {
             setStreak(data.streak || 0);
             setPointsWon(data.points || 0);
-        });
+        };
 
-        socket.on('host_disconnected', () => setIsHostDisconnected(true));
-        socket.on('host_reconnected', () => setIsHostDisconnected(false));
-        socket.on('host_left', (data) => {
+        const onHostDisconnected = () => setIsHostDisconnected(true);
+        const onHostReconnected = () => setIsHostDisconnected(false);
+        const onHostLeft = async (data) => {
             setIsHostDisconnected(false);
             skipLeaveRef.current = true;
-            try { localStorage.removeItem('player_info'); } catch (_) {}
+            try { localStorage.removeItem('player_info'); } catch { /* Storage can be unavailable in private browsing. */ }
+            await exitLiveQuizFullscreen();
             alert((data && data.message) || 'Host left the session.');
-            navigate('/');
-        });
+            navigate('/', { replace: true });
+        };
 
-        socket.on('error', (msg) => {
+        const onSocketError = (msg) => {
             if (msg === 'Game is already finished') {
-                recoverFromApi().then((recovered) => {
+                recoverFromApi().then(async (recovered) => {
                     if (!recovered) {
                         skipLeaveRef.current = true;
-                        try { localStorage.removeItem('player_info'); } catch (_) {}
-                        navigate('/');
+                        try { localStorage.removeItem('player_info'); } catch { /* Storage can be unavailable in private browsing. */ }
+                        await exitLiveQuizFullscreen();
+                        navigate('/', { replace: true });
                     }
                 });
                 return;
@@ -315,10 +321,23 @@ const PlayerGame = () => {
             if (msg === 'Game not found' || msg === 'Unauthorized Host Entry') {
                 skipLeaveRef.current = true;
                 alert(msg);
-                try { localStorage.removeItem('player_info'); } catch (_) {}
-                navigate('/');
+                try { localStorage.removeItem('player_info'); } catch { /* Storage can be unavailable in private browsing. */ }
+                void exitLiveQuizFullscreen().then(() => navigate('/', { replace: true }));
             }
-        });
+        };
+
+        socket.on('question_started', onQuestionStarted);
+        socket.on('countdown_tick', onCountdownTick);
+        socket.on('question_ended', onQuestionEnded);
+        socket.on('question_result', onQuestionResult);
+        socket.on('session_info', onSessionInfo);
+        socket.on('game_finished', onGameFinished);
+        socket.on('game_over', onGameFinished);
+        socket.on('answer_confirmed', onAnswerConfirmed);
+        socket.on('host_disconnected', onHostDisconnected);
+        socket.on('host_reconnected', onHostReconnected);
+        socket.on('host_left', onHostLeft);
+        socket.on('error', onSocketError);
 
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible' && socket.connected) {
@@ -336,28 +355,24 @@ const PlayerGame = () => {
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
-        const onPageHide = () => {};
-        window.addEventListener('pagehide', onPageHide);
-
         return () => {
+            effectActive = false;
             document.removeEventListener('visibilitychange', handleVisibilityChange);
-            window.removeEventListener('pagehide', onPageHide);
-            socket.off('question_started');
-            socket.off('countdown_tick');
-            socket.off('question_ended');
-            socket.off('question_result');
-            socket.off('game_finished');
-            socket.off('game_over');
-            socket.off('session_info');
-            socket.off('answer_confirmed');
-            socket.off('host_disconnected');
-            socket.off('host_reconnected');
-            socket.off('host_left');
-            socket.off('error');
-            if (timerRef.current) clearInterval(timerRef.current);
-            try { audio.stopAll(); } catch (_) {}
+            socket.off('question_started', onQuestionStarted);
+            socket.off('countdown_tick', onCountdownTick);
+            socket.off('question_ended', onQuestionEnded);
+            socket.off('question_result', onQuestionResult);
+            socket.off('game_finished', onGameFinished);
+            socket.off('game_over', onGameFinished);
+            socket.off('session_info', onSessionInfo);
+            socket.off('answer_confirmed', onAnswerConfirmed);
+            socket.off('host_disconnected', onHostDisconnected);
+            socket.off('host_reconnected', onHostReconnected);
+            socket.off('host_left', onHostLeft);
+            socket.off('error', onSocketError);
+            try { audio.stopAll(); } catch { /* Audio teardown is best-effort. */ }
         };
-    }, [socket, navigate, leaveSession, applyQuestion]);
+    }, [socket, navigate, leaveSession, applyQuestion, playerInfo]);
 
     useEffect(() => {
         if (gameState !== 'countdown' || !question) return;
@@ -391,7 +406,7 @@ const PlayerGame = () => {
 
     useEffect(() => {
         if (gameState === 'question' && timeLeft > 0 && timeLeft <= 5) {
-            try { audio.play('tick'); } catch (_) {}
+            try { audio.play('tick'); } catch { /* Audio playback can be blocked by the browser. */ }
         }
     }, [timeLeft, gameState]);
 
@@ -408,10 +423,11 @@ const PlayerGame = () => {
         setGameState('submitted');
     };
 
-    const handleLeave = () => {
+    const handleLeave = async () => {
         skipLeaveRef.current = true;
         leaveSession({ clearStorage: true });
-        navigate('/');
+        await exitLiveQuizFullscreen();
+        navigate('/', { replace: true });
     };
 
     const options = (() => {
@@ -440,23 +456,23 @@ const PlayerGame = () => {
 
             <AnimatePresence mode="wait">
                 {gameState === 'loading' && (
-                    <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    <Motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         className="flex-1 flex flex-col items-center justify-center">
                         <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mb-4" />
                         <p className="font-bold text-white/60 uppercase tracking-widest text-sm">Connecting...</p>
-                    </motion.div>
+                    </Motion.div>
                 )}
 
                 {gameState === 'countdown' && (
-                    <motion.div key="countdown" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    <Motion.div key="countdown" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         className="flex-1 flex flex-col items-center justify-center">
                         <div className="text-[9rem] leading-none font-black tabular-nums">{countdown}</div>
                         <p className="text-white/70 text-xl font-medium tracking-widest uppercase mt-4">Get Ready!</p>
-                    </motion.div>
+                    </Motion.div>
                 )}
 
                 {gameState === 'question' && question && (
-                    <motion.div key="question" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    <Motion.div key="question" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                         className="flex-1 w-full max-w-4xl mx-auto flex flex-col min-h-0">
                         <div className="flex justify-between items-center gap-3 mb-3 shrink-0">
                             <span className="inline-flex min-h-10 items-center rounded-full border border-white/10 bg-white/5 px-3 text-sm font-bold text-white/60">
@@ -506,11 +522,11 @@ const PlayerGame = () => {
                                 );
                             })}
                         </div>
-                    </motion.div>
+                    </Motion.div>
                 )}
 
                 {gameState === 'submitted' && (
-                    <motion.div key="submitted" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    <Motion.div key="submitted" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                         className="flex-1 flex flex-col items-center justify-center px-4">
                         <div className={'text-6xl sm:text-7xl font-black tabular-nums mb-3 ' + (timeLeft <= 5 ? 'text-quizmoto-yellow' : 'text-white')}>
                             {timeLeft}s
@@ -530,11 +546,11 @@ const PlayerGame = () => {
                         <div className="mt-8">
                             <ReactionBar pin={playerInfo?.pin} />
                         </div>
-                    </motion.div>
+                    </Motion.div>
                 )}
 
                 {gameState === 'result' && result && (
-                    <motion.div key="result" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                    <Motion.div key="result" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                         className="flex-1 flex flex-col items-center justify-center">
                         {result.correct ? (
                             <CheckCircle className="w-20 h-20 text-quizmoto-green mb-4" />
@@ -561,20 +577,21 @@ const PlayerGame = () => {
                         <div className="mt-6">
                             <ReactionBar pin={playerInfo?.pin} />
                         </div>
-                    </motion.div>
+                    </Motion.div>
                 )}
 
                 {gameState === 'finished' && (
-                    <motion.div key="finished" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    <Motion.div key="finished" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                         className="flex-1 flex flex-col min-h-0 overflow-y-auto">
                         <div className="flex justify-end items-center pt-1 pb-3 shrink-0">
                             <button
                                 type="button"
-                                onClick={() => {
+                                onClick={async () => {
                                     skipLeaveRef.current = true;
-                                    try { localStorage.removeItem('player_info'); } catch (_) {}
+                                    try { localStorage.removeItem('player_info'); } catch { /* Storage can be unavailable in private browsing. */ }
+                                    await exitLiveQuizFullscreen();
                                     if (localStorage.getItem('playerToken')) navigate('/player/dashboard');
-                                    else navigate('/');
+                                    else navigate('/', { replace: true });
                                 }}
                                 className="min-h-11 px-4 py-2 rounded-xl bg-white text-quizmoto-purple text-xs font-black shadow-lg"
                             >
@@ -591,7 +608,7 @@ const PlayerGame = () => {
                         <div className="mt-auto pt-5 pb-4 flex justify-center">
                             <ReactionBar pin={playerInfo?.pin} />
                         </div>
-                    </motion.div>
+                    </Motion.div>
                 )}
             </AnimatePresence>
         </div>

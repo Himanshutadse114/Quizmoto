@@ -2,8 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Users, Volume2, VolumeX, Trophy, Crown, ArrowUp, Zap, ChevronRight, Wifi, WifiOff } from 'lucide-react';
+import { motion as Motion } from 'framer-motion';
+import { Clock, Users, Trophy, ChevronRight, Wifi, WifiOff } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import ReactionCanvas from '../../components/ReactionCanvas';
 import AvatarDisplay from '../../components/AvatarDisplay';
@@ -20,19 +20,15 @@ const GameView = () => {
     const [question, setQuestion] = useState(null);
     const [timer, setTimer] = useState(0);
     const [countdown, setCountdown] = useState(0);
-    const [clockOffset, setClockOffset] = useState(0);
     const [answersCount, setAnswersCount] = useState(0);
     const [answerDistribution, setAnswerDistribution] = useState([0, 0, 0, 0]);
     const [results, setResults] = useState(null);
     const [leaderboard, setLeaderboard] = useState([]);
-    const [teamStandings, setTeamStandings] = useState([]);
     const [playersCount, setPlayersCount] = useState(0);
     const [players, setPlayers] = useState([]);
     const [presenceTab, setPresenceTab] = useState('active');
-    const [viewMode, setViewMode] = useState('players');
     const [isProcessingNext, setIsProcessingNext] = useState(false);
-    const [analyticsData, setAnalyticsData] = useState(null);
-    const [isMuted, setIsMuted] = useState(false);
+    const [sessionMessage, setSessionMessage] = useState('');
     const offsetRef = useRef(0);
     const questionIndexRef = useRef(-1);
     const questionStartRef = useRef(0);
@@ -40,6 +36,7 @@ const GameView = () => {
 
     useEffect(() => {
         if (!socket) return;
+        let effectActive = true;
 
         socket.emit('join_room', { pin, role: 'host', token });
 
@@ -48,35 +45,37 @@ const GameView = () => {
             if (pending) {
                 sessionStorage.removeItem('pending_question_started');
                 const data = JSON.parse(pending);
-                const offset = (data.serverTime != null) ? (data.serverTime - Date.now()) : 0;
-                offsetRef.current = offset;
-                setClockOffset(offset);
-                const syncedNow = Date.now() + offset;
-                const startTime = data.startTime || (syncedNow + 3000);
-                questionIndexRef.current = data.index != null ? data.index : -1;
-                questionStartRef.current = startTime;
-                endedOnceRef.current = false;
-                setQuestion({ ...data, startTime });
-                setTimer(data.timer || 20);
-                setAnswersCount(0);
-                setAnswerDistribution([0, 0, 0, 0]);
-                setResults(null);
-                setIsProcessingNext(false);
-                const delay = startTime - syncedNow;
-                if (delay > 80) {
-                    setGameState('countdown');
-                    setCountdown(Math.min(3, Math.max(1, Math.ceil(delay / 1000))));
-                } else {
-                    setGameState('question');
-                    const diff = Math.floor((syncedNow - startTime) / 1000);
-                    setTimer(Math.max(0, (data.timer || 20) - diff));
-                }
+                queueMicrotask(() => {
+                    if (!effectActive) return;
+                    const offset = (data.serverTime != null) ? (data.serverTime - Date.now()) : 0;
+                    offsetRef.current = offset;
+                    const syncedNow = Date.now() + offset;
+                    const startTime = data.startTime || (syncedNow + 3000);
+                    questionIndexRef.current = data.index != null ? data.index : -1;
+                    questionStartRef.current = startTime;
+                    endedOnceRef.current = false;
+                    setQuestion({ ...data, startTime });
+                    setTimer(data.timer || 20);
+                    setAnswersCount(0);
+                    setAnswerDistribution([0, 0, 0, 0]);
+                    setResults(null);
+                    setIsProcessingNext(false);
+                    const delay = startTime - syncedNow;
+                    if (delay > 80) {
+                        setGameState('countdown');
+                        setCountdown(Math.min(3, Math.max(1, Math.ceil(delay / 1000))));
+                    } else {
+                        setGameState('question');
+                        const diff = Math.floor((syncedNow - startTime) / 1000);
+                        setTimer(Math.max(0, (data.timer || 20) - diff));
+                    }
+                });
             }
         } catch (e) {
             console.warn('pending question handoff failed', e);
         }
 
-        socket.on('room_info', (sessionData) => {
+        const onRoomInfo = (sessionData) => {
             const recoveredPlayers = Array.isArray(sessionData.players) ? sessionData.players : [];
             setPlayers(recoveredPlayers);
             setPlayersCount(recoveredPlayers.length);
@@ -85,15 +84,18 @@ const GameView = () => {
                 if (sessionData.currentQuestion) {
                     if (sessionData.serverTime != null) {
                         offsetRef.current = sessionData.serverTime - Date.now();
-                        setClockOffset(offsetRef.current);
                     }
                     setQuestion(sessionData.currentQuestion);
                     questionIndexRef.current = sessionData.currentQuestion.index ?? sessionData.currentQuestionIndex ?? -1;
                     questionStartRef.current = sessionData.currentQuestion.startTime || 0;
 
                     if (sessionData.status === 'question') {
-                        setAnswersCount(0);
-                        setAnswerDistribution([0, 0, 0, 0]);
+                        const recoveredDistribution = Array.isArray(sessionData.answerDistribution)
+                            ? [...sessionData.answerDistribution].slice(0, 4)
+                            : [0, 0, 0, 0];
+                        while (recoveredDistribution.length < 4) recoveredDistribution.push(0);
+                        setAnswersCount(Number(sessionData.answersCount || 0));
+                        setAnswerDistribution(recoveredDistribution);
                         setResults(null);
                         endedOnceRef.current = false;
                         const now = Date.now() + offsetRef.current;
@@ -127,7 +129,6 @@ const GameView = () => {
                         setAnswersCount(Number(sessionData.answersCount || 0));
                         setAnswerDistribution(recoveredDistribution);
                         setLeaderboard(recoveredLeaderboard);
-                        setTeamStandings(recoveredTeams);
                         setResults({
                             correctIndex: sessionData.currentQuestion.correctIndex,
                             distribution: recoveredDistribution,
@@ -149,29 +150,26 @@ const GameView = () => {
                 setLeaderboard(sortedPlayers);
                 setGameState('finished');
             } else {
-                let hasPending = false;
-                try { hasPending = !!sessionStorage.getItem('pending_question_started'); } catch (_) {}
-                if (!hasPending) socket.emit('start_question', { pin, token });
                 setGameState('lobby');
+                navigate(`/host/lobby/${pin}`, { replace: true });
             }
-        });
+        };
 
-        socket.on('player_joined', (list) => {
+        const onPlayerJoined = (list) => {
             const arr = Array.isArray(list) ? list : [];
             setPlayers(arr);
             setPlayersCount(arr.length);
-        });
+        };
 
-        socket.on('player_left', (payload) => {
+        const onPlayerLeft = (payload) => {
             const arr = payload && Array.isArray(payload.players) ? payload.players : [];
             setPlayers(arr);
             setPlayersCount(arr.length);
-        });
+        };
 
-        socket.on('question_started', (data) => {
+        const onQuestionStarted = (data) => {
             const offset = (data.serverTime != null) ? (data.serverTime - Date.now()) : 0;
             offsetRef.current = offset;
-            setClockOffset(offset);
             const syncedNow = Date.now() + offset;
             const startTime = data.startTime || (syncedNow + 3000);
             questionIndexRef.current = data.index != null ? data.index : -1;
@@ -183,6 +181,7 @@ const GameView = () => {
             setAnswerDistribution([0, 0, 0, 0]);
             setResults(null);
             setIsProcessingNext(false);
+            setSessionMessage('');
             const delay = startTime - syncedNow;
             if (delay > 80) {
                 setGameState('countdown');
@@ -192,14 +191,13 @@ const GameView = () => {
                 const diff = Math.floor((syncedNow - startTime) / 1000);
                 setTimer(Math.max(0, (data.timer || 20) - diff));
             }
-        });
+        };
 
-        socket.on('countdown_tick', (data) => {
+        const onCountdownTick = (data) => {
             if (!data) return;
             if (data.index != null && questionIndexRef.current >= 0 && data.index !== questionIndexRef.current) return;
             if (data.serverTime != null) {
                 offsetRef.current = data.serverTime - Date.now();
-                setClockOffset(offsetRef.current);
             }
             const v = data.value != null ? Number(data.value) : 0;
             const now = Date.now() + offsetRef.current;
@@ -214,24 +212,24 @@ const GameView = () => {
                 setGameState('countdown');
                 setCountdown(v);
             }
-        });
+        };
 
-        socket.on('answer_received_host', ({ answerIndex }) => {
+        const onAnswerReceivedHost = ({ answerIndex, recovery }) => {
+            if (recovery) return;
             setAnswersCount(prev => prev + 1);
             setAnswerDistribution(prev => {
                 const next = [...prev];
                 if (answerIndex >= 0 && answerIndex < next.length) next[answerIndex] += 1;
                 return next;
             });
-        });
+        };
 
-        socket.on('question_ended', (data) => {
+        const onQuestionEnded = (data) => {
             endedOnceRef.current = true;
             setIsProcessingNext(false);
             setGameState('result');
             setResults(data);
             setLeaderboard(data.leaderboard || []);
-            if (data.teamStandings) setTeamStandings(data.teamStandings);
             if (typeof data.answersCount === 'number') setAnswersCount(data.answersCount);
             if (Array.isArray(data.distribution)) {
                 const next = [...data.distribution].slice(0, 4);
@@ -239,34 +237,64 @@ const GameView = () => {
                 setAnswerDistribution(next);
             }
             setTimer(0);
-        });
+            setSessionMessage('');
+        };
 
         const onGameFinished = (data) => {
             setGameState('finished');
             setIsProcessingNext(false);
+            setSessionMessage('');
             const finalPlayers = Array.isArray(data) ? data : (data.players || data.podium || []);
-            const finalTeams = (data && data.teamStandings) || [];
             setLeaderboard(finalPlayers);
-            setTeamStandings(finalTeams);
-            if (data && data.analytics) setAnalyticsData(data.analytics);
             confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
         };
+
+        const getMessage = (payload, fallback) => (
+            typeof payload === 'string' ? payload : payload?.message || fallback
+        );
+        const onSocketError = (payload) => {
+            setIsProcessingNext(false);
+            setSessionMessage(getMessage(payload, 'The session could not be updated. Please try again.'));
+        };
+        const onHostControlDenied = (payload) => {
+            setIsProcessingNext(false);
+            setSessionMessage(getMessage(payload, 'This session is being controlled in another host window.'));
+        };
+        const onHostControlLost = (payload) => {
+            setIsProcessingNext(false);
+            setSessionMessage(getMessage(payload, 'Host control moved to another window.'));
+        };
+
+        socket.on('room_info', onRoomInfo);
+        socket.on('player_joined', onPlayerJoined);
+        socket.on('player_left', onPlayerLeft);
+        socket.on('question_started', onQuestionStarted);
+        socket.on('countdown_tick', onCountdownTick);
+        socket.on('answer_received_host', onAnswerReceivedHost);
+        socket.on('question_ended', onQuestionEnded);
         socket.on('game_finished', onGameFinished);
         socket.on('game_over', onGameFinished);
+        socket.on('error', onSocketError);
+        socket.on('host_control_denied', onHostControlDenied);
+        socket.on('host_control_lost', onHostControlLost);
 
         return () => {
-            socket.off('room_info');
-            socket.off('player_joined');
-            socket.off('player_left');
-            socket.off('question_started');
-            socket.off('countdown_tick');
-            socket.off('answer_received_host');
-            socket.off('question_ended');
-            socket.off('game_finished');
-            socket.off('game_over');
+            effectActive = false;
+            socket.off('room_info', onRoomInfo);
+            socket.off('player_joined', onPlayerJoined);
+            socket.off('player_left', onPlayerLeft);
+            socket.off('question_started', onQuestionStarted);
+            socket.off('countdown_tick', onCountdownTick);
+            socket.off('answer_received_host', onAnswerReceivedHost);
+            socket.off('question_ended', onQuestionEnded);
+            socket.off('game_finished', onGameFinished);
+            socket.off('game_over', onGameFinished);
+            socket.off('error', onSocketError);
+            socket.off('host_control_denied', onHostControlDenied);
+            socket.off('host_control_lost', onHostControlLost);
             audio.stopAll();
         };
-    }, [socket, pin, token]);
+    }, [socket, pin, token, navigate]);
 
     useEffect(() => {
         if (gameState === 'lobby') audio.play('playful');
@@ -336,11 +364,12 @@ const GameView = () => {
         const ok = window.confirm('Abort this session? All players will be disconnected.');
         if (!ok) return;
         socket.emit('leave_session', { pin, role: 'host', token });
-        navigate('/dashboard');
+        navigate('/host');
     };
 
     const nextAction = () => {
         if (isProcessingNext) return;
+        setSessionMessage('');
         if (gameState === 'result') {
             setIsProcessingNext(true);
             setTimeout(() => setIsProcessingNext(false), 8000);
@@ -350,7 +379,7 @@ const GameView = () => {
                 socket.emit('end_game', { pin, token });
             }
         } else if (gameState === 'finished') {
-            navigate('/dashboard');
+            navigate('/host');
         }
     };
 
@@ -360,10 +389,21 @@ const GameView = () => {
         : hasNextQuestion ? 'NEXT QUESTION' : 'NEXT · FINAL RESULTS';
 
     if ((!question || gameState === 'lobby') && gameState !== 'finished') return (
-        <div className="min-h-screen flex items-center justify-center">
-            <div className="text-center">
-                <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4" />
-                <p className="font-bold opacity-60">Loading game...</p>
+        <div className="min-h-screen flex items-center justify-center p-5">
+            <div className="w-full max-w-md text-center">
+                {sessionMessage ? (
+                    <div role="alert" className="rounded-2xl border border-amber-200/40 bg-amber-950/35 p-5 text-amber-50 shadow-xl">
+                        <p className="font-semibold">{sessionMessage}</p>
+                        <button type="button" onClick={() => navigate(`/host/lobby/${pin}`, { replace: true })} className="mt-4 min-h-11 rounded-xl bg-white px-5 py-2 text-sm font-black text-[#075e57]">
+                            Return to lobby
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4" />
+                        <p className="font-bold text-[#d5efeb]">Restoring live session…</p>
+                    </>
+                )}
             </div>
         </div>
     );
@@ -371,6 +411,7 @@ const GameView = () => {
     if (gameState === 'countdown') return (
         <div className="min-h-screen flex flex-col items-center justify-center relative z-10 px-4">
             <ReactionCanvas />
+            {sessionMessage && <div role="alert" className="absolute top-4 left-4 right-4 rounded-xl border border-amber-200/40 bg-amber-950/50 px-4 py-3 text-center text-sm font-semibold text-amber-50">{sessionMessage}</div>}
             <div className="text-[6rem] sm:text-[9rem] leading-none font-black text-white tabular-nums drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]">
                 {countdown}
             </div>
@@ -417,18 +458,24 @@ const GameView = () => {
                 </div>
             </header>
 
+            {sessionMessage && (
+                <div role="alert" className="mb-4 rounded-xl border border-amber-200/40 bg-amber-950/35 px-4 py-3 text-sm font-semibold text-amber-50 shadow-lg">
+                    {sessionMessage}
+                </div>
+            )}
+
             <main className="flex-1 flex flex-col items-center justify-center">
                 {gameState === 'question' && question && (
                     <div className="w-full max-w-6xl">
-                        <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-white/8 border border-white/12 rounded-2xl overflow-hidden mb-4 sm:mb-8 shadow-xl">
-                            <div className="h-1.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-indigo-500" />
+                        <Motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-white/8 border border-white/12 rounded-2xl overflow-hidden mb-4 sm:mb-8 shadow-xl">
+                            <div className="h-1.5 w-full bg-gradient-to-r from-[#4fc9bf] via-[#20a99d] to-[#c8ef6b]" />
                             <div className="p-4 sm:p-8 md:p-10 text-center">
                                 <div className="inline-flex items-center justify-center bg-white/10 border border-white/15 px-3 sm:px-4 py-1.5 rounded-full mb-3 sm:mb-5">
                                     <span className="text-xs font-bold text-white/50 uppercase tracking-[0.25em]">Question {question.index + 1}</span>
                                 </div>
                                 <h1 className="text-xl sm:text-3xl md:text-4xl font-bold leading-snug tracking-tight">{question.questionText}</h1>
                             </div>
-                        </motion.div>
+                        </Motion.div>
                         <div className="flex justify-center gap-2 sm:gap-4 h-[160px] sm:h-[220px] md:h-[280px] w-full items-end bg-white/3 px-3 sm:px-8 py-4 sm:py-6 rounded-2xl border border-white/8">
                             {['red', 'blue', 'yellow', 'green'].map((color, idx) => {
                                 const count = answerDistribution[idx];
@@ -437,7 +484,7 @@ const GameView = () => {
                                     <div key={idx} className="flex flex-col items-center gap-2 sm:gap-3 h-full flex-1">
                                         <div className="flex-1 w-full flex items-end relative">
                                             {count > 0 && <div className="absolute left-1/2 -translate-x-1/2 -top-6 sm:-top-7 font-bold text-sm sm:text-lg text-white/80">{count}</div>}
-                                            <motion.div initial={{ height: 0 }} animate={{ height: Math.max(4, height) + '%' }} className={'w-full bg-quizmoto-' + color + ' rounded-t-lg'} />
+                                            <Motion.div initial={{ height: 0 }} animate={{ height: Math.max(4, height) + '%' }} className={'w-full bg-quizmoto-' + color + ' rounded-t-lg'} />
                                         </div>
                                         <div className={'w-9 h-9 sm:w-12 sm:h-12 rounded-xl bg-quizmoto-' + color + ' flex items-center justify-center shadow-lg'}>
                                             <span className="font-bold text-white text-sm sm:text-base">{idx + 1}</span>
@@ -456,12 +503,12 @@ const GameView = () => {
                                 <h3 className="text-xs font-black uppercase tracking-widest text-white/40">Players in session</h3>
                                 <div className="flex flex-wrap gap-2">
                                     {[
-                                        { id: 'active', label: 'Active', count: players.filter(p => p.socketId).length, Icon: Wifi },
-                                        { id: 'offline', label: 'Offline', count: players.filter(p => !p.socketId).length, Icon: WifiOff },
-                                        { id: 'all', label: 'All', count: players.length, Icon: Users }
-                                    ].map(({ id, label, count, Icon }) => (
+                                        { id: 'active', label: 'Active', count: players.filter(p => p.socketId).length, icon: <Wifi size={12} /> },
+                                        { id: 'offline', label: 'Offline', count: players.filter(p => !p.socketId).length, icon: <WifiOff size={12} /> },
+                                        { id: 'all', label: 'All', count: players.length, icon: <Users size={12} /> }
+                                    ].map(({ id, label, count, icon }) => (
                                         <button key={id} type="button" onClick={() => setPresenceTab(id)} className={'flex min-h-11 items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ' + (presenceTab === id ? 'bg-white text-quizmoto-purple border-white' : 'bg-white/5 text-white/50 border-white/10 hover:text-white')}>
-                                            <Icon size={12} />
+                                            {icon}
                                             {label}
                                             <span className={'min-w-[1.25rem] text-center rounded-full px-1 ' + (presenceTab === id ? 'bg-quizmoto-purple/15' : 'bg-white/10')}>{count}</span>
                                         </button>
@@ -486,7 +533,7 @@ const GameView = () => {
 
                 {gameState === 'result' && results && question && (
                     <div className="w-full max-w-7xl flex flex-col lg:flex-row gap-4 sm:gap-8 px-1 sm:px-4">
-                        <motion.div initial={{ x: -40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="lg:w-2/5 flex flex-col">
+                        <Motion.div initial={{ x: -40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="lg:w-2/5 flex flex-col">
                             <div className="flex items-center gap-2 mb-3 sm:mb-4">
                                 <div className="w-1.5 h-5 rounded-full bg-green-400" />
                                 <h2 className="text-base font-semibold text-white/90">Answer Revealed</h2>
@@ -506,8 +553,8 @@ const GameView = () => {
                                     </div>
                                 </div>
                             </div>
-                        </motion.div>
-                        <motion.div initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="lg:w-3/5 flex flex-col">
+                        </Motion.div>
+                        <Motion.div initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="lg:w-3/5 flex flex-col">
                             <div className="flex items-center gap-2 mb-3 sm:mb-4">
                                 <Trophy size={16} className="text-quizmoto-yellow" />
                                 <h2 className="text-base font-semibold text-white/90">Live Standings</h2>
@@ -522,7 +569,7 @@ const GameView = () => {
                                     </div>
                                 ))}
                             </div>
-                        </motion.div>
+                        </Motion.div>
                     </div>
                 )}
 
@@ -535,7 +582,7 @@ const GameView = () => {
 
             {(gameState === 'result' || gameState === 'finished') && (
                 <div className="fixed inset-x-0 bottom-0 z-50 px-3 pb-3 sm:px-6 sm:pb-5 pointer-events-none">
-                    <div className="pointer-events-auto mx-auto flex w-full max-w-4xl flex-col gap-2 rounded-2xl border border-white/15 bg-[#17102d]/95 p-2.5 shadow-2xl backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:p-3">
+                    <div className="pointer-events-auto mx-auto flex w-full max-w-4xl flex-col gap-2 rounded-2xl border border-white/15 bg-[#042f2a]/95 p-2.5 shadow-2xl backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:p-3">
                         <div className="min-w-0 px-2 py-1">
                             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/40">
                                 {gameState === 'finished' ? 'Session complete' : 'Host control'}
@@ -546,7 +593,7 @@ const GameView = () => {
                                     : hasNextQuestion ? 'Review the answer and standings, then move everyone together.' : 'Review the final answer, then reveal the final results.'}
                             </p>
                         </div>
-                        <motion.button
+                        <Motion.button
                             whileHover={!isProcessingNext ? { scale: 1.01 } : {}}
                             whileTap={!isProcessingNext ? { scale: 0.98 } : {}}
                             type="button"
@@ -558,7 +605,7 @@ const GameView = () => {
                             {isProcessingNext
                                 ? <span className="flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-quizmoto-purple/30 border-t-quizmoto-purple rounded-full animate-spin" />Preparing…</span>
                                 : <span className="flex items-center justify-center gap-2">{hostActionLabel}{gameState !== 'finished' && <ChevronRight size={16} />}</span>}
-                        </motion.button>
+                        </Motion.button>
                     </div>
                 </div>
             )}

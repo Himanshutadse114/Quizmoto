@@ -1,14 +1,23 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../context/SocketContext';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import ReactionBar from '../../components/ReactionBar';
 import AvatarDisplay from '../../components/AvatarDisplay';
+import { exitLiveQuizFullscreen } from '../../utils/fullscreen';
+
+function readStoredPlayerInfo() {
+    try {
+        return JSON.parse(localStorage.getItem('player_info')) || null;
+    } catch {
+        return null;
+    }
+}
 
 const PlayerLobby = () => {
     const socket = useSocket();
     const navigate = useNavigate();
-    const [playerInfo, setPlayerInfo] = useState(null);
+    const [playerInfo] = useState(readStoredPlayerInfo);
     const [isHostDisconnected, setIsHostDisconnected] = useState(false);
     const joinedSocketRef = useRef(null);
 
@@ -25,17 +34,15 @@ const PlayerLobby = () => {
                 });
             }
             if (clearStorage) localStorage.removeItem('player_info');
-        } catch (_) {}
+        } catch { /* Invalid local state is treated as an already-ended session. */ }
     }, [socket]);
 
     useEffect(() => {
-        const info = JSON.parse(localStorage.getItem('player_info'));
+        const info = playerInfo;
         if (!info) {
             navigate('/join');
             return undefined;
         }
-        setPlayerInfo(info);
-
         if (!socket) return undefined;
 
         // React StrictMode intentionally runs an effect setup/cleanup/setup cycle
@@ -57,7 +64,7 @@ const PlayerLobby = () => {
         const onQuestionStarted = (data) => {
             try {
                 sessionStorage.setItem('pending_question_started', JSON.stringify(data));
-            } catch (_) {}
+            } catch { /* Navigation still succeeds when session storage is unavailable. */ }
             navigate('/player/game');
         };
 
@@ -67,11 +74,12 @@ const PlayerLobby = () => {
             }
         };
 
-        const onHostLeft = (data) => {
+        const onHostLeft = async (data) => {
             setIsHostDisconnected(false);
-            try { localStorage.removeItem('player_info'); } catch (_) {}
+            try { localStorage.removeItem('player_info'); } catch { /* Storage can be unavailable in private browsing. */ }
+            await exitLiveQuizFullscreen();
             alert((data && data.message) || 'Host left the session.');
-            navigate('/');
+            navigate('/', { replace: true });
         };
 
         const onHostDisconnected = () => setIsHostDisconnected(true);
@@ -79,8 +87,8 @@ const PlayerLobby = () => {
         const onError = (msg) => {
             if (msg === 'Game not found' || msg === 'Game is already finished' || msg === 'Unauthorized Host Entry') {
                 alert(msg);
-                try { localStorage.removeItem('player_info'); } catch (_) {}
-                navigate('/');
+                try { localStorage.removeItem('player_info'); } catch { /* Storage can be unavailable in private browsing. */ }
+                void exitLiveQuizFullscreen().then(() => navigate('/', { replace: true }));
             }
         };
 
@@ -102,11 +110,12 @@ const PlayerLobby = () => {
             // Cleanup runs during StrictMode verification and normal route effect
             // lifecycle. A player leaves only via the explicit Leave session CTA.
         };
-    }, [socket, navigate]);
+    }, [socket, navigate, playerInfo]);
 
-    const handleLeaveClick = () => {
+    const handleLeaveClick = async () => {
         leaveSession({ clearStorage: true });
-        navigate('/');
+        await exitLiveQuizFullscreen();
+        navigate('/', { replace: true });
     };
 
     return (
@@ -128,13 +137,13 @@ const PlayerLobby = () => {
                 </div>
             )}
 
-            <motion.div
+            <Motion.div
                 animate={{ scale: [1, 1.1, 1] }}
                 transition={{ repeat: Infinity, duration: 2 }}
                 className="mb-8"
             >
                 <AvatarDisplay avatar={playerInfo?.avatar} imgClass="w-32 h-32" textClass="text-8xl" />
-            </motion.div>
+            </Motion.div>
             <h2 className="text-3xl font-black mb-2 uppercase tracking-tight">You're in!</h2>
             <p className="text-xl font-bold opacity-80 mb-12">See your name on screen?</p>
 

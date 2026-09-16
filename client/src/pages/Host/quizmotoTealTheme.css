@@ -347,6 +347,16 @@
 .quizmoto-classic-live-stage .quizmoto-host-lobby h1.text-quizmoto-purple {
   color: #075e57 !important;
 }
+.quizmoto-classic-live-stage .bg-white.text-quizmoto-purple,
+.quizmoto-classic-live-stage .bg-white .text-quizmoto-purple,
+.quizmoto-classic-live-stage .bg-white [class*="text-quizmoto-purple/"] {
+  color: #075e57 !important;
+}
+.quizmoto-classic-live-stage [class*="text-white/30"],
+.quizmoto-classic-live-stage [class*="text-white/40"],
+.quizmoto-classic-live-stage [class*="text-white/50"] {
+  color: #b9d9d4 !important;
+}
 .quizmoto-classic-live-stage .quizmoto-host-lobby button:disabled {
   opacity: 1 !important;
 }

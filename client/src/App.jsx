@@ -257,7 +257,7 @@ function AppRoutes() {
 function AppSurface() {
   const { pathname } = useLocation();
   const isQuizGameStage = pathname.startsWith('/host/lobby') || pathname.startsWith('/host/game') || pathname === '/join' || pathname.startsWith('/player/');
-  const showQuizBackgroundShapes = isQuizGameStage && !pathname.startsWith('/host/game');
+  const showQuizBackgroundShapes = isQuizGameStage && !pathname.startsWith('/host/game') && pathname !== '/player/game';
   const surfaceClass = isQuizGameStage ? 'bg-quizmoto-darkPurple live-quiz-stage quizmoto-classic-live-stage' : 'bg-[#0A0F0E]';
 
   return (

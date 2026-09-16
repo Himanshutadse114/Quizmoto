@@ -34,6 +34,8 @@ const Lobby = () => {
     const [session, setSession] = useState(null);
     const [presenceTab, setPresenceTab] = useState('active');
     const [copied, setCopied] = useState(false);
+    const [isStarting, setIsStarting] = useState(false);
+    const [sessionMessage, setSessionMessage] = useState('');
     const joinedHostRef = useRef(null);
 
     useEffect(() => {
@@ -46,22 +48,48 @@ const Lobby = () => {
         }
         const onPlayerJoined = (updatedPlayers) => setPlayers(Array.isArray(updatedPlayers) ? updatedPlayers : []);
         const onPlayerLeft = (payload) => { if (payload && Array.isArray(payload.players)) setPlayers(payload.players); };
-        const onRoomInfo = (sessionData) => { setSession(sessionData); if (sessionData.players) setPlayers(sessionData.players); };
-        const onError = (msg) => { console.error('Socket Error:', msg); alert(msg); };
+        const getMessage = (payload, fallback) => typeof payload === 'string' ? payload : payload?.message || fallback;
+        const onRoomInfo = (sessionData) => {
+            setSession(sessionData);
+            if (sessionData.players) setPlayers(sessionData.players);
+            if (['question', 'result', 'finished'].includes(sessionData.status)) {
+                navigate(`/host/game/${pin}`, { replace: true });
+            }
+        };
+        const onError = (msg) => {
+            console.error('Socket Error:', msg);
+            setIsStarting(false);
+            setSessionMessage(getMessage(msg, 'The session could not be updated. Please try again.'));
+        };
+        const onHostControlDenied = (payload) => {
+            setIsStarting(false);
+            setSessionMessage(getMessage(payload, 'This session is being controlled in another host window.'));
+        };
+        const onHostControlLost = (payload) => {
+            setIsStarting(false);
+            setSessionMessage(getMessage(payload, 'Host control moved to another window.'));
+        };
         const onQuestionStarted = (data) => {
+            setIsStarting(false);
+            setSessionMessage('');
             try {
                 if (data) sessionStorage.setItem('pending_question_started', JSON.stringify(data));
             } catch {
                 // Navigation still succeeds when session storage is unavailable.
             }
-            navigate(`/scorm/live-quiz/game/${pin}`);
+            navigate(`/host/game/${pin}`, { replace: true });
         };
-        socket.on('player_joined', onPlayerJoined); socket.on('player_left', onPlayerLeft); socket.on('room_info', onRoomInfo); socket.on('error', onError); socket.on('question_started', onQuestionStarted);
-        return () => { socket.off('player_joined', onPlayerJoined); socket.off('player_left', onPlayerLeft); socket.off('room_info', onRoomInfo); socket.off('error', onError); socket.off('question_started', onQuestionStarted); };
+        socket.on('player_joined', onPlayerJoined); socket.on('player_left', onPlayerLeft); socket.on('room_info', onRoomInfo); socket.on('error', onError); socket.on('host_control_denied', onHostControlDenied); socket.on('host_control_lost', onHostControlLost); socket.on('question_started', onQuestionStarted);
+        return () => { socket.off('player_joined', onPlayerJoined); socket.off('player_left', onPlayerLeft); socket.off('room_info', onRoomInfo); socket.off('error', onError); socket.off('host_control_denied', onHostControlDenied); socket.off('host_control_lost', onHostControlLost); socket.off('question_started', onQuestionStarted); };
     }, [socket, pin, token, navigate]);
 
-    const startGame = () => { if (socket) socket.emit('start_question', { pin, token }); };
-    const abortSession = () => { if (!socket) return; if (!window.confirm('End this session? All players will be disconnected.')) return; socket.emit('leave_session', { pin, role: 'host', token }); navigate('/scorm/live-quiz'); };
+    const startGame = () => {
+        if (!socket || !canStart || isStarting) return;
+        setSessionMessage('');
+        setIsStarting(true);
+        socket.emit('start_question', { pin, token });
+    };
+    const abortSession = () => { if (!socket) return; if (!window.confirm('End this session? All players will be disconnected.')) return; socket.emit('leave_session', { pin, role: 'host', token }); navigate('/host'); };
     const toggleMode = (mode) => { if (socket) socket.emit('change_mode', { pin, mode, token }); };
     const onlinePlayers = useMemo(() => players.filter((p) => !!p.socketId), [players]);
     const offlinePlayers = useMemo(() => players.filter((p) => !p.socketId), [players]);
@@ -70,6 +98,15 @@ const Lobby = () => {
     const basename = import.meta.env.VITE_APP_BASENAME || '';
     const joinUrl = `${window.location.origin}${basename}/join?pin=${pin}`;
     const canStart = onlinePlayers.length > 0;
+
+    useEffect(() => {
+        if (!isStarting) return undefined;
+        const timeoutId = window.setTimeout(() => {
+            setIsStarting(false);
+            setSessionMessage('The start request is taking longer than expected. Check the connection, then try again.');
+        }, 10000);
+        return () => window.clearTimeout(timeoutId);
+    }, [isStarting]);
 
     const copyJoinLink = async () => {
         try {
@@ -96,6 +133,12 @@ const Lobby = () => {
                 </div>
             </header>
 
+            {sessionMessage && (
+                <div role="alert" className="w-full max-w-7xl mb-5 relative z-20 rounded-xl border border-amber-100/50 bg-amber-950/35 px-4 py-3 text-sm font-semibold text-amber-50 shadow-lg">
+                    {sessionMessage}
+                </div>
+            )}
+
             <div className="w-full max-w-7xl flex flex-col gap-6 sm:gap-10 items-center justify-center mb-8 sm:mb-10 relative z-20">
                 <div className="w-full flex flex-col md:flex-row gap-4 sm:gap-8 items-stretch justify-center">
                     <div className="flex flex-col gap-6 w-full max-w-md">
@@ -119,7 +162,7 @@ const Lobby = () => {
                             </div>
                         </Motion.div>
                     </div>
-                    <div className="flex flex-col items-center justify-center gap-4 sm:gap-6 w-full max-w-md"><Motion.button whileHover={canStart ? { scale: 1.03, translateY: -2 } : {}} whileTap={canStart ? { scale: 0.98 } : {}} onClick={startGame} disabled={!canStart} type="button" className={`w-full min-h-[88px] sm:min-h-[112px] py-5 sm:py-8 font-black text-xl sm:text-3xl shadow-xl flex items-center justify-center gap-3 sm:gap-4 transition-all ${canStart ? 'bg-white text-quizmoto-purple shadow-[0_8px_0_0_rgba(255,255,255,0.2)] hover:shadow-none hover:translate-y-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/40' : 'bg-white/10 text-white cursor-not-allowed border border-white/30'}`}><Play size={28} className="sm:w-9 sm:h-9" fill="currentColor" /> START GAME</Motion.button><div className="text-center"><p className="font-black text-[#e8fffc] text-[10px] uppercase tracking-[0.3em]">{canStart ? `${onlinePlayers.length} player${onlinePlayers.length === 1 ? '' : 's'} ready` : 'Waiting for active players…'}</p><p className="mt-2 text-xs font-semibold text-[#dcf5f1]">{canStart ? 'Start when everyone is ready. The host controls the pace.' : 'At least one active player is required to start.'}</p></div></div>
+                    <div className="flex flex-col items-center justify-center gap-4 sm:gap-6 w-full max-w-md"><Motion.button whileHover={canStart && !isStarting ? { scale: 1.03, translateY: -2 } : {}} whileTap={canStart && !isStarting ? { scale: 0.98 } : {}} onClick={startGame} disabled={!canStart || isStarting} type="button" className={`w-full min-h-[88px] sm:min-h-[112px] py-5 sm:py-8 font-black text-xl sm:text-3xl shadow-xl flex items-center justify-center gap-3 sm:gap-4 transition-all ${canStart && !isStarting ? 'bg-white text-quizmoto-purple shadow-[0_8px_0_0_rgba(255,255,255,0.2)] hover:shadow-none hover:translate-y-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/40' : 'bg-white/10 text-white cursor-not-allowed border border-white/30'}`}><Play size={28} className="sm:w-9 sm:h-9" fill="currentColor" /> {isStarting ? 'STARTING…' : 'START GAME'}</Motion.button><div className="text-center"><p className="font-black text-[#e8fffc] text-[10px] uppercase tracking-[0.3em]">{canStart ? `${onlinePlayers.length} player${onlinePlayers.length === 1 ? '' : 's'} ready` : 'Waiting for active players…'}</p><p className="mt-2 text-xs font-semibold text-[#dcf5f1]">{canStart ? 'Start when everyone is ready. The host controls the pace.' : 'At least one active player is required to start.'}</p></div></div>
                 </div>
 
                 <Motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full bg-white/10 backdrop-blur-md rounded-[24px] sm:rounded-[48px] p-4 sm:p-8 border border-white/25 min-h-[240px] sm:min-h-[400px]">

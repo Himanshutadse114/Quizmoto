@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import { ArrowLeft, Trophy, Users, Calendar, ChevronDown, ChevronUp, Download, Crown, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { apiUrl } from '../../config';
 import AvatarDisplay from '../../components/AvatarDisplay';
 
@@ -32,7 +32,7 @@ const Reports = () => {
             }
         };
         fetchReports();
-    }, [token]);
+    }, [token, API_URL]);
 
     const downloadReport = async (session, format) => {
         if (!session?.id) {
@@ -81,7 +81,7 @@ const Reports = () => {
                             return;
                         }
                     }
-                } catch (_) {}
+                } catch { /* The fallback notice below covers unreadable responses. */ }
                 alert(msg);
                 return;
             }
@@ -92,14 +92,14 @@ const Reports = () => {
                     const text = await res.data.text();
                     const data = JSON.parse(text);
                     if (data && data.message) message = data.message;
-                } catch (_) {}
+                } catch { /* The fallback notice below covers unreadable responses. */ }
                 alert(message);
                 return;
             }
 
             const ext = format === 'pdf' ? 'pdf' : 'xlsx';
             const quizTitle = String(session.Quiz?.title || 'Quiz')
-                .replace(/[^\w\-]+/g, '_')
+                .replace(/[^\w-]+/g, '_')
                 .slice(0, 40);
             const date = new Date(session.updatedAt || Date.now()).toISOString().slice(0, 10);
             const filename = `Quizmoto_${quizTitle}_${date}.${ext}`;
@@ -136,7 +136,7 @@ const Reports = () => {
     return (
         <div className="p-4 md:p-8 max-w-5xl mx-auto relative z-10">
             <header className="flex items-center gap-4 mb-8 pb-4 border-b border-white/10">
-                <button onClick={() => navigate('/dashboard')} className="p-2 bg-white/8 hover:bg-white/15 rounded-lg transition-all">
+                <button onClick={() => navigate('/host')} className="p-2 bg-white/8 hover:bg-white/15 rounded-lg transition-all">
                     <ArrowLeft size={20} />
                 </button>
                 <div>
@@ -157,7 +157,7 @@ const Reports = () => {
                         const isExpanded = expandedId === session.id;
 
                         return (
-                            <motion.div
+                            <Motion.div
                                 key={session.id}
                                 initial={{ opacity: 0, y: 12 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -214,7 +214,7 @@ const Reports = () => {
 
                                 <AnimatePresence>
                                     {isExpanded && (
-                                        <motion.div
+                                        <Motion.div
                                             initial={{ height: 0, opacity: 0 }}
                                             animate={{ height: 'auto', opacity: 1 }}
                                             exit={{ height: 0, opacity: 0 }}
@@ -309,10 +309,10 @@ const Reports = () => {
                                                 </table>
                                                 </div>
                                             </div>
-                                        </motion.div>
+                                        </Motion.div>
                                     )}
                                 </AnimatePresence>
-                            </motion.div>
+                            </Motion.div>
                         );
                     })}
                 </div>

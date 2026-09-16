@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSocket } from '../../context/SocketContext';
 import { motion as Motion } from 'framer-motion';
+import { exitLiveQuizFullscreen, requestLiveQuizFullscreen } from '../../utils/fullscreen';
 
 const Join = () => {
     const [searchParams] = useSearchParams();
@@ -110,6 +111,7 @@ const Join = () => {
         const onError = (msg) => {
             setResuming(false);
             setError(typeof msg === 'string' ? msg : (msg && msg.message) || 'Join failed');
+            void exitLiveQuizFullscreen();
             if (msg === 'Game not found' || msg === 'Game is already finished') {
                 try {
                     localStorage.removeItem('player_info');
@@ -169,24 +171,7 @@ const Join = () => {
         if (gameMode === 'team' && !teamName) return setError('Please select a team');
 
         setError('');
-        const docElm = document.documentElement;
-        try {
-            const requestFs = docElm.requestFullscreen ||
-                docElm.webkitRequestFullscreen ||
-                docElm.mozRequestFullScreen ||
-                docElm.msRequestFullscreen;
-
-            if (requestFs) {
-                const fullscreenResult = requestFs.call(docElm);
-                if (fullscreenResult && typeof fullscreenResult.catch === 'function') {
-                    fullscreenResult.catch(err => {
-                        console.log(`Error attempting to enable full-screen mode: ${err.message}`);
-                    });
-                }
-            }
-        } catch (err) {
-            console.warn('Fullscreen API not supported', err);
-        }
+        void requestLiveQuizFullscreen();
 
         const info = JSON.parse(localStorage.getItem('player_info') || '{}');
         const storedToken = (info.pin === pin && info.nickname === nickname) ? info.token : null;
