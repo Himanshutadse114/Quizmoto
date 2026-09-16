@@ -10,6 +10,10 @@
     return field ? String(field.value || '').trim() : '';
   }
 
+  function consentField(form) {
+    return form.querySelector('input[type="checkbox"]');
+  }
+
   function setBusy(form, busy) {
     var submit = form.querySelector('input[type="submit"]');
     if (!submit) return;
@@ -34,6 +38,7 @@
   }
 
   async function submitContact(form) {
+    var consent = consentField(form);
     var payload = {
       name: value(form, 'name'),
       email: value(form, 'email'),
@@ -41,11 +46,18 @@
       company: value(form, 'Company'),
       message: value(form, 'Message'),
       website: value(form, 'website'),
+      consent: Boolean(consent && consent.checked),
       source: 'LMSGEN Contact page'
     };
 
     if (!payload.name || !payload.email || !payload.phone) {
       showResult(form, false, 'Please complete your name, email and phone number.');
+      return;
+    }
+
+    if (!payload.consent) {
+      showResult(form, false, 'Please agree to the privacy policy and marketing communications before submitting.');
+      if (consent) consent.focus();
       return;
     }
 
@@ -76,6 +88,19 @@
     form.dataset.smtpWired = 'true';
     form.setAttribute('method', 'post');
     form.removeAttribute('action');
+
+    var consent = consentField(form);
+    if (consent) {
+      var customCheckbox = consent.parentElement && consent.parentElement.querySelector('.ct-form-checkbox');
+      var syncConsent = function () {
+        if (customCheckbox) customCheckbox.classList.toggle('w--redirected-checked', consent.checked);
+        consent.setAttribute('aria-checked', consent.checked ? 'true' : 'false');
+      };
+      consent.required = true;
+      consent.addEventListener('change', syncConsent);
+      consent.addEventListener('input', syncConsent);
+      syncConsent();
+    }
 
     if (!form.elements.website) {
       var honeypot = document.createElement('input');

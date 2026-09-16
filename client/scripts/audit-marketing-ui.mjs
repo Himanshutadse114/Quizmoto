@@ -54,8 +54,18 @@ function auditCtaRoutes(html, label) {
   const ctas = (html.match(/<a\b[^>]*>/gi) || []).filter(isConversionCta);
   check(ctas.length > 0, `${label} has no detectable conversion CTA.`);
   for (const tag of ctas) {
-    check(attribute(tag, 'href') === '/contact', `${label} contains a conversion CTA that does not route to /contact.`);
-    check(attribute(tag, 'data-lmsgen-cta-route') === 'contact', `${label} contains a conversion CTA without the contact-route marker.`);
+    const route = attribute(tag, 'data-lmsgen-cta-route');
+    const expected = route === 'platform' ? '/login' : '/contact';
+    check(attribute(tag, 'href') === expected, `${label} contains a conversion CTA with an incorrect destination.`);
+    check(route === 'contact' || route === 'platform', `${label} contains a conversion CTA without a recognized route marker.`);
+  }
+
+  const exploreCtas = html.match(/<a\b[^>]*>\s*Explore LMSGEN\s*<\/a\s*>/gi) || [];
+  check(exploreCtas.length > 0, `${label} has no Explore LMSGEN platform CTA.`);
+  for (const anchor of exploreCtas) {
+    const tag = (anchor.match(/^<a\b[^>]*>/i) || [])[0] || '';
+    check(attribute(tag, 'href') === '/login', `${label} contains an Explore LMSGEN CTA that does not route to the platform.`);
+    check(attribute(tag, 'data-lmsgen-cta-route') === 'platform', `${label} contains an Explore LMSGEN CTA without the platform-route marker.`);
   }
 }
 
@@ -97,6 +107,9 @@ const about = await read(path.join(landingRoot, 'about', 'index.html'));
 check(about.includes('ab-hero-carousel-w'), 'About page lost its hero carousel markup.');
 check(!about.includes('.ab-hero-carousel-w,.ab-hero-img,.ab-hero-carousel-slide{display:none'), 'About page contains a forced carousel hide rule.');
 
+const home = await read(path.join(landingRoot, 'index.html'));
+check(/href=["']\/contact["'][^>]*>[\s\S]*?Let's discuss[\s\S]*?<\/a/i.test(home), 'Homepage Let\'s discuss CTA is missing or does not route to Contact.');
+
 const contact = await read(path.join(landingRoot, 'contact', 'index.html'));
 const canonicalContact = await read(path.join(distRoot, 'contact', 'index.html'));
 check(contact.includes('id="wf-form-Contact-Form"'), 'Contact form is missing from the final page.');
@@ -110,6 +123,13 @@ check(canonicalContact.includes('lmsgen-contact-refresh.css'), 'Contact refresh 
 const contactRefreshCss = await read(path.join(landingRoot, 'css', 'lmsgen-contact-refresh.css'));
 check(contactRefreshCss.includes('grid-template-areas'), 'Contact refresh CSS is missing the responsive page grid.');
 check(contactRefreshCss.includes('lmsgen-contact-context'), 'Contact refresh CSS is missing the product context panel styles.');
+check(contactRefreshCss.includes('.ct-form-checkbox.w--redirected-checked'), 'Contact refresh CSS is missing the visible checkbox checked state.');
+check(contactRefreshCss.includes('.ct-form-checkbox-c input[type="checkbox"]'), 'Contact refresh CSS is missing the native checkbox interaction layer.');
+
+const contactFormScript = await read(path.join(landingRoot, 'js', 'contact-form.js'));
+check(contactFormScript.includes("consent.required = true"), 'Contact form consent is not required.');
+check(contactFormScript.includes("w--redirected-checked"), 'Contact form does not synchronize its visual checkbox state.');
+check(contactFormScript.includes("payload.consent"), 'Contact form submission does not validate consent.');
 
 const blog = await read(path.join(landingRoot, 'blog', 'index.html'));
 check(!/contENt for you/.test(blog), 'Blog hero still contains broken mixed-case copy.');

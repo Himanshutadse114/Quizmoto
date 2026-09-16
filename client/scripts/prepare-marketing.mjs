@@ -47,7 +47,7 @@ const HOME_REPLACEMENTS = [
   ['Publish on LMSGEN and invite your team', 'Engage Teams with Quizmoto'],
   ['Track Progress with Clear Analytics', 'Track Progress in LMSGEN'],
   ['Or export SCORM to your own LMS', 'Track Progress in LMSGEN'],
-  ['<div>How It Works</div>', '<div>See solutions</div>'],
+  ['<div>How It Works</div>', '<div>Let\'s discuss</div>'],
 ];
 
 const FEATURE_CARD_TEXT_REPLACEMENTS = [

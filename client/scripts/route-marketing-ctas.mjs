@@ -34,35 +34,51 @@ function isConversionCta(tag) {
     || /book-a-demo/i.test(control);
 }
 
+function setDestination(tag, href, route) {
+  let next = tag;
+  if (/\bhref=["'][^"']*["']/i.test(next)) {
+    next = next.replace(/\bhref=(["'])[^"']*\1/i, `href="${href}"`);
+  } else {
+    next = next.replace(/>$/, ` href="${href}">`);
+  }
+
+  if (/\bdata-lmsgen-cta-route=["'][^"']*["']/i.test(next)) {
+    next = next.replace(/\bdata-lmsgen-cta-route=(["'])[^"']*\1/i, `data-lmsgen-cta-route="${route}"`);
+  } else {
+    next = next.replace(/>$/, ` data-lmsgen-cta-route="${route}">`);
+  }
+  return next;
+}
+
 function routeCtas(html) {
-  let count = 0;
-  const output = html.replace(/<a\b[^>]*>/gi, (tag) => {
+  let contactCount = 0;
+  let output = html.replace(/<a\b[^>]*>/gi, (tag) => {
     if (!isConversionCta(tag)) return tag;
-
-    let next = tag;
-    if (/\bhref=["'][^"']*["']/i.test(next)) {
-      next = next.replace(/\bhref=(["'])[^"']*\1/i, 'href="/contact"');
-    } else {
-      next = next.replace(/>$/, ' href="/contact">');
-    }
-
-    if (!/\bdata-lmsgen-cta-route=/i.test(next)) {
-      next = next.replace(/>$/, ' data-lmsgen-cta-route="contact">');
-    }
-    if (next !== tag) count += 1;
+    const next = setDestination(tag, '/contact', 'contact');
+    if (next !== tag) contactCount += 1;
     return next;
   });
-  return { html: output, count };
+
+  let platformCount = 0;
+  output = output.replace(/<a\b[^>]*>\s*Explore LMSGEN\s*<\/a\s*>/gi, (anchor) => {
+    const next = anchor.replace(/^<a\b[^>]*>/i, (tag) => setDestination(tag, '/login', 'platform'));
+    if (next !== anchor) platformCount += 1;
+    return next;
+  });
+
+  return { html: output, contactCount, platformCount };
 }
 
 const files = await htmlFiles(landingRoot);
-let routed = 0;
+let contactRouted = 0;
+let platformRouted = 0;
 
 for (const file of files) {
   const source = await fs.readFile(file, 'utf8');
   const result = routeCtas(source);
-  routed += result.count;
+  contactRouted += result.contactCount;
+  platformRouted += result.platformCount;
   await fs.writeFile(file, result.html, 'utf8');
 }
 
-console.log(`Routed ${routed} marketing CTAs to /contact across ${files.length} pages.`);
+console.log(`Routed ${contactRouted} sales CTAs to /contact and ${platformRouted} Explore LMSGEN CTAs to /login across ${files.length} pages.`);

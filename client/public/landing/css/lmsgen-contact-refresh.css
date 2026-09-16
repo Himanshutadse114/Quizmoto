@@ -365,6 +365,8 @@ body.lmsgen-page-contact .ct-form-checkbox-c {
   display: flex !important;
   gap: 1rem !important;
   align-items: flex-start !important;
+  position: relative !important;
+  cursor: pointer !important;
 }
 
 body.lmsgen-page-contact .ct-form-checkbox {
@@ -375,6 +377,43 @@ body.lmsgen-page-contact .ct-form-checkbox {
   border: 1px solid #aacac5 !important;
   border-radius: 0.45rem !important;
   background: #ffffff !important;
+  position: relative !important;
+  display: grid !important;
+  place-items: center !important;
+  pointer-events: none !important;
+}
+
+body.lmsgen-page-contact .ct-form-checkbox-c input[type="checkbox"] {
+  position: absolute !important;
+  top: 0.15rem !important;
+  left: 0 !important;
+  z-index: 2 !important;
+  width: 1.9rem !important;
+  height: 1.9rem !important;
+  margin: 0 !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
+}
+
+body.lmsgen-page-contact .ct-form-checkbox.w--redirected-checked {
+  border-color: #087d73 !important;
+  background: #087d73 !important;
+  background-image: none !important;
+}
+
+body.lmsgen-page-contact .ct-form-checkbox.w--redirected-checked::after {
+  content: "✓";
+  color: #ffffff;
+  font-family: Arial, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+body.lmsgen-page-contact .ct-form-checkbox-c input[type="checkbox"]:focus-visible + .ct-form-checkbox-label,
+body.lmsgen-page-contact .ct-form-checkbox-c:focus-within .ct-form-checkbox {
+  outline: 3px solid rgba(0, 169, 157, 0.22) !important;
+  outline-offset: 3px !important;
 }
 
 body.lmsgen-page-contact .ct-form-checkbox-label {
@@ -383,6 +422,8 @@ body.lmsgen-page-contact .ct-form-checkbox-label {
   font-size: 1.25rem !important;
   font-weight: 400 !important;
   line-height: 1.55 !important;
+  padding-left: 0 !important;
+  cursor: pointer !important;
 }
 
 body.lmsgen-page-contact .w-form-formrecaptcha {
