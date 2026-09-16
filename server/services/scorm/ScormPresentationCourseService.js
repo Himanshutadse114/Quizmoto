@@ -108,11 +108,12 @@ async function generatePresentationCourse({ payload = {}, userId, onProgress = n
         const quiz = await generateQuiz({
             topic: title,
             description: String(payload.description || '').trim(),
-            fileBase64: rendered.pdfBuffer.toString('base64'),
-            mimeType: 'application/pdf',
-            fileName: `${path.basename(source.sourceName, path.extname(source.sourceName)) || 'presentation'}.pdf`,
+            fileBase64: rendered.quizSourceBuffer.toString('base64'),
+            mimeType: rendered.quizSourceMimeType,
+            fileName: rendered.quizSourceFileName,
             maxUploadMb: 100
         });
+        rendered.quizSourceBuffer = null;
         rendered.pdfBuffer = null;
 
         checkCancelled();
@@ -142,6 +143,7 @@ async function generatePresentationCourse({ payload = {}, userId, onProgress = n
                 height: rendered.height,
                 aspectRatio: rendered.aspectRatio,
                 totalSlideBytes: rendered.totalBytes,
+                renderEngine: rendered.renderEngine,
                 theme: rendered.theme
             },
             quiz: {
@@ -224,6 +226,7 @@ async function generatePresentationCourse({ payload = {}, userId, onProgress = n
             title: pkg.title,
             courseMode: 'presentation',
             slideCount: rendered.slides.length,
+            renderEngine: rendered.renderEngine,
             quizQuestionCount: quiz.questions.length,
             theme: rendered.theme,
             errorMessage: pkg.errorMessage

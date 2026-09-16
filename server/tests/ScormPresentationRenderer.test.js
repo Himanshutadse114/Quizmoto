@@ -6,6 +6,8 @@ const {
     sanitizePptxForCompatibility
 } = require('../services/scorm/ScormPresentationRenderer');
 const JSZip = require('jszip');
+const fs = require('fs');
+const path = require('path');
 
 async function sampleSlide(accent) {
     return sharp({
@@ -73,5 +75,18 @@ describe('ScormPresentationRenderer', () => {
         expect(rels).not.to.include('notesSlide');
         expect(rels).to.include('Target="../media/image.png"');
         expect(contentTypes).not.to.include('/ppt/notesSlides/');
+    });
+
+    it('ships an independent PPTX renderer before the LibreOffice fallback', () => {
+        const rendererSource = fs.readFileSync(path.join(__dirname, '..', 'services', 'scorm', 'ScormPresentationRenderer.js'), 'utf8');
+        const runnerSource = fs.readFileSync(path.join(__dirname, '..', 'utils', 'render_pptx_svg.mjs'), 'utf8');
+        const directRender = rendererSource.indexOf('rawSlides = await renderPptxWithSvgEngine');
+        const officeRender = rendererSource.indexOf('const pdfPath = await convertPptxToPdf', directRender);
+
+        expect(directRender).to.be.greaterThan(-1);
+        expect(officeRender).to.be.greaterThan(directRender);
+        expect(rendererSource).to.include('--experimental-wasm-imported-strings');
+        expect(runnerSource).to.include("import { PptxRenderer } from 'pptx-svg'");
+        expect(runnerSource).to.include('renderer.renderSlideSvg(index)');
     });
 });

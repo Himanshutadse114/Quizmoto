@@ -295,6 +295,37 @@ async function renderPdfPages(pdfPath, tempDir) {
     return Promise.all(names.map((name) => fs.readFile(path.join(tempDir, name))));
 }
 
+async function renderPptxWithSvgEngine(sourcePath, tempDir) {
+    const outputDir = path.join(tempDir, 'pptx-svg-output');
+    const runnerPath = path.join(__dirname, '..', '..', 'utils', 'render_pptx_svg.mjs');
+    await fs.mkdir(outputDir, { recursive: true });
+
+    await runCommand(process.execPath, [
+        '--experimental-wasm-imported-strings',
+        '--experimental-wasm-stringref',
+        runnerPath,
+        sourcePath,
+        outputDir
+    ], {
+        timeout: 240000,
+        label: 'PowerPoint compatibility renderer',
+        missingCode: 'SCORM_PRESENTATION_FALLBACK_MISSING',
+        failureCode: 'SCORM_PRESENTATION_FALLBACK_FAILED'
+    });
+
+    const names = (await fs.readdir(outputDir))
+        .filter((name) => /^fallback-slide-\d+\.svg$/i.test(name))
+        .sort((a, b) => Number(a.match(/(\d+)\.svg$/i)?.[1] || 0) - Number(b.match(/(\d+)\.svg$/i)?.[1] || 0));
+
+    if (!names.length) {
+        const error = new Error('The PowerPoint compatibility renderer produced no slides.');
+        error.code = 'SCORM_PRESENTATION_EMPTY';
+        throw error;
+    }
+
+    return Promise.all(names.map((name) => fs.readFile(path.join(outputDir, name))));
+}
+
 async function sanitizePptxForCompatibility(sourceBuffer) {
     const archive = await JSZip.loadAsync(sourceBuffer);
     const names = Object.keys(archive.files);
@@ -446,14 +477,51 @@ async function renderPresentation({ sourceBuffer, mimeType, fileName }) {
         const sourceName = kind === 'pdf' ? 'source.pdf' : 'source.pptx';
         const sourcePath = path.join(tempDir, sourceName);
         await fs.writeFile(sourcePath, sourceBuffer);
-        const pdfPath = kind === 'pdf' ? sourcePath : await convertPptxToPdf(sourcePath, tempDir);
-        const pdfBuffer = await fs.readFile(pdfPath);
-        const rawSlides = await renderPdfPages(pdfPath, tempDir);
+        let pdfBuffer = null;
+        let rawSlides = null;
+        let renderEngine = kind === 'pdf' ? 'pdf' : 'pptx-svg';
+
+        if (kind === 'pdf') {
+            pdfBuffer = await fs.readFile(sourcePath);
+            rawSlides = await renderPdfPages(sourcePath, tempDir);
+        } else {
+            try {
+                // Render OOXML directly first. This preserves Gamma/PowerPoint
+                // exports that LibreOffice rejects and avoids a heavyweight
+                // office-process startup for every uploaded deck.
+                rawSlides = await renderPptxWithSvgEngine(sourcePath, tempDir);
+            } catch (svgError) {
+                try {
+                    const pdfPath = await convertPptxToPdf(sourcePath, tempDir);
+                    pdfBuffer = await fs.readFile(pdfPath);
+                    rawSlides = await renderPdfPages(pdfPath, tempDir);
+                    renderEngine = 'libreoffice';
+                } catch (officeError) {
+                    const error = commandError(
+                        'The PowerPoint deck could not be rendered by either available presentation engine.',
+                        'SCORM_PRESENTATION_RENDER_FAILED',
+                        officeError
+                    );
+                    error.svgError = svgError;
+                    throw error;
+                }
+            }
+        }
+
         const processed = await processRasterSlides(rawSlides);
+        const quizSourceBuffer = pdfBuffer || sourceBuffer;
         return {
             ...processed,
             kind,
-            pdfBuffer
+            pdfBuffer,
+            quizSourceBuffer,
+            quizSourceMimeType: pdfBuffer
+                ? 'application/pdf'
+                : 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            quizSourceFileName: pdfBuffer
+                ? `${path.basename(fileName || 'presentation', path.extname(fileName || '')) || 'presentation'}.pdf`
+                : (fileName || 'presentation.pptx'),
+            renderEngine
         };
     } finally {
         await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
@@ -468,5 +536,6 @@ module.exports = {
     extractTheme,
     processRasterSlides,
     sanitizePptxForCompatibility,
+    renderPptxWithSvgEngine,
     renderPresentation
 };
