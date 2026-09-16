@@ -73,7 +73,9 @@ describe('ScormPresentationPackageBuilder', () => {
         expect(html).to.not.include('--primary:#f97316');
         expect(html).to.include('object-fit:contain');
         expect(html).to.include('class="course-rail"');
-        expect(html).to.include('grid-template-columns:clamp(124px,9vw,144px) minmax(0,1fr)');
+        expect(html).to.include('--rail-width:clamp(168px,13vw,220px)');
+        expect(html).to.include('grid-template-columns:var(--rail-width) minmax(0,1fr)');
+        expect(html).to.include('function fitRailToViewport()');
         expect(html).to.include('id="presentation"');
         expect(html).to.include('root.requestFullscreen||root.webkitRequestFullscreen');
         expect(html).to.not.include('class="topbar"');

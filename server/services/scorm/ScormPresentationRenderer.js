@@ -510,30 +510,31 @@ async function renderPresentation({ sourceBuffer, mimeType, fileName }) {
         await fs.writeFile(sourcePath, sourceBuffer);
         let pdfBuffer = null;
         let rawSlides = null;
-        let renderEngine = kind === 'pdf' ? 'pdf' : 'libreoffice';
+        let renderEngine = kind === 'pdf' ? 'pdf' : 'pptx-svg';
 
         if (kind === 'pdf') {
             pdfBuffer = await fs.readFile(sourcePath);
             rawSlides = await renderPdfPages(sourcePath, tempDir);
         } else {
             try {
-                // The office/PDF path respects PowerPoint text fitting, embedded
-                // fonts and clipping more closely. The SVG engine remains a
-                // compatibility fallback for malformed Gamma/OOXML exports.
-                const pdfPath = await convertPptxToPdf(sourcePath, tempDir);
-                pdfBuffer = await fs.readFile(pdfPath);
-                rawSlides = await renderPdfPages(pdfPath, tempDir);
-            } catch (officeError) {
+                // Use the OOXML-aware renderer first. Its font-face names are
+                // normalized before rasterization, avoiding LibreOffice font
+                // substitution that can enlarge Gamma/Lato headings and clip
+                // text which fits correctly in PowerPoint.
+                rawSlides = await renderPptxWithSvgEngine(sourcePath, tempDir);
+            } catch (svgError) {
                 try {
-                    rawSlides = await renderPptxWithSvgEngine(sourcePath, tempDir);
-                    renderEngine = 'pptx-svg';
-                } catch (svgError) {
+                    const pdfPath = await convertPptxToPdf(sourcePath, tempDir);
+                    pdfBuffer = await fs.readFile(pdfPath);
+                    rawSlides = await renderPdfPages(pdfPath, tempDir);
+                    renderEngine = 'libreoffice';
+                } catch (officeError) {
                     const error = commandError(
                         'The PowerPoint deck could not be rendered by either available presentation engine.',
                         'SCORM_PRESENTATION_RENDER_FAILED',
-                        svgError
+                        officeError
                     );
-                    error.officeError = officeError;
+                    error.svgError = svgError;
                     throw error;
                 }
             }

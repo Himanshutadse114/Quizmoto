@@ -87,14 +87,14 @@ describe('ScormPresentationRenderer', () => {
         expect(normalized).not.to.include('Lato Bold');
     });
 
-    it('prefers the fidelity-preserving office renderer before the compatibility fallback', () => {
+    it('uses normalized OOXML rendering before the LibreOffice compatibility fallback', () => {
         const rendererSource = fs.readFileSync(path.join(__dirname, '..', 'services', 'scorm', 'ScormPresentationRenderer.js'), 'utf8');
         const runnerSource = fs.readFileSync(path.join(__dirname, '..', 'utils', 'render_pptx_svg.mjs'), 'utf8');
-        const officeRender = rendererSource.indexOf('const pdfPath = await convertPptxToPdf');
-        const directRender = rendererSource.indexOf('rawSlides = await renderPptxWithSvgEngine', officeRender);
+        const directRender = rendererSource.indexOf('rawSlides = await renderPptxWithSvgEngine');
+        const officeRender = rendererSource.indexOf('const pdfPath = await convertPptxToPdf', directRender);
 
-        expect(officeRender).to.be.greaterThan(-1);
-        expect(directRender).to.be.greaterThan(officeRender);
+        expect(directRender).to.be.greaterThan(-1);
+        expect(officeRender).to.be.greaterThan(directRender);
         expect(rendererSource).to.include('--experimental-wasm-imported-strings');
         expect(runnerSource).to.include("import { PptxRenderer } from 'pptx-svg'");
         expect(runnerSource).to.include('renderer.renderSlideSvg(index)');
