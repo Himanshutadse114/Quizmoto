@@ -1,0 +1,248 @@
+'use strict';
+
+const JSZip = require('jszip');
+
+function escapeXml(value) {
+    return String(value || '').replace(/[<>&"']/g, (character) => ({
+        '<': '&lt;',
+        '>': '&gt;',
+        '&': '&amp;',
+        '"': '&quot;',
+        "'": '&apos;'
+    }[character]));
+}
+
+function safeHex(value, fallback) {
+    const candidate = String(value || '').trim();
+    return /^#[0-9a-f]{6}$/i.test(candidate) ? candidate.toLowerCase() : fallback;
+}
+
+function normalizeTheme(theme = {}) {
+    return {
+        background: safeHex(theme.background, '#f8fafc'),
+        surface: safeHex(theme.surface, '#ffffff'),
+        primary: safeHex(theme.primary, '#147882'),
+        secondary: safeHex(theme.secondary, '#4fc9bf'),
+        text: safeHex(theme.text, '#111827'),
+        muted: safeHex(theme.muted, '#475467'),
+        primaryText: safeHex(theme.primaryText, '#ffffff'),
+        mode: theme.mode === 'dark' ? 'dark' : 'light'
+    };
+}
+
+function normalizeQuiz(quiz = {}) {
+    return {
+        title: String(quiz.title || 'Knowledge Check').trim().slice(0, 120) || 'Knowledge Check',
+        questions: (Array.isArray(quiz.questions) ? quiz.questions : []).map((question, index) => ({
+            id: `question_${index + 1}`,
+            question: String(question.question || question.questionText || '').trim(),
+            options: (Array.isArray(question.options) ? question.options : []).slice(0, 4).map((option) => String(option || '').trim()),
+            correctAnswer: Number.isInteger(question.correctAnswer)
+                ? question.correctAnswer
+                : Number(question.correctIndex),
+            explanation: String(question.explanation || '').trim()
+        })).filter((question) => (
+            question.question &&
+            question.options.length === 4 &&
+            question.options.every(Boolean) &&
+            question.correctAnswer >= 0 &&
+            question.correctAnswer < 4
+        ))
+    };
+}
+
+const SCORM_WRAPPER = `var findAPITries=0;
+function findAPI(win){while((win.API==null)&&(win.parent!=null)&&(win.parent!=win)){findAPITries++;if(findAPITries>500)return null;win=win.parent;}return win.API;}
+function getAPI(){var api=findAPI(window);if((api==null)&&(window.opener!=null)){try{api=findAPI(window.opener);}catch(e){}}return api;}
+var API=getAPI();
+function doLMSInitialize(){if(!API)return "false";return API.LMSInitialize("");}
+function doLMSFinish(){if(!API)return "false";return API.LMSFinish("");}
+function doLMSGetValue(name){if(!API)return "";return API.LMSGetValue(name);}
+function doLMSSetValue(name,value){if(!API)return "false";return API.LMSSetValue(name,value);}
+function doLMSCommit(){if(!API)return "false";return API.LMSCommit("");}
+`;
+
+function buildPlayerHtml({ title, slides, quiz, theme, passScore }) {
+    const safeTitle = escapeXml(title);
+    const data = JSON.stringify({
+        title,
+        slides: slides.map((slide) => ({ src: slide.path, width: slide.width, height: slide.height })),
+        quiz,
+        passScore
+    }).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+
+    return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="generator" content="LMSGen Presentation Import">
+<title>${safeTitle}</title>
+<script src="scorm_api_wrapper.js"></script>
+<style>
+:root{--background:${theme.background};--surface:${theme.surface};--primary:${theme.primary};--secondary:${theme.secondary};--text:${theme.text};--muted:${theme.muted};--primary-text:${theme.primaryText};--ok:#15803d;--ok-bg:#dcfce7;--bad:#b42318;--bad-bg:#fee4e2}
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#080b10;color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button{font:inherit}
+#app{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;background:#080b10}
+.topbar{min-height:54px;padding:max(10px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 10px max(14px,env(safe-area-inset-left));display:flex;align-items:center;gap:14px;background:color-mix(in srgb,var(--background) 94%,#000);border-bottom:1px solid color-mix(in srgb,var(--text) 14%,transparent)}
+.title{margin:0;min-width:0;max-width:44vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.9rem;font-weight:800;color:var(--text)}
+.progress-track{height:8px;flex:1;min-width:40px;overflow:hidden;border-radius:999px;background:color-mix(in srgb,var(--text) 17%,transparent)}
+.progress-fill{height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,var(--primary),var(--secondary));transition:width .2s ease}
+.progress-label{min-width:42px;text-align:right;font-size:.75rem;font-weight:800;color:var(--muted)}
+main{position:relative;min-height:0;overflow:hidden}
+.page{position:absolute;inset:0;display:none}
+.page.active{display:flex}
+.presentation-page{align-items:center;justify-content:center;background:#080b10;padding:clamp(6px,1.5vw,18px)}
+.presentation-page img{display:block;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;background:#fff;box-shadow:0 14px 50px rgba(0,0,0,.38)}
+.quiz-page,.result-page{align-items:center;justify-content:center;overflow:auto;padding:clamp(16px,4vw,48px);background:radial-gradient(circle at 85% 10%,color-mix(in srgb,var(--secondary) 22%,transparent),transparent 36%),var(--background)}
+.quiz-card,.result-card{width:min(780px,100%);padding:clamp(20px,4vw,42px);border:1px solid color-mix(in srgb,var(--text) 14%,transparent);border-radius:24px;background:var(--surface);box-shadow:0 24px 70px rgba(0,0,0,.18)}
+.eyebrow{margin:0 0 10px;color:var(--primary);font-size:.72rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase}
+.question{margin:0 0 24px;font-size:clamp(1.25rem,3vw,2rem);line-height:1.18;color:var(--text)}
+.options{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.option{min-height:58px;padding:14px 16px;border:2px solid color-mix(in srgb,var(--text) 14%,transparent);border-radius:15px;background:color-mix(in srgb,var(--background) 35%,var(--surface));color:var(--text);font-weight:700;text-align:left;cursor:pointer;transition:transform .12s ease,border-color .12s ease}
+.option:hover:not(:disabled),.option:focus-visible:not(:disabled){border-color:var(--primary);transform:translateY(-1px);outline:none}
+.option.correct{border-color:var(--ok);background:var(--ok-bg);color:#14532d}
+.option.incorrect{border-color:var(--bad);background:var(--bad-bg);color:#7f1d1d}
+.option:disabled{cursor:default}
+.feedback{display:none;margin-top:16px;padding:14px 16px;border-radius:14px;line-height:1.45;font-weight:650}
+.feedback.show{display:block}
+.feedback.correct{background:var(--ok-bg);color:#14532d}
+.feedback.incorrect{background:var(--bad-bg);color:#7f1d1d}
+.result-card{text-align:center}
+.score-ring{width:152px;height:152px;margin:24px auto;display:grid;place-items:center;border-radius:50%;background:conic-gradient(var(--primary) var(--score-angle),color-mix(in srgb,var(--text) 13%,transparent) 0)}
+.score-ring::before{content:"";grid-area:1/1;width:120px;height:120px;border-radius:50%;background:var(--surface)}
+.score-value{grid-area:1/1;z-index:1;font-size:2.1rem;font-weight:900;color:var(--text)}
+.result-title{margin:0;font-size:clamp(1.7rem,4vw,2.6rem);color:var(--text)}
+.result-copy{margin:10px auto 0;max-width:520px;color:var(--muted);line-height:1.5}
+.controls{min-height:64px;padding:10px max(14px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;background:color-mix(in srgb,var(--background) 94%,#000);border-top:1px solid color-mix(in srgb,var(--text) 14%,transparent)}
+.counter{font-size:.75rem;font-weight:800;color:var(--muted);text-align:center;white-space:nowrap}
+.btn{min-height:42px;padding:10px 18px;border:0;border-radius:12px;font-weight:850;cursor:pointer}
+.btn:focus-visible{outline:3px solid color-mix(in srgb,var(--secondary) 62%,transparent);outline-offset:2px}
+.btn:disabled{opacity:.38;cursor:not-allowed}
+.btn-secondary{justify-self:start;background:color-mix(in srgb,var(--text) 10%,transparent);color:var(--text)}
+.btn-primary{justify-self:end;background:var(--primary);color:var(--primary-text)}
+@media(max-width:640px){.topbar{gap:9px}.title{max-width:32vw;font-size:.78rem}.progress-label{display:none}.presentation-page{padding:4px}.options{grid-template-columns:1fr}.quiz-page,.result-page{padding:12px}.quiz-card,.result-card{border-radius:18px;padding:20px}.question{margin-bottom:18px}.controls{min-height:58px;gap:8px}.btn{padding:9px 13px}.counter{font-size:.68rem}}
+@media(max-height:520px){.topbar{min-height:44px;padding-top:7px;padding-bottom:7px}.controls{min-height:50px;padding-top:6px;padding-bottom:6px}.quiz-page,.result-page{align-items:flex-start}.quiz-card,.result-card{padding:18px}.options{gap:8px}.option{min-height:46px;padding:10px 12px}.question{font-size:1.2rem;margin-bottom:14px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar"><h1 class="title" title="${safeTitle}">${safeTitle}</h1><div class="progress-track" aria-hidden="true"><div id="progress-fill" class="progress-fill"></div></div><span id="progress-label" class="progress-label">0%</span></header>
+  <main id="pages" aria-live="polite"></main>
+  <footer class="controls"><button id="previous" class="btn btn-secondary" type="button">Previous</button><span id="counter" class="counter"></span><button id="next" class="btn btn-primary" type="button">Next</button></footer>
+</div>
+<script>
+(function(){
+  'use strict';
+  var data=${data};
+  var state={current:0,maxVisited:0,answers:[],completed:false};
+  var sessionStarted=Date.now();
+  var commitTimer=null;
+  var pages=[];
+  var slideCount=data.slides.length;
+  var quizStart=slideCount;
+  var resultIndex=slideCount+data.quiz.questions.length;
+  function byId(id){return document.getElementById(id);}
+  function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
+  function escapeHtml(value){var map={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};return String(value||'').replace(/[&<>"']/g,function(c){return map[c];});}
+  function scormReady(){return typeof doLMSSetValue==='function';}
+  function setValue(name,value){if(!scormReady())return;try{doLMSSetValue(name,String(value));}catch(e){}}
+  function getValue(name){if(typeof doLMSGetValue!=='function')return '';try{return doLMSGetValue(name)||'';}catch(e){return '';}}
+  function sessionTime(){var ms=Math.max(0,Date.now()-sessionStarted);var total=Math.floor(ms/1000);var h=Math.floor(total/3600);var m=Math.floor((total%3600)/60);var s=total%60;var cs=Math.floor((ms%1000)/10);function pad(n,width){var value=String(n);while(value.length<width)value='0'+value;return value;}return pad(h,4)+':'+pad(m,2)+':'+pad(s,2)+'.'+pad(cs,2);}
+  function score(){var hits=0;for(var i=0;i<data.quiz.questions.length;i+=1){if(Number(state.answers[i])===data.quiz.questions[i].correctAnswer)hits+=1;}return data.quiz.questions.length?Math.round(hits/data.quiz.questions.length*100):100;}
+  function progress(){return Math.round((state.maxVisited+1)/Math.max(1,pages.length)*100);}
+  function serialise(){return JSON.stringify({v:1,current:state.current,maxVisited:state.maxVisited,answers:state.answers,completed:state.completed});}
+  function commit(){if(!scormReady())return;setValue('cmi.core.session_time',sessionTime());setValue('cmi.core.lesson_location',state.current);setValue('cmi.suspend_data',serialise());setValue('quizmoto.progress_percent',progress());try{doLMSCommit();}catch(e){}}
+  function restore(){var raw=getValue('cmi.suspend_data');if(!raw)return;try{var saved=JSON.parse(raw);if(saved&&saved.v===1){state.current=clamp(Number(saved.current)||0,0,pages.length-1);state.maxVisited=clamp(Number(saved.maxVisited)||0,0,pages.length-1);state.answers=Array.isArray(saved.answers)?saved.answers:[];state.completed=Boolean(saved.completed);}}catch(e){}}
+  function trackAnswer(index,selected){var question=data.quiz.questions[index];setValue('cmi.interactions.'+index+'.id',question.id);setValue('cmi.interactions.'+index+'.type','choice');setValue('cmi.interactions.'+index+'.student_response',String(selected));setValue('cmi.interactions.'+index+'.result',selected===question.correctAnswer?'correct':'wrong');}
+  function finish(){if(state.completed)return;state.completed=true;var result=score();setValue('cmi.core.score.raw',result);setValue('cmi.core.score.min','0');setValue('cmi.core.score.max','100');setValue('cmi.core.lesson_status',result>=data.passScore?'passed':'failed');setValue('cmi.core.exit','');commit();if(commitTimer)clearInterval(commitTimer);if(typeof doLMSFinish==='function'){try{doLMSFinish();}catch(e){}}var button=byId('next');button.disabled=true;button.textContent='Completed';try{window.opener&&window.opener.postMessage({type:'quizmoto_scorm_exit'},'*');}catch(e){}}
+  function createPages(){var root=byId('pages');data.slides.forEach(function(slide,index){var page=document.createElement('section');page.className='page presentation-page';page.setAttribute('aria-label','Slide '+(index+1)+' of '+slideCount);var image=document.createElement('img');image.alt='Presentation slide '+(index+1);image.width=slide.width;image.height=slide.height;image.dataset.src=slide.src;image.decoding='async';image.loading='eager';page.appendChild(image);root.appendChild(page);pages.push(page);});data.quiz.questions.forEach(function(question,index){var page=document.createElement('section');page.className='page quiz-page';page.setAttribute('aria-label','Quiz question '+(index+1));var options=question.options.map(function(option,optionIndex){return '<button type="button" class="option" data-question="'+index+'" data-option="'+optionIndex+'">'+escapeHtml(option)+'</button>';}).join('');page.innerHTML='<div class="quiz-card"><p class="eyebrow">'+escapeHtml(data.quiz.title)+' · '+(index+1)+' of '+data.quiz.questions.length+'</p><h2 class="question">'+escapeHtml(question.question)+'</h2><div class="options">'+options+'</div><div class="feedback" id="feedback-'+index+'"></div></div>';root.appendChild(page);pages.push(page);});var result=document.createElement('section');result.className='page result-page';result.setAttribute('aria-label','Course result');result.innerHTML='<div class="result-card"><p class="eyebrow">Course complete</p><h2 class="result-title" id="result-title">Your result</h2><div class="score-ring" id="score-ring"><span class="score-value" id="score-value">0%</span></div><p class="result-copy" id="result-copy"></p></div>';root.appendChild(result);pages.push(result);root.addEventListener('click',function(event){var button=event.target.closest('.option');if(!button)return;answer(Number(button.dataset.question),Number(button.dataset.option));});}
+  function loadImage(index){if(index<0||index>=slideCount)return;var image=pages[index].querySelector('img');if(image&&!image.src&&image.dataset.src){image.src=image.dataset.src;}}
+  function showAnswer(index){var selected=state.answers[index];if(selected===undefined||selected===null)return;var question=data.quiz.questions[index];var buttons=pages[quizStart+index].querySelectorAll('.option');for(var i=0;i<buttons.length;i+=1){buttons[i].disabled=true;if(i===question.correctAnswer)buttons[i].classList.add('correct');else if(i===Number(selected))buttons[i].classList.add('incorrect');}var feedback=byId('feedback-'+index);var correct=Number(selected)===question.correctAnswer;feedback.className='feedback show '+(correct?'correct':'incorrect');feedback.textContent=(correct?'Correct. ':'Not quite. ')+(question.explanation||('The correct answer is '+question.options[question.correctAnswer]+'.'));}
+  function answer(index,selected){if(state.answers[index]!==undefined&&state.answers[index]!==null)return;state.answers[index]=selected;showAnswer(index);trackAnswer(index,selected);update();commit();}
+  function renderResult(){var value=score();byId('score-value').textContent=value+'%';byId('score-ring').style.setProperty('--score-angle',(value*3.6)+'deg');var passed=value>=data.passScore;byId('result-title').textContent=passed?'Course passed':'Course completed';byId('result-copy').textContent=passed?'You passed the knowledge check. Select Finish to send the final result to your learning platform.':'Your result was saved. Review the course and try the quiz again if your learning platform allows another attempt.';setValue('cmi.core.score.raw',value);setValue('cmi.core.score.min','0');setValue('cmi.core.score.max','100');setValue('cmi.core.lesson_status',passed?'passed':'failed');}
+  function update(){for(var i=0;i<pages.length;i+=1)pages[i].classList.toggle('active',i===state.current);loadImage(state.current);loadImage(state.current+1);if(state.current>=quizStart&&state.current<resultIndex)showAnswer(state.current-quizStart);if(state.current===resultIndex)renderResult();var currentQuestion=state.current>=quizStart&&state.current<resultIndex?state.current-quizStart:-1;var answered=currentQuestion<0||state.answers[currentQuestion]!==undefined;var next=byId('next');byId('previous').disabled=state.current===0;next.disabled=!answered||(state.completed&&state.current===resultIndex);next.textContent=state.current===resultIndex?(state.completed?'Completed':'Finish'):'Next';var percent=progress();byId('progress-fill').style.width=percent+'%';byId('progress-label').textContent=percent+'%';var label=state.current<slideCount?'Slide '+(state.current+1)+' of '+slideCount:state.current<resultIndex?'Quiz '+(state.current-quizStart+1)+' of '+data.quiz.questions.length:'Results';byId('counter').textContent=label;}
+  function move(delta){if(delta>0&&state.current===resultIndex){finish();return;}var target=clamp(state.current+delta,0,pages.length-1);if(target===state.current)return;state.current=target;state.maxVisited=Math.max(state.maxVisited,state.current);update();commit();}
+  function initialise(){createPages();if(typeof doLMSInitialize==='function'){try{doLMSInitialize();}catch(e){}setValue('cmi.core.score.min','0');setValue('cmi.core.score.max','100');var status=getValue('cmi.core.lesson_status');if(!status||status==='not attempted')setValue('cmi.core.lesson_status','incomplete');restore();}for(var i=0;i<state.answers.length;i+=1){if(state.answers[i]!==undefined&&state.answers[i]!==null)trackAnswer(i,Number(state.answers[i]));}state.maxVisited=Math.max(state.maxVisited,state.current);update();commit();commitTimer=setInterval(function(){if(!state.completed)commit();},15000);}
+  byId('previous').addEventListener('click',function(){move(-1);});
+  byId('next').addEventListener('click',function(){move(1);});
+  window.addEventListener('keydown',function(event){if(event.key==='ArrowLeft')move(-1);if(event.key==='ArrowRight'&&!byId('next').disabled)move(1);});
+  window.addEventListener('beforeunload',function(){if(state.completed)return;setValue('cmi.core.exit','suspend');commit();});
+  initialise();
+})();
+</script>
+</body>
+</html>`;
+}
+
+async function buildPresentationScormZip({ title, slides, quiz, theme, passScore = 70 }) {
+    if (!Array.isArray(slides) || !slides.length) {
+        const error = new Error('At least one rendered slide is required.');
+        error.code = 'SCORM_PRESENTATION_EMPTY';
+        throw error;
+    }
+    const normalizedQuiz = normalizeQuiz(quiz);
+    if (!normalizedQuiz.questions.length) {
+        const error = new Error('A presentation course requires at least one valid quiz question.');
+        error.code = 'SCORM_PRESENTATION_QUIZ_EMPTY';
+        throw error;
+    }
+    const normalizedTheme = normalizeTheme(theme);
+    const normalizedPassScore = Math.max(0, Math.min(100, Number(passScore) || 70));
+    const zip = new JSZip();
+    slides.forEach((slide) => zip.file(slide.path, slide.body));
+    zip.file('index.html', buildPlayerHtml({
+        title: String(title || 'Presentation Course').trim().slice(0, 200) || 'Presentation Course',
+        slides,
+        quiz: normalizedQuiz,
+        theme: normalizedTheme,
+        passScore: normalizedPassScore
+    }));
+    zip.file('scorm_api_wrapper.js', SCORM_WRAPPER);
+    zip.file('content.json', JSON.stringify({
+        generatedBy: 'lmsgen-presentation-import',
+        version: 1,
+        title,
+        courseMode: 'presentation',
+        slideCount: slides.length,
+        quiz: normalizedQuiz,
+        theme: normalizedTheme,
+        passScore: normalizedPassScore
+    }, null, 2));
+
+    const resourceFiles = [
+        'index.html',
+        'scorm_api_wrapper.js',
+        'content.json',
+        ...slides.map((slide) => slide.path)
+    ].map((file) => `      <file href="${escapeXml(file)}"/>`).join('\n');
+    zip.file('imsmanifest.xml', `<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="com.lmsgen.presentation.${Date.now()}" version="1.0"
+  xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
+  xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.imsproject.org/xsd/imscp_rootv1p1p2 imscp_rootv1p1p2.xsd http://www.adlnet.org/xsd/adlcp_rootv1p2 adlcp_rootv1p2.xsd">
+  <metadata><schema>ADL SCORM</schema><schemaversion>1.2</schemaversion></metadata>
+  <organizations default="ORG-1"><organization identifier="ORG-1"><title>${escapeXml(title)}</title><item identifier="ITEM-1" identifierref="RES-1"><title>${escapeXml(title)}</title></item></organization></organizations>
+  <resources><resource identifier="RES-1" type="webcontent" adlcp:scormtype="sco" href="index.html">
+${resourceFiles}
+  </resource></resources>
+</manifest>`);
+
+    return zip.generateAsync({
+        type: 'nodebuffer',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 }
+    });
+}
+
+module.exports = {
+    SCORM_WRAPPER,
+    escapeXml,
+    normalizeTheme,
+    normalizeQuiz,
+    buildPlayerHtml,
+    buildPresentationScormZip
+};

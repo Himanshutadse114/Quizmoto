@@ -29,6 +29,7 @@ const { getObjectStorage } = require('../../storage/ObjectStorage');
 const { packageZipKey } = require('./storageKeys');
 const { unpackPackage } = require('./ScormUnpackService');
 const logger = require('../../utils/logger');
+const { generatePresentationCourse } = require('./ScormPresentationCourseService');
 
 function noop() {}
 
@@ -77,6 +78,10 @@ function requestedBranding(payload, analysis, legacyLogo) {
 }
 
 async function generateScormCourse({ payload = {}, userId, onProgress = noop, checkCancelled = noop }) {
+    if (['presentation', 'presentation-preserve'].includes(String(payload?.courseMode || '').trim().toLowerCase())) {
+        return generatePresentationCourse({ payload, userId, onProgress, checkCancelled });
+    }
+
     let analysis = payload.analysis;
     const {
         fileBase64,

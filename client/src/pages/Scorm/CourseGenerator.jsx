@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { ArrowRight, CheckCircle2, FileText, FileUp, Loader2, Sparkles } from 'lucide-react';
+import { ArrowRight, CheckCircle2, FileText, FileUp, Loader2, Presentation, Sparkles } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { startBackgroundCourseGeneration } from '../../services/courseGenerationJobs';
 import { apiUrl } from '../../config';
@@ -46,6 +46,13 @@ function usableTemplates(items) {
   return next.length ? next : [FALLBACK_TEMPLATE];
 }
 
+function isPresentationFile(file) {
+  if (!file) return false;
+  const name = String(file.name || '').toLowerCase();
+  const type = String(file.type || '').toLowerCase();
+  return name.endsWith('.pptx') || name.endsWith('.pdf') || type.includes('presentationml.presentation') || type.includes('pdf');
+}
+
 export default function CourseGenerator() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -55,6 +62,7 @@ export default function CourseGenerator() {
   const [topic, setTopic] = useState('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState(null);
+  const [courseMode, setCourseMode] = useState('generated');
   const [detailLevel, setDetailLevel] = useState('detailed');
   const [courseTemplates, setCourseTemplates] = useState([FALLBACK_TEMPLATE]);
   const [templateEngineAvailable, setTemplateEngineAvailable] = useState(false);
@@ -105,7 +113,8 @@ export default function CourseGenerator() {
     [courseTemplates, courseTemplateId]
   );
 
-  const hasSource = Boolean(file || topic.trim() || description.trim());
+  const presentationMode = courseMode === 'presentation';
+  const hasSource = presentationMode ? Boolean(file && isPresentationFile(file)) : Boolean(file || topic.trim() || description.trim());
   const displayTitle = topic.trim() || file?.name || 'New course';
 
   if (editId) return <AuthorVisual />;
@@ -115,8 +124,24 @@ export default function CourseGenerator() {
     setInteractionLevel(template.defaultInteractionLevel || 'balanced');
   };
 
+  const selectCourseMode = (mode) => {
+    setCourseMode(mode);
+    setError('');
+    if (mode === 'presentation' && file && !isPresentationFile(file)) setFile(null);
+  };
+
+  const selectSourceFile = (nextFile) => {
+    if (presentationMode && nextFile && !isPresentationFile(nextFile)) {
+      setFile(null);
+      setError('Presentation courses support PPTX and PDF files only. Export Gamma presentations as PDF for the closest visual match.');
+      return;
+    }
+    setError('');
+    setFile(nextFile || null);
+  };
+
   const generateCourse = () => {
-    if (!hasSource || busy || !token || brandingError) return;
+    if (!hasSource || busy || !token || (!presentationMode && brandingError)) return;
     setError('');
     setBusy(true);
 
@@ -128,18 +153,20 @@ export default function CourseGenerator() {
         file,
         payload: {
           progressId,
+          courseMode: presentationMode ? 'presentation' : 'generated',
           topic: topic.trim(),
           description: description.trim(),
           fileBase64: '',
           mimeType: file?.type || '',
           detailLevel,
           templateId: EDITORIAL_THEME_ID,
-          branding: {
+          sourceFileName: file?.name || '',
+          ...(!presentationMode ? { branding: {
             logoDataUrl: branding.logoDataUrl || '',
             primaryColor: branding.primaryColor,
             accentColor: branding.accentColor
-          },
-          ...(templateEngineAvailable ? {
+          }} : {}),
+          ...(!presentationMode && templateEngineAvailable ? {
             courseTemplateId,
             interactionLevel
           } : {})
@@ -202,13 +229,59 @@ export default function CourseGenerator() {
           </div>
 
           <div className="p-5 md:p-6 space-y-7">
+            <div>
+              <div className="scorm-micro text-[9px] uppercase font-semibold mb-3">Build method</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => selectCourseMode('generated')}
+                  className="text-left rounded-xl border p-4 transition-all min-h-[116px]"
+                  style={{ background: !presentationMode ? 'var(--scorm-accent-soft)' : 'var(--scorm-surface-soft)', borderColor: !presentationMode ? 'var(--scorm-accent)' : 'var(--scorm-line)' }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <Sparkles size={18} style={{ color: 'var(--scorm-accent)' }} />
+                    {!presentationMode && <CheckCircle2 size={16} style={{ color: 'var(--scorm-accent)' }} />}
+                  </div>
+                  <div className="text-sm font-semibold mt-3" style={ink}>Generate a course</div>
+                  <div className="text-[11px] leading-relaxed mt-1" style={muted}>AI creates the learning structure, visuals and selected interactions.</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectCourseMode('presentation')}
+                  className="text-left rounded-xl border p-4 transition-all min-h-[116px]"
+                  style={{ background: presentationMode ? 'var(--scorm-accent-soft)' : 'var(--scorm-surface-soft)', borderColor: presentationMode ? 'var(--scorm-accent)' : 'var(--scorm-line)' }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <Presentation size={18} style={{ color: 'var(--scorm-accent)' }} />
+                    {presentationMode && <CheckCircle2 size={16} style={{ color: 'var(--scorm-accent)' }} />}
+                  </div>
+                  <div className="text-sm font-semibold mt-3" style={ink}>Track my presentation</div>
+                  <div className="text-[11px] leading-relaxed mt-1" style={muted}>Keep the uploaded slides and add tracking plus a theme-matched quiz.</div>
+                </button>
+              </div>
+            </div>
+
+            {presentationMode && (
+              <div className="rounded-xl border p-4" style={{ background: 'var(--scorm-accent-soft)', borderColor: 'var(--scorm-accent)' }}>
+                <div className="flex items-start gap-3">
+                  <Presentation size={18} className="shrink-0 mt-0.5" style={{ color: 'var(--scorm-accent)' }} />
+                  <div>
+                    <div className="text-xs font-semibold" style={ink}>Exact slide course — no inserted interactions</div>
+                    <div className="text-[11px] leading-relaxed mt-1" style={muted}>
+                      Slides are preserved as responsive images, compressed to a consistent size for fast loading, and followed by an AI quiz using colours detected from the deck. PPT animations, video and transitions are flattened. For Gamma, export to PDF for the closest visual result.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
               <div className="min-w-0">
                 <div className="scorm-micro text-[9px] uppercase font-semibold h-4 flex items-center mb-2">Topic</div>
                 <input
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  placeholder="e.g. Phishing Awareness"
+                  placeholder={presentationMode ? 'Optional course title' : 'e.g. Phishing Awareness'}
                   className="scorm-course-search w-full h-14 px-3 text-sm"
                 />
               </div>
@@ -218,10 +291,15 @@ export default function CourseGenerator() {
                 <label className="scorm-course-generator-upload h-14 rounded-lg border px-3 flex items-center gap-3 cursor-pointer transition-colors" style={softSurface}>
                   <FileUp size={16} className="shrink-0" style={{ color: 'var(--scorm-accent)' }} />
                   <span className="text-xs truncate flex-1" style={{ color: file ? 'var(--scorm-ink-soft)' : 'var(--scorm-muted)' }}>
-                    {file ? file.name : 'Upload source file (optional)'}
+                    {file ? file.name : presentationMode ? 'Upload PPTX or PDF (required)' : 'Upload source file (optional)'}
                   </span>
                   <span className="scorm-button-secondary h-10 px-3 inline-flex items-center justify-center text-[10px] font-semibold shrink-0">Browse</span>
-                  <input type="file" className="sr-only" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                  <input
+                    type="file"
+                    className="sr-only"
+                    accept={presentationMode ? '.pptx,.pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/pdf' : undefined}
+                    onChange={(e) => selectSourceFile(e.target.files?.[0] || null)}
+                  />
                 </label>
               </div>
             </div>
@@ -232,12 +310,12 @@ export default function CourseGenerator() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={5}
-                placeholder="Describe what learners should understand and be able to do after completing the course."
+                placeholder={presentationMode ? 'Optional context to guide the quiz. The quiz will remain grounded in the presentation.' : 'Describe what learners should understand and be able to do after completing the course.'}
                 className="scorm-course-search mt-1.5 w-full px-3 py-3 text-sm resize-y min-h-[145px]"
               />
             </label>
 
-            <div>
+            {!presentationMode && <div>
               <div className="flex items-end justify-between gap-4 mb-3">
                 <div>
                   <div className="scorm-micro text-[9px] uppercase font-semibold">Course depth</div>
@@ -264,16 +342,16 @@ export default function CourseGenerator() {
                   );
                 })}
               </div>
-            </div>
+            </div>}
 
-            <CourseBrandingPanel
+            {!presentationMode && <CourseBrandingPanel
               value={branding}
               onChange={setBranding}
               error={brandingError}
               onError={setBrandingError}
-            />
+            />}
 
-            <div>
+            {!presentationMode && <div>
               <div className="flex items-end justify-between gap-4 mb-3">
                 <div>
                   <div className="scorm-micro text-[9px] uppercase font-semibold">Course style</div>
@@ -331,21 +409,23 @@ export default function CourseGenerator() {
                   </div>
                 </div>
               )}
-            </div>
+            </div>}
           </div>
 
           <div className="scorm-course-generator-footer px-5 md:px-6 py-5 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" style={{ ...softSurface, borderColor: 'var(--scorm-line)' }}>
             <div className="text-[11px] leading-relaxed max-w-xl" style={muted}>
-              Your selected branding is embedded in the generated course and downloaded SCORM package. You can leave this page after generation starts.
+              {presentationMode
+                ? 'The course preserves the uploaded slide design, adds a matching quiz, and records progress, resume position, answers, score and completion. You can leave this page after generation starts.'
+                : 'Your selected branding is embedded in the generated course and downloaded SCORM package. You can leave this page after generation starts.'}
             </div>
             <button
               type="button"
               onClick={generateCourse}
-              disabled={busy || !hasSource || Boolean(brandingError)}
+              disabled={busy || !hasSource || (!presentationMode && Boolean(brandingError))}
               className="scorm-button-primary inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {busy ? <Loader2 size={17} className="animate-spin" /> : <Sparkles size={17} />}
-              {busy ? 'Starting…' : 'Generate course'}
+              {busy ? 'Starting…' : presentationMode ? 'Create tracked course' : 'Generate course'}
             </button>
           </div>
         </section>
@@ -354,11 +434,11 @@ export default function CourseGenerator() {
           <section className="scorm-course-generator-panel rounded-2xl border overflow-hidden" style={surface}>
             <div className="scorm-course-generator-panel-header px-5 py-4 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
               <div className="scorm-micro text-[9px] uppercase font-semibold">Selected experience</div>
-              <h3 className="text-[16px] font-semibold mt-1" style={ink}>{selectedTemplate?.name || FALLBACK_TEMPLATE.name}</h3>
+              <h3 className="text-[16px] font-semibold mt-1" style={ink}>{presentationMode ? 'Tracked presentation' : selectedTemplate?.name || FALLBACK_TEMPLATE.name}</h3>
             </div>
             <div className="p-5">
-              <div className="text-[11px] leading-relaxed" style={muted}>{selectedTemplate?.description || FALLBACK_TEMPLATE.description}</div>
-              <div className="mt-4 pt-4 border-t flex items-center justify-between gap-3" style={{ borderColor: 'var(--scorm-line)' }}>
+              <div className="text-[11px] leading-relaxed" style={muted}>{presentationMode ? 'Original slide visuals with no generated interactions, followed by an AI knowledge check.' : selectedTemplate?.description || FALLBACK_TEMPLATE.description}</div>
+              {!presentationMode && <><div className="mt-4 pt-4 border-t flex items-center justify-between gap-3" style={{ borderColor: 'var(--scorm-line)' }}>
                 <span className="text-[10px] uppercase tracking-[.08em] font-semibold" style={muted}>Interaction</span>
                 <span className="text-xs font-semibold" style={ink}>{interactionLabels[interactionLevel]?.label || 'Balanced'}</span>
               </div>
@@ -369,9 +449,16 @@ export default function CourseGenerator() {
                   <span className="w-6 h-6 rounded-full border" style={{ background: branding.accentColor, borderColor: 'var(--scorm-line)' }} />
                   <span className="text-[10px]" style={muted}>{branding.logoDataUrl ? 'Custom logo added' : 'No custom logo'}</span>
                 </div>
-              </div>
+              </div></>}
+              {presentationMode && (
+                <div className="mt-4 pt-4 border-t space-y-3" style={{ borderColor: 'var(--scorm-line)' }}>
+                  {['Exact slide order', 'Responsive image playback', 'Theme-matched end quiz', 'SCORM score and progress'].map((item) => (
+                    <div key={item} className="flex items-center gap-2 text-[11px]" style={muted}><CheckCircle2 size={14} style={{ color: 'var(--scorm-accent)' }} />{item}</div>
+                  ))}
+                </div>
+              )}
               <div className="mt-3 text-[10px] leading-relaxed" style={muted}>
-                Template identity, version and course branding are saved with the course so rebuilds can retain the same identity.
+                {presentationMode ? 'The presentation palette is detected automatically and applied to the quiz and course controls.' : 'Template identity, version and course branding are saved with the course so rebuilds can retain the same identity.'}
               </div>
             </div>
           </section>
@@ -382,12 +469,17 @@ export default function CourseGenerator() {
               <h3 className="text-[16px] font-semibold mt-1" style={ink}>Background generation</h3>
             </div>
             <div className="p-5 space-y-4">
-              {[
+              {(presentationMode ? [
+                ['1', 'Slide preservation', 'Every slide is rendered in its original order and visual layout.'],
+                ['2', 'Image optimisation', 'Slides receive consistent dimensions and compact file sizes.'],
+                ['3', 'Quiz creation', 'The presentation content and palette guide the end quiz.'],
+                ['4', 'Tracking package', 'SCORM progress, resume, answers and score are added.']
+              ] : [
                 ['1', 'Course content', 'The learning structure and knowledge checks are prepared.'],
                 ['2', 'Template layout', 'Content is mapped to the selected course style.'],
                 ['3', 'Brand application', 'Your logo and colours are applied across the learner experience.'],
                 ['4', 'Course package', 'The branded SCORM package is assembled and saved.']
-              ].map(([number, title, copy]) => (
+              ]).map(([number, title, copy]) => (
                 <div key={number} className="flex gap-3">
                   <div className="scorm-course-generator-step w-7 h-7 rounded-lg border grid place-items-center text-[10px] font-semibold shrink-0" style={{ ...softSurface, color: 'var(--scorm-accent)' }}>{number}</div>
                   <div>
@@ -403,9 +495,9 @@ export default function CourseGenerator() {
             <div className="flex items-start gap-3">
               <CheckCircle2 size={17} className="shrink-0 mt-0.5" style={{ color: 'var(--scorm-accent)' }} />
               <div>
-                <div className="text-xs font-semibold" style={ink}>Branding travels with the course</div>
+                <div className="text-xs font-semibold" style={ink}>{presentationMode ? 'Presentation identity stays intact' : 'Branding travels with the course'}</div>
                 <div className="text-[11px] leading-relaxed mt-1" style={muted}>
-                  The logo and colours are written into the SCORM package, so the branding is retained when the package is downloaded and uploaded to another LMS.
+                  {presentationMode ? 'The original slides are embedded into the SCORM package, while the detected presentation colours carry into the quiz and player controls.' : 'The logo and colours are written into the SCORM package, so the branding is retained when the package is downloaded and uploaded to another LMS.'}
                 </div>
               </div>
             </div>

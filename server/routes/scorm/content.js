@@ -373,7 +373,7 @@ async function patchHtmlIfNeeded(packageId, rel, buf) {
         // bridge. Do not add the generic whole-document MutationObserver as well;
         // it is redundant and needlessly expensive on visual/interactive slides.
         patched = patchAuthoredHtml(patched);
-    } else {
+    } else if (pkg.source !== 'presentation_import') {
         // Third-party packages do not have the authored bridge, so retain the
         // generic progress detector for them only.
         patched = injectUniversalProgressBridge(patched);

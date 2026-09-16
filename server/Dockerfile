@@ -11,8 +11,11 @@ RUN apk add --no-cache \
         py3-pillow \
         freetype \
         ttf-dejavu \
+        font-liberation \
         fontconfig \
         libstdc++ \
+        libreoffice-impress \
+        poppler-utils \
     && pip3 install --break-system-packages --no-cache-dir \
         "reportlab>=4.0.0" \
         "xlsxwriter>=3.0.0"

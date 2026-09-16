@@ -38,7 +38,8 @@ async function prepareGenerationPayload({ token, id, payload, file, signal }) {
     return {
       ...payload,
       fileBase64: String(payload.fileBase64 || ''),
-      mimeType: payload.mimeType || ''
+      mimeType: payload.mimeType || '',
+      sourceFileName: payload.sourceFileName || ''
     };
   }
 
@@ -61,7 +62,8 @@ async function prepareGenerationPayload({ token, id, payload, file, signal }) {
       fileBase64: '',
       sourceKey: upload.data?.sourceKey || '',
       sourceMimeType: upload.data?.mimeType || file.type || 'application/octet-stream',
-      mimeType: file.type || payload.mimeType || ''
+      mimeType: file.type || payload.mimeType || '',
+      sourceFileName: file.name || payload.sourceFileName || ''
     };
   } catch (err) {
     // Rolling deployments can briefly serve a newer frontend against an older
@@ -71,7 +73,8 @@ async function prepareGenerationPayload({ token, id, payload, file, signal }) {
     return {
       ...payload,
       fileBase64,
-      mimeType: file.type || payload.mimeType || ''
+      mimeType: file.type || payload.mimeType || '',
+      sourceFileName: file.name || payload.sourceFileName || ''
     };
   }
 }

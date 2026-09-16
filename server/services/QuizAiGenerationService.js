@@ -81,7 +81,7 @@ async function extractDocxText(base64Data) {
     return [...xml.matchAll(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g)].map((match) => decodeXml(match[1])).filter(Boolean).join(' ');
 }
 
-async function buildSourceParts({ topic, description, fileBase64, mimeType, fileName }) {
+async function buildSourceParts({ topic, description, fileBase64, mimeType, fileName, maxUploadMb }) {
     const parts = [];
     const cleanTopic = String(topic || '').trim();
     const cleanDescription = String(description || '').trim();
@@ -97,7 +97,8 @@ async function buildSourceParts({ topic, description, fileBase64, mimeType, file
     const raw = String(fileBase64 || '').replace(/^data:[^;]+;base64,/, '');
     if (!raw) return parts;
 
-    const maxMb = Math.max(1, Number(process.env.QUIZ_AI_MAX_UPLOAD_MB || 12));
+    const configuredMaxMb = maxUploadMb == null ? process.env.QUIZ_AI_MAX_UPLOAD_MB || 12 : maxUploadMb;
+    const maxMb = Math.max(1, Math.min(100, Number(configuredMaxMb) || 12));
     const approxBytes = Math.floor((raw.length * 3) / 4);
     if (approxBytes > maxMb * 1024 * 1024) {
         const err = new Error(`Quiz AI document must be ${maxMb} MB or smaller.`);
@@ -182,7 +183,7 @@ function normalizeQuiz(data) {
     return { title, questions };
 }
 
-async function generateQuiz({ topic, description, fileBase64, mimeType, fileName }) {
+async function generateQuiz({ topic, description, fileBase64, mimeType, fileName, maxUploadMb }) {
     const apiKey = getApiKey();
     if (!apiKey) {
         const err = new Error('GEMINI_API_KEY is not configured on the server.');
@@ -190,7 +191,7 @@ async function generateQuiz({ topic, description, fileBase64, mimeType, fileName
         throw err;
     }
 
-    const sourceParts = await buildSourceParts({ topic, description, fileBase64, mimeType, fileName });
+    const sourceParts = await buildSourceParts({ topic, description, fileBase64, mimeType, fileName, maxUploadMb });
     if (!sourceParts.length) {
         const err = new Error('Add a topic, description, or document before generating a quiz.');
         err.code = 'QUIZ_AI_SOURCE_REQUIRED';

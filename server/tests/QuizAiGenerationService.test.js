@@ -77,6 +77,21 @@ describe('QuizAiGenerationService', () => {
         expect(parts[0].text).to.include('fraudulent phone call');
     });
 
+    it('allows the presentation workflow to set a larger isolated source limit', async () => {
+        const raw = Buffer.alloc(2 * 1024 * 1024, 65).toString('base64');
+        let error = null;
+        try {
+            await buildSourceParts({ fileBase64: raw, mimeType: 'application/pdf', fileName: 'deck.pdf', maxUploadMb: 1 });
+        } catch (caught) {
+            error = caught;
+        }
+        expect(error).to.have.property('code', 'QUIZ_AI_FILE_TOO_LARGE');
+
+        const parts = await buildSourceParts({ fileBase64: raw, mimeType: 'application/pdf', fileName: 'deck.pdf', maxUploadMb: 3 });
+        expect(parts).to.have.length(1);
+        expect(parts[0].inlineData.mimeType).to.equal('application/pdf');
+    });
+
     it('rejects malformed JSON so model fallback can run', () => {
         expect(() => parseQuizJson('{"title":"Quiz","questions":['))
             .to.throw('Gemini returned invalid quiz JSON')
