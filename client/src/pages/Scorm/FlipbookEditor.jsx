@@ -194,7 +194,7 @@ export default function FlipbookEditor() {
       } else {
         setSuccess('Draft saved.');
       }
-      if (createdHere) navigate(`/scorm/flipbooks/${activeBook.id}/edit`, { replace: true });
+      if (createdHere) navigate(`/scorm/publica/${activeBook.id}/edit`, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Could not save this publication.');
     } finally { setBusy(false); }
@@ -216,7 +216,7 @@ export default function FlipbookEditor() {
   return (
     <div className="flip-editor-page">
       <div className="flip-editor-topbar">
-        <Link to="/scorm/flipbooks" className="flip-back"><ArrowLeft size={15} /> Publica</Link>
+        <Link to="/scorm/publica" className="flip-back"><ArrowLeft size={15} /> Publica</Link>
         <div className="flip-editor-state">{editing ? 'Edit publication' : 'New publication'}</div>
       </div>
 

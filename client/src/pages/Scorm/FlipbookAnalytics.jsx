@@ -222,7 +222,7 @@ function LibraryAnalytics({ analytics }) {
                   <td>{book.completionRate}%</td>
                   <td>{durationLabel(book.averageDurationSeconds)}</td>
                   <td><strong>{book.trendingScore}</strong></td>
-                  <td><Link to={`/scorm/flipbooks/${book.id}/analytics`} className="flip-button-secondary">Details</Link></td>
+                  <td><Link to={`/scorm/publica/${book.id}/analytics`} className="flip-button-secondary">Details</Link></td>
                 </tr>
               ))}</tbody>
             </table>
@@ -357,7 +357,7 @@ export default function FlipbookAnalytics() {
     <div className="flipbooks-page flip-analytics-page">
       <div className="flipbooks-header flip-analytics-header">
         <div>
-          <Link to="/scorm/flipbooks" className="flip-analytics-back"><ArrowLeft size={13} /> Back to Publica</Link>
+          <Link to="/scorm/publica" className="flip-analytics-back"><ArrowLeft size={13} /> Back to Publica</Link>
           <div className="flip-kicker">Reader intelligence</div>
           <h1>{id ? 'Publication Analytics' : 'Publica Library Analytics'}</h1>
           <p>{id ? 'Accurate reader-level engagement, page reach, page turns, completion and active reading time.' : 'Reader-level performance across your library with de-duplicated identities and page turns.'}</p>

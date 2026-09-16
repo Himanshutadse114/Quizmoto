@@ -30,7 +30,7 @@ function sanitiseText(value, maxLength) {
 }
 
 function publicFlipbookUrl(book) {
-    return `${PUBLIC_APP_URL}/flipbook/${book.shareToken}`;
+    return `${PUBLIC_APP_URL}/publica/${book.shareToken}`;
 }
 
 function renderPublicReader(book) {

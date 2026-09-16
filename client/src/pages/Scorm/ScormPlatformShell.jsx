@@ -45,7 +45,7 @@ const OPERATIONAL_NAV_GROUPS = [
     items: [
       { to: '/scorm', end: true, label: 'Overview', icon: LayoutDashboard },
       { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2, unlocked: true },
-      { to: '/scorm/flipbooks', label: 'Publica', icon: BookOpenCheck, unlocked: true }
+      { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck, unlocked: true }
     ]
   },
   {
@@ -66,7 +66,7 @@ const OPERATIONAL_NAV_GROUPS = [
 const ANALYTICS_NAV_GROUPS = [
   {
     label: 'Free tools',
-    items: [{ to: '/scorm/flipbooks', label: 'Publica', icon: BookOpenCheck, unlocked: true }]
+    items: [{ to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck, unlocked: true }]
   },
   {
     label: 'Analytics',
@@ -82,7 +82,7 @@ const QUIZMOTO_ONLY_GROUPS = [
     label: 'Free tools',
     items: [
       { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2, unlocked: true },
-      { to: '/scorm/flipbooks', label: 'Publica', icon: BookOpenCheck, unlocked: true }
+      { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck, unlocked: true }
     ]
   }
 ];
@@ -183,18 +183,18 @@ function MobileTabBar({ scormAccess, role, quizmotoOnly }) {
   const items = quizmotoOnly
     ? [
         { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2 },
-        { to: '/scorm/flipbooks', label: 'Publica', icon: BookOpenCheck }
+        { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck }
       ]
     : analyticsOnly
       ? [
-          { to: '/scorm/flipbooks', label: 'Publica', icon: BookOpenCheck },
+          { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck },
           { to: '/scorm/tracking', label: 'Tracking', icon: Activity },
           { to: '/scorm/reports', label: 'Reports', icon: BarChart3 }
         ]
       : [
           { to: '/scorm', end: true, label: 'Home', icon: LayoutDashboard },
           { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2 },
-          { to: '/scorm/flipbooks', label: 'Publica', icon: BookOpenCheck },
+          { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck },
           { to: '/scorm/author', label: scormAccess ? 'Create' : 'Locked', icon: scormAccess ? Sparkles : LockKeyhole }
         ];
   const gridClass = quizmotoOnly ? 'grid-cols-2' : analyticsOnly ? 'grid-cols-3' : 'grid-cols-4';
@@ -283,18 +283,18 @@ export default function ScormPlatformShell() {
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
             {quizmotoOnly ? (
               <>
-                <Link to="/scorm/flipbooks" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Publica</span></Link>
+                <Link to="/scorm/publica" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Publica</span></Link>
                 <Link to="/scorm/quizmoto" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
               </>
             ) : analyticsOnly ? (
               <>
-                <Link to="/scorm/flipbooks" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Publica</span></Link>
+                <Link to="/scorm/publica" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Publica</span></Link>
                 <Link to="/scorm/tracking" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Activity size={14} /><span>Tracking</span></Link>
                 <Link to="/scorm/reports" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold"><BarChart3 size={14} /><span>Reports</span></Link>
               </>
             ) : (
               <>
-                <Link to="/scorm/flipbooks" className="scorm-button-secondary hidden lg:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Publica</span></Link>
+                <Link to="/scorm/publica" className="scorm-button-secondary hidden lg:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Publica</span></Link>
                 <Link to="/scorm/quizmoto" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
                 {isWorkspaceAdmin && <Link to="/scorm/team" className="scorm-button-secondary hidden xl:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Users size={14} /> Team</Link>}
                 {isSuperAdmin && <Link to="/scorm/access" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><ShieldCheck size={14} /> Tenants</Link>}

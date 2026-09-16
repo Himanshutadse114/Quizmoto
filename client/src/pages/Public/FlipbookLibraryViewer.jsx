@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { BookOpenCheck, ExternalLink, RefreshCw, Share2 } from 'lucide-react';
 import axios from 'axios';
 import { apiUrl } from '../../config';
@@ -7,7 +8,7 @@ import './flipbookLibrary.css';
 const API = '/api/scorm/flipbooks';
 
 export default function FlipbookLibraryViewer() {
-  const shareToken = window.location.pathname.split('/flipbook-library/')[1]?.split('/')[0] || '';
+  const { shareToken = '' } = useParams();
   const [library, setLibrary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

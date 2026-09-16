@@ -1,10 +1,12 @@
 import React, { useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import { apiUrl } from '../../config';
 
 const API = '/api/scorm/flipbooks';
 
 export default function FlipbookViewer({ shareToken: propToken }) {
-  const shareToken = propToken || window.location.pathname.split('/flipbook/')[1]?.split('/')[0] || '';
+  const { shareToken: routeToken } = useParams();
+  const shareToken = propToken || routeToken || '';
   const source = new URLSearchParams(window.location.search).get('source') || 'share';
 
   const readerUrl = useMemo(() => {

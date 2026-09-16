@@ -324,7 +324,7 @@ async function launchCampaignFlipbook(context, assignmentId) {
         assignmentId: assignment.id,
         flipbookId: book.id,
         title: book.title,
-        url: `${PUBLIC_APP_URL}/flipbook/${book.shareToken}?source=campaign&assignment=${encodeURIComponent(assignment.assignmentToken)}`
+        url: `${PUBLIC_APP_URL}/publica/${book.shareToken}?source=campaign&assignment=${encodeURIComponent(assignment.assignmentToken)}`
     };
 }
 

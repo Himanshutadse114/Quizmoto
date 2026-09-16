@@ -50,7 +50,7 @@ export default function FlipbookLibraryShare() {
       <div className="flip-section-heading">
         <div><div className="flip-kicker"><Library size={13} /> Shared Publica library</div><h2>{library.title}</h2><p>One permanent link that automatically shows all of your published publications. Individual publication links continue to work as before.</p></div>
         <div className="flip-header-actions">
-          <Link to="/scorm/flipbooks/analytics" className="flip-button-secondary"><BarChart3 size={14} /> Library analytics</Link>
+          <Link to="/scorm/publica/analytics" className="flip-button-secondary"><BarChart3 size={14} /> Library analytics</Link>
           <button type="button" onClick={copy} className="flip-button-secondary"><Copy size={14} /> {copied ? 'Copied' : 'Copy library link'}</button>
           <button type="button" onClick={share} className="flip-button-secondary"><Share2 size={14} /> Share</button>
           {library.shareUrl && <a href={library.shareUrl} target="_blank" rel="noreferrer" className="flip-button-primary"><ExternalLink size={14} /> Open library</a>}

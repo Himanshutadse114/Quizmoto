@@ -79,8 +79,8 @@ function FlipbookCard({ book, onDelete, onCopied }) {
         </div>
         <div className="flip-card-meta"><span>{book.pageCount} pages</span><span><Eye size={12} /> {book.viewCount || 0} reader opens</span></div>
         <div className="flip-card-actions">
-          <Link to={`/scorm/flipbooks/${book.id}/edit`} className="flip-button-secondary"><Pencil size={14} /> Edit</Link>
-          <Link to={`/scorm/flipbooks/${book.id}/analytics`} className="flip-button-secondary"><BarChart3 size={14} /> Analytics</Link>
+          <Link to={`/scorm/publica/${book.id}/edit`} className="flip-button-secondary"><Pencil size={14} /> Edit</Link>
+          <Link to={`/scorm/publica/${book.id}/analytics`} className="flip-button-secondary"><BarChart3 size={14} /> Analytics</Link>
           {published && <button type="button" className="flip-icon-button" onClick={copy} title="Copy share link"><Copy size={14} /></button>}
           {published && <button type="button" className="flip-icon-button" onClick={nativeShare} title="Share"><Share2 size={14} /></button>}
           {published && <a href={shareUrl(book)} target="_blank" rel="noreferrer" className="flip-icon-button" title="Open published publication"><ExternalLink size={14} /></a>}
@@ -198,8 +198,8 @@ export default function Flipbooks() {
         </div>
         <div className="flip-header-actions">
           <QuotaCard quota={quota} />
-          <Link to="/scorm/flipbooks/analytics" className="flip-button-secondary"><BarChart3 size={16} /> Library analytics</Link>
-          <Link to="/scorm/flipbooks/new" className={`flip-button-primary ${atLimit ? 'is-disabled' : ''}`} aria-disabled={atLimit} onClick={(e) => atLimit && e.preventDefault()}><FilePlus2 size={16} /> Create publication</Link>
+          <Link to="/scorm/publica/analytics" className="flip-button-secondary"><BarChart3 size={16} /> Library analytics</Link>
+          <Link to="/scorm/publica/new" className={`flip-button-primary ${atLimit ? 'is-disabled' : ''}`} aria-disabled={atLimit} onClick={(e) => atLimit && e.preventDefault()}><FilePlus2 size={16} /> Create publication</Link>
         </div>
       </div>
 
@@ -211,7 +211,7 @@ export default function Flipbooks() {
       {loading ? <div className="flip-loading"><RefreshCw size={20} className="animate-spin" /><span>Loading publications…</span></div> : books.length ? (
         <div className="flip-grid">{books.map((book) => <FlipbookCard key={book.id} book={book} onDelete={remove} onCopied={markCopied} />)}</div>
       ) : (
-        <div className="flip-empty"><div className="flip-empty-icon"><BookOpenCheck size={30} /></div><h2>Create your first publication</h2><p>Upload a PDF or a set of images. LMSGEN Publica will build the reader and give you a secure sharing link.</p><Link to="/scorm/flipbooks/new" className="flip-button-primary"><FilePlus2 size={16} /> Create publication</Link></div>
+        <div className="flip-empty"><div className="flip-empty-icon"><BookOpenCheck size={30} /></div><h2>Create your first publication</h2><p>Upload a PDF or a set of images. LMSGEN Publica will build the reader and give you a secure sharing link.</p><Link to="/scorm/publica/new" className="flip-button-primary"><FilePlus2 size={16} /> Create publication</Link></div>
       )}
 
       {isSuperAdmin && <AdminLimits token={token} />}

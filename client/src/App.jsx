@@ -162,6 +162,26 @@ function LegacyQuizRedirect({ kind }) {
   return <Navigate to={targets[kind] || '/scorm/quizmoto'} replace />;
 }
 
+function LegacyPublicaWorkspaceRedirect({ destination }) {
+  const { id } = useParams();
+  const suffix = destination === 'edit'
+    ? `/${id || ''}/edit`
+    : destination === 'detail-analytics'
+      ? `/${id || ''}/analytics`
+      : destination === 'analytics'
+        ? '/analytics'
+        : destination === 'new'
+          ? '/new'
+          : '';
+  return <Navigate to={`/scorm/publica${suffix}`} replace />;
+}
+
+function LegacyPublicaShareRedirect({ library = false }) {
+  const { shareToken } = useParams();
+  const { search } = useLocation();
+  return <Navigate to={`${library ? '/publica-library' : '/publica'}/${shareToken || ''}${search}`} replace />;
+}
+
 function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
@@ -197,11 +217,16 @@ function AppRoutes() {
           <Route path="quizmoto/create" element={<ScormOperationalGate><CreateQuiz embedded /></ScormOperationalGate>} />
           <Route path="quizmoto/edit/:id" element={<ScormOperationalGate><EditQuiz embedded /></ScormOperationalGate>} />
           <Route path="quizmoto/reports" element={<ScormOperationalGate><Reports embedded /></ScormOperationalGate>} />
-          <Route path="flipbooks" element={<Flipbooks />} />
-          <Route path="flipbooks/analytics" element={<FlipbookAnalytics />} />
-          <Route path="flipbooks/new" element={<FlipbookEditor />} />
-          <Route path="flipbooks/:id/edit" element={<FlipbookEditor />} />
-          <Route path="flipbooks/:id/analytics" element={<FlipbookAnalytics />} />
+          <Route path="publica" element={<Flipbooks />} />
+          <Route path="publica/analytics" element={<FlipbookAnalytics />} />
+          <Route path="publica/new" element={<FlipbookEditor />} />
+          <Route path="publica/:id/edit" element={<FlipbookEditor />} />
+          <Route path="publica/:id/analytics" element={<FlipbookAnalytics />} />
+          <Route path="flipbooks" element={<LegacyPublicaWorkspaceRedirect />} />
+          <Route path="flipbooks/analytics" element={<LegacyPublicaWorkspaceRedirect destination="analytics" />} />
+          <Route path="flipbooks/new" element={<LegacyPublicaWorkspaceRedirect destination="new" />} />
+          <Route path="flipbooks/:id/edit" element={<LegacyPublicaWorkspaceRedirect destination="edit" />} />
+          <Route path="flipbooks/:id/analytics" element={<LegacyPublicaWorkspaceRedirect destination="detail-analytics" />} />
           <Route path="courses" element={<ScormFeatureGate featureId="courses"><ScormCourses /></ScormFeatureGate>} />
           <Route path="courses/:id" element={<ScormFeatureGate featureId="courses"><ScormCourseDetail /></ScormFeatureGate>} />
           <Route path="roster" element={<ScormFeatureGate featureId="tracking"><ScormLearnerRoster /></ScormFeatureGate>} />
@@ -237,8 +262,10 @@ function AppRoutes() {
         <Route path="/host/lobby-old/:pin" element={<LegacyQuizRedirect kind="lobby" />} />
         <Route path="/host/game-old/:pin" element={<LegacyQuizRedirect kind="game" />} />
 
-        <Route path="/flipbook/:shareToken" element={<FlipbookViewer />} />
-        <Route path="/flipbook-library/:shareToken" element={<FlipbookLibraryViewer />} />
+        <Route path="/publica/:shareToken" element={<FlipbookViewer />} />
+        <Route path="/publica-library/:shareToken" element={<FlipbookLibraryViewer />} />
+        <Route path="/flipbook/:shareToken" element={<LegacyPublicaShareRedirect />} />
+        <Route path="/flipbook-library/:shareToken" element={<LegacyPublicaShareRedirect library />} />
         <Route path="/learn" element={<ScormUniversalLearnerPortal />} />
         <Route path="/learn/microsoft" element={<MicrosoftDiscovery />} />
         <Route path="/learn/:workspaceId" element={<ScormLearnerPortal />} />

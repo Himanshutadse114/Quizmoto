@@ -79,9 +79,9 @@ const publicRecoveryScript = `<script id="lmsgen-public-route-recovery">(functio
 
 // If a host-level catch-all sends an authenticated/app route to the marketing
 // homepage, move it to app.html and preserve the original path for React. Public
-// /flipbook and /flipbook-library links are also handed to React so shared URLs
+// Publica links and their legacy aliases are also handed to React so shared URLs
 // open the correct reader or library instead of the marketing homepage.
-const appHandoffScript = `<script id="lmsgen-static-app-handoff">(function(){try{var p=location.pathname;var app=/^\\/(?:signin(?:\\/|$)|login(?:\\/|$)|auth(?:\\/|$)|scorm(?:\\/|$)|flipbook(?:\\/|$)|flipbook-library(?:\\/|$)|player(?:\\/|$)|join(?:\\/|$)|host(?:\\/|$)|dashboard(?:\\/|$)|create-quiz(?:\\/|$)|edit-quiz(?:\\/|$)|reports(?:\\/|$)|learn(?:\\/|$)|campaign(?:\\/|$))/.test(p);if(!app)return;var route=p+location.search+location.hash;if(/^\\/signin(?:\\/|$)/.test(p))route='/login'+location.search+location.hash;location.replace('/app.html?__lmsgen_route='+encodeURIComponent(route));}catch(e){}})();</script>`;
+const appHandoffScript = `<script id="lmsgen-static-app-handoff">(function(){try{var p=location.pathname;var app=/^\\/(?:signin(?:\\/|$)|login(?:\\/|$)|auth(?:\\/|$)|scorm(?:\\/|$)|publica(?:\\/|$)|publica-library(?:\\/|$)|flipbook(?:\\/|$)|flipbook-library(?:\\/|$)|player(?:\\/|$)|join(?:\\/|$)|host(?:\\/|$)|dashboard(?:\\/|$)|create-quiz(?:\\/|$)|edit-quiz(?:\\/|$)|reports(?:\\/|$)|learn(?:\\/|$)|campaign(?:\\/|$))/.test(p);if(!app)return;var route=p+location.search+location.hash;if(/^\\/signin(?:\\/|$)/.test(p))route='/login'+location.search+location.hash;location.replace('/app.html?__lmsgen_route='+encodeURIComponent(route));}catch(e){}})();</script>`;
 
 let rootMarketing = await fs.readFile(path.join(distRoot, 'index.html'), 'utf8');
 if (!rootMarketing.includes('id="lmsgen-public-route-recovery"')) {

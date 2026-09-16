@@ -32,12 +32,19 @@ function cleanText(value, maxLength) {
 }
 
 function libraryUrl(library) {
-    return `${PUBLIC_APP_URL}/flipbook-library/${library.shareToken}`;
+    return `${PUBLIC_APP_URL}/publica-library/${library.shareToken}`;
 }
 
 function bookShareUrl(book, source = '') {
-    const base = `${PUBLIC_APP_URL}/flipbook/${book.shareToken}`;
+    const base = `${PUBLIC_APP_URL}/publica/${book.shareToken}`;
     return source ? `${base}?source=${encodeURIComponent(source)}` : base;
+}
+
+function publicTitleForLegacyLibrary(title) {
+    const value = String(title || '').trim();
+    const match = /^(?:(.+?)\s+)?Flipbook Library$/i.exec(value);
+    if (!match) return value;
+    return `${match[1] ? `${match[1]} ` : ''}Publica Library`.slice(0, 180);
 }
 
 async function getOrCreateLibrary(user) {
@@ -54,10 +61,17 @@ async function getOrCreateLibrary(user) {
         }
     });
     const email = String(user.email || '').trim().toLowerCase() || null;
+    const migratedTitle = publicTitleForLegacyLibrary(library.title);
+    let changed = false;
     if (library.ownerEmail !== email) {
         library.ownerEmail = email;
-        await library.save();
+        changed = true;
     }
+    if (migratedTitle && migratedTitle !== library.title) {
+        library.title = migratedTitle;
+        changed = true;
+    }
+    if (changed) await library.save();
     return library;
 }
 
@@ -71,7 +85,7 @@ async function publishedBooks(ownerUserId) {
 function libraryPayload(library, books = []) {
     return {
         id: library.id,
-        title: library.title,
+        title: publicTitleForLegacyLibrary(library.title),
         description: library.description || '',
         shareEnabled: Boolean(library.shareEnabled),
         shareToken: library.shareToken,
