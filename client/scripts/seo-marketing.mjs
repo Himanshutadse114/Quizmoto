@@ -25,7 +25,7 @@ const PAGES = [
     file: 'index.html',
     route: '/',
     title: 'AI LMS for SCORM Course Creation & Learner Tracking | LMSGEN',
-    description: 'Create SCORM-ready training with AI, launch learner campaigns, run live quizzes and track completion, scores and learning activity in one LMS built for L&D teams.',
+    description: 'Create SCORM-ready training with AI or turn a landscape PDF into a trackable course with an editable quiz, per-slide timing and learner reporting.',
     type: 'home',
   },
   {
@@ -67,7 +67,7 @@ const PAGES = [
 
 const HOME_HERO_HEADING = 'AI-powered LMS for SCORM course creation, delivery and learner tracking.';
 const HOME_HERO_EYEBROW = 'For L&D, compliance and security awareness teams';
-const HOME_HERO_DESCRIPTION = 'Turn policies, documents and ideas into structured learning, publish or upload SCORM, launch learner campaigns, run live Quizmoto sessions and measure learning from one connected workspace.';
+const HOME_HERO_DESCRIPTION = 'Turn policies, documents and ideas into structured learning, convert landscape PDFs into trackable courses, launch learner campaigns, run live Quizmoto sessions and measure learning from one connected workspace.';
 
 const PAIN_SECTION = `
 <section class="lmsgen-seo-section lmsgen-pain-section" aria-labelledby="lmsgen-pain-title">
@@ -86,6 +86,51 @@ const PAIN_SECTION = `
   </div>
 </section>`;
 
+const PDF_COURSE_SECTION = `
+<section class="lmsgen-seo-section lmsgen-pdf-course-section" aria-labelledby="lmsgen-pdf-course-title">
+  <div class="lmsgen-seo-inner">
+    <div class="lmsgen-pdf-course-header">
+      <div>
+        <div class="lmsgen-seo-kicker">NEW · PDF TO TRACKABLE COURSE</div>
+        <h2 id="lmsgen-pdf-course-title">Your presentation is already designed. Make it trackable.</h2>
+      </div>
+      <div class="lmsgen-pdf-course-summary">
+        <p>Keep every slide exactly as exported, add an AI-generated editable quiz and capture progress, scores and time spent on each slide.</p>
+        <a href="/scorm/author">Create a trackable PDF course <span aria-hidden="true">→</span></a>
+      </div>
+    </div>
+    <ol class="lmsgen-pdf-course-steps" aria-label="How to create a trackable course from a presentation">
+      <li><span>01</span><div><strong>Create your presentation</strong><p>Build the slides in PowerPoint, Gamma, Canva or the presentation tool you already use.</p></div></li>
+      <li><span>02</span><div><strong>Export a landscape PDF</strong><p>Use landscape orientation—16:9 is recommended—so every page is ready to become one course slide.</p></div></li>
+      <li><span>03</span><div><strong>Upload the PDF</strong><p>LMSGEN preserves each PDF page as a fixed visual slide and generates a relevant, editable final quiz.</p></div></li>
+      <li><span>04</span><div><strong>Publish and track</strong><p>Your course is ready with learner progress, quiz scores, completion and time spent on every slide.</p></div></li>
+    </ol>
+    <div class="lmsgen-pdf-course-proof">
+      <div class="lmsgen-pdf-proof-screen" aria-label="Trackable presentation course preview">
+        <div class="lmsgen-pdf-proof-rail">
+          <small>PRESENTATION COURSE</small><strong>Security awareness</strong>
+          <div class="lmsgen-pdf-proof-progress"><i></i></div><span>68% complete</span>
+        </div>
+        <div class="lmsgen-pdf-proof-slide">
+          <div class="lmsgen-pdf-proof-toolbar"><span>Slide 4 of 8</span><b>02:18 on this slide</b></div>
+          <div class="lmsgen-pdf-proof-page"><small>SECURITY AWARENESS</small><strong>Verify before you trust.</strong><p>Exact PDF page, scaled cleanly for every screen.</p></div>
+        </div>
+      </div>
+      <div class="lmsgen-pdf-proof-copy">
+        <span>WHAT LMSGEN ADDS</span>
+        <h3>Presentation fidelity without losing learning evidence.</h3>
+        <ul>
+          <li>One preserved PDF page per slide</li>
+          <li>Responsive, centred slide scaling on mobile</li>
+          <li>Editable AI-generated end-of-course quiz</li>
+          <li>Per-slide visits and active viewing time</li>
+          <li>Completion, score and learner-level reporting</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>`;
+
 const FAQ_ITEMS = [
   ['What is LMSGEN?', 'LMSGEN is an AI-powered learning management platform for creating, delivering and tracking workplace learning. It combines AI-assisted course authoring, SCORM delivery, learner campaigns, live Quizmoto sessions and reporting in one workspace.'],
   ['Who is LMSGEN built for?', 'LMSGEN is designed for L&D teams, compliance and training managers, security awareness teams and organisations that need to create custom learning quickly and track learner outcomes without stitching together multiple tools.'],
@@ -93,6 +138,7 @@ const FAQ_ITEMS = [
   ['Can LMSGEN track learner answers and scores?', 'LMSGEN tracks the SCORM data a course sends. Depending on the package, this can include completion, score, learning time, attempts, learner response, correct response, result and compatible question-level interaction data.'],
   ['How do learner campaigns work in LMSGEN?', 'Admins can create a campaign, assign published courses and learners, start or stop the campaign, add or remove learners while it is running and send reminder emails. Campaign analytics are kept separate from direct course-link tracking.'],
   ['Is Quizmoto part of the SCORM course player?', 'Quizmoto is a separate live-quiz feature inside the LMSGEN workspace. Hosts run a real-time session, participants join with a code and the group plays together live.'],
+  ['How do I turn a presentation into a trackable course?', 'Create the presentation in your preferred tool, export it as a landscape PDF, then upload the PDF to LMSGEN. Each PDF page becomes a preserved course slide, LMSGEN adds an editable AI-generated quiz, and learner progress, scores and time spent per slide are tracked.'],
 ];
 
 const FAQ_SECTION = `
@@ -123,6 +169,43 @@ const SOLUTIONS_AUDIENCE_SECTION = `
 
 const SEO_STYLE = `<style id="lmsgen-seo-content-style">
   .lmsgen-seo-section{padding:9rem 2.4rem;background:#f6f5ef;color:#003f3a;font-family:inherit}.lmsgen-seo-inner{width:min(128rem,100%);margin:0 auto}.lmsgen-seo-inner-narrow{width:min(102rem,100%)}.lmsgen-seo-kicker{font-size:1.35rem;font-weight:700;letter-spacing:.14em;color:#177e78;margin-bottom:1.8rem}.lmsgen-seo-section h2{max-width:98rem;font-size:clamp(3.4rem,5vw,6.4rem);line-height:1.02;letter-spacing:-.035em;margin:0;color:#003f3a}.lmsgen-seo-lead{max-width:86rem;margin:2.4rem 0 0;font-size:2rem;line-height:1.55;color:#385c58}.lmsgen-pain-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.6rem;margin-top:5rem}.lmsgen-pain-card{min-height:31rem;padding:2.8rem;border:1px solid rgba(0,63,58,.16);border-radius:2.4rem;background:#fff;display:flex;flex-direction:column}.lmsgen-pain-card>span{display:inline-flex;width:4.2rem;height:4.2rem;align-items:center;justify-content:center;border-radius:999px;background:#d9f4ef;color:#0b6259;font-weight:800;font-size:1.35rem}.lmsgen-pain-card h3,.lmsgen-audience-grid h3{font-size:2.5rem;line-height:1.12;margin:2.2rem 0 1.2rem;color:#003f3a}.lmsgen-pain-card p,.lmsgen-audience-grid p,.lmsgen-faq-item p{font-size:1.65rem;line-height:1.55;color:#496763}.lmsgen-pain-card strong{display:block;margin-top:auto;padding-top:2rem;font-size:1.5rem;line-height:1.5;color:#0b6259}.lmsgen-faq-section{background:#fff}.lmsgen-faq-list{margin-top:4.5rem;border-top:1px solid rgba(0,63,58,.16)}.lmsgen-faq-item{border-bottom:1px solid rgba(0,63,58,.16);padding:0}.lmsgen-faq-item summary{cursor:pointer;list-style:none;padding:2.4rem 4rem 2.4rem 0;font-size:2rem;font-weight:700;color:#003f3a;position:relative}.lmsgen-faq-item summary::-webkit-details-marker{display:none}.lmsgen-faq-item summary:after{content:'+';position:absolute;right:.4rem;top:2.2rem;font-size:2.6rem;color:#177e78}.lmsgen-faq-item[open] summary:after{content:'–'}.lmsgen-faq-item p{max-width:84rem;padding:0 0 2.5rem;margin:0}.lmsgen-audience-section{background:#e7f7f4}.lmsgen-audience-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.6rem;margin-top:4rem}.lmsgen-audience-grid article{padding:2.8rem;border-radius:2.2rem;background:#fff;border:1px solid rgba(0,63,58,.14)}.lmsgen-audience-grid h3{margin-top:0}@media(max-width:991px){.lmsgen-pain-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lmsgen-audience-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:640px){.lmsgen-seo-section{padding:6.5rem 1.8rem}.lmsgen-pain-grid,.lmsgen-audience-grid{grid-template-columns:1fr}.lmsgen-seo-section h2{font-size:3.8rem}.lmsgen-seo-lead{font-size:1.7rem}.lmsgen-pain-card{min-height:0}.lmsgen-faq-item summary{font-size:1.75rem}}
+</style>`;
+
+const PDF_COURSE_STYLE = `<style id="lmsgen-pdf-course-style">
+  .lmsgen-pdf-course-section{background:#073f3b;color:#fff}
+  .lmsgen-pdf-course-section .lmsgen-seo-kicker{color:#7ce3d9}
+  .lmsgen-pdf-course-section h2{max-width:78rem;color:#fff}
+  .lmsgen-pdf-course-header{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(30rem,.8fr);gap:6rem;align-items:end}
+  .lmsgen-pdf-course-summary p{margin:0 0 2.4rem;font-size:1.85rem;line-height:1.6;color:#c8dedb}
+  .lmsgen-pdf-course-summary a{display:inline-flex;align-items:center;gap:.8rem;padding:1.45rem 2rem;border-radius:999px;background:#65d4ca;color:#003f3a;text-decoration:none;font-size:1.5rem;font-weight:800}
+  .lmsgen-pdf-course-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.2rem;margin:5rem 0 0;padding:0;list-style:none}
+  .lmsgen-pdf-course-steps li{min-height:25rem;padding:2.4rem;border:1px solid rgba(124,227,217,.24);border-radius:2rem;background:rgba(255,255,255,.055)}
+  .lmsgen-pdf-course-steps li>span{display:grid;width:4.2rem;height:4.2rem;place-items:center;border-radius:50%;background:#65d4ca;color:#003f3a;font-size:1.2rem;font-weight:800}
+  .lmsgen-pdf-course-steps strong{display:block;margin-top:4.5rem;font-size:2.05rem;line-height:1.18;color:#fff}
+  .lmsgen-pdf-course-steps p{margin:1.1rem 0 0;font-size:1.45rem;line-height:1.55;color:#bad2cf}
+  .lmsgen-pdf-course-proof{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(30rem,.65fr);gap:4rem;align-items:center;margin-top:2rem;padding:2rem;border-radius:2.8rem;background:#f4fbfa;color:#003f3a}
+  .lmsgen-pdf-proof-screen{min-height:43rem;display:grid;grid-template-columns:14rem 1fr;overflow:hidden;border-radius:1.8rem;background:#fff;box-shadow:0 2rem 5rem rgba(0,31,29,.18)}
+  .lmsgen-pdf-proof-rail{padding:2.4rem 1.7rem;background:#062f2c;color:#fff}
+  .lmsgen-pdf-proof-rail small{color:#7ce3d9;font-size:.9rem;font-weight:800;letter-spacing:.12em}
+  .lmsgen-pdf-proof-rail strong{display:block;margin-top:1.2rem;font-size:1.45rem;line-height:1.25}
+  .lmsgen-pdf-proof-progress{height:.7rem;margin:3rem 0 1rem;border-radius:99px;background:rgba(255,255,255,.13)}
+  .lmsgen-pdf-proof-progress i{display:block;width:68%;height:100%;border-radius:inherit;background:#65d4ca}
+  .lmsgen-pdf-proof-rail span{font-size:1rem;color:#b8d2cf}
+  .lmsgen-pdf-proof-slide{display:grid;grid-template-rows:auto 1fr;padding:2rem;background:#eaf8f6}
+  .lmsgen-pdf-proof-toolbar{display:flex;justify-content:space-between;gap:1rem;color:#4c6f6b;font-size:1.05rem}
+  .lmsgen-pdf-proof-toolbar b{color:#087d73}
+  .lmsgen-pdf-proof-page{align-self:center;min-height:29rem;padding:4rem;display:flex;flex-direction:column;justify-content:center;background:#fff8e8;box-shadow:0 1.5rem 4rem rgba(0,63,58,.12)}
+  .lmsgen-pdf-proof-page small{font-size:1rem;font-weight:800;letter-spacing:.12em;color:#087d73}
+  .lmsgen-pdf-proof-page strong{max-width:46rem;margin-top:1.4rem;font-size:clamp(3.2rem,4vw,5.5rem);line-height:.96;letter-spacing:-.03em}
+  .lmsgen-pdf-proof-page p{margin:2rem 0 0;font-size:1.3rem;color:#496763}
+  .lmsgen-pdf-proof-copy{padding:2rem 2rem 2rem 0}
+  .lmsgen-pdf-proof-copy>span{font-size:1.1rem;font-weight:800;letter-spacing:.12em;color:#087d73}
+  .lmsgen-pdf-proof-copy h3{margin:1.2rem 0 2.4rem;font-size:3rem;line-height:1.06;color:#003f3a}
+  .lmsgen-pdf-proof-copy ul{display:grid;gap:1.15rem;margin:0;padding:0;list-style:none}
+  .lmsgen-pdf-proof-copy li{position:relative;padding-left:2.6rem;font-size:1.4rem;line-height:1.45;color:#385c58}
+  .lmsgen-pdf-proof-copy li:before{content:'✓';position:absolute;left:0;top:-.1rem;display:grid;width:1.8rem;height:1.8rem;place-items:center;border-radius:50%;background:#d2f3ef;color:#087d73;font-size:1rem;font-weight:900}
+  @media(max-width:991px){.lmsgen-pdf-course-header,.lmsgen-pdf-course-proof{grid-template-columns:1fr}.lmsgen-pdf-course-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.lmsgen-pdf-proof-copy{padding:1rem 1rem 2rem}}
+  @media(max-width:640px){.lmsgen-pdf-course-header{gap:2.5rem}.lmsgen-pdf-course-steps{grid-template-columns:1fr}.lmsgen-pdf-course-steps li{min-height:0}.lmsgen-pdf-course-steps strong{margin-top:2.8rem}.lmsgen-pdf-course-proof{padding:1rem;gap:1.5rem}.lmsgen-pdf-proof-screen{min-height:29rem;grid-template-columns:7.5rem 1fr}.lmsgen-pdf-proof-rail{padding:1.3rem .8rem}.lmsgen-pdf-proof-rail strong{font-size:.9rem}.lmsgen-pdf-proof-rail span{font-size:.75rem}.lmsgen-pdf-proof-slide{padding:.8rem}.lmsgen-pdf-proof-toolbar{font-size:.75rem}.lmsgen-pdf-proof-page{min-height:20rem;padding:1.8rem}.lmsgen-pdf-proof-page strong{font-size:2.7rem}.lmsgen-pdf-proof-page p{font-size:.9rem}.lmsgen-pdf-proof-copy{padding:1.5rem}.lmsgen-pdf-proof-copy h3{font-size:2.5rem}}
 </style>`;
 
 function escapeRegExp(value) {
@@ -204,6 +287,8 @@ function productSchema() {
         ],
         featureList: [
           'AI-assisted course authoring',
+          'Trackable presentation courses from landscape PDF files',
+          'Per-slide viewing time and visit tracking for presentation courses',
           'SCORM 1.2 and SCORM 2004 package delivery',
           'Learner campaigns and reminders',
           'Direct learner tracking',
@@ -258,6 +343,9 @@ function setPageHead(html, page) {
   if (!html.includes('id="lmsgen-seo-content-style"')) {
     html = html.replace(/<\/head>/i, `  ${SEO_STYLE}\n</head>`);
   }
+  if (page.type === 'home' && !html.includes('id="lmsgen-pdf-course-style"')) {
+    html = html.replace(/<\/head>/i, `  ${PDF_COURSE_STYLE}\n</head>`);
+  }
 
   html = removeJsonLd(html);
   html = addJsonLd(html, page.type === 'home' ? productSchema() : webpageSchema(page));
@@ -298,6 +386,9 @@ function prepareHome(html) {
 
   if (!html.includes('id="lmsgen-pain-title"')) {
     html = insertAfterSection(html, 'hp-hero-s', PAIN_SECTION);
+  }
+  if (!html.includes('id="lmsgen-pdf-course-title"')) {
+    html = insertAfterSection(html, 'lmsgen-seo-section lmsgen-pain-section', PDF_COURSE_SECTION);
   }
   if (!html.includes('id="lmsgen-faq-title"')) {
     html = html.replace(/<\/main>/i, `${FAQ_SECTION}\n</main>`);
@@ -345,7 +436,7 @@ async function writeSitemap() {
 }
 
 async function writeLlms() {
-  const text = `# LMSGEN\n\nLMSGEN is an AI-powered learning management platform for L&D, compliance and security awareness teams.\n\n## Core capabilities\n- AI-assisted course authoring from briefs and source material\n- SCORM 1.2 and SCORM 2004 package upload and delivery\n- Direct course-link learner tracking\n- Learner campaigns with add/remove learner management and reminders\n- Campaign analytics kept separate from direct learner tracking\n- Completion, score, time, attempts and compatible SCORM interaction evidence\n- Live Quizmoto sessions for real-time quiz engagement\n- Learner roster, reports and role-based administration\n\n## Important pages\n- Home: ${SITE_URL}/\n- Solutions: ${SITE_URL}/solutions\n- About: ${SITE_URL}/about\n- Blog: ${SITE_URL}/blog\n- Contact: ${SITE_URL}/contact\n\n## Product notes\nLMSGEN stores the SCORM data a course sends. Question-level reporting depends on the interaction data exposed by the SCORM package. Quizmoto is a separate live-quiz feature inside the LMSGEN workspace.\n`;
+  const text = `# LMSGEN\n\nLMSGEN is an AI-powered learning management platform for L&D, compliance and security awareness teams.\n\n## Core capabilities\n- AI-assisted course authoring from briefs and source material\n- Trackable presentation courses made by exporting slides as a landscape PDF and uploading the PDF\n- Exact PDF-page slide preservation, editable AI-generated quizzes and per-slide viewing-time analytics\n- SCORM 1.2 and SCORM 2004 package upload and delivery\n- Direct course-link learner tracking\n- Learner campaigns with add/remove learner management and reminders\n- Campaign analytics kept separate from direct learner tracking\n- Completion, score, time, attempts and compatible SCORM interaction evidence\n- Live Quizmoto sessions for real-time quiz engagement\n- Learner roster, reports and role-based administration\n\n## Important pages\n- Home: ${SITE_URL}/\n- Solutions: ${SITE_URL}/solutions\n- About: ${SITE_URL}/about\n- Blog: ${SITE_URL}/blog\n- Contact: ${SITE_URL}/contact\n\n## Product notes\nLMSGEN stores the SCORM data a course sends. Question-level reporting depends on the interaction data exposed by the SCORM package. Quizmoto is a separate live-quiz feature inside the LMSGEN workspace.\n`;
   await fs.writeFile(path.join(distRoot, 'llms.txt'), text, 'utf8');
 }
 
