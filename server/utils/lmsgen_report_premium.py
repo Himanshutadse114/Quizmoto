@@ -166,17 +166,17 @@ def score_panel(r,s):
 
 def learner_card(row,i,s):
     name=row.get('learner') or row.get('name') or 'Learner'; email=row.get('email') or ''; result=row.get('result') or row.get('status') or 'Not attempted'; c=scol(result)
-    head=Table([[Paragraph(f'<b>{i:02d}. {safe(name)}</b><br/><font size="6" color="#6E8584">{safe(email)}</font>',s['ct']),Paragraph(f'<font color="{c.hexval()}"><b>{safe(result)}</b></font>',s['cv'])]],colWidths=[91*mm,35*mm])
+    head=Table([[Paragraph(f'<b>{i:02d}. {safe(name)}</b><br/><font size="6" color="#6E8584">{safe(email)}</font>',s['ct']),Paragraph(f'<font color="{c.hexval()}"><b>{safe(result)}</b></font>',s['cv'])]],colWidths=[200*mm,52*mm])
     head.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),SOFT),('LINEABOVE',(0,0),(-1,0),3,c),('BOX',(0,0),(-1,-1),.45,LINE),('ALIGN',(1,0),(1,0),'RIGHT'),('VALIGN',(0,0),(-1,-1),'MIDDLE'),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5)]))
     vals=[('PROGRESS',row.get('progress') or '-'),('SCORE',row.get('score') if row.get('score') not in (None,'') else '-'),('LEARNING TIME',row.get('learningTime') or row.get('activeTime') or '-'),('QUESTIONS',row.get('questions') if row.get('questions') not in (None,'') else '-'),('CORRECT',row.get('correct') if row.get('correct') not in (None,'') else '-'),('LAST ACTIVITY',row.get('lastActivity') or row.get('lastActivityAt') or '-')]
     cells=[[Paragraph(a,s['cl']),Paragraph(safe(b),s['cv'])] for a,b in vals]
-    detail=Table([[cells[0],cells[1],cells[2]],[cells[3],cells[4],cells[5]]],colWidths=[42*mm]*3)
+    detail=Table([cells],colWidths=[42*mm]*6)
     detail.setStyle(TableStyle([('BOX',(0,0),(-1,-1),.4,LINE),('INNERGRID',(0,0),(-1,-1),.3,LINE),('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),6),('RIGHTPADDING',(0,0),(-1,-1),6),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
-    outer=Table([[head],[detail]],colWidths=[126*mm]); outer.setStyle(TableStyle([('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0),('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0)])); return outer
+    outer=Table([[head],[detail]],colWidths=[252*mm]); outer.setStyle(TableStyle([('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0),('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0)])); return outer
 
-def slide_timing_table(row,i,s):
-    timings=row.get('slideTimings') or []; name=row.get('learner') or row.get('name') or 'Learner'; email=row.get('email') or ''
-    heading=Table([[Paragraph(f'<b>{i:02d}. {safe(name)}</b><br/><font size="6" color="#6E8584">{safe(email)}</font>',s['ct']),Paragraph(f'{len(timings)} SLIDES',s['kick'])]],colWidths=[210*mm,42*mm])
+def slide_timing_table(row,s):
+    timings=row.get('slideTimings') or []
+    heading=Table([[Paragraph('SLIDE ENGAGEMENT',s['kick']),Paragraph(f'{len(timings)} SLIDES',s['kick'])]],colWidths=[210*mm,42*mm])
     heading.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),SOFT),('LINEABOVE',(0,0),(-1,0),2.4,TEAL),('BOX',(0,0),(-1,-1),.45,LINE),('ALIGN',(1,0),(1,0),'RIGHT'),('VALIGN',(0,0),(-1,-1),'MIDDLE'),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5)]))
     data=[[Paragraph('SLIDE',s['th']),Paragraph('TIME SPENT',s['th']),Paragraph('VISITS',s['th']),Paragraph('ENGAGEMENT',s['th'])]]
     for timing in timings:
@@ -184,7 +184,7 @@ def slide_timing_table(row,i,s):
         data.append([Paragraph(safe(timing.get('label') or f'Slide {timing.get("slideNumber") or "-"}'),s['tc']),Paragraph(safe(duration_ms(timing.get('milliseconds'),timing.get('timeSpent'))),s['tc']),Paragraph(safe(timing.get('visits') if timing.get('visits') not in (None,'') else 0),s['tc']),Paragraph(f'<font color="{scol(status).hexval()}"><b>{safe(status)}</b></font>',s['tc'])])
     table=Table(data,colWidths=[132*mm,45*mm,28*mm,47*mm],repeatRows=1)
     table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),TS),('LINEBELOW',(0,0),(-1,0),1,TD),('ROWBACKGROUNDS',(0,1),(-1,-1),[WHITE,SOFT]),('GRID',(0,0),(-1,-1),.3,LINE),('VALIGN',(0,0),(-1,-1),'MIDDLE'),('LEFTPADDING',(0,0),(-1,-1),6),('RIGHTPADDING',(0,0),(-1,-1),6),('TOPPADDING',(0,0),(-1,-1),4.5),('BOTTOMPADDING',(0,0),(-1,-1),4.5),('ALIGN',(1,1),(2,-1),'CENTER')]))
-    return [heading,table,Spacer(1,4*mm)]
+    return heading,table
 
 def table_detail(r,s):
     cols=r.get('columns') or []; rows=r.get('rows') or []; avail=landscape(A4)[0]-28*mm
@@ -217,13 +217,14 @@ def generate_pdf(r,out):
     story += [PageBreak(),section('02','LEARNER-LEVEL EVIDENCE' if rtype(r)=='course' else 'DETAILED EVIDENCE','Detailed Learner Audit' if rtype(r)=='course' else 'Report Detail',s)]
     rows=r.get('rows') or []
     if rtype(r)=='course' and rows:
-        for i in range(0,len(rows),2):
-            pair=Table([[learner_card(rows[i],i+1,s),learner_card(rows[i+1],i+2,s) if i+1<len(rows) else '']],colWidths=[128*mm,128*mm]); pair.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),2),('RIGHTPADDING',(0,0),(-1,-1),2),('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2)])); story += [pair,Spacer(1,2*mm)]
+        for i,row in enumerate(rows,1):
+            story += [learner_card(row,i,s),Spacer(1,2*mm)]
+            if row.get('slideTimings'):
+                timing_heading,timing_table=slide_timing_table(row,s)
+                story += [timing_heading,timing_table,Spacer(1,5*mm)]
+            else:
+                story += [Paragraph('No slide timing evidence was captured for this learner.',s['mut']),Spacer(1,5*mm)]
     else:story.append(table_detail(r,s))
-    timed=[(i,row) for i,row in enumerate(rows,1) if row.get('slideTimings')]
-    if rtype(r)=='course' and timed:
-        story += [PageBreak(),section('03','SLIDE-LEVEL EVIDENCE','Time Spent Per Slide',s),Paragraph('Visits and active viewing time captured for each presentation slide. Slides with no recorded activity remain visible for skip analysis.',s['sub']),Spacer(1,4*mm)]
-        for i,row in timed:story += slide_timing_table(row,i,s)
     story += [Spacer(1,4*mm),Paragraph('Generated from LMSGEN current-platform data. The report reflects evidence available at the generation time.',s['mut'])]
     doc.build(story,onFirstPage=lambda c,d:footer(c,d,r),onLaterPages=lambda c,d:footer(c,d,r))
 
