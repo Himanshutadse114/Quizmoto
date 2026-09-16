@@ -44,6 +44,10 @@ function hasPresentationSource(payload = {}) {
     return Boolean(String(payload.sourceKey || '').trim() || String(payload.fileBase64 || '').trim());
 }
 
+function hasVisualPdfSource(payload = {}) {
+    return Boolean(String(payload.visualSourceKey || '').trim() || String(payload.visualFileBase64 || '').trim());
+}
+
 function quizQuestionCount(value) {
     if (Array.isArray(value)) return value.length;
     return Array.isArray(value?.questions) ? value.questions.length : 0;
@@ -138,6 +142,32 @@ async function readPresentationSource(payload, userId) {
     };
 }
 
+async function readVisualPdfSource(payload, userId) {
+    const sourceName = cleanSourceName(payload.visualSourceFileName || 'presentation-visuals.pdf', 'presentation-visuals.pdf');
+    const key = String(payload.visualSourceKey || '').trim();
+    let storage = null;
+    let buffer = null;
+    if (key) {
+        const allowedPrefix = `ai-author/source/${String(userId || 'unknown')}/`;
+        if (!key.startsWith(allowedPrefix)) {
+            const error = new Error('Invalid exact visual PDF reference.');
+            error.code = 'SCORM_SOURCE_FORBIDDEN';
+            throw error;
+        }
+        storage = getObjectStorage();
+        buffer = await storage.getObjectBuffer(key);
+    } else {
+        const raw = String(payload.visualFileBase64 || '').replace(/^data:[^;]+;base64,/, '');
+        if (raw) buffer = Buffer.from(raw, 'base64');
+    }
+    if (!Buffer.isBuffer(buffer) || buffer.length < 5 || buffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
+        const error = new Error('The exact visual PDF could not be read. Automatic presentation rendering will be used instead.');
+        error.code = 'SCORM_PRESENTATION_VISUAL_PDF_INVALID';
+        throw error;
+    }
+    return { key, storage, sourceName, mimeType: 'application/pdf', buffer };
+}
+
 async function removePresentationSource(source) {
     if (!source?.key || !source.storage) return;
     try {
@@ -153,6 +183,7 @@ async function removePresentationSource(source) {
 
 async function generatePresentationCourse({ payload = {}, userId, onProgress = noop, checkCancelled = noop }) {
     let source = null;
+    let visualSource = null;
     try {
         const replaceId = String(payload.replacePackageId || payload.packageId || '').trim();
         let pkg = null;
@@ -171,17 +202,34 @@ async function generatePresentationCourse({ payload = {}, userId, onProgress = n
         onProgress({
             percent: 5,
             stage: 'Reading presentation',
-            detail: hasPresentationSource(payload)
+            detail: hasPresentationSource(payload) || hasVisualPdfSource(payload)
                 ? 'Checking the uploaded deck and preparing its original slides.'
                 : 'Loading the existing slides and editable knowledge check.'
         });
         const hasNewSource = hasPresentationSource(payload);
-        if (!hasNewSource && !pkg) {
+        const hasNewVisualPdf = hasVisualPdfSource(payload);
+        if (!hasNewSource && !hasNewVisualPdf && !pkg) {
             const error = new Error('Upload a PPTX or PDF presentation before creating this course.');
             error.code = 'SCORM_PRESENTATION_SOURCE_REQUIRED';
             throw error;
         }
         if (hasNewSource) source = await readPresentationSource(payload, userId);
+        if (hasNewVisualPdf) {
+            try {
+                visualSource = await readVisualPdfSource(payload, userId);
+            } catch (error) {
+                logger.warn('scorm_presentation_visual_pdf_ignored', {
+                    module: 'scorm',
+                    error: error.message,
+                    code: error.code
+                });
+                const failedKey = String(payload.visualSourceKey || '').trim();
+                const allowedPrefix = `ai-author/source/${String(userId || 'unknown')}/`;
+                if (failedKey.startsWith(allowedPrefix)) {
+                    await getObjectStorage().deleteObject(failedKey).catch(() => {});
+                }
+            }
+        }
         const sourceName = source?.sourceName || storedMetadata.presentation?.sourceFileName || pkg?.title || 'presentation.pptx';
         const title = titleFromPayload(payload, sourceName) || pkg?.title;
 
@@ -189,18 +237,56 @@ async function generatePresentationCourse({ payload = {}, userId, onProgress = n
         onProgress({
             percent: 14,
             stage: 'Preserving slides',
-            detail: hasNewSource
-                ? 'Rendering every slide as a consistent, fast-loading course image.'
+            detail: visualSource
+                ? 'Using the supplied PDF pages for exact slide visuals and fast playback.'
+                : hasNewSource
+                    ? 'Rendering every slide as a consistent, fast-loading course image.'
                 : 'Reusing the exact slide images already stored in this course.'
         });
-        const rendered = hasNewSource
-            ? await renderPresentation({
-                sourceBuffer: source.buffer,
-                mimeType: source.mimeType,
-                fileName: source.sourceName
-            })
-            : await loadExistingPresentation(pkg, storedMetadata);
+        let rendered = null;
+        if (hasNewSource) {
+            try {
+                rendered = await renderPresentation({
+                    sourceBuffer: source.buffer,
+                    mimeType: source.mimeType,
+                    fileName: source.sourceName,
+                    visualPdfBuffer: visualSource?.buffer || null,
+                    visualPdfFileName: visualSource?.sourceName || ''
+                });
+            } catch (error) {
+                if (!visualSource) throw error;
+                logger.warn('scorm_presentation_visual_pdf_render_fallback', {
+                    module: 'scorm',
+                    error: error.message,
+                    code: error.code
+                });
+                rendered = await renderPresentation({
+                    sourceBuffer: source.buffer,
+                    mimeType: source.mimeType,
+                    fileName: source.sourceName
+                });
+            }
+        } else if (visualSource) {
+            try {
+                rendered = await renderPresentation({
+                    sourceBuffer: visualSource.buffer,
+                    mimeType: 'application/pdf',
+                    fileName: visualSource.sourceName
+                });
+            } catch (error) {
+                if (!pkg) throw error;
+                logger.warn('scorm_presentation_visual_only_render_fallback', {
+                    module: 'scorm',
+                    error: error.message,
+                    code: error.code
+                });
+                rendered = await loadExistingPresentation(pkg, storedMetadata);
+            }
+        } else {
+            rendered = await loadExistingPresentation(pkg, storedMetadata);
+        }
         if (source) source.buffer = null;
+        if (visualSource) visualSource.buffer = null;
 
         checkCancelled();
         onProgress({
@@ -249,6 +335,12 @@ async function generatePresentationCourse({ payload = {}, userId, onProgress = n
             description: String(payload.description || '').trim().slice(0, 4000),
             presentation: {
                 sourceFileName: sourceName,
+                visualSourceFileName: visualSource?.sourceName || (hasNewSource ? '' : storedMetadata.presentation?.visualSourceFileName || ''),
+                visualSourceKind: visualSource
+                    ? 'provided_pdf'
+                    : hasNewSource
+                        ? (rendered.kind === 'pdf' ? 'primary_pdf' : 'automatic')
+                        : storedMetadata.presentation?.visualSourceKind || (rendered.renderEngine === 'provided-pdf' ? 'provided_pdf' : 'automatic'),
                 sourceKind: rendered.kind,
                 slideCount: rendered.slides.length,
                 width: rendered.width,
@@ -359,6 +451,7 @@ async function generatePresentationCourse({ payload = {}, userId, onProgress = n
         };
     } finally {
         await removePresentationSource(source);
+        await removePresentationSource(visualSource);
     }
 }
 
@@ -366,8 +459,10 @@ module.exports = {
     cleanSourceName,
     titleFromPayload,
     hasPresentationSource,
+    hasVisualPdfSource,
     validateEditedQuiz,
     loadExistingPresentation,
     readPresentationSource,
+    readVisualPdfSource,
     generatePresentationCourse
 };

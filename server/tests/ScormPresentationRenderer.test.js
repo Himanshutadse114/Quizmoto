@@ -4,7 +4,8 @@ const {
     presentationKind,
     processRasterSlides,
     sanitizePptxForCompatibility,
-    normalizePptxSvgFontFamilies
+    normalizePptxSvgFontFamilies,
+    assertPdfBuffer
 } = require('../services/scorm/ScormPresentationRenderer');
 const JSZip = require('jszip');
 const fs = require('fs');
@@ -33,6 +34,14 @@ describe('ScormPresentationRenderer', () => {
         expect(() => presentationKind('image/png', 'deck.png'))
             .to.throw('support PPTX and PDF')
             .with.property('code', 'SCORM_PRESENTATION_TYPE_UNSUPPORTED');
+    });
+
+    it('accepts a real PDF header for exact visuals and rejects invalid companions', () => {
+        const pdf = Buffer.from('%PDF-1.7\n');
+        expect(assertPdfBuffer(pdf)).to.equal(pdf);
+        expect(() => assertPdfBuffer(Buffer.from('not a pdf')))
+            .to.throw('exact visual PDF')
+            .with.property('code', 'SCORM_PRESENTATION_VISUAL_PDF_INVALID');
     });
 
     it('normalizes every slide to fixed dimensions and compact WebP files', async () => {

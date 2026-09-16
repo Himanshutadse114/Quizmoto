@@ -1,6 +1,7 @@
 const { expect } = require('chai');
 const {
     hasPresentationSource,
+    hasVisualPdfSource,
     validateEditedQuiz
 } = require('../services/scorm/ScormPresentationCourseService');
 
@@ -9,6 +10,12 @@ describe('ScormPresentationCourseService editing', () => {
         expect(hasPresentationSource({ replacePackageId: 'existing-package' })).to.equal(false);
         expect(hasPresentationSource({ sourceKey: 'ai-author/source/user/deck.pptx' })).to.equal(true);
         expect(hasPresentationSource({ fileBase64: 'AA==' })).to.equal(true);
+    });
+
+    it('recognizes an optional exact visual PDF independently of the editable source', () => {
+        expect(hasVisualPdfSource({ visualSourceKey: 'ai-author/source/user/deck-visual.pdf' })).to.equal(true);
+        expect(hasVisualPdfSource({ visualFileBase64: 'JVBERi0=' })).to.equal(true);
+        expect(hasVisualPdfSource({ sourceKey: 'ai-author/source/user/deck.pptx' })).to.equal(false);
     });
 
     it('normalizes a complete edited quiz and rejects partially completed questions', () => {

@@ -13,7 +13,7 @@ const requestControllers = new Map();
 const cancelledJobs = new Set();
 
 function safeParse(value, fallback) {
-  try { return JSON.parse(value); } catch (_) { return fallback; }
+  try { return JSON.parse(value); } catch { return fallback; }
 }
 
 function fileToBase64(file) {
@@ -33,50 +33,81 @@ function fileToBase64(file) {
   });
 }
 
-async function prepareGenerationPayload({ token, id, payload, file, signal }) {
-  if (!file) {
-    return {
-      ...payload,
-      fileBase64: String(payload.fileBase64 || ''),
-      mimeType: payload.mimeType || '',
-      sourceFileName: payload.sourceFileName || ''
-    };
+async function uploadSourceFile({ token, id, file, signal, visual = false }) {
+  const suffix = visual ? '/visual-pdf' : '';
+  const upload = await axios.post(
+    apiUrl(`/api/scorm/author/source/${encodeURIComponent(id)}${suffix}`),
+    file,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/octet-stream',
+        'X-Source-Mime': file.type || 'application/octet-stream'
+      },
+      timeout: 120000,
+      signal
+    }
+  );
+  return upload.data || {};
+}
+
+async function prepareGenerationPayload({ token, id, payload, file, visualPdfFile, signal }) {
+  let prepared = {
+    ...payload,
+    fileBase64: String(payload.fileBase64 || ''),
+    mimeType: payload.mimeType || '',
+    sourceFileName: payload.sourceFileName || ''
+  };
+
+  if (file) {
+    try {
+      const upload = await uploadSourceFile({ token, id, file, signal });
+      prepared = {
+        ...prepared,
+        fileBase64: '',
+        sourceKey: upload.sourceKey || '',
+        sourceMimeType: upload.mimeType || file.type || 'application/octet-stream',
+        mimeType: file.type || payload.mimeType || '',
+        sourceFileName: file.name || payload.sourceFileName || ''
+      };
+    } catch (err) {
+      // Rolling deployments can briefly serve a newer frontend against an older
+      // API instance. Only in that compatibility window fall back to Base64.
+      if (![404, 405].includes(Number(err.response?.status || 0))) throw err;
+      const fileBase64 = await fileToBase64(file);
+      prepared = {
+        ...prepared,
+        fileBase64,
+        mimeType: file.type || payload.mimeType || '',
+        sourceFileName: file.name || payload.sourceFileName || ''
+      };
+    }
   }
 
-  try {
-    const upload = await axios.post(
-      apiUrl(`/api/scorm/author/source/${encodeURIComponent(id)}`),
-      file,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/octet-stream',
-          'X-Source-Mime': file.type || 'application/octet-stream'
-        },
-        timeout: 120000,
-        signal
-      }
-    );
-    return {
-      ...payload,
-      fileBase64: '',
-      sourceKey: upload.data?.sourceKey || '',
-      sourceMimeType: upload.data?.mimeType || file.type || 'application/octet-stream',
-      mimeType: file.type || payload.mimeType || '',
-      sourceFileName: file.name || payload.sourceFileName || ''
-    };
-  } catch (err) {
-    // Rolling deployments can briefly serve a newer frontend against an older
-    // API instance. Only in that compatibility window fall back to Base64.
-    if (![404, 405].includes(Number(err.response?.status || 0))) throw err;
-    const fileBase64 = await fileToBase64(file);
-    return {
-      ...payload,
-      fileBase64,
-      mimeType: file.type || payload.mimeType || '',
-      sourceFileName: file.name || payload.sourceFileName || ''
-    };
+  if (visualPdfFile) {
+    try {
+      const upload = await uploadSourceFile({ token, id, file: visualPdfFile, signal, visual: true });
+      prepared = {
+        ...prepared,
+        visualSourceKey: upload.sourceKey || '',
+        visualSourceMimeType: 'application/pdf',
+        visualSourceFileName: visualPdfFile.name || 'presentation-visuals.pdf'
+      };
+    } catch (err) {
+      if (err?.code === 'ERR_CANCELED' || axios.isCancel?.(err)) throw err;
+      // The exact PDF is an enhancement. If it cannot be uploaded during a
+      // rolling deployment or is malformed, keep generation moving with the
+      // primary PPTX/PDF and the automatic renderer.
+      prepared = {
+        ...prepared,
+        visualSourceKey: '',
+        visualSourceMimeType: '',
+        visualSourceFileName: ''
+      };
+    }
   }
+
+  return prepared;
 }
 
 export function readCourseGenerationJobs() {
@@ -157,7 +188,7 @@ function publicStage(progress = {}, floorPercent = 1) {
   return { percent, stage: serverStage || fallback };
 }
 
-export function startBackgroundCourseGeneration({ token, payload, title, file = null }) {
+export function startBackgroundCourseGeneration({ token, payload, title, file = null, visualPdfFile = null }) {
   const id = payload.progressId;
   const displayTitle = String(title || payload.topic || 'New course').trim() || 'New course';
   cancelledJobs.delete(id);
@@ -171,8 +202,10 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
     title: displayTitle,
     status: 'running',
     percent: 1,
-    stage: file ? 'Uploading source material' : 'Preparing source material',
-    detail: file ? 'Uploading the source file in the background.' : 'Course generation has started. You can continue using the platform.',
+    stage: file || visualPdfFile ? 'Uploading source material' : 'Preparing source material',
+    detail: visualPdfFile
+      ? 'Uploading the editable presentation and exact visual PDF in the background.'
+      : file ? 'Uploading the source file in the background.' : 'Course generation has started. You can continue using the platform.',
     courseId: null,
     packageId: null,
     error: '',
@@ -193,6 +226,7 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
         id,
         payload,
         file,
+        visualPdfFile,
         signal: controller.signal
       });
       if (cancelledJobs.has(id)) return null;

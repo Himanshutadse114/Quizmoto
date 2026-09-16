@@ -72,6 +72,10 @@ describe('ScormPresentationPackageBuilder', () => {
         expect(html).to.include('--background:#061b18');
         expect(html).to.not.include('--primary:#f97316');
         expect(html).to.include('object-fit:contain');
+        expect(html).to.include('height:100dvh');
+        expect(html).to.include('object-position:center center');
+        expect(html).to.include('@media(max-width:720px) and (orientation:portrait)');
+        expect(html).to.include('.rail-heading{display:none}');
         expect(html).to.include('class="course-rail"');
         expect(html).to.include('--rail-width:clamp(168px,13vw,220px)');
         expect(html).to.include('grid-template-columns:var(--rail-width) minmax(0,1fr)');

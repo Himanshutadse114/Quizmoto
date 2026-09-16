@@ -571,7 +571,17 @@ async function convertPptxToPdf(sourcePath, tempDir) {
     throw error;
 }
 
-async function renderPresentation({ sourceBuffer, mimeType, fileName }) {
+function assertPdfBuffer(value) {
+    if (!Buffer.isBuffer(value) || value.length < 5 || value.subarray(0, 5).toString('ascii') !== '%PDF-') {
+        throw commandError(
+            'The exact visual PDF could not be read. The course can still be generated without it.',
+            'SCORM_PRESENTATION_VISUAL_PDF_INVALID'
+        );
+    }
+    return value;
+}
+
+async function renderPresentation({ sourceBuffer, mimeType, fileName, visualPdfBuffer = null, visualPdfFileName = '' }) {
     const kind = presentationKind(mimeType, fileName);
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'lmsgen-presentation-'));
     try {
@@ -582,7 +592,14 @@ async function renderPresentation({ sourceBuffer, mimeType, fileName }) {
         let rawSlides = null;
         let renderEngine = kind === 'pdf' ? 'pdf' : 'libreoffice';
 
-        if (kind === 'pdf') {
+        if (visualPdfBuffer) {
+            assertPdfBuffer(visualPdfBuffer);
+            const visualPdfPath = path.join(tempDir, 'visual-source.pdf');
+            await fs.writeFile(visualPdfPath, visualPdfBuffer);
+            pdfBuffer = visualPdfBuffer;
+            rawSlides = await renderPdfPages(visualPdfPath, tempDir);
+            renderEngine = 'provided-pdf';
+        } else if (kind === 'pdf') {
             pdfBuffer = await fs.readFile(sourcePath);
             rawSlides = await renderPdfPages(sourcePath, tempDir);
         } else {
@@ -621,7 +638,7 @@ async function renderPresentation({ sourceBuffer, mimeType, fileName }) {
                 ? 'application/pdf'
                 : 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
             quizSourceFileName: pdfBuffer
-                ? `${path.basename(fileName || 'presentation', path.extname(fileName || '')) || 'presentation'}.pdf`
+                ? (visualPdfFileName || `${path.basename(fileName || 'presentation', path.extname(fileName || '')) || 'presentation'}.pdf`)
                 : (fileName || 'presentation.pptx'),
             renderEngine
         };
@@ -640,5 +657,6 @@ module.exports = {
     sanitizePptxForCompatibility,
     normalizePptxSvgFontFamilies,
     renderPptxWithSvgEngine,
+    assertPdfBuffer,
     renderPresentation
 };

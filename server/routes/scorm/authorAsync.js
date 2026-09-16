@@ -7,7 +7,7 @@ const { getObjectStorage } = require('../../storage/ObjectStorage');
 const ScormGenerationJob = require('../../models/scorm/ScormGenerationJob');
 const ScormAiGenerationManager = require('../../jobs/ScormAiGenerationManager');
 
-const COURSE_GENERATION_RELEASE = 'gemini-course-durable-v3';
+const COURSE_GENERATION_RELEASE = 'gemini-course-durable-v4';
 let generationStoreReadyPromise = null;
 
 // Routes are mounted after database initialisation, so starting the recovery
@@ -16,6 +16,14 @@ ScormAiGenerationManager.stats();
 
 function sourceKey(userId, progressId) {
     return `ai-author/source/${String(userId || 'unknown')}/${progressId}.bin`;
+}
+
+function visualPdfSourceKey(userId, progressId) {
+    return `ai-author/source/${String(userId || 'unknown')}/${progressId}-visual.pdf`;
+}
+
+function isPdfBuffer(value) {
+    return Buffer.isBuffer(value) && value.length >= 5 && value.subarray(0, 5).toString('ascii') === '%PDF-';
 }
 
 function storageUnavailableError(cause = null) {
@@ -75,6 +83,41 @@ router.get('/version', (_req, res) => {
         imageModel: process.env.GOOGLE_IMAGE_MODEL || process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image'
     });
 });
+
+router.post(
+    '/source/:progressId/visual-pdf',
+    auth,
+    express.raw({ type: 'application/octet-stream', limit: `${scormMaxUploadMb()}mb` }),
+    async (req, res) => {
+        if (!featureFlags.scormAiAuthor) return res.status(403).json({ message: 'AI author is disabled.' });
+        const progressId = cleanId(req.params.progressId);
+        if (!progressId) return res.status(400).json({ message: 'Invalid progressId.', code: 'SCORM_PROGRESS_ID_REQUIRED' });
+        if (!isPdfBuffer(req.body)) {
+            return res.status(400).json({
+                message: 'The exact visual source must be a valid PDF exported from the presentation.',
+                code: 'SCORM_PRESENTATION_VISUAL_PDF_INVALID'
+            });
+        }
+
+        try {
+            const key = visualPdfSourceKey(req.userId, progressId);
+            const storage = getObjectStorage();
+            await storage.putObject({ key, body: req.body, contentType: 'application/pdf' });
+            res.setHeader('Cache-Control', 'no-store');
+            return res.status(201).json({
+                ok: true,
+                sourceKey: key,
+                mimeType: 'application/pdf',
+                byteSize: req.body.length
+            });
+        } catch (error) {
+            return res.status(500).json({
+                message: error.message || 'Unable to store exact visual PDF.',
+                code: error.code || 'SCORM_VISUAL_SOURCE_UPLOAD_FAILED'
+            });
+        }
+    }
+);
 
 router.post(
     '/source/:progressId',

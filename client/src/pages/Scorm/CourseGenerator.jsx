@@ -24,7 +24,9 @@ function createProgressId() {
   let random = '';
   try {
     random = globalThis.crypto?.randomUUID?.() || '';
-  } catch (_) {}
+  } catch {
+    random = '';
+  }
   if (!random) random = `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
   return `scorm-course-${random}`.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 96);
 }
@@ -53,6 +55,11 @@ function isPresentationFile(file) {
   return name.endsWith('.pptx') || name.endsWith('.pdf') || type.includes('presentationml.presentation') || type.includes('pdf');
 }
 
+function isPdfFile(file) {
+  if (!file) return false;
+  return String(file.name || '').toLowerCase().endsWith('.pdf') || String(file.type || '').toLowerCase().includes('pdf');
+}
+
 export default function CourseGenerator() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -62,6 +69,7 @@ export default function CourseGenerator() {
   const [topic, setTopic] = useState('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState(null);
+  const [visualPdfFile, setVisualPdfFile] = useState(null);
   const [courseMode, setCourseMode] = useState('generated');
   const [detailLevel, setDetailLevel] = useState('detailed');
   const [courseTemplates, setCourseTemplates] = useState([FALLBACK_TEMPLATE]);
@@ -128,6 +136,7 @@ export default function CourseGenerator() {
     setCourseMode(mode);
     setError('');
     if (mode === 'presentation' && file && !isPresentationFile(file)) setFile(null);
+    if (mode !== 'presentation') setVisualPdfFile(null);
   };
 
   const selectSourceFile = (nextFile) => {
@@ -138,6 +147,17 @@ export default function CourseGenerator() {
     }
     setError('');
     setFile(nextFile || null);
+    if (isPdfFile(nextFile)) setVisualPdfFile(null);
+  };
+
+  const selectVisualPdf = (nextFile) => {
+    if (nextFile && !isPdfFile(nextFile)) {
+      setVisualPdfFile(null);
+      setError('Choose a PDF exported from the same presentation for exact slide visuals.');
+      return;
+    }
+    setError('');
+    setVisualPdfFile(nextFile || null);
   };
 
   const generateCourse = () => {
@@ -151,6 +171,7 @@ export default function CourseGenerator() {
         token,
         title: displayTitle,
         file,
+        visualPdfFile: presentationMode ? visualPdfFile : null,
         payload: {
           progressId,
           courseMode: presentationMode ? 'presentation' : 'generated',
@@ -256,7 +277,7 @@ export default function CourseGenerator() {
                     {presentationMode && <CheckCircle2 size={16} style={{ color: 'var(--scorm-accent)' }} />}
                   </div>
                   <div className="text-sm font-semibold mt-3" style={ink}>Track my presentation</div>
-                  <div className="text-[11px] leading-relaxed mt-1" style={muted}>Keep the uploaded slides and add tracking plus a theme-matched quiz.</div>
+                  <div className="text-[11px] leading-relaxed mt-1" style={muted}>Keep the uploaded slides and add tracking plus a Quizmoto-themed quiz.</div>
                 </button>
               </div>
             </div>
@@ -268,7 +289,7 @@ export default function CourseGenerator() {
                   <div>
                     <div className="text-xs font-semibold" style={ink}>Exact slide course — no inserted interactions</div>
                     <div className="text-[11px] leading-relaxed mt-1" style={muted}>
-                      Slides are preserved as responsive images, compressed to a consistent size for fast loading, and followed by an AI quiz using colours detected from the deck. PPT animations, video and transitions are flattened. For Gamma, export to PDF for the closest visual result.
+                      Add the PPTX as the editable content source and, for pixel-accurate visuals, add a PDF exported from the same deck. Each PDF page becomes one optimised slide. If no PDF is supplied, automatic rendering continues without blocking on fonts. The quiz uses the Quizmoto teal theme.
                     </div>
                   </div>
                 </div>
@@ -303,6 +324,33 @@ export default function CourseGenerator() {
                 </label>
               </div>
             </div>
+
+            {presentationMode && (
+              <div className="rounded-xl border p-4" style={softSurface}>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="scorm-micro text-[9px] uppercase font-semibold">Exact visual PDF</div>
+                    <div className="text-[11px] leading-relaxed mt-1" style={muted}>
+                      {isPdfFile(file)
+                        ? 'The primary source is already a PDF, so its pages will be preserved exactly.'
+                        : visualPdfFile
+                          ? `Using ${visualPdfFile.name} for the slide artwork.`
+                          : 'Optional but recommended with PPTX: export the same deck to PDF so fonts, spacing and images match exactly.'}
+                    </div>
+                  </div>
+                  <label className={`scorm-button-secondary min-h-10 px-4 inline-flex items-center justify-center gap-2 text-xs font-semibold shrink-0 ${isPdfFile(file) ? 'opacity-45 cursor-not-allowed' : 'cursor-pointer'}`}>
+                    <FileUp size={15} /> {visualPdfFile ? 'Change PDF' : 'Add exact PDF'}
+                    <input
+                      type="file"
+                      className="sr-only"
+                      accept=".pdf,application/pdf"
+                      disabled={isPdfFile(file)}
+                      onChange={(event) => selectVisualPdf(event.target.files?.[0] || null)}
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
 
             <label className="block">
               <span className="scorm-micro text-[9px] uppercase font-semibold">Description or learning goals</span>
@@ -415,7 +463,7 @@ export default function CourseGenerator() {
           <div className="scorm-course-generator-footer px-5 md:px-6 py-5 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" style={{ ...softSurface, borderColor: 'var(--scorm-line)' }}>
             <div className="text-[11px] leading-relaxed max-w-xl" style={muted}>
               {presentationMode
-                ? 'The course preserves the uploaded slide design, adds a matching quiz, and records progress, resume position, answers, score and completion. You can leave this page after generation starts.'
+                ? 'The course preserves the slide design, adds a Quizmoto teal quiz, and records progress, resume position, answers, score and completion. You can leave this page after generation starts.'
                 : 'Your selected branding is embedded in the generated course and downloaded SCORM package. You can leave this page after generation starts.'}
             </div>
             <button
@@ -452,13 +500,13 @@ export default function CourseGenerator() {
               </div></>}
               {presentationMode && (
                 <div className="mt-4 pt-4 border-t space-y-3" style={{ borderColor: 'var(--scorm-line)' }}>
-                  {['Exact slide order', 'Responsive image playback', 'Theme-matched end quiz', 'SCORM score and progress'].map((item) => (
+                  {['Exact slide order', 'Responsive image playback', 'Quizmoto teal end quiz', 'SCORM score and progress'].map((item) => (
                     <div key={item} className="flex items-center gap-2 text-[11px]" style={muted}><CheckCircle2 size={14} style={{ color: 'var(--scorm-accent)' }} />{item}</div>
                   ))}
                 </div>
               )}
               <div className="mt-3 text-[10px] leading-relaxed" style={muted}>
-                {presentationMode ? 'The presentation palette is detected automatically and applied to the quiz and course controls.' : 'Template identity, version and course branding are saved with the course so rebuilds can retain the same identity.'}
+                {presentationMode ? 'Presentation artwork stays unchanged while the quiz and course controls consistently use Quizmoto teal.' : 'Template identity, version and course branding are saved with the course so rebuilds can retain the same identity.'}
               </div>
             </div>
           </section>
@@ -472,7 +520,7 @@ export default function CourseGenerator() {
               {(presentationMode ? [
                 ['1', 'Slide preservation', 'Every slide is rendered in its original order and visual layout.'],
                 ['2', 'Image optimisation', 'Slides receive consistent dimensions and compact file sizes.'],
-                ['3', 'Quiz creation', 'The presentation content and palette guide the end quiz.'],
+                ['3', 'Quiz creation', 'The presentation content guides a Quizmoto-themed end quiz.'],
                 ['4', 'Tracking package', 'SCORM progress, resume, answers and score are added.']
               ] : [
                 ['1', 'Course content', 'The learning structure and knowledge checks are prepared.'],
@@ -497,7 +545,7 @@ export default function CourseGenerator() {
               <div>
                 <div className="text-xs font-semibold" style={ink}>{presentationMode ? 'Presentation identity stays intact' : 'Branding travels with the course'}</div>
                 <div className="text-[11px] leading-relaxed mt-1" style={muted}>
-                  {presentationMode ? 'The original slides are embedded into the SCORM package, while the detected presentation colours carry into the quiz and player controls.' : 'The logo and colours are written into the SCORM package, so the branding is retained when the package is downloaded and uploaded to another LMS.'}
+                  {presentationMode ? 'The original slide artwork is embedded into the SCORM package, while Quizmoto teal is used for the quiz and player controls.' : 'The logo and colours are written into the SCORM package, so the branding is retained when the package is downloaded and uploaded to another LMS.'}
                 </div>
               </div>
             </div>
