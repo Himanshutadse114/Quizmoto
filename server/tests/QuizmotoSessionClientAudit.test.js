@@ -41,6 +41,17 @@ describe('Quizmoto live-session client safeguards', () => {
         expect(lobby).to.include('await exitLiveQuizFullscreen()');
         expect(fullscreen).to.include('document.exitFullscreen');
         expect(fullscreen).to.include('document.webkitExitFullscreen');
+        expect(fullscreen).to.include('waitForStableViewport');
+        expect(fullscreen).to.include("window.dispatchEvent(new Event('resize'))");
+    });
+
+    it('resynchronizes the marketing frame after mobile fullscreen exits', () => {
+        const marketing = source(path.join('pages', 'Marketing', 'MarketingSite.jsx'));
+        const homeTheme = fs.readFileSync(path.join(clientRoot, '..', 'public', 'landing', 'css', 'atelora-home-refresh.css'), 'utf8');
+        expect(marketing).to.include('window.visualViewport');
+        expect(marketing).to.include('syncMarketingFrameViewport');
+        expect(marketing).to.include("height: '100dvh'");
+        expect(homeTheme).to.include('font-size: clamp(3.2rem, 9.5vw, 3.8rem) !important');
     });
 
     it('handles host control conflicts and suppresses game-screen background shapes', () => {

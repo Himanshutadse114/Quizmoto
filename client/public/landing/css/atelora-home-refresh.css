@@ -292,9 +292,10 @@ body.atelora-home-refresh .global-footer-strip-c .animate-strip {
     max-width: 35rem;
     margin-left: auto;
     margin-right: auto;
-    font-size: 4.2rem;
+    font-size: clamp(3.2rem, 9.5vw, 3.8rem) !important;
     letter-spacing: -0.035em;
-    line-height: 1.01;
+    line-height: 1.06 !important;
+    text-wrap: balance;
   }
 
   body.atelora-home-refresh .hp-hero-p {

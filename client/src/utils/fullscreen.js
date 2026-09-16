@@ -6,6 +6,23 @@ function fullscreenElement() {
         || null;
 }
 
+function nextAnimationFrame() {
+    return new Promise((resolve) => {
+        if (typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(() => resolve());
+        } else {
+            window.setTimeout(resolve, 16);
+        }
+    });
+}
+
+async function waitForStableViewport() {
+    await nextAnimationFrame();
+    await nextAnimationFrame();
+    await new Promise((resolve) => window.setTimeout(resolve, 100));
+    window.dispatchEvent(new Event('resize'));
+}
+
 export function requestLiveQuizFullscreen() {
     const target = document.documentElement;
     const request = target.requestFullscreen
@@ -23,17 +40,25 @@ export function requestLiveQuizFullscreen() {
 }
 
 export async function exitLiveQuizFullscreen() {
-    if (!fullscreenElement()) return false;
+    if (!fullscreenElement()) {
+        await waitForStableViewport();
+        return false;
+    }
     const exit = document.exitFullscreen
         || document.webkitExitFullscreen
         || document.mozCancelFullScreen
         || document.msExitFullscreen;
 
-    if (!exit) return false;
+    if (!exit) {
+        await waitForStableViewport();
+        return false;
+    }
     try {
         await Promise.resolve(exit.call(document));
+        await waitForStableViewport();
         return true;
     } catch {
+        await waitForStableViewport();
         return false;
     }
 }

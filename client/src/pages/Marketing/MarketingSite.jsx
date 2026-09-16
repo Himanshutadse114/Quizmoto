@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const MARKETING_UI_STYLESHEETS = [
@@ -319,8 +319,23 @@ function applySharedMarketingUi(frame, src) {
   }
 }
 
+function syncMarketingFrameViewport(frame) {
+  if (!frame) return;
+  const viewport = window.visualViewport;
+  const width = Math.max(1, Math.round(viewport?.width || window.innerWidth));
+  const height = Math.max(1, Math.round(viewport?.height || window.innerHeight));
+  frame.style.width = `${width}px`;
+  frame.style.height = `${height}px`;
+  try {
+    frame.contentWindow?.dispatchEvent(new Event('resize'));
+  } catch {
+    // Keep the frame visible if a deployment temporarily changes its origin.
+  }
+}
+
 export default function MarketingSite({ src, title, tabTitle }) {
   const { hash } = useLocation();
+  const frameRef = useRef(null);
 
   useEffect(() => {
     if (!tabTitle) return;
@@ -329,17 +344,48 @@ export default function MarketingSite({ src, title, tabTitle }) {
     return () => { document.title = previous; };
   }, [tabTitle]);
 
+  useEffect(() => {
+    let frameRequest = 0;
+    const sync = () => {
+      window.cancelAnimationFrame(frameRequest);
+      frameRequest = window.requestAnimationFrame(() => syncMarketingFrameViewport(frameRef.current));
+    };
+    const viewport = window.visualViewport;
+    window.addEventListener('resize', sync, { passive: true });
+    window.addEventListener('orientationchange', sync, { passive: true });
+    document.addEventListener('fullscreenchange', sync);
+    document.addEventListener('webkitfullscreenchange', sync);
+    viewport?.addEventListener('resize', sync, { passive: true });
+    sync();
+    return () => {
+      window.cancelAnimationFrame(frameRequest);
+      window.removeEventListener('resize', sync);
+      window.removeEventListener('orientationchange', sync);
+      document.removeEventListener('fullscreenchange', sync);
+      document.removeEventListener('webkitfullscreenchange', sync);
+      viewport?.removeEventListener('resize', sync);
+    };
+  }, []);
+
   return (
     <iframe
+      ref={frameRef}
       src={hash ? `${src}${hash}` : src}
       title={title}
       loading="eager"
-      onLoad={(event) => applySharedMarketingUi(event.currentTarget, src)}
+      onLoad={(event) => {
+        const frame = event.currentTarget;
+        applySharedMarketingUi(frame, src);
+        syncMarketingFrameViewport(frame);
+        window.setTimeout(() => {
+          if (frame.isConnected) syncMarketingFrameViewport(frame);
+        }, 160);
+      }}
       style={{
         position: 'fixed',
         inset: 0,
-        width: '100%',
-        height: '100%',
+        width: '100dvw',
+        height: '100dvh',
         border: 0,
         background: '#0A0F0E',
         opacity: 1,
