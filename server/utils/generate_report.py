@@ -1,6 +1,7 @@
 import sys
 import json
 import os
+from pathlib import Path
 import xlsxwriter
 import matplotlib
 matplotlib.use('Agg') # Headless mode for server
@@ -18,10 +19,12 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
 try:
-    pdfmetrics.registerFont(TTFont('Roboto-Regular', '/app/Roboto/Roboto_Condensed/static/RobotoCondensed-Regular.ttf'))
-    pdfmetrics.registerFont(TTFont('Roboto-Bold', '/app/Roboto/Roboto_Condensed/static/RobotoCondensed-Bold.ttf'))
-    pdfmetrics.registerFont(TTFont('Roboto-Medium', '/app/Roboto/Roboto_Condensed/static/RobotoCondensed-Medium.ttf'))
-    pdfmetrics.registerFont(TTFont('Roboto-Light', '/app/Roboto/Roboto_Condensed/static/RobotoCondensed-Light.ttf'))
+    font_roots = [Path('/app/Roboto/Roboto_Condensed/static'), Path(__file__).resolve().parents[1] / 'Roboto' / 'Roboto_Condensed' / 'static']
+    font_root = next(root for root in font_roots if (root / 'RobotoCondensed-Regular.ttf').exists())
+    pdfmetrics.registerFont(TTFont('Roboto-Regular', str(font_root / 'RobotoCondensed-Regular.ttf')))
+    pdfmetrics.registerFont(TTFont('Roboto-Bold', str(font_root / 'RobotoCondensed-Bold.ttf')))
+    pdfmetrics.registerFont(TTFont('Roboto-Medium', str(font_root / 'RobotoCondensed-Medium.ttf')))
+    pdfmetrics.registerFont(TTFont('Roboto-Light', str(font_root / 'RobotoCondensed-Light.ttf')))
     FONT_NORMAL = 'Roboto-Regular'
     FONT_BOLD = 'Roboto-Bold'
     FONT_MED = 'Roboto-Medium'
@@ -32,15 +35,15 @@ except Exception:
     FONT_MED = 'Helvetica-Bold'
     FONT_LIGHT = 'Helvetica'
 
-# --- THEME COLORS (ReportLab) ---
-KAHOOT_PURPLE = colors.HexColor("#46178f")
-KAHOOT_BLUE = colors.HexColor("#1368ce")
-KAHOOT_GREEN = colors.HexColor("#26890c")
-KAHOOT_RED = colors.HexColor("#e21b3c")
-KAHOOT_YELLOW = colors.HexColor("#d89e00")
-DARK_GREY = colors.HexColor("#2D2D2D")
-LIGHT_GREY = colors.HexColor("#CCCCCC")
-ROW_STRIPE = colors.HexColor("#F9F9F9")
+# --- LMSGEN / Quizmoto report theme (ReportLab) ---
+KAHOOT_PURPLE = colors.HexColor("#073F3B")
+KAHOOT_BLUE = colors.HexColor("#16988F")
+KAHOOT_GREEN = colors.HexColor("#2EA66A")
+KAHOOT_RED = colors.HexColor("#D9534F")
+KAHOOT_YELLOW = colors.HexColor("#E3A323")
+DARK_GREY = colors.HexColor("#183334")
+LIGHT_GREY = colors.HexColor("#D9E9E6")
+ROW_STRIPE = colors.HexColor("#F5FAF9")
 WHITE = colors.white
 
 class KahootReport:
@@ -118,7 +121,7 @@ class KahootReport:
         d1 = Drawing(500, 150)
         d1.add(Rect(-50, 50, 600, 100, fillColor=KAHOOT_PURPLE, strokeColor=None))
         d1.add(String(20, 90, "QUIZMOTO", fontName=FONT_BOLD, fontSize=24, fillColor=WHITE))
-        d1.add(String(20, 70, "ANALYTICS PLATFORM", fontName=FONT_LIGHT, fontSize=10, fillColor=WHITE))
+        d1.add(String(20, 70, "LIVE QUIZ ANALYTICS", fontName=FONT_LIGHT, fontSize=10, fillColor=WHITE))
         self.elements.append(d1)
         self.elements.append(Spacer(1, 1*inch))
 
@@ -154,7 +157,7 @@ class KahootReport:
         self.elements.append(PageBreak())
 
     def create_toc(self):
-        self.elements.append(Paragraph("Table Of Content", self.styles['SectionHeader']))
+        self.elements.append(Paragraph("Table of contents", self.styles['SectionHeader']))
         self.elements.append(Spacer(1, 0.4*inch))
         toc_items = [
             ("1", "Executive Management Summary", "exec_summary", "3"),
@@ -223,7 +226,7 @@ class KahootReport:
             values = [ca.get("averageAccuracy", 0) or 0, ca.get("averageParticipation", 0) or ca.get("participationRate", 0) or 0]
 
             fig, ax = plt.subplots(figsize=(7, 3))
-            colors_list = ['#1368ce', '#26890c']
+            colors_list = ['#16988F', '#2EA66A']
 
             ax.set_facecolor('#FBFBFB')
             ax.grid(axis='x', linestyle='--', alpha=0.4, color='#CCCCCC')
@@ -249,7 +252,7 @@ class KahootReport:
                 os.makedirs(chart_dir, exist_ok=True)
             except Exception:
                 chart_dir = "/tmp"
-            chart_path = os.path.join(chart_dir, f"kahoot_chart_{os.getpid()}.png")
+            chart_path = os.path.join(chart_dir, f"quizmoto_chart_{os.getpid()}.png")
             plt.tight_layout()
             plt.savefig(chart_path, dpi=200, transparent=True)
             plt.close()
@@ -366,10 +369,6 @@ class KahootReport:
 
                 q_txt = q.get("questionText", f"Q{q_idx+1}")
 
-                q_txt = str(q_txt).encode('latin-1', 'replace').decode('latin-1')
-                sel_ans = str(sel_ans).encode('latin-1', 'replace').decode('latin-1')
-                correct_text = str(correct_text).encode('latin-1', 'replace').decode('latin-1')
-
                 e_row = [
                     Paragraph(q_txt, self.styles[s_val]),
                     Paragraph(sel_ans, self.styles[s_lbl]),
@@ -399,7 +398,7 @@ class KahootReport:
         canvas.rect(0.32*inch, 0.32*inch, A4[0]-0.64*inch, A4[1]-0.64*inch)
         canvas.line(0.5*inch, 0.75*inch, A4[0]-0.5*inch, 0.75*inch)
         canvas.setFont(FONT_LIGHT, 8)
-        canvas.drawString(0.5*inch, 0.6*inch, "CONFIDENTIAL // SESSION AUDIT LOG")
+        canvas.drawString(0.5*inch, 0.6*inch, "LMSGEN · QUIZMOTO // SESSION REPORT")
         canvas.drawRightString(A4[0]-0.5*inch, 0.6*inch, f"PAGE {doc.page}")
         canvas.restoreState()
 
@@ -418,8 +417,13 @@ def generate_pdf(data, output_path):
 
 def generate_excel(data, output_path):
     workbook = xlsxwriter.Workbook(output_path)
-    header_fmt = workbook.add_format({'bold': True, 'bg_color': '#46178f', 'font_color': 'white', 'border': 1})
-    bold_fmt = workbook.add_format({'bold': True})
+    workbook.set_properties({'title': 'Quizmoto Session Report', 'subject': 'Live quiz analytics', 'author': 'LMSGEN'})
+    header_fmt = workbook.add_format({'bold': True, 'bg_color': '#073F3B', 'font_color': 'white', 'border': 1, 'border_color': '#D9E9E6', 'text_wrap': True})
+    bold_fmt = workbook.add_format({'bold': True, 'font_color': '#183334'})
+    brand_fmt = workbook.add_format({'bold': True, 'font_size': 20, 'font_color': '#FFFFFF', 'bg_color': '#073F3B'})
+    section_fmt = workbook.add_format({'bold': True, 'font_color': '#16988F', 'bottom': 2, 'bottom_color': '#4FC9BF'})
+    cell_fmt = workbook.add_format({'border': 1, 'border_color': '#D9E9E6', 'font_color': '#183334', 'text_wrap': True, 'valign': 'top'})
+    stripe_fmt = workbook.add_format({'border': 1, 'border_color': '#D9E9E6', 'bg_color': '#F5FAF9', 'font_color': '#183334', 'text_wrap': True, 'valign': 'top'})
 
     analytics_data = data.get("analytics", {})
     if isinstance(analytics_data, str):
@@ -432,40 +436,55 @@ def generate_excel(data, output_path):
     questions = (data.get("Quiz") or {}).get("questions", []) or []
 
     ws_overview = workbook.add_worksheet("Overview")
+    ws_overview.hide_gridlines(2)
     quiz_title = (data.get("Quiz") or {}).get("title", "Unknown Quiz")
-    ws_overview.write(0, 0, "Quizmoto Official Report", bold_fmt)
-    ws_overview.write(1, 0, f"Quiz: {quiz_title}")
+    ws_overview.merge_range('A1:F2', 'QUIZMOTO · LIVE QUIZ ANALYTICS', brand_fmt)
+    ws_overview.merge_range('A4:F4', f"Quiz: {quiz_title}", section_fmt)
+    ws_overview.set_column('A:A', 28)
+    ws_overview.set_column('B:F', 18)
 
     ca = analytics_data.get("classAnalytics", {}) if isinstance(analytics_data, dict) else {}
     if ca:
-        ws_overview.write(3, 0, "Class Analytics", bold_fmt)
-        ws_overview.write(4, 0, "Average Accuracy")
-        ws_overview.write(4, 1, f"{ca.get('averageAccuracy', 0)}%")
-        ws_overview.write(5, 0, "Average Participation")
-        ws_overview.write(5, 1, f"{ca.get('averageParticipation', ca.get('participationRate', 0))}%")
+        ws_overview.write(5, 0, "Class Analytics", bold_fmt)
+        ws_overview.write(6, 0, "Average Accuracy", stripe_fmt)
+        ws_overview.write(6, 1, f"{ca.get('averageAccuracy', 0)}%", stripe_fmt)
+        ws_overview.write(7, 0, "Average Participation", cell_fmt)
+        ws_overview.write(7, 1, f"{ca.get('averageParticipation', ca.get('participationRate', 0))}%", cell_fmt)
 
     ws_lb = workbook.add_worksheet("Leaderboard")
+    ws_lb.hide_gridlines(2)
+    ws_lb.freeze_panes(1, 0)
+    ws_lb.set_column(0, 0, 10)
+    ws_lb.set_column(1, 1, 28)
+    ws_lb.set_column(2, 2, 16)
     headers = ["Rank", "Nickname", "Score"]
     for col, h in enumerate(headers):
         ws_lb.write(0, col, h, header_fmt)
 
     players.sort(key=lambda x: x.get("score", 0) or 0, reverse=True)
     for row, p in enumerate(players, start=1):
-        ws_lb.write(row, 0, row)
-        ws_lb.write(row, 1, p.get("nickname", ""))
-        ws_lb.write(row, 2, p.get("score", 0))
+        row_fmt = stripe_fmt if row % 2 == 0 else cell_fmt
+        ws_lb.write(row, 0, row, row_fmt)
+        ws_lb.write(row, 1, p.get("nickname", ""), row_fmt)
+        ws_lb.write(row, 2, p.get("score", 0), row_fmt)
+    if players:
+        ws_lb.autofilter(0, 0, len(players), len(headers) - 1)
 
     ws_det = workbook.add_worksheet("Detailed Answers")
+    ws_det.hide_gridlines(2)
+    ws_det.freeze_panes(1, 0)
     headers_det = ["Nickname", "Total Score"]
     for i in range(len(questions)):
         headers_det.append(f"Q{i+1}")
 
     for col, h in enumerate(headers_det):
         ws_det.write(0, col, h, header_fmt)
+        ws_det.set_column(col, col, 24 if col < 2 else 42)
 
     for row, p in enumerate(players, start=1):
-        ws_det.write(row, 0, p.get("nickname", ""))
-        ws_det.write(row, 1, p.get("score", 0))
+        row_fmt = stripe_fmt if row % 2 == 0 else cell_fmt
+        ws_det.write(row, 0, p.get("nickname", ""), row_fmt)
+        ws_det.write(row, 1, p.get("score", 0), row_fmt)
 
         answers = p.get("answers", [])
         if isinstance(answers, str):
@@ -489,9 +508,11 @@ def generate_excel(data, output_path):
                 a_text = opts[a_idx] if 0 <= a_idx < len(opts) else f"Option {a_idx+1}"
                 is_correct = "Yes" if ans.get("isCorrect") else "No"
                 time_taken = ans.get("timeTaken", 0)
-                ws_det.write(row, col_offset + q_idx, f"Ans: {a_text} | Correct: {is_correct} | Time: {time_taken}s")
+                ws_det.write(row, col_offset + q_idx, f"Ans: {a_text} | Correct: {is_correct} | Time: {time_taken}s", row_fmt)
             else:
-                ws_det.write(row, col_offset + q_idx, "No Answer")
+                ws_det.write(row, col_offset + q_idx, "No Answer", row_fmt)
+    if players:
+        ws_det.autofilter(0, 0, len(players), len(headers_det) - 1)
 
     workbook.close()
 

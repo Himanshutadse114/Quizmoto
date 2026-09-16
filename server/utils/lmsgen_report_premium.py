@@ -1,5 +1,6 @@
 import json, sys
 from datetime import datetime
+from pathlib import Path
 from xml.sax.saxutils import escape
 import xlsxwriter
 from reportlab.lib import colors
@@ -17,8 +18,10 @@ INK=colors.HexColor('#183334'); MUT=colors.HexColor('#6E8584'); LINE=colors.HexC
 SOFT=colors.HexColor('#F5FAF9'); WHITE=colors.white; GREEN=colors.HexColor('#2EA66A')
 AMBER=colors.HexColor('#E3A323'); RED=colors.HexColor('#D9534F'); BLUE=colors.HexColor('#4B84D1'); GREY=colors.HexColor('#9AAEAC')
 try:
-    pdfmetrics.registerFont(TTFont('LMSGEN-Regular','/app/Roboto/Roboto_Condensed/static/RobotoCondensed-Regular.ttf'))
-    pdfmetrics.registerFont(TTFont('LMSGEN-Bold','/app/Roboto/Roboto_Condensed/static/RobotoCondensed-Bold.ttf'))
+    font_roots=[Path('/app/Roboto/Roboto_Condensed/static'),Path(__file__).resolve().parents[1]/'Roboto'/'Roboto_Condensed'/'static']
+    font_root=next(root for root in font_roots if (root/'RobotoCondensed-Regular.ttf').exists())
+    pdfmetrics.registerFont(TTFont('LMSGEN-Regular',str(font_root/'RobotoCondensed-Regular.ttf')))
+    pdfmetrics.registerFont(TTFont('LMSGEN-Bold',str(font_root/'RobotoCondensed-Bold.ttf')))
     FONT='LMSGEN-Regular'; BOLD='LMSGEN-Bold'
 except Exception:
     FONT='Helvetica'; BOLD='Helvetica-Bold'
@@ -211,10 +214,13 @@ def generate_pdf(r,out):
         t=Table([[Paragraph(label,s['kick'])],[Paragraph(safe(value),s['ct'])]],colWidths=[78*mm]); t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),SOFT),('BOX',(0,0),(-1,-1),.5,LINE),('LINEABOVE',(0,0),(-1,0),2.4,TEAL),('LEFTPADDING',(0,0),(-1,-1),9),('RIGHTPADDING',(0,0),(-1,-1),9),('TOPPADDING',(0,0),(-1,-1),6),('BOTTOMPADDING',(0,0),(-1,-1),6)])); meta.append(t)
     mt=Table([meta],colWidths=[(landscape(A4)[0]-32*mm)/3]*3); mt.setStyle(TableStyle([('LEFTPADDING',(0,0),(-1,-1),2),('RIGHTPADDING',(0,0),(-1,-1),2)])); story += [mt,Spacer(1,10*mm)]
     if metrics(r,s):story += [Paragraph('REPORT SNAPSHOT',s['kick']),metrics(r,s)]
-    story += [Spacer(1,10*mm),Paragraph('Designed for management review, audit evidence and learning-performance analysis.',s['mut']),PageBreak(),section('01','EXECUTIVE DASHBOARD','Learning Performance Summary',s)]
-    if metrics(r,s):story += [metrics(r,s),Spacer(1,5*mm)]
-    p=Table([[performance(r,s),status_panel(r,s)]],colWidths=[125*mm,115*mm]); p.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),3),('RIGHTPADDING',(0,0),(-1,-1),3)])); story += [p,Spacer(1,5*mm)]
-    story += [PageBreak(),section('02','LEARNER-LEVEL EVIDENCE' if rtype(r)=='course' else 'DETAILED EVIDENCE','Detailed Learner Audit' if rtype(r)=='course' else 'Report Detail',s)]
+    story += [Spacer(1,10*mm),Paragraph('Designed for management review, audit evidence and learning-performance analysis.',s['mut']),PageBreak()]
+    if rtype(r)=='course':
+        story += [section('01','EXECUTIVE DASHBOARD','Learning Performance Summary',s)]
+        if metrics(r,s):story += [metrics(r,s),Spacer(1,5*mm)]
+        p=Table([[performance(r,s),status_panel(r,s)]],colWidths=[125*mm,115*mm]); p.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),3),('RIGHTPADDING',(0,0),(-1,-1),3)])); story += [p,Spacer(1,5*mm),PageBreak(),section('02','LEARNER-LEVEL EVIDENCE','Detailed Learner Audit',s)]
+    else:
+        story += [section('01','DETAILED EVIDENCE','Report Detail',s)]
     rows=r.get('rows') or []
     if rtype(r)=='course' and rows:
         for i,row in enumerate(rows,1):
@@ -229,38 +235,46 @@ def generate_pdf(r,out):
     doc.build(story,onFirstPage=lambda c,d:footer(c,d,r),onLaterPages=lambda c,d:footer(c,d,r))
 
 def generate_excel(r,out):
-    wb=xlsxwriter.Workbook(out); wb.set_properties({'title':txt(r.get('title')),'author':'LMSGEN'}); dash=wb.add_worksheet('Dashboard'); data=wb.add_worksheet('Detailed Data'); slide_data=wb.add_worksheet('Slide Timing'); dash.hide_gridlines(2); data.hide_gridlines(2); slide_data.hide_gridlines(2)
+    rows=r.get('rows') or []; is_course=rtype(r)=='course'; has_slide_data=is_course or any(row.get('slideTimings') for row in rows)
+    wb=xlsxwriter.Workbook(out); wb.set_properties({'title':txt(r.get('title')),'author':'LMSGEN'}); dash=wb.add_worksheet('Dashboard'); data=wb.add_worksheet('Detailed Data'); slide_data=wb.add_worksheet('Slide Timing') if has_slide_data else None; dash.hide_gridlines(2); data.hide_gridlines(2)
+    if slide_data:slide_data.hide_gridlines(2)
     brand=wb.add_format({'bold':True,'font_size':22,'font_color':'#FFFFFF','bg_color':'#183334'}); sub=wb.add_format({'font_size':9,'font_color':'#6E8584'}); title=wb.add_format({'bold':True,'font_size':18,'font_color':'#183334'}); sec=wb.add_format({'bold':True,'font_color':'#16988F','bottom':2,'bottom_color':'#4FC9BF'}); ml=wb.add_format({'bold':True,'font_size':8,'font_color':'#6E8584','border':1,'border_color':'#D9E9E6','align':'center'}); mv=wb.add_format({'bold':True,'font_size':15,'font_color':'#183334','border':1,'border_color':'#D9E9E6','align':'center'}); th=wb.add_format({'bold':True,'font_size':8,'font_color':'#284B4B','bg_color':'#EAF9F7','border':1,'border_color':'#D9E9E6','text_wrap':True}); cell=wb.add_format({'font_size':9,'font_color':'#183334','border':1,'border_color':'#E3EFED','text_wrap':True,'valign':'top'}); alt=wb.add_format({'font_size':9,'font_color':'#183334','bg_color':'#F8FBFA','border':1,'border_color':'#E3EFED','text_wrap':True,'valign':'top'})
-    dash.set_column('A:A',3); dash.set_column('B:K',13); dash.merge_range('B1:K2','LMSGEN',brand); dash.merge_range('B4:K4',txt(r.get('title')),title); dash.merge_range('B5:K5',txt(r.get('subtitle')),sub); dash.merge_range('B7:K7','PERFORMANCE SNAPSHOT',sec)
+    dash.set_column('A:A',3); dash.set_column('B:K',13); dash.merge_range('B1:K2','LMSGEN',brand); dash.merge_range('B4:K4',txt(r.get('title')),title); dash.merge_range('B5:K5',txt(r.get('subtitle')),sub); dash.merge_range('B7:K7','LEARNING PERFORMANCE' if is_course else 'REPORT SNAPSHOT',sec)
     for i,x in enumerate((r.get('summary') or [])[:5]):c=1+i*2; dash.merge_range(8,c,8,c+1,txt(x.get('label')).upper(),ml); dash.merge_range(9,c,9,c+1,txt(x.get('value')),mv)
-    st=stats(r); rr=30; dash.write(rr,13,'Status'); dash.write(rr,14,'Count'); vals=[('Completed',st['completed']),('In progress',st['progress']),('Failed',st['failed']),('Not attempted',st['not'])]
-    for i,(a,b) in enumerate(vals,1):dash.write(rr+i,13,a); dash.write(rr+i,14,b)
-    if sum(b for _,b in vals):
-        ch=wb.add_chart({'type':'doughnut'}); ch.add_series({'categories':['Dashboard',rr+1,13,rr+4,13],'values':['Dashboard',rr+1,14,rr+4,14],'points':[{'fill':{'color':'#2EA66A'}},{'fill':{'color':'#E3A323'}},{'fill':{'color':'#D9534F'}},{'fill':{'color':'#9AAEAC'}}]}); ch.set_title({'name':'Learner status mix'}); ch.set_hole_size(58); ch.set_legend({'position':'bottom'}); ch.set_chartarea({'border':{'none':True}}); dash.insert_chart('B12',ch,{'x_scale':1.2,'y_scale':1.1})
-    b,_=score_stats(r); dash.write(rr,16,'Score band'); dash.write(rr,17,'Learners')
-    for i,(a,v) in enumerate(b.items(),1):dash.write(rr+i,16,a); dash.write(rr+i,17,v)
-    if sum(b.values()):
-        ch=wb.add_chart({'type':'column'}); ch.add_series({'categories':['Dashboard',rr+1,16,rr+4,16],'values':['Dashboard',rr+1,17,rr+4,17],'fill':{'color':'#4FC9BF'},'border':{'none':True}}); ch.set_title({'name':'Score distribution'}); ch.set_legend({'none':True}); ch.set_chartarea({'border':{'none':True}}); dash.insert_chart('G12',ch,{'x_scale':1.2,'y_scale':1.1})
+    rr=30
+    if is_course:
+        st=stats(r); dash.write(rr,13,'Status'); dash.write(rr,14,'Count'); vals=[('Completed',st['completed']),('In progress',st['progress']),('Failed',st['failed']),('Not attempted',st['not'])]
+        for i,(a,b) in enumerate(vals,1):dash.write(rr+i,13,a); dash.write(rr+i,14,b)
+        if sum(b for _,b in vals):
+            ch=wb.add_chart({'type':'doughnut'}); ch.add_series({'categories':['Dashboard',rr+1,13,rr+4,13],'values':['Dashboard',rr+1,14,rr+4,14],'points':[{'fill':{'color':'#2EA66A'}},{'fill':{'color':'#E3A323'}},{'fill':{'color':'#D9534F'}},{'fill':{'color':'#9AAEAC'}}]}); ch.set_title({'name':'Learner status mix'}); ch.set_hole_size(58); ch.set_legend({'position':'bottom'}); ch.set_chartarea({'border':{'none':True}}); dash.insert_chart('B12',ch,{'x_scale':1.2,'y_scale':1.1})
+        b,_=score_stats(r); dash.write(rr,16,'Score band'); dash.write(rr,17,'Learners')
+        for i,(a,v) in enumerate(b.items(),1):dash.write(rr+i,16,a); dash.write(rr+i,17,v)
+        if sum(b.values()):
+            ch=wb.add_chart({'type':'column'}); ch.add_series({'categories':['Dashboard',rr+1,16,rr+4,16],'values':['Dashboard',rr+1,17,rr+4,17],'fill':{'color':'#4FC9BF'},'border':{'none':True}}); ch.set_title({'name':'Score distribution'}); ch.set_legend({'none':True}); ch.set_chartarea({'border':{'none':True}}); dash.insert_chart('G12',ch,{'x_scale':1.2,'y_scale':1.1})
+    else:
+        dash.merge_range('B12:K14','This operational report uses the summary above and the Detailed Data sheet. Learner completion and score charts are intentionally shown only when the export contains learner-level course evidence.',sub)
     dash.set_column(13,18,None,None,{'hidden':True}); dash.set_landscape(); dash.fit_to_pages(1,1)
-    cols=r.get('columns') or []; rows=r.get('rows') or []; data.freeze_panes(5,0); data.merge_range(0,0,0,max(0,len(cols)-1),txt(r.get('title')),title); data.merge_range(1,0,1,max(0,len(cols)-1),txt(r.get('subtitle')),sub); data.write(3,0,'DETAILED EVIDENCE',sec)
+    cols=r.get('columns') or []; data.freeze_panes(5,0); data.merge_range(0,0,0,max(0,len(cols)-1),txt(r.get('title')),title); data.merge_range(1,0,1,max(0,len(cols)-1),txt(r.get('subtitle')),sub); data.write(3,0,'DETAILED EVIDENCE',sec)
     for ci,c in enumerate(cols):data.write(4,ci,txt(c.get('label')),th); k=c.get('key'); vals=[txt(x.get(k)) for x in rows[:200]]; data.set_column(ci,ci,max(10,min(34,max([len(txt(c.get('label'))),8]+[min(55,len(v)) for v in vals])+2)))
     for ri,row in enumerate(rows,5):
         f=alt if ri%2==0 else cell
         for ci,c in enumerate(cols):data.write(ri,ci,txt(row.get(c.get('key'))),f)
     if cols:data.autofilter(4,0,max(4,4+len(rows)),len(cols)-1)
     data.set_landscape(); data.fit_to_pages(1,0)
-    slide_headers=['Learner','Email','Slide','Time spent','Milliseconds','Visits','Engagement']; slide_data.merge_range(0,0,0,len(slide_headers)-1,txt(r.get('title')),title); slide_data.merge_range(1,0,1,len(slide_headers)-1,'SLIDE-LEVEL EVIDENCE',sec); slide_data.freeze_panes(4,0)
-    for ci,label in enumerate(slide_headers):slide_data.write(3,ci,label,th)
-    timing_row=4
-    for row in rows:
-        for timing in (row.get('slideTimings') or []):
-            f=alt if timing_row%2==0 else cell; values=[row.get('learner') or row.get('name') or 'Learner',row.get('email') or '',timing.get('label') or f'Slide {timing.get("slideNumber") or "-"}',duration_ms(timing.get('milliseconds'),timing.get('timeSpent')),max(0,num(timing.get('milliseconds')) or 0),max(0,num(timing.get('visits')) or 0),timing.get('status') or 'Not visited']
-            for ci,value in enumerate(values):slide_data.write(timing_row,ci,value,f)
-            timing_row+=1
-    slide_data.set_column(0,0,24); slide_data.set_column(1,1,30); slide_data.set_column(2,2,18); slide_data.set_column(3,3,15); slide_data.set_column(4,5,14); slide_data.set_column(6,6,18)
-    if timing_row>4:slide_data.autofilter(3,0,timing_row-1,len(slide_headers)-1)
-    else:slide_data.merge_range(5,0,5,len(slide_headers)-1,'No slide timing evidence has been captured for this report.',sub)
-    slide_data.set_landscape(); slide_data.fit_to_pages(1,0); wb.close()
+    if slide_data:
+        slide_headers=['Learner','Email','Slide','Time spent','Milliseconds','Visits','Engagement']; slide_data.merge_range(0,0,0,len(slide_headers)-1,txt(r.get('title')),title); slide_data.merge_range(1,0,1,len(slide_headers)-1,'SLIDE-LEVEL EVIDENCE',sec); slide_data.freeze_panes(4,0)
+        for ci,label in enumerate(slide_headers):slide_data.write(3,ci,label,th)
+        timing_row=4
+        for row in rows:
+            for timing in (row.get('slideTimings') or []):
+                f=alt if timing_row%2==0 else cell; values=[row.get('learner') or row.get('name') or 'Learner',row.get('email') or '',timing.get('label') or f'Slide {timing.get("slideNumber") or "-"}',duration_ms(timing.get('milliseconds'),timing.get('timeSpent')),max(0,num(timing.get('milliseconds')) or 0),max(0,num(timing.get('visits')) or 0),timing.get('status') or 'Not visited']
+                for ci,value in enumerate(values):slide_data.write(timing_row,ci,value,f)
+                timing_row+=1
+        slide_data.set_column(0,0,24); slide_data.set_column(1,1,30); slide_data.set_column(2,2,18); slide_data.set_column(3,3,15); slide_data.set_column(4,5,14); slide_data.set_column(6,6,18)
+        if timing_row>4:slide_data.autofilter(3,0,timing_row-1,len(slide_headers)-1)
+        else:slide_data.merge_range(5,0,5,len(slide_headers)-1,'No slide timing evidence has been captured for this report.',sub)
+        slide_data.set_landscape(); slide_data.fit_to_pages(1,0)
+    wb.close()
 
 def main():
     if len(sys.argv)!=4:return 2

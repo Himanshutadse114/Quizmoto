@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Quizmoto SCORM individual learner report V2.
+"""LMSGEN SCORM individual learner report V2.
 
 Keeps the existing branded learner-report layouts, but replaces the cover's raw
 name/email lines with a structured, labelled learner identity table. This file
@@ -26,8 +26,8 @@ class LearnerReportV2(legacy.LearnerReport):
     def create_cover(self):
         drawing = Drawing(500, 150)
         drawing.add(Rect(-50, 50, 600, 100, fillColor=base.PURPLE, strokeColor=None))
-        drawing.add(String(20, 90, 'QUIZMOTO', fontName=base.FONT_BOLD, fontSize=24, fillColor=base.WHITE))
-        drawing.add(String(20, 70, 'SCORM AI · INDIVIDUAL LEARNER REPORT', fontName=base.FONT_LIGHT, fontSize=10, fillColor=base.WHITE))
+        drawing.add(String(20, 90, 'LMSGEN', fontName=base.FONT_BOLD, fontSize=24, fillColor=base.WHITE))
+        drawing.add(String(20, 70, 'INDIVIDUAL LEARNER EVIDENCE', fontName=base.FONT_LIGHT, fontSize=10, fillColor=base.WHITE))
 
         identity_rows = [
             [

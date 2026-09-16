@@ -1,6 +1,7 @@
 import sys
 import json
 import os
+from pathlib import Path
 from datetime import datetime
 from xml.sax.saxutils import escape
 
@@ -19,9 +20,11 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
 try:
-    pdfmetrics.registerFont(TTFont('Roboto-Regular', '/app/Roboto/Roboto_Condensed/static/RobotoCondensed-Regular.ttf'))
-    pdfmetrics.registerFont(TTFont('Roboto-Bold', '/app/Roboto/Roboto_Condensed/static/RobotoCondensed-Bold.ttf'))
-    pdfmetrics.registerFont(TTFont('Roboto-Light', '/app/Roboto/Roboto_Condensed/static/RobotoCondensed-Light.ttf'))
+    font_roots = [Path('/app/Roboto/Roboto_Condensed/static'), Path(__file__).resolve().parents[1] / 'Roboto' / 'Roboto_Condensed' / 'static']
+    font_root = next(root for root in font_roots if (root / 'RobotoCondensed-Regular.ttf').exists())
+    pdfmetrics.registerFont(TTFont('Roboto-Regular', str(font_root / 'RobotoCondensed-Regular.ttf')))
+    pdfmetrics.registerFont(TTFont('Roboto-Bold', str(font_root / 'RobotoCondensed-Bold.ttf')))
+    pdfmetrics.registerFont(TTFont('Roboto-Light', str(font_root / 'RobotoCondensed-Light.ttf')))
     FONT_NORMAL = 'Roboto-Regular'
     FONT_BOLD = 'Roboto-Bold'
     FONT_LIGHT = 'Roboto-Light'
@@ -30,16 +33,16 @@ except Exception:
     FONT_BOLD = 'Helvetica-Bold'
     FONT_LIGHT = 'Helvetica'
 
-PURPLE = colors.HexColor('#46178f')
-BLUE = colors.HexColor('#1368ce')
-GREEN = colors.HexColor('#26890c')
-RED = colors.HexColor('#e21b3c')
-YELLOW = colors.HexColor('#d89e00')
-DARK = colors.HexColor('#2D2D2D')
-MID = colors.HexColor('#777777')
-LIGHT = colors.HexColor('#D9D9D9')
-SOFT = colors.HexColor('#F6F5F8')
-STRIPE = colors.HexColor('#FAFAFA')
+PURPLE = colors.HexColor('#16988F')
+BLUE = colors.HexColor('#4B84D1')
+GREEN = colors.HexColor('#2EA66A')
+RED = colors.HexColor('#D9534F')
+YELLOW = colors.HexColor('#E3A323')
+DARK = colors.HexColor('#183334')
+MID = colors.HexColor('#6E8584')
+LIGHT = colors.HexColor('#D9E9E6')
+SOFT = colors.HexColor('#EAF9F7')
+STRIPE = colors.HexColor('#F5FAF9')
 WHITE = colors.white
 
 
@@ -171,7 +174,7 @@ class ScormReport:
     def section_header(self, number, title, anchor, kicker):
         number_cell = Paragraph(number, self.styles['SectionNo'])
         title_cell = [
-            Paragraph(f'<a name="{anchor}"/><font color="#46178f"><b>{ptxt(kicker)}</b></font>', self.styles['SectionKicker']),
+            Paragraph(f'<a name="{anchor}"/><font color="#16988F"><b>{ptxt(kicker)}</b></font>', self.styles['SectionKicker']),
             Paragraph(ptxt(title), self.styles['SectionTitle'])
         ]
         t = Table([[number_cell, title_cell]], colWidths=[0.48 * inch, 6.72 * inch])
@@ -189,9 +192,9 @@ class ScormReport:
     def create_cover(self):
         d = Drawing(500, 150)
         d.add(Rect(-50, 50, 600, 100, fillColor=PURPLE, strokeColor=None))
-        d.add(String(20, 90, 'QUIZMOTO', fontName=FONT_BOLD, fontSize=24, fillColor=WHITE))
+        d.add(String(20, 90, 'LMSGEN', fontName=FONT_BOLD, fontSize=24, fillColor=WHITE))
         d.add(String(20, 70, 'ANALYTICS PLATFORM', fontName=FONT_LIGHT, fontSize=10, fillColor=WHITE))
-        self.elements += [d, Spacer(1, 1 * inch), Paragraph('Quizmoto SCORM World Report', self.styles['TitlePremium']), Paragraph(f"Analytics for: {ptxt(self.meta['title'])}", self.styles['SubtitlePremium']), Spacer(1, 2.2 * inch)]
+        self.elements += [d, Spacer(1, 1 * inch), Paragraph('LMSGEN SCORM Analytics Report', self.styles['TitlePremium']), Paragraph(f"Analytics for: {ptxt(self.meta['title'])}", self.styles['SubtitlePremium']), Spacer(1, 2.2 * inch)]
         rows = [
             ('REPORT DATE', date_text(datetime.utcnow().isoformat(), True)),
             ('SCORM STANDARD', self.meta['standard']),
@@ -365,7 +368,7 @@ class ScormReport:
         canvas.restoreState()
 
     def build(self):
-        doc = SimpleDocTemplate(self.filename,pagesize=A4,rightMargin=0.5*inch,leftMargin=0.5*inch,topMargin=0.9*inch,bottomMargin=0.95*inch,title=f"Quizmoto SCORM World Report - {self.meta['title']}",author='Quizmoto')
+        doc = SimpleDocTemplate(self.filename,pagesize=A4,rightMargin=0.5*inch,leftMargin=0.5*inch,topMargin=0.9*inch,bottomMargin=0.95*inch,title=f"LMSGEN SCORM Analytics Report - {self.meta['title']}",author='LMSGEN')
         self.create_cover(); self.create_toc(); self.create_executive(); self.create_analytics(); self.create_audit()
         doc.build(self.elements,onFirstPage=self.on_page,onLaterPages=self.on_page)
         for p in self.chart_paths:
@@ -377,10 +380,10 @@ class ScormReport:
 
 def xlsx_formats(wb):
     return {
-        'title': wb.add_format({'bold':True,'font_size':20,'font_color':'#46178f'}),
+        'title': wb.add_format({'bold':True,'font_size':20,'font_color':'#16988F'}),
         'sub': wb.add_format({'font_size':11,'font_color':'#2D2D2D'}),
-        'section': wb.add_format({'bold':True,'font_size':12,'font_color':'#46178f','bottom':1,'bottom_color':'#46178f'}),
-        'header': wb.add_format({'bold':True,'font_color':'#FFFFFF','bg_color':'#46178f','border':1,'border_color':'#FFFFFF','align':'center','valign':'vcenter'}),
+        'section': wb.add_format({'bold':True,'font_size':12,'font_color':'#16988F','bottom':1,'bottom_color':'#4FC9BF'}),
+        'header': wb.add_format({'bold':True,'font_color':'#FFFFFF','bg_color':'#073F3B','border':1,'border_color':'#D9E9E6','align':'center','valign':'vcenter'}),
         'label': wb.add_format({'bold':True,'bg_color':'#F2F2F2','border':1,'border_color':'#D9D9D9'}),
         'value': wb.add_format({'border':1,'border_color':'#D9D9D9'}),
         'stripe': wb.add_format({'bg_color':'#F9F9F9','border':1,'border_color':'#E5E5E5'}),
@@ -393,9 +396,9 @@ def xlsx_formats(wb):
 
 def generate_excel(data, output):
     m = meta(data); f = xlsxwriter.Workbook(output); fmt = xlsx_formats(f)
-    f.set_properties({'title':f"Quizmoto SCORM World Report - {m['title']}",'subject':'SCORM learner analytics','author':'Quizmoto'})
+    f.set_properties({'title':f"LMSGEN SCORM Analytics Report - {m['title']}",'subject':'SCORM learner analytics','author':'LMSGEN'})
     ws = f.add_worksheet('Overview'); ws.set_column('A:A',24); ws.set_column('B:B',46)
-    ws.write('A1','QUIZMOTO',fmt['title']); ws.write('A2','SCORM WORLD ANALYTICS REPORT',fmt['sub']); ws.merge_range('A4:B4',m['title'],fmt['section'])
+    ws.write('A1','LMSGEN',fmt['title']); ws.write('A2','SCORM LEARNING ANALYTICS REPORT',fmt['sub']); ws.merge_range('A4:B4',m['title'],fmt['section'])
     rows = [('SCORM Standard',m['standard']),('Package',m['packageTitle']),('Course Status',m['status']),('Invite Code',m['inviteCode']),('Published',date_text(m['publishedAt'])),('Generated',date_text(datetime.utcnow().isoformat())),('Total Learners',m['stats']['total']),('Completed',m['stats']['completed']),('In Progress',m['stats']['progress']),('Not Attempted',m['stats']['notAttempted']),('Completion Rate %',m['stats']['completionRate'] if m['stats']['completionRate'] is not None else ''),('Average Score',m['stats']['averageScore'] if m['stats']['averageScore'] is not None else '')]
     for r,(a,b) in enumerate(rows,4): ws.write(r,0,a,fmt['label']); ws.write(r,1,b,fmt['value'])
     lp = f.add_worksheet('Learner Progress'); headers=['#','Learner','Email','Registration Status','Lesson Status','Course Result','Score','Total Time','Last Activity']

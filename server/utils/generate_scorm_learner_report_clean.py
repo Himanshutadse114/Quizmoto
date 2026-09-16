@@ -20,8 +20,8 @@ from reportlab.graphics.shapes import Drawing, Rect, String
 import generate_scorm_report as base
 
 
-PANEL = colors.HexColor('#FBFAFC')
-SOFT_PURPLE = colors.HexColor('#F4EFFB')
+PANEL = colors.HexColor('#F8FBFA')
+SOFT_PURPLE = colors.HexColor('#EAF9F7')
 
 
 def safe(value, fallback='—'):
@@ -87,7 +87,7 @@ class LearnerReport:
     def section_header(self, number, title, kicker):
         number_cell = Paragraph(number, self.styles['SectionNo'])
         title_cell = [
-            Paragraph(f'<font color="#46178f"><b>{base.ptxt(kicker)}</b></font>', self.styles['SectionKicker']),
+            Paragraph(f'<font color="#16988F"><b>{base.ptxt(kicker)}</b></font>', self.styles['SectionKicker']),
             Paragraph(base.ptxt(title), self.styles['SectionTitle'])
         ]
         table = Table([[number_cell, title_cell]], colWidths=[0.48 * inch, 6.72 * inch])
@@ -121,8 +121,8 @@ class LearnerReport:
     def create_cover(self):
         drawing = Drawing(500, 150)
         drawing.add(Rect(-50, 50, 600, 100, fillColor=base.PURPLE, strokeColor=None))
-        drawing.add(String(20, 90, 'QUIZMOTO', fontName=base.FONT_BOLD, fontSize=24, fillColor=base.WHITE))
-        drawing.add(String(20, 70, 'SCORM AI · INDIVIDUAL LEARNER REPORT', fontName=base.FONT_LIGHT, fontSize=10, fillColor=base.WHITE))
+        drawing.add(String(20, 90, 'LMSGEN', fontName=base.FONT_BOLD, fontSize=24, fillColor=base.WHITE))
+        drawing.add(String(20, 70, 'INDIVIDUAL LEARNER EVIDENCE', fontName=base.FONT_LIGHT, fontSize=10, fillColor=base.WHITE))
         self.elements.extend([
             drawing,
             Spacer(1, 0.85 * inch),
@@ -329,7 +329,7 @@ class LearnerReport:
             topMargin=0.9 * inch,
             bottomMargin=0.95 * inch,
             title=f'SCORM AI Individual Learner Report - {title}',
-            author='Quizmoto'
+            author='LMSGEN'
         )
         self.create_cover()
         self.create_summary()
@@ -340,17 +340,17 @@ class LearnerReport:
 
 def excel_formats(workbook):
     return {
-        'title': workbook.add_format({'bold': True, 'font_size': 20, 'font_color': '#46178f'}),
-        'sub': workbook.add_format({'font_size': 11, 'font_color': '#2D2D2D'}),
-        'section': workbook.add_format({'bold': True, 'font_size': 12, 'font_color': '#46178f', 'bottom': 1, 'bottom_color': '#46178f'}),
-        'header': workbook.add_format({'bold': True, 'font_color': '#FFFFFF', 'bg_color': '#46178f', 'border': 1, 'border_color': '#FFFFFF', 'align': 'center', 'valign': 'vcenter'}),
+        'title': workbook.add_format({'bold': True, 'font_size': 20, 'font_color': '#16988F'}),
+        'sub': workbook.add_format({'font_size': 11, 'font_color': '#183334'}),
+        'section': workbook.add_format({'bold': True, 'font_size': 12, 'font_color': '#16988F', 'bottom': 1, 'bottom_color': '#4FC9BF'}),
+        'header': workbook.add_format({'bold': True, 'font_color': '#FFFFFF', 'bg_color': '#073F3B', 'border': 1, 'border_color': '#D9E9E6', 'align': 'center', 'valign': 'vcenter'}),
         'label': workbook.add_format({'bold': True, 'bg_color': '#F2F2F2', 'border': 1, 'border_color': '#D9D9D9'}),
         'value': workbook.add_format({'border': 1, 'border_color': '#D9D9D9'}),
         'stripe': workbook.add_format({'bg_color': '#F9F9F9', 'border': 1, 'border_color': '#E5E5E5', 'text_wrap': True, 'valign': 'top'}),
         'plain': workbook.add_format({'border': 1, 'border_color': '#E5E5E5', 'text_wrap': True, 'valign': 'top'}),
-        'green': workbook.add_format({'font_color': '#26890c', 'bold': True, 'border': 1, 'border_color': '#E5E5E5'}),
-        'red': workbook.add_format({'font_color': '#e21b3c', 'bold': True, 'border': 1, 'border_color': '#E5E5E5'}),
-        'yellow': workbook.add_format({'font_color': '#d89e00', 'bold': True, 'border': 1, 'border_color': '#E5E5E5'}),
+        'green': workbook.add_format({'font_color': '#2EA66A', 'bold': True, 'border': 1, 'border_color': '#E5E5E5'}),
+        'red': workbook.add_format({'font_color': '#D9534F', 'bold': True, 'border': 1, 'border_color': '#E5E5E5'}),
+        'yellow': workbook.add_format({'font_color': '#E3A323', 'bold': True, 'border': 1, 'border_color': '#E5E5E5'}),
     }
 
 
@@ -365,14 +365,14 @@ def generate_excel(data, output_path):
     workbook.set_properties({
         'title': f'SCORM AI Individual Learner Report - {learner_name}',
         'subject': 'SCORM AI individual learner analytics',
-        'author': 'Quizmoto'
+        'author': 'LMSGEN'
     })
 
     overview = workbook.add_worksheet('Learner Overview')
     overview.set_column('A:A', 25)
     overview.set_column('B:B', 52)
-    overview.write('A1', 'QUIZMOTO', fmt['title'])
-    overview.write('A2', 'SCORM AI · INDIVIDUAL LEARNER REPORT', fmt['sub'])
+    overview.write('A1', 'LMSGEN', fmt['title'])
+    overview.write('A2', 'INDIVIDUAL LEARNER EVIDENCE', fmt['sub'])
     overview.merge_range('A4:B4', learner_name, fmt['section'])
     rows = [
         ('Learner email', learner_email),

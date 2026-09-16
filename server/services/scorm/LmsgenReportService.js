@@ -109,9 +109,12 @@ async function flipbookStats(books) {
             status: book.status,
             pages: number(book.pageCount),
             readers: readers.size,
+            readerEmails: [...readers],
+            completedReaders: completedReaders.size,
             sessions: rows.length,
             completion: percent(completedReaders.size, readers.size),
             activeTime: durationLabel(activeSeconds),
+            activeSeconds,
             averagePagesPerSession: rows.length ? Math.round((pagesReached / rows.length) * 10) / 10 : 0,
             lifetimeOpens: number(book.viewCount),
             lastViewedAt: dateLabel(book.lastViewedAt)
@@ -279,7 +282,7 @@ function workspaceRows(type, data) {
     }));
     if (type === 'learners') return data.learners;
     if (type === 'campaigns') return data.campaigns;
-    if (type === 'flipbooks') return data.bookStats;
+    if (type === 'flipbooks') return data.bookStats.map(({ readerEmails, completedReaders, activeSeconds, ...row }) => row);
     if (type === 'assignments') {
         const courseRows = (data.courseReports || []).flatMap((course) => (course.learners || []).map((learner) => ({
             type: 'Course', item: course.title, learner: learner.learnerName || 'Learner', email: learner.learnerEmail || '', status: learner.result || learner.lessonStatus || '', progress: learner.progressAvailable === false ? '' : `${number(learner.progressPercent)}%`, score: learner.score ?? '', activeTime: learner.totalTime || '', context: 'Direct learning'
@@ -310,11 +313,49 @@ function summaryFor(type, data, rows) {
         { label: 'Flipbooks', value: data.books.length },
         { label: 'Flipbook assignments', value: data.flipbookAssignments.length }
     ];
-    if (type === 'courses') return [{ label: 'Courses', value: rows.length }, { label: 'Learners', value: data.learners.length }];
+    if (type === 'courses') {
+        const assigned = rows.reduce((sum, row) => sum + number(row.learners), 0);
+        const completed = rows.reduce((sum, row) => sum + number(row.completed), 0);
+        const scored = rows
+            .filter((row) => row.averageScore !== '' && row.averageScore !== null && row.averageScore !== undefined && Number.isFinite(Number(row.averageScore)))
+            .map((row) => Number(row.averageScore));
+        return [
+            { label: 'Courses', value: rows.length },
+            { label: 'Learners', value: data.learners.length },
+            { label: 'Completion', value: `${percent(completed, assigned)}%` },
+            { label: 'Avg. score', value: scored.length ? Math.round((scored.reduce((sum, value) => sum + value, 0) / scored.length) * 10) / 10 : '—' }
+        ];
+    }
     if (type === 'learners') return [{ label: 'Learners', value: rows.length }, { label: 'Courses', value: data.courseReports.length }, { label: 'Flipbooks', value: data.books.length }];
-    if (type === 'campaigns') return [{ label: 'Campaigns', value: rows.length }, { label: 'Active', value: rows.filter((row) => row.status === 'active').length }];
-    if (type === 'flipbooks') return [{ label: 'Flipbooks', value: rows.length }, { label: 'Readers', value: new Set(data.flipbookAssignments.map((row) => normaliseEmail(row.learnerEmail)).filter(Boolean)).size }];
-    if (type === 'assignments') return [{ label: 'Assignments', value: rows.length }, { label: 'Flipbook assignments', value: data.flipbookAssignments.length }];
+    if (type === 'campaigns') return [
+        { label: 'Campaigns', value: rows.length },
+        { label: 'Active', value: rows.filter((row) => row.status === 'active').length },
+        { label: 'Learners', value: data.learners.length },
+        { label: 'Learning items', value: rows.reduce((sum, row) => sum + number(row.learningItems), 0) }
+    ];
+    if (type === 'flipbooks') {
+        const stats = data.bookStats || [];
+        const readerEmails = new Set(stats.flatMap((row) => row.readerEmails || []).map(normaliseEmail).filter(Boolean));
+        const readerPairs = stats.reduce((sum, row) => sum + number(row.readers), 0);
+        const completedReaderPairs = stats.reduce((sum, row) => sum + number(row.completedReaders), 0);
+        const activeSeconds = stats.reduce((sum, row) => sum + number(row.activeSeconds), 0);
+        return [
+            { label: 'Flipbooks', value: rows.length },
+            { label: 'Readers', value: readerEmails.size },
+            { label: 'Sessions', value: stats.reduce((sum, row) => sum + number(row.sessions), 0) },
+            { label: 'Completion', value: `${percent(completedReaderPairs, readerPairs)}%` },
+            { label: 'Active time', value: durationLabel(activeSeconds) }
+        ];
+    }
+    if (type === 'assignments') {
+        const completed = rows.filter((row) => ['completed', 'passed'].includes(String(row.status || '').toLowerCase())).length;
+        return [
+            { label: 'Assignments', value: rows.length },
+            { label: 'Completed', value: completed },
+            { label: 'Completion', value: `${percent(completed, rows.length)}%` },
+            { label: 'Flipbook assignments', value: data.flipbookAssignments.length }
+        ];
+    }
     return [];
 }
 

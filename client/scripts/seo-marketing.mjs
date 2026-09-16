@@ -91,20 +91,19 @@ const PDF_COURSE_SECTION = `
   <div class="lmsgen-seo-inner">
     <div class="lmsgen-pdf-course-header">
       <div>
-        <div class="lmsgen-seo-kicker">NEW · PDF TO TRACKABLE COURSE</div>
-        <h2 id="lmsgen-pdf-course-title">Your presentation is already designed. Make it trackable.</h2>
+        <div class="lmsgen-seo-kicker">TURN PRESENTATIONS INTO MEASURABLE LEARNING</div>
+        <h2 id="lmsgen-pdf-course-title">Your best presentations deserve more than a download link.</h2>
       </div>
       <div class="lmsgen-pdf-course-summary">
-        <p>Keep every slide exactly as exported, add an AI-generated editable quiz and capture progress, scores and time spent on each slide.</p>
-        <a href="/scorm/author">Create a trackable PDF course <span aria-hidden="true">→</span></a>
+        <p>Transform approved decks into polished, trackable learning with built-in assessment and reporting—without compromising the design.</p>
+        <a href="/scorm/author">Turn my PDF into a course <span aria-hidden="true">→</span></a>
       </div>
     </div>
-    <ol class="lmsgen-pdf-course-steps" aria-label="How to create a trackable course from a presentation">
-      <li><span>01</span><div><strong>Create your presentation</strong><p>Build the slides in PowerPoint, Gamma, Canva or the presentation tool you already use.</p></div></li>
-      <li><span>02</span><div><strong>Export a landscape PDF</strong><p>Use landscape orientation—16:9 is recommended—so every page is ready to become one course slide.</p></div></li>
-      <li><span>03</span><div><strong>Upload the PDF</strong><p>LMSGEN preserves each PDF page as a fixed visual slide and generates a relevant, editable final quiz.</p></div></li>
-      <li><span>04</span><div><strong>Publish and track</strong><p>Your course is ready with learner progress, quiz scores, completion and time spent on every slide.</p></div></li>
-    </ol>
+    <ul class="lmsgen-pdf-course-benefits" aria-label="Benefits of a trackable presentation course">
+      <li><strong>Keep the presentation your team approved.</strong><p>Deliver the visual experience exactly as intended in a professional learning format.</p></li>
+      <li><strong>Add intelligence, not production overhead.</strong><p>Turn existing content into an assessed learning experience with an editable AI-generated quiz.</p></li>
+      <li><strong>Prove engagement with real evidence.</strong><p>See completion, scores and slide-level attention instead of relying on a simple file download.</p></li>
+    </ul>
     <div class="lmsgen-pdf-course-proof">
       <div class="lmsgen-pdf-proof-screen" aria-label="Trackable presentation course preview">
         <div class="lmsgen-pdf-proof-rail">
@@ -117,14 +116,12 @@ const PDF_COURSE_SECTION = `
         </div>
       </div>
       <div class="lmsgen-pdf-proof-copy">
-        <span>WHAT LMSGEN ADDS</span>
-        <h3>Presentation fidelity without losing learning evidence.</h3>
+        <span>FROM SLIDES TO LEARNING EVIDENCE</span>
+        <h3>Know who engaged, what they learned and where attention dropped.</h3>
         <ul>
-          <li>One preserved PDF page per slide</li>
-          <li>Responsive, centred slide scaling on mobile</li>
-          <li>Editable AI-generated end-of-course quiz</li>
-          <li>Per-slide visits and active viewing time</li>
-          <li>Completion, score and learner-level reporting</li>
+          <li>Preserve the presentation your team approved</li>
+          <li>Add an editable, AI-generated knowledge check</li>
+          <li>Capture completion, score and slide-level engagement</li>
         </ul>
       </div>
     </div>
@@ -172,22 +169,21 @@ const SEO_STYLE = `<style id="lmsgen-seo-content-style">
 </style>`;
 
 const PDF_COURSE_STYLE = `<style id="lmsgen-pdf-course-style">
-  .lmsgen-pdf-course-section{background:#073f3b;color:#fff}
+  .lmsgen-pdf-course-section{background:#073f3b;color:#fff;font-family:"Open Sans",Arial,sans-serif!important}
   .lmsgen-pdf-course-section .lmsgen-seo-kicker{color:#7ce3d9}
-  .lmsgen-pdf-course-section h2{max-width:78rem;color:#fff}
+  .lmsgen-pdf-course-section h2{max-width:78rem;color:#fff;font-family:"Montserrat",Arial,sans-serif!important;font-size:clamp(3.6rem,3vw,4.8rem)!important;font-weight:600!important;line-height:1.1!important;letter-spacing:-.035em!important;text-transform:none!important;text-wrap:balance}
   .lmsgen-pdf-course-header{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(30rem,.8fr);gap:6rem;align-items:end}
   .lmsgen-pdf-course-summary p{margin:0 0 2.4rem;font-size:1.85rem;line-height:1.6;color:#c8dedb}
-  .lmsgen-pdf-course-summary a{display:inline-flex;align-items:center;gap:.8rem;padding:1.45rem 2rem;border-radius:999px;background:#65d4ca;color:#003f3a;text-decoration:none;font-size:1.5rem;font-weight:800}
-  .lmsgen-pdf-course-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.2rem;margin:5rem 0 0;padding:0;list-style:none}
-  .lmsgen-pdf-course-steps li{min-height:25rem;padding:2.4rem;border:1px solid rgba(124,227,217,.24);border-radius:2rem;background:rgba(255,255,255,.055)}
-  .lmsgen-pdf-course-steps li>span{display:grid;width:4.2rem;height:4.2rem;place-items:center;border-radius:50%;background:#65d4ca;color:#003f3a;font-size:1.2rem;font-weight:800}
-  .lmsgen-pdf-course-steps strong{display:block;margin-top:4.5rem;font-size:2.05rem;line-height:1.18;color:#fff}
-  .lmsgen-pdf-course-steps p{margin:1.1rem 0 0;font-size:1.45rem;line-height:1.55;color:#bad2cf}
+  .lmsgen-pdf-course-summary a{display:inline-flex;align-items:center;gap:.8rem;padding:1.45rem 2rem;border-radius:999px;background:#65d4ca;color:#003f3a;text-decoration:none;font-family:"Montserrat",Arial,sans-serif!important;font-size:1.5rem;font-weight:700}
+  .lmsgen-pdf-course-benefits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2rem;margin:5rem 0 0;padding:0;list-style:none}
+  .lmsgen-pdf-course-benefits li{min-height:19rem;padding:2.8rem;border:1px solid rgba(124,227,217,.24);border-radius:2rem;background:rgba(255,255,255,.055)}
+  .lmsgen-pdf-course-benefits strong{display:block;font-family:"Montserrat",Arial,sans-serif!important;font-size:2.05rem;font-weight:600;line-height:1.24;letter-spacing:-.02em;color:#fff}
+  .lmsgen-pdf-course-benefits p{margin:1.3rem 0 0;font-size:1.45rem;line-height:1.6;color:#bad2cf}
   .lmsgen-pdf-course-proof{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(30rem,.65fr);gap:4rem;align-items:center;margin-top:2rem;padding:2rem;border-radius:2.8rem;background:#f4fbfa;color:#003f3a}
   .lmsgen-pdf-proof-screen{min-height:43rem;display:grid;grid-template-columns:14rem 1fr;overflow:hidden;border-radius:1.8rem;background:#fff;box-shadow:0 2rem 5rem rgba(0,31,29,.18)}
   .lmsgen-pdf-proof-rail{padding:2.4rem 1.7rem;background:#062f2c;color:#fff}
   .lmsgen-pdf-proof-rail small{color:#7ce3d9;font-size:.9rem;font-weight:800;letter-spacing:.12em}
-  .lmsgen-pdf-proof-rail strong{display:block;margin-top:1.2rem;font-size:1.45rem;line-height:1.25}
+  .lmsgen-pdf-proof-rail strong{display:block;margin-top:1.2rem;font-family:"Montserrat",Arial,sans-serif!important;font-size:1.45rem;font-weight:600;line-height:1.25}
   .lmsgen-pdf-proof-progress{height:.7rem;margin:3rem 0 1rem;border-radius:99px;background:rgba(255,255,255,.13)}
   .lmsgen-pdf-proof-progress i{display:block;width:68%;height:100%;border-radius:inherit;background:#65d4ca}
   .lmsgen-pdf-proof-rail span{font-size:1rem;color:#b8d2cf}
@@ -196,16 +192,16 @@ const PDF_COURSE_STYLE = `<style id="lmsgen-pdf-course-style">
   .lmsgen-pdf-proof-toolbar b{color:#087d73}
   .lmsgen-pdf-proof-page{align-self:center;min-height:29rem;padding:4rem;display:flex;flex-direction:column;justify-content:center;background:#fff8e8;box-shadow:0 1.5rem 4rem rgba(0,63,58,.12)}
   .lmsgen-pdf-proof-page small{font-size:1rem;font-weight:800;letter-spacing:.12em;color:#087d73}
-  .lmsgen-pdf-proof-page strong{max-width:46rem;margin-top:1.4rem;font-size:clamp(3.2rem,4vw,5.5rem);line-height:.96;letter-spacing:-.03em}
+  .lmsgen-pdf-proof-page strong{max-width:46rem;margin-top:1.4rem;font-family:"Montserrat",Arial,sans-serif!important;font-size:clamp(3.2rem,4vw,5.5rem);font-weight:600;line-height:.96;letter-spacing:-.03em}
   .lmsgen-pdf-proof-page p{margin:2rem 0 0;font-size:1.3rem;color:#496763}
   .lmsgen-pdf-proof-copy{padding:2rem 2rem 2rem 0}
   .lmsgen-pdf-proof-copy>span{font-size:1.1rem;font-weight:800;letter-spacing:.12em;color:#087d73}
-  .lmsgen-pdf-proof-copy h3{margin:1.2rem 0 2.4rem;font-size:3rem;line-height:1.06;color:#003f3a}
+  .lmsgen-pdf-proof-copy h3{margin:1.2rem 0 2.4rem;font-family:"Montserrat",Arial,sans-serif!important;font-size:3rem;font-weight:600;line-height:1.12;letter-spacing:-.025em;color:#003f3a}
   .lmsgen-pdf-proof-copy ul{display:grid;gap:1.15rem;margin:0;padding:0;list-style:none}
   .lmsgen-pdf-proof-copy li{position:relative;padding-left:2.6rem;font-size:1.4rem;line-height:1.45;color:#385c58}
   .lmsgen-pdf-proof-copy li:before{content:'✓';position:absolute;left:0;top:-.1rem;display:grid;width:1.8rem;height:1.8rem;place-items:center;border-radius:50%;background:#d2f3ef;color:#087d73;font-size:1rem;font-weight:900}
-  @media(max-width:991px){.lmsgen-pdf-course-header,.lmsgen-pdf-course-proof{grid-template-columns:1fr}.lmsgen-pdf-course-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.lmsgen-pdf-proof-copy{padding:1rem 1rem 2rem}}
-  @media(max-width:640px){.lmsgen-pdf-course-header{gap:2.5rem}.lmsgen-pdf-course-steps{grid-template-columns:1fr}.lmsgen-pdf-course-steps li{min-height:0}.lmsgen-pdf-course-steps strong{margin-top:2.8rem}.lmsgen-pdf-course-proof{padding:1rem;gap:1.5rem}.lmsgen-pdf-proof-screen{min-height:29rem;grid-template-columns:7.5rem 1fr}.lmsgen-pdf-proof-rail{padding:1.3rem .8rem}.lmsgen-pdf-proof-rail strong{font-size:.9rem}.lmsgen-pdf-proof-rail span{font-size:.75rem}.lmsgen-pdf-proof-slide{padding:.8rem}.lmsgen-pdf-proof-toolbar{font-size:.75rem}.lmsgen-pdf-proof-page{min-height:20rem;padding:1.8rem}.lmsgen-pdf-proof-page strong{font-size:2.7rem}.lmsgen-pdf-proof-page p{font-size:.9rem}.lmsgen-pdf-proof-copy{padding:1.5rem}.lmsgen-pdf-proof-copy h3{font-size:2.5rem}}
+  @media(max-width:991px){.lmsgen-pdf-course-header,.lmsgen-pdf-course-proof{grid-template-columns:1fr}.lmsgen-pdf-course-benefits{grid-template-columns:1fr}.lmsgen-pdf-course-benefits li{min-height:0}.lmsgen-pdf-proof-copy{padding:1rem 1rem 2rem}}
+  @media(max-width:640px){.lmsgen-pdf-course-header{gap:2.5rem}.lmsgen-pdf-course-benefits{margin-top:3.5rem}.lmsgen-pdf-course-benefits li{padding:2.2rem}.lmsgen-pdf-course-proof{padding:1rem;gap:1.5rem}.lmsgen-pdf-proof-screen{min-height:29rem;grid-template-columns:7.5rem 1fr}.lmsgen-pdf-proof-rail{padding:1.3rem .8rem}.lmsgen-pdf-proof-rail strong{font-size:.9rem}.lmsgen-pdf-proof-rail span{font-size:.75rem}.lmsgen-pdf-proof-slide{padding:.8rem}.lmsgen-pdf-proof-toolbar{font-size:.75rem}.lmsgen-pdf-proof-page{min-height:20rem;padding:1.8rem}.lmsgen-pdf-proof-page strong{font-size:2.7rem}.lmsgen-pdf-proof-page p{font-size:.9rem}.lmsgen-pdf-proof-copy{padding:1.5rem}.lmsgen-pdf-proof-copy h3{font-size:2.5rem}}
 </style>`;
 
 function escapeRegExp(value) {

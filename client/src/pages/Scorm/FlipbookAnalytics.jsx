@@ -26,21 +26,25 @@ const PAGE_ROWS_PER_VIEW = 10;
 
 function durationLabel(seconds) {
   const value = Math.max(0, Number(seconds || 0));
-  const minutes = Math.floor(value / 60);
-  const remainder = Math.round(value % 60);
+  const total = Math.round(value);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const remainder = total % 60;
+  if (hours) return `${hours}h ${minutes}m ${remainder}s`;
   if (minutes) return `${minutes}m ${remainder}s`;
   return `${remainder}s`;
 }
 
 function dateLabel(value) {
   if (!value) return '—';
-  try { return new Date(value).toLocaleString(); } catch (_) { return '—'; }
+  try { return new Date(value).toLocaleString(); } catch { return '—'; }
 }
 
-function Metric({ icon: Icon, label, value, help }) {
+function Metric({ icon, label, value, help }) {
+  const MetricIcon = icon;
   return (
     <div className="flip-analytics-metric">
-      <div className="flip-analytics-icon"><Icon size={16} /></div>
+      <div className="flip-analytics-icon"><MetricIcon size={16} /></div>
       <div className="min-w-0">
         <div className="flip-kicker">{label}</div>
         <div className="flip-analytics-value">{value}</div>
@@ -71,10 +75,6 @@ function PagePerformance({ pages }) {
   const startIndex = safeGroup * PAGE_ROWS_PER_VIEW;
   const endIndex = Math.min(totalPages, startIndex + PAGE_ROWS_PER_VIEW);
   const visiblePages = pages.slice(startIndex, endIndex);
-
-  useEffect(() => {
-    setPageGroup((current) => Math.min(current, Math.max(0, groupCount - 1)));
-  }, [groupCount]);
 
   const goToPage = (pageNumber) => {
     const target = Math.max(1, Math.min(totalPages, Math.floor(Number(pageNumber) || 1)));
