@@ -155,7 +155,7 @@ export default function CourseGenerator() {
           progressId,
           courseMode: presentationMode ? 'presentation' : 'generated',
           topic: topic.trim(),
-          description: description.trim(),
+          description: presentationMode ? '' : description.trim(),
           fileBase64: '',
           mimeType: file?.type || '',
           detailLevel,
@@ -200,7 +200,9 @@ export default function CourseGenerator() {
           <div className="scorm-micro text-[10px] uppercase font-semibold">Course builder</div>
           <h1 className="scorm-display text-[42px] md:text-[56px] mt-2" style={ink}>Create a course</h1>
           <p className="text-sm mt-3 leading-relaxed max-w-2xl" style={muted}>
-            Add a topic, learning goal or source file, choose the learning experience and apply your course branding. Generation runs in the background while you continue using the platform.
+            {presentationMode
+              ? 'Upload the presentation PDF, optionally name the course and add your logo. The slides provide everything needed to create the tracked course and end quiz.'
+              : 'Add a topic, learning goal or source file, choose the learning experience and apply your course branding. Generation runs in the background while you continue using the platform.'}
           </p>
         </div>
         <button
@@ -223,7 +225,7 @@ export default function CourseGenerator() {
           <div className="scorm-course-generator-panel-header px-5 md:px-6 py-5 border-b flex items-center justify-between gap-4" style={{ borderColor: 'var(--scorm-line)' }}>
             <div>
               <div className="scorm-micro text-[9px] uppercase font-semibold">Course source</div>
-              <h2 className="text-[18px] font-semibold mt-1" style={ink}>Tell us what the course should cover</h2>
+              <h2 className="text-[18px] font-semibold mt-1" style={ink}>{presentationMode ? 'Upload your finished presentation' : 'Tell us what the course should cover'}</h2>
             </div>
             <div className="scorm-course-generator-icon hidden sm:grid w-10 h-10 rounded-lg border place-items-center" style={{ ...softSurface, color: 'var(--scorm-accent)' }}>
               <FileText size={18} />
@@ -279,7 +281,7 @@ export default function CourseGenerator() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
               <div className="min-w-0">
-                <div className="scorm-micro text-[9px] uppercase font-semibold h-4 flex items-center mb-2">Topic</div>
+                <div className="scorm-micro text-[9px] uppercase font-semibold h-4 flex items-center mb-2">{presentationMode ? 'Course title (optional)' : 'Topic'}</div>
                 <input
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
@@ -306,16 +308,16 @@ export default function CourseGenerator() {
               </div>
             </div>
 
-            <label className="block">
+            {!presentationMode && <label className="block">
               <span className="scorm-micro text-[9px] uppercase font-semibold">Description or learning goals</span>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={5}
-                placeholder={presentationMode ? 'Optional context to guide the quiz. The quiz will remain grounded in the presentation.' : 'Describe what learners should understand and be able to do after completing the course.'}
+                placeholder="Describe what learners should understand and be able to do after completing the course."
                 className="scorm-course-search mt-1.5 w-full px-3 py-3 text-sm resize-y min-h-[145px]"
               />
-            </label>
+            </label>}
 
             {!presentationMode && <div>
               <div className="flex items-end justify-between gap-4 mb-3">
