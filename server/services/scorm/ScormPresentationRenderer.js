@@ -296,7 +296,8 @@ async function renderPdfPages(pdfPath, tempDir) {
 }
 
 function normalizePptxSvgFontFamilies(svg) {
-    return String(svg || '').replace(/<[^>]+\bfont-family="[^"]+"[^>]*>/gi, (tag) => {
+    const source = String(svg || '');
+    const normalizedFamilies = source.replace(/<[^>]+\bfont-family="[^"]+"[^>]*>/gi, (tag) => {
         const bold = /\bfont-weight="(?:bold|[6-9]00)"/i.test(tag);
         const italic = /\bfont-style="(?:italic|oblique)"/i.test(tag);
         if (!bold && !italic) return tag;
@@ -321,6 +322,75 @@ function normalizePptxSvgFontFamilies(svg) {
             return `font-family="${normalized}"`;
         });
     });
+
+    const normalizedSizes = normalizedFamilies.replace(
+        /<tspan\b(?=[^>]*\bfont-size="[^"]+")(?=[^>]*\bdata-ooxml-font-size="(\d+)")[^>]*>/gi,
+        (tag, rawSize, offset, completeSvg) => {
+            const points = Number(rawSize) / 100;
+            if (!Number.isFinite(points) || points <= 0) return tag;
+
+            // PowerPoint stores run sizes in hundredths of a point. pptx-svg
+            // occasionally copies that point value into a CSS pixel size (for
+            // example 38.5pt -> 39px), making the learner slide visibly smaller
+            // than PowerPoint. Apply the 96dpi point-to-pixel conversion and the
+            // text box's OOXML autofit scale so both size and wrapping are kept.
+            const groupStart = completeSvg.lastIndexOf('<g ', offset);
+            const previousGroupEnd = completeSvg.lastIndexOf('</g>', offset);
+            let fontScale = 100000;
+            if (groupStart > previousGroupEnd) {
+                const groupTagEnd = completeSvg.indexOf('>', groupStart);
+                const groupTag = groupTagEnd > groupStart
+                    ? completeSvg.slice(groupStart, groupTagEnd + 1)
+                    : '';
+                const parsedScale = Number(groupTag.match(/\bdata-ooxml-font-scale="(-?\d+)"/i)?.[1]);
+                if (Number.isFinite(parsedScale) && parsedScale > 0) fontScale = parsedScale;
+            }
+
+            const pixels = points * (96 / 72) * (fontScale / 100000);
+            const cssPixels = String(Math.round(pixels * 1000) / 1000);
+            return tag.replace(/\bfont-size="[^"]+"/i, `font-size="${cssPixels}"`);
+        }
+    );
+
+    return normalizedSizes.replace(
+        /<g\b(?=[^>]*\bdata-ooxml-line-spacing="\d+")[^>]*>[\s\S]*?<\/g>/gi,
+        (group) => {
+            const spacing = Number(group.match(/\bdata-ooxml-line-spacing="(\d+)"/i)?.[1] || 100000);
+            const rectY = Number(group.match(/<rect\b[^>]*\by="([\d.]+)"/i)?.[1]);
+            const topInset = Number(group.match(/\bdata-ooxml-t-ins="([\d.-]+)"/i)?.[1]);
+            const topAnchored = /\bdata-ooxml-anchor="t"/i.test(group);
+            const sizes = [...group.matchAll(/<tspan\b[^>]*\sfont-size="([\d.]+)"/gi)]
+                .map((match) => Number(match[1]))
+                .filter((value) => Number.isFinite(value) && value > 0);
+            const lineTags = [...group.matchAll(/<tspan\b(?=[^>]*\bdata-ooxml-para-idx="\d+")[^>]*>/gi)];
+            if (!lineTags.length || !sizes.length || !Number.isFinite(spacing)) return group;
+
+            const fontSize = Math.max(...sizes);
+            const originalFirstY = Number(lineTags[0][0].match(/\by="([\d.]+)"/i)?.[1]);
+            const canAnchorFromTop = topAnchored
+                && Number.isFinite(rectY)
+                && (!Number.isFinite(topInset) || topInset === 0);
+            const firstY = canAnchorFromTop
+                ? rectY + fontSize
+                : originalFirstY;
+            if (!Number.isFinite(firstY)) return group;
+
+            // PowerPoint percentage line spacing is applied to the font's
+            // normal 1.2 line box, not directly to the glyph height.
+            const lineStep = fontSize * 1.2 * (spacing / 100000);
+            let lineIndex = 0;
+            return group.replace(
+                /<tspan\b(?=[^>]*\bdata-ooxml-para-idx="\d+")[^>]*>/gi,
+                (tag) => {
+                    const y = Math.round((firstY + (lineStep * lineIndex)) * 1000) / 1000;
+                    lineIndex += 1;
+                    return /\by="[^"]+"/i.test(tag)
+                        ? tag.replace(/\by="[^"]+"/i, `y="${y}"`)
+                        : tag;
+                }
+            );
+        }
+    );
 }
 
 async function renderPptxWithSvgEngine(sourcePath, tempDir) {
@@ -510,31 +580,31 @@ async function renderPresentation({ sourceBuffer, mimeType, fileName }) {
         await fs.writeFile(sourcePath, sourceBuffer);
         let pdfBuffer = null;
         let rawSlides = null;
-        let renderEngine = kind === 'pdf' ? 'pdf' : 'pptx-svg';
+        let renderEngine = kind === 'pdf' ? 'pdf' : 'libreoffice';
 
         if (kind === 'pdf') {
             pdfBuffer = await fs.readFile(sourcePath);
             rawSlides = await renderPdfPages(sourcePath, tempDir);
         } else {
             try {
-                // Use the OOXML-aware renderer first. Its font-face names are
-                // normalized before rasterization, avoiding LibreOffice font
-                // substitution that can enlarge Gamma/Lato headings and clip
-                // text which fits correctly in PowerPoint.
-                rawSlides = await renderPptxWithSvgEngine(sourcePath, tempDir);
-            } catch (svgError) {
+                // The production image includes the Lato faces used by Gamma.
+                // With the real font available, the office/PDF engine preserves
+                // PowerPoint point sizes, weights, line spacing and wrapping
+                // more faithfully than reconstructing those rules from SVG.
+                const pdfPath = await convertPptxToPdf(sourcePath, tempDir);
+                pdfBuffer = await fs.readFile(pdfPath);
+                rawSlides = await renderPdfPages(pdfPath, tempDir);
+            } catch (officeError) {
                 try {
-                    const pdfPath = await convertPptxToPdf(sourcePath, tempDir);
-                    pdfBuffer = await fs.readFile(pdfPath);
-                    rawSlides = await renderPdfPages(pdfPath, tempDir);
-                    renderEngine = 'libreoffice';
-                } catch (officeError) {
+                    rawSlides = await renderPptxWithSvgEngine(sourcePath, tempDir);
+                    renderEngine = 'pptx-svg';
+                } catch (svgError) {
                     const error = commandError(
                         'The PowerPoint deck could not be rendered by either available presentation engine.',
                         'SCORM_PRESENTATION_RENDER_FAILED',
-                        officeError
+                        svgError
                     );
-                    error.svgError = svgError;
+                    error.officeError = officeError;
                     throw error;
                 }
             }

@@ -16,6 +16,10 @@ RUN apk add --no-cache \
         libstdc++ \
         libreoffice-impress \
         poppler-utils \
+    && apk add --no-cache \
+        --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing \
+        font-lato \
+    && fc-cache -f \
     && pip3 install --break-system-packages --no-cache-dir \
         "reportlab>=4.0.0" \
         "xlsxwriter>=3.0.0"

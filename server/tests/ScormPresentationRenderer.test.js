@@ -79,24 +79,46 @@ describe('ScormPresentationRenderer', () => {
     });
 
     it('keeps PowerPoint bold face names on their real CSS font family', () => {
-        const svg = '<svg><text font-family="Calibri, sans-serif">Body</text><tspan font-weight="bold" font-family="Lato Bold, Lato Bold, sans-serif">Title</tspan></svg>';
+        const svg = '<svg><text font-family="Calibri, sans-serif">Body</text><g data-ooxml-font-scale="100000"><tspan font-weight="bold" font-size="39" font-family="Lato Bold, Lato Bold, sans-serif" data-ooxml-font-size="3850">Title</tspan></g></svg>';
         const normalized = normalizePptxSvgFontFamilies(svg);
 
         expect(normalized).to.include('font-family="Calibri, sans-serif"');
-        expect(normalized).to.include('font-weight="bold" font-family="Lato, Lato, sans-serif"');
+        expect(normalized).to.include('font-weight="bold" font-size="51.333" font-family="Lato, Lato, sans-serif"');
         expect(normalized).not.to.include('Lato Bold');
     });
 
-    it('uses normalized OOXML rendering before the LibreOffice compatibility fallback', () => {
+    it('respects PowerPoint text autofit scaling when restoring point sizes', () => {
+        const svg = '<svg><g data-ooxml-font-scale="75000"><tspan font-size="29" font-family="Lato" data-ooxml-font-size="3850">Scaled title</tspan></g></svg>';
+        const normalized = normalizePptxSvgFontFamilies(svg);
+
+        expect(normalized).to.include('font-size="38.5"');
+    });
+
+    it('restores PowerPoint percentage line spacing for multiline text boxes', () => {
+        const svg = '<svg><g data-ooxml-line-spacing="104000" data-ooxml-font-scale="100000" data-ooxml-anchor="t" data-ooxml-t-ins="0"><rect y="165"/><text><tspan y="190" data-ooxml-para-idx="0"><tspan font-size="39" font-family="Lato Bold" font-weight="bold" data-ooxml-font-size="3850">First</tspan></tspan><tspan y="242" data-ooxml-para-idx="0"><tspan font-size="39" font-family="Lato Bold" font-weight="bold" data-ooxml-font-size="3850">Second</tspan></tspan></text></g></svg>';
+        const normalized = normalizePptxSvgFontFamilies(svg);
+
+        expect(normalized).to.include('y="216.333" data-ooxml-para-idx="0"');
+        expect(normalized).to.include('y="280.397" data-ooxml-para-idx="0"');
+    });
+
+    it('installs the Lato faces used by Gamma decks in the production renderer', () => {
+        const dockerfile = fs.readFileSync(path.join(__dirname, '..', 'Dockerfile'), 'utf8');
+        expect(dockerfile).to.include('font-lato');
+        expect(dockerfile).to.include('fc-cache -f');
+    });
+
+    it('uses the font-complete office renderer before the normalized OOXML fallback', () => {
         const rendererSource = fs.readFileSync(path.join(__dirname, '..', 'services', 'scorm', 'ScormPresentationRenderer.js'), 'utf8');
         const runnerSource = fs.readFileSync(path.join(__dirname, '..', 'utils', 'render_pptx_svg.mjs'), 'utf8');
-        const directRender = rendererSource.indexOf('rawSlides = await renderPptxWithSvgEngine');
-        const officeRender = rendererSource.indexOf('const pdfPath = await convertPptxToPdf', directRender);
+        const officeRender = rendererSource.indexOf('const pdfPath = await convertPptxToPdf');
+        const directRender = rendererSource.indexOf('rawSlides = await renderPptxWithSvgEngine', officeRender);
 
-        expect(directRender).to.be.greaterThan(-1);
-        expect(officeRender).to.be.greaterThan(directRender);
+        expect(officeRender).to.be.greaterThan(-1);
+        expect(directRender).to.be.greaterThan(officeRender);
         expect(rendererSource).to.include('--experimental-wasm-imported-strings');
         expect(runnerSource).to.include("import { PptxRenderer } from 'pptx-svg'");
+        expect(runnerSource).to.include('data-ooxml-line-spacing');
         expect(runnerSource).to.include('renderer.renderSlideSvg(index)');
     });
 });
