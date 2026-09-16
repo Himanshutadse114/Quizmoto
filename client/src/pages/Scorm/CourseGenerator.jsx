@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { startBackgroundCourseGeneration } from '../../services/courseGenerationJobs';
 import { apiUrl } from '../../config';
 import AuthorVisual from './AuthorVisual';
-import CourseBrandingPanel, { DEFAULT_BRANDING } from './CourseBrandingPanel';
+import CourseBrandingPanel, { DEFAULT_BRANDING, PresentationLogoPanel } from './CourseBrandingPanel';
 
 const EDITORIAL_THEME_ID = 1;
 const DEFAULT_COURSE_TEMPLATE_ID = 'professional-classic';
@@ -141,7 +141,7 @@ export default function CourseGenerator() {
   };
 
   const generateCourse = () => {
-    if (!hasSource || busy || !token || (!presentationMode && brandingError)) return;
+    if (!hasSource || busy || !token || brandingError) return;
     setError('');
     setBusy(true);
 
@@ -161,11 +161,13 @@ export default function CourseGenerator() {
           detailLevel,
           templateId: EDITORIAL_THEME_ID,
           sourceFileName: file?.name || '',
-          ...(!presentationMode ? { branding: {
+          branding: {
             logoDataUrl: branding.logoDataUrl || '',
-            primaryColor: branding.primaryColor,
-            accentColor: branding.accentColor
-          }} : {}),
+            ...(!presentationMode ? {
+              primaryColor: branding.primaryColor,
+              accentColor: branding.accentColor
+            } : {})
+          },
           ...(!presentationMode && templateEngineAvailable ? {
             courseTemplateId,
             interactionLevel
@@ -351,6 +353,13 @@ export default function CourseGenerator() {
               onError={setBrandingError}
             />}
 
+            {presentationMode && <PresentationLogoPanel
+              logoDataUrl={branding.logoDataUrl}
+              onChange={(logoDataUrl) => setBranding((current) => ({ ...current, logoDataUrl }))}
+              error={brandingError}
+              onError={setBrandingError}
+            />}
+
             {!presentationMode && <div>
               <div className="flex items-end justify-between gap-4 mb-3">
                 <div>
@@ -421,7 +430,7 @@ export default function CourseGenerator() {
             <button
               type="button"
               onClick={generateCourse}
-              disabled={busy || !hasSource || (!presentationMode && Boolean(brandingError))}
+              disabled={busy || !hasSource || Boolean(brandingError)}
               className="scorm-button-primary inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {busy ? <Loader2 size={17} className="animate-spin" /> : <Sparkles size={17} />}
@@ -452,6 +461,7 @@ export default function CourseGenerator() {
               </div></>}
               {presentationMode && (
                 <div className="mt-4 pt-4 border-t space-y-3" style={{ borderColor: 'var(--scorm-line)' }}>
+                  <div className="flex items-center gap-2 text-[11px]" style={muted}><CheckCircle2 size={14} style={{ color: 'var(--scorm-accent)' }} />{branding.logoDataUrl ? 'Custom learner-rail logo' : 'Default presentation label'}</div>
                   {['Exact slide order', 'Responsive image playback', 'Quizmoto teal end quiz', 'SCORM score and progress'].map((item) => (
                     <div key={item} className="flex items-center gap-2 text-[11px]" style={muted}><CheckCircle2 size={14} style={{ color: 'var(--scorm-accent)' }} />{item}</div>
                   ))}

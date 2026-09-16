@@ -3,7 +3,8 @@ const {
     serializePreviewStats,
     scorePercent,
     interactionCount,
-    liveInteractionScore
+    liveInteractionScore,
+    slideTimingRows
 } = require('../services/scorm/ScormPreviewStatsService');
 
 describe('SCORM admin preview stats', () => {
@@ -227,5 +228,45 @@ describe('SCORM admin preview stats', () => {
         expect(interactionCount('not-json')).to.equal(0);
         expect(interactionCount(null, 'not-json')).to.equal(0);
         expect(interactionCount(null, '{}')).to.equal(0);
+    });
+
+    it('returns per-slide dwell time and visit counts for admin preview', () => {
+        const state = {
+            values: {
+                'cmi.interactions.0.id': 'slide_1',
+                'cmi.interactions.0.type': 'other',
+                'cmi.interactions.0.description': 'Slide 1 viewing time',
+                'cmi.interactions.0.student_response': 'viewed',
+                'cmi.interactions.0.latency': '0000:00:12.50',
+                'quizmoto.slide_time.0.milliseconds': '12500',
+                'quizmoto.slide_time.0.visits': '2',
+                'cmi.interactions.1.id': 'slide_2',
+                'cmi.interactions.1.type': 'other',
+                'cmi.interactions.1.description': 'Slide 2 viewing time',
+                'cmi.interactions.1.student_response': 'skipped',
+                'cmi.interactions.1.latency': '0000:00:00.80',
+                'quizmoto.slide_time.1.milliseconds': '800',
+                'quizmoto.slide_time.1.visits': '1'
+            }
+        };
+
+        expect(slideTimingRows(state, null)).to.deep.equal([
+            {
+                slideNumber: 1,
+                label: 'Slide 1 viewing time',
+                timeSpent: '0000:00:12.50',
+                milliseconds: 12500,
+                visits: 2,
+                status: 'Viewed'
+            },
+            {
+                slideNumber: 2,
+                label: 'Slide 2 viewing time',
+                timeSpent: '0000:00:00.80',
+                milliseconds: 800,
+                visits: 1,
+                status: 'Skipped'
+            }
+        ]);
     });
 });

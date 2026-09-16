@@ -34,6 +34,77 @@ function readLogo(file, onReady, onError) {
 
 export { DEFAULT_BRANDING };
 
+export function PresentationLogoPanel({ logoDataUrl = '', onChange, error, onError }) {
+  const updateLogo = (nextLogo) => onChange?.(String(nextLogo || ''));
+
+  return (
+    <div className="rounded-2xl border overflow-hidden" style={{ background: 'var(--scorm-surface-soft)', borderColor: 'var(--scorm-line)' }}>
+      <div className="px-4 md:px-5 py-4 border-b flex items-start justify-between gap-4" style={{ borderColor: 'var(--scorm-line)' }}>
+        <div>
+          <div className="scorm-micro text-[9px] uppercase font-semibold">Presentation logo</div>
+          <div className="text-sm font-semibold mt-1" style={{ color: 'var(--scorm-ink)' }}>Brand the learner side panel</div>
+          <div className="text-[11px] leading-relaxed mt-1" style={{ color: 'var(--scorm-muted)' }}>
+            Your logo replaces the “Presentation course” label and is embedded inside the SCORM package.
+          </div>
+        </div>
+        {logoDataUrl && (
+          <button
+            type="button"
+            onClick={() => {
+              onError?.('');
+              updateLogo('');
+            }}
+            className="h-9 px-3 rounded-lg border inline-flex items-center gap-2 text-[10px] font-semibold shrink-0"
+            style={{ borderColor: 'var(--scorm-line)', color: 'var(--scorm-muted)' }}
+          >
+            <X size={13} /> Remove
+          </button>
+        )}
+      </div>
+
+      <div className="p-4 md:p-5 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_220px] gap-5 items-center">
+        <div>
+          <label className="scorm-button-secondary h-11 px-4 inline-flex items-center gap-2 text-[11px] font-semibold cursor-pointer">
+            <ImagePlus size={15} />
+            {logoDataUrl ? 'Replace logo' : 'Upload logo'}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                readLogo(
+                  file,
+                  (nextLogo) => {
+                    onError?.('');
+                    updateLogo(nextLogo);
+                  },
+                  (message) => onError?.(message)
+                );
+                event.target.value = '';
+              }}
+            />
+          </label>
+          <div className="text-[10px] mt-2" style={{ color: error ? 'var(--scorm-danger)' : 'var(--scorm-muted)' }}>
+            {error || 'PNG, JPEG or WebP. Maximum 1 MB. A transparent horizontal logo works best.'}
+          </div>
+        </div>
+
+        <div className="rounded-xl border p-3 min-h-[92px] flex items-center" style={{ background: '#FFFFFF', borderColor: 'var(--scorm-line)' }}>
+          {logoDataUrl ? (
+            <img src={logoDataUrl} alt="Presentation logo preview" className="block max-w-full max-h-12 w-auto h-auto object-contain object-left" />
+          ) : (
+            <div>
+              <div className="text-[9px] uppercase tracking-[.16em] font-black" style={{ color: '#147D75' }}>Presentation course</div>
+              <div className="text-[10px] mt-2" style={{ color: '#5D7773' }}>Default learner-rail label</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CourseBrandingPanel({ value, onChange, error, onError }) {
   const branding = { ...DEFAULT_BRANDING, ...(value || {}) };
 

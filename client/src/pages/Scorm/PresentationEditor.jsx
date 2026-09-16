@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import { startBackgroundCourseGeneration } from '../../services/courseGenerationJobs';
 import AuthorQuizEditor from './AuthorQuizEditor';
+import { PresentationLogoPanel } from './CourseBrandingPanel';
 
 function progressId() {
   const value = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -54,10 +55,12 @@ export default function PresentationEditor() {
   const [quizTitle, setQuizTitle] = useState('Knowledge Check');
   const [questions, setQuestions] = useState([]);
   const [passScore, setPassScore] = useState(70);
+  const [logoDataUrl, setLogoDataUrl] = useState('');
+  const [logoError, setLogoError] = useState('');
   const [error, setError] = useState('');
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
-  const ready = title.trim() && completeQuiz(questions) && !saving;
+  const ready = title.trim() && completeQuiz(questions) && !logoError && !saving;
 
   useEffect(() => {
     if (!token) {
@@ -78,6 +81,7 @@ export default function PresentationEditor() {
         setSourceName(String(analysis.presentation?.sourceFileName || 'Current presentation'));
         setQuizTitle(String(quiz.title || 'Knowledge Check'));
         setQuestions((Array.isArray(quiz.questions) ? quiz.questions : []).map(normalizeQuestion));
+        setLogoDataUrl(String(analysis.branding?.logoDataUrl || ''));
         const storedPassScore = Number(analysis.passScore);
         setPassScore(Math.max(0, Math.min(100, Number.isFinite(storedPassScore) ? storedPassScore : 70)));
       })
@@ -119,6 +123,7 @@ export default function PresentationEditor() {
           sourceFileName: replacement?.name || sourceName,
           mimeType: replacement?.type || '',
           passScore: Number(passScore),
+          branding: { logoDataUrl },
           quiz: {
             title: quizTitle.trim() || 'Knowledge Check',
             questions
@@ -169,6 +174,14 @@ export default function PresentationEditor() {
             </div>
           </div>
           <div className="lg:col-span-2 rounded-xl border px-4 py-3 flex items-start gap-3" style={{ borderColor: 'rgba(79,201,191,.3)', background: 'rgba(79,201,191,.07)' }}><ShieldCheck size={17} className="shrink-0 mt-0.5" style={{ color: 'var(--scorm-accent)' }} /><p className="text-xs leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>The player and quiz always use the Quizmoto teal theme. The original slide artwork is preserved inside the presentation area.</p></div>
+          <div className="lg:col-span-2">
+            <PresentationLogoPanel
+              logoDataUrl={logoDataUrl}
+              onChange={setLogoDataUrl}
+              error={logoError}
+              onError={setLogoError}
+            />
+          </div>
         </div>
       </section>
 

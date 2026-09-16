@@ -71,6 +71,10 @@ describe('ScormPresentationPackageBuilder', () => {
         expect(html).to.include('--primary:#147d75');
         expect(html).to.include('--background:#eef8f6');
         expect(html).to.include('--surface:#ffffff');
+        expect(html).to.include('font-family:"Open Sauce Sans"');
+        expect(content.playerFont).to.equal('Open Sauce Sans');
+        expect(zip.file('assets/fonts/OpenSauceSans-Regular.woff2')).to.not.equal(null);
+        expect(zip.file('assets/fonts/OpenSauce-SemiBold.woff2')).to.not.equal(null);
         expect(html).to.not.include('--primary:#f97316');
         expect(html).to.include('object-fit:contain');
         expect(html).to.include('height:100dvh');
@@ -108,5 +112,30 @@ describe('ScormPresentationPackageBuilder', () => {
             .filter(Boolean);
         expect(scripts).to.have.length(1);
         expect(() => new vm.Script(scripts[0])).not.to.throw();
+    });
+
+    it('embeds a custom logo in place of the presentation course label', async () => {
+        const logoDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+        const zipBuffer = await buildPresentationScormZip({
+            title: 'Branded Deck',
+            slides: [{
+                path: 'slides/slide-001.webp',
+                body: Buffer.from('slide-1'),
+                width: 1600,
+                height: 900
+            }],
+            quiz: quiz(),
+            logoDataUrl
+        });
+        const zip = await JSZip.loadAsync(zipBuffer);
+        const html = await zip.file('index.html').async('string');
+        const manifest = await zip.file('imsmanifest.xml').async('string');
+        const content = JSON.parse(await zip.file('content.json').async('string'));
+
+        expect(zip.file('assets/course-logo.png')).to.not.equal(null);
+        expect(html).to.include('<img class="rail-logo" src="assets/course-logo.png" alt="Course logo">');
+        expect(html).to.not.include('<span class="rail-kicker">Presentation course</span>');
+        expect(manifest).to.include('<file href="assets/course-logo.png"/>');
+        expect(content.branding.logoPath).to.equal('assets/course-logo.png');
     });
 });

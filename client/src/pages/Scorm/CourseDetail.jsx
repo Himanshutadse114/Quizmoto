@@ -38,7 +38,7 @@ function openPlayerPopup(registrationId, token, packageId, entryHref) {
     window.location.href = url;
     return null;
   }
-  try { win.focus(); } catch (_) {}
+  try { win.focus(); } catch { /* Popup focus can be blocked by the browser. */ }
   return win;
 }
 
@@ -78,6 +78,22 @@ function activityLabel(value) {
   return date.toLocaleString();
 }
 
+function slideTimeLabel(row) {
+  const milliseconds = Number(row?.milliseconds);
+  if (Number.isFinite(milliseconds)) {
+    const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return minutes ? `${minutes}m ${String(seconds).padStart(2, '0')}s` : `${seconds}s`;
+  }
+  const latency = String(row?.timeSpent || '').trim();
+  const match = latency.match(/^(\d+):(\d{2}):(\d{2})(?:\.(\d{1,2}))?$/);
+  if (!match) return latency || '—';
+  const minutes = (Number(match[1]) * 60) + Number(match[2]);
+  const seconds = Number(match[3]);
+  return minutes ? `${minutes}m ${String(seconds).padStart(2, '0')}s` : `${seconds}s`;
+}
+
 const Metric = ({ label, value, icon: Icon, bg = '#FFFFFF' }) => (
   <div className="rounded-2xl border border-black p-4" style={{ background: bg }}>
     <div className="flex items-start justify-between gap-3">
@@ -90,7 +106,7 @@ const Metric = ({ label, value, icon: Icon, bg = '#FFFFFF' }) => (
   </div>
 );
 
-const PreviewStat = ({ label, value, icon: Icon, detail }) => (
+const PreviewStat = ({ label, value, icon, detail }) => (
   <div className="scorm-preview-stat p-3.5 md:p-4 min-w-0">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
@@ -99,7 +115,7 @@ const PreviewStat = ({ label, value, icon: Icon, detail }) => (
         {detail && <div className="scorm-preview-muted text-[10px] mt-2 truncate">{detail}</div>}
       </div>
       <div className="scorm-preview-icon w-8 h-8 rounded-lg grid place-items-center shrink-0">
-        <Icon size={15} />
+        {React.createElement(icon, { size: 15 })}
       </div>
     </div>
   </div>
@@ -399,6 +415,33 @@ export default function ScormCourseDetail() {
                 <div className="scorm-preview-muted text-[10px] mt-2">This result belongs only to the reusable admin QA registration.</div>
               </div>
             </div>
+
+            {Array.isArray(previewStats.slideTimings) && previewStats.slideTimings.length > 0 && (
+              <div className="scorm-preview-location rounded-xl p-4 mt-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                  <div>
+                    <div className="flex items-center gap-2 scorm-preview-stat-label text-[9px] uppercase tracking-[0.08em] font-semibold">
+                      <Clock3 size={13} /> Time spent per slide
+                    </div>
+                    <div className="scorm-preview-muted text-[10px] mt-1">Live dwell time from this private QA run. Quick skips are clearly identified.</div>
+                  </div>
+                  <span className="scorm-preview-badge rounded-full px-2.5 py-1 text-[9px] uppercase tracking-[0.08em] font-semibold self-start sm:self-auto">
+                    {previewStats.slideTimings.length} slides recorded
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                  {previewStats.slideTimings.map((row) => (
+                    <div key={`preview-slide-${row.slideNumber}`} className="scorm-preview-stat rounded-lg p-3 flex items-center justify-between gap-3 min-w-0">
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold truncate">Slide {row.slideNumber}</div>
+                        <div className="scorm-preview-muted text-[9px] mt-1 truncate">{row.status}{row.visits != null ? ` · ${row.visits} ${row.visits === 1 ? 'visit' : 'visits'}` : ''}</div>
+                      </div>
+                      <div className="text-sm font-semibold shrink-0">{slideTimeLabel(row)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
       </section>

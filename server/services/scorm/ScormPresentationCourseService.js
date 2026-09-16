@@ -15,6 +15,7 @@ const {
     normalizeQuiz,
     QUIZMOTO_PRESENTATION_THEME
 } = require('./ScormPresentationPackageBuilder');
+const { normaliseCourseBranding } = require('./ScormCourseBrandingService');
 const logger = require('../../utils/logger');
 
 function noop() {}
@@ -331,11 +332,16 @@ async function generatePresentationCourse({ payload = {}, userId, onProgress = n
         });
         const numericPassScore = Number(payload.passScore);
         const passScore = Math.max(0, Math.min(100, Number.isFinite(numericPassScore) ? numericPassScore : 70));
+        const brandingWasProvided = Object.prototype.hasOwnProperty.call(payload, 'branding');
+        const presentationBranding = normaliseCourseBranding(
+            brandingWasProvided ? payload.branding : storedMetadata.branding || {}
+        );
         const zipBuffer = await buildPresentationScormZip({
             title,
             slides: rendered.slides,
             quiz,
-            passScore
+            passScore,
+            logoDataUrl: presentationBranding.logoDataUrl
         });
 
         const metadata = {
@@ -365,6 +371,10 @@ async function generatePresentationCourse({ payload = {}, userId, onProgress = n
                 questions: quiz.questions
             },
             passScore,
+            branding: {
+                version: 1,
+                logoDataUrl: presentationBranding.logoDataUrl
+            },
             tracking: {
                 standard: 'scorm_1_2',
                 resume: true,

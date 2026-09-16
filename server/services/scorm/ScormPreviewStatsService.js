@@ -1,5 +1,6 @@
 const { serializeRegistration, locationLabel } = require('./ScormProgressService');
 const RuntimeStore = require('./ScormRuntimeSnapshotStore');
+const { extractInteractions } = require('./ScormInteractionReportService');
 
 function asPlain(value) {
     if (!value) return null;
@@ -54,6 +55,25 @@ function interactionCount(interactionsJson, rawMapJson = null, values = null) {
         if (match) indices.add(match[1]);
     }
     return indices.size;
+}
+
+function slideTimingRows(state, packageRow) {
+    const values = stateMap(state);
+    return extractInteractions({ state: { values }, packageRow })
+        .filter((item) => item.category === 'slide')
+        .map((item) => {
+            const zeroBasedIndex = Math.max(0, Number(item.slideNumber || 1) - 1);
+            const milliseconds = finiteNumber(values[`quizmoto.slide_time.${zeroBasedIndex}.milliseconds`]);
+            const visits = finiteNumber(values[`quizmoto.slide_time.${zeroBasedIndex}.visits`]);
+            return {
+                slideNumber: item.slideNumber || zeroBasedIndex + 1,
+                label: item.question || `Slide ${zeroBasedIndex + 1}`,
+                timeSpent: item.latency || null,
+                milliseconds,
+                visits: visits == null ? null : Math.max(0, Math.round(visits)),
+                status: String(item.selectedAnswer || '').toLowerCase() === 'skipped' ? 'Skipped' : 'Viewed'
+            };
+        });
 }
 
 function liveInteractionScore(state, course) {
@@ -192,6 +212,7 @@ function serializePreviewStats(registration, course) {
             legacyState?.rawMapJson,
             learningStateV2?.values || null
         ),
+        slideTimings: slideTimingRows(primaryState, course?.package || null),
         initialized: Number(learningStateV2?.sequence || 0) > 0 || !!legacyState?.initialized,
         stateVersion: learningStateV2?.sequence ?? legacyState?.stateVersion ?? null,
         lastCommitAt: row.lastCommitAt || learningStateV2?.updatedAt || plainRegistration.runtimeSnapshot?.updatedAt || null,
@@ -204,5 +225,6 @@ module.exports = {
     serializePreviewStats,
     scorePercent,
     interactionCount,
+    slideTimingRows,
     liveInteractionScore
 };

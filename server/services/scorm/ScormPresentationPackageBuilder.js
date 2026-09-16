@@ -2,6 +2,8 @@
 
 const JSZip = require('jszip');
 const { createHash } = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 function escapeXml(value) {
     return String(value || '').replace(/[<>&"']/g, (character) => ({
@@ -52,6 +54,28 @@ function normalizeQuiz(quiz = {}) {
     };
 }
 
+function decodeLogoDataUrl(value) {
+    const match = String(value || '').trim().match(/^data:image\/(png|jpeg|webp);base64,([a-z0-9+/=\r\n]+)$/i);
+    if (!match) return null;
+    const body = Buffer.from(match[2].replace(/\s+/g, ''), 'base64');
+    if (!body.length || body.length > 1024 * 1024) return null;
+    const extension = match[1].toLowerCase() === 'jpeg' ? 'jpg' : match[1].toLowerCase();
+    return { path: `assets/course-logo.${extension}`, body };
+}
+
+function presentationFontAssets() {
+    const directory = path.resolve(__dirname, '../../../client/public/landing/fonts');
+    return [
+        ['OpenSauceSans-Regular.woff2', 400],
+        ['OpenSauceSans-Medium.woff2', 500],
+        ['OpenSauce-SemiBold.woff2', 600]
+    ].flatMap(([fileName, weight]) => {
+        const sourcePath = path.join(directory, fileName);
+        if (!fs.existsSync(sourcePath)) return [];
+        return [{ path: `assets/fonts/${fileName}`, body: fs.readFileSync(sourcePath), weight }];
+    });
+}
+
 const SCORM_WRAPPER = `var findAPITries=0;
 function findAPI(win){while((win.API==null)&&(win.parent!=null)&&(win.parent!=win)){findAPITries++;if(findAPITries>500)return null;win=win.parent;}return win.API;}
 function getAPI(){var api=findAPI(window);if((api==null)&&(window.opener!=null)){try{api=findAPI(window.opener);}catch(e){}}return api;}
@@ -63,8 +87,12 @@ function doLMSSetValue(name,value){if(!API)return "false";return API.LMSSetValue
 function doLMSCommit(){if(!API)return "false";return API.LMSCommit("");}
 `;
 
-function buildPlayerHtml({ title, slides, quiz, theme, passScore }) {
+function buildPlayerHtml({ title, slides, quiz, theme, passScore, logoPath = '', fontAssets = [] }) {
     const safeTitle = escapeXml(title);
+    const brandMark = logoPath
+        ? `<img class="rail-logo" src="${escapeXml(logoPath)}" alt="Course logo">`
+        : '<span class="rail-kicker">Presentation course</span>';
+    const fontFaceCss = fontAssets.map((asset) => `@font-face{font-family:"Open Sauce Sans";src:url("${escapeXml(asset.path)}") format("woff2");font-style:normal;font-weight:${asset.weight};font-display:swap}`).join('\n');
     const data = JSON.stringify({
         title,
         slides: slides.map((slide) => ({
@@ -85,13 +113,15 @@ function buildPlayerHtml({ title, slides, quiz, theme, passScore }) {
 <title>${safeTitle}</title>
 <script src="scorm_api_wrapper.js"></script>
 <style>
+${fontFaceCss}
 :root{--background:${theme.background};--surface:${theme.surface};--primary:${theme.primary};--secondary:${theme.secondary};--text:${theme.text};--muted:${theme.muted};--primary-text:${theme.primaryText};--rail-width:clamp(168px,13vw,220px);--ok:#15803d;--ok-bg:#dcfce7;--bad:#b42318;--bad-bg:#fee4e2}
 *{box-sizing:border-box}
-html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--background);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--background);color:var(--text);font-family:"Open Sauce Sans","Aptos","Segoe UI",Arial,sans-serif;font-synthesis:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
 button{font:inherit}
 #app{height:100%;display:grid;grid-template-columns:var(--rail-width) minmax(0,1fr);background:var(--background)}
 .course-rail{position:relative;z-index:2;min-width:0;padding:max(18px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:20px;background:var(--surface);border-right:1px solid color-mix(in srgb,var(--primary) 18%,transparent);box-shadow:10px 0 32px rgba(18,60,56,.08)}
 .rail-heading{min-width:0}
+.rail-logo{display:block;width:auto;height:auto;max-width:100%;max-height:48px;margin:0 0 12px;object-fit:contain;object-position:left center}
 .rail-kicker{display:block;margin-bottom:8px;color:var(--primary);font-size:.65rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase}
 .title{margin:0;display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:5;font-size:clamp(.84rem,1.2vw,1rem);line-height:1.3;font-weight:850;color:var(--text)}
 .rail-progress{display:grid;gap:8px}
@@ -148,7 +178,7 @@ html:fullscreen .course-rail:hover,html:fullscreen .course-rail:focus-within,htm
 <body>
 <div id="app">
   <aside class="course-rail" aria-label="Course controls">
-    <div class="rail-heading"><span class="rail-kicker">Presentation course</span><h1 class="title" title="${safeTitle}">${safeTitle}</h1></div>
+    <div class="rail-heading">${brandMark}<h1 class="title" title="${safeTitle}">${safeTitle}</h1></div>
     <div class="rail-progress"><div class="progress-meta"><span>Progress</span><span id="progress-label" class="progress-label">0%</span></div><div class="progress-track" aria-hidden="true"><div id="progress-fill" class="progress-fill"></div></div></div>
     <div class="rail-controls"><span id="counter" class="counter"></span><div class="nav-buttons"><button id="previous" class="btn btn-secondary" type="button">Previous</button><button id="next" class="btn btn-primary" type="button">Next</button></div><button id="presentation" class="btn btn-presentation" type="button" aria-label="Enter presentation fullscreen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg><span id="presentation-label">Presentation</span></button><p class="shortcut">Use left and right arrow keys to navigate</p></div>
   </aside>
@@ -213,7 +243,7 @@ html:fullscreen .course-rail:hover,html:fullscreen .course-rail:focus-within,htm
 </html>`;
 }
 
-async function buildPresentationScormZip({ title, slides, quiz, passScore = 70 }) {
+async function buildPresentationScormZip({ title, slides, quiz, passScore = 70, logoDataUrl = '' }) {
     if (!Array.isArray(slides) || !slides.length) {
         const error = new Error('At least one rendered slide is required.');
         error.code = 'SCORM_PRESENTATION_EMPTY';
@@ -229,13 +259,19 @@ async function buildPresentationScormZip({ title, slides, quiz, passScore = 70 }
     const numericPassScore = Number(passScore);
     const normalizedPassScore = Math.max(0, Math.min(100, Number.isFinite(numericPassScore) ? numericPassScore : 70));
     const zip = new JSZip();
+    const logoAsset = decodeLogoDataUrl(logoDataUrl);
+    const fontAssets = presentationFontAssets();
     slides.forEach((slide) => zip.file(slide.path, slide.body));
+    if (logoAsset) zip.file(logoAsset.path, logoAsset.body);
+    fontAssets.forEach((asset) => zip.file(asset.path, asset.body));
     zip.file('index.html', buildPlayerHtml({
         title: String(title || 'Presentation Course').trim().slice(0, 200) || 'Presentation Course',
         slides,
         quiz: normalizedQuiz,
         theme: normalizedTheme,
-        passScore: normalizedPassScore
+        passScore: normalizedPassScore,
+        logoPath: logoAsset?.path || '',
+        fontAssets
     }));
     zip.file('scorm_api_wrapper.js', SCORM_WRAPPER);
     zip.file('content.json', JSON.stringify({
@@ -246,6 +282,8 @@ async function buildPresentationScormZip({ title, slides, quiz, passScore = 70 }
         slideCount: slides.length,
         quiz: normalizedQuiz,
         theme: normalizedTheme,
+        branding: { logoPath: logoAsset?.path || '' },
+        playerFont: 'Open Sauce Sans',
         passScore: normalizedPassScore
     }, null, 2));
 
@@ -253,6 +291,8 @@ async function buildPresentationScormZip({ title, slides, quiz, passScore = 70 }
         'index.html',
         'scorm_api_wrapper.js',
         'content.json',
+        ...(logoAsset ? [logoAsset.path] : []),
+        ...fontAssets.map((asset) => asset.path),
         ...slides.map((slide) => slide.path)
     ].map((file) => `      <file href="${escapeXml(file)}"/>`).join('\n');
     zip.file('imsmanifest.xml', `<?xml version="1.0" encoding="UTF-8"?>
@@ -281,6 +321,8 @@ module.exports = {
     escapeXml,
     normalizeTheme,
     normalizeQuiz,
+    decodeLogoDataUrl,
+    presentationFontAssets,
     buildPlayerHtml,
     buildPresentationScormZip
 };
