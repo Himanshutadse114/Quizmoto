@@ -4,7 +4,8 @@ const {
     scorePercent,
     interactionCount,
     liveInteractionScore,
-    slideTimingRows
+    slideTimingRows,
+    hasElapsedTime
 } = require('../services/scorm/ScormPreviewStatsService');
 
 describe('SCORM admin preview stats', () => {
@@ -61,6 +62,7 @@ describe('SCORM admin preview stats', () => {
         expect(result.progressPercent).to.equal(100);
         expect(result.totalTime).to.equal('00:07:42.00');
         expect(result.sessionTime).to.equal('00:02:14.00');
+        expect(result.currentRunTime).to.equal('00:02:14.00');
         expect(result.lastLocation).to.equal('Response');
         expect(result.interactionCount).to.equal(3);
         expect(result.stateVersion).to.equal(9);
@@ -268,5 +270,25 @@ describe('SCORM admin preview stats', () => {
                 status: 'Skipped'
             }
         ]);
+    });
+
+    it('uses cumulative time only when the current QA session has no elapsed time yet', () => {
+        expect(hasElapsedTime('00:00:00.00')).to.equal(false);
+        expect(hasElapsedTime('PT0S')).to.equal(false);
+        expect(hasElapsedTime('00:11:18.00')).to.equal(true);
+
+        const result = serializePreviewStats({
+            id: 'preview-time-fallback',
+            courseId: 'course-time-fallback',
+            status: 'active',
+            isPreview: true,
+            cmiState: {
+                totalTime: '00:04:30.00',
+                sessionTime: '00:00:00.00',
+                rawMapJson: '{}'
+            }
+        }, { package: { analysisJson: '{}' } });
+
+        expect(result.currentRunTime).to.equal('00:04:30.00');
     });
 });

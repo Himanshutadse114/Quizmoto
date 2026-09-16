@@ -72,6 +72,8 @@ describe('ScormPresentationPackageBuilder', () => {
         expect(html).to.include('--background:#eef8f6');
         expect(html).to.include('--surface:#ffffff');
         expect(html).to.include('font-family:"Open Sauce Sans"');
+        expect(html).to.include('font-weight:500;line-height:1.4');
+        expect(html).to.not.include('font-weight:750;line-height:1.35');
         expect(content.playerFont).to.equal('Open Sauce Sans');
         expect(zip.file('assets/fonts/OpenSauceSans-Regular.woff2')).to.not.equal(null);
         expect(zip.file('assets/fonts/OpenSauce-SemiBold.woff2')).to.not.equal(null);

@@ -375,10 +375,10 @@ export default function ScormCourseDetail() {
                 detail={previewStatusLabel(previewStats.qaState)}
               />
               <PreviewStat
-                label="Total time"
-                value={previewStats.totalTime || '—'}
+                label="Current run"
+                value={previewStats.currentRunTime || previewStats.sessionTime || previewStats.totalTime || '—'}
                 icon={Timer}
-                detail={previewStats.sessionTime ? `Session ${previewStats.sessionTime}` : 'Awaiting time data'}
+                detail="This QA session only"
               />
               <PreviewStat
                 label="Interactions"

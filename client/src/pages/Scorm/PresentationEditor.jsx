@@ -149,8 +149,8 @@ export default function PresentationEditor() {
         <div className="max-w-3xl">
           <button type="button" onClick={() => navigate(-1)} className="scorm-button-secondary inline-flex items-center gap-2 px-3 py-2 text-[10px] font-semibold"><ArrowLeft size={13} /> Back</button>
           <div className="scorm-micro text-[10px] uppercase font-semibold mt-5">Presentation course editor</div>
-          <h1 className="scorm-display text-[38px] md:text-[52px] mt-2">Edit slides and quiz</h1>
-          <p className="text-sm mt-3 leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>Keep the current slides for quiz-only changes, or upload a replacement PDF exported from the presentation. Rebuilding keeps the same course, invite link and tracking workspace.</p>
+          <h1 className="scorm-display text-[38px] md:text-[52px] mt-2">Edit slides, logo and quiz</h1>
+          <p className="text-sm mt-3 leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>Keep the current slides for quiz-only changes, add or replace the learner-side logo, or upload a replacement PDF. Rebuilding keeps the same course, invite link and tracking workspace.</p>
         </div>
         <button type="button" onClick={rebuild} disabled={!ready} className="scorm-button-primary min-h-11 px-5 text-xs font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-45 disabled:cursor-not-allowed"><Save size={15} /> {saving ? 'Starting rebuild…' : 'Save and rebuild'}</button>
       </div>
@@ -167,13 +167,6 @@ export default function PresentationEditor() {
           <label className="block"><span className="scorm-micro text-[9px] uppercase font-semibold">Quiz title</span><input value={quizTitle} onChange={(event) => setQuizTitle(event.target.value)} className="scorm-course-search mt-2 w-full px-3 py-3 text-sm" /></label>
           <label className="block"><span className="scorm-micro text-[9px] uppercase font-semibold">Pass score</span><input type="number" min="0" max="100" value={passScore} onChange={(event) => setPassScore(event.target.value)} className="scorm-course-search mt-2 w-full px-3 py-3 text-sm" /></label>
           <label className="block lg:col-span-2"><span className="scorm-micro text-[9px] uppercase font-semibold">Description</span><textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} className="scorm-course-search mt-2 w-full px-3 py-3 text-sm" /></label>
-          <div className="lg:col-span-2 rounded-xl border p-4" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="min-w-0"><div className="scorm-micro text-[9px] uppercase font-semibold">Current deck</div><div className="text-sm font-semibold mt-1 truncate">{sourceName}</div><div className="text-[11px] mt-1" style={{ color: 'var(--scorm-muted)' }}>{replacement ? `Replacement selected: ${replacement.name}` : 'No replacement selected. Existing slide images will be preserved.'}</div></div>
-              <label className="scorm-button-secondary cursor-pointer min-h-10 px-4 inline-flex items-center justify-center gap-2 text-xs font-semibold shrink-0"><FileUp size={15} /> Replace PDF<input type="file" accept=".pdf,application/pdf" onChange={(event) => chooseReplacement(event.target.files?.[0] || null)} className="sr-only" /></label>
-            </div>
-          </div>
-          <div className="lg:col-span-2 rounded-xl border px-4 py-3 flex items-start gap-3" style={{ borderColor: 'rgba(79,201,191,.3)', background: 'rgba(79,201,191,.07)' }}><ShieldCheck size={17} className="shrink-0 mt-0.5" style={{ color: 'var(--scorm-accent)' }} /><p className="text-xs leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>The player and quiz always use the Quizmoto teal theme. The original slide artwork is preserved inside the presentation area.</p></div>
           <div className="lg:col-span-2">
             <PresentationLogoPanel
               logoDataUrl={logoDataUrl}
@@ -182,6 +175,13 @@ export default function PresentationEditor() {
               onError={setLogoError}
             />
           </div>
+          <div className="lg:col-span-2 rounded-xl border p-4" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="min-w-0"><div className="scorm-micro text-[9px] uppercase font-semibold">Current deck</div><div className="text-sm font-semibold mt-1 truncate">{sourceName}</div><div className="text-[11px] mt-1" style={{ color: 'var(--scorm-muted)' }}>{replacement ? `Replacement selected: ${replacement.name}` : 'No replacement selected. Existing slide images will be preserved.'}</div></div>
+              <label className="scorm-button-secondary cursor-pointer min-h-10 px-4 inline-flex items-center justify-center gap-2 text-xs font-semibold shrink-0"><FileUp size={15} /> Replace PDF<input type="file" accept=".pdf,application/pdf" onChange={(event) => chooseReplacement(event.target.files?.[0] || null)} className="sr-only" /></label>
+            </div>
+          </div>
+          <div className="lg:col-span-2 rounded-xl border px-4 py-3 flex items-start gap-3" style={{ borderColor: 'rgba(79,201,191,.3)', background: 'rgba(79,201,191,.07)' }}><ShieldCheck size={17} className="shrink-0 mt-0.5" style={{ color: 'var(--scorm-accent)' }} /><p className="text-xs leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>The player and quiz always use the Quizmoto teal theme. The original slide artwork is preserved inside the presentation area.</p></div>
         </div>
       </section>
 

@@ -57,6 +57,13 @@ function interactionCount(interactionsJson, rawMapJson = null, values = null) {
     return indices.size;
 }
 
+function hasElapsedTime(value) {
+    const clean = String(value || '').trim();
+    if (!clean) return false;
+    if (/^0+:00:00(?:\.0+)?$/.test(clean) || /^PT0(?:\.0+)?S$/i.test(clean)) return false;
+    return true;
+}
+
 function slideTimingRows(state, packageRow) {
     const values = stateMap(state);
     return extractInteractions({ state: { values }, packageRow })
@@ -173,6 +180,7 @@ function serializePreviewStats(registration, course) {
     const scoreMin = stateValue(primaryState, ['cmi.core.score.min', 'cmi.score.min']) ?? legacyState?.scoreMin ?? null;
     const scoreMax = stateValue(primaryState, ['cmi.core.score.max', 'cmi.score.max']) ?? legacyState?.scoreMax ?? null;
     const totalTime = primaryState?.totalTime || row.lastTotalTime || legacyState?.totalTime || null;
+    const sessionTime = stateValue(primaryState, ['cmi.core.session_time', 'cmi.session_time']) || legacyState?.sessionTime || null;
     const progressPercent = row.progressPercent;
     let lessonStatus = primaryState?.lessonStatus || row.lastLessonStatus || legacyState?.lessonStatus || null;
 
@@ -204,7 +212,8 @@ function serializePreviewStats(registration, course) {
         scorePercent: scorePercent(scoreRaw, scoreMin, scoreMax),
         lessonStatus,
         totalTime,
-        sessionTime: stateValue(primaryState, ['cmi.core.session_time', 'cmi.session_time']) || legacyState?.sessionTime || null,
+        sessionTime,
+        currentRunTime: hasElapsedTime(sessionTime) ? sessionTime : totalTime,
         lastLocation,
         lastLocationRaw,
         interactionCount: interactionCount(
@@ -226,5 +235,6 @@ module.exports = {
     scorePercent,
     interactionCount,
     slideTimingRows,
-    liveInteractionScore
+    liveInteractionScore,
+    hasElapsedTime
 };
