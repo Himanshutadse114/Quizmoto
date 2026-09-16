@@ -25,7 +25,8 @@ function normalizedResult(value) {
 
 function quizForPackage(packageRow) {
     const analysis = packageAnalysis(packageRow);
-    return analysis && Array.isArray(analysis.quiz) ? analysis.quiz : [];
+    if (analysis && Array.isArray(analysis.quiz)) return analysis.quiz;
+    return analysis && Array.isArray(analysis.quiz?.questions) ? analysis.quiz.questions : [];
 }
 
 function interactionBuckets(values) {
@@ -70,7 +71,11 @@ function extractInteractions({ state, packageRow } = {}) {
     return Array.from(buckets.entries())
         .sort((a, b) => a[0] - b[0])
         .map(([index, row]) => {
-            const authored = quiz[index] && typeof quiz[index] === 'object' ? quiz[index] : {};
+            const interactionId = text(row.scorm_id);
+            const slideMatch = interactionId.match(/^slide_(\d+)$/i);
+            const questionMatch = interactionId.match(/^(?:question|quiz|quizmoto_question)_(\d+)$/i);
+            const authoredIndex = questionMatch ? Number(questionMatch[1]) - 1 : index;
+            const authored = !slideMatch && quiz[authoredIndex] && typeof quiz[authoredIndex] === 'object' ? quiz[authoredIndex] : {};
             const options = Array.isArray(authored.options) ? authored.options.map(text) : [];
             const selectedIndex = numericIndex(row.selected_index ?? row.scorm_student_response ?? row.scorm_learner_response);
             const correctIndex = numericIndex(row.correct_index ?? row.scorm_correct_pattern ?? authored.correctAnswer);
@@ -80,9 +85,11 @@ function extractInteractions({ state, packageRow } = {}) {
 
             return {
                 index,
-                id: text(row.scorm_id) || `question_${index + 1}`,
+                id: interactionId || `question_${index + 1}`,
                 type: text(row.scorm_type) || 'choice',
-                question: text(row.question) || text(authored.question) || text(row.scorm_description) || text(row.scorm_id) || `Question ${index + 1}`,
+                category: slideMatch ? 'slide' : 'quiz',
+                slideNumber: slideMatch ? Number(slideMatch[1]) : null,
+                question: text(row.question) || text(row.scorm_description) || text(authored.question) || interactionId || `Question ${index + 1}`,
                 selectedAnswer: selectedAnswer || '—',
                 correctAnswer: correctAnswer || '—',
                 selectedIndex,
@@ -99,7 +106,7 @@ function extractInteractions({ state, packageRow } = {}) {
 }
 
 function answerSummary(interactions) {
-    const rows = Array.isArray(interactions) ? interactions : [];
+    const rows = (Array.isArray(interactions) ? interactions : []).filter((row) => row?.category !== 'slide');
     const graded = rows.filter((r) => ['Correct', 'Incorrect'].includes(r.result));
     const correct = graded.filter((r) => r.result === 'Correct').length;
     return {

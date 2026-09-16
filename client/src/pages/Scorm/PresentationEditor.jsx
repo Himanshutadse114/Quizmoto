@@ -38,11 +38,6 @@ function completeQuiz(questions) {
 }
 
 function validPresentationFile(file) {
-  const name = String(file?.name || '').toLowerCase();
-  return name.endsWith('.pptx') || name.endsWith('.pdf');
-}
-
-function validPdfFile(file) {
   return Boolean(file) && (String(file.name || '').toLowerCase().endsWith('.pdf') || String(file.type || '').toLowerCase().includes('pdf'));
 }
 
@@ -56,8 +51,6 @@ export default function PresentationEditor() {
   const [description, setDescription] = useState('');
   const [sourceName, setSourceName] = useState('');
   const [replacement, setReplacement] = useState(null);
-  const [visualPdf, setVisualPdf] = useState(null);
-  const [currentVisualName, setCurrentVisualName] = useState('');
   const [quizTitle, setQuizTitle] = useState('Knowledge Check');
   const [questions, setQuestions] = useState([]);
   const [passScore, setPassScore] = useState(70);
@@ -83,7 +76,6 @@ export default function PresentationEditor() {
         setTitle(String(analysis.title || response.data?.title || 'Presentation course'));
         setDescription(String(analysis.description || ''));
         setSourceName(String(analysis.presentation?.sourceFileName || 'Current presentation'));
-        setCurrentVisualName(String(analysis.presentation?.visualSourceFileName || ''));
         setQuizTitle(String(quiz.title || 'Knowledge Check'));
         setQuestions((Array.isArray(quiz.questions) ? quiz.questions : []).map(normalizeQuestion));
         const storedPassScore = Number(analysis.passScore);
@@ -97,22 +89,11 @@ export default function PresentationEditor() {
   const chooseReplacement = (file) => {
     if (file && !validPresentationFile(file)) {
       setReplacement(null);
-      setError('Choose a PPTX or PDF presentation.');
+      setError('Choose a PDF exported from the presentation.');
       return;
     }
     setError('');
     setReplacement(file || null);
-    if (validPdfFile(file)) setVisualPdf(null);
-  };
-
-  const chooseVisualPdf = (file) => {
-    if (file && !validPdfFile(file)) {
-      setVisualPdf(null);
-      setError('Choose a PDF exported from the same presentation.');
-      return;
-    }
-    setError('');
-    setVisualPdf(file || null);
   };
 
   const rebuild = () => {
@@ -128,7 +109,6 @@ export default function PresentationEditor() {
         token,
         title: title.trim(),
         file: replacement,
-        visualPdfFile: visualPdf,
         payload: {
           progressId: id,
           courseMode: 'presentation',
@@ -165,7 +145,7 @@ export default function PresentationEditor() {
           <button type="button" onClick={() => navigate(-1)} className="scorm-button-secondary inline-flex items-center gap-2 px-3 py-2 text-[10px] font-semibold"><ArrowLeft size={13} /> Back</button>
           <div className="scorm-micro text-[10px] uppercase font-semibold mt-5">Presentation course editor</div>
           <h1 className="scorm-display text-[38px] md:text-[52px] mt-2">Edit slides and quiz</h1>
-          <p className="text-sm mt-3 leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>Keep the current slides for quiz-only changes, upload a replacement PPTX/PDF, or pair a PPTX with its exported PDF for exact visuals. Rebuilding keeps the same course, invite link and tracking workspace.</p>
+          <p className="text-sm mt-3 leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>Keep the current slides for quiz-only changes, or upload a replacement PDF exported from the presentation. Rebuilding keeps the same course, invite link and tracking workspace.</p>
         </div>
         <button type="button" onClick={rebuild} disabled={!ready} className="scorm-button-primary min-h-11 px-5 text-xs font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-45 disabled:cursor-not-allowed"><Save size={15} /> {saving ? 'Starting rebuild…' : 'Save and rebuild'}</button>
       </div>
@@ -185,26 +165,7 @@ export default function PresentationEditor() {
           <div className="lg:col-span-2 rounded-xl border p-4" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="min-w-0"><div className="scorm-micro text-[9px] uppercase font-semibold">Current deck</div><div className="text-sm font-semibold mt-1 truncate">{sourceName}</div><div className="text-[11px] mt-1" style={{ color: 'var(--scorm-muted)' }}>{replacement ? `Replacement selected: ${replacement.name}` : 'No replacement selected. Existing slide images will be preserved.'}</div></div>
-              <label className="scorm-button-secondary cursor-pointer min-h-10 px-4 inline-flex items-center justify-center gap-2 text-xs font-semibold shrink-0"><FileUp size={15} /> Replace PPT/PDF<input type="file" accept=".pptx,.pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/pdf" onChange={(event) => chooseReplacement(event.target.files?.[0] || null)} className="sr-only" /></label>
-            </div>
-          </div>
-          <div className="lg:col-span-2 rounded-xl border p-4" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="min-w-0">
-                <div className="scorm-micro text-[9px] uppercase font-semibold">Exact visual PDF</div>
-                <div className="text-sm font-semibold mt-1 truncate">{visualPdf?.name || (!replacement && currentVisualName) || 'Automatic presentation rendering'}</div>
-                <div className="text-[11px] mt-1" style={{ color: 'var(--scorm-muted)' }}>
-                  {validPdfFile(replacement)
-                    ? 'The replacement PDF already provides exact page visuals.'
-                    : visualPdf
-                      ? 'This PDF will provide the slide artwork; the PPTX remains the editable content source.'
-                      : 'Optional: add a PDF exported from the same PPTX to preserve fonts and layout exactly.'}
-                </div>
-              </div>
-              <label className={`scorm-button-secondary min-h-10 px-4 inline-flex items-center justify-center gap-2 text-xs font-semibold shrink-0 ${validPdfFile(replacement) ? 'opacity-45 cursor-not-allowed' : 'cursor-pointer'}`}>
-                <FileUp size={15} /> {visualPdf ? 'Change exact PDF' : 'Add exact PDF'}
-                <input type="file" accept=".pdf,application/pdf" disabled={validPdfFile(replacement)} onChange={(event) => chooseVisualPdf(event.target.files?.[0] || null)} className="sr-only" />
-              </label>
+              <label className="scorm-button-secondary cursor-pointer min-h-10 px-4 inline-flex items-center justify-center gap-2 text-xs font-semibold shrink-0"><FileUp size={15} /> Replace PDF<input type="file" accept=".pdf,application/pdf" onChange={(event) => chooseReplacement(event.target.files?.[0] || null)} className="sr-only" /></label>
             </div>
           </div>
           <div className="lg:col-span-2 rounded-xl border px-4 py-3 flex items-start gap-3" style={{ borderColor: 'rgba(79,201,191,.3)', background: 'rgba(79,201,191,.07)' }}><ShieldCheck size={17} className="shrink-0 mt-0.5" style={{ color: 'var(--scorm-accent)' }} /><p className="text-xs leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>The player and quiz always use the Quizmoto teal theme. The original slide artwork is preserved inside the presentation area.</p></div>

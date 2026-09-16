@@ -103,9 +103,11 @@ function liveInteractionScore(cmiState, packageRow = null) {
     if (!results.size) return null;
 
     const analysis = packageAnalysis(packageRow);
-    const quizCount = analysis && Array.isArray(analysis.quiz) ? analysis.quiz.length : 0;
+    const quizCount = analysis && Array.isArray(analysis.quiz)
+        ? analysis.quiz.length
+        : analysis && Array.isArray(analysis.quiz?.questions) ? analysis.quiz.questions.length : 0;
     const highestInteraction = Math.max(...Array.from(results.keys())) + 1;
-    const denominator = Math.max(1, quizCount || highestInteraction || results.size);
+    const denominator = Math.max(1, quizCount || results.size || highestInteraction);
     const correct = Array.from(results.values()).filter(Boolean).length;
     return Math.max(0, Math.min(100, Math.round((correct / denominator) * 1000) / 10));
 }

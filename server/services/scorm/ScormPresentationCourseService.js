@@ -66,7 +66,7 @@ function validateEditedQuiz(value) {
 
 async function loadExistingPresentation(pkg, metadata = {}) {
     if (!pkg?.storageKeyZip) {
-        const error = new Error('The existing presentation package is unavailable. Upload the PPTX again to rebuild it.');
+        const error = new Error('The existing presentation package is unavailable. Upload the presentation PDF again to rebuild it.');
         error.code = 'SCORM_PRESENTATION_PACKAGE_MISSING';
         throw error;
     }
@@ -76,7 +76,7 @@ async function loadExistingPresentation(pkg, metadata = {}) {
         .filter((name) => /^slides\/slide-\d+\.webp$/i.test(name))
         .sort((a, b) => Number(a.match(/(\d+)\.webp$/i)?.[1] || 0) - Number(b.match(/(\d+)\.webp$/i)?.[1] || 0));
     if (!names.length) {
-        const error = new Error('The existing course has no reusable presentation slides. Upload the PPTX again to rebuild it.');
+        const error = new Error('The existing course has no reusable presentation slides. Upload the presentation PDF again to rebuild it.');
         error.code = 'SCORM_PRESENTATION_SLIDES_MISSING';
         throw error;
     }
@@ -107,7 +107,7 @@ async function loadExistingPresentation(pkg, metadata = {}) {
 }
 
 async function readPresentationSource(payload, userId) {
-    const sourceName = cleanSourceName(payload.sourceFileName || payload.fileName || 'presentation');
+    const sourceName = cleanSourceName(payload.sourceFileName || payload.fileName || 'presentation.pdf');
     const mimeType = String(payload.sourceMimeType || payload.mimeType || 'application/octet-stream').slice(0, 180);
     const key = String(payload.sourceKey || '').trim();
     if (key) {
@@ -129,7 +129,7 @@ async function readPresentationSource(payload, userId) {
 
     const raw = String(payload.fileBase64 || '').replace(/^data:[^;]+;base64,/, '');
     if (!raw) {
-        const error = new Error('Upload a PPTX or PDF presentation before creating this course.');
+        const error = new Error('Upload a PDF presentation before creating this course.');
         error.code = 'SCORM_PRESENTATION_SOURCE_REQUIRED';
         throw error;
     }
@@ -140,6 +140,15 @@ async function readPresentationSource(payload, userId) {
         mimeType,
         buffer: Buffer.from(raw, 'base64')
     };
+}
+
+function assertPdfPresentationSource(source) {
+    if (!Buffer.isBuffer(source?.buffer) || source.buffer.length < 5 || source.buffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
+        const error = new Error('Presentation courses accept PDF files only. Export the deck as PDF and upload it again.');
+        error.code = 'SCORM_PRESENTATION_PDF_REQUIRED';
+        throw error;
+    }
+    return source;
 }
 
 async function readVisualPdfSource(payload, userId) {
@@ -209,11 +218,11 @@ async function generatePresentationCourse({ payload = {}, userId, onProgress = n
         const hasNewSource = hasPresentationSource(payload);
         const hasNewVisualPdf = hasVisualPdfSource(payload);
         if (!hasNewSource && !hasNewVisualPdf && !pkg) {
-            const error = new Error('Upload a PPTX or PDF presentation before creating this course.');
+            const error = new Error('Upload a PDF presentation before creating this course.');
             error.code = 'SCORM_PRESENTATION_SOURCE_REQUIRED';
             throw error;
         }
-        if (hasNewSource) source = await readPresentationSource(payload, userId);
+        if (hasNewSource) source = assertPdfPresentationSource(await readPresentationSource(payload, userId));
         if (hasNewVisualPdf) {
             try {
                 visualSource = await readVisualPdfSource(payload, userId);
@@ -230,7 +239,7 @@ async function generatePresentationCourse({ payload = {}, userId, onProgress = n
                 }
             }
         }
-        const sourceName = source?.sourceName || storedMetadata.presentation?.sourceFileName || pkg?.title || 'presentation.pptx';
+        const sourceName = source?.sourceName || storedMetadata.presentation?.sourceFileName || pkg?.title || 'presentation.pdf';
         const title = titleFromPayload(payload, sourceName) || pkg?.title;
 
         checkCancelled();
@@ -361,7 +370,8 @@ async function generatePresentationCourse({ payload = {}, userId, onProgress = n
                 resume: true,
                 progress: true,
                 score: true,
-                interactions: true
+                interactions: true,
+                slideTime: true
             }
         };
 
@@ -463,6 +473,7 @@ module.exports = {
     validateEditedQuiz,
     loadExistingPresentation,
     readPresentationSource,
+    assertPdfPresentationSource,
     readVisualPdfSource,
     generatePresentationCourse
 };

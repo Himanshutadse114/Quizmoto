@@ -68,8 +68,9 @@ describe('ScormPresentationPackageBuilder', () => {
         expect(zip.file('slides/slide-002.webp')).to.not.equal(null);
         expect(manifest).to.include('adlcp:scormtype="sco"');
         expect(manifest).to.include('slides/slide-001.webp');
-        expect(html).to.include('--primary:#4fc9bf');
-        expect(html).to.include('--background:#061b18');
+        expect(html).to.include('--primary:#147d75');
+        expect(html).to.include('--background:#eef8f6');
+        expect(html).to.include('--surface:#ffffff');
         expect(html).to.not.include('--primary:#f97316');
         expect(html).to.include('object-fit:contain');
         expect(html).to.include('height:100dvh');
@@ -88,6 +89,12 @@ describe('ScormPresentationPackageBuilder', () => {
         expect(html).to.include("cmi.suspend_data");
         expect(html).to.include("cmi.core.score.raw");
         expect(html).to.include("cmi.interactions.");
+        expect(html).to.include("'Slide '+(index+1)+' viewing time'");
+        expect(html).to.include("'quizmoto.slide_time.'+index+'.milliseconds'");
+        expect(html).to.include('slideTimesMs');
+        expect(html).to.include('interactionDuration(milliseconds)');
+        expect(html).to.include("document.addEventListener('visibilitychange'");
+        expect(html).to.include('pageTimingActive=false');
         expect(html).to.include("cmi.core.lesson_status");
         expect(html).to.include('image.dataset.src=slide.src');
         expect(content.courseMode).to.equal('presentation');

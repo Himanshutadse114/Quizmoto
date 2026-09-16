@@ -86,13 +86,16 @@ function generateLearnerPdf(report, outputPath) {
                 if (!interactions.length) {
                     doc.fillColor(MUTED).fontSize(8.5).text('Question-level answers were not captured for this attempt. Older attempts may only contain overall score/status data.');
                 } else {
-                    doc.fillColor(INK).fontSize(9).font('Helvetica-Bold').text(`Knowledge checks (${interactions.length})`);
+                    doc.fillColor(INK).fontSize(9).font('Helvetica-Bold').text(`Slide time and quiz evidence (${interactions.length})`);
                     doc.moveDown(0.25);
                     interactions.forEach((item, index) => {
                         if (doc.y > 720) doc.addPage();
-                        doc.fillColor(INK).fontSize(9).font('Helvetica-Bold').text(`${index + 1}. ${safe(item.question, `Question ${index + 1}`)}`);
-                        doc.fillColor(item.result === 'Correct' ? BRAND : item.result === 'Incorrect' ? '#D65367' : MUTED).fontSize(8.5).font('Helvetica').text(`Learner answer: ${safe(item.selectedAnswer, '—')}  ·  ${safe(item.result, 'Recorded')}`);
-                        doc.fillColor('#496361').text(`Correct answer: ${safe(item.correctAnswer, '—')}`);
+                        const prefix = item.category === 'slide' ? `Slide ${item.slideNumber || index + 1}` : `${index + 1}`;
+                        doc.fillColor(INK).fontSize(9).font('Helvetica-Bold').text(`${prefix}. ${safe(item.question, `Question ${index + 1}`)}`);
+                        doc.fillColor(item.result === 'Correct' ? BRAND : item.result === 'Incorrect' ? '#D65367' : MUTED).fontSize(8.5).font('Helvetica').text(item.category === 'slide'
+                            ? `Activity: ${safe(item.selectedAnswer, '—')}  ·  Time spent: ${safe(item.latency, '—')}`
+                            : `Learner answer: ${safe(item.selectedAnswer, '—')}  ·  ${safe(item.result, 'Recorded')}`);
+                        if (item.category !== 'slide') doc.fillColor('#496361').text(`Correct answer: ${safe(item.correctAnswer, '—')}`);
                         if (item.explanation) doc.fillColor(MUTED).text(`Explanation: ${item.explanation}`);
                         doc.moveDown(0.45);
                     });

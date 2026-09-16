@@ -74,4 +74,11 @@ describe('SCORM player local-first persistence', () => {
         expect(source).to.include('#status{position:absolute!important;width:1px!important');
         expect(source).to.not.include('height:calc(100% - 42px)');
     });
+
+    it('uses a light Quizmoto shell for presentation courses without changing other course formats', () => {
+        expect(source).to.include("const presentationLight = pkg.source === 'presentation_import'");
+        expect(source).to.include("background: '#eef8f6'");
+        expect(source).to.include("barBackground: '#ffffffee'");
+        expect(source).to.include("frameBackground: '#eef8f6'");
+    });
 });

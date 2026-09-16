@@ -66,7 +66,8 @@ describe('SCORM answer-level reporting', () => {
             { result: 'Correct' },
             { result: 'Incorrect' },
             { result: 'Correct' },
-            { result: 'Recorded' }
+            { result: 'Recorded' },
+            { category: 'slide', result: 'Neutral', latency: '0000:00:12.50' }
         ]);
         expect(summary).to.deep.equal({
             captured: 4,
@@ -75,6 +76,30 @@ describe('SCORM answer-level reporting', () => {
             incorrect: 1,
             accuracy: 66.7
         });
+    });
+
+    it('reports slide dwell time separately and maps offset quiz interactions by id', () => {
+        const state = {
+            values: {
+                'cmi.interactions.0.id': 'slide_1',
+                'cmi.interactions.0.type': 'other',
+                'cmi.interactions.0.description': 'Slide 1 viewing time',
+                'cmi.interactions.0.student_response': 'viewed',
+                'cmi.interactions.0.result': 'neutral',
+                'cmi.interactions.0.latency': '0000:00:12.50',
+                'cmi.interactions.6.id': 'question_1',
+                'cmi.interactions.6.type': 'choice',
+                'cmi.interactions.6.student_response': '1',
+                'cmi.interactions.6.correct_responses.0.pattern': '1',
+                'cmi.interactions.6.result': 'correct'
+            }
+        };
+        const rows = extractInteractions({ state, packageRow });
+        expect(rows[0]).to.include({ category: 'slide', slideNumber: 1, latency: '0000:00:12.50' });
+        expect(rows[0].question).to.equal('Slide 1 viewing time');
+        expect(rows[1]).to.include({ category: 'quiz', result: 'Correct' });
+        expect(rows[1].question).to.equal('What should you do with a suspicious link?');
+        expect(answerSummary(rows).captured).to.equal(1);
     });
 
     it('injects answer reporting without duplicating the instrumentation', () => {

@@ -67,13 +67,16 @@ function writeInteractionsPdf(doc, learner) {
         return;
     }
 
-    doc.fillColor(BRAND).fontSize(9).font('Helvetica-Bold').text(`   Knowledge checks (${interactions.length})`);
+    doc.fillColor(BRAND).fontSize(9).font('Helvetica-Bold').text(`   Slide time and quiz evidence (${interactions.length})`);
     interactions.forEach((item, index) => {
         if (doc.y > 720) doc.addPage();
-        doc.fillColor(INK).fontSize(8.5).font('Helvetica-Bold').text(`   Q${index + 1}. ${safeStr(item.question, `Question ${index + 1}`)}`);
+        const prefix = item.category === 'slide' ? `Slide ${item.slideNumber || index + 1}` : `Q${index + 1}`;
+        doc.fillColor(INK).fontSize(8.5).font('Helvetica-Bold').text(`   ${prefix}. ${safeStr(item.question, `Question ${index + 1}`)}`);
         doc.fillColor(item.result === 'Correct' ? BRAND : item.result === 'Incorrect' ? '#D65367' : MUTED)
-            .fontSize(8).font('Helvetica').text(`      Learner answer: ${safeStr(item.selectedAnswer, '—')} · ${safeStr(item.result, 'Recorded')}`);
-        doc.fillColor('#496361').text(`      Correct answer: ${safeStr(item.correctAnswer, '—')}`);
+            .fontSize(8).font('Helvetica').text(item.category === 'slide'
+                ? `      Activity: ${safeStr(item.selectedAnswer, '—')} · Time spent: ${safeStr(item.latency, '—')}`
+                : `      Learner answer: ${safeStr(item.selectedAnswer, '—')} · ${safeStr(item.result, 'Recorded')}`);
+        if (item.category !== 'slide') doc.fillColor('#496361').text(`      Correct answer: ${safeStr(item.correctAnswer, '—')}`);
         if (item.explanation) doc.fillColor(MUTED).text(`      Explanation: ${item.explanation}`);
         doc.moveDown(0.25);
     });

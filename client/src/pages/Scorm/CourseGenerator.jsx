@@ -48,13 +48,6 @@ function usableTemplates(items) {
   return next.length ? next : [FALLBACK_TEMPLATE];
 }
 
-function isPresentationFile(file) {
-  if (!file) return false;
-  const name = String(file.name || '').toLowerCase();
-  const type = String(file.type || '').toLowerCase();
-  return name.endsWith('.pptx') || name.endsWith('.pdf') || type.includes('presentationml.presentation') || type.includes('pdf');
-}
-
 function isPdfFile(file) {
   if (!file) return false;
   return String(file.name || '').toLowerCase().endsWith('.pdf') || String(file.type || '').toLowerCase().includes('pdf');
@@ -69,7 +62,6 @@ export default function CourseGenerator() {
   const [topic, setTopic] = useState('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState(null);
-  const [visualPdfFile, setVisualPdfFile] = useState(null);
   const [courseMode, setCourseMode] = useState('generated');
   const [detailLevel, setDetailLevel] = useState('detailed');
   const [courseTemplates, setCourseTemplates] = useState([FALLBACK_TEMPLATE]);
@@ -122,7 +114,7 @@ export default function CourseGenerator() {
   );
 
   const presentationMode = courseMode === 'presentation';
-  const hasSource = presentationMode ? Boolean(file && isPresentationFile(file)) : Boolean(file || topic.trim() || description.trim());
+  const hasSource = presentationMode ? Boolean(file && isPdfFile(file)) : Boolean(file || topic.trim() || description.trim());
   const displayTitle = topic.trim() || file?.name || 'New course';
 
   if (editId) return <AuthorVisual />;
@@ -135,29 +127,17 @@ export default function CourseGenerator() {
   const selectCourseMode = (mode) => {
     setCourseMode(mode);
     setError('');
-    if (mode === 'presentation' && file && !isPresentationFile(file)) setFile(null);
-    if (mode !== 'presentation') setVisualPdfFile(null);
+    if (mode === 'presentation' && file && !isPdfFile(file)) setFile(null);
   };
 
   const selectSourceFile = (nextFile) => {
-    if (presentationMode && nextFile && !isPresentationFile(nextFile)) {
+    if (presentationMode && nextFile && !isPdfFile(nextFile)) {
       setFile(null);
-      setError('Presentation courses support PPTX and PDF files only. Export Gamma presentations as PDF for the closest visual match.');
+      setError('Presentation courses accept PDF files only. Export the PowerPoint or Gamma presentation as PDF, then upload it here.');
       return;
     }
     setError('');
     setFile(nextFile || null);
-    if (isPdfFile(nextFile)) setVisualPdfFile(null);
-  };
-
-  const selectVisualPdf = (nextFile) => {
-    if (nextFile && !isPdfFile(nextFile)) {
-      setVisualPdfFile(null);
-      setError('Choose a PDF exported from the same presentation for exact slide visuals.');
-      return;
-    }
-    setError('');
-    setVisualPdfFile(nextFile || null);
   };
 
   const generateCourse = () => {
@@ -171,7 +151,6 @@ export default function CourseGenerator() {
         token,
         title: displayTitle,
         file,
-        visualPdfFile: presentationMode ? visualPdfFile : null,
         payload: {
           progressId,
           courseMode: presentationMode ? 'presentation' : 'generated',
@@ -289,7 +268,7 @@ export default function CourseGenerator() {
                   <div>
                     <div className="text-xs font-semibold" style={ink}>Exact slide course — no inserted interactions</div>
                     <div className="text-[11px] leading-relaxed mt-1" style={muted}>
-                      Add the PPTX as the editable content source and, for pixel-accurate visuals, add a PDF exported from the same deck. Each PDF page becomes one optimised slide. If no PDF is supplied, automatic rendering continues without blocking on fonts. The quiz uses the Quizmoto teal theme.
+                      Upload a PDF exported from PowerPoint, Gamma or another presentation tool. Each PDF page becomes one optimised slide, which preserves fonts, spacing and artwork without font-based generation failures. The tracked player and quiz use the light Quizmoto teal theme.
                     </div>
                   </div>
                 </div>
@@ -312,45 +291,18 @@ export default function CourseGenerator() {
                 <label className="scorm-course-generator-upload h-14 rounded-lg border px-3 flex items-center gap-3 cursor-pointer transition-colors" style={softSurface}>
                   <FileUp size={16} className="shrink-0" style={{ color: 'var(--scorm-accent)' }} />
                   <span className="text-xs truncate flex-1" style={{ color: file ? 'var(--scorm-ink-soft)' : 'var(--scorm-muted)' }}>
-                    {file ? file.name : presentationMode ? 'Upload PPTX or PDF (required)' : 'Upload source file (optional)'}
+                    {file ? file.name : presentationMode ? 'Upload presentation PDF (required)' : 'Upload source file (optional)'}
                   </span>
                   <span className="scorm-button-secondary h-10 px-3 inline-flex items-center justify-center text-[10px] font-semibold shrink-0">Browse</span>
                   <input
                     type="file"
                     className="sr-only"
-                    accept={presentationMode ? '.pptx,.pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/pdf' : undefined}
+                    accept={presentationMode ? '.pdf,application/pdf' : undefined}
                     onChange={(e) => selectSourceFile(e.target.files?.[0] || null)}
                   />
                 </label>
               </div>
             </div>
-
-            {presentationMode && (
-              <div className="rounded-xl border p-4" style={softSurface}>
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="scorm-micro text-[9px] uppercase font-semibold">Exact visual PDF</div>
-                    <div className="text-[11px] leading-relaxed mt-1" style={muted}>
-                      {isPdfFile(file)
-                        ? 'The primary source is already a PDF, so its pages will be preserved exactly.'
-                        : visualPdfFile
-                          ? `Using ${visualPdfFile.name} for the slide artwork.`
-                          : 'Optional but recommended with PPTX: export the same deck to PDF so fonts, spacing and images match exactly.'}
-                    </div>
-                  </div>
-                  <label className={`scorm-button-secondary min-h-10 px-4 inline-flex items-center justify-center gap-2 text-xs font-semibold shrink-0 ${isPdfFile(file) ? 'opacity-45 cursor-not-allowed' : 'cursor-pointer'}`}>
-                    <FileUp size={15} /> {visualPdfFile ? 'Change PDF' : 'Add exact PDF'}
-                    <input
-                      type="file"
-                      className="sr-only"
-                      accept=".pdf,application/pdf"
-                      disabled={isPdfFile(file)}
-                      onChange={(event) => selectVisualPdf(event.target.files?.[0] || null)}
-                    />
-                  </label>
-                </div>
-              </div>
-            )}
 
             <label className="block">
               <span className="scorm-micro text-[9px] uppercase font-semibold">Description or learning goals</span>

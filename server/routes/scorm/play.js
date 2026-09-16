@@ -59,6 +59,34 @@ router.get('/:regId', async (req, res) => {
         const xapiEndpoint = '/api/scorm/xapi/statements';
         const learnerName = reg.learnerName || 'Learner';
         const courseTitle = reg.course.title || 'SCORM Player';
+        const presentationLight = pkg.source === 'presentation_import';
+        const shellTheme = presentationLight
+            ? {
+                background: '#eef8f6',
+                text: '#123c38',
+                barBackground: '#ffffffee',
+                barBorder: '#147d7538',
+                barShadow: '#123c3824',
+                buttonBackground: '#e5f5f2',
+                buttonBorder: '#147d7533',
+                buttonText: '#123c38',
+                buttonHover: '#d4eee9',
+                frameBackground: '#eef8f6',
+                mobileBar: 'top:max(6px,env(safe-area-inset-top));bottom:auto'
+            }
+            : {
+                background: '#080b10',
+                text: '#ffffff',
+                barBackground: '#07100fe8',
+                barBorder: '#ffffff24',
+                barShadow: '#0007',
+                buttonBackground: '#ffffff12',
+                buttonBorder: '#ffffff12',
+                buttonText: '#ffffff',
+                buttonHover: '#ffffff25',
+                frameBackground: '#111111',
+                mobileBar: 'top:auto;bottom:max(6px,env(safe-area-inset-bottom))'
+            };
 
         const boot = JSON.stringify({
             token,
@@ -76,14 +104,14 @@ router.get('/:regId', async (req, res) => {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${escapeHtml(courseTitle)}</title>
 <style>
-html,body{margin:0;height:100%;overflow:hidden;background:#080b10;color:#fff;font-family:system-ui,sans-serif}
-#bar{position:fixed;z-index:10;top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));display:flex;align-items:center;gap:6px;padding:5px;border:1px solid #ffffff24;border-radius:12px;background:#07100fe8;box-shadow:0 8px 28px #0007;backdrop-filter:blur(10px)}
-#bar button{min-height:32px;background:#ffffff12;border:1px solid #ffffff12;color:#fff;padding:6px 11px;border-radius:8px;font-weight:750;cursor:pointer;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
-#bar button:hover,#bar button:focus-visible{background:#ffffff25;outline:none}
+html,body{margin:0;height:100%;overflow:hidden;background:${shellTheme.background};color:${shellTheme.text};font-family:system-ui,sans-serif}
+#bar{position:fixed;z-index:10;top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));display:flex;align-items:center;gap:6px;padding:5px;border:1px solid ${shellTheme.barBorder};border-radius:12px;background:${shellTheme.barBackground};box-shadow:0 8px 28px ${shellTheme.barShadow};backdrop-filter:blur(10px)}
+#bar button{min-height:32px;background:${shellTheme.buttonBackground};border:1px solid ${shellTheme.buttonBorder};color:${shellTheme.buttonText};padding:6px 11px;border-radius:8px;font-weight:750;cursor:pointer;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+#bar button:hover,#bar button:focus-visible{background:${shellTheme.buttonHover};outline:none}
 #bar button:focus-visible{box-shadow:0 0 0 2px #56d7cf}
-#frame{border:0;width:100%;height:100%;display:block;background:#111}
+#frame{border:0;width:100%;height:100%;display:block;background:${shellTheme.frameBackground}}
 #status{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
-@media(max-width:520px){#bar{top:auto;right:max(6px,env(safe-area-inset-right));bottom:max(6px,env(safe-area-inset-bottom));padding:4px}#bar button{min-height:30px;padding:5px 9px;font-size:9px}}
+@media(max-width:520px){#bar{${shellTheme.mobileBar};right:max(6px,env(safe-area-inset-right));padding:4px}#bar button{min-height:30px;padding:5px 9px;font-size:9px}}
 </style>
 <script>
 (function(){

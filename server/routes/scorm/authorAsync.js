@@ -7,7 +7,7 @@ const { getObjectStorage } = require('../../storage/ObjectStorage');
 const ScormGenerationJob = require('../../models/scorm/ScormGenerationJob');
 const ScormAiGenerationManager = require('../../jobs/ScormAiGenerationManager');
 
-const COURSE_GENERATION_RELEASE = 'gemini-course-durable-v4';
+const COURSE_GENERATION_RELEASE = 'gemini-course-durable-v5';
 let generationStoreReadyPromise = null;
 
 // Routes are mounted after database initialisation, so starting the recovery
