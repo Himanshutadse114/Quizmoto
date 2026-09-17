@@ -111,6 +111,8 @@ describe('ScormPresentationPackageBuilder', () => {
         expect(html).to.include('Promise.all(data.slides.map');
         expect(html).to.include("rendered.src=rendered.dataset.src");
         expect(html).to.include('preloadSlideImages().then(startCourse,startCourse)');
+        expect(html).to.include("Question '+(index+1)+' of '+data.quiz.questions.length");
+        expect(html).to.not.include("escapeHtml(data.quiz.title)+' · '");
         expect(content.courseMode).to.equal('presentation');
         expect(content.generatedBy).to.equal('lmsgen-presentation-import');
         expect(content.quiz.questions).to.have.length(5);
