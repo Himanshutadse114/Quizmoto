@@ -47,4 +47,25 @@ describe('Flipbook reader experience', () => {
         expect(inlineScript).to.be.a('string');
         expect(() => new Function(inlineScript)).not.to.throw();
     });
+
+    it('uses a tablet-specific portrait, landscape and fullscreen experience', () => {
+        const html = renderFlipbookReader({
+            title: 'Tablet reader QA',
+            shareToken: 'tablet-reader-token',
+            pageCount: 4,
+            pages: Array.from({ length: 4 }, () => ({ width: 1200, height: 1600 }))
+        });
+
+        expect(html).to.include('function isTouchTablet()');
+        expect(html).to.include("touch&&window.innerWidth>=768&&window.innerWidth<=1180");
+        expect(html).to.include('function useSinglePage(){return isMobile()||(isTouchTablet()&&window.innerHeight>=window.innerWidth)}');
+        expect(html).to.include('isTouchTablet()?720:520');
+        expect(html).to.include('@media(min-width:761px) and (max-width:1180px) and (hover:none) and (pointer:coarse)');
+        expect(html).to.include("const PAGE_STATE_KEY='lmsgen-publica-page:'+DATA.token");
+        expect(html).to.include('useSinglePage()===lastSinglePageMode');
+        expect(html).to.include('location.reload();');
+
+        const inlineScript = html.match(/<script>\s*([\s\S]*?)<\/script>/)?.[1];
+        expect(() => new Function(inlineScript)).not.to.throw();
+    });
 });
