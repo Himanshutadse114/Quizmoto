@@ -305,7 +305,7 @@ body.atelora-home-refresh .lmsgen-quizmoto-home {
   background:
     radial-gradient(circle at 88% 18%, rgba(79, 201, 191, 0.14), transparent 34rem),
     #FFFFFF;
-  padding: 6.4rem 3.2rem 7.2rem;
+  padding: 6.4rem 2.4rem 7.2rem;
   border-top: 1px solid rgba(0, 63, 58, 0.1);
   border-bottom: 1px solid rgba(0, 63, 58, 0.1);
   position: relative;
@@ -315,7 +315,8 @@ body.atelora-home-refresh .lmsgen-quizmoto-home {
 }
 
 body.atelora-home-refresh .lmsgen-qm-inner {
-  max-width: 118rem;
+  width: min(128rem, 100%);
+  max-width: none;
   margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
