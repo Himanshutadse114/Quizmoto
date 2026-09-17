@@ -69,6 +69,9 @@ router.use('/slide-preview', require('./slidePreview'));
 router.use('/registrations', require('./registrations'));
 router.use('/roster', require('./roster'));
 router.use('/assignments', require('./assignments'));
+// Keep campaign creation data outside the /campaigns/:campaignId namespace so
+// a static setup request can never be interpreted as a campaign identifier.
+router.use('/campaign-create-options', require('./campaignCreateOptions'));
 router.use('/campaigns', require('./campaignFlipbooks'));
 router.use('/campaigns', require('./campaigns'));
 router.use('/learner-access', require('./authConfig'));

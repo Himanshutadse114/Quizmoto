@@ -201,7 +201,7 @@ function capabilityForRequest(req) {
     if (path.startsWith('/api/scorm/roster')) return 'learnerRoster';
     if (path.startsWith('/api/scorm/tracking')) return 'learnerTracking';
     if (path.startsWith('/api/scorm/assignments')) return 'assignments';
-    if (path.startsWith('/api/scorm/campaigns')) return 'campaigns';
+    if (path.startsWith('/api/scorm/campaigns') || path.startsWith('/api/scorm/campaign-create-options')) return 'campaigns';
     if (path.startsWith('/api/scorm/team')) return 'teamManagement';
     if (path.startsWith('/api/scorm/learner-access')) return 'ssoManagement';
     if (path.startsWith('/api/scorm/packages')) return 'library';

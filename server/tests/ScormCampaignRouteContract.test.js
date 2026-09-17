@@ -3,6 +3,14 @@ const path = require('path');
 const { expect } = require('chai');
 
 describe('SCORM campaign route contract', () => {
+    it('uses a dedicated non-ID endpoint for campaign creation data', () => {
+        const indexSource = fs.readFileSync(path.join(__dirname, '..', 'routes', 'scorm', 'index.js'), 'utf8');
+        const clientSource = fs.readFileSync(path.join(__dirname, '..', '..', 'client', 'src', 'pages', 'Scorm', 'CampaignCreate.jsx'), 'utf8');
+        expect(indexSource).to.include("router.use('/campaign-create-options'");
+        expect(clientSource).to.include("apiUrl('/api/scorm/campaign-create-options')");
+        expect(clientSource).not.to.include("apiUrl('/api/scorm/campaigns/create-options')");
+    });
+
     it('matches create-options before every campaign UUID route', () => {
         for (const file of ['campaignFlipbooks.js', 'campaigns.js']) {
             const source = fs.readFileSync(path.join(__dirname, '../routes/scorm', file), 'utf8');

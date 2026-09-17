@@ -48,7 +48,7 @@ export default function CampaignCreate() {
     if (!token) return;
     let cancelled = false;
     setLoading(true);
-    axios.get(apiUrl('/api/scorm/campaigns/create-options'), { headers })
+    axios.get(apiUrl('/api/scorm/campaign-create-options'), { headers })
       .then((response) => {
         if (cancelled) return;
         setCourses(response.data?.courses || []);
