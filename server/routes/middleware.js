@@ -97,16 +97,21 @@ module.exports = async (req, res, next) => {
         req.authenticatedUserId = decoded.userId;
         req.authScope = decoded.scope || null;
         req.authMethod = decoded.authMethod || null;
+        req.staffSso = decoded.staffSso === true;
 
         const authenticatedUser = await User.findByPk(decoded.userId);
         if (authenticatedUser) assertActiveAccount(authenticatedUser);
         req.authenticatedUser = authenticatedUser || null;
 
-        if (isScormAdminRequest && process.env.NODE_ENV !== 'test') {
-            if (decoded.scope !== 'scorm') {
-                return res.status(401).json({ message: 'LMSGEN login required', code: 'SCORM_AUTH_REQUIRED' });
-            }
+        if (isScormAdminRequest && process.env.NODE_ENV !== 'test' && decoded.scope !== 'scorm') {
+            return res.status(401).json({ message: 'LMSGEN login required', code: 'SCORM_AUTH_REQUIRED' });
+        }
 
+        // A tenant session carries the tenant's status and SSO policy across
+        // every product module, not only URLs under /api/scorm. Otherwise an
+        // old token could continue using Quizmoto or Publica after the tenant
+        // was disabled, or bypass Staff SSO through a non-course endpoint.
+        if (decoded.scope === 'scorm' && process.env.NODE_ENV !== 'test') {
             const mutatingRequest = !SAFE_METHODS.has(String(req.method || 'GET').toUpperCase());
             if (mutatingRequest) invalidateContext({ userId: decoded.userId });
             const context = await resolveRequestContext(decoded.userId, { bypassCache: mutatingRequest });
@@ -136,7 +141,7 @@ module.exports = async (req, res, next) => {
                         (authMethod === 'google' && policy.publicConfig.staffGoogleEnabled) ||
                         (authMethod === 'microsoft' && policy.publicConfig.staffMicrosoftEnabled);
 
-                    if (tokenWorkspaceId !== expectedWorkspaceId || !providerAllowed) {
+                    if (!req.staffSso || tokenWorkspaceId !== expectedWorkspaceId || !providerAllowed) {
                         return res.status(403).json({
                             message: 'This tenant requires an enabled organisation SSO provider. Use the tenant Staff SSO sign-in.',
                             code: 'SCORM_STAFF_SSO_REQUIRED',
@@ -148,32 +153,34 @@ module.exports = async (req, res, next) => {
                 }
             }
 
-            req.userId = workspaceContext.hostId;
+            if (isScormAdminRequest) {
+                req.userId = workspaceContext.hostId;
 
-            assertScormRouteAllowed({
-                role: req.scormRole,
-                method: req.method,
-                url
-            });
+                assertScormRouteAllowed({
+                    role: req.scormRole,
+                    method: req.method,
+                    url
+                });
 
-            const entitlementOwner = context.entitlementOwner || user;
-            if (!entitlementOwner) {
-                const err = new Error('The LMSGEN tenant data host no longer exists.');
-                err.status = 403;
-                err.code = 'SCORM_TENANT_HOST_REQUIRED';
-                throw err;
-            }
-            req.scormEntitlementEmail = entitlementOwner.email || user.email || null;
+                const entitlementOwner = context.entitlementOwner || user;
+                if (!entitlementOwner) {
+                    const err = new Error('The LMSGEN tenant data host no longer exists.');
+                    err.status = 403;
+                    err.code = 'SCORM_TENANT_HOST_REQUIRED';
+                    throw err;
+                }
+                req.scormEntitlementEmail = entitlementOwner.email || user.email || null;
 
-            await enforceRequestEntitlement(req, {
-                userId: workspaceContext.hostId,
-                email: req.scormEntitlementEmail,
-                role: req.scormRole === 'super_admin' ? 'super_admin' : 'admin'
-            });
+                await enforceRequestEntitlement(req, {
+                    userId: workspaceContext.hostId,
+                    email: req.scormEntitlementEmail,
+                    role: req.scormRole === 'super_admin' ? 'super_admin' : 'admin'
+                });
 
-            if (mutatingRequest && typeof res.once === 'function') {
-                const workspaceId = req.scormWorkspaceId;
-                res.once('finish', () => invalidateContext({ userId: decoded.userId, workspaceId }));
+                if (mutatingRequest && typeof res.once === 'function') {
+                    const workspaceId = req.scormWorkspaceId;
+                    res.once('finish', () => invalidateContext({ userId: decoded.userId, workspaceId }));
+                }
             }
         }
 

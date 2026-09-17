@@ -152,6 +152,11 @@ async function assignPlatformUser({
 
     const workspace = await ScormWorkspace.findByPk(workspaceId);
     if (!workspace) throw fail('Tenant not found.', 'SCORM_TENANT_NOT_FOUND', 404);
+    const workspaceHost = await User.findByPk(workspace.ownerUserId);
+    if (!workspaceHost) throw fail('Tenant data host not found.', 'SCORM_TENANT_HOST_NOT_FOUND', 409);
+    if (isSuperAdminEmail(workspaceHost.email)) {
+        throw fail('The protected Super Admin tenant cannot accept customer users.', 'SCORM_TENANT_PROTECTED', 400);
+    }
     if (workspace.status !== 'active') throw fail('Activate the tenant before assigning users.', 'SCORM_TENANT_INACTIVE', 409);
     const assignedRole = cleanRole(role);
 
@@ -296,6 +301,41 @@ async function setPlatformUserStatus({ userId, action }) {
         return { userId: user.id, accountStatus: 'active' };
     }
 
+    const membership = await ScormWorkspaceMember.findOne({ where: { email } });
+    let tenantTransition = null;
+    if (membership && normalizeScormRole(membership.role) === 'admin') {
+        const successor = await ScormWorkspaceMember.findOne({
+            where: { workspaceId: membership.workspaceId, role: 'co_admin', status: 'active' },
+            order: [['createdAt', 'ASC']]
+        });
+        if (successor) {
+            successor.role = 'admin';
+            await successor.save();
+            await addGrant({
+                email: successor.email,
+                role: 'admin',
+                addedByUserId: null,
+                addedByEmail: null
+            });
+            tenantTransition = {
+                workspaceId: membership.workspaceId,
+                action: 'admin_promoted',
+                adminEmail: successor.email
+            };
+        } else {
+            const workspace = await ScormWorkspace.findByPk(membership.workspaceId);
+            if (workspace) {
+                workspace.status = 'disabled';
+                await workspace.save();
+            }
+            tenantTransition = {
+                workspaceId: membership.workspaceId,
+                action: 'tenant_disabled',
+                adminEmail: null
+            };
+        }
+    }
+
     const now = new Date();
     user.accountStatus = normalizedAction === 'block' ? 'blocked' : 'removed';
     user.removedAt = now;
@@ -308,7 +348,7 @@ async function setPlatformUserStatus({ userId, action }) {
         ScormAccessRequest.update({ status: 'denied' }, { where: { email } }).catch(() => null)
     ]);
 
-    return { userId: user.id, accountStatus: user.accountStatus };
+    return { userId: user.id, accountStatus: user.accountStatus, tenantTransition };
 }
 
 module.exports = {

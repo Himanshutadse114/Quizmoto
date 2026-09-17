@@ -16,6 +16,7 @@ const {
 } = require('../services/scorm/ScormAccessService');
 const { verifyOtpToken } = require('../services/mail/MailOtpService');
 const { accountStatus, assertActiveAccount } = require('../services/AccountProfileService');
+const { getStaffPolicyForEmail } = require('../services/scorm/ScormStaffAuthService');
 
 const { OAuth2Client } = require('google-auth-library');
 
@@ -88,14 +89,25 @@ async function tenantForUser(user, role) {
     return { member, workspace };
 }
 
-async function scormAuthResponse(user, role, { authMethod = 'password' } = {}) {
+async function scormAuthResponse(user, role, { authMethod = 'password', staffSso = false } = {}) {
     if (role === 'super_admin') await ensureSuperAdminGrant();
     const { workspace } = await tenantForUser(user, role);
     const workspaceId = workspace?.id || null;
+    if (workspace && role !== 'super_admin') {
+        const policy = await getStaffPolicyForEmail(user.email);
+        if (policy?.publicConfig?.staffSsoRequired && !staffSso) {
+            const err = new Error('This tenant requires organisation SSO. Use the tenant Staff SSO sign-in.');
+            err.status = 403;
+            err.code = 'SCORM_STAFF_SSO_REQUIRED';
+            err.workspaceId = workspaceId;
+            throw err;
+        }
+    }
     const token = issueToken(user, 'scorm', {
         scormRole: role,
         workspaceId,
-        authMethod
+        authMethod,
+        staffSso: Boolean(staffSso)
     });
     return publicUser(user, token, {
         role,
@@ -109,7 +121,8 @@ async function scormAuthResponse(user, role, { authMethod = 'password' } = {}) {
         workspaceName: workspace?.name || null,
         tenantId: workspaceId,
         tenantName: workspace?.name || null,
-        authMethod
+        authMethod,
+        staffSso: Boolean(staffSso)
     });
 }
 
@@ -156,7 +169,10 @@ router.get('/scorm/status', auth, async (req, res) => {
 
         const role = await getAccessRole(user.email);
         if (!role) return res.json(pendingResponse(user, false));
-        return res.json(await scormAuthResponse(user, role, { authMethod: req.authMethod || 'password' }));
+        return res.json(await scormAuthResponse(user, role, {
+            authMethod: req.authMethod || 'password',
+            staffSso: req.staffSso === true
+        }));
     } catch (err) {
         console.error('LMSGEN access status error:', err);
         return res.status(err.status || 500).json({

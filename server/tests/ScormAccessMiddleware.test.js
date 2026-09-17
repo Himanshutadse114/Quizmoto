@@ -23,7 +23,7 @@ describe('SCORM access middleware', () => {
         process.env.NODE_ENV = originalNodeEnv;
     });
 
-    function buildMiddleware({ decoded, user, role }) {
+    function buildMiddleware({ decoded, user, role, staffPolicy = null }) {
         const jwt = {
             verify() {
                 return decoded;
@@ -31,6 +31,7 @@ describe('SCORM access middleware', () => {
         };
         const User = {
             async findByPk(id) {
+                if (Number(id) === 901) return { id: 901, email: 'tenant-host@lmsgen.internal' };
                 expect(id).to.equal(decoded.userId);
                 return user;
             }
@@ -53,7 +54,26 @@ describe('SCORM access middleware', () => {
         return proxyquire('../routes/middleware', {
             jsonwebtoken: jwt,
             '../models/User': User,
-            '../services/scorm/ScormAccessService': access
+            '../services/scorm/ScormAccessService': access,
+            '../services/scorm/ScormWorkspaceService': {
+                async resolveWorkspaceContext() {
+                    return {
+                        workspace: { id: 'workspace-1', ownerUserId: 901, status: 'active' },
+                        member: { id: 'member-1', role: role === 'user' ? 'admin' : role, status: 'active' },
+                        hostId: 901,
+                        role: role === 'user' ? 'admin' : role
+                    };
+                }
+            },
+            '../services/scorm/ScormStaffAuthService': {
+                async getStaffPolicyForEmail() { return staffPolicy; }
+            },
+            '../services/scorm/ScormEntitlementService': {
+                async enforceRequestEntitlement() { return null; }
+            },
+            '../services/scorm/ScormRbacService': {
+                assertScormRouteAllowed() { return true; }
+            }
         });
     }
 
@@ -74,10 +94,73 @@ describe('SCORM access middleware', () => {
         await middleware(req, res, () => { nextCalled = true; });
 
         expect(nextCalled).to.equal(true);
-        expect(req.userId).to.equal(11);
+        expect(req.authenticatedUserId).to.equal(11);
+        expect(req.userId).to.equal(901);
         expect(req.authScope).to.equal('scorm');
-        expect(req.scormRole).to.equal('user');
+        expect(req.scormRole).to.equal('admin');
         expect(req.scormEmail).to.equal('allowed@example.com');
+    });
+
+    it('rejects a generic Google token when the tenant requires its Staff SSO flow', async () => {
+        process.env.NODE_ENV = 'production';
+        const middleware = buildMiddleware({
+            decoded: { userId: 16, scope: 'scorm', authMethod: 'google', workspaceId: 'workspace-1' },
+            user: { id: 16, email: 'staff@example.com' },
+            role: 'co_admin',
+            staffPolicy: {
+                publicConfig: { staffSsoRequired: true, staffGoogleEnabled: true, staffMicrosoftEnabled: false }
+            }
+        });
+        const req = { header: () => 'Bearer generic-google-token', originalUrl: '/api/scorm/courses' };
+        const res = makeResponse();
+        let nextCalled = false;
+
+        await middleware(req, res, () => { nextCalled = true; });
+
+        expect(nextCalled).to.equal(false);
+        expect(res.statusCode).to.equal(403);
+        expect(res.body.code).to.equal('SCORM_STAFF_SSO_REQUIRED');
+    });
+
+    it('accepts a tenant-issued Staff SSO token for the enabled provider', async () => {
+        process.env.NODE_ENV = 'production';
+        const middleware = buildMiddleware({
+            decoded: { userId: 17, scope: 'scorm', authMethod: 'google', staffSso: true, workspaceId: 'workspace-1' },
+            user: { id: 17, email: 'staff@example.com' },
+            role: 'co_admin',
+            staffPolicy: {
+                publicConfig: { staffSsoRequired: true, staffGoogleEnabled: true, staffMicrosoftEnabled: false }
+            }
+        });
+        const req = { header: () => 'Bearer tenant-staff-token', originalUrl: '/api/scorm/courses' };
+        const res = makeResponse();
+        let nextCalled = false;
+
+        await middleware(req, res, () => { nextCalled = true; });
+
+        expect(nextCalled).to.equal(true);
+        expect(req.staffSso).to.equal(true);
+    });
+
+    it('enforces tenant Staff SSO on protected APIs outside the SCORM URL namespace', async () => {
+        process.env.NODE_ENV = 'production';
+        const middleware = buildMiddleware({
+            decoded: { userId: 18, scope: 'scorm', authMethod: 'google', workspaceId: 'workspace-1' },
+            user: { id: 18, email: 'staff@example.com' },
+            role: 'admin',
+            staffPolicy: {
+                publicConfig: { staffSsoRequired: true, staffGoogleEnabled: true, staffMicrosoftEnabled: false }
+            }
+        });
+        const req = { header: () => 'Bearer generic-google-token', originalUrl: '/api/quizzes' };
+        const res = makeResponse();
+        let nextCalled = false;
+
+        await middleware(req, res, () => { nextCalled = true; });
+
+        expect(nextCalled).to.equal(false);
+        expect(res.statusCode).to.equal(403);
+        expect(res.body.code).to.equal('SCORM_STAFF_SSO_REQUIRED');
     });
 
     it('rejects the same valid SCORM token after its live access grant is removed', async () => {

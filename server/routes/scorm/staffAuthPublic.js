@@ -29,7 +29,8 @@ function issueScormToken(user, role, workspaceId, authMethod) {
         scope: 'scorm',
         scormRole: role,
         workspaceId,
-        authMethod
+        authMethod,
+        staffSso: true
     }, JWT_SECRET, { expiresIn: '30d' });
 }
 

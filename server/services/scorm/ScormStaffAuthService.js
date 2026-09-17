@@ -9,6 +9,7 @@ const {
     verifyGoogleCredential,
     verifyMicrosoftCredential
 } = require('./ScormLearnerAuthService');
+const { assertActiveAccount } = require('../AccountProfileService');
 
 const STAFF_JOINING_MODES = Object.freeze(['password_or_sso', 'sso_only']);
 const STAFF_ROLES = Object.freeze(['admin', 'co_admin', 'analytics_viewer']);
@@ -142,10 +143,16 @@ async function verifyStaffIdentity({ workspaceId, provider, credential }) {
             displayName: baseUsername,
             email
         });
-    } else if (!user.username && identity.name) {
-        user.username = String(identity.name).trim().slice(0, 80);
-        user.displayName = user.displayName || user.username;
-        await user.save();
+    } else {
+        // Tenant SSO must never become a second route around a platform-level
+        // removal or block. The membership may still exist while an account
+        // status change is propagating, so validate the account independently.
+        assertActiveAccount(user);
+        if (!user.username && identity.name) {
+            user.username = String(identity.name).trim().slice(0, 80);
+            user.displayName = user.displayName || user.username;
+            await user.save();
+        }
     }
 
     let memberChanged = false;
@@ -208,6 +215,8 @@ async function discoverStaffPolicy(email) {
             404
         );
     }
+    const existingUser = await User.findOne({ where: { email: normalized } });
+    if (existingUser) assertActiveAccount(existingUser);
     return { ...direct, source: 'membership' };
 }
 

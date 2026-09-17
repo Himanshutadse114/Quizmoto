@@ -2,7 +2,7 @@ const { expect } = require('chai');
 const sinon = require('sinon');
 const proxyquire = require('proxyquire').noCallThru();
 
-function loadService() {
+function loadService({ entitlementOverrides = {} } = {}) {
     const hostUser = { id: 901, username: 'tenant-host', email: 'tenant@lmsgen.internal', destroy: sinon.stub().resolves() };
     const workspace = {
         id: 'tenant-uuid',
@@ -34,7 +34,8 @@ function loadService() {
     const ScormWorkspaceMember = {
         findOne: sinon.stub().resolves(null),
         create: sinon.stub().resolves(adminMember),
-        findAll: sinon.stub().resolves([adminMember])
+        findAll: sinon.stub().resolves([adminMember]),
+        count: sinon.stub().resolves(1)
     };
     const ScormWorkspaceAuthConfig = { findOrCreate: sinon.stub().resolves([{}]) };
     const ScormPackage = { update: sinon.stub().resolves([0]) };
@@ -51,7 +52,8 @@ function loadService() {
         maxStaff: 3,
         maxCampaigns: 4,
         maxAssignments: 40,
-        permissions: { courseAuthoring: true }
+        permissions: { courseAuthoring: true },
+        ...entitlementOverrides
     };
     const usage = {
         aiCourseGenerations: 2,
@@ -142,5 +144,55 @@ describe('ScormTenantService', () => {
         expect(caught).to.be.an('error');
         expect(caught.code).to.equal('SCORM_TENANT_STAFF_LIMIT_INVALID');
         expect(ctx.User.create.called).to.equal(false);
+    });
+
+    it('does not create a tenant around a blocked Admin account', async () => {
+        const ctx = loadService();
+        ctx.User.findOne.resolves({ id: 44, email: 'admin@acme.com', username: 'Admin', accountStatus: 'blocked' });
+        let caught;
+        try { await ctx.service.createTenant({ name: 'Acme', adminEmail: 'admin@acme.com' }); } catch (err) { caught = err; }
+        expect(caught).to.be.an('error');
+        expect(caught.code).to.equal('SCORM_TENANT_ADMIN_INACTIVE');
+        expect(ctx.User.create.called).to.equal(false);
+    });
+
+    it('rejects invalid tenant status instead of silently activating the tenant', async () => {
+        const ctx = loadService();
+        let caught;
+        try { await ctx.service.setTenantStatus({ workspaceId: ctx.workspace.id, status: 'paused' }); } catch (err) { caught = err; }
+        expect(caught).to.be.an('error');
+        expect(caught.code).to.equal('SCORM_TENANT_STATUS_INVALID');
+        expect(ctx.workspace.save.called).to.equal(false);
+    });
+
+    it('protects the Super Admin tenant from customer-tenant mutations', async () => {
+        const ctx = loadService();
+        ctx.hostUser.email = 'super@example.com';
+        let caught;
+        try { await ctx.service.setTenantStatus({ workspaceId: ctx.workspace.id, status: 'disabled' }); } catch (err) { caught = err; }
+        expect(caught).to.be.an('error');
+        expect(caught.code).to.equal('SCORM_TENANT_PROTECTED');
+        expect(ctx.workspace.save.called).to.equal(false);
+    });
+
+    it('does not exceed the staff allowance while retaining the previous Admin as Co-admin', async () => {
+        const ctx = loadService({ entitlementOverrides: { maxStaff: 1 } });
+        ctx.ScormWorkspaceMember.findOne.onFirstCall().resolves(null);
+        ctx.ScormWorkspaceMember.findOne.onSecondCall().resolves(ctx.adminMember);
+        ctx.ScormWorkspaceMember.count.resolves(1);
+        let caught;
+        try {
+            await ctx.service.changeTenantAdmin({
+                workspaceId: ctx.workspace.id,
+                adminEmail: 'next-admin@acme.com',
+                actorUserId: 1,
+                actorEmail: 'super@example.com'
+            });
+        } catch (err) {
+            caught = err;
+        }
+        expect(caught).to.be.an('error');
+        expect(caught.code).to.equal('SCORM_STAFF_LIMIT_REACHED');
+        expect(ctx.ScormWorkspaceMember.create.called).to.equal(false);
     });
 });

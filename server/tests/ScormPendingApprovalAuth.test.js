@@ -19,7 +19,7 @@ function makeUser(overrides = {}) {
     };
 }
 
-function buildApp({ role = null, existingUser = null, googlePayload = null, tenantAssigned = true } = {}) {
+function buildApp({ role = null, existingUser = null, googlePayload = null, tenantAssigned = true, staffSsoRequired = false, staffSession = false } = {}) {
     const captured = [];
     const created = [];
     const workspace = { id: 'tenant-1', ownerUserId: 900, name: 'Acme Tenant', status: 'active' };
@@ -104,9 +104,18 @@ function buildApp({ role = null, existingUser = null, googlePayload = null, tena
             }
         },
         '../services/scorm/ScormAccessService': access,
+        '../services/scorm/ScormStaffAuthService': {
+            async getStaffPolicyForEmail() {
+                return staffSsoRequired
+                    ? { publicConfig: { staffSsoRequired: true } }
+                    : null;
+            }
+        },
         './middleware': (req, _res, next) => {
             req.userId = existingUser?.id || 50;
             req.authScope = 'platform';
+            req.authMethod = staffSession ? 'google' : 'password';
+            req.staffSso = staffSession;
             next();
         },
         'express-rate-limit': () => (req, res, next) => next(),
@@ -211,5 +220,32 @@ describe('LMSGEN authentication and tenant assignment', () => {
         expect(res.body.scormAccess).to.equal(true);
         expect(res.body.tenantName).to.equal('Acme Tenant');
         expect(captured).to.have.length(0);
+    });
+
+    it('does not issue a normal password session when the tenant requires Staff SSO', async () => {
+        const existingUser = makeUser({ email: 'approved@example.com' });
+        const { app } = buildApp({ role: 'admin', existingUser, tenantAssigned: true, staffSsoRequired: true });
+        const res = await request(app).post('/scorm/login').send({
+            identifier: existingUser.email,
+            password: 'Password123!'
+        });
+        expect(res.status).to.equal(403);
+        expect(res.body.code).to.equal('SCORM_STAFF_SSO_REQUIRED');
+    });
+
+    it('refreshes a verified Staff SSO session without downgrading it to a normal login', async () => {
+        const existingUser = makeUser({ email: 'approved@example.com' });
+        const { app } = buildApp({
+            role: 'admin',
+            existingUser,
+            tenantAssigned: true,
+            staffSsoRequired: true,
+            staffSession: true
+        });
+        const res = await request(app).get('/scorm/status').set('Authorization', 'Bearer staff-sso-token');
+        expect(res.status).to.equal(200);
+        expect(res.body.scormAccess).to.equal(true);
+        expect(res.body.staffSso).to.equal(true);
+        expect(res.body.authMethod).to.equal('google');
     });
 });

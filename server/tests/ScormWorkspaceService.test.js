@@ -227,4 +227,27 @@ describe('ScormWorkspaceService', () => {
         expect(caught.code).to.equal('SCORM_TEAM_EMAIL_IN_OTHER_WORKSPACE');
         expect(caught.status).to.equal(409);
     });
+
+    it('does not invite an existing removed account into a tenant', async () => {
+        const { service, ScormWorkspaceMember, User, addGrant } = loadService();
+        ScormWorkspaceMember.findOne.resolves(null);
+        User.findOne.resolves({ id: 91, email: 'removed@example.com', username: 'Removed', accountStatus: 'removed' });
+
+        let caught = null;
+        try {
+            await service.inviteWorkspaceMember({
+                workspace: { id: 'workspace-1', ownerUserId: 10 },
+                actorUserId: 10,
+                actorEmail: 'owner@example.com',
+                email: 'removed@example.com',
+                role: 'co_admin'
+            });
+        } catch (err) {
+            caught = err;
+        }
+
+        expect(caught).to.be.an('error');
+        expect(caught.code).to.equal('SCORM_TEAM_ACCOUNT_INACTIVE');
+        expect(addGrant.called).to.equal(false);
+    });
 });

@@ -12,6 +12,7 @@ const {
     addGrant,
     removeGrantByEmail
 } = require('./ScormAccessService');
+const { accountStatus } = require('../AccountProfileService');
 
 const TEAM_ROLES = Object.freeze(['co_admin', 'analytics_viewer']);
 
@@ -252,6 +253,13 @@ async function inviteWorkspaceMember({ workspace, actorUserId, actorEmail, email
     }
 
     const linkedUser = await User.findOne({ where: { email: normalized } });
+    if (linkedUser && accountStatus(linkedUser) !== 'active') {
+        throw fail(
+            'Restore this platform account before adding it to a tenant.',
+            'SCORM_TEAM_ACCOUNT_INACTIVE',
+            409
+        );
+    }
     const cleanName = String(displayName || linkedUser?.username || '').trim().slice(0, 160) || null;
 
     if (!member) {

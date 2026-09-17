@@ -146,16 +146,24 @@ export default function PlatformUsersAdmin() {
   };
 
   const changeAccountStatus = async (user, action) => {
+    const adminImpact = user.tenant?.role === 'admin'
+      ? ' If an active Co-admin exists, they will become Tenant Admin; otherwise the tenant will be disabled until a new Admin is assigned.'
+      : '';
     const copy = action === 'remove'
-      ? `Remove ${user.email}'s access? Their content and analytics will be preserved. They can register again later.`
+      ? `Remove ${user.email}'s access? Their content and analytics will be preserved. They can register again later.${adminImpact}`
       : action === 'block'
-        ? `Remove and block ${user.email}? Their content is preserved, but this identity cannot register or sign in until restored.`
+        ? `Remove and block ${user.email}? Their content is preserved, but this identity cannot register or sign in until restored.${adminImpact}`
         : `Restore ${user.email}? This re-enables sign-in, but tenant access must be assigned separately.`;
     if (!window.confirm(copy)) return;
     setSaving(true); setError(''); setMessage('');
     try {
-      await axios.post(apiUrl(`/api/scorm/platform-users/${user.id}/status`), { action }, { headers });
-      setMessage(action === 'restore' ? `${user.email} was restored.` : action === 'block' ? `${user.email} was removed and blocked.` : `${user.email} was removed.`);
+      const res = await axios.post(apiUrl(`/api/scorm/platform-users/${user.id}/status`), { action }, { headers });
+      const tenantEffect = res.data?.tenantTransition?.action === 'admin_promoted'
+        ? ` ${res.data.tenantTransition.adminEmail} is now the Tenant Admin.`
+        : res.data?.tenantTransition?.action === 'tenant_disabled'
+          ? ' The tenant was disabled because no active Co-admin was available.'
+          : '';
+      setMessage((action === 'restore' ? `${user.email} was restored.` : action === 'block' ? `${user.email} was removed and blocked.` : `${user.email} was removed.`) + tenantEffect);
       if (editingUser?.id === user.id) setEditingUser(null);
       if (profileUser?.id === user.id) setProfileUser(null);
       await load();

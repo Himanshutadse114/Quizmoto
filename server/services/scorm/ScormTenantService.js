@@ -32,6 +32,7 @@ const {
     }),
     normalizeLimit
 } = require('./ScormEntitlementService');
+const { accountStatus } = require('../AccountProfileService');
 
 function fail(message, code, status = 400) {
     const err = new Error(message);
@@ -63,6 +64,28 @@ async function hostForWorkspace(workspace) {
     const host = workspace?.ownerUserId ? await User.findByPk(workspace.ownerUserId) : null;
     if (!host) throw fail('Tenant data host not found.', 'SCORM_TENANT_HOST_NOT_FOUND', 409);
     return host;
+}
+
+async function assertCustomerTenant(workspace) {
+    const host = await hostForWorkspace(workspace);
+    if (isSuperAdminEmail(host.email)) {
+        throw fail(
+            'The protected Super Admin tenant cannot be changed.',
+            'SCORM_TENANT_PROTECTED',
+            400
+        );
+    }
+    return host;
+}
+
+function assertActiveTenantAdminAccount(user) {
+    if (user && accountStatus(user) !== 'active') {
+        throw fail(
+            'Restore this platform account before assigning it as Tenant Admin.',
+            'SCORM_TENANT_ADMIN_INACTIVE',
+            409
+        );
+    }
 }
 
 async function tenantUsage(workspace) {
@@ -171,6 +194,7 @@ async function createTenant({
     const internalEmail = `tenant-${tenantId}@lmsgen.internal`;
     const internalUsername = `tenant-${tenantId.slice(0, 12)}`;
     const linkedUser = await User.findOne({ where: { email } });
+    assertActiveTenantAdminAccount(linkedUser);
 
     const hostUser = await User.create({ username: internalUsername, email: internalEmail });
 
@@ -243,6 +267,7 @@ async function updateTenantEntitlement({ workspaceId, patch = {}, actorUserId = 
 async function changeTenantAdmin({ workspaceId, adminEmail, adminName = null, actorUserId = null, actorEmail = null }) {
     const workspace = await ScormWorkspace.findByPk(workspaceId);
     if (!workspace) throw fail('Tenant not found.', 'SCORM_TENANT_NOT_FOUND', 404);
+    const host = await assertCustomerTenant(workspace);
 
     const email = normalizeEmail(adminEmail);
     if (!isValidEmail(email)) throw fail('Enter a valid Tenant Admin email address.', 'SCORM_TENANT_ADMIN_EMAIL_INVALID', 400);
@@ -253,8 +278,21 @@ async function changeTenantAdmin({ workspaceId, adminEmail, adminName = null, ac
     let target = await assertEmailAvailableForTenant(email, workspace.id);
     const currentAdmin = await ScormWorkspaceMember.findOne({ where: { workspaceId: workspace.id, role: 'admin' } });
     const linkedUser = await User.findOne({ where: { email } });
+    assertActiveTenantAdminAccount(linkedUser);
 
     if (!target) {
+        const entitlement = await getEntitlement(host.email, 'admin');
+        const maxStaff = normalizeLimit(entitlement?.maxStaff);
+        if (maxStaff !== null) {
+            const currentStaff = await ScormWorkspaceMember.count({ where: { workspaceId: workspace.id } });
+            if (currentStaff >= maxStaff) {
+                throw fail(
+                    `Tenant staff limit reached (${currentStaff}/${maxStaff}). Increase the staff allowance before changing the Admin because the previous Admin becomes a Co-admin.`,
+                    'SCORM_STAFF_LIMIT_REACHED',
+                    403
+                );
+            }
+        }
         target = await ScormWorkspaceMember.create({
             workspaceId: workspace.id,
             userId: linkedUser?.id || null,
@@ -298,7 +336,11 @@ async function changeTenantAdmin({ workspaceId, adminEmail, adminName = null, ac
 async function setTenantStatus({ workspaceId, status }) {
     const workspace = await ScormWorkspace.findByPk(workspaceId);
     if (!workspace) throw fail('Tenant not found.', 'SCORM_TENANT_NOT_FOUND', 404);
-    const next = String(status || '').toLowerCase() === 'disabled' ? 'disabled' : 'active';
+    await assertCustomerTenant(workspace);
+    const next = String(status || '').trim().toLowerCase();
+    if (!['active', 'disabled'].includes(next)) {
+        throw fail('Choose active or disabled tenant status.', 'SCORM_TENANT_STATUS_INVALID', 400);
+    }
     workspace.status = next;
     await workspace.save();
     return serializeTenant(workspace);
