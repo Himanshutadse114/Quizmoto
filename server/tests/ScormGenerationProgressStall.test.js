@@ -23,6 +23,18 @@ describe('SCORM generation progress reliability', () => {
         expect(source).to.include("timeoutError.code = 'GEMINI_TIMEOUT'");
     });
 
+    it('keeps visual planning and image generation moving beyond content progress', () => {
+        const prompts = read('../services/scorm/GeminiSlideVisualPromptService.js');
+        const media = read('../services/scorm/GeminiCourseMediaService.js');
+        expect(prompts).to.include('GEMINI_SCORM_VISUAL_PROMPT_TIMEOUT_MS');
+        expect(prompts).to.include("'GEMINI_VISUAL_PROMPT_TIMEOUT'");
+        expect(media).to.include("status: 'working'");
+        expect(media).to.include('percent: 28');
+        expect(media).to.include('percent: 30');
+        expect(media).to.include('percent: 38');
+        expect(media).to.include('percent: 78');
+    });
+
     it('never lets browser progress move backwards and expires orphaned jobs', () => {
         const source = read('../../client/src/services/courseGenerationJobs.js');
         expect(source).to.include('Math.max(Math.max(1, Number(floorPercent) || 1), reported)');

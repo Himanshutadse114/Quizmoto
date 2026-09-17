@@ -302,9 +302,21 @@ async function generateImage(prompt, pathStem, config, onStatus, checkCancelled 
 
     for (const model of models) {
         for (let attempt = 0; attempt <= config.imageRetries; attempt += 1) {
+            let progressHeartbeat = null;
             try {
                 if (typeof checkCancelled === 'function') checkCancelled();
                 if (typeof onStatus === 'function') onStatus({ status: attempt ? 'retrying' : 'starting', attempt: attempt + 1, model });
+                const requestStartedAt = Date.now();
+                progressHeartbeat = setInterval(() => {
+                    if (typeof onStatus !== 'function') return;
+                    onStatus({
+                        status: 'working',
+                        attempt: attempt + 1,
+                        model,
+                        elapsedSeconds: Math.max(1, Math.round((Date.now() - requestStartedAt) / 1000))
+                    });
+                }, 8000);
+                progressHeartbeat.unref?.();
                 const generated = await requestGeminiImage(apiKey, model, prompt, config);
                 if (typeof checkCancelled === 'function') checkCancelled();
                 const extension = mimeExtension(generated.contentType);
@@ -331,6 +343,8 @@ async function generateImage(prompt, pathStem, config, onStatus, checkCancelled 
                     error: error.message
                 });
                 await new Promise((resolve) => setTimeout(resolve, delayMs));
+            } finally {
+                if (progressHeartbeat) clearInterval(progressHeartbeat);
             }
         }
     }
@@ -384,7 +398,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
     let imageModel = config.imageModel;
 
     emit(onProgress, {
-        percent: 7,
+        percent: 28,
         stage: 'Planning course visuals',
         detail: 'Planning a relevant visual for each learning section.'
     });
@@ -403,12 +417,17 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
 
         const coverFile = await generateImage(coverPrompt.prompt, 'assets/media/course-cover', config, (state) => {
             if (state.status === 'starting') emit(onProgress, {
-                percent: 12,
+                percent: 30,
                 stage: 'Generating course cover image',
                 detail: 'Creating the course cover visual.'
             });
+            if (state.status === 'working') emit(onProgress, {
+                percent: Math.min(37, 30 + Math.floor(Number(state.elapsedSeconds || 0) / 20)),
+                stage: 'Generating course cover image',
+                detail: `Creating the topic-specific course cover (${Number(state.elapsedSeconds || 0)}s).`
+            });
             if (state.status === 'retrying') emit(onProgress, {
-                percent: 13,
+                percent: 36,
                 stage: 'Retrying course cover image',
                 detail: 'The cover is taking a little longer. Trying again.'
             });
@@ -419,6 +438,11 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
         analysis.coverVisualAsset = coverFile.path;
         analysis.coverMobileVisualAsset = coverFile.path;
         coverGenerated = true;
+        emit(onProgress, {
+            percent: 38,
+            stage: 'Course cover ready',
+            detail: 'The topic-specific course cover is ready.'
+        });
     } catch (error) {
         if (isGenerationCancelled(error)) throw error;
         warnings.push(`Cover image: ${error.message}`);
@@ -434,7 +458,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
     await runWithConcurrency(selectedIndexes, config.imageConcurrency, async (slideIndex, jobPosition) => {
         checkCancelled();
         const startedAtCompleted = completedJobs;
-        const basePercent = 22 + Math.round((startedAtCompleted / Math.max(1, selectedIndexes.length)) * 40);
+        const basePercent = 40 + Math.round((startedAtCompleted / Math.max(1, selectedIndexes.length)) * 30);
         try {
             emit(onProgress, {
                 percent: basePercent,
@@ -453,12 +477,17 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
                 config,
                 (state) => {
                     if (state.status === 'starting') emit(onProgress, {
-                        percent: Math.min(68, basePercent + 2),
+                        percent: Math.min(71, basePercent + 1),
                         stage: `Generating slide ${slideIndex + 1} image`,
                         detail: 'Creating a visual for this learning section.'
                     });
+                    if (state.status === 'working') emit(onProgress, {
+                        percent: Math.min(71, basePercent + Math.min(3, Math.floor(Number(state.elapsedSeconds || 0) / 24))),
+                        stage: `Generating slide ${slideIndex + 1} image`,
+                        detail: `Creating a topic-specific learning visual (${Number(state.elapsedSeconds || 0)}s).`
+                    });
                     if (state.status === 'retrying') emit(onProgress, {
-                        percent: basePercent,
+                        percent: Math.min(71, basePercent + 2),
                         stage: `Retrying slide ${slideIndex + 1} image`,
                         detail: 'This visual is taking a little longer. Trying again.'
                     });
@@ -483,7 +512,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
         } finally {
             completedJobs += 1;
             emit(onProgress, {
-                percent: 24 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 44),
+                percent: 42 + Math.round((completedJobs / Math.max(1, selectedIndexes.length)) * 30),
                 stage: 'Generating learning-slide images',
                 detail: `${completedJobs} of ${selectedIndexes.length} course visuals completed.`
             });
@@ -534,7 +563,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
     }
 
     emit(onProgress, {
-        percent: 73,
+        percent: 74,
         stage: 'Optimising course images',
         detail: 'Optimising every visual for consistent, fast loading.'
     });
@@ -578,7 +607,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
     };
 
     emit(onProgress, {
-        percent: 76,
+        percent: 78,
         stage: 'Course images ready',
         detail: `${totalImagesGenerated} course visuals are ready.`
     });

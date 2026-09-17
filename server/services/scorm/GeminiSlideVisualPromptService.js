@@ -188,7 +188,13 @@ function isRetryableVisualOutputError(err) {
     return ['GEMINI_VISUAL_PROMPT_EMPTY', 'GEMINI_VISUAL_PROMPT_INVALID', 'GEMINI_RESPONSE_INVALID'].includes(err?.code);
 }
 
-async function requestGeminiText(instruction, maxOutputTokens, temperature = 0.22) {
+function visualPromptRequestTimeoutMs() {
+    const configured = Number(process.env.GEMINI_SCORM_VISUAL_PROMPT_TIMEOUT_MS);
+    if (!Number.isFinite(configured)) return 60000;
+    return Math.max(1000, Math.min(180000, Math.round(configured)));
+}
+
+async function requestGeminiText(instruction, maxOutputTokens, temperature = 0.22, timeoutMs = visualPromptRequestTimeoutMs()) {
     const key = apiKey();
     if (!key) {
         const err = new Error('Gemini API key is required to create slide-specific image prompts.');
@@ -205,12 +211,27 @@ async function requestGeminiText(instruction, maxOutputTokens, temperature = 0.2
                     generationConfig: { temperature, maxOutputTokens }
                 };
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-                const rawText = await response.text();
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), timeoutMs);
+                timeout.unref?.();
+                let response;
+                let rawText;
+                try {
+                    response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body),
+                        signal: controller.signal
+                    });
+                    rawText = await response.text();
+                } catch (error) {
+                    if (controller.signal.aborted || error?.name === 'AbortError') {
+                        throw visualPromptError('Course visual planning timed out. Please retry.', 'GEMINI_VISUAL_PROMPT_TIMEOUT');
+                    }
+                    throw error;
+                } finally {
+                    clearTimeout(timeout);
+                }
                 if (!response.ok) {
                     const err = new Error(`Gemini visual prompt request failed (${response.status})`);
                     err.status = response.status;
@@ -306,5 +327,7 @@ module.exports = {
     modelCandidates,
     normalizeVisualPrompt,
     enforceVisualPromptRequirements,
-    recoverPromptFromBrokenJson
+    recoverPromptFromBrokenJson,
+    visualPromptRequestTimeoutMs,
+    requestGeminiText
 };

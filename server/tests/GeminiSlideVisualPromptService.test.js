@@ -6,7 +6,9 @@ const {
     sharedVisualRules,
     slideInstruction,
     batchInstruction,
-    parseBatchPrompts
+    parseBatchPrompts,
+    visualPromptRequestTimeoutMs,
+    requestGeminiText
 } = require('../services/scorm/GeminiSlideVisualPromptService');
 
 describe('Gemini slide visual prompt service', () => {
@@ -100,5 +102,46 @@ describe('Gemini slide visual prompt service', () => {
         expect(parsed.coverPrompt).to.match(/3D/i);
         expect(parsed.slidePrompts[0]).to.match(/3D/i);
         expect(parsed.slidePrompts[1]).to.match(/3D/i);
+    });
+
+    it('aborts visual planning requests instead of leaving generation frozen', async () => {
+        const originalFetch = global.fetch;
+        const originalKey = process.env.GEMINI_API_KEY;
+        process.env.GEMINI_API_KEY = 'test-key';
+        global.fetch = (_url, options = {}) => new Promise((resolve, reject) => {
+            options.signal?.addEventListener('abort', () => {
+                const error = new Error('aborted');
+                error.name = 'AbortError';
+                reject(error);
+            }, { once: true });
+        });
+
+        try {
+            let error = null;
+            try {
+                await requestGeminiText('Create a visual prompt.', 100, 0.2, 20);
+            } catch (caught) {
+                error = caught;
+            }
+            expect(error).to.be.instanceOf(Error);
+            expect(error.code).to.equal('GEMINI_VISUAL_PROMPT_TIMEOUT');
+        } finally {
+            global.fetch = originalFetch;
+            if (originalKey == null) delete process.env.GEMINI_API_KEY;
+            else process.env.GEMINI_API_KEY = originalKey;
+        }
+    });
+
+    it('keeps visual-planning timeout configuration within safe bounds', () => {
+        const original = process.env.GEMINI_SCORM_VISUAL_PROMPT_TIMEOUT_MS;
+        try {
+            process.env.GEMINI_SCORM_VISUAL_PROMPT_TIMEOUT_MS = '5';
+            expect(visualPromptRequestTimeoutMs()).to.equal(1000);
+            process.env.GEMINI_SCORM_VISUAL_PROMPT_TIMEOUT_MS = '999999';
+            expect(visualPromptRequestTimeoutMs()).to.equal(180000);
+        } finally {
+            if (original == null) delete process.env.GEMINI_SCORM_VISUAL_PROMPT_TIMEOUT_MS;
+            else process.env.GEMINI_SCORM_VISUAL_PROMPT_TIMEOUT_MS = original;
+        }
     });
 });
