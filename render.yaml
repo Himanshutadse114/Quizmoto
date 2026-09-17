@@ -176,3 +176,9 @@ services:
       - type: rewrite
         source: /campaign/*
         destination: /app.html
+      - type: rewrite
+        source: /publica/*
+        destination: /app.html
+      - type: rewrite
+        source: /publica-library/*
+        destination: /app.html
