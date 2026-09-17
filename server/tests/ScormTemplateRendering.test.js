@@ -78,6 +78,40 @@ describe('SCORM template fixed-stage rendering', () => {
         expect(trimmed).to.match(/[.!?]$/);
     });
 
+    it('keeps the explanation and final learner action on Highly Interactive slides', () => {
+        const fitted = fitSlidePresentationContent({
+            title: 'Check unexpected attachments',
+            layout: 'cards',
+            content: [
+                'Unexpected email attachments can imitate familiar invoices, reports, forms, and other routine business documents.',
+                'Attackers often create urgency so that careful verification feels inconvenient, slow, or unnecessary.',
+                'A convincing file name and familiar PDF icon do not prove the attachment is safe.',
+                'Verify unexpected files with the sender through a separate trusted channel before opening them.'
+            ].join(' '),
+            keyPoints: ['Verify the sender']
+        }, 'highly-interactive');
+
+        expect(fitted.displayContent).to.include('Unexpected email attachments');
+        expect(fitted.displayContent).to.include('Verify unexpected files with the sender');
+        expect(fitted.displayContent).to.not.include('A convincing file name');
+        expect(wordCount(fitted.displayContent)).to.be.at.most(BODY_WORD_BUDGETS['highly-interactive'].cards);
+    });
+
+    it('uses complete supporting statements instead of clipped card fragments', () => {
+        const fitted = fitSlidePresentationContent({
+            title: 'Inspect PDF attachments',
+            layout: 'cards',
+            content: 'A PDF attachment can contain a malicious script or a deceptive link. Verify unexpected files before opening them.',
+            keyPoints: ['Malicious PDF content', 'Verify unexpected files']
+        }, 'highly-interactive');
+
+        expect(fitted.keyPoints).to.deep.equal([
+            'A PDF attachment can contain a malicious script or a deceptive link.',
+            'Verify unexpected files before opening them.'
+        ]);
+        fitted.keyPoints.forEach((point) => expect(point).to.match(/[.!?]$/));
+    });
+
     it('injects template metadata before generic body interaction scripts and has no clipping floor', () => {
         const binding = createTemplateBinding('highly-interactive', { interactionLevel: 'high' });
         const course = planExperienceForTemplate(analysisWithLongSlides(), binding);

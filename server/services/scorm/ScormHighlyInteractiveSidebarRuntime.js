@@ -1,7 +1,7 @@
 'use strict';
 
-const STYLE_ID = 'quizmoto-highly-interactive-sidebar-v5';
-const SCRIPT_ID = 'quizmoto-highly-interactive-sidebar-script-v5';
+const STYLE_ID = 'quizmoto-highly-interactive-sidebar-v6';
+const SCRIPT_ID = 'quizmoto-highly-interactive-sidebar-script-v6';
 
 function style() {
     return `<style id="${STYLE_ID}">
@@ -19,19 +19,18 @@ body[data-qmx-course-template="highly-interactive"] .qmx-interaction-instruction
 body[data-qmx-course-template="highly-interactive"] .qmx-interaction-instruction::before{content:'↗';display:grid;place-items:center;width:21px;height:21px;flex:0 0 21px;border-radius:50%;background:var(--soft,#dff4f0);color:var(--primary-dark,#087f75);font-size:10px;font-weight:800}
 body[data-qmx-course-template="highly-interactive"] .qmx-interaction-instruction.is-complete{color:var(--primary-dark,#087f75)}
 body[data-qmx-course-template="highly-interactive"] .qmx-interaction-instruction.is-complete::before{content:'✓';background:var(--primary,#119286);color:#fff}
-body[data-qmx-course-template="highly-interactive"] .qmx-interaction-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:repeat(2,minmax(112px,1fr))!important;gap:12px!important;width:100%!important;max-width:100%!important;margin-top:18px!important;align-items:stretch!important}
-body[data-qmx-course-template="highly-interactive"] .qmx-reveal-card{position:relative;min-width:0;height:112px;min-height:112px;padding:0;border:0;background:transparent;perspective:1200px;cursor:pointer;text-align:left;contain:layout paint}
-body[data-qmx-course-template="highly-interactive"] .qmx-reveal-card-inner{position:relative;display:grid;width:100%;height:112px;min-height:112px;transform-style:preserve-3d;transition:transform .48s cubic-bezier(.2,.72,.22,1)}
+body[data-qmx-course-template="highly-interactive"] .qmx-interaction-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:repeat(2,minmax(164px,1fr))!important;gap:12px!important;width:100%!important;max-width:100%!important;margin-top:18px!important;align-items:stretch!important}
+body[data-qmx-course-template="highly-interactive"] .qmx-reveal-card{position:relative;min-width:0;height:164px;min-height:164px;padding:0;border:0;background:transparent;perspective:1200px;cursor:pointer;text-align:left;contain:layout paint}
+body[data-qmx-course-template="highly-interactive"] .qmx-reveal-card-inner{position:relative;display:grid;width:100%;height:164px;min-height:164px;transform-style:preserve-3d;transition:transform .48s cubic-bezier(.2,.72,.22,1)}
 body[data-qmx-course-template="highly-interactive"] .qmx-reveal-card.is-revealed .qmx-reveal-card-inner{transform:rotateY(180deg)}
-body[data-qmx-course-template="highly-interactive"] .qmx-reveal-face{grid-area:1/1;display:flex;flex-direction:column;align-items:flex-start;min-width:0;min-height:112px;padding:16px 17px;border:1px solid var(--paper-3,#d8e5e2);border-radius:14px;background:var(--surface,#fff);backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 8px 20px rgba(15,23,42,.045);overflow:hidden}
+body[data-qmx-course-template="highly-interactive"] .qmx-reveal-face{grid-area:1/1;display:flex;flex-direction:column;align-items:flex-start;min-width:0;height:164px;min-height:164px;padding:17px 18px;border:1px solid var(--paper-3,#d8e5e2);border-radius:14px;background:var(--surface,#fff);backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 8px 20px rgba(15,23,42,.045);overflow:hidden}
 body[data-qmx-course-template="highly-interactive"] .qmx-reveal-front{transform:rotateY(0deg)}
 body[data-qmx-course-template="highly-interactive"] .qmx-reveal-back{transform:rotateY(180deg);border-color:var(--primary,#119286);background:var(--soft,#edf8f6)}
-body[data-qmx-course-template="highly-interactive"] .qmx-reveal-back{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 body[data-qmx-course-template="highly-interactive"] .qmx-interaction-number{display:grid;place-items:center;width:30px;height:30px;min-width:30px;margin-bottom:12px;border:1px solid var(--paper-3,#d8e5e2);border-radius:9px;background:var(--paper,#f3f8f7);color:var(--primary-dark,#087f75);font-size:10px;font-weight:800}
 body[data-qmx-course-template="highly-interactive"] .qmx-reveal-card[data-qmx-revealed="true"] .qmx-interaction-number{border-color:var(--primary,#119286);background:var(--primary,#119286);color:#fff}
 body[data-qmx-course-template="highly-interactive"] .qmx-interaction-label{font-size:15px;line-height:1.28;font-weight:700;color:var(--ink,#10211f)}
-body[data-qmx-course-template="highly-interactive"] .qmx-interaction-detail{font-size:13.5px;line-height:1.46;font-weight:540;color:var(--ink,#10211f)}
-body[data-qmx-course-template="highly-interactive"] .qmx-interaction-hint{margin-top:auto;padding-top:12px;font-size:9px;line-height:1.2;text-transform:uppercase;letter-spacing:.08em;font-weight:800;color:var(--primary-dark,#087f75)}
+body[data-qmx-course-template="highly-interactive"] .qmx-interaction-detail{font-size:13.25px;line-height:1.42;font-weight:540;color:var(--ink,#10211f)}
+body[data-qmx-course-template="highly-interactive"] .qmx-interaction-hint{margin-top:auto;padding-top:8px;font-size:9px;line-height:1.2;text-transform:uppercase;letter-spacing:.08em;font-weight:800;color:var(--primary-dark,#087f75)}
 body[data-qmx-course-template="highly-interactive"] .qmx-reveal-card:hover .qmx-reveal-face,body[data-qmx-course-template="highly-interactive"] .qmx-reveal-card:focus-visible .qmx-reveal-face{border-color:var(--primary,#119286)}
 body[data-qmx-course-template="highly-interactive"] .qmx-reveal-card:focus-visible{outline:2px solid var(--primary,#119286);outline-offset:3px;border-radius:14px}
 body[data-qmx-course-template="highly-interactive"] .qmx-step-grid-v2,
@@ -83,7 +82,7 @@ body[data-qmx-course-template="highly-interactive"] .qmx-learning-shell.has-imag
 body[data-qmx-course-template="highly-interactive"] .qmx-interaction-label{font-size:15.5px}
 }
 @media(max-width:900px){body[data-qmx-course-template="highly-interactive"] .qmx-interaction-grid,body[data-qmx-course-template="highly-interactive"] .qmx-step-grid-v2,body[data-qmx-course-template="highly-interactive"] .qmx-explore-grid-v2,body[data-qmx-course-template="highly-interactive"] .qmx-compare-grid-v2,body[data-qmx-course-template="highly-interactive"] .qmx-decision-grid-v2{grid-template-columns:1fr!important;grid-template-rows:auto!important}}
-@media(max-height:720px){body[data-qmx-course-template="highly-interactive"] footer{height:70px!important;min-height:70px!important;padding:9px 22px 11px!important}body[data-qmx-course-template="highly-interactive"] .qmx-reveal-face{min-height:96px;padding:12px 14px}body[data-qmx-course-template="highly-interactive"] .qmx-reveal-card,body[data-qmx-course-template="highly-interactive"] .qmx-reveal-card-inner{height:96px;min-height:96px}body[data-qmx-course-template="highly-interactive"] .qmx-interaction-panel{height:108px;min-height:108px;max-height:108px;padding:12px 14px}body[data-qmx-course-template="highly-interactive"] .qmx-interaction-panel p{max-height:64px}}
+@media(max-height:720px){body[data-qmx-course-template="highly-interactive"] footer{height:70px!important;min-height:70px!important;padding:9px 22px 11px!important}body[data-qmx-course-template="highly-interactive"] .qmx-reveal-face{height:148px;min-height:148px;padding:14px 15px}body[data-qmx-course-template="highly-interactive"] .qmx-reveal-card,body[data-qmx-course-template="highly-interactive"] .qmx-reveal-card-inner{height:148px;min-height:148px}body[data-qmx-course-template="highly-interactive"] .qmx-interaction-grid{grid-template-rows:repeat(2,minmax(148px,1fr))!important}body[data-qmx-course-template="highly-interactive"] .qmx-interaction-panel{height:108px;min-height:108px;max-height:108px;padding:12px 14px}body[data-qmx-course-template="highly-interactive"] .qmx-interaction-panel p{max-height:64px}}
 @media(prefers-reduced-motion:reduce){body[data-qmx-course-template="highly-interactive"] .qmx-reveal-card-inner{transition:none!important}}
 </style>`;
 }

@@ -29,7 +29,7 @@ const BODY_WORD_BUDGETS = Object.freeze({
     })
 });
 
-const INTERACTION_POINT_WORD_LIMIT = 22;
+const INTERACTION_POINT_WORD_LIMIT = 28;
 const TOKEN_STOP_WORDS = new Set([
     'the', 'a', 'an', 'and', 'or', 'to', 'of', 'for', 'in', 'on', 'with', 'from', 'your', 'you',
     'is', 'are', 'be', 'as', 'at', 'this', 'that', 'these', 'those', 'it', 'its', 'can', 'may', 'will',
@@ -75,6 +75,39 @@ function trimToWordBudget(value, maxWords) {
     const clipped = allWords.slice(0, maxWords).join(' ').replace(/[,:;\-]+$/, '').trim();
     if (!clipped) return '';
     return /[.!?]$/.test(clipped) ? clipped : `${clipped}.`;
+}
+
+function trimToTeachingBudget(value, maxWords) {
+    const source = clean(value);
+    const allWords = words(source);
+    if (!source || !Number.isFinite(maxWords) || maxWords <= 0 || allWords.length <= maxWords) return source;
+
+    const sentences = sentenceChunks(source).map(clean).filter(Boolean);
+    if (sentences.length < 2) return trimToWordBudget(source, maxWords);
+
+    const conclusion = sentences[sentences.length - 1];
+    const conclusionWords = words(conclusion).length;
+    const canReserveConclusion = conclusionWords > 0 && conclusionWords <= Math.min(28, Math.floor(maxWords * 0.48));
+    const openingBudget = canReserveConclusion ? maxWords - conclusionWords : maxWords;
+    const selected = [];
+    let selectedWords = 0;
+
+    for (const sentence of sentences.slice(0, -1)) {
+        const count = words(sentence).length;
+        if (!count || selectedWords + count > openingBudget) break;
+        selected.push(sentence);
+        selectedWords += count;
+    }
+
+    if (canReserveConclusion && selected.length && selectedWords + conclusionWords <= maxWords) {
+        selected.push(conclusion);
+        selectedWords += conclusionWords;
+    }
+
+    if (selected.length >= 2 && selectedWords >= Math.max(24, Math.floor(maxWords * 0.55))) {
+        return clean(selected.join(' '));
+    }
+    return trimToWordBudget(source, maxWords);
 }
 
 function canonicalToken(value) {
@@ -138,8 +171,9 @@ function enrichInteractiveKeyPoints(slide) {
     return points.map((point) => {
         const match = supportingSentence(point, sentences, usedIndexes);
         if (!match) return point;
+        if (words(match.sentence).length > INTERACTION_POINT_WORD_LIMIT) return point;
         usedIndexes.add(match.index);
-        return trimToWordBudget(match.sentence, INTERACTION_POINT_WORD_LIMIT);
+        return match.sentence;
     });
 }
 
@@ -181,7 +215,9 @@ function fitSlidePresentationContent(slide, templateId) {
     return {
         ...source,
         ...(enrichPoints ? { keyPoints: enrichInteractiveKeyPoints(source) } : {}),
-        displayContent: trimToWordBudget(source.content, maxWords),
+        displayContent: templateId === 'highly-interactive'
+            ? trimToTeachingBudget(source.content, maxWords)
+            : trimToWordBudget(source.content, maxWords),
         displayContentWordLimit: maxWords
     };
 }
@@ -208,5 +244,6 @@ module.exports = {
     fitTemplatePresentationContent,
     isScenarioDecision,
     layoutBudget,
+    trimToTeachingBudget,
     trimToWordBudget
 };

@@ -48,18 +48,19 @@ describe('Highly Interactive learner sidebar runtime', () => {
         expect(css).to.include('height:min(80%,540px)!important');
         expect(css).to.include('.qmx-interaction-grid');
         expect(css).to.include('grid-template-columns:repeat(2,minmax(0,1fr))!important');
-        expect(css).to.include('grid-template-rows:repeat(2,minmax(112px,1fr))!important');
+        expect(css).to.include('grid-template-rows:repeat(2,minmax(164px,1fr))!important');
     });
 
     it('keeps interaction geometry stable while cards and detail panels change state', () => {
         const css = style();
-        expect(css).to.include('height:112px;min-height:112px');
+        expect(css).to.include('height:164px;min-height:164px');
         expect(css).to.include('contain:layout paint');
         expect(css).to.include('transform:none!important');
         expect(css).to.include('height:124px;min-height:124px;max-height:124px');
         expect(css).to.include('max-height:76px');
         expect(css).to.include('overflow:auto');
-        expect(css).to.include('.qmx-reveal-back{overflow-y:auto');
+        expect(css).to.not.include('.qmx-reveal-back{overflow-y:auto');
+        expect(css).to.include('height:148px;min-height:148px');
     });
 
     it('uses teaser-first cards so full learning detail is only on the revealed face', () => {
