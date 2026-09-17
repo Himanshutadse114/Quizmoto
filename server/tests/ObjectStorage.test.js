@@ -58,6 +58,19 @@ describe('ObjectStorage (Phase 3)', function () {
         expect(Buffer.concat(chunks)[0]).to.equal(0x50);
     });
 
+    it('getObjectStream returns an exact byte range for video seeking', async () => {
+        const key = 'videos/example/source.mp4';
+        await storage.putObject({ key, body: Buffer.from('0123456789'), contentType: 'video/mp4' });
+
+        const obj = await storage.getObjectStream(key, { start: 2, end: 5 });
+        const chunks = [];
+        for await (const chunk of obj.stream) chunks.push(chunk);
+
+        expect(Buffer.concat(chunks).toString()).to.equal('2345');
+        expect(obj.contentLength).to.equal(4);
+        expect(obj.contentRange).to.equal('bytes 2-5/10');
+    });
+
     it('deleteObject removes the key', async () => {
         const key = 'reports/3/gone.pdf';
         await storage.putObject({ key, body: Buffer.from('x') });

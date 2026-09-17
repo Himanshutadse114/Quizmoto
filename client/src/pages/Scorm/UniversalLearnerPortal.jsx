@@ -4,6 +4,7 @@ import axios from 'axios';
 import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
 import {
   BookOpen,
+  BookOpenCheck,
   CalendarDays,
   CheckCircle2,
   Clock3,
@@ -11,9 +12,12 @@ import {
   GraduationCap,
   LogOut,
   Mail,
-  RefreshCw
+  RefreshCw,
+  Film,
+  ChevronRight
 } from 'lucide-react';
 import { apiUrl } from '../../config';
+import LearnerVideoModal from './LearnerVideoModal';
 
 const UNIVERSAL_SESSION_KEY = 'lmsgen_learner_universal';
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1001652255296-695gf3vjul0fjh1oden4k2n6tvvdvncn.apps.googleusercontent.com';
@@ -65,6 +69,8 @@ export default function UniversalLearnerPortal() {
   const [loading, setLoading] = useState(Boolean(token));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [selectedCampaignId, setSelectedCampaignId] = useState('');
+  const [videoPlayer, setVideoPlayer] = useState(null);
 
   const loadDashboard = useCallback(async (sessionToken = token) => {
     if (!sessionToken) return null;
@@ -85,7 +91,7 @@ export default function UniversalLearnerPortal() {
       }
       try {
         await loadDashboard(token);
-      } catch (_) {
+      } catch {
         localStorage.removeItem(UNIVERSAL_SESSION_KEY);
         if (!cancelled) {
           setToken('');
@@ -119,7 +125,7 @@ export default function UniversalLearnerPortal() {
     if (id) localStorage.setItem(workspaceSessionKey(id), data.token);
     setToken(data.token);
     setWorkspaceId(id || '');
-    setDashboard({ learner: data.learner, workspace: data.workspace, courses: data.courses || [] });
+    await loadDashboard(data.token);
   };
 
   const loginGoogle = async (credentialResponse) => {
@@ -192,9 +198,31 @@ export default function UniversalLearnerPortal() {
     }
   };
 
+  const launchFlipbook = async (campaign, book) => {
+    setBusy(true); setError('');
+    try {
+      const response = await axios.post(apiUrl(`/api/scorm-learner/campaigns/${campaign.id}/flipbooks/${book.assignmentId}/launch`), {}, { headers: { Authorization: `Bearer ${token}` } });
+      const popup = window.open(response.data?.url, `lmsgen_publica_${book.assignmentId}`, 'popup=yes,width=1280,height=820,resizable=yes,scrollbars=yes');
+      if (popup) popup.focus(); else window.location.assign(response.data?.url);
+    } catch (err) { setError(err.response?.data?.message || 'Unable to open this publication.'); }
+    finally { setBusy(false); }
+  };
+
+  const launchVideo = async (campaign, video) => {
+    setBusy(true); setError('');
+    try {
+      const response = await axios.post(apiUrl(`/api/scorm-learner/campaigns/${campaign.id}/videos/${video.videoId}/launch`), {}, { headers: { Authorization: `Bearer ${token}` } });
+      setVideoPlayer({ campaign, item: video, streamUrl: response.data?.streamUrl });
+    } catch (err) { setError(err.response?.data?.message || 'Unable to open this video.'); }
+    finally { setBusy(false); }
+  };
+
   const courses = dashboard?.courses || [];
-  const completed = courses.filter((course) => course.status === 'completed').length;
-  const progress = courses.length ? Math.round((completed / courses.length) * 100) : 0;
+  const campaigns = dashboard?.campaigns || [];
+  const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId) || null;
+  const allItems = [...courses, ...campaigns.flatMap((campaign) => [...(campaign.courses || []), ...(campaign.flipbooks || []), ...(campaign.videos || [])])];
+  const completed = allItems.filter((item) => item.status === 'completed').length;
+  const progress = allItems.length ? Math.round(allItems.reduce((sum, item) => sum + Number(item.progressPercent || (item.status === 'completed' ? 100 : 0)), 0) / allItems.length) : 0;
 
   if (loading) {
     return <div className="min-h-screen bg-[#f4f8f7] text-[#102321] grid place-items-center"><div className="text-center"><RefreshCw size={22} className="animate-spin mx-auto text-[#159b91]" /><div className="mt-3 text-sm text-[#58706d]">Loading learner portal…</div></div></div>;
@@ -202,6 +230,7 @@ export default function UniversalLearnerPortal() {
 
   return (
     <div className="min-h-screen bg-[#f4f8f7] text-[#102321]">
+      {videoPlayer && <LearnerVideoModal item={videoPlayer.item} streamUrl={videoPlayer.streamUrl} token={token} progressPath={`/api/scorm-learner/campaigns/${videoPlayer.campaign.id}/videos/${videoPlayer.item.videoId}/progress`} onClose={() => { setVideoPlayer(null); loadDashboard().catch(() => {}); }} />}
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-[#dce8e5]">
         <div className="max-w-6xl mx-auto px-4 md:px-7 h-16 flex items-center gap-3">
           <img src="/branding/lmsgen-logo-light.png" alt="LMSGEN" className="w-[118px] h-auto" />
@@ -247,16 +276,22 @@ export default function UniversalLearnerPortal() {
               <div className="absolute -right-16 -top-20 w-64 h-64 rounded-full border-[36px] border-[#45c5bc]/20" />
               <div className="relative grid md:grid-cols-[1fr_auto] gap-7 md:items-end">
                 <div><div className="text-[10px] uppercase tracking-[.16em] font-bold text-[#8bd8d1]">{dashboard.workspace?.name || 'Learning dashboard'}</div><h1 className="text-3xl md:text-[46px] font-semibold tracking-[-.045em] mt-2">Welcome, {dashboard.learner?.name || 'Learner'}</h1><p className="text-sm text-white/65 mt-3 max-w-2xl">All current courses assigned to your verified email are collected here, including campaign courses.</p></div>
-                <div className="min-w-[170px]"><div className="flex justify-between text-xs mb-2"><span>Overall progress</span><strong>{progress}%</strong></div><div className="h-2 rounded-full bg-white/15 overflow-hidden"><div className="h-full bg-[#45c5bc] rounded-full" style={{ width: `${progress}%` }} /></div><div className="text-[10px] text-white/55 mt-2">{completed} of {courses.length} completed</div></div>
+                <div className="min-w-[170px]"><div className="flex justify-between text-xs mb-2"><span>Overall progress</span><strong>{progress}%</strong></div><div className="h-2 rounded-full bg-white/15 overflow-hidden"><div className="h-full bg-[#45c5bc] rounded-full" style={{ width: `${progress}%` }} /></div><div className="text-[10px] text-white/55 mt-2">{completed} of {allItems.length} completed</div></div>
               </div>
             </section>
 
             {error && <div className="mt-5 rounded-xl border border-[#f5c4cc] bg-[#fff3f5] text-[#9f3345] px-4 py-3 text-sm">{error}</div>}
-            <div className="mt-7 flex items-center justify-between gap-3"><div><h2 className="text-xl font-semibold">Assigned courses</h2><p className="text-xs text-[#6c817e] mt-1">{courses.length} course{courses.length === 1 ? '' : 's'} assigned to {dashboard.learner?.email}</p></div><button type="button" onClick={() => loadDashboard()} className="w-10 h-10 rounded-xl border border-[#d4e2df] bg-white grid place-items-center"><RefreshCw size={15} /></button></div>
+            <div className="mt-7 flex items-center justify-between gap-3"><div><h2 className="text-xl font-semibold">My learning campaigns</h2><p className="text-xs text-[#6c817e] mt-1">Choose a campaign to see everything assigned inside it.</p></div><button type="button" onClick={() => loadDashboard()} className="w-10 h-10 rounded-xl border border-[#d4e2df] bg-white grid place-items-center"><RefreshCw size={15} /></button></div>
 
-            {courses.length === 0 ? (
+            {campaigns.length > 0 && <div className="mt-5 grid md:grid-cols-2 lg:grid-cols-3 gap-4">{campaigns.map((campaign) => { const items = [...(campaign.courses || []), ...(campaign.flipbooks || []), ...(campaign.videos || [])]; const done = items.filter((item) => item.status === 'completed').length; return <button type="button" key={campaign.id} onClick={() => setSelectedCampaignId((current) => current === campaign.id ? '' : campaign.id)} className={`bg-white border rounded-2xl p-5 text-left transition shadow-[0_8px_30px_rgba(16,35,33,.04)] ${selectedCampaignId === campaign.id ? 'border-[#31aca2] ring-2 ring-[#45c5bc]/20' : 'border-[#dce8e5]'}`}><div className="flex items-start justify-between gap-3"><span className="w-10 h-10 rounded-xl bg-[#e3f5f3] text-[#117f77] grid place-items-center"><GraduationCap size={18} /></span><ChevronRight size={17} className={selectedCampaignId === campaign.id ? 'rotate-90 transition' : 'transition'} /></div><h3 className="text-lg font-semibold mt-4">{campaign.name}</h3><p className="text-xs text-[#6d817e] mt-2">{items.length} learning item{items.length === 1 ? '' : 's'} · {done} completed</p><div className="mt-4 flex gap-3 text-[10px] text-[#647a76]"><span>{campaign.courses?.length || 0} SCORM</span><span>{campaign.flipbooks?.length || 0} Publica</span><span>{campaign.videos?.length || 0} video</span></div></button>; })}</div>}
+
+            {selectedCampaign && <section className="mt-6 rounded-2xl border border-[#dce8e5] bg-white p-5 md:p-6"><div><div className="text-[10px] uppercase tracking-[.1em] font-bold text-[#168d84]">Campaign learning</div><h2 className="text-2xl font-semibold mt-1">{selectedCampaign.name}</h2></div><div className="mt-5 grid md:grid-cols-2 lg:grid-cols-3 gap-4">{(selectedCampaign.courses || []).map((course) => <article key={course.registrationId} className="rounded-xl border border-[#dce8e5] p-4"><BookOpen size={18} className="text-[#168d84]" /><h3 className="font-semibold mt-3">{course.title}</h3><p className="text-xs text-[#6d817e] mt-2 line-clamp-2">{course.description || 'SCORM learning module'}</p><button type="button" onClick={() => launch(course)} className="mt-4 w-full h-10 rounded-xl bg-[#45c5bc] text-xs font-semibold">{course.status === 'in_progress' ? 'Continue' : 'Open module'}</button></article>)}{(selectedCampaign.flipbooks || []).map((book) => <article key={book.assignmentId} className="rounded-xl border border-[#dce8e5] p-4"><BookOpenCheck size={18} className="text-[#168d84]" /><h3 className="font-semibold mt-3">{book.title}</h3><p className="text-xs text-[#6d817e] mt-2">{book.progressPercent || 0}% read</p><button type="button" onClick={() => launchFlipbook(selectedCampaign, book)} className="mt-4 w-full h-10 rounded-xl bg-[#45c5bc] text-xs font-semibold">Open publication</button></article>)}{(selectedCampaign.videos || []).map((video) => <article key={video.videoId} className="rounded-xl border border-[#dce8e5] p-4"><Film size={18} className="text-[#168d84]" /><h3 className="font-semibold mt-3">{video.title}</h3><p className="text-xs text-[#6d817e] mt-2">{video.progressPercent || 0}% watched</p><button type="button" onClick={() => launchVideo(selectedCampaign, video)} className="mt-4 w-full h-10 rounded-xl bg-[#45c5bc] text-xs font-semibold">Watch video</button></article>)}</div></section>}
+
+            {courses.length > 0 && <div className="mt-9"><h2 className="text-xl font-semibold">Direct assignments</h2><p className="text-xs text-[#6c817e] mt-1">Courses assigned outside a campaign.</p></div>}
+
+            {courses.length === 0 && campaigns.length === 0 ? (
               <div className="mt-5 bg-white border border-[#dce8e5] rounded-2xl p-10 text-center"><BookOpen size={25} className="mx-auto text-[#78908c]" /><div className="font-semibold mt-3">No courses assigned</div></div>
-            ) : (
+            ) : courses.length > 0 ? (
               <div className="mt-5 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {courses.map((course) => {
                   const complete = course.status === 'completed';
@@ -275,7 +310,7 @@ export default function UniversalLearnerPortal() {
                   );
                 })}
               </div>
-            )}
+            ) : null}
           </>
         )}
       </main>

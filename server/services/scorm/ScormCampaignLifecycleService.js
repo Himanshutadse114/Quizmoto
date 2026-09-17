@@ -2,8 +2,14 @@ const { Op } = require('sequelize');
 const { sequelize } = require('../../config/database');
 const {
     ScormCampaign,
-    ScormRegistration
+    ScormRegistration,
+    ScormCampaignVideo,
+    ScormVideoProgress
 } = require('../../models/scorm');
+const ScormCampaignFlipbook = require('../../models/scorm/ScormCampaignFlipbook');
+const ScormFlipbookAssignment = require('../../models/scorm/ScormFlipbookAssignment');
+const { ensureFlipbookAssignmentSchema } = require('./ScormFlipbookAssignmentService');
+const { ensureVideoSchema } = require('./ScormVideoService');
 
 function fail(message, code, status = 400) {
     const err = new Error(message);
@@ -80,6 +86,8 @@ async function stopCampaign({ campaignId, hostId, workspaceId }) {
 async function deleteCampaign({ campaignId, hostId, workspaceId }) {
     let removedId = campaignId;
 
+    await Promise.all([ensureFlipbookAssignmentSchema(), ensureVideoSchema()]);
+
     await sequelize.transaction(async (transaction) => {
         const campaign = await findCampaignForUpdate({ campaignId, hostId, workspaceId, transaction });
 
@@ -104,6 +112,15 @@ async function deleteCampaign({ campaignId, hostId, workspaceId }) {
             { campaignId: null, status: 'revoked' },
             { where: { campaignId: campaign.id }, transaction }
         );
+        await ScormFlipbookAssignment.update(
+            { campaignId: null, status: 'revoked' },
+            { where: { campaignId: campaign.id }, transaction }
+        );
+        await Promise.all([
+            ScormCampaignFlipbook.destroy({ where: { campaignId: campaign.id }, transaction }),
+            ScormCampaignVideo.destroy({ where: { campaignId: campaign.id }, transaction }),
+            ScormVideoProgress.destroy({ where: { campaignId: campaign.id }, transaction })
+        ]);
 
         removedId = campaign.id;
         await campaign.destroy({ transaction });

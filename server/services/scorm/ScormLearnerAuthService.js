@@ -8,7 +8,9 @@ const {
     ScormWorkspaceAuthConfig,
     ScormRegistration,
     ScormCourse,
-    ScormPackage
+    ScormPackage,
+    ScormCampaign,
+    ScormCampaignLearner
 } = require('../../models/scorm');
 const {
     signRegistrationToken,
@@ -235,12 +237,12 @@ async function verifyMicrosoftCredential(config, idToken) {
     return identity;
 }
 
-async function findAssignedRegistrations(hostId, email) {
+async function findAssignedRegistrations(hostId, email, { directOnly = false } = {}) {
     const normalized = normalizeEmail(email);
     return ScormRegistration.findAll({
         where: {
             isPreview: false,
-            campaignId: null,
+            ...(directOnly ? { campaignId: null } : {}),
             status: { [Op.notIn]: ['revoked', 'superseded'] },
             [Op.and]: [
                 sequelize.where(sequelize.fn('LOWER', sequelize.col('learnerEmail')), normalized)
@@ -254,14 +256,38 @@ async function findAssignedRegistrations(hostId, email) {
             include: [{ model: ScormPackage, as: 'package', required: false }]
         }],
         order: [['assignedAt', 'DESC'], ['createdAt', 'DESC']]
+    }).then(async (rows) => {
+        if (directOnly) return rows;
+        const campaignIds = [...new Set(rows.map((row) => row.campaignId).filter(Boolean).map(String))];
+        if (!campaignIds.length) return rows;
+        const active = await ScormCampaign.findAll({ where: { id: { [Op.in]: campaignIds }, status: 'active' }, attributes: ['id'], raw: true });
+        const activeIds = new Set(active.map((row) => String(row.id)));
+        return rows.filter((row) => !row.campaignId || activeIds.has(String(row.campaignId)));
     });
 }
 
 async function assertLearnerAssigned(workspace, identity) {
     const assignments = await findAssignedRegistrations(workspace.ownerUserId, identity.email);
-    if (!assignments.length) {
+    if (assignments.length) return assignments;
+
+    const memberships = await ScormCampaignLearner.findAll({
+        where: { email: normalizeEmail(identity.email) },
+        attributes: ['campaignId']
+    });
+    const campaignIds = memberships.map((row) => row.campaignId).filter(Boolean);
+    const activeCampaignCount = campaignIds.length
+        ? await ScormCampaign.count({
+            where: {
+                id: { [Op.in]: campaignIds },
+                workspaceId: workspace.id,
+                hostId: workspace.ownerUserId,
+                status: 'active'
+            }
+        })
+        : 0;
+    if (!activeCampaignCount) {
         throw fail(
-            'No direct courses are assigned to this learner account. If your course was assigned through a campaign, use the campaign link sent by your administrator.',
+            'No active learning is assigned to this learner account.',
             'SCORM_LEARNER_NOT_ASSIGNED',
             403
         );
@@ -311,6 +337,7 @@ function serializeAssignment(registration) {
         instanceId: registration.id,
         registrationId: registration.id,
         courseId: course?.id || registration.courseId,
+        campaignId: registration.campaignId || null,
         title: course?.title || 'Course',
         description: course?.description || null,
         status: completed ? 'completed' : started ? 'in_progress' : 'not_started',
@@ -371,10 +398,34 @@ async function getLearnerDashboard(context) {
         throw fail('Learner workspace is no longer active.', 'SCORM_LEARNER_WORKSPACE_NOT_FOUND', 404);
     }
     const assignments = await findAssignedRegistrations(context.hostId, context.email);
+    const direct = assignments.filter((assignment) => !assignment.campaignId);
+    const memberships = await ScormCampaignLearner.findAll({
+        where: { email: normalizeEmail(context.email) },
+        attributes: ['campaignId']
+    });
+    const campaignIds = [...new Set(memberships.map((row) => String(row.campaignId)).filter(Boolean))];
+    const campaignRows = campaignIds.length ? await ScormCampaign.findAll({
+        where: {
+            id: { [Op.in]: campaignIds },
+            workspaceId: workspace.id,
+            hostId: context.hostId,
+            status: 'active'
+        },
+        order: [['createdAt', 'DESC']]
+    }) : [];
+    const campaigns = campaignRows.map((campaign) => ({
+        id: campaign.id,
+        name: campaign.name,
+        dueAt: campaign.dueAt || null,
+        required: campaign.required !== false,
+        status: campaign.status,
+        courses: assignments.filter((assignment) => String(assignment.campaignId || '') === String(campaign.id)).map(serializeAssignment)
+    }));
     return {
         learner: { email: context.email, name: context.name || context.email, provider: context.provider || 'email' },
         workspace: { id: workspace.id, name: workspace.name },
-        courses: assignments.map(serializeAssignment)
+        courses: direct.map(serializeAssignment),
+        campaigns
     };
 }
 
@@ -389,11 +440,15 @@ async function launchLearnerCourse(context, registrationId) {
     if (!registration || registration.isPreview || ['revoked', 'superseded'].includes(registration.status) || !registration.course) {
         throw fail('Course assignment not found.', 'SCORM_ASSIGNMENT_NOT_FOUND', 404);
     }
-    if (registration.campaignId && context.typ !== 'scorm_campaign_learner') {
-        throw fail('This course was assigned through a campaign. Open it from the campaign learner link.', 'SCORM_CAMPAIGN_AUTH_REQUIRED', 403);
-    }
     if (registration.campaignId && context.typ === 'scorm_campaign_learner' && String(registration.campaignId) !== String(context.campaignId || '')) {
         throw fail('This course belongs to a different campaign.', 'SCORM_CAMPAIGN_ASSIGNMENT_FORBIDDEN', 403);
+    }
+    if (registration.campaignId && context.typ !== 'scorm_campaign_learner') {
+        const [campaign, learner] = await Promise.all([
+            ScormCampaign.findOne({ where: { id: registration.campaignId, workspaceId: context.workspaceId, status: 'active' } }),
+            ScormCampaignLearner.findOne({ where: { campaignId: registration.campaignId, email: normalizeEmail(context.email) } })
+        ]);
+        if (!campaign || !learner) throw fail('This campaign assignment is no longer available.', 'SCORM_CAMPAIGN_ASSIGNMENT_FORBIDDEN', 403);
     }
     if (Number(registration.course.hostId) !== Number(context.hostId) || normalizeEmail(registration.learnerEmail) !== normalizeEmail(context.email)) {
         throw fail('This course is not assigned to your learner account.', 'SCORM_ASSIGNMENT_FORBIDDEN', 403);

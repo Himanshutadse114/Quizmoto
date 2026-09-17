@@ -12,6 +12,7 @@ import {
   Download,
   FileSpreadsheet,
   GraduationCap,
+  Layers3,
   Search,
   Trophy,
   UserRound,
@@ -99,7 +100,7 @@ async function blobErrorMessage(blob, fallback) {
     const text = await blob.text();
     const parsed = JSON.parse(text);
     return parsed.message || fallback;
-  } catch (_) {
+  } catch {
     return fallback;
   }
 }
@@ -124,7 +125,7 @@ function StatCard({ icon: Icon, label, value, hint }) {
           <div className="mt-1.5 text-xl font-semibold">{value}</div>
           {hint && <div className="reports-muted mt-1 text-[10px]">{hint}</div>}
         </div>
-        <div className="w-8 h-8 rounded-lg grid place-items-center reports-accent" style={{ background: 'rgba(79,201,191,.10)' }}><Icon size={14} /></div>
+        <div className="w-8 h-8 rounded-lg grid place-items-center reports-accent" style={{ background: 'rgba(79,201,191,.10)' }}>{React.createElement(Icon, { size: 14 })}</div>
       </div>
     </div>
   );
@@ -135,6 +136,7 @@ export default function ScormReports() {
   const navigate = useNavigate();
   const [reports, setReports] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
+  const [reportTypes, setReportTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedCourseId, setExpandedCourseId] = useState(null);
   const [expandedCourseLearnerId, setExpandedCourseLearnerId] = useState(null);
@@ -153,11 +155,13 @@ export default function ScormReports() {
     setMessage('');
     Promise.all([
       axios.get(apiUrl('/api/scorm/courses/reports/all'), { headers: { Authorization: `Bearer ${token}` } }),
-      axios.get(apiUrl('/api/scorm/campaigns'), { headers: { Authorization: `Bearer ${token}` } })
+      axios.get(apiUrl('/api/scorm/campaigns'), { headers: { Authorization: `Bearer ${token}` } }),
+      axios.get(apiUrl('/api/scorm/reports/catalog'), { headers: { Authorization: `Bearer ${token}` } })
     ])
-      .then(([courseResponse, campaignResponse]) => {
+      .then(([courseResponse, campaignResponse, catalogResponse]) => {
         setReports(courseResponse.data || []);
         setCampaigns(campaignResponse.data?.campaigns || []);
+        setReportTypes(catalogResponse.data?.reportTypes || []);
       })
       .catch((err) => setMessage(err.response?.data?.message || err.message || 'Unable to load reports.'))
       .finally(() => setLoading(false));
@@ -242,6 +246,31 @@ export default function ScormReports() {
     }
   };
 
+  const downloadPlatformReport = async (type, format) => {
+    if (!type || downloadingKey) return;
+    const key = `platform-${type}-${format}`;
+    setDownloadingKey(key);
+    setMessage('');
+    try {
+      const params = new URLSearchParams({ type, format });
+      const response = await axios.get(apiUrl(`/api/scorm/reports/export?${params.toString()}`), {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob',
+        validateStatus: () => true
+      });
+      if (response.status !== 200) {
+        setMessage(await blobErrorMessage(response.data, 'Failed to generate the consolidated report.'));
+        return;
+      }
+      const extension = format === 'pdf' ? 'pdf' : 'xlsx';
+      downloadBlob(response.data, `LMSGEN_${safeFilePart(type, 'Report')}.${extension}`);
+    } catch (err) {
+      setMessage(err.message || 'Consolidated report download failed.');
+    } finally {
+      setDownloadingKey(null);
+    }
+  };
+
   const chooseLearner = (learner) => {
     setSelectedLearner(learner);
     setLearnerQuery(learner.email);
@@ -285,6 +314,16 @@ export default function ScormReports() {
         <StatCard icon={BarChart3} label="Course instances" value={reportSummary.registrationCount} />
         <StatCard icon={CheckCircle2} label="Completion" value={`${reportSummary.completionRate}%`} />
         <StatCard icon={Trophy} label="Average score" value={reportSummary.averageScore ?? '—'} />
+      </section>
+
+      <section className="reports-section rounded-2xl border overflow-hidden mb-6">
+        <div className="reports-section-header p-4 md:p-5 border-b flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl grid place-items-center reports-accent shrink-0" style={{ background: 'rgba(79,201,191,.10)' }}><Layers3 size={17} /></div>
+          <div><div className="scorm-micro reports-accent text-[9px] uppercase">Consolidated evidence</div><h2 className="reports-section-title font-semibold mt-1">Platform reports</h2><p className="reports-muted text-[11px] mt-1">Export tenant-wide SCORM, Publica and trackable-video evidence to PDF or Excel.</p></div>
+        </div>
+        <div className="p-4 md:p-5 grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {reportTypes.filter((report) => report.id !== 'tenants').map((report) => <article key={report.id} className="reports-soft-card rounded-xl border p-4 flex flex-col"><div className="font-semibold text-sm">{report.label}</div><p className="reports-muted text-[10px] leading-relaxed mt-1.5 min-h-10">{report.description}</p><div className="mt-4 flex gap-2"><button type="button" disabled={!!downloadingKey} onClick={() => downloadPlatformReport(report.id, 'pdf')} className="scorm-button-secondary h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40"><Download size={12} /> PDF</button><button type="button" disabled={!!downloadingKey} onClick={() => downloadPlatformReport(report.id, 'excel')} className="scorm-button-secondary h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40"><FileSpreadsheet size={12} /> Excel</button></div></article>)}
+        </div>
       </section>
 
       <section className="reports-section rounded-2xl border overflow-hidden mb-6">

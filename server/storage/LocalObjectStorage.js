@@ -85,7 +85,7 @@ class LocalObjectStorage {
         }
     }
 
-    async getObjectStream(key) {
+    async getObjectStream(key, options = {}) {
         const filePath = this.resolveLocalPath(key);
         if (!(await this.exists(key))) {
             const err = new Error('Object not found');
@@ -94,10 +94,16 @@ class LocalObjectStorage {
         }
         const meta = await this._readMeta(filePath);
         const stat = await fsp.stat(filePath);
+        const start = Number(options.start);
+        const end = Number(options.end);
+        const hasRange = Number.isFinite(start) && start >= 0;
+        const safeEnd = hasRange && Number.isFinite(end) ? Math.min(end, stat.size - 1) : stat.size - 1;
         return {
-            stream: fs.createReadStream(filePath),
+            stream: fs.createReadStream(filePath, hasRange ? { start, end: safeEnd } : undefined),
             contentType: meta.contentType || 'application/octet-stream',
-            contentLength: stat.size
+            contentLength: hasRange ? Math.max(0, safeEnd - start + 1) : stat.size,
+            contentRange: hasRange ? `bytes ${start}-${safeEnd}/${stat.size}` : null,
+            totalLength: stat.size
         };
     }
 

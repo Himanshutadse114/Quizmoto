@@ -24,9 +24,14 @@ const {
     listAssignmentAnalytics
 } = require('./ScormFlipbookAssignmentService');
 const { ensureFlipbookTenantSchema } = require('../FlipbookTenantService');
+const {
+    ensureVideoSchema,
+    listVideos,
+    listCampaignVideoAnalytics
+} = require('./ScormVideoService');
 
 const execFileAsync = promisify(execFile);
-const REPORT_TYPES = Object.freeze(['overview', 'courses', 'learners', 'campaigns', 'flipbooks', 'assignments', 'tenants']);
+const REPORT_TYPES = Object.freeze(['overview', 'courses', 'learners', 'campaigns', 'flipbooks', 'videos', 'assignments', 'tenants']);
 
 function normaliseEmail(value) {
     return String(value || '').trim().toLowerCase();
@@ -215,6 +220,9 @@ function learnerMapFromCourses(courseReports) {
                 flipbooks: new Set(),
                 completedFlipbooks: new Set(),
                 flipbookActiveSeconds: 0,
+                videos: new Set(),
+                completedVideos: new Set(),
+                videoActiveSeconds: 0,
                 lastActivityAt: null
             });
             const row = map.get(email);
@@ -235,7 +243,8 @@ function addFlipbookLearners(map, assignments) {
         if (!map.has(email)) map.set(email, {
             email,
             name: assignment.learnerName || 'Learner',
-            courses: new Set(), completedCourses: new Set(), scores: [], flipbooks: new Set(), completedFlipbooks: new Set(), flipbookActiveSeconds: 0, lastActivityAt: null
+            courses: new Set(), completedCourses: new Set(), scores: [], flipbooks: new Set(), completedFlipbooks: new Set(), flipbookActiveSeconds: 0,
+            videos: new Set(), completedVideos: new Set(), videoActiveSeconds: 0, lastActivityAt: null
         });
         const row = map.get(email);
         row.name = row.name === 'Learner' && assignment.learnerName ? assignment.learnerName : row.name;
@@ -243,6 +252,26 @@ function addFlipbookLearners(map, assignments) {
         if (assignment.status === 'completed') row.completedFlipbooks.add(String(assignment.flipbookId));
         row.flipbookActiveSeconds += number(assignment.activeSeconds);
         const activity = assignment.lastActivityAt ? new Date(assignment.lastActivityAt) : null;
+        if (activity && !Number.isNaN(activity.getTime()) && (!row.lastActivityAt || activity > row.lastActivityAt)) row.lastActivityAt = activity;
+    }
+}
+
+function addVideoLearners(map, entries) {
+    for (const entry of entries || []) {
+        const email = normaliseEmail(entry.learnerEmail);
+        if (!email) continue;
+        if (!map.has(email)) map.set(email, {
+            email,
+            name: entry.learnerName || 'Learner',
+            courses: new Set(), completedCourses: new Set(), scores: [], flipbooks: new Set(), completedFlipbooks: new Set(), flipbookActiveSeconds: 0,
+            videos: new Set(), completedVideos: new Set(), videoActiveSeconds: 0, lastActivityAt: null
+        });
+        const row = map.get(email);
+        row.name = row.name === 'Learner' && entry.learnerName ? entry.learnerName : row.name;
+        row.videos.add(String(entry.videoId));
+        if (entry.status === 'completed') row.completedVideos.add(String(entry.videoId));
+        row.videoActiveSeconds += number(entry.activeSeconds);
+        const activity = entry.lastActivityAt ? new Date(entry.lastActivityAt) : null;
         if (activity && !Number.isNaN(activity.getTime()) && (!row.lastActivityAt || activity > row.lastActivityAt)) row.lastActivityAt = activity;
     }
 }
@@ -257,24 +286,34 @@ function serialiseLearners(map) {
         flipbooks: row.flipbooks.size,
         flipbooksCompleted: row.completedFlipbooks.size,
         flipbookActiveTime: durationLabel(row.flipbookActiveSeconds),
+        videos: row.videos.size,
+        videosCompleted: row.completedVideos.size,
+        videoActiveTime: durationLabel(row.videoActiveSeconds),
         lastActivity: row.lastActivityAt ? row.lastActivityAt.toISOString() : ''
     })).sort((a, b) => a.email.localeCompare(b.email));
 }
 
 async function buildWorkspaceData({ hostId, workspaceId }) {
-    await ensureFlipbookAssignmentSchema();
-    const [tenant, courseReports, campaignsResult, books, flipbookAssignments] = await Promise.all([
+    await Promise.all([ensureFlipbookAssignmentSchema(), ensureVideoSchema()]);
+    const [tenant, courseReports, campaignsResult, books, flipbookAssignments, videos] = await Promise.all([
         workspaceMeta(workspaceId),
         ScormReportService.listCourseReports(hostId),
         workspaceId ? listCampaigns({ hostId, workspaceId }) : Promise.resolve({ campaigns: [] }),
         tenantFlipbooks(workspaceId),
-        workspaceId ? listAssignmentAnalytics({ workspaceId }) : Promise.resolve([])
+        workspaceId ? listAssignmentAnalytics({ workspaceId }) : Promise.resolve([]),
+        workspaceId ? listVideos({ workspaceId, hostId }) : Promise.resolve([])
     ]);
     const bookStats = await flipbookStats(books);
     const campaigns = [];
+    const videoEntries = [];
     for (const campaign of campaignsResult.campaigns || []) {
-        const linkedBooks = await campaignFlipbooks(campaign.id);
+        const [linkedBooks, campaignVideoAnalytics] = await Promise.all([
+            campaignFlipbooks(campaign.id),
+            listCampaignVideoAnalytics(campaign.id)
+        ]);
         const assignedFlipbooks = flipbookAssignments.filter((row) => String(row.campaignId) === String(campaign.id));
+        const campaignVideos = campaignVideoAnalytics.entries || [];
+        campaignVideos.forEach((entry) => videoEntries.push({ ...entry, campaignId: campaign.id, campaignName: campaign.name }));
         campaigns.push({
             id: campaign.id,
             name: campaign.name,
@@ -282,23 +321,26 @@ async function buildWorkspaceData({ hostId, workspaceId }) {
             learners: number(campaign.learnerCount),
             courses: number(campaign.courseCount),
             flipbooks: linkedBooks.length,
-            learningItems: number(campaign.courseCount) + linkedBooks.length,
+            videos: campaignVideoAnalytics.videos.length,
+            learningItems: number(campaign.courseCount) + linkedBooks.length + campaignVideoAnalytics.videos.length,
             courseCompletion: `${number(campaign.completionPercent)}%`,
             flipbookCompletion: `${percent(assignedFlipbooks.filter((row) => row.status === 'completed').length, assignedFlipbooks.length)}%`,
+            videoCompletion: `${campaignVideos.length ? Math.round((campaignVideos.reduce((sum, row) => sum + number(row.progressPercent), 0) / campaignVideos.length) * 10) / 10 : 0}%`,
             dueAt: dateLabel(campaign.dueAt),
             startedAt: dateLabel(campaign.startedAt)
         });
     }
     const learners = learnerMapFromCourses(courseReports);
     addFlipbookLearners(learners, flipbookAssignments);
-    return { tenant, courseReports, campaigns, books, bookStats, flipbookAssignments, learners: serialiseLearners(learners) };
+    addVideoLearners(learners, videoEntries);
+    return { tenant, courseReports, campaigns, books, bookStats, flipbookAssignments, videos, videoEntries, learners: serialiseLearners(learners) };
 }
 
 function reportDefinition(type) {
     const definitions = {
         overview: {
             title: 'LMSGEN Learning Overview',
-            subtitle: 'Current tenant learning, campaign and Publica performance',
+            subtitle: 'Current tenant learning, campaign, Publica and video performance',
             columns: [
                 { key: 'area', label: 'Area' }, { key: 'items', label: 'Items' }, { key: 'learners', label: 'Learners' }, { key: 'completed', label: 'Completed' }, { key: 'engagement', label: 'Engagement' }
             ]
@@ -312,16 +354,16 @@ function reportDefinition(type) {
         },
         learners: {
             title: 'Learner Learning Record',
-            subtitle: 'Consolidated learner activity across courses and Publica',
+            subtitle: 'Consolidated learner activity across courses, Publica and video',
             columns: [
-                { key: 'name', label: 'Learner' }, { key: 'email', label: 'Email' }, { key: 'courses', label: 'Courses' }, { key: 'coursesCompleted', label: 'Courses completed' }, { key: 'averageScore', label: 'Avg. score' }, { key: 'flipbooks', label: 'Publications' }, { key: 'flipbooksCompleted', label: 'Publications completed' }, { key: 'flipbookActiveTime', label: 'Publica time' }
+                { key: 'name', label: 'Learner' }, { key: 'email', label: 'Email' }, { key: 'courses', label: 'Courses' }, { key: 'coursesCompleted', label: 'Courses completed' }, { key: 'averageScore', label: 'Avg. score' }, { key: 'flipbooks', label: 'Publications' }, { key: 'flipbooksCompleted', label: 'Publications completed' }, { key: 'flipbookActiveTime', label: 'Publica time' }, { key: 'videos', label: 'Videos' }, { key: 'videosCompleted', label: 'Videos completed' }, { key: 'videoActiveTime', label: 'Video time' }
             ]
         },
         campaigns: {
             title: 'Campaign Performance Report',
-            subtitle: 'Campaign delivery across courses and Publica',
+            subtitle: 'Campaign delivery across courses, Publica and video',
             columns: [
-                { key: 'name', label: 'Campaign' }, { key: 'status', label: 'Status' }, { key: 'learners', label: 'Learners' }, { key: 'courses', label: 'Courses' }, { key: 'flipbooks', label: 'Publications' }, { key: 'courseCompletion', label: 'Course completion' }, { key: 'flipbookCompletion', label: 'Publication completion' }, { key: 'dueAt', label: 'Due' }
+                { key: 'name', label: 'Campaign' }, { key: 'status', label: 'Status' }, { key: 'learners', label: 'Learners' }, { key: 'courses', label: 'Courses' }, { key: 'flipbooks', label: 'Publications' }, { key: 'videos', label: 'Videos' }, { key: 'courseCompletion', label: 'Course completion' }, { key: 'flipbookCompletion', label: 'Publication completion' }, { key: 'videoCompletion', label: 'Video coverage' }, { key: 'dueAt', label: 'Due' }
             ]
         },
         flipbooks: {
@@ -331,9 +373,16 @@ function reportDefinition(type) {
                 { key: 'publication', label: 'Publication' }, { key: 'learner', label: 'Reader' }, { key: 'email', label: 'Email' }, { key: 'status', label: 'Status' }, { key: 'progress', label: 'Progress' }, { key: 'pagesReached', label: 'Pages reached' }, { key: 'sessions', label: 'Sessions' }, { key: 'activeTime', label: 'Active time' }, { key: 'lastActivity', label: 'Last activity' }
             ]
         },
+        videos: {
+            title: 'Trackable Video Engagement Report',
+            subtitle: 'Learner-level watched coverage and active viewing evidence',
+            columns: [
+                { key: 'video', label: 'Video' }, { key: 'learner', label: 'Learner' }, { key: 'email', label: 'Email' }, { key: 'campaign', label: 'Campaign' }, { key: 'status', label: 'Status' }, { key: 'progress', label: 'Watched coverage' }, { key: 'activeTime', label: 'Active time' }, { key: 'playCount', label: 'Plays' }, { key: 'seekCount', label: 'Seeks' }, { key: 'lastActivity', label: 'Last activity' }
+            ]
+        },
         assignments: {
             title: 'Assignment Completion Report',
-            subtitle: 'Course and publication learner assignment evidence',
+            subtitle: 'Course, publication and video learner assignment evidence',
             columns: [
                 { key: 'type', label: 'Type' }, { key: 'item', label: 'Learning item' }, { key: 'learner', label: 'Learner' }, { key: 'email', label: 'Email' }, { key: 'status', label: 'Status' }, { key: 'progress', label: 'Progress' }, { key: 'score', label: 'Score' }, { key: 'activeTime', label: 'Active time' }, { key: 'context', label: 'Context' }
             ]
@@ -411,6 +460,19 @@ function workspaceRows(type, data) {
             };
         }).sort((a, b) => a.email.localeCompare(b.email));
     }
+    if (type === 'videos') return (data.videoEntries || []).map((row) => ({
+        video: row.videoTitle,
+        learner: row.learnerName || 'Learner',
+        email: row.learnerEmail || '',
+        campaign: row.campaignName || '',
+        status: row.status,
+        progress: `${number(row.progressPercent)}%`,
+        activeTime: durationLabel(row.activeSeconds),
+        learningTime: durationLabel(row.activeSeconds),
+        playCount: number(row.playCount),
+        seekCount: number(row.seekCount),
+        lastActivity: dateLabel(row.lastActivityAt)
+    }));
     if (type === 'assignments') {
         const courseRows = (data.courseReports || []).flatMap((course) => (course.learners || []).map((learner) => ({
             type: 'Course', item: course.title, learner: learner.learnerName || 'Learner', email: learner.learnerEmail || '', status: learner.result || learner.lessonStatus || '', progress: learner.progressAvailable === false ? '' : `${number(learner.progressPercent)}%`, score: learner.score ?? '', activeTime: learner.totalTime || '', context: 'Direct learning'
@@ -418,16 +480,21 @@ function workspaceRows(type, data) {
         const flipbookRows = (data.flipbookAssignments || []).map((row) => ({
             type: 'Publica', item: row.flipbookTitle, learner: row.learnerName || 'Learner', email: row.learnerEmail, status: row.status, progress: `${row.progressPercent}%`, score: '', activeTime: durationLabel(row.activeSeconds), context: row.courseId ? 'Course-linked campaign' : row.campaignId ? 'Campaign' : 'Direct'
         }));
-        return [...courseRows, ...flipbookRows];
+        const videoRows = (data.videoEntries || []).map((row) => ({
+            type: 'Video', item: row.videoTitle, learner: row.learnerName || 'Learner', email: row.learnerEmail, status: row.status, progress: `${number(row.progressPercent)}%`, score: '', activeTime: durationLabel(row.activeSeconds), context: row.campaignName || 'Campaign'
+        }));
+        return [...courseRows, ...flipbookRows, ...videoRows];
     }
     if (type === 'overview') {
         const courseAssignments = (data.courseReports || []).reduce((sum, course) => sum + number(course.learnerCount), 0);
         const completedCourses = (data.courseReports || []).reduce((sum, course) => sum + number(course.completedCount), 0);
         const completedFlipbooks = (data.flipbookAssignments || []).filter((row) => row.status === 'completed').length;
+        const completedVideos = (data.videoEntries || []).filter((row) => row.status === 'completed').length;
         return [
             { area: 'Courses', items: data.courseReports.length, learners: data.learners.length, completed: completedCourses, engagement: `${percent(completedCourses, courseAssignments)}% completion` },
             { area: 'Campaigns', items: data.campaigns.length, learners: data.learners.length, completed: '', engagement: `${data.campaigns.filter((row) => row.status === 'active').length} active` },
-            { area: 'Publica', items: data.books.length, learners: new Set((data.flipbookAssignments || []).map((row) => normaliseEmail(row.learnerEmail)).filter(Boolean)).size, completed: completedFlipbooks, engagement: `${percent(completedFlipbooks, data.flipbookAssignments.length)}% assignment completion` }
+            { area: 'Publica', items: data.books.length, learners: new Set((data.flipbookAssignments || []).map((row) => normaliseEmail(row.learnerEmail)).filter(Boolean)).size, completed: completedFlipbooks, engagement: `${percent(completedFlipbooks, data.flipbookAssignments.length)}% assignment completion` },
+            { area: 'Videos', items: data.videos.length, learners: new Set((data.videoEntries || []).map((row) => normaliseEmail(row.learnerEmail)).filter(Boolean)).size, completed: completedVideos, engagement: `${data.videoEntries.length ? Math.round((data.videoEntries.reduce((sum, row) => sum + number(row.progressPercent), 0) / data.videoEntries.length) * 10) / 10 : 0}% average watched coverage` }
         ];
     }
     return [];
@@ -439,7 +506,8 @@ function summaryFor(type, data, rows) {
         { label: 'Learners', value: data.learners.length },
         { label: 'Campaigns', value: data.campaigns.length },
         { label: 'Publications', value: data.books.length },
-        { label: 'Publication assignments', value: data.flipbookAssignments.length }
+        { label: 'Videos', value: data.videos.length },
+        { label: 'Learning assignments', value: data.flipbookAssignments.length + data.videoEntries.length }
     ];
     if (type === 'courses') {
         const assigned = rows.reduce((sum, row) => sum + number(row.learners), 0);
@@ -454,7 +522,7 @@ function summaryFor(type, data, rows) {
             { label: 'Avg. score', value: scored.length ? Math.round((scored.reduce((sum, value) => sum + value, 0) / scored.length) * 10) / 10 : '—' }
         ];
     }
-    if (type === 'learners') return [{ label: 'Learners', value: rows.length }, { label: 'Courses', value: data.courseReports.length }, { label: 'Publications', value: data.books.length }];
+    if (type === 'learners') return [{ label: 'Learners', value: rows.length }, { label: 'Courses', value: data.courseReports.length }, { label: 'Publications', value: data.books.length }, { label: 'Videos', value: data.videos.length }];
     if (type === 'campaigns') return [
         { label: 'Campaigns', value: rows.length },
         { label: 'Active', value: rows.filter((row) => row.status === 'active').length },
@@ -475,13 +543,29 @@ function summaryFor(type, data, rows) {
             { label: 'Active time', value: durationLabel(activeSeconds) }
         ];
     }
+    if (type === 'videos') {
+        const completed = rows.filter((row) => row.status === 'completed').length;
+        const activeSeconds = (data.videoEntries || []).reduce((sum, row) => sum + number(row.activeSeconds), 0);
+        const averageCoverage = data.videoEntries.length
+            ? Math.round((data.videoEntries.reduce((sum, row) => sum + number(row.progressPercent), 0) / data.videoEntries.length) * 10) / 10
+            : 0;
+        return [
+            { label: 'Videos', value: data.videos.length },
+            { label: 'Learners', value: new Set(rows.map((row) => normaliseEmail(row.email)).filter(Boolean)).size },
+            { label: 'Assignments', value: rows.length },
+            { label: 'Completed', value: completed },
+            { label: 'Avg. coverage', value: `${averageCoverage}%` },
+            { label: 'Active time', value: durationLabel(activeSeconds) }
+        ];
+    }
     if (type === 'assignments') {
         const completed = rows.filter((row) => ['completed', 'passed'].includes(String(row.status || '').toLowerCase())).length;
         return [
             { label: 'Assignments', value: rows.length },
             { label: 'Completed', value: completed },
             { label: 'Completion', value: `${percent(completed, rows.length)}%` },
-            { label: 'Publication assignments', value: data.flipbookAssignments.length }
+            { label: 'Publica', value: data.flipbookAssignments.length },
+            { label: 'Video', value: data.videoEntries.length }
         ];
     }
     return [];

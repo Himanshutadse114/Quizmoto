@@ -34,6 +34,11 @@ function workspaceRequired(req) {
     }
 }
 
+router.param('campaignId', (req, res, next, value) => {
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ''))) return next();
+    return res.status(404).json({ message: 'Campaign not found.', code: 'SCORM_CAMPAIGN_NOT_FOUND' });
+});
+
 router.get('/', auth, async (req, res) => {
     try {
         workspaceRequired(req);

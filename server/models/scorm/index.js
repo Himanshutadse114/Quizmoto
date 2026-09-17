@@ -15,6 +15,9 @@ const ScormCampaignLearner = require('./ScormCampaignLearner');
 const ScormCampaignCourse = require('./ScormCampaignCourse');
 const ScormGenerationJob = require('./ScormGenerationJob');
 const ScormAiUsageEvent = require('./ScormAiUsageEvent');
+const ScormVideo = require('./ScormVideo');
+const ScormCampaignVideo = require('./ScormCampaignVideo');
+const ScormVideoProgress = require('./ScormVideoProgress');
 const ScormAccessGrant = require('../ScormAccessGrant');
 const ScormAccessRequest = require('../ScormAccessRequest');
 const MailOtp = require('../MailOtp');
@@ -69,6 +72,13 @@ ScormCampaignCourse.belongsTo(ScormCampaign, { foreignKey: 'campaignId', as: 'ca
 ScormCampaignCourse.belongsTo(ScormCourse, { foreignKey: 'courseId', as: 'course' });
 ScormCourse.hasMany(ScormCampaignCourse, { foreignKey: 'courseId', as: 'campaignLinks' });
 
+ScormCampaign.hasMany(ScormCampaignVideo, { foreignKey: 'campaignId', as: 'campaignVideos', onDelete: 'CASCADE' });
+ScormCampaignVideo.belongsTo(ScormCampaign, { foreignKey: 'campaignId', as: 'campaign' });
+ScormCampaignVideo.belongsTo(ScormVideo, { foreignKey: 'videoId', as: 'video' });
+ScormVideo.hasMany(ScormCampaignVideo, { foreignKey: 'videoId', as: 'campaignLinks' });
+ScormVideo.hasMany(ScormVideoProgress, { foreignKey: 'videoId', as: 'learnerProgress' });
+ScormVideoProgress.belongsTo(ScormVideo, { foreignKey: 'videoId', as: 'video' });
+
 ScormCampaign.hasMany(ScormRegistration, { foreignKey: 'campaignId', as: 'registrations' });
 ScormRegistration.belongsTo(ScormCampaign, { foreignKey: 'campaignId', as: 'campaign' });
 
@@ -90,6 +100,9 @@ const models = {
     ScormCampaignCourse,
     ScormGenerationJob,
     ScormAiUsageEvent,
+    ScormVideo,
+    ScormCampaignVideo,
+    ScormVideoProgress,
     ScormAccessGrant,
     ScormAccessRequest,
     MailOtp,

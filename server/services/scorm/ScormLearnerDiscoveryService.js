@@ -4,7 +4,9 @@ const {
     ScormWorkspace,
     ScormWorkspaceAuthConfig,
     ScormRegistration,
-    ScormCourse
+    ScormCourse,
+    ScormCampaign,
+    ScormCampaignLearner
 } = require('../../models/scorm');
 const {
     normalizeEmail,
@@ -40,7 +42,7 @@ function parseDomains(value) {
 
 async function workspacesFromAssignments(email) {
     const normalized = normalizeEmail(email);
-    const rows = await ScormRegistration.findAll({
+    const [rows, campaignMemberships] = await Promise.all([ScormRegistration.findAll({
         where: {
             isPreview: false,
             status: { [Op.notIn]: ['revoked', 'superseded'] },
@@ -56,12 +58,28 @@ async function workspacesFromAssignments(email) {
             where: { status: 'published' },
             attributes: ['hostId']
         }]
-    });
+    }), ScormCampaignLearner.findAll({
+        where: {
+            [Op.and]: [
+                sequelize.where(sequelize.fn('LOWER', sequelize.col('email')), normalized)
+            ]
+        },
+        attributes: ['campaignId']
+    })]);
 
-    const hostIds = [...new Set(rows.map((row) => Number(row.course?.hostId)).filter(Number.isFinite))];
-    if (!hostIds.length) return [];
+    const campaignIds = [...new Set(campaignMemberships.map((row) => row.campaignId).filter(Boolean))];
+    const activeCampaigns = campaignIds.length ? await ScormCampaign.findAll({
+        where: { id: { [Op.in]: campaignIds }, status: 'active' },
+        attributes: ['hostId', 'workspaceId']
+    }) : [];
+    const directHostIds = [...new Set(rows.map((row) => Number(row.course?.hostId)).filter(Number.isFinite))];
+    const campaignWorkspaceIds = [...new Set(activeCampaigns.map((campaign) => campaign.workspaceId).filter(Boolean).map(String))];
+    if (!directHostIds.length && !campaignWorkspaceIds.length) return [];
+    const scopes = [];
+    if (directHostIds.length) scopes.push({ ownerUserId: { [Op.in]: directHostIds } });
+    if (campaignWorkspaceIds.length) scopes.push({ id: { [Op.in]: campaignWorkspaceIds } });
     return ScormWorkspace.findAll({
-        where: { ownerUserId: { [Op.in]: hostIds }, status: 'active' }
+        where: { [Op.or]: scopes, status: 'active' }
     });
 }
 

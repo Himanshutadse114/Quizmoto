@@ -163,13 +163,13 @@ function createAssignmentToken() {
     return crypto.randomBytes(24).toString('hex');
 }
 
-async function createCampaignAssignments({ campaignId, actorUserId = null }) {
+async function createCampaignAssignments({ campaignId, actorUserId = null, transaction = null }) {
     await ensureFlipbookAssignmentSchema();
-    const campaign = await ScormCampaign.findByPk(campaignId);
+    const campaign = await ScormCampaign.findByPk(campaignId, { transaction });
     if (!campaign) throw fail('Campaign not found.', 'SCORM_CAMPAIGN_NOT_FOUND', 404);
     const [learners, links] = await Promise.all([
-        ScormCampaignLearner.findAll({ where: { campaignId } }),
-        ScormCampaignFlipbook.findAll({ where: { campaignId } })
+        ScormCampaignLearner.findAll({ where: { campaignId }, transaction }),
+        ScormCampaignFlipbook.findAll({ where: { campaignId }, transaction })
     ]);
     if (!links.length || !learners.length) return { created: 0 };
 
@@ -183,7 +183,8 @@ async function createCampaignAssignments({ campaignId, actorUserId = null }) {
                     flipbookId: link.flipbookId,
                     learnerEmail: email,
                     status: { [Op.ne]: 'revoked' }
-                }
+                },
+                transaction
             });
             if (existing) continue;
             await ScormFlipbookAssignment.create({
@@ -200,7 +201,7 @@ async function createCampaignAssignments({ campaignId, actorUserId = null }) {
                 assignedAt: new Date(),
                 dueAt: campaign.dueAt || null,
                 createdByUserId: actorUserId || campaign.createdByUserId || campaign.hostId
-            });
+            }, { transaction });
             created += 1;
         }
     }
@@ -214,7 +215,9 @@ async function resolveAssignmentToken({ token, flipbookId = null }) {
     const assignment = await ScormFlipbookAssignment.findOne({ where });
     if (!assignment) throw fail('This publication assignment is no longer available.', 'SCORM_FLIPBOOK_ASSIGNMENT_NOT_FOUND', 404);
     const campaign = assignment.campaignId ? await ScormCampaign.findByPk(assignment.campaignId) : null;
-    if (campaign && campaign.status !== 'active') throw fail('This learning campaign is not active.', 'SCORM_CAMPAIGN_NOT_ACTIVE', 403);
+    if (assignment.campaignId && (!campaign || campaign.status !== 'active')) {
+        throw fail('This learning campaign is not active.', 'SCORM_CAMPAIGN_NOT_ACTIVE', 403);
+    }
     return assignment;
 }
 
@@ -309,6 +312,14 @@ async function getCampaignDashboardFlipbooks(context) {
 
 async function launchCampaignFlipbook(context, assignmentId) {
     await ensureFlipbookAssignmentSchema();
+    const campaign = await ScormCampaign.findOne({ where: { id: context.campaignId, status: 'active' } });
+    if (!campaign || Number(campaign.hostId) !== Number(context.hostId) || (context.workspaceId && String(campaign.workspaceId) !== String(context.workspaceId))) {
+        throw fail('Campaign access is no longer active.', 'SCORM_CAMPAIGN_NOT_ACTIVE', 403);
+    }
+    const learner = await ScormCampaignLearner.findOne({
+        where: { campaignId: campaign.id, email: normaliseEmail(context.email) }
+    });
+    if (!learner) throw fail('You are no longer assigned to this campaign.', 'SCORM_CAMPAIGN_LEARNER_NOT_INCLUDED', 403);
     const assignment = await ScormFlipbookAssignment.findOne({
         where: {
             id: assignmentId,

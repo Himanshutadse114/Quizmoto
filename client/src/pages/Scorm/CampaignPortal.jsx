@@ -4,6 +4,7 @@ import axios from 'axios';
 import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
 import {
   BookOpen,
+  BookOpenCheck,
   CalendarDays,
   CheckCircle2,
   Clock3,
@@ -13,10 +14,12 @@ import {
   LogOut,
   Mail,
   RefreshCw,
-  ShieldCheck
+  ShieldCheck,
+  Film
 } from 'lucide-react';
 import { apiUrl } from '../../config';
 import { createMicrosoftPkceRequest } from './microsoftPkce';
+import LearnerVideoModal from './LearnerVideoModal';
 
 function sessionKey(campaignId) {
   return `lmsgen_campaign_${campaignId}`;
@@ -78,6 +81,7 @@ export default function CampaignPortal() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [videoPlayer, setVideoPlayer] = useState(null);
 
   const loadConfig = useCallback(async () => {
     const res = await axios.get(apiUrl(`/api/scorm-learner/campaign/${campaignId}/config`));
@@ -233,19 +237,42 @@ export default function CampaignPortal() {
     }
   };
 
+  const launchFlipbook = async (book) => {
+    setBusy(true); setError('');
+    try {
+      const response = await axios.post(apiUrl(`/api/scorm-learner/campaign/session/flipbooks/${book.assignmentId}/launch`), {}, { headers: { Authorization: `Bearer ${token}` } });
+      const popup = window.open(response.data?.url, `lmsgen_publica_${book.assignmentId}`, 'popup=yes,width=1280,height=820,resizable=yes,scrollbars=yes');
+      if (popup) popup.focus(); else window.location.assign(response.data?.url);
+    } catch (err) { setError(err.response?.data?.message || 'Unable to open this publication.'); }
+    finally { setBusy(false); }
+  };
+
+  const launchVideo = async (video) => {
+    setBusy(true); setError('');
+    try {
+      const response = await axios.post(apiUrl(`/api/scorm-learner/campaign/session/videos/${video.videoId}/launch`), {}, { headers: { Authorization: `Bearer ${token}` } });
+      setVideoPlayer({ item: video, streamUrl: response.data?.streamUrl });
+    } catch (err) { setError(err.response?.data?.message || 'Unable to open this video.'); }
+    finally { setBusy(false); }
+  };
+
   if (loading) {
     return <div className="min-h-screen bg-[#f4f8f7] text-[#102321] grid place-items-center"><div className="text-center"><RefreshCw size={22} className="animate-spin mx-auto text-[#159b91]" /><div className="mt-3 text-sm text-[#58706d]">Loading campaign…</div></div></div>;
   }
 
   const courses = dashboard?.courses || [];
-  const completed = courses.filter((course) => course.status === 'completed').length;
-  const progress = courses.length
-    ? Math.round(courses.reduce((total, course) => total + courseProgress(course), 0) / courses.length)
+  const flipbooks = dashboard?.flipbooks || [];
+  const videos = dashboard?.videos || [];
+  const allItems = [...courses.map((item) => ({ ...item, progressPercent: courseProgress(item) })), ...flipbooks, ...videos];
+  const completed = allItems.filter((item) => item.status === 'completed').length;
+  const progress = allItems.length
+    ? Math.round(allItems.reduce((total, item) => total + Number(item.progressPercent || 0), 0) / allItems.length)
     : 0;
   const selectedSsoUnavailable = !dashboard && config && !config.emailEnabled && !config.googleEnabled && !config.microsoftEnabled;
 
   return (
     <div className="min-h-screen bg-[#f4f8f7] text-[#102321]">
+      {videoPlayer && <LearnerVideoModal item={videoPlayer.item} streamUrl={videoPlayer.streamUrl} token={token} progressPath={`/api/scorm-learner/campaign/session/videos/${videoPlayer.item.videoId}/progress`} onClose={() => { setVideoPlayer(null); loadDashboard().catch(() => {}); }} onProgress={(next) => setVideoPlayer((current) => current ? { ...current, item: { ...current.item, ...next } } : current)} />}
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-[#dce8e5]">
         <div className="max-w-6xl mx-auto px-4 md:px-7 h-16 flex items-center gap-3">
           <img src="/branding/lmsgen-logo-light.png" alt="LMSGEN" className="w-[118px] h-auto" />
@@ -291,8 +318,8 @@ export default function CampaignPortal() {
           <>
             <section className="rounded-[24px] bg-[#102321] text-white p-6 md:p-8 overflow-hidden relative">
               <div className="relative grid md:grid-cols-[1fr_auto] gap-7 md:items-end">
-                <div><div className="text-[10px] uppercase tracking-[.16em] font-bold text-[#8bd8d1]">{dashboard.workspace?.name || 'LMSGEN'}</div><h1 className="text-3xl md:text-[46px] font-semibold tracking-[-.045em] mt-2">{dashboard.campaign?.name}</h1><p className="text-sm text-white/65 mt-3 max-w-2xl">Welcome, {dashboard.learner?.name || 'Learner'}. These are the courses assigned to you in this campaign.</p></div>
-                <div className="min-w-[180px]"><div className="flex justify-between text-xs mb-2"><span>Campaign progress</span><strong>{progress}%</strong></div><div className="h-2 rounded-full bg-white/15 overflow-hidden"><div className="h-full bg-[#45c5bc] rounded-full" style={{ width: `${progress}%` }} /></div><div className="text-[10px] text-white/55 mt-2">{completed} of {courses.length} completed</div></div>
+                <div><div className="text-[10px] uppercase tracking-[.16em] font-bold text-[#8bd8d1]">{dashboard.workspace?.name || 'LMSGEN'}</div><h1 className="text-3xl md:text-[46px] font-semibold tracking-[-.045em] mt-2">{dashboard.campaign?.name}</h1><p className="text-sm text-white/65 mt-3 max-w-2xl">Welcome, {dashboard.learner?.name || 'Learner'}. Your SCORM modules, publications and videos are collected here.</p></div>
+                <div className="min-w-[180px]"><div className="flex justify-between text-xs mb-2"><span>Campaign progress</span><strong>{progress}%</strong></div><div className="h-2 rounded-full bg-white/15 overflow-hidden"><div className="h-full bg-[#45c5bc] rounded-full" style={{ width: `${progress}%` }} /></div><div className="text-[10px] text-white/55 mt-2">{completed} of {allItems.length} completed</div></div>
               </div>
             </section>
 
@@ -320,6 +347,8 @@ export default function CampaignPortal() {
                 );
               })}
             </div>
+            {flipbooks.length > 0 && <><div className="mt-9"><h2 className="text-xl font-semibold">Assigned publications</h2><p className="text-xs text-[#6c817e] mt-1">Page-level progress and active reading time are tracked.</p></div><div className="mt-5 grid md:grid-cols-2 lg:grid-cols-3 gap-4">{flipbooks.map((book) => <article key={book.assignmentId} className="bg-white border border-[#dce8e5] rounded-2xl p-5 flex flex-col min-h-[230px]"><div className="flex justify-between"><span className="w-10 h-10 rounded-xl bg-[#e3f5f3] text-[#117f77] grid place-items-center"><BookOpenCheck size={18} /></span><span className="text-[9px] uppercase font-bold text-[#647a76]">{statusLabel(book.status)}</span></div><h3 className="text-lg font-semibold mt-5">{book.title}</h3><p className="text-xs text-[#6d817e] mt-2 line-clamp-2">{book.description || `${book.pageCount} page publication`}</p><div className="mt-auto pt-4"><div className="flex justify-between text-[10px] mb-1"><span>Pages reached</span><strong>{book.progressPercent || 0}%</strong></div><div className="h-1.5 rounded-full bg-[#e5efed] overflow-hidden"><div className="h-full bg-[#45c5bc]" style={{ width: `${book.progressPercent || 0}%` }} /></div><button type="button" disabled={busy} onClick={() => launchFlipbook(book)} className="mt-4 w-full h-10 rounded-xl bg-[#45c5bc] text-[#0d2926] text-xs font-semibold">{book.progressPercent ? 'Continue reading' : 'Open publication'}</button></div></article>)}</div></>}
+            {videos.length > 0 && <><div className="mt-9"><h2 className="text-xl font-semibold">Assigned videos</h2><p className="text-xs text-[#6c817e] mt-1">Completion is based on genuine watched coverage.</p></div><div className="mt-5 grid md:grid-cols-2 lg:grid-cols-3 gap-4">{videos.map((video) => <article key={video.videoId} className="bg-white border border-[#dce8e5] rounded-2xl p-5 flex flex-col min-h-[230px]"><div className="flex justify-between"><span className="w-10 h-10 rounded-xl bg-[#e3f5f3] text-[#117f77] grid place-items-center"><Film size={18} /></span><span className="text-[9px] uppercase font-bold text-[#647a76]">{statusLabel(video.status)}</span></div><h3 className="text-lg font-semibold mt-5">{video.title}</h3><p className="text-xs text-[#6d817e] mt-2 line-clamp-2">{video.description || 'Trackable video lesson'}</p><div className="mt-auto pt-4"><div className="flex justify-between text-[10px] mb-1"><span>Watched</span><strong>{video.progressPercent || 0}%</strong></div><div className="h-1.5 rounded-full bg-[#e5efed] overflow-hidden"><div className="h-full bg-[#45c5bc]" style={{ width: `${video.progressPercent || 0}%` }} /></div><button type="button" disabled={busy} onClick={() => launchVideo(video)} className="mt-4 w-full h-10 rounded-xl bg-[#45c5bc] text-[#0d2926] text-xs font-semibold">{video.progressPercent ? 'Continue video' : 'Watch video'}</button></div></article>)}</div></>}
           </>
         )}
       </main>

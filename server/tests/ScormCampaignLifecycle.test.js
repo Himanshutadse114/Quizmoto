@@ -23,13 +23,21 @@ function loadService(campaignOverrides = {}) {
     const ScormRegistration = {
         update: sinon.stub().resolves([3])
     };
+    const ScormCampaignVideo = { destroy: sinon.stub().resolves(0) };
+    const ScormVideoProgress = { destroy: sinon.stub().resolves(0) };
+    const ScormCampaignFlipbook = { destroy: sinon.stub().resolves(0) };
+    const ScormFlipbookAssignment = { update: sinon.stub().resolves([0]) };
 
     const service = proxyquire('../services/scorm/ScormCampaignLifecycleService', {
         '../../config/database': { sequelize },
-        '../../models/scorm': { ScormCampaign, ScormRegistration }
+        '../../models/scorm': { ScormCampaign, ScormRegistration, ScormCampaignVideo, ScormVideoProgress },
+        '../../models/scorm/ScormCampaignFlipbook': ScormCampaignFlipbook,
+        '../../models/scorm/ScormFlipbookAssignment': ScormFlipbookAssignment,
+        './ScormFlipbookAssignmentService': { ensureFlipbookAssignmentSchema: sinon.stub().resolves() },
+        './ScormVideoService': { ensureVideoSchema: sinon.stub().resolves() }
     });
 
-    return { service, campaign, ScormCampaign, ScormRegistration, sequelize, transaction };
+    return { service, campaign, ScormCampaign, ScormRegistration, ScormCampaignVideo, ScormVideoProgress, ScormCampaignFlipbook, ScormFlipbookAssignment, sequelize, transaction };
 }
 
 describe('ScormCampaignLifecycleService', () => {

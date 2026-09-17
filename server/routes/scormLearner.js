@@ -14,6 +14,8 @@ const {
 const { getLearnerDashboard } = require('../services/scorm/ScormLearnerProgressFacade');
 const { enrichDashboardCourses } = require('../services/scorm/ScormCanonicalProgressService');
 const { discoverLearnerPolicy } = require('../services/scorm/ScormLearnerDiscoveryService');
+const { launchCampaignFlipbook } = require('../services/scorm/ScormFlipbookAssignmentService');
+const { launchCampaignVideo, recordVideoProgress } = require('../services/scorm/ScormVideoService');
 
 const learnerAuthLimiter = rateLimit({
     windowMs: 10 * 60 * 1000,
@@ -33,6 +35,8 @@ router.use((req, res, next) => {
     }
     next();
 });
+
+router.use('/video', require('./scormVideoLearner'));
 
 // Add Flipbook learning items to campaign dashboards and launch handling before
 // the existing course-only campaign router consumes those exact paths.
@@ -120,6 +124,34 @@ router.post('/courses/:registrationId/launch', learnerAuthMiddleware, async (req
         res.json(await launchLearnerCourse(req.scormLearner, req.params.registrationId));
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message || 'Unable to launch this course.', code: err.code });
+    }
+});
+
+router.post('/campaigns/:campaignId/flipbooks/:assignmentId/launch', learnerAuthMiddleware, async (req, res) => {
+    try {
+        const result = await launchCampaignFlipbook({ ...req.scormLearner, campaignId: req.params.campaignId }, req.params.assignmentId);
+        const url = new URL(result.url);
+        const assignmentToken = url.searchParams.get('assignment');
+        if (assignmentToken) { url.searchParams.delete('assignment'); url.searchParams.set('source', `assignment:${assignmentToken}`); }
+        res.json({ ...result, url: url.toString() });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message || 'Unable to launch this publication.', code: err.code });
+    }
+});
+
+router.post('/campaigns/:campaignId/videos/:videoId/launch', learnerAuthMiddleware, async (req, res) => {
+    try {
+        res.json({ ok: true, ...(await launchCampaignVideo({ ...req.scormLearner, campaignId: req.params.campaignId }, req.params.videoId)) });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message || 'Unable to launch this video.', code: err.code });
+    }
+});
+
+router.post('/campaigns/:campaignId/videos/:videoId/progress', learnerAuthMiddleware, express.json({ limit: '64kb' }), async (req, res) => {
+    try {
+        res.json({ ok: true, progress: await recordVideoProgress({ ...req.scormLearner, campaignId: req.params.campaignId }, req.params.videoId, req.body || {}) });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message || 'Unable to save video progress.', code: err.code });
     }
 });
 

@@ -9,6 +9,8 @@ const {
     ScormAttempt
 } = require('../../models/scorm');
 const LearningState = require('./ScormLearningStateService');
+const { listCampaignVideoAnalytics } = require('./ScormVideoService');
+const { listAssignmentAnalytics } = require('./ScormFlipbookAssignmentService');
 const {
     enrichedRegistration,
     learnerResult
@@ -212,7 +214,7 @@ async function getCampaignAnalytics({ campaignId, hostId, workspaceId }) {
         learnerMap.get(key).entries.push(entry);
     }
 
-    const learners = Array.from(learnerMap.values()).map((learner) => ({
+    const courseLearners = Array.from(learnerMap.values()).map((learner) => ({
         id: learner.id,
         email: learner.email,
         learnerName: learner.learnerName,
@@ -252,8 +254,48 @@ async function getCampaignAnalytics({ campaignId, hostId, workspaceId }) {
     }));
 
     const overall = summarizeEntries(entries);
-    const learnerStartedCount = learners.filter((learner) => learner.inProgressCount > 0 || learner.completedCount > 0).length;
-    const learnerCompletedCount = learners.filter((learner) => learner.assignmentCount > 0 && learner.completedCount === learner.assignmentCount).length;
+    const [videoAnalytics, publicationEntries] = await Promise.all([
+        listCampaignVideoAnalytics(campaignId),
+        listAssignmentAnalytics({ campaignId })
+    ]);
+    const learners = courseLearners.map((learner) => {
+        const learnerEmail = normalizeEmail(learner.email);
+        const videos = videoAnalytics.entries.filter((entry) => normalizeEmail(entry.learnerEmail) === learnerEmail);
+        const publications = publicationEntries.filter((entry) => normalizeEmail(entry.learnerEmail) === learnerEmail);
+        const external = [...videos, ...publications];
+        const itemProgress = [
+            ...learner.entries.map(entryProgressPercent),
+            ...external.map((entry) => Number(entry.progressPercent || (entry.status === 'completed' ? 100 : 0)))
+        ];
+        const learningItemCount = itemProgress.length;
+        const learningCompletedCount = learner.completedCount + external.filter((entry) => entry.status === 'completed').length;
+        const latestExternalActivity = external.reduce((latest, entry) => {
+            const value = entry.lastActivityAt || entry.completedAt || null;
+            if (!value) return latest;
+            return !latest || new Date(value) > new Date(latest) ? value : latest;
+        }, null);
+        const latestActivity = !learner.latestActivity || (latestExternalActivity && new Date(latestExternalActivity) > new Date(learner.latestActivity))
+            ? latestExternalActivity || learner.latestActivity
+            : learner.latestActivity;
+        return {
+            ...learner,
+            videos,
+            publications,
+            videoCount: videos.length,
+            publicationCount: publications.length,
+            learningItemCount,
+            learningCompletedCount,
+            learningProgressPercent: itemProgress.length ? roundedPercent(itemProgress.reduce((sum, value) => sum + value, 0) / itemProgress.length) : 0,
+            latestActivity
+        };
+    });
+    const learnerStartedCount = learners.filter((learner) => learner.learningProgressPercent > 0).length;
+    const learnerCompletedCount = learners.filter((learner) => learner.learningItemCount > 0 && learner.learningCompletedCount === learner.learningItemCount).length;
+    const allProgress = [
+        ...entries.map(entryProgressPercent),
+        ...videoAnalytics.entries.map((entry) => Number(entry.progressPercent || 0)),
+        ...publicationEntries.map((entry) => Number(entry.progressPercent || 0))
+    ];
 
     return {
         campaign: {
@@ -267,12 +309,20 @@ async function getCampaignAnalytics({ campaignId, hostId, workspaceId }) {
             portalPath: campaign.status === 'active' ? `/campaign/${campaign.id}` : null,
             learnerCount: campaignLearners.length,
             courseCount: courseLinks.length,
+            videoCount: videoAnalytics.videos.length,
+            publicationCount: new Set(publicationEntries.map((entry) => String(entry.flipbookId))).size,
+            learningItemAssignmentCount: allProgress.length,
+            learningItemCompletedCount: learners.reduce((sum, learner) => sum + learner.learningCompletedCount, 0),
+            learningCompletionRate: allProgress.length ? roundedPercent(allProgress.reduce((sum, value) => sum + value, 0) / allProgress.length) : 0,
             learnerStartedCount,
             learnerCompletedCount,
             ...overall
         },
         learners,
-        courses
+        courses,
+        videos: videoAnalytics.videos,
+        videoEntries: videoAnalytics.entries,
+        publicationEntries
     };
 }
 

@@ -178,7 +178,20 @@ async function assertLearnerLimit(hostId, emails) {
         attributes: ['learnerEmail'],
         raw: true
     }) : [];
-    const enrolled = new Set(existingRows.map((row) => normalizeEmail(row.learnerEmail)).filter(Boolean));
+    const activeCampaigns = await ScormCampaign.findAll({
+        where: { hostId, status: 'active' },
+        attributes: ['id'],
+        raw: true
+    });
+    const campaignLearners = activeCampaigns.length ? await ScormCampaignLearner.findAll({
+        where: { campaignId: { [Op.in]: activeCampaigns.map((campaign) => campaign.id) } },
+        attributes: ['email'],
+        raw: true
+    }) : [];
+    const enrolled = new Set([
+        ...existingRows.map((row) => normalizeEmail(row.learnerEmail)),
+        ...campaignLearners.map((row) => normalizeEmail(row.email))
+    ].filter(Boolean));
     const requested = [...new Set((emails || []).map(normalizeEmail).filter(Boolean))];
     const additional = requested.filter((email) => !enrolled.has(email)).length;
     if (enrolled.size + additional > Number(maxLearners)) {
@@ -271,7 +284,7 @@ async function listCampaigns({ hostId, workspaceId }) {
     };
 }
 
-async function createCampaign({ workspaceId, hostId, actorUserId, name, csvText, courseIds, dueAt, required = true, authMode, mailBatchCount, mailBatchDelaySeconds }) {
+async function createCampaign({ workspaceId, hostId, actorUserId, name, csvText, courseIds, dueAt, required = true, authMode, mailBatchCount, mailBatchDelaySeconds, additionalLearningItemCount = 0 }) {
     const cleanName = String(name || '').trim().slice(0, 180);
     if (cleanName.length < 2) throw fail('Enter a campaign name.', 'SCORM_CAMPAIGN_NAME_REQUIRED', 400);
     if (!workspaceId) throw fail('Workspace is required.', 'SCORM_WORKSPACE_REQUIRED', 400);
@@ -286,9 +299,12 @@ async function createCampaign({ workspaceId, hostId, actorUserId, name, csvText,
         delaySeconds: mailBatchDelaySeconds
     });
     const selectedCourseIds = [...new Set((Array.isArray(courseIds) ? courseIds : []).map(String).filter(Boolean))];
-    if (!selectedCourseIds.length) throw fail('Select at least one published course.', 'SCORM_CAMPAIGN_COURSE_REQUIRED', 400);
-    if (parsed.learners.length * selectedCourseIds.length > MAX_CAMPAIGN_COMBINATIONS) {
-        throw fail(`A campaign can create at most ${MAX_CAMPAIGN_COMBINATIONS} learner-course instances.`, 'SCORM_CAMPAIGN_TOO_LARGE', 413);
+    if (!selectedCourseIds.length && Number(additionalLearningItemCount || 0) < 1) {
+        throw fail('Select at least one course, publication or video.', 'SCORM_CAMPAIGN_ITEM_REQUIRED', 400);
+    }
+    const selectedLearningItemCount = selectedCourseIds.length + Math.max(0, Number(additionalLearningItemCount || 0));
+    if (parsed.learners.length * selectedLearningItemCount > MAX_CAMPAIGN_COMBINATIONS) {
+        throw fail(`A campaign can create at most ${MAX_CAMPAIGN_COMBINATIONS} learner-item assignments.`, 'SCORM_CAMPAIGN_TOO_LARGE', 413);
     }
 
     const courses = await ScormCourse.findAll({ where: { id: { [Op.in]: selectedCourseIds }, hostId } });
@@ -399,7 +415,7 @@ async function getCampaignAccessSheet({ campaignId, hostId, workspaceId }) {
     };
 }
 
-async function startCampaign({ campaignId, hostId, workspaceId, actorUserId }) {
+async function startCampaign({ campaignId, hostId, workspaceId, actorUserId, additionalLearningItemCount = 0 }) {
     const { config } = await getWorkspaceAndConfig(workspaceId);
     let campaign;
     await sequelize.transaction(async (transaction) => {
@@ -416,8 +432,12 @@ async function startCampaign({ campaignId, hostId, workspaceId, actorUserId }) {
             ScormCampaignLearner.findAll({ where: { campaignId }, transaction }),
             ScormCampaignCourse.findAll({ where: { campaignId }, transaction })
         ]);
-        if (!learners.length || !courseLinks.length) throw fail('Campaign needs learners and courses before it can start.', 'SCORM_CAMPAIGN_EMPTY', 409);
-        const courses = await ScormCourse.findAll({ where: { id: { [Op.in]: courseLinks.map((link) => link.courseId) }, hostId }, transaction });
+        if (!learners.length || (!courseLinks.length && Number(additionalLearningItemCount || 0) < 1)) {
+            throw fail('Campaign needs learners and at least one learning item before it can start.', 'SCORM_CAMPAIGN_EMPTY', 409);
+        }
+        const courses = courseLinks.length
+            ? await ScormCourse.findAll({ where: { id: { [Op.in]: courseLinks.map((link) => link.courseId) }, hostId }, transaction })
+            : [];
         if (courses.length !== courseLinks.length || courses.some((course) => course.status !== 'published')) {
             throw fail('One or more campaign courses are no longer published.', 'SCORM_CAMPAIGN_COURSE_NOT_PUBLISHED', 409);
         }

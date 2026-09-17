@@ -96,18 +96,23 @@ class S3ObjectStorage {
         }
     }
 
-    async getObjectStream(key) {
+    async getObjectStream(key, options = {}) {
         try {
+            const start = Number(options.start);
+            const end = Number(options.end);
+            const hasRange = Number.isFinite(start) && start >= 0;
             const out = await this.client.send(
                 new this.GetObjectCommand({
                     Bucket: this.bucket,
-                    Key: this._safeKey(key)
+                    Key: this._safeKey(key),
+                    ...(hasRange ? { Range: `bytes=${start}-${Number.isFinite(end) ? end : ''}` } : {})
                 })
             );
             return {
                 stream: out.Body,
                 contentType: out.ContentType || 'application/octet-stream',
-                contentLength: out.ContentLength
+                contentLength: out.ContentLength,
+                contentRange: out.ContentRange || null
             };
         } catch (err) {
             if (err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {

@@ -18,6 +18,14 @@ const {
 const MailService = require('../mail/MailService');
 const { deliveryPlan, runInBackground, sendInBatches } = require('../mail/MailBatchDeliveryService');
 const { getCampaignManageDetail } = require('./ScormCampaignReadService');
+const ScormFlipbookAssignment = require('../../models/scorm/ScormFlipbookAssignment');
+const {
+    ensureFlipbookAssignmentSchema,
+    campaignFlipbooks,
+    createCampaignAssignments,
+    listAssignmentAnalytics
+} = require('./ScormFlipbookAssignmentService');
+const { campaignVideos, listCampaignVideoAnalytics } = require('./ScormVideoService');
 
 const MAX_CAMPAIGN_COMBINATIONS = 5000;
 const ACTIVE_REGISTRATION_STATUSES = { [Op.notIn]: ['revoked', 'superseded'] };
@@ -88,7 +96,16 @@ async function assertLearnerLimit(hostId, emails) {
         attributes: ['learnerEmail'],
         raw: true
     }) : [];
-    const enrolled = new Set(existingRows.map((row) => normalizeEmail(row.learnerEmail)).filter(Boolean));
+    const activeCampaigns = await ScormCampaign.findAll({ where: { hostId, status: 'active' }, attributes: ['id'], raw: true });
+    const campaignLearners = activeCampaigns.length ? await ScormCampaignLearner.findAll({
+        where: { campaignId: { [Op.in]: activeCampaigns.map((campaign) => campaign.id) } },
+        attributes: ['email'],
+        raw: true
+    }) : [];
+    const enrolled = new Set([
+        ...existingRows.map((row) => normalizeEmail(row.learnerEmail)),
+        ...campaignLearners.map((row) => normalizeEmail(row.email))
+    ].filter(Boolean));
     const requested = [...new Set((emails || []).map(normalizeEmail).filter(Boolean))];
     const additional = requested.filter((email) => !enrolled.has(email)).length;
     if (enrolled.size + additional > Number(maxLearners)) {
@@ -132,6 +149,10 @@ async function addLearners({ campaignId, hostId, workspaceId, actorUserId, learn
     }
 
     await activeCampaign({ campaignId, hostId, workspaceId });
+    const [flipbookLinks, videoLinks] = await Promise.all([
+        campaignFlipbooks(campaignId),
+        campaignVideos(campaignId)
+    ]);
     const existingRows = await ScormCampaignLearner.findAll({
         where: { campaignId, email: { [Op.in]: requested.map((learner) => learner.email) } },
         attributes: ['email'],
@@ -154,11 +175,14 @@ async function addLearners({ campaignId, hostId, workspaceId, actorUserId, learn
     await sequelize.transaction(async (transaction) => {
         campaign = await activeCampaign({ campaignId, hostId, workspaceId, transaction, lock: true });
         const courseLinks = await ScormCampaignCourse.findAll({ where: { campaignId }, transaction });
-        if (!courseLinks.length) throw fail('Campaign has no courses.', 'SCORM_CAMPAIGN_EMPTY', 409);
+        if (!courseLinks.length && !flipbookLinks.length && !videoLinks.length) {
+            throw fail('Campaign has no learning items.', 'SCORM_CAMPAIGN_EMPTY', 409);
+        }
 
         const currentLearnerCount = await ScormCampaignLearner.count({ where: { campaignId }, transaction });
-        if ((currentLearnerCount + additions.length) * courseLinks.length > MAX_CAMPAIGN_COMBINATIONS) {
-            throw fail(`A campaign can contain at most ${MAX_CAMPAIGN_COMBINATIONS} learner-course instances.`, 'SCORM_CAMPAIGN_TOO_LARGE', 413);
+        const learningItemCount = courseLinks.length + flipbookLinks.length + videoLinks.length;
+        if ((currentLearnerCount + additions.length) * learningItemCount > MAX_CAMPAIGN_COMBINATIONS) {
+            throw fail(`A campaign can contain at most ${MAX_CAMPAIGN_COMBINATIONS} learner-item assignments.`, 'SCORM_CAMPAIGN_TOO_LARGE', 413);
         }
 
         const courses = await ScormCourse.findAll({
@@ -203,7 +227,14 @@ async function addLearners({ campaignId, hostId, workspaceId, actorUserId, learn
                 });
             }
         }
-        await ScormRegistration.bulkCreate(registrations, { transaction });
+        if (registrations.length) await ScormRegistration.bulkCreate(registrations, { transaction });
+        if (flipbookLinks.length) {
+            await createCampaignAssignments({
+                campaignId,
+                actorUserId: actorUserId || hostId,
+                transaction
+            });
+        }
     });
 
     const mailDelivery = deliveryPlan(additions.length, {
@@ -236,6 +267,7 @@ async function removeLearner({ campaignId, hostId, workspaceId, email }) {
     const cleanEmail = normalizeEmail(email);
     if (!cleanEmail) throw fail('Learner email is required.', 'SCORM_CAMPAIGN_LEARNER_REQUIRED', 400);
 
+    await ensureFlipbookAssignmentSchema();
     let removed = false;
     await sequelize.transaction(async (transaction) => {
         await activeCampaign({ campaignId, hostId, workspaceId, transaction, lock: true });
@@ -253,6 +285,10 @@ async function removeLearner({ campaignId, hostId, workspaceId, email }) {
                 isPreview: false,
                 status: ACTIVE_REGISTRATION_STATUSES
             },
+            transaction
+        });
+        await ScormFlipbookAssignment.update({ status: 'revoked' }, {
+            where: { campaignId, learnerEmail: cleanEmail, status: { [Op.ne]: 'revoked' } },
             transaction
         });
         await learner.destroy({ transaction });
@@ -277,16 +313,21 @@ async function sendReminders({ campaignId, hostId, workspaceId, emails = [] }) {
         attributes: ['email', 'learnerName'],
         order: [['learnerName', 'ASC'], ['email', 'ASC']]
     });
-    const registrations = await ScormRegistration.findAll({
-        where: {
-            campaignId,
-            isPreview: false,
-            status: ACTIVE_REGISTRATION_STATUSES,
-            ...(learners.length ? { learnerEmail: { [Op.in]: learners.map((learner) => learner.email) } } : {})
-        },
-        attributes: ['learnerEmail', 'status', 'lastLessonStatus'],
-        raw: true
-    });
+    const [registrations, courseCount, flipbookRows, videoAnalytics] = await Promise.all([
+        ScormRegistration.findAll({
+            where: {
+                campaignId,
+                isPreview: false,
+                status: ACTIVE_REGISTRATION_STATUSES,
+                ...(learners.length ? { learnerEmail: { [Op.in]: learners.map((learner) => learner.email) } } : {})
+            },
+            attributes: ['learnerEmail', 'status', 'lastLessonStatus'],
+            raw: true
+        }),
+        ScormCampaignCourse.count({ where: { campaignId } }),
+        listAssignmentAnalytics({ campaignId }),
+        listCampaignVideoAnalytics(campaignId)
+    ]);
 
     const byEmail = new Map();
     for (const registration of registrations) {
@@ -295,9 +336,28 @@ async function sendReminders({ campaignId, hostId, workspaceId, emails = [] }) {
         byEmail.get(key).push(registration);
     }
 
+    const flipbooksByEmail = new Map();
+    for (const row of flipbookRows) {
+        const key = normalizeEmail(row.learnerEmail);
+        if (!flipbooksByEmail.has(key)) flipbooksByEmail.set(key, []);
+        flipbooksByEmail.get(key).push(row);
+    }
+    const videosByEmail = new Map();
+    for (const row of videoAnalytics.entries || []) {
+        const key = normalizeEmail(row.learnerEmail);
+        if (!videosByEmail.has(key)) videosByEmail.set(key, []);
+        videosByEmail.get(key).push(row);
+    }
+
     const targets = learners.filter((learner) => {
-        const rows = byEmail.get(normalizeEmail(learner.email)) || [];
-        return rows.length > 0 && rows.some((registration) => !registrationCompleted(registration));
+        const key = normalizeEmail(learner.email);
+        const courseRows = byEmail.get(key) || [];
+        const publicationRows = flipbooksByEmail.get(key) || [];
+        const videoRows = videosByEmail.get(key) || [];
+        const courseIncomplete = courseCount > 0 && (courseRows.length < courseCount || courseRows.some((row) => !registrationCompleted(row)));
+        const publicationIncomplete = publicationRows.some((row) => row.status !== 'completed');
+        const videoIncomplete = videoRows.some((row) => row.status !== 'completed');
+        return courseIncomplete || publicationIncomplete || videoIncomplete;
     });
     const skippedCompleted = learners.length - targets.length;
 

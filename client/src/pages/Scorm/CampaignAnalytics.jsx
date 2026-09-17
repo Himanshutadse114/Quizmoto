@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   BarChart3,
   BookOpen,
+  BookOpenCheck,
   CheckCircle2,
   Clock3,
   Download,
@@ -12,7 +13,8 @@ import {
   Target,
   Trophy,
   Users,
-  X
+  X,
+  Film
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
@@ -56,7 +58,7 @@ function Metric({ icon: Icon, label, value, hint }) {
           <div className="mt-2 text-xl md:text-2xl font-semibold">{value}</div>
           {hint && <div className="mt-1 text-[10px]" style={{ color: 'var(--scorm-muted)' }}>{hint}</div>}
         </div>
-        <div className="w-9 h-9 rounded-xl grid place-items-center shrink-0" style={{ background: 'rgba(79,201,191,.10)', color: '#4FC9BF' }}><Icon size={16} /></div>
+        <div className="w-9 h-9 rounded-xl grid place-items-center shrink-0" style={{ background: 'rgba(79,201,191,.10)', color: '#4FC9BF' }}>{React.createElement(Icon, { size: 16 })}</div>
       </div>
     </div>
   );
@@ -92,6 +94,24 @@ export default function CampaignAnalytics() {
   const campaign = data?.campaign || null;
   const learners = data?.learners || [];
   const courses = data?.courses || [];
+  const videos = data?.videos || [];
+  const publicationEntries = data?.publicationEntries || [];
+  const publications = useMemo(() => {
+    const grouped = new Map();
+    publicationEntries.forEach((entry) => {
+      const key = String(entry.flipbookId || entry.flipbookTitle || 'publication');
+      if (!grouped.has(key)) grouped.set(key, { id: key, title: entry.flipbookTitle || 'Publication', rows: [] });
+      grouped.get(key).rows.push(entry);
+    });
+    return [...grouped.values()].map((publication) => ({
+      id: publication.id,
+      title: publication.title,
+      learnerCount: publication.rows.length,
+      completedCount: publication.rows.filter((row) => row.status === 'completed').length,
+      averageProgress: publication.rows.length ? publication.rows.reduce((sum, row) => sum + Number(row.progressPercent || 0), 0) / publication.rows.length : 0,
+      averageActiveSeconds: publication.rows.length ? Math.round(publication.rows.reduce((sum, row) => sum + Number(row.activeSeconds || 0), 0) / publication.rows.length) : 0
+    }));
+  }, [publicationEntries]);
   const filteredLearners = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return learners;
@@ -102,17 +122,21 @@ export default function CampaignAnalytics() {
   const exportCsv = () => {
     if (!campaign) return;
     const rows = [[
-      'Campaign', 'Learner Name', 'Email', 'Course', 'Result', 'Progress %', 'Score', 'Learning Time', 'Last Activity', 'Questions Captured', 'Correct Answers', 'Answer Accuracy %'
+      'Campaign', 'Learner Name', 'Email', 'Item Type', 'Learning Item', 'Result', 'Progress %', 'Score', 'Learning / Active Time', 'Last Activity', 'Questions Captured', 'Correct Answers', 'Answer Accuracy %'
     ]];
     learners.forEach((learner) => {
-      if (!learner.entries?.length) {
-        rows.push([campaign.name, learner.learnerName, learner.email, '', 'Not Started', 0, '', '', '', 0, 0, '']);
+      const courseEntries = learner.entries || [];
+      const videoEntries = learner.videos || [];
+      const publicaEntries = learner.publications || [];
+      if (!courseEntries.length && !videoEntries.length && !publicaEntries.length) {
+        rows.push([campaign.name, learner.learnerName, learner.email, '', '', 'Not Started', 0, '', '', '', 0, 0, '']);
         return;
       }
-      learner.entries.forEach((entry) => rows.push([
+      courseEntries.forEach((entry) => rows.push([
         campaign.name,
         learner.learnerName,
         learner.email,
+        'SCORM',
         entry.courseTitle,
         entry.result,
         entry.progressPercent ?? '',
@@ -123,6 +147,8 @@ export default function CampaignAnalytics() {
         entry.answerSummary?.correct ?? 0,
         entry.answerSummary?.accuracy ?? ''
       ]));
+      videoEntries.forEach((entry) => rows.push([campaign.name, learner.learnerName, learner.email, 'Video', entry.videoTitle, entry.status, entry.progressPercent ?? 0, '', entry.activeSeconds ?? 0, entry.lastActivityAt || '', 0, 0, '']));
+      publicaEntries.forEach((entry) => rows.push([campaign.name, learner.learnerName, learner.email, 'Publica', entry.flipbookTitle, entry.status, entry.progressPercent ?? 0, '', entry.activeSeconds ?? 0, entry.lastActivityAt || '', 0, 0, '']));
     });
     const csv = rows.map((row) => row.map(csvCell).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
@@ -171,12 +197,16 @@ export default function CampaignAnalytics() {
         <>
           <section className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
             <Metric icon={Users} label="Learners" value={campaign.learnerCount ?? 0} hint={`${campaign.learnerStartedCount ?? 0} started`} />
-            <Metric icon={BookOpen} label="Courses" value={campaign.courseCount ?? 0} />
-            <Metric icon={Target} label="Instances" value={campaign.assignmentCount ?? 0} hint={`${campaign.inProgressCount ?? 0} in progress`} />
-            <Metric icon={CheckCircle2} label="Completion" value={pct(campaign.completionRate)} hint={`${campaign.completedCount ?? 0} completed`} />
+            <Metric icon={BookOpen} label="Learning items" value={(campaign.courseCount || 0) + (campaign.publicationCount || 0) + (campaign.videoCount || 0)} hint={`${campaign.courseCount || 0} SCORM · ${campaign.publicationCount || 0} Publica · ${campaign.videoCount || 0} video`} />
+            <Metric icon={Target} label="Assignments" value={campaign.learningItemAssignmentCount ?? campaign.assignmentCount ?? 0} />
+            <Metric icon={CheckCircle2} label="Completion" value={pct(campaign.learningCompletionRate ?? campaign.completionRate)} hint={`${campaign.learningItemCompletedCount ?? campaign.completedCount ?? 0} completed`} />
             <Metric icon={Trophy} label="Average score" value={score(campaign.averageScore)} />
             <Metric icon={BarChart3} label="Answer accuracy" value={pct(campaign.answerAccuracy)} hint={`${campaign.questionsCaptured ?? 0} answers captured`} />
           </section>
+
+          {videos.length > 0 && <section className="campaign-analytics-panel mb-6"><div className="p-4 md:p-5 border-b flex items-center justify-between" style={{ borderColor: 'rgba(79,201,191,.12)' }}><div><div className="scorm-micro text-[9px] uppercase">Trackable video</div><h2 className="text-lg font-semibold mt-1">Video engagement</h2></div><Film size={18} /></div><div className="p-4 md:p-5 grid md:grid-cols-2 xl:grid-cols-3 gap-3">{videos.map((video) => <div key={video.id} className="campaign-analytics-metric"><div className="text-sm font-semibold line-clamp-2 min-h-[40px]">{video.title}</div><div className="mt-4 flex items-center justify-between text-[10px]"><span style={{ color: 'var(--scorm-muted)' }}>Average watched coverage</span><strong>{pct(video.completionRate)}</strong></div><div className="campaign-analytics-progress mt-1.5"><span style={{ width: `${Math.max(0, Math.min(100, Number(video.completionRate || 0)))}%` }} /></div><div className="grid grid-cols-2 gap-2 mt-4 text-center"><div><div className="scorm-micro text-[8px] uppercase">Completed</div><div className="mt-1 text-sm font-semibold">{video.completedCount}/{video.learnerCount}</div></div><div><div className="scorm-micro text-[8px] uppercase">Avg active time</div><div className="mt-1 text-sm font-semibold">{Math.floor(Number(video.averageActiveSeconds || 0) / 60)}m {Number(video.averageActiveSeconds || 0) % 60}s</div></div></div></div>)}</div></section>}
+
+          {publications.length > 0 && <section className="campaign-analytics-panel mb-6"><div className="p-4 md:p-5 border-b flex items-center justify-between" style={{ borderColor: 'rgba(79,201,191,.12)' }}><div><div className="scorm-micro text-[9px] uppercase">Publica</div><h2 className="text-lg font-semibold mt-1">Publication engagement</h2></div><BookOpenCheck size={18} /></div><div className="p-4 md:p-5 grid md:grid-cols-2 xl:grid-cols-3 gap-3">{publications.map((publication) => <div key={publication.id} className="campaign-analytics-metric"><div className="text-sm font-semibold line-clamp-2 min-h-[40px]">{publication.title}</div><div className="mt-4 flex items-center justify-between text-[10px]"><span style={{ color: 'var(--scorm-muted)' }}>Average pages reached</span><strong>{pct(publication.averageProgress)}</strong></div><div className="campaign-analytics-progress mt-1.5"><span style={{ width: `${Math.max(0, Math.min(100, Number(publication.averageProgress || 0)))}%` }} /></div><div className="grid grid-cols-2 gap-2 mt-4 text-center"><div><div className="scorm-micro text-[8px] uppercase">Completed</div><div className="mt-1 text-sm font-semibold">{publication.completedCount}/{publication.learnerCount}</div></div><div><div className="scorm-micro text-[8px] uppercase">Avg active time</div><div className="mt-1 text-sm font-semibold">{Math.floor(Number(publication.averageActiveSeconds || 0) / 60)}m {Number(publication.averageActiveSeconds || 0) % 60}s</div></div></div></div>)}</div></section>}
 
           <section className="campaign-analytics-panel mb-6">
             <div className="p-4 md:p-5 border-b flex flex-col md:flex-row md:items-center justify-between gap-3" style={{ borderColor: 'rgba(79,201,191,.12)' }}>
@@ -219,7 +249,7 @@ export default function CampaignAnalytics() {
                 <thead>
                   <tr className="border-b">
                     <th className="px-4 py-3 text-left">Learner</th>
-                    <th className="px-4 py-3 text-left">Courses</th>
+                    <th className="px-4 py-3 text-left">Items</th>
                     <th className="px-4 py-3 text-left">Completion</th>
                     <th className="px-4 py-3 text-left">Average score</th>
                     <th className="px-4 py-3 text-left">Quiz accuracy</th>
@@ -231,8 +261,8 @@ export default function CampaignAnalytics() {
                   {filteredLearners.map((learner) => (
                     <tr key={learner.email} className="border-b last:border-b-0">
                       <td className="px-4 py-3.5"><div className="font-semibold">{learner.learnerName || 'Learner'}</div><div className="mt-0.5 text-[10px]" style={{ color: 'var(--scorm-muted)' }}>{learner.email}</div></td>
-                      <td className="px-4 py-3.5">{learner.courseCount ?? 0}</td>
-                      <td className="px-4 py-3.5 min-w-[150px]"><div className="flex items-center justify-between gap-2"><span>{pct(learner.completionRate)}</span><span className="text-[9px]" style={{ color: 'var(--scorm-muted)' }}>{learner.completedCount}/{learner.assignmentCount}</span></div><div className="campaign-analytics-progress mt-1.5"><span style={{ width: `${Math.max(0, Math.min(100, Number(learner.completionRate || 0)))}%` }} /></div></td>
+                      <td className="px-4 py-3.5">{learner.learningItemCount ?? learner.courseCount ?? 0}</td>
+                      <td className="px-4 py-3.5 min-w-[150px]"><div className="flex items-center justify-between gap-2"><span>{pct(learner.learningProgressPercent ?? learner.completionRate)}</span><span className="text-[9px]" style={{ color: 'var(--scorm-muted)' }}>{learner.learningCompletedCount ?? learner.completedCount}/{learner.learningItemCount ?? learner.assignmentCount}</span></div><div className="campaign-analytics-progress mt-1.5"><span style={{ width: `${Math.max(0, Math.min(100, Number((learner.learningProgressPercent ?? learner.completionRate) || 0)))}%` }} /></div></td>
                       <td className="px-4 py-3.5 font-semibold">{score(learner.averageScore)}</td>
                       <td className="px-4 py-3.5">{pct(learner.answerAccuracy)}</td>
                       <td className="px-4 py-3.5 text-[10px]">{formatDate(learner.latestActivity, 'Not started')}</td>
@@ -258,6 +288,7 @@ export default function CampaignAnalytics() {
                   entries={selectedLearner.entries || []}
                   variant="warm"
                 />
+                {((selectedLearner.publications?.length || 0) + (selectedLearner.videos?.length || 0) > 0) && <div className="mt-4 grid md:grid-cols-2 gap-3">{(selectedLearner.publications || []).map((item) => <div key={item.id} className="campaign-analytics-metric"><div className="scorm-micro text-[8px] uppercase">Publica</div><div className="font-semibold text-sm mt-1">{item.flipbookTitle}</div><div className="text-[10px] mt-2" style={{ color: 'var(--scorm-muted)' }}>{item.pagesReached}/{item.pageCount} pages · {item.progressPercent}% · {Math.round(Number(item.activeSeconds || 0))}s active</div></div>)}{(selectedLearner.videos || []).map((item) => <div key={item.videoId} className="campaign-analytics-metric"><div className="scorm-micro text-[8px] uppercase">Video</div><div className="font-semibold text-sm mt-1">{item.videoTitle}</div><div className="text-[10px] mt-2" style={{ color: 'var(--scorm-muted)' }}>{item.progressPercent}% watched · {Math.round(Number(item.activeSeconds || 0))}s active · {item.seekCount || 0} seeks</div></div>)}</div>}
               </div>
             </section>
           )}
