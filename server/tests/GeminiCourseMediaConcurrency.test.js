@@ -3,6 +3,8 @@ const {
     runWithConcurrency,
     mediaConfig
 } = require('../services/scorm/GeminiCourseMediaService');
+const fs = require('fs');
+const path = require('path');
 
 describe('Gemini course media concurrency', () => {
     it('never exceeds the configured worker limit', async () => {
@@ -35,5 +37,12 @@ describe('Gemini course media concurrency', () => {
             if (previous == null) delete process.env.GEMINI_SCORM_IMAGE_CONCURRENCY;
             else process.env.GEMINI_SCORM_IMAGE_CONCURRENCY = previous;
         }
+    });
+
+    it('generates the cover alongside the bounded slide-image workers', () => {
+        const source = fs.readFileSync(path.join(__dirname, '../services/scorm/GeminiCourseMediaService.js'), 'utf8');
+        expect(source).to.include('const coverTask = (async () => {');
+        expect(source).to.include('const slideTask = runWithConcurrency(selectedIndexes, config.imageConcurrency');
+        expect(source).to.include('await Promise.all([coverTask, slideTask])');
     });
 });

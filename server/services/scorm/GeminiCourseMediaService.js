@@ -403,59 +403,64 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
         detail: 'Planning a relevant visual for each learning section.'
     });
 
-    try {
-        checkCancelled();
-        const coverPrompt = anchorHighlyInteractiveCoverPrompt(
-            await generateCoverVisualPrompt({ ...analysis, slides }),
-            { ...analysis, slides }
-        );
-        promptModel = coverPrompt.model || promptModel;
-        analysis.coverImagePrompt = coverPrompt.prompt;
-        analysis.coverImagePromptProvider = 'gemini';
-        analysis.coverImagePromptAuth = 'api_key';
-        analysis.coverImagePromptModel = coverPrompt.model;
+    // Start the cover and learning-slide pipelines together. The cover used to
+    // block every slide image, adding an entire image-generation round trip to
+    // each course even though the work is independent.
+    const coverTask = (async () => {
+        try {
+            checkCancelled();
+            const coverPrompt = anchorHighlyInteractiveCoverPrompt(
+                await generateCoverVisualPrompt({ ...analysis, slides }),
+                { ...analysis, slides }
+            );
+            promptModel = coverPrompt.model || promptModel;
+            analysis.coverImagePrompt = coverPrompt.prompt;
+            analysis.coverImagePromptProvider = 'gemini';
+            analysis.coverImagePromptAuth = 'api_key';
+            analysis.coverImagePromptModel = coverPrompt.model;
 
-        const coverFile = await generateImage(coverPrompt.prompt, 'assets/media/course-cover', config, (state) => {
-            if (state.status === 'starting') emit(onProgress, {
-                percent: 30,
-                stage: 'Generating course cover image',
-                detail: 'Creating the course cover visual.'
+            const coverFile = await generateImage(coverPrompt.prompt, 'assets/media/course-cover', config, (state) => {
+                if (state.status === 'starting') emit(onProgress, {
+                    percent: 30,
+                    stage: 'Generating course cover image',
+                    detail: 'Creating the course cover visual.'
+                });
+                if (state.status === 'working') emit(onProgress, {
+                    percent: Math.min(37, 30 + Math.floor(Number(state.elapsedSeconds || 0) / 20)),
+                    stage: 'Generating course cover image',
+                    detail: `Creating the topic-specific course cover (${Number(state.elapsedSeconds || 0)}s).`
+                });
+                if (state.status === 'retrying') emit(onProgress, {
+                    percent: 36,
+                    stage: 'Retrying course cover image',
+                    detail: 'The cover is taking a little longer. Trying again.'
+                });
+            }, checkCancelled);
+            imageModel = coverFile.model || imageModel;
+            files.push(coverFile);
+            analysis.coverImageAsset = coverFile.path;
+            analysis.coverVisualAsset = coverFile.path;
+            analysis.coverMobileVisualAsset = coverFile.path;
+            coverGenerated = true;
+            emit(onProgress, {
+                percent: 38,
+                stage: 'Course cover ready',
+                detail: 'The topic-specific course cover is ready.'
             });
-            if (state.status === 'working') emit(onProgress, {
-                percent: Math.min(37, 30 + Math.floor(Number(state.elapsedSeconds || 0) / 20)),
-                stage: 'Generating course cover image',
-                detail: `Creating the topic-specific course cover (${Number(state.elapsedSeconds || 0)}s).`
+        } catch (error) {
+            if (isGenerationCancelled(error)) throw error;
+            warnings.push(`Cover image: ${error.message}`);
+            logger.warn('scorm_gemini_course_cover_failed', {
+                module: 'scorm',
+                code: error.code || null,
+                status: error.status || null,
+                error: error.message
             });
-            if (state.status === 'retrying') emit(onProgress, {
-                percent: 36,
-                stage: 'Retrying course cover image',
-                detail: 'The cover is taking a little longer. Trying again.'
-            });
-        }, checkCancelled);
-        imageModel = coverFile.model || imageModel;
-        files.push(coverFile);
-        analysis.coverImageAsset = coverFile.path;
-        analysis.coverVisualAsset = coverFile.path;
-        analysis.coverMobileVisualAsset = coverFile.path;
-        coverGenerated = true;
-        emit(onProgress, {
-            percent: 38,
-            stage: 'Course cover ready',
-            detail: 'The topic-specific course cover is ready.'
-        });
-    } catch (error) {
-        if (isGenerationCancelled(error)) throw error;
-        warnings.push(`Cover image: ${error.message}`);
-        logger.warn('scorm_gemini_course_cover_failed', {
-            module: 'scorm',
-            code: error.code || null,
-            status: error.status || null,
-            error: error.message
-        });
-    }
+        }
+    })();
 
     let completedJobs = 0;
-    await runWithConcurrency(selectedIndexes, config.imageConcurrency, async (slideIndex, jobPosition) => {
+    const slideTask = runWithConcurrency(selectedIndexes, config.imageConcurrency, async (slideIndex, jobPosition) => {
         checkCancelled();
         const startedAtCompleted = completedJobs;
         const basePercent = 40 + Math.round((startedAtCompleted / Math.max(1, selectedIndexes.length)) * 30);
@@ -518,6 +523,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
             });
         }
     });
+    await Promise.all([coverTask, slideTask]);
 
     if (coverGenerated && slideImagesGenerated < requiredSlideImages) {
         const recoveryCandidates = [
