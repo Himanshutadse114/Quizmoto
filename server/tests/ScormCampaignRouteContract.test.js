@@ -23,4 +23,16 @@ describe('SCORM campaign route contract', () => {
             expect(source).to.include('SCORM_CAMPAIGN_NOT_FOUND');
         }
     });
+
+    it('routes new videos through course authoring instead of the retired standalone library', () => {
+        const appSource = fs.readFileSync(path.join(__dirname, '..', '..', 'client', 'src', 'App.jsx'), 'utf8');
+        const shellSource = fs.readFileSync(path.join(__dirname, '..', '..', 'client', 'src', 'pages', 'Scorm', 'ScormPlatformShell.jsx'), 'utf8');
+        const campaignSource = fs.readFileSync(path.join(__dirname, '..', '..', 'client', 'src', 'pages', 'Scorm', 'CampaignCreate.jsx'), 'utf8');
+        const optionsSource = fs.readFileSync(path.join(__dirname, '..', 'routes', 'scorm', 'campaignCreateOptions.js'), 'utf8');
+
+        expect(appSource).to.include('to="/scorm/author?mode=video"');
+        expect(shellSource).not.to.include("to: '/scorm/videos'");
+        expect(campaignSource).not.to.include('videoSelections');
+        expect(optionsSource).not.to.include('listVideos');
+    });
 });

@@ -11,7 +11,7 @@ async function ensureCourseForPackage({ packageId, hostId, title }) {
     if (course && course.status !== 'archived') return course;
 
     const pkg = await ScormPackage.findOne({ where: { id: packageId, hostId } });
-    const workspaceSources = new Set(['ai_author', 'presentation_import']);
+    const workspaceSources = new Set(['ai_author', 'presentation_import', 'video_course']);
     if (!pkg || pkg.status !== 'ready' || !workspaceSources.has(pkg.source)) return null;
 
     // AI-authored packages historically navigated to /scorm/courses/:packageId.

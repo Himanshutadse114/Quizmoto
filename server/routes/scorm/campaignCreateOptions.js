@@ -3,7 +3,6 @@ const router = express.Router();
 const auth = require('../middleware');
 const { getCampaignCreateOptions } = require('../../services/scorm/ScormCampaignCreateOptionsService');
 const { listPublishedTenantFlipbooks } = require('../../services/scorm/ScormFlipbookAssignmentService');
-const { listVideos } = require('../../services/scorm/ScormVideoService');
 
 router.get('/', auth, async (req, res) => {
     try {
@@ -13,13 +12,12 @@ router.get('/', auth, async (req, res) => {
                 code: 'SCORM_WORKSPACE_REQUIRED'
             });
         }
-        const [base, flipbooks, videos] = await Promise.all([
+        const [base, flipbooks] = await Promise.all([
             getCampaignCreateOptions({ hostId: req.userId, workspaceId: req.scormWorkspaceId }),
-            listPublishedTenantFlipbooks({ hostId: req.userId, workspaceId: req.scormWorkspaceId }),
-            listVideos({ hostId: req.userId, workspaceId: req.scormWorkspaceId })
+            listPublishedTenantFlipbooks({ hostId: req.userId, workspaceId: req.scormWorkspaceId })
         ]);
         res.setHeader('Cache-Control', 'no-store');
-        return res.json({ ok: true, ...base, flipbooks, videos });
+        return res.json({ ok: true, ...base, flipbooks });
     } catch (error) {
         return res.status(error.status || 500).json({
             message: error.message || 'Unable to load campaign creation options.',

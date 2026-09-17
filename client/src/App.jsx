@@ -43,7 +43,6 @@ const FlipbookAnalytics = lazy(() => import('./pages/Scorm/FlipbookAnalytics'));
 const FlipbookViewer = lazy(() => import('./pages/Public/FlipbookViewer'));
 const FlipbookLibraryViewer = lazy(() => import('./pages/Public/FlipbookLibraryViewer'));
 const ScormCourses = lazy(() => import('./pages/Scorm/Courses'));
-const ScormVideos = lazy(() => import('./pages/Scorm/Videos'));
 const ScormTracking = lazy(() => import('./pages/Scorm/Tracking'));
 const ScormLearnerRoster = lazy(() => import('./pages/Scorm/LearnerRoster'));
 const ScormAssignments = lazy(() => import('./pages/Scorm/Assignments'));
@@ -230,7 +229,7 @@ function AppRoutes() {
           <Route path="flipbooks/:id/edit" element={<LegacyPublicaWorkspaceRedirect destination="edit" />} />
           <Route path="flipbooks/:id/analytics" element={<LegacyPublicaWorkspaceRedirect destination="detail-analytics" />} />
           <Route path="courses" element={<ScormFeatureGate featureId="courses"><ScormCourses /></ScormFeatureGate>} />
-          <Route path="videos" element={<ScormFeatureGate featureId="courses"><ScormVideos /></ScormFeatureGate>} />
+          <Route path="videos" element={<Navigate to="/scorm/author?mode=video" replace />} />
           <Route path="courses/:id" element={<ScormFeatureGate featureId="courses"><ScormCourseDetail /></ScormFeatureGate>} />
           <Route path="roster" element={<ScormFeatureGate featureId="tracking"><ScormLearnerRoster /></ScormFeatureGate>} />
           <Route path="assignments" element={<ScormFeatureGate featureId="tracking"><ScormAssignments /></ScormFeatureGate>} />

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, BookOpen, BookOpenCheck, CalendarDays, CheckCircle2, Download, Film, KeyRound, Mail, ShieldCheck, Trash2, Upload, UserPlus } from 'lucide-react';
+import { ArrowLeft, BookOpen, BookOpenCheck, CalendarDays, CheckCircle2, Download, KeyRound, Mail, ShieldCheck, Trash2, Upload, UserPlus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import './scormCampaignReporting.css';
@@ -22,7 +22,6 @@ export default function CampaignCreate() {
   const fileRef = useRef(null);
   const [courses, setCourses] = useState([]);
   const [flipbooks, setFlipbooks] = useState([]);
-  const [videos, setVideos] = useState([]);
   const [authOptions, setAuthOptions] = useState({ emailCode: true, googleConfigured: false, microsoftConfigured: false });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -37,7 +36,6 @@ export default function CampaignCreate() {
   const [manualEmail, setManualEmail] = useState('');
   const [selectedCourses, setSelectedCourses] = useState([]);
   const [selectedFlipbooks, setSelectedFlipbooks] = useState([]);
-  const [selectedVideos, setSelectedVideos] = useState([]);
   const [dueAt, setDueAt] = useState('');
   const [required, setRequired] = useState(true);
   const [authMode, setAuthMode] = useState('email_code');
@@ -53,7 +51,6 @@ export default function CampaignCreate() {
         if (cancelled) return;
         setCourses(response.data?.courses || []);
         setFlipbooks(response.data?.flipbooks || []);
-        setVideos(response.data?.videos || []);
         setAuthOptions(response.data?.authOptions || { emailCode: true, googleConfigured: false, microsoftConfigured: false });
       })
       .catch((err) => !cancelled && setError(err.response?.data?.message || 'Unable to prepare campaign creation.'))
@@ -66,8 +63,7 @@ export default function CampaignCreate() {
   const estimatedBatchSize = learnerCount ? Math.ceil(learnerCount / effectiveBatchCount) : 0;
   const toggleCourse = (id) => setSelectedCourses((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
   const toggleFlipbook = (id) => setSelectedFlipbooks((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
-  const toggleVideo = (id) => setSelectedVideos((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
-  const selectedItemCount = selectedCourses.length + selectedFlipbooks.length + selectedVideos.length;
+  const selectedItemCount = selectedCourses.length + selectedFlipbooks.length;
 
   const readCsv = async (file) => {
     if (!file) return;
@@ -108,7 +104,7 @@ export default function CampaignCreate() {
     setError('');
     if (name.trim().length < 2) return setError('Enter a campaign name.');
     if (!learnerCount) return setError(learnerEntryMode === 'manual' ? 'Add at least one learner.' : 'Upload a learner CSV first.');
-    if (!selectedItemCount) return setError('Select at least one course, publication or video.');
+    if (!selectedItemCount) return setError('Select at least one course or publication.');
     if (authMode === 'google' && !authOptions.googleConfigured) return setError('Google SSO is not configured for this tenant.');
     if (authMode === 'microsoft' && !authOptions.microsoftConfigured) return setError('Microsoft SSO is not configured for this tenant.');
     setBusy(true);
@@ -117,7 +113,6 @@ export default function CampaignCreate() {
       const response = await axios.post(apiUrl('/api/scorm/campaigns'), {
         name: name.trim(), csvText: learnerCsvText, courseIds: selectedCourses,
         flipbookSelections: selectedFlipbooks.map((flipbookId) => ({ flipbookId, required })),
-        videoSelections: selectedVideos.map((videoId, position) => ({ videoId, position, required })),
         dueAt: dueAt || null, required, authMode, mailBatchCount, mailBatchDelaySeconds
       }, { headers });
       const campaign = response.data?.campaign;
@@ -162,10 +157,7 @@ export default function CampaignCreate() {
             <section className="scorm-panel rounded-2xl border p-5 md:p-6 space-y-5" style={{ borderColor: 'var(--scorm-line)' }}>
               <div><div className="scorm-micro text-[9px] uppercase font-semibold">Learning setup</div><h2 className="text-lg font-semibold mt-1">What should learners receive?</h2></div>
               <div><div className="flex items-center justify-between gap-3 mb-3"><div><div className="font-semibold text-sm">SCORM courses and modules</div><div className="text-[11px] mt-1" style={{ color: 'var(--scorm-muted)' }}>{selectedCourses.length} selected · uploaded ZIPs and LMSGEN courses use the same tracked player</div></div><BookOpen size={17} /></div><div className="campaign-course-list rounded-2xl border overflow-hidden max-h-[260px] overflow-y-auto divide-y" style={{ borderColor: 'var(--scorm-line)' }}>{courses.length ? courses.map((course) => <label key={course.id} className="campaign-course-row p-3.5 md:p-4 flex items-center gap-3 cursor-pointer"><input type="checkbox" checked={selectedCourses.includes(course.id)} onChange={() => toggleCourse(course.id)} /><span className="w-9 h-9 rounded-xl border grid place-items-center"><BookOpen size={15} /></span><span className="min-w-0"><span className="block text-sm font-semibold truncate">{course.title}</span><span className="block text-[10px] uppercase mt-0.5" style={{ color: 'var(--scorm-accent-strong)' }}>SCORM · Published</span></span></label>) : <div className="p-8 text-center text-sm" style={{ color: 'var(--scorm-muted)' }}>Publish a generated course or uploaded SCORM package first.</div>}</div></div>
-              <div className="grid md:grid-cols-2 gap-3">
-                <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--scorm-line)' }}><div className="p-3.5 border-b flex items-center justify-between" style={{ borderColor: 'var(--scorm-line)' }}><div><div className="font-semibold text-sm">Publica</div><div className="text-[10px] opacity-60">{selectedFlipbooks.length} selected</div></div><BookOpenCheck size={16} /></div><div className="max-h-[220px] overflow-y-auto divide-y">{flipbooks.length ? flipbooks.map((book) => <label key={book.id} className="p-3 flex gap-2.5 items-center cursor-pointer"><input type="checkbox" checked={selectedFlipbooks.includes(book.id)} onChange={() => toggleFlipbook(book.id)} /><span className="min-w-0"><span className="block text-xs font-semibold truncate">{book.title}</span><span className="block text-[9px] opacity-55 mt-0.5">{book.pageCount || 0} pages</span></span></label>) : <div className="p-5 text-[11px] opacity-60">No published Publica items.</div>}</div></div>
-                <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--scorm-line)' }}><div className="p-3.5 border-b flex items-center justify-between" style={{ borderColor: 'var(--scorm-line)' }}><div><div className="font-semibold text-sm">Trackable videos</div><div className="text-[10px] opacity-60">{selectedVideos.length} selected</div></div><Film size={16} /></div><div className="max-h-[220px] overflow-y-auto divide-y">{videos.length ? videos.map((video) => <label key={video.id} className="p-3 flex gap-2.5 items-center cursor-pointer"><input type="checkbox" checked={selectedVideos.includes(video.id)} onChange={() => toggleVideo(video.id)} /><span className="min-w-0"><span className="block text-xs font-semibold truncate">{video.title}</span><span className="block text-[9px] opacity-55 mt-0.5">{video.durationSeconds ? `${Math.ceil(video.durationSeconds / 60)} min` : 'Video lesson'}</span></span></label>) : <div className="p-5 text-[11px] opacity-60">Upload videos from Video Library first.</div>}</div></div>
-              </div>
+              <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--scorm-line)' }}><div className="p-3.5 border-b flex items-center justify-between" style={{ borderColor: 'var(--scorm-line)' }}><div><div className="font-semibold text-sm">Publica</div><div className="text-[10px] opacity-60">{selectedFlipbooks.length} selected</div></div><BookOpenCheck size={16} /></div><div className="max-h-[220px] overflow-y-auto divide-y">{flipbooks.length ? flipbooks.map((book) => <label key={book.id} className="p-3 flex gap-2.5 items-center cursor-pointer"><input type="checkbox" checked={selectedFlipbooks.includes(book.id)} onChange={() => toggleFlipbook(book.id)} /><span className="min-w-0"><span className="block text-xs font-semibold truncate">{book.title}</span><span className="block text-[9px] opacity-55 mt-0.5">{book.pageCount || 0} pages</span></span></label>) : <div className="p-5 text-[11px] opacity-60">No published Publica items.</div>}</div></div>
               <div><div className="scorm-micro text-[9px] uppercase font-semibold mb-2">Learner sign-in</div><div className="grid gap-2">{authCards.map((option) => { const selected = authMode === option.id; return <button key={option.id} type="button" disabled={!option.enabled} onClick={() => option.enabled && setAuthMode(option.id)} className="w-full rounded-xl border px-3.5 py-3 text-left disabled:opacity-45" style={{ borderColor: selected ? 'var(--scorm-accent-strong)' : 'var(--scorm-line)', background: selected ? 'rgba(79,201,191,.08)' : 'var(--scorm-surface-soft)' }}><span className="flex gap-3"><span className="w-8 h-8 rounded-lg border grid place-items-center shrink-0">{option.icon}</span><span className="min-w-0 flex-1"><span className="flex justify-between gap-3"><span className="text-xs font-semibold">{option.title}</span><span className="text-[9px] uppercase font-semibold" style={{ color: selected ? 'var(--scorm-accent-strong)' : 'var(--scorm-muted)' }}>{selected ? 'Selected' : option.enabled ? 'Available' : 'Not configured'}</span></span><span className="block text-[10px] leading-relaxed mt-1" style={{ color: 'var(--scorm-muted)' }}>{option.description}</span></span></span></button>; })}</div></div>
               <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
                 <div className="flex items-start gap-3">

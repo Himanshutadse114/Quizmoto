@@ -88,6 +88,24 @@ describe('ScormCourseWorkspaceService', () => {
         expect(course.status).to.equal('draft');
     });
 
+    it('creates a workspace for a generated video course package', async () => {
+        const packageId = 'b68a8800-9ed2-42f3-8c66-7f6c5d4db10f';
+        const hostId = 44;
+        ScormCourse.findOne = async () => null;
+        ScormPackage.findOne = async () => ({
+            id: packageId,
+            title: 'Manager safety briefing',
+            status: 'ready',
+            source: 'video_course'
+        });
+        ScormCourse.create = async (values) => ({ ...values });
+
+        const course = await ensureCourseForPackage({ packageId, hostId });
+        expect(course.id).to.equal(packageId);
+        expect(course.title).to.equal('Manager safety briefing');
+        expect(course.status).to.equal('draft');
+    });
+
     it('resolves a package id into a newly materialized workspace', async () => {
         const packageId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
         const hostId = 8;

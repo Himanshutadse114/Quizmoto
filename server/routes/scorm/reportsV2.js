@@ -14,13 +14,12 @@ function reportContext(req) {
 
 router.get('/catalog', auth, async (req, res) => {
     const types = [
-        { id: 'overview', label: 'Overview', description: 'Tenant-wide learning, campaigns, Publica and video performance.' },
+        { id: 'overview', label: 'Overview', description: 'Tenant-wide learning, campaign and Publica performance.' },
         { id: 'courses', label: 'Courses', description: 'Course learner counts, completion and average scores.' },
-        { id: 'learners', label: 'Learners', description: 'One consolidated record per learner across courses, Publica and video.' },
-        { id: 'campaigns', label: 'Campaigns', description: 'Campaign delivery with course, publication and video completion.' },
+        { id: 'learners', label: 'Learners', description: 'One consolidated record per learner across courses and Publica.' },
+        { id: 'campaigns', label: 'Campaigns', description: 'Campaign delivery with course and publication completion.' },
         { id: 'flipbooks', label: 'Publica', description: 'Publication reach, sessions, completion and active reading time.' },
-        { id: 'videos', label: 'Videos', description: 'Watched coverage, active viewing time, plays and seeks for each learner.' },
-        { id: 'assignments', label: 'Assignments', description: 'Course, publication and video assignment evidence in one report.' }
+        { id: 'assignments', label: 'Assignments', description: 'Course and publication assignment evidence in one report.' }
     ];
     if (req.scormRole === 'super_admin') {
         types.push({ id: 'tenants', label: 'Tenants', description: 'Platform-wide tenant capacity, usage and Publica inventory.' });

@@ -373,7 +373,7 @@ async function patchHtmlIfNeeded(packageId, rel, buf) {
         // bridge. Do not add the generic whole-document MutationObserver as well;
         // it is redundant and needlessly expensive on visual/interactive slides.
         patched = patchAuthoredHtml(patched);
-    } else if (pkg.source !== 'presentation_import') {
+    } else if (pkg.source !== 'presentation_import' && pkg.source !== 'video_course') {
         // Third-party packages do not have the authored bridge, so retain the
         // generic progress detector for them only.
         patched = injectUniversalProgressBridge(patched);
@@ -383,9 +383,51 @@ async function patchHtmlIfNeeded(packageId, rel, buf) {
     return { buffer: Buffer.from(patched, 'utf8'), patched: true };
 }
 
-async function sendContent(res, packageId, rel, { allowPreviewEmbed = false } = {}) {
+function requestedByteRange(value) {
+    const match = String(value || '').trim().match(/^bytes=(\d+)-(\d*)$/i);
+    if (!match) return null;
+    const start = Number(match[1]);
+    const end = match[2] ? Number(match[2]) : undefined;
+    if (!Number.isSafeInteger(start) || start < 0) return null;
+    if (end !== undefined && (!Number.isSafeInteger(end) || end < start)) return null;
+    return { start, end };
+}
+
+function isVideoContent(rel) {
+    return /\.(?:mp4|webm|ogv|ogg|mov)$/i.test(String(rel || ''));
+}
+
+async function streamVideoContent(req, res, storage, key, rel, { allowPreviewEmbed = false } = {}) {
+    const rangeHeader = req.headers.range;
+    const range = requestedByteRange(rangeHeader);
+    if (rangeHeader && !range) {
+        res.setHeader('Content-Range', 'bytes */*');
+        return res.status(416).end();
+    }
+
+    const object = await storage.getObjectStream(key, range || {});
+    res.status(range ? 206 : 200);
+    res.setHeader('Content-Type', object.contentType || guessContentType(rel));
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', allowPreviewEmbed ? "frame-ancestors 'self' https: http:" : "frame-ancestors 'self'");
+    if (Number.isFinite(Number(object.contentLength))) res.setHeader('Content-Length', Number(object.contentLength));
+    if (range && object.contentRange) res.setHeader('Content-Range', object.contentRange);
+    object.stream.once('error', (error) => {
+        if (!res.headersSent) res.status(500).end();
+        else res.destroy(error);
+    });
+    object.stream.pipe(res);
+}
+
+async function sendContent(req, res, packageId, rel, { allowPreviewEmbed = false } = {}) {
     const key = packageContentKey(packageId, rel);
     const storage = getObjectStorage();
+    if (isVideoContent(rel)) {
+        await streamVideoContent(req, res, storage, key, rel, { allowPreviewEmbed });
+        return;
+    }
     const buf = await storage.getObjectBuffer(key);
     const served = await patchHtmlIfNeeded(packageId, rel, buf);
 
@@ -409,7 +451,7 @@ router.get('/t/:accessToken/*path', async (req, res) => {
         const access = await resolvePackageAccess(accessToken, null);
         if (!access) return res.status(401).json({ message: 'Unauthorized' });
         const allowPreviewEmbed = access.isPreview && String(req.query.previewEmbed || '') === '1';
-        await sendContent(res, access.packageId, rel, { allowPreviewEmbed });
+        await sendContent(req, res, access.packageId, rel, { allowPreviewEmbed });
     } catch (err) {
         res.status(404).json({ message: 'Content not found' });
     }
@@ -425,7 +467,7 @@ router.get('/:packageId/*path', async (req, res) => {
         const access = await resolvePackageAccess(token, packageId);
         if (!access || access.packageId !== packageId) return res.status(401).json({ message: 'Unauthorized' });
         const allowPreviewEmbed = access.isPreview && String(req.query.previewEmbed || '') === '1';
-        await sendContent(res, packageId, rel, { allowPreviewEmbed });
+        await sendContent(req, res, packageId, rel, { allowPreviewEmbed });
     } catch (err) {
         res.status(404).json({ message: 'Content not found' });
     }
@@ -435,4 +477,6 @@ router.patchAuthoredHtml = patchAuthoredHtml;
 router.patchLegacyCourseInteractionRuntime = patchLegacyCourseInteractionRuntime;
 router.authoredRuntimeBridge = authoredRuntimeBridge;
 router.universalRuntimeProgressBridge = universalRuntimeProgressBridge;
+router.requestedByteRange = requestedByteRange;
+router.isVideoContent = isVideoContent;
 module.exports = router;

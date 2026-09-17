@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { ArrowRight, CheckCircle2, FileText, FileUp, Loader2, Presentation, Sparkles } from 'lucide-react';
+import { ArrowRight, CheckCircle2, FileText, FileUp, Film, Loader2, Presentation, Sparkles } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { startBackgroundCourseGeneration } from '../../services/courseGenerationJobs';
 import { apiUrl } from '../../config';
@@ -53,6 +53,45 @@ function isPdfFile(file) {
   return String(file.name || '').toLowerCase().endsWith('.pdf') || String(file.type || '').toLowerCase().includes('pdf');
 }
 
+function isVideoFile(file) {
+  if (!file) return false;
+  const type = String(file.type || '').toLowerCase();
+  const name = String(file.name || '').toLowerCase();
+  return ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'].includes(type) || /\.(mp4|webm|ogv|ogg|mov)$/.test(name);
+}
+
+function videoMimeType(file) {
+  const declared = String(file?.type || '').toLowerCase();
+  if (['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'].includes(declared)) return declared;
+  const name = String(file?.name || '').toLowerCase();
+  if (name.endsWith('.webm')) return 'video/webm';
+  if (name.endsWith('.ogg') || name.endsWith('.ogv')) return 'video/ogg';
+  if (name.endsWith('.mov')) return 'video/quicktime';
+  return 'video/mp4';
+}
+
+function videoDuration(file) {
+  return new Promise((resolve) => {
+    const element = document.createElement('video');
+    const url = URL.createObjectURL(file);
+    element.preload = 'metadata';
+    element.onloadedmetadata = () => {
+      const value = Number(element.duration || 0);
+      URL.revokeObjectURL(url);
+      resolve(Number.isFinite(value) ? value : 0);
+    };
+    element.onerror = () => { URL.revokeObjectURL(url); resolve(0); };
+    element.src = url;
+  });
+}
+
+function encodeVideoMetadata(value) {
+  const bytes = new TextEncoder().encode(JSON.stringify(value));
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
 export default function CourseGenerator() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -62,7 +101,7 @@ export default function CourseGenerator() {
   const [topic, setTopic] = useState('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState(null);
-  const [courseMode, setCourseMode] = useState('generated');
+  const [courseMode, setCourseMode] = useState(() => searchParams.get('mode') === 'video' ? 'video' : 'generated');
   const [detailLevel, setDetailLevel] = useState('detailed');
   const [courseTemplates, setCourseTemplates] = useState([FALLBACK_TEMPLATE]);
   const [templateEngineAvailable, setTemplateEngineAvailable] = useState(false);
@@ -71,6 +110,7 @@ export default function CourseGenerator() {
   const [branding, setBranding] = useState({ ...DEFAULT_BRANDING });
   const [brandingError, setBrandingError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -114,8 +154,14 @@ export default function CourseGenerator() {
   );
 
   const presentationMode = courseMode === 'presentation';
-  const hasSource = presentationMode ? Boolean(file && isPdfFile(file)) : Boolean(file || topic.trim() || description.trim());
-  const displayTitle = topic.trim() || file?.name || 'New course';
+  const videoMode = courseMode === 'video';
+  const generatedMode = courseMode === 'generated';
+  const hasSource = presentationMode
+    ? Boolean(file && isPdfFile(file))
+    : videoMode
+      ? Boolean(file && isVideoFile(file))
+      : Boolean(file || topic.trim() || description.trim());
+  const displayTitle = topic.trim() || String(file?.name || 'New course').replace(/\.[^.]+$/, '');
 
   if (editId) return <AuthorVisual />;
 
@@ -127,7 +173,9 @@ export default function CourseGenerator() {
   const selectCourseMode = (mode) => {
     setCourseMode(mode);
     setError('');
+    setUploadProgress(0);
     if (mode === 'presentation' && file && !isPdfFile(file)) setFile(null);
+    if (mode === 'video' && file && !isVideoFile(file)) setFile(null);
   };
 
   const selectSourceFile = (nextFile) => {
@@ -136,16 +184,44 @@ export default function CourseGenerator() {
       setError('Presentation courses accept PDF files only. Export the PowerPoint or Gamma presentation as PDF, then upload it here.');
       return;
     }
+    if (videoMode && nextFile && !isVideoFile(nextFile)) {
+      setFile(null);
+      setError('Video courses accept MP4, WebM, OGG or MOV files only.');
+      return;
+    }
     setError('');
     setFile(nextFile || null);
+    if (videoMode && nextFile && !topic.trim()) setTopic(String(nextFile.name || '').replace(/\.[^.]+$/, ''));
   };
 
-  const generateCourse = () => {
+  const generateCourse = async () => {
     if (!hasSource || busy || !token || brandingError) return;
     setError('');
     setBusy(true);
+    setUploadProgress(0);
 
     try {
+      if (videoMode) {
+        const durationSeconds = await videoDuration(file);
+        const response = await axios.post(apiUrl('/api/scorm/video-courses'), file, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': videoMimeType(file),
+            'X-Video-Course-Metadata': encodeVideoMetadata({
+              title: displayTitle,
+              description: description.trim(),
+              durationSeconds,
+              fileName: file.name
+            })
+          },
+          timeout: 15 * 60 * 1000,
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+          onUploadProgress: (event) => setUploadProgress(event.total ? Math.round((event.loaded / event.total) * 100) : 0)
+        });
+        navigate(`/scorm/courses/${response.data.courseId}`, { replace: true, state: { courseMessage: 'Video course created and ready to preview.' } });
+        return;
+      }
       const progressId = createProgressId();
       startBackgroundCourseGeneration({
         token,
@@ -183,7 +259,7 @@ export default function CourseGenerator() {
         }
       });
     } catch (err) {
-      setError(err.message || 'Unable to start course generation. Please try again.');
+      setError(err.response?.data?.message || err.message || (videoMode ? 'Unable to create the video course. Please retry.' : 'Unable to start course generation. Please try again.'));
       setBusy(false);
     }
   };
@@ -202,7 +278,9 @@ export default function CourseGenerator() {
           <p className="text-sm mt-3 leading-relaxed max-w-2xl" style={muted}>
             {presentationMode
               ? 'Upload the presentation PDF, optionally name the course and add your logo. The slides provide everything needed to create the tracked course and end quiz.'
-              : 'Add a topic, learning goal or source file, choose the learning experience and apply your course branding. Generation runs in the background while you continue using the platform.'}
+              : videoMode
+                ? 'Upload a video and LMSGEN will turn it into a responsive, resumable and downloadable SCORM course with genuine watched-coverage tracking.'
+                : 'Add a topic, learning goal or source file, choose the learning experience and apply your course branding. Generation runs in the background while you continue using the platform.'}
           </p>
         </div>
         <button
@@ -225,26 +303,26 @@ export default function CourseGenerator() {
           <div className="scorm-course-generator-panel-header px-5 md:px-6 py-5 border-b flex items-center justify-between gap-4" style={{ borderColor: 'var(--scorm-line)' }}>
             <div>
               <div className="scorm-micro text-[9px] uppercase font-semibold">Course source</div>
-              <h2 className="text-[18px] font-semibold mt-1" style={ink}>{presentationMode ? 'Upload your finished presentation' : 'Tell us what the course should cover'}</h2>
+              <h2 className="text-[18px] font-semibold mt-1" style={ink}>{presentationMode ? 'Upload your finished presentation' : videoMode ? 'Upload your learning video' : 'Tell us what the course should cover'}</h2>
             </div>
             <div className="scorm-course-generator-icon hidden sm:grid w-10 h-10 rounded-lg border place-items-center" style={{ ...softSurface, color: 'var(--scorm-accent)' }}>
-              <FileText size={18} />
+              {videoMode ? <Film size={18} /> : <FileText size={18} />}
             </div>
           </div>
 
           <div className="p-5 md:p-6 space-y-7">
             <div>
               <div className="scorm-micro text-[9px] uppercase font-semibold mb-3">Build method</div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <button
                   type="button"
                   onClick={() => selectCourseMode('generated')}
                   className="text-left rounded-xl border p-4 transition-all min-h-[116px]"
-                  style={{ background: !presentationMode ? 'var(--scorm-accent-soft)' : 'var(--scorm-surface-soft)', borderColor: !presentationMode ? 'var(--scorm-accent)' : 'var(--scorm-line)' }}
+                  style={{ background: generatedMode ? 'var(--scorm-accent-soft)' : 'var(--scorm-surface-soft)', borderColor: generatedMode ? 'var(--scorm-accent)' : 'var(--scorm-line)' }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <Sparkles size={18} style={{ color: 'var(--scorm-accent)' }} />
-                    {!presentationMode && <CheckCircle2 size={16} style={{ color: 'var(--scorm-accent)' }} />}
+                    {generatedMode && <CheckCircle2 size={16} style={{ color: 'var(--scorm-accent)' }} />}
                   </div>
                   <div className="text-sm font-semibold mt-3" style={ink}>Generate a course</div>
                   <div className="text-[11px] leading-relaxed mt-1" style={muted}>AI creates the learning structure, visuals and selected interactions.</div>
@@ -261,6 +339,19 @@ export default function CourseGenerator() {
                   </div>
                   <div className="text-sm font-semibold mt-3" style={ink}>Track my presentation</div>
                   <div className="text-[11px] leading-relaxed mt-1" style={muted}>Keep the uploaded slides and add tracking plus a Quizmoto-themed quiz.</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectCourseMode('video')}
+                  className="text-left rounded-xl border p-4 transition-all min-h-[116px]"
+                  style={{ background: videoMode ? 'var(--scorm-accent-soft)' : 'var(--scorm-surface-soft)', borderColor: videoMode ? 'var(--scorm-accent)' : 'var(--scorm-line)' }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <Film size={18} style={{ color: 'var(--scorm-accent)' }} />
+                    {videoMode && <CheckCircle2 size={16} style={{ color: 'var(--scorm-accent)' }} />}
+                  </div>
+                  <div className="text-sm font-semibold mt-3" style={ink}>Create from video</div>
+                  <div className="text-[11px] leading-relaxed mt-1" style={muted}>Package one video as a tracked, assignable and downloadable SCORM course.</div>
                 </button>
               </div>
             </div>
@@ -279,13 +370,25 @@ export default function CourseGenerator() {
               </div>
             )}
 
+            {videoMode && (
+              <div className="rounded-xl border p-4" style={{ background: 'var(--scorm-accent-soft)', borderColor: 'var(--scorm-accent)' }}>
+                <div className="flex items-start gap-3">
+                  <Film size={18} className="shrink-0 mt-0.5" style={{ color: 'var(--scorm-accent)' }} />
+                  <div>
+                    <div className="text-xs font-semibold" style={ink}>A complete SCORM video course</div>
+                    <div className="text-[11px] leading-relaxed mt-1" style={muted}>The course records genuine watched coverage without counting seek jumps, restores the learner’s position, works on mobile and desktop, and can be downloaded as a standard SCORM 1.2 ZIP.</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
               <div className="min-w-0">
-                <div className="scorm-micro text-[9px] uppercase font-semibold h-4 flex items-center mb-2">{presentationMode ? 'Course title (optional)' : 'Topic'}</div>
+                <div className="scorm-micro text-[9px] uppercase font-semibold h-4 flex items-center mb-2">{presentationMode || videoMode ? 'Course title' : 'Topic'}</div>
                 <input
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  placeholder={presentationMode ? 'Optional course title' : 'e.g. Phishing Awareness'}
+                  placeholder={presentationMode ? 'Optional course title' : videoMode ? 'Video course title' : 'e.g. Phishing Awareness'}
                   className="scorm-course-search w-full h-14 px-3 text-sm"
                 />
               </div>
@@ -295,13 +398,13 @@ export default function CourseGenerator() {
                 <label className="scorm-course-generator-upload h-14 rounded-lg border px-3 flex items-center gap-3 cursor-pointer transition-colors" style={softSurface}>
                   <FileUp size={16} className="shrink-0" style={{ color: 'var(--scorm-accent)' }} />
                   <span className="text-xs truncate flex-1" style={{ color: file ? 'var(--scorm-ink-soft)' : 'var(--scorm-muted)' }}>
-                    {file ? file.name : presentationMode ? 'Upload presentation PDF (required)' : 'Upload source file (optional)'}
+                    {file ? file.name : presentationMode ? 'Upload presentation PDF (required)' : videoMode ? 'Upload MP4, WebM, OGG or MOV (required)' : 'Upload source file (optional)'}
                   </span>
                   <span className="scorm-button-secondary h-10 px-3 inline-flex items-center justify-center text-[10px] font-semibold shrink-0">Browse</span>
                   <input
                     type="file"
                     className="sr-only"
-                    accept={presentationMode ? '.pdf,application/pdf' : undefined}
+                    accept={presentationMode ? '.pdf,application/pdf' : videoMode ? 'video/mp4,video/webm,video/ogg,video/quicktime,.mov,.ogv' : undefined}
                     onChange={(e) => selectSourceFile(e.target.files?.[0] || null)}
                   />
                 </label>
@@ -309,17 +412,17 @@ export default function CourseGenerator() {
             </div>
 
             {!presentationMode && <label className="block">
-              <span className="scorm-micro text-[9px] uppercase font-semibold">Description or learning goals</span>
+              <span className="scorm-micro text-[9px] uppercase font-semibold">{videoMode ? 'Course description · optional' : 'Description or learning goals'}</span>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={5}
-                placeholder="Describe what learners should understand and be able to do after completing the course."
+                placeholder={videoMode ? 'Add a short description learners will see with this video course.' : 'Describe what learners should understand and be able to do after completing the course.'}
                 className="scorm-course-search mt-1.5 w-full px-3 py-3 text-sm resize-y min-h-[145px]"
               />
             </label>}
 
-            {!presentationMode && <div>
+            {generatedMode && <div>
               <div className="flex items-end justify-between gap-4 mb-3">
                 <div>
                   <div className="scorm-micro text-[9px] uppercase font-semibold">Course depth</div>
@@ -348,7 +451,7 @@ export default function CourseGenerator() {
               </div>
             </div>}
 
-            {!presentationMode && <CourseBrandingPanel
+            {generatedMode && <CourseBrandingPanel
               value={branding}
               onChange={setBranding}
               error={brandingError}
@@ -362,7 +465,7 @@ export default function CourseGenerator() {
               onError={setBrandingError}
             />}
 
-            {!presentationMode && <div>
+            {generatedMode && <div>
               <div className="flex items-end justify-between gap-4 mb-3">
                 <div>
                   <div className="scorm-micro text-[9px] uppercase font-semibold">Course style</div>
@@ -427,7 +530,9 @@ export default function CourseGenerator() {
             <div className="text-[11px] leading-relaxed max-w-xl" style={muted}>
               {presentationMode
                 ? 'The course preserves the slide design, adds a Quizmoto teal quiz, and records progress, resume position, answers, score and completion. You can leave this page after generation starts.'
-                : 'Your selected branding is embedded in the generated course and downloaded SCORM package. You can leave this page after generation starts.'}
+                : videoMode
+                  ? 'The video is packaged into a portable SCORM 1.2 course. Its watched coverage, resume position, active time and completion are recorded in the same course reports as every other module.'
+                  : 'Your selected branding is embedded in the generated course and downloaded SCORM package. You can leave this page after generation starts.'}
             </div>
             <button
               type="button"
@@ -435,8 +540,16 @@ export default function CourseGenerator() {
               disabled={busy || !hasSource || Boolean(brandingError)}
               className="scorm-button-primary inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {busy ? <Loader2 size={17} className="animate-spin" /> : <Sparkles size={17} />}
-              {busy ? 'Starting…' : presentationMode ? 'Create tracked course' : 'Generate course'}
+              {busy ? <Loader2 size={17} className="animate-spin" /> : videoMode ? <Film size={17} /> : <Sparkles size={17} />}
+              {busy
+                ? videoMode
+                  ? uploadProgress < 100 ? `Uploading ${uploadProgress}%` : 'Building SCORM…'
+                  : 'Starting…'
+                : presentationMode
+                  ? 'Create tracked course'
+                  : videoMode
+                    ? 'Create video course'
+                    : 'Generate course'}
             </button>
           </div>
         </section>
@@ -445,11 +558,11 @@ export default function CourseGenerator() {
           <section className="scorm-course-generator-panel rounded-2xl border overflow-hidden" style={surface}>
             <div className="scorm-course-generator-panel-header px-5 py-4 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
               <div className="scorm-micro text-[9px] uppercase font-semibold">Selected experience</div>
-              <h3 className="text-[16px] font-semibold mt-1" style={ink}>{presentationMode ? 'Tracked presentation' : selectedTemplate?.name || FALLBACK_TEMPLATE.name}</h3>
+              <h3 className="text-[16px] font-semibold mt-1" style={ink}>{presentationMode ? 'Tracked presentation' : videoMode ? 'Tracked video course' : selectedTemplate?.name || FALLBACK_TEMPLATE.name}</h3>
             </div>
             <div className="p-5">
-              <div className="text-[11px] leading-relaxed" style={muted}>{presentationMode ? 'Original slide visuals with no generated interactions, followed by an AI knowledge check.' : selectedTemplate?.description || FALLBACK_TEMPLATE.description}</div>
-              {!presentationMode && <><div className="mt-4 pt-4 border-t flex items-center justify-between gap-3" style={{ borderColor: 'var(--scorm-line)' }}>
+              <div className="text-[11px] leading-relaxed" style={muted}>{presentationMode ? 'Original slide visuals with no generated interactions, followed by an AI knowledge check.' : videoMode ? 'A responsive video player packaged as a standard SCORM course, ready for the LMSGEN player or another compatible LMS.' : selectedTemplate?.description || FALLBACK_TEMPLATE.description}</div>
+              {generatedMode && <><div className="mt-4 pt-4 border-t flex items-center justify-between gap-3" style={{ borderColor: 'var(--scorm-line)' }}>
                 <span className="text-[10px] uppercase tracking-[.08em] font-semibold" style={muted}>Interaction</span>
                 <span className="text-xs font-semibold" style={ink}>{interactionLabels[interactionLevel]?.label || 'Balanced'}</span>
               </div>
@@ -469,8 +582,15 @@ export default function CourseGenerator() {
                   ))}
                 </div>
               )}
+              {videoMode && (
+                <div className="mt-4 pt-4 border-t space-y-3" style={{ borderColor: 'var(--scorm-line)' }}>
+                  {['Genuine watched coverage', 'Automatic resume position', 'Mobile and desktop playback', 'Standard SCORM 1.2 download'].map((item) => (
+                    <div key={item} className="flex items-center gap-2 text-[11px]" style={muted}><CheckCircle2 size={14} style={{ color: 'var(--scorm-accent)' }} />{item}</div>
+                  ))}
+                </div>
+              )}
               <div className="mt-3 text-[10px] leading-relaxed" style={muted}>
-                {presentationMode ? 'Presentation artwork stays unchanged while the quiz and course controls consistently use Quizmoto teal.' : 'Template identity, version and course branding are saved with the course so rebuilds can retain the same identity.'}
+                {presentationMode ? 'Presentation artwork stays unchanged while the quiz and course controls consistently use Quizmoto teal.' : videoMode ? 'Seeking ahead does not count as watched time, so completion evidence reflects content the learner actually viewed.' : 'Template identity, version and course branding are saved with the course so rebuilds can retain the same identity.'}
               </div>
             </div>
           </section>
@@ -478,7 +598,7 @@ export default function CourseGenerator() {
           <section className="scorm-course-generator-panel rounded-2xl border overflow-hidden" style={surface}>
             <div className="scorm-course-generator-panel-header px-5 py-4 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
               <div className="scorm-micro text-[9px] uppercase font-semibold">What happens next</div>
-              <h3 className="text-[16px] font-semibold mt-1" style={ink}>Background generation</h3>
+              <h3 className="text-[16px] font-semibold mt-1" style={ink}>{videoMode ? 'Video course assembly' : 'Background generation'}</h3>
             </div>
             <div className="p-5 space-y-4">
               {(presentationMode ? [
@@ -486,6 +606,11 @@ export default function CourseGenerator() {
                 ['2', 'Image optimisation', 'Slides receive consistent dimensions and compact file sizes.'],
                 ['3', 'Quiz creation', 'The presentation content guides a Quizmoto-themed end quiz.'],
                 ['4', 'Tracking package', 'SCORM progress, resume, answers and score are added.']
+              ] : videoMode ? [
+                ['1', 'Secure upload', 'The source video is streamed directly to protected storage.'],
+                ['2', 'Responsive player', 'A professional player is prepared for desktop, tablet and mobile.'],
+                ['3', 'Learning tracking', 'Resume position, active viewing and genuine watched coverage are added.'],
+                ['4', 'Portable package', 'A downloadable SCORM 1.2 ZIP is created and added to My Courses.']
               ] : [
                 ['1', 'Course content', 'The learning structure and knowledge checks are prepared.'],
                 ['2', 'Template layout', 'Content is mapped to the selected course style.'],
@@ -507,9 +632,9 @@ export default function CourseGenerator() {
             <div className="flex items-start gap-3">
               <CheckCircle2 size={17} className="shrink-0 mt-0.5" style={{ color: 'var(--scorm-accent)' }} />
               <div>
-                <div className="text-xs font-semibold" style={ink}>{presentationMode ? 'Presentation identity stays intact' : 'Branding travels with the course'}</div>
+                <div className="text-xs font-semibold" style={ink}>{presentationMode ? 'Presentation identity stays intact' : videoMode ? 'Portable SCORM, not a separate video product' : 'Branding travels with the course'}</div>
                 <div className="text-[11px] leading-relaxed mt-1" style={muted}>
-                  {presentationMode ? 'The original slide artwork is embedded into the SCORM package, while Quizmoto teal is used for the quiz and player controls.' : 'The logo and colours are written into the SCORM package, so the branding is retained when the package is downloaded and uploaded to another LMS.'}
+                  {presentationMode ? 'The original slide artwork is embedded into the SCORM package, while Quizmoto teal is used for the quiz and player controls.' : videoMode ? 'After creation, publish and assign it like any other course or download the ZIP for use in another SCORM 1.2 LMS.' : 'The logo and colours are written into the SCORM package, so the branding is retained when the package is downloaded and uploaded to another LMS.'}
                 </div>
               </div>
             </div>

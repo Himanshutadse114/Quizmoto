@@ -300,14 +300,21 @@ router.get('/:id/download', auth, async (req, res) => {
         if (!pkg.storageKeyZip) return res.status(404).json({ message: 'ZIP not stored' });
 
         const storage = getObjectStorage();
-        const buf = await storage.getObjectBuffer(pkg.storageKeyZip);
+        const object = await storage.getObjectStream(pkg.storageKeyZip);
         const safeName = String(pkg.title || 'scorm-package')
             .replace(/[^a-zA-Z0-9._-]+/g, '_')
             .slice(0, 80);
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename="${safeName}.zip"`);
-        res.setHeader('Content-Length', buf.length);
-        res.send(buf);
+        if (Number.isFinite(Number(object.contentLength))) {
+            res.setHeader('Content-Length', Number(object.contentLength));
+        }
+        object.stream.once('error', (error) => {
+            logger.error('scorm_package_download_stream_failed', { module: 'scorm', packageId: pkg.id, error: error.message });
+            if (!res.headersSent) res.status(500).json({ message: 'Package download failed' });
+            else res.destroy(error);
+        });
+        object.stream.pipe(res);
     } catch (err) {
         logger.error('scorm_package_download_failed', { module: 'scorm', error: err.message });
         res.status(500).json({ message: err.message });
