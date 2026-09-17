@@ -263,29 +263,29 @@ export default function PlatformUsersAdmin() {
         {loading ? <div className="min-h-[180px] grid place-items-center"><RefreshCw size={20} className="animate-spin opacity-45" /></div> : users.length ? (
           <div className="divide-y">
             {users.map((user) => (
-              <div key={user.id} className="p-3.5 md:p-4">
-                <div className="flex flex-col xl:flex-row xl:items-center gap-3">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div key={user.id} className="p-4 md:p-5">
+                <div className="grid gap-4 xl:grid-cols-[minmax(240px,1fr)_minmax(420px,1.25fr)_330px] xl:items-center">
+                  <div className="flex items-center gap-3 min-w-0">
                     <UserAvatar user={user} />
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2"><div className="text-sm font-semibold truncate">{user.username || 'Platform user'}</div>{user.protected && <span className="rounded-full border px-2 py-0.5 text-[8px] uppercase font-semibold text-[#4FC9BF]">Protected</span>}{user.accountStatus !== 'active' && <span className={`rounded-full border px-2 py-0.5 text-[8px] uppercase font-semibold ${user.accountStatus === 'blocked' ? 'text-rose-500 border-rose-500/30' : 'text-amber-500 border-amber-500/30'}`}>{user.accountStatus}</span>}</div>
-                      <div className="mt-0.5 text-[10px] opacity-55 break-all">{user.email || 'No email address'}</div>
+                      <div className="flex flex-wrap items-center gap-2"><div className="text-sm font-semibold leading-snug break-words">{user.username || 'Platform user'}</div>{user.protected && <span className="shrink-0 rounded-full border px-2 py-0.5 text-[8px] uppercase font-semibold text-[#4FC9BF]">Protected</span>}{user.accountStatus !== 'active' && <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[8px] uppercase font-semibold ${user.accountStatus === 'blocked' ? 'text-rose-500 border-rose-500/30' : 'text-amber-500 border-amber-500/30'}`}>{user.accountStatus}</span>}</div>
+                      <div className="mt-1 text-[10px] leading-relaxed opacity-55 break-words [overflow-wrap:anywhere]">{user.email || 'No email address'}</div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 xl:w-[520px]">
-                    <div className="rounded-lg border px-3 py-2"><div className="text-[8px] uppercase opacity-45">Sign-in</div><div className="mt-1 text-[10px] font-semibold flex items-center gap-1.5"><KeyRound size={11} /> {user.authMethod}</div></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 min-w-0">
+                    <div className="rounded-lg border px-3 py-2 min-w-0"><div className="text-[8px] uppercase opacity-45">Sign-in</div><div className="mt-1 text-[10px] font-semibold flex items-center gap-1.5 min-w-0"><KeyRound size={11} className="shrink-0" /><span className="truncate">{user.authMethod}</span></div></div>
                     <div className="rounded-lg border px-3 py-2"><div className="text-[8px] uppercase opacity-45">Tenant</div><div className="mt-1 text-[10px] font-semibold truncate">{user.tenant?.name || 'Unassigned'}</div></div>
-                    <div className="rounded-lg border px-3 py-2 col-span-2 md:col-span-1"><div className="text-[8px] uppercase opacity-45">Role</div><div className="mt-1 text-[10px] font-semibold">{roleLabel(user.tenant?.role || user.accessRole)}</div></div>
+                    <div className="rounded-lg border px-3 py-2"><div className="text-[8px] uppercase opacity-45">Role</div><div className="mt-1 text-[10px] font-semibold truncate">{roleLabel(user.tenant?.role || user.accessRole)}</div></div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 xl:justify-end">
-                    <button type="button" onClick={() => openProfile(user)} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2"><Pencil size={13} /> Edit profile</button>
-                    {user.accountStatus === 'active' && !user.protected && <button type="button" onClick={() => openManage(user)} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2"><Link2 size={13} /> {user.tenant ? 'Manage assignment' : 'Assign user'}</button>}
-                    {user.accountStatus === 'active' && user.tenant && user.tenant.role !== 'admin' && !user.protected && <button type="button" onClick={() => unassign(user)} disabled={saving} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2 disabled:opacity-50"><Unlink size={13} /> Unassign</button>}
-                    {user.accountStatus === 'active' && !user.protected && <button type="button" onClick={() => changeAccountStatus(user, 'remove')} disabled={saving} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2 disabled:opacity-50"><Trash2 size={13} /> Remove</button>}
-                    {user.accountStatus === 'active' && !user.protected && <button type="button" onClick={() => changeAccountStatus(user, 'block')} disabled={saving} className="min-h-9 px-3 rounded-lg border border-rose-500/30 text-rose-500 text-[10px] font-semibold inline-flex items-center gap-2 disabled:opacity-50"><ShieldX size={13} /> Remove & block</button>}
-                    {user.accountStatus !== 'active' && !user.protected && <button type="button" onClick={() => changeAccountStatus(user, 'restore')} disabled={saving} className="scorm-button-primary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2 disabled:opacity-50"><RotateCcw size={13} /> Restore</button>}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 xl:w-[330px]">
+                    <button type="button" onClick={() => openProfile(user)} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap"><Pencil size={13} /> Edit profile</button>
+                    {user.accountStatus === 'active' && !user.protected && <button type="button" onClick={() => openManage(user)} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap"><Link2 size={13} /> {user.tenant ? 'Manage assignment' : 'Assign user'}</button>}
+                    {user.accountStatus === 'active' && user.tenant && user.tenant.role !== 'admin' && !user.protected && <button type="button" onClick={() => unassign(user)} disabled={saving} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-50"><Unlink size={13} /> Unassign</button>}
+                    {user.accountStatus === 'active' && !user.protected && <button type="button" onClick={() => changeAccountStatus(user, 'remove')} disabled={saving} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-50"><Trash2 size={13} /> Remove</button>}
+                    {user.accountStatus === 'active' && !user.protected && <button type="button" onClick={() => changeAccountStatus(user, 'block')} disabled={saving} className="min-h-9 px-3 rounded-lg border border-rose-500/30 text-rose-500 text-[10px] font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-50"><ShieldX size={13} /> Remove & block</button>}
+                    {user.accountStatus !== 'active' && !user.protected && <button type="button" onClick={() => changeAccountStatus(user, 'restore')} disabled={saving} className="scorm-button-primary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-50"><RotateCcw size={13} /> Restore</button>}
                   </div>
                 </div>
 
