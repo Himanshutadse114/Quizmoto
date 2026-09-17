@@ -273,53 +273,69 @@ body.atelora-home-refresh .global-footer-strip-c .animate-strip {
   }
 
   body.atelora-home-refresh .hp-hero-c {
-    margin-top: 1rem !important;
-    margin-bottom: 1.6rem !important;
-    padding: 0 1.2rem;
+    margin-top: 0.6rem !important;
+    margin-bottom: 1.8rem !important;
+    padding: 0 1.6rem;
   }
 
   body.atelora-home-refresh .hp-hero-w {
-    row-gap: 1.25rem;
+    align-items: flex-start !important;
+    row-gap: 1.35rem;
+    text-align: left;
   }
 
   body.atelora-home-refresh .caption.text-color-lemon.font-weight-normal {
-    font-size: 1.25rem;
-    letter-spacing: 0.07em;
-    line-height: 1.2;
+    max-width: 31rem;
+    font-size: 1.1rem;
+    letter-spacing: 0.085em;
+    line-height: 1.35;
   }
 
   body.atelora-home-refresh .hp-hero-h1 {
-    max-width: 35rem;
-    margin-left: auto;
-    margin-right: auto;
-    font-size: clamp(3.2rem, 9.5vw, 3.8rem) !important;
-    letter-spacing: -0.035em;
-    line-height: 1.06 !important;
-    text-wrap: balance;
+    max-width: 38rem;
+    margin-left: 0;
+    margin-right: 0;
+    font-size: clamp(3rem, 8.4vw, 3.55rem) !important;
+    letter-spacing: -0.04em;
+    line-height: 1.07 !important;
+    text-wrap: pretty;
   }
 
   body.atelora-home-refresh .hp-hero-p {
-    max-width: 34rem;
-    font-size: 1.55rem;
-    line-height: 1.45;
+    max-width: 37rem;
+    margin-left: 0;
+    margin-right: 0;
+    font-size: 1.42rem;
+    line-height: 1.52;
   }
 
   body.atelora-home-refresh .hp-hero-cta-c {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: stretch;
-    gap: 1rem;
+    width: 100%;
+    gap: 0.8rem;
     margin-top: 0 !important;
   }
 
   body.atelora-home-refresh .btn-primary.hp-hero {
     justify-content: center;
-    padding: 1.35rem 1.8rem;
-    font-size: 1.5rem;
+    min-width: 0;
+    min-height: 4.8rem;
+    padding: 1.15rem 1rem;
+    font-size: 1.35rem;
+    white-space: nowrap;
   }
 
   body.atelora-home-refresh .btn-primary.hp-hero.outline {
-    padding-left: 1.8rem;
-    padding-right: 1.8rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  body.atelora-home-refresh .hp-hero-btn-svg {
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 auto;
   }
 
   body.atelora-home-refresh .atelora-hero-signals {
@@ -431,31 +447,32 @@ body.atelora-home-refresh .global-footer-strip-c .animate-strip {
   }
 
   body.atelora-home-refresh .hp-hero-c {
-    margin-top: 0.8rem !important;
-    margin-bottom: 1.3rem !important;
-    padding-left: 1rem;
-    padding-right: 1rem;
+    margin-top: 0.4rem !important;
+    margin-bottom: 1.5rem !important;
+    padding-left: 1.2rem;
+    padding-right: 1.2rem;
   }
 
   body.atelora-home-refresh .caption.text-color-lemon.font-weight-normal {
-    font-size: 1.15rem;
+    font-size: 1.05rem;
   }
 
   body.atelora-home-refresh .hp-hero-h1 {
-    max-width: 32rem;
-    font-size: 3.75rem;
-    line-height: 1.02;
+    max-width: none;
+    font-size: clamp(2.8rem, 8.2vw, 3.2rem) !important;
+    line-height: 1.08 !important;
   }
 
   body.atelora-home-refresh .hp-hero-p {
-    max-width: 31rem;
-    font-size: 1.45rem;
-    line-height: 1.42;
+    max-width: none;
+    font-size: 1.36rem;
+    line-height: 1.5;
   }
 
   body.atelora-home-refresh .btn-primary.hp-hero {
-    padding: 1.25rem 1.5rem;
-    font-size: 1.4rem;
+    min-height: 4.6rem;
+    padding: 1.05rem 0.75rem;
+    font-size: 1.25rem;
   }
 
   body.atelora-home-refresh .hp-hero-img-c.new {

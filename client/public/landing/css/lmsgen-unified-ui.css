@@ -711,13 +711,14 @@ body.atelora-site-refresh .footer-s .global-footer-legal-link {
   }
 
   body.atelora-site-refresh .global-header-nav-w {
+    display: none !important;
     color: var(--lmsgen-ink) !important;
     background: #ffffff !important;
     padding: 1rem 2rem 2rem !important;
   }
 
   body.atelora-site-refresh .global-header-nav-w[data-nav-menu-open] {
-    display: flex !important;
+    display: none !important;
     flex-direction: column !important;
     align-items: stretch !important;
     gap: 0 !important;
