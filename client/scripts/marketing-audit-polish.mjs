@@ -33,7 +33,7 @@ function injectTypographyAssets(html) {
       '<link rel="preconnect" href="https://fonts.googleapis.com" />',
       '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
       '<link id="lmsgen-google-fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Open+Sans:wght@400;500;600;700&display=swap" />',
-      '<link id="lmsgen-site-typography" rel="stylesheet" href="/landing/css/lmsgen-site-typography.css?v=20260903c" />',
+      '<link id="lmsgen-site-typography" rel="stylesheet" href="/landing/css/lmsgen-site-typography.css?v=20260917-blog-font" />',
     ].join('\n    ');
     html = html.replace(/<\/head>/i, `    ${block}\n</head>`);
   }

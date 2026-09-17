@@ -57,6 +57,10 @@ function trackingInjection(shareToken) {
   let activeStartedAt=0;
   let active=false;
   let readerActivated=false;
+  let trackedVisiblePages=[0];
+  let pageTickAt=0;
+  const pageTimeMs={};
+  const dirtyPageTimes=new Set();
   try{emailInput.value=localStorage.getItem(EMAIL_KEY)||'';nameInput.value=localStorage.getItem(NAME_KEY)||''}catch(_){}
 
   function activeSeconds(){
@@ -64,10 +68,26 @@ function trackingInjection(shareToken) {
     if(active&&activeStartedAt)total+=performance.now()-activeStartedAt;
     return activeBaseSeconds+Math.max(0,Math.floor(total/1000));
   }
+  function accruePageTime(now=performance.now()){
+    if(!active||!pageTickAt)return;
+    const delta=Math.max(0,now-pageTickAt);
+    const pages=trackedVisiblePages.length?trackedVisiblePages:[Math.max(0,lastIndex||0)];
+    const share=delta/pages.length;
+    pages.forEach(pageIndex=>{pageTimeMs[pageIndex]=Math.max(0,Number(pageTimeMs[pageIndex])||0)+share;dirtyPageTimes.add(pageIndex)});
+    pageTickAt=now;
+  }
+  function pageTimeEvents(){
+    accruePageTime();
+    const elapsedSeconds=activeSeconds();
+    const events=[...dirtyPageTimes].map(pageIndex=>({eventType:'page_time',pageIndex,elapsedSeconds,metadata:{pageActiveMilliseconds:Math.round(pageTimeMs[pageIndex]||0)}}));
+    dirtyPageTimes.clear();
+    return events;
+  }
   function pauseActive(){
     if(!active)return;
+    accruePageTime();
     activeAccumulatedMs+=Math.max(0,performance.now()-activeStartedAt);
-    active=false;activeStartedAt=0;
+    active=false;activeStartedAt=0;pageTickAt=0;
   }
   function scheduleIdle(){
     if(idleTimer)clearTimeout(idleTimer);
@@ -75,7 +95,7 @@ function trackingInjection(shareToken) {
   }
   function markActivity(){
     if(!sessionToken||document.visibilityState!=='visible'||(document.hasFocus&&!document.hasFocus()))return;
-    if(!active){active=true;activeStartedAt=performance.now()}
+    if(!active){active=true;activeStartedAt=performance.now();pageTickAt=activeStartedAt}
     scheduleIdle();
   }
   function send(events,keepalive=false){
@@ -112,6 +132,7 @@ function trackingInjection(shareToken) {
   }
   function trackFlip(index){
     markActivity();
+    accruePageTime();
     const next=Math.max(0,Number(index)||0);
     requestAnimationFrame(()=>{
       const events=[];
@@ -120,7 +141,8 @@ function trackingInjection(shareToken) {
         lastIndex=next;
         events.push({eventType:'flip',pageIndex:next,direction,elapsedSeconds:activeSeconds()});
       }
-      events.push(...visiblePageEvents());
+      trackedVisiblePages=visiblePages();
+      events.push(...visiblePageEvents(),...pageTimeEvents());
       send(events);
     });
   }
@@ -130,9 +152,10 @@ function trackingInjection(shareToken) {
       if(typeof pageFlip==='undefined'||!pageFlip)return false;
       attached=true;
       try{lastIndex=Number(pageFlip.getCurrentPageIndex?.()||0)}catch(_){}
+      trackedVisiblePages=visiblePages();
       send(visiblePageEvents());
       pageFlip.on('flip',event=>trackFlip(Number(event.data)||0));
-      pageFlip.on('changeOrientation',()=>requestAnimationFrame(()=>send(visiblePageEvents())));
+      pageFlip.on('changeOrientation',()=>{accruePageTime();requestAnimationFrame(()=>{trackedVisiblePages=visiblePages();send([...visiblePageEvents(),...pageTimeEvents()])})});
       const share=document.getElementById('shareBtn');
       if(share)share.addEventListener('click',()=>{markActivity();send([{eventType:'share',pageIndex:lastIndex,elapsedSeconds:activeSeconds()}])});
       return true;
@@ -142,7 +165,7 @@ function trackingInjection(shareToken) {
     if(heartbeatTimer)clearInterval(heartbeatTimer);
     heartbeatTimer=setInterval(()=>{
       if(!sessionToken||!active||document.visibilityState!=='visible'||(document.hasFocus&&!document.hasFocus()))return;
-      send([{eventType:'heartbeat',pageIndex:lastIndex,elapsedSeconds:activeSeconds()}]);
+      send([{eventType:'heartbeat',pageIndex:lastIndex,elapsedSeconds:activeSeconds()},...pageTimeEvents()]);
     },15000);
   }
   function attachActivityListeners(){
@@ -150,12 +173,12 @@ function trackingInjection(shareToken) {
     document.addEventListener('visibilitychange',()=>{
       if(document.visibilityState==='hidden'){
         pauseActive();
-        send([{eventType:'heartbeat',pageIndex:lastIndex,elapsedSeconds:activeSeconds()}],true);
+        send([{eventType:'heartbeat',pageIndex:lastIndex,elapsedSeconds:activeSeconds()},...pageTimeEvents()],true);
       }else markActivity();
     });
     window.addEventListener('blur',()=>{
       pauseActive();
-      if(sessionToken)send([{eventType:'heartbeat',pageIndex:lastIndex,elapsedSeconds:activeSeconds()}],true);
+      if(sessionToken)send([{eventType:'heartbeat',pageIndex:lastIndex,elapsedSeconds:activeSeconds()},...pageTimeEvents()],true);
     });
     window.addEventListener('focus',markActivity);
   }
@@ -180,6 +203,7 @@ function trackingInjection(shareToken) {
     readerActivated=true;
     sessionToken=String(data.sessionToken||'');
     activeBaseSeconds=Math.max(0,Number(data.durationSeconds)||0);
+    Object.entries(data.pageTimes||{}).forEach(([page,milliseconds])=>{pageTimeMs[Math.max(0,Number(page)||0)]=Math.max(0,Number(milliseconds)||0)});
     lastIndex=Math.max(0,Number(data.lastPageIndex)||0);
     rememberProfile(String(data.readerEmail||email||'').trim().toLowerCase(),String(data.readerName||name||'').trim());
     gate.classList.add('is-hidden');
@@ -218,7 +242,7 @@ function trackingInjection(shareToken) {
   });
   window.addEventListener('pagehide',()=>{
     pauseActive();
-    if(sessionToken)send([{eventType:'heartbeat',pageIndex:lastIndex,elapsedSeconds:activeSeconds()}],true);
+    if(sessionToken)send([{eventType:'heartbeat',pageIndex:lastIndex,elapsedSeconds:activeSeconds()},...pageTimeEvents()],true);
   });
   restoreReader();
 })();

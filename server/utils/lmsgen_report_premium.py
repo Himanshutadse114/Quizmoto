@@ -171,7 +171,10 @@ def learner_card(row,i,s):
     name=row.get('learner') or row.get('name') or 'Learner'; email=row.get('email') or ''; result=row.get('result') or row.get('status') or 'Not attempted'; c=scol(result)
     head=Table([[Paragraph(f'<b>{i:02d}. {safe(name)}</b><br/><font size="6" color="#6E8584">{safe(email)}</font>',s['ct']),Paragraph(f'<font color="{c.hexval()}"><b>{safe(result)}</b></font>',s['cv'])]],colWidths=[200*mm,52*mm])
     head.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),SOFT),('LINEABOVE',(0,0),(-1,0),3,c),('BOX',(0,0),(-1,-1),.45,LINE),('ALIGN',(1,0),(1,0),'RIGHT'),('VALIGN',(0,0),(-1,-1),'MIDDLE'),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5)]))
-    vals=[('PROGRESS',row.get('progress') or '-'),('SCORE',row.get('score') if row.get('score') not in (None,'') else '-'),('LEARNING TIME',row.get('learningTime') or row.get('activeTime') or '-'),('QUESTIONS',row.get('questions') if row.get('questions') not in (None,'') else '-'),('CORRECT',row.get('correct') if row.get('correct') not in (None,'') else '-'),('LAST ACTIVITY',row.get('lastActivity') or row.get('lastActivityAt') or '-')]
+    if row.get('publication'):
+        vals=[('PROGRESS',row.get('progress') or '-'),('PAGES REACHED',row.get('pagesReached') if row.get('pagesReached') not in (None,'') else '-'),('ACTIVE TIME',row.get('learningTime') or row.get('activeTime') or '-'),('SESSIONS',row.get('sessions') if row.get('sessions') not in (None,'') else '-'),('DEVICE',row.get('devices') or '-'),('LAST ACTIVITY',row.get('lastActivity') or '-')]
+    else:
+        vals=[('PROGRESS',row.get('progress') or '-'),('SCORE',row.get('score') if row.get('score') not in (None,'') else '-'),('LEARNING TIME',row.get('learningTime') or row.get('activeTime') or '-'),('QUESTIONS',row.get('questions') if row.get('questions') not in (None,'') else '-'),('CORRECT',row.get('correct') if row.get('correct') not in (None,'') else '-'),('LAST ACTIVITY',row.get('lastActivity') or row.get('lastActivityAt') or '-')]
     cells=[[Paragraph(a,s['cl']),Paragraph(safe(b),s['cv'])] for a,b in vals]
     detail=Table([cells],colWidths=[42*mm]*6)
     detail.setStyle(TableStyle([('BOX',(0,0),(-1,-1),.4,LINE),('INNERGRID',(0,0),(-1,-1),.3,LINE),('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),6),('RIGHTPADDING',(0,0),(-1,-1),6),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
@@ -185,6 +188,18 @@ def slide_timing_table(row,s):
     for timing in timings:
         status=timing.get('status') or ('Visited' if num(timing.get('visits')) else 'Not visited')
         data.append([Paragraph(safe(timing.get('label') or f'Slide {timing.get("slideNumber") or "-"}'),s['tc']),Paragraph(safe(duration_ms(timing.get('milliseconds'),timing.get('timeSpent'))),s['tc']),Paragraph(safe(timing.get('visits') if timing.get('visits') not in (None,'') else 0),s['tc']),Paragraph(f'<font color="{scol(status).hexval()}"><b>{safe(status)}</b></font>',s['tc'])])
+    table=Table(data,colWidths=[132*mm,45*mm,28*mm,47*mm],repeatRows=1)
+    table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),TS),('LINEBELOW',(0,0),(-1,0),1,TD),('ROWBACKGROUNDS',(0,1),(-1,-1),[WHITE,SOFT]),('GRID',(0,0),(-1,-1),.3,LINE),('VALIGN',(0,0),(-1,-1),'MIDDLE'),('LEFTPADDING',(0,0),(-1,-1),6),('RIGHTPADDING',(0,0),(-1,-1),6),('TOPPADDING',(0,0),(-1,-1),4.5),('BOTTOMPADDING',(0,0),(-1,-1),4.5),('ALIGN',(1,1),(2,-1),'CENTER')]))
+    return heading,table
+
+def page_timing_table(row,s):
+    timings=row.get('pageTimings') or []
+    heading=Table([[Paragraph('PAGE ENGAGEMENT',s['kick']),Paragraph(f'{len(timings)} PAGES',s['kick'])]],colWidths=[210*mm,42*mm])
+    heading.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),SOFT),('LINEABOVE',(0,0),(-1,0),2.4,TEAL),('BOX',(0,0),(-1,-1),.45,LINE),('ALIGN',(1,0),(1,0),'RIGHT'),('VALIGN',(0,0),(-1,-1),'MIDDLE'),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5)]))
+    data=[[Paragraph('PAGE',s['th']),Paragraph('ACTIVE TIME',s['th']),Paragraph('VISITED',s['th']),Paragraph('ENGAGEMENT',s['th'])]]
+    for timing in timings:
+        status=timing.get('status') or ('Engaged' if num(timing.get('visits')) else 'Not visited')
+        data.append([Paragraph(safe(timing.get('label') or f'Page {timing.get("pageNumber") or "-"}'),s['tc']),Paragraph(safe(duration_ms(timing.get('milliseconds'),timing.get('timeSpent'))),s['tc']),Paragraph('Yes' if num(timing.get('visits')) else 'No',s['tc']),Paragraph(f'<font color="{scol(status).hexval()}"><b>{safe(status)}</b></font>',s['tc'])])
     table=Table(data,colWidths=[132*mm,45*mm,28*mm,47*mm],repeatRows=1)
     table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),TS),('LINEBELOW',(0,0),(-1,0),1,TD),('ROWBACKGROUNDS',(0,1),(-1,-1),[WHITE,SOFT]),('GRID',(0,0),(-1,-1),.3,LINE),('VALIGN',(0,0),(-1,-1),'MIDDLE'),('LEFTPADDING',(0,0),(-1,-1),6),('RIGHTPADDING',(0,0),(-1,-1),6),('TOPPADDING',(0,0),(-1,-1),4.5),('BOTTOMPADDING',(0,0),(-1,-1),4.5),('ALIGN',(1,1),(2,-1),'CENTER')]))
     return heading,table
@@ -215,29 +230,33 @@ def generate_pdf(r,out):
     mt=Table([meta],colWidths=[(landscape(A4)[0]-32*mm)/3]*3); mt.setStyle(TableStyle([('LEFTPADDING',(0,0),(-1,-1),2),('RIGHTPADDING',(0,0),(-1,-1),2)])); story += [mt,Spacer(1,10*mm)]
     if metrics(r,s):story += [Paragraph('REPORT SNAPSHOT',s['kick']),metrics(r,s)]
     story += [Spacer(1,10*mm),Paragraph('Designed for management review, audit evidence and learning-performance analysis.',s['mut']),PageBreak()]
-    if rtype(r)=='course':
+    if rtype(r) in ('course','flipbooks'):
         story += [section('01','EXECUTIVE DASHBOARD','Learning Performance Summary',s)]
         if metrics(r,s):story += [metrics(r,s),Spacer(1,5*mm)]
         p=Table([[performance(r,s),status_panel(r,s)]],colWidths=[125*mm,115*mm]); p.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),3),('RIGHTPADDING',(0,0),(-1,-1),3)])); story += [p,Spacer(1,5*mm),PageBreak(),section('02','LEARNER-LEVEL EVIDENCE','Detailed Learner Audit',s)]
     else:
         story += [section('01','DETAILED EVIDENCE','Report Detail',s)]
     rows=r.get('rows') or []
-    if rtype(r)=='course' and rows:
+    if rtype(r) in ('course','flipbooks') and rows:
         for i,row in enumerate(rows,1):
             story += [learner_card(row,i,s),Spacer(1,2*mm)]
             if row.get('slideTimings'):
                 timing_heading,timing_table=slide_timing_table(row,s)
                 story += [timing_heading,timing_table,Spacer(1,5*mm)]
+            elif row.get('pageTimings'):
+                timing_heading,timing_table=page_timing_table(row,s)
+                story += [timing_heading,timing_table,Spacer(1,5*mm)]
             else:
-                story += [Paragraph('No slide timing evidence was captured for this learner.',s['mut']),Spacer(1,5*mm)]
+                story += [Paragraph('No page or slide timing evidence was captured for this learner.',s['mut']),Spacer(1,5*mm)]
     else:story.append(table_detail(r,s))
     story += [Spacer(1,4*mm),Paragraph('Generated from LMSGEN current-platform data. The report reflects evidence available at the generation time.',s['mut'])]
     doc.build(story,onFirstPage=lambda c,d:footer(c,d,r),onLaterPages=lambda c,d:footer(c,d,r))
 
 def generate_excel(r,out):
-    rows=r.get('rows') or []; is_course=rtype(r)=='course'; has_slide_data=is_course or any(row.get('slideTimings') for row in rows)
-    wb=xlsxwriter.Workbook(out); wb.set_properties({'title':txt(r.get('title')),'author':'LMSGEN'}); dash=wb.add_worksheet('Dashboard'); data=wb.add_worksheet('Detailed Data'); slide_data=wb.add_worksheet('Slide Timing') if has_slide_data else None; dash.hide_gridlines(2); data.hide_gridlines(2)
+    rows=r.get('rows') or []; is_course=rtype(r)=='course'; has_slide_data=is_course or any(row.get('slideTimings') for row in rows); has_page_data=any(row.get('pageTimings') for row in rows)
+    wb=xlsxwriter.Workbook(out); wb.set_properties({'title':txt(r.get('title')),'author':'LMSGEN'}); dash=wb.add_worksheet('Dashboard'); data=wb.add_worksheet('Detailed Data'); slide_data=wb.add_worksheet('Slide Timing') if has_slide_data else None; page_data=wb.add_worksheet('Page Timing') if has_page_data else None; dash.hide_gridlines(2); data.hide_gridlines(2)
     if slide_data:slide_data.hide_gridlines(2)
+    if page_data:page_data.hide_gridlines(2)
     brand=wb.add_format({'bold':True,'font_size':22,'font_color':'#FFFFFF','bg_color':'#183334'}); sub=wb.add_format({'font_size':9,'font_color':'#6E8584'}); title=wb.add_format({'bold':True,'font_size':18,'font_color':'#183334'}); sec=wb.add_format({'bold':True,'font_color':'#16988F','bottom':2,'bottom_color':'#4FC9BF'}); ml=wb.add_format({'bold':True,'font_size':8,'font_color':'#6E8584','border':1,'border_color':'#D9E9E6','align':'center'}); mv=wb.add_format({'bold':True,'font_size':15,'font_color':'#183334','border':1,'border_color':'#D9E9E6','align':'center'}); th=wb.add_format({'bold':True,'font_size':8,'font_color':'#284B4B','bg_color':'#EAF9F7','border':1,'border_color':'#D9E9E6','text_wrap':True}); cell=wb.add_format({'font_size':9,'font_color':'#183334','border':1,'border_color':'#E3EFED','text_wrap':True,'valign':'top'}); alt=wb.add_format({'font_size':9,'font_color':'#183334','bg_color':'#F8FBFA','border':1,'border_color':'#E3EFED','text_wrap':True,'valign':'top'})
     dash.set_column('A:A',3); dash.set_column('B:K',13); dash.merge_range('B1:K2','LMSGEN',brand); dash.merge_range('B4:K4',txt(r.get('title')),title); dash.merge_range('B5:K5',txt(r.get('subtitle')),sub); dash.merge_range('B7:K7','LEARNING PERFORMANCE' if is_course else 'REPORT SNAPSHOT',sec)
     for i,x in enumerate((r.get('summary') or [])[:5]):c=1+i*2; dash.merge_range(8,c,8,c+1,txt(x.get('label')).upper(),ml); dash.merge_range(9,c,9,c+1,txt(x.get('value')),mv)
@@ -274,6 +293,18 @@ def generate_excel(r,out):
         if timing_row>4:slide_data.autofilter(3,0,timing_row-1,len(slide_headers)-1)
         else:slide_data.merge_range(5,0,5,len(slide_headers)-1,'No slide timing evidence has been captured for this report.',sub)
         slide_data.set_landscape(); slide_data.fit_to_pages(1,0)
+    if page_data:
+        page_headers=['Publication','Reader','Email','Page','Active time','Milliseconds','Visited','Engagement']; page_data.merge_range(0,0,0,len(page_headers)-1,txt(r.get('title')),title); page_data.merge_range(1,0,1,len(page_headers)-1,'PAGE-LEVEL READING EVIDENCE',sec); page_data.freeze_panes(4,0)
+        for ci,label in enumerate(page_headers):page_data.write(3,ci,label,th)
+        timing_row=4
+        for row in rows:
+            for timing in (row.get('pageTimings') or []):
+                f=alt if timing_row%2==0 else cell; values=[row.get('publication') or '',row.get('learner') or row.get('name') or 'Reader',row.get('email') or '',timing.get('label') or f'Page {timing.get("pageNumber") or "-"}',duration_ms(timing.get('milliseconds'),timing.get('timeSpent')),max(0,num(timing.get('milliseconds')) or 0),'Yes' if num(timing.get('visits')) else 'No',timing.get('status') or 'Not visited']
+                for ci,value in enumerate(values):page_data.write(timing_row,ci,value,f)
+                timing_row+=1
+        page_data.set_column(0,0,28); page_data.set_column(1,1,24); page_data.set_column(2,2,30); page_data.set_column(3,4,18); page_data.set_column(5,7,14)
+        if timing_row>4:page_data.autofilter(3,0,timing_row-1,len(page_headers)-1)
+        page_data.set_landscape(); page_data.fit_to_pages(1,0)
     wb.close()
 
 def main():

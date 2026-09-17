@@ -55,7 +55,7 @@ function stripAntiFouc(html) {
 
 function ensureUnifiedCss(html) {
   html = stripStylesheet(html, 'lmsgen-unified-ui.css');
-  const tag = '<link id="lmsgen-unified-ui" rel="stylesheet" href="/landing/css/lmsgen-unified-ui.css?v=20260917-mobile-nav2" />';
+  const tag = '<link id="lmsgen-unified-ui" rel="stylesheet" href="/landing/css/lmsgen-unified-ui.css?v=20260917-publica-timing" />';
   return html.replace(/<\/head>/i, `    ${tag}\n</head>`);
 }
 

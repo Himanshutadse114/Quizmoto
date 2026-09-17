@@ -6,6 +6,7 @@ const { Op } = require('sequelize');
 const Flipbook = require('../../models/Flipbook');
 const FlipbookTenantLink = require('../../models/FlipbookTenantLink');
 const FlipbookReaderSession = require('../../models/FlipbookReaderSession');
+const FlipbookReaderEvent = require('../../models/FlipbookReaderEvent');
 const FlipbookReaderContext = require('../../models/FlipbookReaderContext');
 const {
     ScormCourse,
@@ -85,11 +86,28 @@ async function tenantFlipbooks(workspaceId) {
 
 async function flipbookStats(books) {
     const ids = books.map((book) => book.id);
-    const sessions = ids.length ? await FlipbookReaderSession.findAll({
-        where: { flipbookId: { [Op.in]: ids } },
-        attributes: ['flipbookId', 'readerEmail', 'durationSeconds', 'uniquePages', 'completedAt', 'lastSeenAt'],
-        raw: true
-    }) : [];
+    const [sessions, timingEvents] = ids.length ? await Promise.all([
+        FlipbookReaderSession.findAll({
+            where: { flipbookId: { [Op.in]: ids } },
+            attributes: ['id', 'flipbookId', 'readerName', 'readerEmail', 'durationSeconds', 'uniquePages', 'maxPageIndex', 'completedAt', 'lastSeenAt', 'deviceType'],
+            raw: true
+        }),
+        FlipbookReaderEvent.findAll({
+            where: { flipbookId: { [Op.in]: ids }, eventType: 'page_time' },
+            attributes: ['sessionId', 'flipbookId', 'readerEmail', 'pageIndex', 'metadata'],
+            raw: true
+        })
+    ]) : [[], []];
+    const timingBySession = new Map();
+    timingEvents.forEach((event) => {
+        const sessionId = String(event.sessionId || '');
+        const pageIndex = Math.max(0, Math.floor(number(event.pageIndex)));
+        const milliseconds = Math.max(0, number(event.metadata?.pageActiveMilliseconds));
+        if (!sessionId || !milliseconds) return;
+        if (!timingBySession.has(sessionId)) timingBySession.set(sessionId, new Map());
+        const pageMap = timingBySession.get(sessionId);
+        pageMap.set(pageIndex, Math.max(number(pageMap.get(pageIndex)), milliseconds));
+    });
     const map = new Map();
     books.forEach((book) => map.set(String(book.id), []));
     sessions.forEach((session) => {
@@ -103,6 +121,65 @@ async function flipbookStats(books) {
         const completedReaders = new Set(rows.filter((row) => row.completedAt).map((row) => normaliseEmail(row.readerEmail)).filter(Boolean));
         const activeSeconds = rows.reduce((sum, row) => sum + number(row.durationSeconds), 0);
         const pagesReached = rows.reduce((sum, row) => sum + (Array.isArray(row.uniquePages) ? row.uniquePages.length : 0), 0);
+        const readerMap = new Map();
+        rows.forEach((session) => {
+            const email = normaliseEmail(session.readerEmail);
+            if (!email) return;
+            if (!readerMap.has(email)) readerMap.set(email, {
+                learner: session.readerName || email,
+                email,
+                sessions: 0,
+                activeSeconds: 0,
+                pages: new Set(),
+                maxPageIndex: 0,
+                completed: false,
+                devices: new Set(),
+                lastActivityAt: null,
+                pageMilliseconds: new Map()
+            });
+            const reader = readerMap.get(email);
+            reader.learner = reader.learner || session.readerName || email;
+            reader.sessions += 1;
+            reader.activeSeconds += number(session.durationSeconds);
+            (Array.isArray(session.uniquePages) ? session.uniquePages : []).forEach((page) => reader.pages.add(number(page)));
+            reader.maxPageIndex = Math.max(reader.maxPageIndex, number(session.maxPageIndex));
+            reader.completed = reader.completed || Boolean(session.completedAt);
+            if (session.deviceType) reader.devices.add(session.deviceType);
+            if (!reader.lastActivityAt || new Date(session.lastSeenAt) > new Date(reader.lastActivityAt)) reader.lastActivityAt = session.lastSeenAt;
+            (timingBySession.get(String(session.id)) || new Map()).forEach((milliseconds, page) => {
+                reader.pageMilliseconds.set(page, number(reader.pageMilliseconds.get(page)) + number(milliseconds));
+            });
+        });
+        const readerDetails = [...readerMap.values()].map((reader) => ({
+            learner: reader.learner,
+            email: reader.email,
+            publication: book.title,
+            publicationId: book.id,
+            totalPages: number(book.pageCount),
+            activeSeconds: reader.activeSeconds,
+            completed: reader.completed,
+            result: reader.completed ? 'Completed' : 'In progress',
+            status: reader.completed ? 'Completed' : 'In progress',
+            progress: `${percent(reader.pages.size, number(book.pageCount))}%`,
+            pagesReached: reader.pages.size,
+            furthestPage: reader.maxPageIndex + 1,
+            sessions: reader.sessions,
+            activeTime: durationLabel(reader.activeSeconds),
+            learningTime: durationLabel(reader.activeSeconds),
+            devices: [...reader.devices].join(', '),
+            lastActivity: dateLabel(reader.lastActivityAt),
+            pageTimings: Array.from({ length: number(book.pageCount) }, (_, pageIndex) => {
+                const milliseconds = number(reader.pageMilliseconds.get(pageIndex));
+                return {
+                    pageNumber: pageIndex + 1,
+                    label: pageIndex === 0 ? 'Cover' : (pageIndex === number(book.pageCount) - 1 ? 'Back cover' : `Page ${pageIndex + 1}`),
+                    milliseconds,
+                    timeSpent: milliseconds / 1000,
+                    visits: reader.pages.has(pageIndex) ? 1 : 0,
+                    status: !reader.pages.has(pageIndex) ? 'Not visited' : !milliseconds ? 'Timing unavailable' : milliseconds < 2000 ? 'Quick skip' : 'Engaged'
+                };
+            })
+        }));
         return {
             id: book.id,
             title: book.title,
@@ -117,7 +194,8 @@ async function flipbookStats(books) {
             activeSeconds,
             averagePagesPerSession: rows.length ? Math.round((pagesReached / rows.length) * 10) / 10 : 0,
             lifetimeOpens: number(book.viewCount),
-            lastViewedAt: dateLabel(book.lastViewedAt)
+            lastViewedAt: dateLabel(book.lastViewedAt),
+            readerDetails
         };
     });
 }
@@ -248,9 +326,9 @@ function reportDefinition(type) {
         },
         flipbooks: {
             title: 'LMSGEN Publica Engagement Report',
-            subtitle: 'Reader reach, completion and active reading engagement',
+            subtitle: 'Reader-level publication evidence with active time on every page',
             columns: [
-                { key: 'title', label: 'Publication' }, { key: 'status', label: 'Status' }, { key: 'pages', label: 'Pages' }, { key: 'readers', label: 'Readers' }, { key: 'sessions', label: 'Sessions' }, { key: 'completion', label: 'Completion %' }, { key: 'activeTime', label: 'Active time' }, { key: 'lifetimeOpens', label: 'Lifetime opens' }
+                { key: 'publication', label: 'Publication' }, { key: 'learner', label: 'Reader' }, { key: 'email', label: 'Email' }, { key: 'status', label: 'Status' }, { key: 'progress', label: 'Progress' }, { key: 'pagesReached', label: 'Pages reached' }, { key: 'sessions', label: 'Sessions' }, { key: 'activeTime', label: 'Active time' }, { key: 'lastActivity', label: 'Last activity' }
             ]
         },
         assignments: {
@@ -282,7 +360,57 @@ function workspaceRows(type, data) {
     }));
     if (type === 'learners') return data.learners;
     if (type === 'campaigns') return data.campaigns;
-    if (type === 'flipbooks') return data.bookStats.map(({ readerEmails, completedReaders, activeSeconds, ...row }) => row);
+    if (type === 'flipbooks') {
+        const readers = new Map();
+        data.bookStats.flatMap((book) => book.readerDetails || []).forEach((detail) => {
+            const key = normaliseEmail(detail.email);
+            if (!key) return;
+            if (!readers.has(key)) readers.set(key, {
+                learner: detail.learner || key,
+                email: key,
+                publications: new Set(),
+                publicationIds: new Set(),
+                pagesReached: 0,
+                totalPages: 0,
+                sessions: 0,
+                activeSeconds: 0,
+                completedPublications: 0,
+                devices: new Set(),
+                lastActivity: '',
+                pageTimings: []
+            });
+            const reader = readers.get(key);
+            reader.publications.add(detail.publication);
+            reader.publicationIds.add(String(detail.publicationId));
+            reader.pagesReached += number(detail.pagesReached);
+            reader.totalPages += number(detail.totalPages);
+            reader.sessions += number(detail.sessions);
+            reader.activeSeconds += number(detail.activeSeconds);
+            if (detail.completed) reader.completedPublications += 1;
+            String(detail.devices || '').split(',').map((value) => value.trim()).filter(Boolean).forEach((value) => reader.devices.add(value));
+            if (!reader.lastActivity || new Date(detail.lastActivity) > new Date(reader.lastActivity)) reader.lastActivity = detail.lastActivity;
+            (detail.pageTimings || []).forEach((timing) => reader.pageTimings.push({ ...timing, publication: detail.publication, label: `${detail.publication} · ${timing.label}` }));
+        });
+        return [...readers.values()].map((reader) => {
+            const publicationCount = reader.publicationIds.size;
+            const completed = publicationCount > 0 && reader.completedPublications >= publicationCount;
+            return {
+                learner: reader.learner,
+                email: reader.email,
+                publication: [...reader.publications].join(', '),
+                status: completed ? 'Completed' : 'In progress',
+                result: completed ? 'Completed' : 'In progress',
+                progress: `${percent(reader.pagesReached, reader.totalPages)}%`,
+                pagesReached: reader.pagesReached,
+                sessions: reader.sessions,
+                activeTime: durationLabel(reader.activeSeconds),
+                learningTime: durationLabel(reader.activeSeconds),
+                devices: [...reader.devices].join(', '),
+                lastActivity: reader.lastActivity,
+                pageTimings: reader.pageTimings
+            };
+        }).sort((a, b) => a.email.localeCompare(b.email));
+    }
     if (type === 'assignments') {
         const courseRows = (data.courseReports || []).flatMap((course) => (course.learners || []).map((learner) => ({
             type: 'Course', item: course.title, learner: learner.learnerName || 'Learner', email: learner.learnerEmail || '', status: learner.result || learner.lessonStatus || '', progress: learner.progressAvailable === false ? '' : `${number(learner.progressPercent)}%`, score: learner.score ?? '', activeTime: learner.totalTime || '', context: 'Direct learning'
@@ -340,7 +468,7 @@ function summaryFor(type, data, rows) {
         const completedReaderPairs = stats.reduce((sum, row) => sum + number(row.completedReaders), 0);
         const activeSeconds = stats.reduce((sum, row) => sum + number(row.activeSeconds), 0);
         return [
-            { label: 'Publications', value: rows.length },
+            { label: 'Publications', value: data.books.length },
             { label: 'Readers', value: readerEmails.size },
             { label: 'Sessions', value: stats.reduce((sum, row) => sum + number(row.sessions), 0) },
             { label: 'Completion', value: `${percent(completedReaderPairs, readerPairs)}%` },

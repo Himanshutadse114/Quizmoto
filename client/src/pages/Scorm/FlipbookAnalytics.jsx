@@ -162,6 +162,9 @@ function PagePerformance({ pages }) {
               <th>Reach</th>
               <th>Readers</th>
               <th>Sessions</th>
+              <th>Total active time</th>
+              <th>Avg. per visit</th>
+              <th>Quick skips</th>
               <th>Exits</th>
             </tr>
           </thead>
@@ -175,6 +178,9 @@ function PagePerformance({ pages }) {
                 <td><span className={`flip-page-reach-pill ${reachTone(page.reachRate)}`}>{page.reachRate || 0}%</span></td>
                 <td>{page.uniqueReaders || 0}</td>
                 <td>{page.views || 0}</td>
+                <td>{durationLabel(page.activeSeconds)}</td>
+                <td>{durationLabel(page.averageActiveSeconds)}</td>
+                <td>{page.quickSkips || 0} <span>({page.quickSkipRate || 0}%)</span></td>
                 <td>{page.exitReaders ?? page.exits ?? 0}</td>
               </tr>
             ))}
@@ -292,7 +298,7 @@ function SingleAnalytics({ analytics }) {
           <div>
             <div className="flip-kicker"><BarChart3 size={12} /> Page performance</div>
             <h2>Where readers reached and stopped</h2>
-            <p>Reach uses unique email identities. Each page is counted once per reading session even if a reader revisits it.</p>
+            <p>Reach uses unique email identities. Active time is measured only while the publication is visible and the reader is active; under two seconds is marked as a quick skip.</p>
           </div>
         </div>
         <PagePerformance pages={pages} />
@@ -309,7 +315,7 @@ function SingleAnalytics({ analytics }) {
         {readers.length ? (
           <div className="flip-analytics-table-wrap">
             <table className="flip-analytics-table">
-              <thead><tr><th>Reader</th><th>Sessions</th><th>Pages reached</th><th>Furthest page</th><th>Page turns</th><th>Active time</th><th>Completed</th><th>Devices</th><th>Last active</th></tr></thead>
+              <thead><tr><th>Reader</th><th>Sessions</th><th>Pages reached</th><th>Furthest page</th><th>Page turns</th><th>Active time</th><th>Avg. per page</th><th>Most engaged</th><th>Completed</th><th>Devices</th><th>Last active</th></tr></thead>
               <tbody>{readers.map((reader) => (
                 <tr key={reader.email}>
                   <td><strong>{reader.name || reader.email}</strong><span>{reader.email}</span></td>
@@ -318,6 +324,8 @@ function SingleAnalytics({ analytics }) {
                   <td>{reader.maxPageReached}</td>
                   <td>{reader.flips}</td>
                   <td>{durationLabel(reader.durationSeconds)}</td>
+                  <td>{durationLabel(reader.averageSecondsPerPage)}</td>
+                  <td>{reader.mostEngagedPage ? `Page ${reader.mostEngagedPage} · ${durationLabel(reader.mostEngagedPageSeconds)}` : '—'}</td>
                   <td>{reader.completed ? 'Yes' : 'No'}</td>
                   <td>{Array.isArray(reader.devices) && reader.devices.length ? reader.devices.join(', ') : '—'}</td>
                   <td>{dateLabel(reader.lastSeenAt)}</td>

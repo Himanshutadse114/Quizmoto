@@ -4,7 +4,7 @@ const Flipbook = require('../models/Flipbook');
 const FlipbookReaderSession = require('../models/FlipbookReaderSession');
 const FlipbookReaderEvent = require('../models/FlipbookReaderEvent');
 
-const ALLOWED_EVENTS = new Set(['page_view', 'flip', 'heartbeat', 'complete', 'share']);
+const ALLOWED_EVENTS = new Set(['page_view', 'page_time', 'flip', 'heartbeat', 'complete', 'share']);
 const SESSION_RESUME_WINDOW_MS = 90 * 1000;
 const MAX_TRACKABLE_GAP_SECONDS = 75;
 const SERVER_CLOCK_GRACE_SECONDS = 5;
@@ -104,6 +104,30 @@ function buildFlipCountMap(events = [], sessions = []) {
     return counts;
 }
 
+function pageTimeMilliseconds(event) {
+    const value = Number(event?.metadata?.pageActiveMilliseconds);
+    return Number.isFinite(value) ? Math.max(0, Math.min(24 * 60 * 60 * 1000, Math.round(value))) : 0;
+}
+
+function buildPageTimeMap(events = []) {
+    const result = new Map();
+    events.forEach((event) => {
+        if (String(event?.eventType || '').toLowerCase() !== 'page_time') return;
+        const sessionId = String(event.sessionId || '');
+        const pageIndex = Number(event.pageIndex);
+        if (!sessionId || !Number.isFinite(pageIndex)) return;
+        if (!result.has(sessionId)) result.set(sessionId, new Map());
+        const pageMap = result.get(sessionId);
+        const page = Math.max(0, Math.floor(pageIndex));
+        pageMap.set(page, Math.max(Number(pageMap.get(page) || 0), pageTimeMilliseconds(event)));
+    });
+    return result;
+}
+
+function serialisePageTimes(pageMap = new Map()) {
+    return Object.fromEntries([...pageMap.entries()].sort((a, b) => a[0] - b[0]).map(([page, milliseconds]) => [page, milliseconds]));
+}
+
 async function ensureAnalyticsSchema() {
     if (!analyticsSchemaPromise) {
         analyticsSchemaPromise = Promise.all([
@@ -149,6 +173,11 @@ async function startReaderSession({ book, email, name = null, source = 'share', 
             recent.source = sourceValue;
             recent.lastSeenAt = new Date();
             await recent.save();
+            const timingEvents = await FlipbookReaderEvent.findAll({
+                where: { sessionId: recent.id, eventType: 'page_time' },
+                attributes: ['sessionId', 'eventType', 'pageIndex', 'metadata', 'occurredAt']
+            });
+            const pageTimes = buildPageTimeMap(timingEvents).get(String(recent.id)) || new Map();
             return {
                 sessionToken: recent.sessionToken,
                 readerEmail: recent.readerEmail,
@@ -158,6 +187,7 @@ async function startReaderSession({ book, email, name = null, source = 'share', 
                 lastPageIndex: Number(recent.lastPageIndex || 0),
                 uniquePages: [...pageSetForSession(recent)].sort((a, b) => a - b),
                 completed: Boolean(recent.completedAt),
+                pageTimes: serialisePageTimes(pageTimes),
                 resumed: true
             };
         }
@@ -220,6 +250,7 @@ async function startReaderSession({ book, email, name = null, source = 'share', 
         lastPageIndex: 0,
         uniquePages: pageCount ? [0] : [],
         completed: false,
+        pageTimes: {},
         resumed: false
     };
 }
@@ -273,9 +304,39 @@ async function recordReaderEvents({ book, sessionToken, events = [] }) {
     ), durationSeconds);
     durationSeconds = credibleDurationSeconds(session, reportedDuration, recordedAt);
 
+    const timingEvents = cleaned.filter((event) => event.eventType === 'page_time' && event.pageIndex !== null);
+    const previousTimingEvents = timingEvents.length ? await FlipbookReaderEvent.findAll({
+        where: { sessionId: session.id, eventType: 'page_time' },
+        attributes: ['sessionId', 'eventType', 'pageIndex', 'metadata', 'occurredAt']
+    }) : [];
+    const pageTimes = buildPageTimeMap(previousTimingEvents).get(String(session.id)) || new Map();
+    let remainingTimingBudget = Math.max(0, (durationSeconds * 1000) - [...pageTimes.values()].reduce((sum, value) => sum + value, 0));
+
     const rows = [];
     for (const event of cleaned) {
         if (event.eventType === 'heartbeat') continue;
+
+        if (event.eventType === 'page_time') {
+            if (event.pageIndex === null) continue;
+            const previous = Number(pageTimes.get(event.pageIndex) || 0);
+            const requested = Math.max(previous, pageTimeMilliseconds(event));
+            const accepted = previous + Math.min(Math.max(0, requested - previous), remainingTimingBudget);
+            if (accepted <= previous) continue;
+            remainingTimingBudget -= accepted - previous;
+            pageTimes.set(event.pageIndex, accepted);
+            rows.push({
+                sessionId: session.id,
+                flipbookId: book.id,
+                ownerUserId: book.ownerUserId,
+                readerEmail: session.readerEmail,
+                eventType: 'page_time',
+                pageIndex: event.pageIndex,
+                direction: null,
+                occurredAt: recordedAt,
+                metadata: { pageActiveMilliseconds: accepted }
+            });
+            continue;
+        }
 
         if (event.eventType === 'page_view') {
             if (event.pageIndex === null) continue;
@@ -344,11 +405,12 @@ async function recordReaderEvents({ book, sessionToken, events = [] }) {
         maxPageIndex: session.maxPageIndex,
         flipCount: session.flipCount,
         durationSeconds: session.durationSeconds,
+        pageTimes: serialisePageTimes(pageTimes),
         completed: Boolean(session.completedAt)
     };
 }
 
-function readerRows(sessions, flipCounts = new Map(), { multiBook = false } = {}) {
+function readerRows(sessions, flipCounts = new Map(), { multiBook = false, pageTimes = new Map() } = {}) {
     const map = new Map();
     sessions.forEach((session) => {
         const email = normaliseEmail(session.readerEmail);
@@ -365,7 +427,8 @@ function readerRows(sessions, flipCounts = new Map(), { multiBook = false } = {}
                 books: new Set(),
                 completed: false,
                 lastSeenAt: null,
-                deviceTypes: new Set()
+                deviceTypes: new Set(),
+                pageTimes: new Map()
             });
         }
         const row = map.get(email);
@@ -378,12 +441,20 @@ function readerRows(sessions, flipCounts = new Map(), { multiBook = false } = {}
         pageSetForSession(session).forEach((page) => {
             row.pages.add(multiBook ? `${session.flipbookId}:${page}` : page);
         });
+        const sessionTimes = pageTimes.get(String(session.id)) || new Map();
+        sessionTimes.forEach((milliseconds, page) => {
+            const key = multiBook ? `${session.flipbookId}:${page}` : page;
+            row.pageTimes.set(key, Number(row.pageTimes.get(key) || 0) + Number(milliseconds || 0));
+        });
         row.completed = row.completed || Boolean(session.completedAt);
         if (!row.lastSeenAt || new Date(session.lastSeenAt) > new Date(row.lastSeenAt)) row.lastSeenAt = session.lastSeenAt;
         if (session.deviceType) row.deviceTypes.add(session.deviceType);
     });
 
-    return [...map.values()].map((row) => ({
+    return [...map.values()].map((row) => {
+        const timedPages = [...row.pageTimes.entries()];
+        const mostEngaged = timedPages.sort((a, b) => b[1] - a[1])[0] || null;
+        return ({
         email: row.email,
         name: row.name,
         sessions: row.sessions,
@@ -393,28 +464,41 @@ function readerRows(sessions, flipCounts = new Map(), { multiBook = false } = {}
         uniquePagesViewed: row.pages.size,
         flipbooksRead: [...row.books].filter(Boolean).length,
         completed: row.completed,
+        averageSecondsPerPage: row.pages.size ? Math.round((row.durationSeconds / row.pages.size) * 10) / 10 : 0,
+        mostEngagedPage: mostEngaged && !multiBook ? Number(mostEngaged[0]) + 1 : null,
+        mostEngagedPageSeconds: mostEngaged ? Math.round(Number(mostEngaged[1] || 0) / 100) / 10 : 0,
+        quickSkippedPages: timedPages.filter(([, milliseconds]) => milliseconds < 2000).length,
+        pageTimings: !multiBook ? timedPages.sort((a, b) => Number(a[0]) - Number(b[0])).map(([page, milliseconds]) => ({
+            page: Number(page) + 1,
+            label: `Page ${Number(page) + 1}`,
+            milliseconds,
+            timeSpent: Math.round(milliseconds / 100) / 10,
+            status: milliseconds >= 2000 ? 'Engaged' : 'Quick skip'
+        })) : [],
         lastSeenAt: row.lastSeenAt,
         devices: [...row.deviceTypes]
-    })).sort((a, b) => new Date(b.lastSeenAt || 0) - new Date(a.lastSeenAt || 0));
+    });
+    }).sort((a, b) => new Date(b.lastSeenAt || 0) - new Date(a.lastSeenAt || 0));
 }
 
 async function getBookAnalytics({ book, days = 30 }) {
     await ensureAnalyticsSchema();
     const rangeDays = clampDays(days);
     const since = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000);
-    const [sessions, flipEvents] = await Promise.all([
+    const [sessions, engagementEvents] = await Promise.all([
         FlipbookReaderSession.findAll({
             where: { flipbookId: book.id, startedAt: { [Op.gte]: since } },
             order: [['startedAt', 'DESC']]
         }),
         FlipbookReaderEvent.findAll({
-            where: { flipbookId: book.id, eventType: 'flip', occurredAt: { [Op.gte]: since } },
-            attributes: ['sessionId', 'eventType', 'pageIndex', 'occurredAt']
+            where: { flipbookId: book.id, eventType: { [Op.in]: ['flip', 'page_time'] }, occurredAt: { [Op.gte]: since } },
+            attributes: ['sessionId', 'eventType', 'pageIndex', 'metadata', 'occurredAt']
         })
     ]);
 
-    const flipCounts = buildFlipCountMap(flipEvents, sessions);
-    const readers = readerRows(sessions, flipCounts);
+    const flipCounts = buildFlipCountMap(engagementEvents, sessions);
+    const pageTimes = buildPageTimeMap(engagementEvents);
+    const readers = readerRows(sessions, flipCounts, { pageTimes });
     const uniqueReaders = readers.length;
     const completedReaders = readers.filter((reader) => reader.completed).length;
     const completedSessions = sessions.filter((session) => Boolean(session.completedAt)).length;
@@ -425,12 +509,22 @@ async function getBookAnalytics({ book, days = 30 }) {
         const pageReaders = new Set(pageSessions.map((session) => normaliseEmail(session.readerEmail)).filter(Boolean));
         const exitSessions = sessions.filter((session) => Number(session.lastPageIndex || 0) === pageIndex);
         const exitReaders = new Set(exitSessions.map((session) => normaliseEmail(session.readerEmail)).filter(Boolean));
+        const milliseconds = pageSessions.reduce((sum, session) => sum + Number(pageTimes.get(String(session.id))?.get(pageIndex) || 0), 0);
+        const timedSessions = pageSessions.filter((session) => Number(pageTimes.get(String(session.id))?.get(pageIndex) || 0) > 0);
+        const engagedSessions = timedSessions.filter((session) => Number(pageTimes.get(String(session.id))?.get(pageIndex) || 0) >= 2000).length;
+        const quickSkips = timedSessions.filter((session) => Number(pageTimes.get(String(session.id))?.get(pageIndex) || 0) < 2000).length;
         return {
             page: pageIndex + 1,
             label: pageIndex === 0 ? 'Cover' : (pageIndex === pageCount - 1 ? 'Back cover' : `Page ${pageIndex + 1}`),
             views: pageSessions.length,
             uniqueReaders: pageReaders.size,
             reachRate: percent(pageReaders.size, uniqueReaders),
+            activeSeconds: Math.round(milliseconds / 100) / 10,
+            averageActiveSeconds: timedSessions.length ? Math.round((milliseconds / timedSessions.length) / 100) / 10 : 0,
+            timedSessions: timedSessions.length,
+            engagedSessions,
+            quickSkips,
+            quickSkipRate: percent(quickSkips, timedSessions.length),
             exits: exitSessions.length,
             exitReaders: exitReaders.size
         };
@@ -549,5 +643,6 @@ module.exports = {
     recordReaderEvents,
     getBookAnalytics,
     getLibraryAnalytics,
+    buildPageTimeMap,
     _testing: { credibleDurationSeconds }
 };

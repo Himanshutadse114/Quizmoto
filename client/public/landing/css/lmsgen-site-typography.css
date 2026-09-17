@@ -56,6 +56,61 @@ body.atelora-site-refresh .lmsgen-audit-trust-links strong {
   font-family: "Montserrat", Arial, sans-serif !important;
 }
 
+/* Blog typography must use the same complete type system as the homepage.
+   The exported template assigns legacy fonts directly to several nested links,
+   dates and rich-text elements, so cover every text-bearing descendant rather
+   than fixing only the visible page heading. */
+body.lmsgen-page-blog,
+body.lmsgen-page-article,
+body.lmsgen-page-blog main,
+body.lmsgen-page-article main,
+body.lmsgen-page-blog p,
+body.lmsgen-page-blog li,
+body.lmsgen-page-blog time,
+body.lmsgen-page-blog .paragraph-s,
+body.lmsgen-page-blog .paragraph-m,
+body.lmsgen-page-blog .paragraph-l,
+body.lmsgen-page-article p,
+body.lmsgen-page-article li,
+body.lmsgen-page-article time,
+body.lmsgen-page-article .w-richtext {
+  font-family: "Open Sans", Arial, sans-serif !important;
+}
+
+body.lmsgen-page-blog h1,
+body.lmsgen-page-blog h2,
+body.lmsgen-page-blog h3,
+body.lmsgen-page-blog h4,
+body.lmsgen-page-blog h5,
+body.lmsgen-page-blog h6,
+body.lmsgen-page-blog a,
+body.lmsgen-page-blog button,
+body.lmsgen-page-blog .caption,
+body.lmsgen-page-blog .global-article-link,
+body.lmsgen-page-blog .global-article-tag,
+body.lmsgen-page-blog .global-article-date,
+body.lmsgen-page-article h1,
+body.lmsgen-page-article h2,
+body.lmsgen-page-article h3,
+body.lmsgen-page-article h4,
+body.lmsgen-page-article h5,
+body.lmsgen-page-article h6,
+body.lmsgen-page-article a,
+body.lmsgen-page-article button,
+body.lmsgen-page-article .caption {
+  font-family: "Montserrat", Arial, sans-serif !important;
+}
+
+body.lmsgen-page-blog h1,
+body.lmsgen-page-blog h2,
+body.lmsgen-page-blog h3,
+body.lmsgen-page-article h1,
+body.lmsgen-page-article h2,
+body.lmsgen-page-article h3 {
+  font-weight: 600 !important;
+  letter-spacing: -0.035em !important;
+}
+
 /* Solutions: keep the intended dark canvas and replace the legacy exported
    condensed/oversized type scale with the proportional LMSGEN system. */
 body.atelora-site-refresh.lmsgen-solutions-ready {
