@@ -90,7 +90,7 @@ const PDF_COURSE_SECTION = `
 <section class="lmsgen-seo-section lmsgen-pdf-course-section" aria-labelledby="lmsgen-pdf-course-title">
   <div class="lmsgen-seo-inner">
     <div class="lmsgen-publica-layout">
-      <div class="lmsgen-pdf-course-proof publica-demo-shell" data-publica-demo>
+      <div class="lmsgen-pdf-course-proof publica-demo-shell" data-publica-demo tabindex="0">
         <div class="publica-demo-topbar">
           <div><span class="publica-demo-mark">P</span><strong>LMSGEN Publica</strong><small>Interactive novel preview</small></div>
           <span class="publica-demo-live"><i></i> Page-level tracking</span>
@@ -134,6 +134,7 @@ const PDF_COURSE_SECTION = `
     </div>
   </div>
 </section>
+<script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js"></script>
 <script id="lmsgen-publica-demo-script">
 (function () {
   document.querySelectorAll('[data-publica-demo]').forEach(function (demo) {
@@ -144,12 +145,17 @@ const PDF_COURSE_SECTION = `
     var pages = Array.from(demo.querySelectorAll('template[data-publica-page]')).map(function (item) {
       return item.innerHTML;
     });
+    var viewport = demo.querySelector('.publica-book-viewport');
+    var stage = demo.querySelector('.publica-reader-stage');
     var book = demo.querySelector('[data-publica-book]');
     var status = demo.querySelector('[data-publica-status]');
     var prev = demo.querySelector('.publica-prev');
     var next = demo.querySelector('.publica-next');
     var dots = Array.from(demo.querySelectorAll('.publica-reader-dots i'));
     var current = 0;
+    var pageFlip = null;
+    var layoutKey = '';
+    var resizeTimer = null;
 
     function update(index) {
       current = Math.max(0, Math.min(pages.length - 1, Number(index) || 0));
@@ -165,27 +171,135 @@ const PDF_COURSE_SECTION = `
       return '<article class="publica-comic-page' +
         (index === 0 ? ' publica-front-cover' : '') +
         (index === pages.length - 1 ? ' publica-back-cover-page' : '') +
-        '">' + (pages[index] || '') + '</article>';
+        '"' + ((index === 0 || index === pages.length - 1) ? ' data-density="hard"' : '') +
+        '>' + (pages[index] || '') + '</article>';
     }
 
-    function renderPage(index) {
-      if (!book) return;
-      var target = Math.max(0, Math.min(pages.length - 1, Number(index) || 0));
-      book.classList.remove('is-page-entering');
-      book.innerHTML = pageMarkup(target);
-      update(target);
-      void book.offsetWidth;
-      book.classList.add('is-page-entering');
+    function dimensions() {
+      var mobile = window.innerWidth < 768;
+      var ratio = 0.72;
+      var stageWidth = Math.max(260, stage ? stage.clientWidth : window.innerWidth);
+      var width;
+      var height;
+
+      if (mobile) {
+        width = Math.min(stageWidth - 24, 430);
+        width = Math.max(230, width);
+        height = width / ratio;
+      } else {
+        var available = Math.max(520, stageWidth - 112);
+        width = Math.min(390, Math.floor(available / 2));
+        height = width / ratio;
+        var maxHeight = Math.min(590, Math.max(430, window.innerHeight - 170));
+        if (height > maxHeight) {
+          height = maxHeight;
+          width = height * ratio;
+        }
+      }
+
+      return {
+        width: Math.round(width),
+        height: Math.round(height),
+        mobile: mobile
+      };
     }
 
-    prev.addEventListener('click', function () { renderPage(current - 1); });
-    next.addEventListener('click', function () { renderPage(current + 1); });
+    function fallback() {
+      var dims = dimensions();
+      viewport.style.width = dims.width + 'px';
+      viewport.style.height = dims.height + 'px';
+      book.className = 'publica-comic-book is-fallback';
+      book.innerHTML = pageMarkup(current);
+      update(current);
+    }
+
+    function build(startPage) {
+      if (!book || !viewport || !stage) return;
+      var dims = dimensions();
+      var target = Math.max(0, Math.min(pages.length - 1, Number(startPage) || 0));
+      layoutKey = [dims.mobile ? 'mobile' : 'desktop', dims.width, dims.height].join(':');
+
+      if (pageFlip) {
+        try { pageFlip.destroy(); } catch (error) {}
+        pageFlip = null;
+      }
+
+      viewport.innerHTML = '<div class="publica-comic-book" data-publica-book aria-live="polite" aria-label="The Midnight Archive interactive preview"></div>';
+      book = viewport.querySelector('[data-publica-book]');
+      book.innerHTML = pages.map(function (_, index) { return pageMarkup(index); }).join('');
+      book.classList.toggle('is-mobile-book', dims.mobile);
+      viewport.style.width = (dims.width * (dims.mobile ? 1 : 2)) + 'px';
+      viewport.style.height = dims.height + 'px';
+
+      if (!window.St || !window.St.PageFlip) {
+        fallback();
+        return;
+      }
+
+      pageFlip = new window.St.PageFlip(book, {
+        width: dims.width,
+        height: dims.height,
+        size: 'fixed',
+        minWidth: dims.width,
+        maxWidth: dims.width,
+        minHeight: dims.height,
+        maxHeight: dims.height,
+        drawShadow: true,
+        flippingTime: 900,
+        usePortrait: dims.mobile,
+        startPage: target,
+        autoSize: false,
+        maxShadowOpacity: 0.5,
+        showCover: true,
+        mobileScrollSupport: true,
+        swipeDistance: 30,
+        clickEventForward: true,
+        useMouseEvents: true,
+        showPageCorners: true,
+        disableFlipByClick: false
+      });
+
+      pageFlip.on('init', function (event) {
+        book.classList.add('is-ready');
+        update(event && event.data && Number.isFinite(event.data.page) ? event.data.page : target);
+      });
+      pageFlip.on('flip', function (event) {
+        update(event && Number.isFinite(event.data) ? event.data : pageFlip.getCurrentPageIndex());
+      });
+      pageFlip.loadFromHTML(Array.from(book.querySelectorAll('.publica-comic-page')));
+    }
+
+    prev.addEventListener('click', function () {
+      if (pageFlip) pageFlip.flipPrev();
+      else if (current > 0) { current -= 1; fallback(); }
+    });
+    next.addEventListener('click', function () {
+      if (pageFlip) pageFlip.flipNext();
+      else if (current < pages.length - 1) { current += 1; fallback(); }
+    });
     demo.addEventListener('keydown', function (event) {
-      if (event.key === 'ArrowLeft') renderPage(current - 1);
-      if (event.key === 'ArrowRight') renderPage(current + 1);
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        if (pageFlip) pageFlip.flipPrev();
+      }
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        if (pageFlip) pageFlip.flipNext();
+      }
     });
 
-    renderPage(0);
+    window.addEventListener('resize', function () {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(function () {
+        var dims = dimensions();
+        var nextKey = [dims.mobile ? 'mobile' : 'desktop', dims.width, dims.height].join(':');
+        if (nextKey === layoutKey) return;
+        var savedPage = pageFlip ? pageFlip.getCurrentPageIndex() : current;
+        build(savedPage);
+      }, 180);
+    });
+
+    build(0);
   });
 })();
 </script>`;
@@ -278,10 +392,10 @@ const PDF_COURSE_STYLE = `<style id="lmsgen-pdf-course-style">
   .publica-reader-stage{position:relative;min-height:60rem;display:grid;grid-template-columns:4.5rem minmax(0,1fr) 4.5rem;grid-template-areas:"prev book next";align-items:center;gap:1rem;padding:5.5rem 0 1.5rem;border-radius:0;background:transparent;overflow:visible;perspective:180rem}
   .publica-reader-stage:before{content:'';position:absolute;z-index:-1;width:54rem;height:48rem;left:50%;top:54%;border-radius:50%;background:radial-gradient(circle,rgba(112,217,207,.22) 0%,rgba(112,217,207,.08) 42%,transparent 70%);filter:blur(.2rem);transform:translate(-50%,-50%)}
   .publica-reader-stage:after{content:'INTERACTIVE READER  ·  TURN THE PAGE';position:absolute;left:50%;bottom:.2rem;color:rgba(199,239,235,.68);font:750 .72rem/1 "Montserrat",Arial,sans-serif;letter-spacing:.14em;white-space:nowrap;transform:translateX(-50%)}
-  .publica-book-viewport{grid-area:book;position:relative;z-index:2;display:flex;align-items:center;justify-content:center;width:min(100%,41.5rem);max-width:100%;aspect-ratio:.72;margin:auto;border:.1rem solid rgba(255,255,255,.22);box-shadow:0 3rem 6rem rgba(0,18,17,.46),-.9rem .9rem 0 rgba(112,217,207,.1);filter:none;transform:rotateY(-2deg) rotateZ(-.35deg);transform-origin:center left;transition:width .2s ease,height .2s ease,opacity .18s ease,transform .22s ease,box-shadow .22s ease}.publica-book-viewport:hover{transform:rotateY(0) rotateZ(0) translateY(-.5rem);box-shadow:0 3.6rem 7rem rgba(0,18,17,.52),-.9rem .9rem 0 rgba(112,217,207,.15)}
+  .publica-book-viewport{grid-area:book;position:relative;z-index:2;display:flex;align-items:center;justify-content:center;width:min(100%,78rem);max-width:100%;margin:auto;overflow:visible;border:0;box-shadow:0 3rem 6rem rgba(0,18,17,.34);filter:none;transform:rotateY(-1deg);transform-origin:center;transition:width .2s ease,height .2s ease,opacity .18s ease,transform .22s ease,box-shadow .22s ease}.publica-book-viewport:hover{transform:rotateY(0) translateY(-.35rem);box-shadow:0 3.6rem 7rem rgba(0,18,17,.42)}
   .publica-demo-shell.is-changing-book .publica-book-viewport{opacity:0;transform:translateY(.8rem) scale(.96)}
-  .publica-comic-book{width:100%;height:100%;opacity:1;transition:opacity .2s ease}
-  .publica-comic-page{position:relative;width:100%;height:100%;min-width:0;overflow:hidden;background:#f8f1dd;color:#092f31;border:1px solid rgba(0,0,0,.12)}.publica-front-cover,.publica-back-cover-page{box-shadow:inset 0 0 2rem rgba(7,27,53,.18)}.publica-comic-book.is-fallback .publica-comic-page:not(:first-child){display:none}
+  .publica-comic-book{width:100%;height:100%;opacity:0;transition:opacity .2s ease}.publica-comic-book.is-ready,.publica-comic-book.is-fallback{opacity:1}
+  .publica-comic-page{position:relative;width:100%;height:100%;min-width:0;box-sizing:border-box;overflow:hidden;background:#f8f1dd;color:#092f31;border:1px solid rgba(0,0,0,.12)}.publica-front-cover,.publica-back-cover-page{box-shadow:inset 0 0 2rem rgba(7,27,53,.18)}.publica-comic-book.is-fallback .publica-comic-page:not(:first-child){display:none}
   .publica-book-switch{position:absolute;z-index:9;top:7.2rem;right:.2rem;width:8.6rem;padding:0;border:0;background:transparent;color:#fff;text-align:left;cursor:pointer;transform:rotate(3deg);transition:transform .24s ease,filter .24s ease}.publica-book-switch:hover{transform:translateY(-.6rem) rotate(0) scale(1.04);filter:brightness(1.08)}.publica-book-switch:focus-visible{outline:.2rem solid #8af0e5;outline-offset:.5rem;border-radius:.8rem}.publica-book-switch small{display:block;margin:0 0 .55rem;padding:.35rem .5rem;border-radius:999px;background:rgba(3,35,33,.78);font:800 .64rem/1.2 "Montserrat",Arial,sans-serif;letter-spacing:.11em;color:#9be8e1;text-align:center}.publica-mini-cover{position:relative;display:flex;min-height:11.8rem;padding:1rem .75rem;box-sizing:border-box;align-items:flex-end;overflow:hidden;border:.12rem solid rgba(255,255,255,.72);border-radius:.55rem;box-shadow:0 1.6rem 3rem rgba(0,0,0,.46);background:#17324a}.publica-mini-cover:before{content:'';position:absolute;inset:0;opacity:.95}.publica-mini-cover i{position:absolute;z-index:1;width:3rem;height:3rem;right:.65rem;top:.8rem;border-radius:50%;background:#f7d76d;box-shadow:0 0 0 .8rem rgba(247,215,109,.12)}.publica-mini-cover b{position:relative;z-index:2;font:800 .78rem/.95 "Montserrat",Arial,sans-serif;letter-spacing:-.02em;text-transform:uppercase;color:#fff}.publica-book-switch[data-next-set="archive"] .publica-mini-cover:before{background:linear-gradient(155deg,transparent,rgba(5,7,28,.84)),linear-gradient(135deg,#684c9d,#16264a 65%,#07101e)}.publica-book-switch[data-next-set="signal"] .publica-mini-cover:before{background:linear-gradient(155deg,transparent,rgba(0,20,37,.88)),radial-gradient(circle at 70% 25%,#ef5d43 0 18%,transparent 19%),linear-gradient(145deg,#16a89a,#08647c 48%,#071b35)}.publica-book-switch[data-next-set="signal"] .publica-mini-cover i{background:#ef5d43;box-shadow:0 0 0 .8rem rgba(239,93,67,.16)}
   .publica-turn-control{position:relative;z-index:6;width:4.5rem;height:4.5rem;border:1px solid rgba(137,239,229,.34);border-radius:50%;background:rgba(2,34,32,.62);box-shadow:0 1.2rem 2.4rem rgba(0,18,17,.26),inset 0 1px 0 rgba(255,255,255,.08);backdrop-filter:blur(1rem);color:#8af0e5;display:inline-flex;align-items:center;justify-content:center;gap:.6rem;cursor:pointer;transition:transform .2s ease,background .2s ease,border-color .2s ease}.publica-turn-control span{font:400 2.7rem/1 Arial}.publica-turn-control b{display:none;font:750 1rem/1 "Montserrat",Arial,sans-serif}.publica-prev{grid-area:prev}.publica-next{grid-area:next}.publica-turn-control:hover:not(:disabled){transform:scale(1.09);background:#0b6b62;border-color:#8af0e5}.publica-turn-control:disabled{opacity:.2;cursor:default}
   .publica-cover,.publica-back-cover{height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end;padding:8%;color:#fff;background:linear-gradient(155deg,rgba(1,18,30,.08),rgba(1,18,30,.88)),radial-gradient(circle at 72% 25%,#ffcf42 0 5%,#ef5d43 6% 18%,transparent 19%),linear-gradient(145deg,#16a89a,#08647c 48%,#071b35);position:relative;overflow:hidden}.publica-cover:before{content:'';position:absolute;width:65%;aspect-ratio:1;right:-15%;top:-10%;border:2rem solid rgba(255,255,255,.12);transform:rotate(24deg)}
@@ -291,11 +405,10 @@ const PDF_COURSE_STYLE = `<style id="lmsgen-pdf-course-style">
   .publica-panel-grid{height:100%;box-sizing:border-box;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr auto;gap:1.1%;padding:2%;background:#fff8df}.publica-panel{position:relative;overflow:hidden;border:.3rem solid #0b2529;padding:7%;display:flex;flex-direction:column;justify-content:flex-end}.publica-panel:after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(125deg,transparent 0 1rem,rgba(255,255,255,.04) 1rem 1.2rem);pointer-events:none}.publica-panel em{font-size:clamp(.65rem,.8vw,.95rem);font-style:normal;font-weight:900;letter-spacing:.12em;color:#72e3d7}.publica-panel strong{margin-top:.5rem;font-family:"Montserrat",Arial,sans-serif!important;font-size:clamp(1.5rem,2.25vw,3rem);line-height:.95;color:#fff;text-shadow:0 .2rem 0 rgba(0,0,0,.2)}.publica-night{grid-row:span 2;background:linear-gradient(160deg,transparent 45%,rgba(2,10,27,.9)),radial-gradient(circle at 70% 22%,#ffd75e 0 4%,transparent 5%),linear-gradient(145deg,#174d69,#08182d)}.publica-hero{background:radial-gradient(circle at 55% 72%,#ffbd3f 0 9%,transparent 10%),linear-gradient(145deg,#db4b3c,#6d1433)}.publica-hero>b{font:900 clamp(5rem,8vw,10rem)/.7 "Montserrat",Arial;color:#ffdd55;transform:rotate(-9deg)}
   .publica-bubble{position:absolute;z-index:2;top:8%;left:8%;max-width:75%;padding:.8rem 1rem;border:.22rem solid #102b30;border-radius:50%;background:#fff;color:#102b30;font-size:clamp(.72rem,1vw,1.15rem);font-weight:800;line-height:1.2}.publica-caption{grid-column:1/-1;padding:1rem 1.2rem;background:#0c292e;color:#fff;font-size:clamp(.75rem,1vw,1.1rem);font-weight:700;line-height:1.35}.publica-caption-teal{background:#087d73}
   .publica-action-grid{grid-template-rows:1fr 1fr auto}.publica-signal{grid-column:1/-1;background:linear-gradient(25deg,rgba(0,0,0,.7),transparent),repeating-radial-gradient(circle at 78% 45%,#ffdb49 0 .4rem,#e64c35 .5rem 1.2rem,#172d43 1.3rem 2rem)}.publica-run{background:linear-gradient(135deg,#0f766e,#062f43)}.publica-run>b{font:900 clamp(3rem,6vw,8rem)/.8 "Montserrat",Arial;color:#fff;transform:skew(-10deg)}.publica-sfx{display:grid;place-items:center;padding:1rem;background:#e83f36;color:#fff;font:900 clamp(1.1rem,2vw,2.4rem)/1 "Montserrat",Arial;letter-spacing:.08em}.publica-sfx-yellow{background:#ffd34e;color:#102b30}.publica-lab{grid-row:span 2;background:linear-gradient(160deg,transparent,rgba(0,0,0,.85)),linear-gradient(135deg,#427d88,#102d43)}.publica-face{background:radial-gradient(circle at 50% 70%,#ffc252 0 16%,#db503e 17% 32%,#202040 33%)}.publica-portal{grid-column:1/-1;background:radial-gradient(circle at 70% 48%,#fff 0 3%,#6ff0e1 4% 14%,#146a72 15% 30%,#081b35 31%)}.publica-impact{background:linear-gradient(145deg,#f24b3e,#ffcb48)}.publica-impact>b{font:900 clamp(2.5rem,5vw,6rem)/.8 "Montserrat",Arial;color:#fff;transform:rotate(-12deg);text-shadow:.4rem .4rem 0 #122b36}.publica-back-cover{justify-content:center;background:linear-gradient(145deg,#062f2c,#0b6e65)}.publica-back-cover h4{font-size:clamp(2rem,3vw,4rem);line-height:1}.publica-back-cover ul{margin:1.5rem 0 2rem;padding-left:1.8rem;font-size:clamp(.85rem,1.1vw,1.25rem);line-height:1.7;color:#c9f4ef}
-  .publica-comic-book.is-page-entering .publica-comic-page{animation:publica-page-in .26s ease both}
   .publica-novel-cover,.publica-novel-back,.publica-novel-page,.publica-novel-city,.publica-novel-letter,.publica-novel-library{justify-content:flex-start;padding:13% 11%;background:linear-gradient(90deg,rgba(114,85,45,.08),transparent 8%,transparent 92%,rgba(114,85,45,.08)),linear-gradient(180deg,#fffdf7,#f1e7d2);color:#30281f;box-shadow:inset 0 0 2.4rem rgba(112,84,45,.1)}
   .publica-novel-cover:before,.publica-novel-cover:after,.publica-novel-page:before,.publica-novel-page:after{display:none}
   .publica-novel-cover span,.publica-novel-page span,.publica-novel-city span,.publica-novel-library span{color:#806a4e;font:700 clamp(.8rem,.9vw,1rem)/1.4 Georgia,"Times New Roman",serif;letter-spacing:.14em}
-  .publica-novel-cover h4,.publica-novel-page h4,.publica-novel-letter blockquote{max-width:100%;margin:2.2rem 0 1.6rem;color:#30281f;font:600 clamp(2.7rem,3.2vw,4rem)/1.08 Georgia,"Times New Roman",serif;letter-spacing:-.025em;text-transform:none}
+  .publica-novel-cover h4,.publica-novel-page h4,.publica-novel-letter blockquote{max-width:100%;margin:1.8rem 0 1.35rem;color:#30281f;font:600 clamp(2.1rem,2.35vw,3rem)/1.12 Georgia,"Times New Roman",serif;letter-spacing:-.018em;text-transform:none}
   .publica-novel-cover p,.publica-novel-page p,.publica-novel-city p,.publica-novel-library p{max-width:100%;margin:0;color:#514638;font:400 clamp(1.15rem,1.25vw,1.5rem)/1.75 Georgia,"Times New Roman",serif}
   .publica-novel-cover>b{margin-top:2.4rem;padding:.8rem 0;border:0;border-top:1px solid rgba(80,60,35,.25);color:#806a4e;font:700 .9rem/1.4 Georgia,"Times New Roman",serif;letter-spacing:.12em}
   .publica-novel-page>b{right:10%;bottom:7%;color:#806a4e;font-family:Georgia,"Times New Roman",serif}
@@ -303,8 +416,7 @@ const PDF_COURSE_STYLE = `<style id="lmsgen-pdf-course-style">
   @media(max-width:1450px) and (min-width:1101px){.publica-demo-shell{transform:translateX(-2rem)}.publica-demo-topbar{left:5rem;right:5rem}}
   @media(max-width:1100px){.lmsgen-publica-layout{grid-template-columns:1fr;gap:4rem}.lmsgen-publica-copy{order:1;padding:0}.publica-demo-shell{order:2;max-width:86rem;margin:0 auto!important;transform:none}.publica-demo-topbar{left:6rem;right:6rem}.lmsgen-pdf-course-section h2{max-width:82rem}.lmsgen-pdf-course-summary{max-width:76rem}.lmsgen-pdf-course-benefits{grid-template-columns:repeat(3,minmax(0,1fr))}.lmsgen-pdf-course-benefits li{padding:5.8rem 1.6rem 1.6rem}.publica-benefit-index{left:1.5rem;top:1.4rem;transform:none}.lmsgen-pdf-course-proof{grid-template-columns:1fr}.lmsgen-pdf-proof-copy{padding:1rem 1rem 2rem}}
   @media(max-width:760px){.lmsgen-pdf-course-benefits{grid-template-columns:1fr}.lmsgen-pdf-course-benefits li{padding:1.6rem 1.6rem 1.6rem 6.2rem}.publica-benefit-index{left:1.5rem;top:50%;transform:translateY(-50%)}.publica-demo-topbar{display:none}.publica-reader-stage{min-height:0;grid-template-columns:4rem minmax(0,1fr) 4rem;gap:.7rem;padding:1.5rem}.publica-reader-stage:before{width:42rem;height:38rem}.publica-reader-stage:after{display:none}.publica-book-viewport,.publica-book-viewport:hover{transform:none}.publica-turn-control{width:3.8rem;height:3.8rem}.publica-turn-control span{font-size:2.5rem}}
-  @media(max-width:760px){.lmsgen-publica-layout{gap:2.8rem}.lmsgen-pdf-course-summary{margin-top:2rem}.lmsgen-pdf-course-benefits{margin-top:2.5rem}.lmsgen-pdf-course-benefits li{padding:1.6rem 1.6rem 1.6rem 6.2rem}.lmsgen-pdf-course-proof{padding:1rem;gap:1.5rem}.lmsgen-pdf-proof-screen{min-height:29rem;grid-template-columns:7.5rem 1fr}.lmsgen-pdf-proof-rail{padding:1.3rem .8rem}.lmsgen-pdf-proof-rail strong{font-size:.9rem}.lmsgen-pdf-proof-rail span{font-size:.75rem}.lmsgen-pdf-proof-slide{padding:.8rem}.lmsgen-pdf-proof-toolbar{font-size:.75rem}.lmsgen-pdf-proof-page{min-height:20rem;padding:1.8rem}.lmsgen-pdf-proof-page strong{font-size:2.7rem}.lmsgen-pdf-proof-page p{font-size:.9rem}.lmsgen-pdf-proof-copy{padding:1.5rem}.lmsgen-pdf-proof-copy h3{font-size:2.5rem}.publica-demo-shell{width:100%;max-width:100%;padding:0!important;overflow:hidden}.publica-demo-topbar{padding:.2rem .2rem 1rem;gap:.7rem}.publica-demo-topbar strong{font-size:1.1rem}.publica-demo-mark{width:3rem;height:3rem;border-radius:.8rem}.publica-demo-live{padding:.6rem .75rem;font-size:.75rem}.publica-reader-stage{width:100%;max-width:100%;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"book book" "prev next";gap:1rem;padding:0;overflow:hidden}.publica-reader-stage:before{width:31rem;height:35rem;background:radial-gradient(circle,rgba(243,224,184,.18),transparent 70%)}.publica-book-viewport{width:min(calc(100% - 2.4rem),38rem)!important;max-width:calc(100% - 2.4rem);height:auto!important;aspect-ratio:.72;overflow:hidden;isolation:isolate;border:.1rem solid rgba(80,60,35,.22);background:#f5eedf;box-shadow:0 1.5rem 3rem rgba(0,25,22,.3),-.45rem .45rem 0 #d9c9aa;filter:none}.publica-comic-book.is-mobile-book{display:block;width:100%!important;height:100%!important;overflow:hidden}.publica-comic-book.is-mobile-book .publica-comic-page{display:block!important;width:100%!important;height:100%!important;min-width:0!important;overflow:hidden}.publica-comic-book.is-mobile-entering .publica-comic-page{animation:publica-mobile-page-in .22s ease both}.publica-book-switch{display:none}.publica-novel-cover,.publica-novel-back,.publica-novel-page,.publica-novel-city,.publica-novel-letter,.publica-novel-library{justify-content:flex-start;padding:13% 11%;background:linear-gradient(90deg,rgba(114,85,45,.08),transparent 8%,transparent 92%,rgba(114,85,45,.08)),linear-gradient(180deg,#fffdf7,#f1e7d2);color:#30281f;box-shadow:inset 0 0 2.4rem rgba(112,84,45,.1)}.publica-novel-cover:before,.publica-novel-cover:after,.publica-novel-page:before,.publica-novel-page:after{display:none}.publica-novel-cover span,.publica-novel-page span,.publica-novel-city span,.publica-novel-library span{color:#806a4e;font:700 1rem/1.4 Georgia,"Times New Roman",serif;letter-spacing:.14em}.publica-novel-cover h4,.publica-novel-page h4,.publica-novel-letter blockquote{max-width:100%;margin:2.2rem 0 1.6rem;color:#30281f;font:600 clamp(2.7rem,9vw,3.6rem)/1.08 Georgia,"Times New Roman",serif;letter-spacing:-.025em;text-transform:none}.publica-novel-cover p,.publica-novel-page p,.publica-novel-city p,.publica-novel-library p{max-width:100%;margin:0;color:#514638;font:400 clamp(1.35rem,4.2vw,1.6rem)/1.75 Georgia,"Times New Roman",serif}.publica-novel-cover>b{margin-top:2.4rem;padding:.8rem 0;border:0;border-top:1px solid rgba(80,60,35,.25);color:#806a4e;font:700 1rem/1.4 Georgia,"Times New Roman",serif;letter-spacing:.12em}.publica-novel-page>b{right:10%;bottom:7%;color:#806a4e;font-family:Georgia,"Times New Roman",serif}.publica-turn-control{position:static;width:100%;height:4rem;border-radius:.9rem;border-color:rgba(246,234,211,.42);background:rgba(4,72,66,.9);color:#fff}.publica-turn-control span{font-size:1.8rem}.publica-turn-control b{display:inline;font-size:.95rem}.publica-turn-control:hover:not(:disabled){transform:none}.publica-reader-footer{grid-template-columns:1fr auto;padding:1rem .3rem .2rem}.publica-reader-footer>strong{display:none}.publica-reader-dots{justify-self:end}.publica-panel-grid{gap:.8%;padding:1.5%}.publica-panel{border-width:.22rem}}
-  @keyframes publica-page-in{from{opacity:.35;transform:translateX(1rem)}to{opacity:1;transform:none}}
+  @media(max-width:760px){.lmsgen-publica-layout{gap:2.8rem}.lmsgen-pdf-course-summary{margin-top:2rem}.lmsgen-pdf-course-benefits{margin-top:2.5rem}.lmsgen-pdf-course-benefits li{padding:1.6rem 1.6rem 1.6rem 6.2rem}.lmsgen-pdf-course-proof{padding:1rem;gap:1.5rem}.lmsgen-pdf-proof-screen{min-height:29rem;grid-template-columns:7.5rem 1fr}.lmsgen-pdf-proof-rail{padding:1.3rem .8rem}.lmsgen-pdf-proof-rail strong{font-size:.9rem}.lmsgen-pdf-proof-rail span{font-size:.75rem}.lmsgen-pdf-proof-slide{padding:.8rem}.lmsgen-pdf-proof-toolbar{font-size:.75rem}.lmsgen-pdf-proof-page{min-height:20rem;padding:1.8rem}.lmsgen-pdf-proof-page strong{font-size:2.7rem}.lmsgen-pdf-proof-page p{font-size:.9rem}.lmsgen-pdf-proof-copy{padding:1.5rem}.lmsgen-pdf-proof-copy h3{font-size:2.5rem}.publica-demo-shell{width:100%;max-width:100%;padding:0!important;overflow:hidden}.publica-demo-topbar{padding:.2rem .2rem 1rem;gap:.7rem}.publica-demo-topbar strong{font-size:1.1rem}.publica-demo-mark{width:3rem;height:3rem;border-radius:.8rem}.publica-demo-live{padding:.6rem .75rem;font-size:.75rem}.publica-reader-stage{width:100%;max-width:100%;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"book book" "prev next";gap:1rem;padding:0;overflow:hidden}.publica-reader-stage:before{width:31rem;height:35rem;background:radial-gradient(circle,rgba(243,224,184,.18),transparent 70%)}.publica-book-viewport{width:auto;max-width:calc(100% - 2.4rem);height:auto;overflow:visible;isolation:isolate;border:0;background:transparent;box-shadow:0 1.5rem 3rem rgba(0,25,22,.3);filter:none}.publica-comic-book.is-mobile-book{display:block;width:100%!important;height:100%!important}.publica-book-switch{display:none}.publica-novel-cover,.publica-novel-back,.publica-novel-page,.publica-novel-city,.publica-novel-letter,.publica-novel-library{justify-content:flex-start;padding:13% 11%;background:linear-gradient(90deg,rgba(114,85,45,.08),transparent 8%,transparent 92%,rgba(114,85,45,.08)),linear-gradient(180deg,#fffdf7,#f1e7d2);color:#30281f;box-shadow:inset 0 0 2.4rem rgba(112,84,45,.1)}.publica-novel-cover:before,.publica-novel-cover:after,.publica-novel-page:before,.publica-novel-page:after{display:none}.publica-novel-cover span,.publica-novel-page span,.publica-novel-city span,.publica-novel-library span{color:#806a4e;font:700 .9rem/1.4 Georgia,"Times New Roman",serif;letter-spacing:.13em}.publica-novel-cover h4,.publica-novel-page h4,.publica-novel-letter blockquote{max-width:100%;margin:1.7rem 0 1.25rem;color:#30281f;font:600 clamp(2.1rem,7vw,2.75rem)/1.12 Georgia,"Times New Roman",serif;letter-spacing:-.018em;text-transform:none}.publica-novel-cover p,.publica-novel-page p,.publica-novel-city p,.publica-novel-library p{max-width:100%;margin:0;color:#514638;font:400 clamp(1.18rem,3.6vw,1.4rem)/1.7 Georgia,"Times New Roman",serif}.publica-novel-cover>b{margin-top:2.2rem;padding:.8rem 0;border:0;border-top:1px solid rgba(80,60,35,.25);color:#806a4e;font:700 .9rem/1.4 Georgia,"Times New Roman",serif;letter-spacing:.12em}.publica-novel-page>b{right:10%;bottom:7%;color:#806a4e;font-family:Georgia,"Times New Roman",serif}.publica-turn-control{position:static;width:100%;height:4rem;border-radius:.9rem;border-color:rgba(246,234,211,.42);background:rgba(4,72,66,.9);color:#fff}.publica-turn-control span{font-size:1.8rem}.publica-turn-control b{display:inline;font-size:.95rem}.publica-turn-control:hover:not(:disabled){transform:none}.publica-reader-footer{grid-template-columns:1fr auto;padding:1rem .3rem .2rem}.publica-reader-footer>strong{display:none}.publica-reader-dots{justify-self:end}.publica-panel-grid{gap:.8%;padding:1.5%}.publica-panel{border-width:.22rem}}
 </style>`;
 
 function escapeRegExp(value) {
