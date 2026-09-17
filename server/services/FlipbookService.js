@@ -20,6 +20,19 @@ const MAX_PAGE_BYTES = 4 * 1024 * 1024;
 const ALLOWED_PAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 let schemaPromise = null;
 
+async function ensureBrandingColumns() {
+    const qi = Flipbook.sequelize.getQueryInterface();
+    const table = Flipbook.getTableName();
+    const columns = await qi.describeTable(table);
+    if (!columns.shareSlug) {
+        await qi.addColumn(table, 'shareSlug', { type: require('sequelize').DataTypes.STRING(64), allowNull: true });
+    }
+    const indexes = await qi.showIndex(table);
+    if (!indexes.some((index) => index.unique && index.fields?.some((field) => field.attribute === 'shareSlug' || field.name === 'shareSlug'))) {
+        await qi.addIndex(table, ['shareSlug'], { unique: true, name: 'flipbooks_share_slug_unique' });
+    }
+}
+
 function normaliseEmail(value) {
     return String(value || '').trim().toLowerCase();
 }
@@ -37,7 +50,7 @@ async function ensureFlipbookSchema() {
             Flipbook.sync(),
             FlipbookEntitlement.sync(),
             ensureFlipbookTenantSchema()
-        ]).catch((err) => {
+        ]).then(ensureBrandingColumns).catch((err) => {
             schemaPromise = null;
             throw err;
         });

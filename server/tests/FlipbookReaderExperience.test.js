@@ -68,4 +68,20 @@ describe('Flipbook reader experience', () => {
         const inlineScript = html.match(/<script>\s*([\s\S]*?)<\/script>/)?.[1];
         expect(() => new Function(inlineScript)).not.to.throw();
     });
+
+    it('deters page downloads, printing and browser capture shortcuts', () => {
+        const html = renderFlipbookReader({
+            title: 'Protected reader QA',
+            shareToken: 'protected-reader-token',
+            pageCount: 2,
+            pages: [{ width: 1200, height: 1600 }, { width: 1200, height: 1600 }]
+        });
+
+        expect(html).to.include('draggable="false"');
+        expect(html).to.include("document.addEventListener('contextmenu'");
+        expect(html).to.include("document.addEventListener('dragstart'");
+        expect(html).to.include("['s','p','u']");
+        expect(html).to.include('@media print');
+        expect(html).to.include('protected LMSGEN Publica publication');
+    });
 });

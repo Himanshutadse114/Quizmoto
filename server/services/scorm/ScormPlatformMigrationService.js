@@ -165,6 +165,7 @@ function entitlementColumns() {
         maxStaff: { type: DataTypes.INTEGER, allowNull: true },
         maxCampaigns: { type: DataTypes.INTEGER, allowNull: true },
         maxAssignments: { type: DataTypes.INTEGER, allowNull: true },
+        maxQuizPlayers: { type: DataTypes.INTEGER, allowNull: true },
         permissions: { type: DataTypes.JSON, allowNull: false, defaultValue: {} },
         updatedByUserId: { type: DataTypes.INTEGER, allowNull: true },
         updatedByEmail: { type: DataTypes.STRING(320), allowNull: true },

@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const router = express.Router();
 const User = require('../models/User');
 const Flipbook = require('../models/Flipbook');
+const { publicIdentifierWhere } = require('../services/PublicaBrandingService');
 const {
     ensureAnalyticsSchema,
     startReaderSession,
@@ -15,7 +16,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
 async function publicBook(shareToken) {
     return Flipbook.findOne({
-        where: { shareToken, status: 'published', shareEnabled: true }
+        where: { ...publicIdentifierWhere(shareToken), status: 'published', shareEnabled: true }
     });
 }
 

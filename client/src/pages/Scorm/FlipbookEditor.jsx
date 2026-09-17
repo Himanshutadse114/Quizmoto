@@ -8,6 +8,7 @@ import {
   FileImage,
   FileText,
   Loader2,
+  Link2,
   Save,
   Share2,
   Sparkles,
@@ -124,6 +125,7 @@ export default function FlipbookEditor() {
   const [book, setBook] = useState(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [shareSlug, setShareSlug] = useState('');
   const [files, setFiles] = useState([]);
   const [fileSummary, setFileSummary] = useState('');
   const [replacePages, setReplacePages] = useState(false);
@@ -139,7 +141,7 @@ export default function FlipbookEditor() {
     axios.get(apiUrl(`${API}/${id}`), { headers }).then((res) => {
       if (!live) return;
       const item = res.data.flipbook;
-      setBook(item); setTitle(item.title || ''); setDescription(item.description || '');
+      setBook(item); setTitle(item.title || ''); setDescription(item.description || ''); setShareSlug(item.shareSlug || '');
     }).catch((err) => live && setError(err.response?.data?.message || 'Could not load this publication.')).finally(() => live && setLoading(false));
     return () => { live = false; };
   }, [editing, id, headers]);
@@ -159,7 +161,7 @@ export default function FlipbookEditor() {
     let createdHere = false;
     try {
       if (!activeBook) {
-        const created = await axios.post(apiUrl(API), { title: title.trim() || 'Untitled publication', description }, { headers });
+        const created = await axios.post(apiUrl(API), { title: title.trim() || 'Untitled publication', description, shareSlug }, { headers });
         activeBook = created.data.flipbook;
         setBook(activeBook);
         createdHere = true;
@@ -183,6 +185,7 @@ export default function FlipbookEditor() {
       const updated = await axios.patch(apiUrl(`${API}/${activeBook.id}`), {
         title: title.trim() || 'Untitled publication',
         description,
+        shareSlug,
         status,
         shareEnabled: true
       }, { headers });
@@ -204,7 +207,7 @@ export default function FlipbookEditor() {
 
   const copyShare = async () => {
     if (!publishedUrl) return;
-    try { await navigator.clipboard.writeText(publishedUrl); setSuccess('Share link copied.'); } catch (_) {}
+    try { await navigator.clipboard.writeText(publishedUrl); setSuccess('Share link copied.'); } catch { setError('Could not copy the share link.'); }
   };
 
   if (loading) return <div className="flip-loading"><Loader2 size={20} className="animate-spin" /> Loading editor…</div>;
@@ -225,6 +228,7 @@ export default function FlipbookEditor() {
           <div className="flip-section-heading compact"><div><div className="flip-kicker">LMSGEN Publica</div><h1>{editing ? 'Edit publication' : 'Create publication'}</h1><p>Upload a PDF or image pages. Page conversion happens in your browser before secure storage.</p></div></div>
           <label className="flip-field"><span>Title</span><input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={180} placeholder="Employee Security Handbook" /></label>
           <label className="flip-field"><span>Description</span><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} maxLength={3000} placeholder="Optional short description for readers" /></label>
+          <label className="flip-field"><span><Link2 size={12} /> Custom share link</span><input value={shareSlug} onChange={(e) => setShareSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} maxLength={64} placeholder="employee-security-handbook" /><small>Your public link will use this readable name. Leave it blank to keep a secure generated link.</small></label>
 
           <div className="flip-upload-zone" role="button" tabIndex={0} onClick={() => fileInput.current?.click()} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && fileInput.current?.click()}>
             <input ref={fileInput} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple onChange={(e) => chooseFiles(e.target.files)} hidden />

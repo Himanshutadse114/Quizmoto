@@ -115,7 +115,7 @@ describe('ScormTenantService', () => {
         expect(ctx.addGrant.calledOnce).to.equal(true);
         expect(result.hostId).to.equal(901);
         expect(result.admin.email).to.equal('admin@acme.com');
-        expect(result.usage).to.deep.equal({ staff: 1, courses: 1, aiCourseGenerations: 2, courseCreations: 2, learners: 10, rosterLearners: 10, campaigns: 3, assignments: 12 });
+        expect(result.usage).to.deep.equal({ staff: 1, courses: 1, aiCourseGenerations: 2, courseCreations: 2, learners: 10, rosterLearners: 10, campaigns: 3, assignments: 12, quizPlayers: 0 });
 
         // The Tenant Admin (userId 44) already existed and may already own SCORM
         // data recorded under their own user id from before tenants existed.

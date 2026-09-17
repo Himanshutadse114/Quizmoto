@@ -45,6 +45,10 @@ services:
         value: "https://www.lmsgen.in"
       - key: PUBLIC_FRONTEND_URL
         value: "https://www.lmsgen.in"
+      - key: PUBLIC_APP_URL
+        value: "https://www.lmsgen.in"
+      - key: PUBLICA_ROOT_DOMAIN
+        value: "lmsgen.in"
       - key: MAIL_ENABLED
         value: "true"
       - key: MAIL_PROVIDER

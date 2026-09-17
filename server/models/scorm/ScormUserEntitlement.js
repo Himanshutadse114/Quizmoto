@@ -47,6 +47,11 @@ const ScormUserEntitlement = sequelize.define('ScormUserEntitlement', {
         type: DataTypes.INTEGER,
         allowNull: true
     },
+    // Maximum connected Quizmoto players across this user or tenant at one time.
+    maxQuizPlayers: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
     permissions: {
         type: DataTypes.JSON,
         allowNull: false,

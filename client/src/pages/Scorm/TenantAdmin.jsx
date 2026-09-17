@@ -16,7 +16,8 @@ import {
   PowerOff,
   Settings2,
   Gauge,
-  Link2
+  Link2,
+  Gamepad2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
@@ -59,11 +60,12 @@ const LIMIT_FIELDS = [
   ['maxLearners', 'Learner capacity', 'Maximum unique learners that can be assigned learning.'],
   ['maxStaff', 'Staff seats', 'Tenant Admin, Co-admins and Analytics Viewers.'],
   ['maxCampaigns', 'Campaigns', 'Maximum campaigns stored in the tenant.'],
-  ['maxAssignments', 'Learner-course assignments', 'Maximum active learner × course assignment pairs.']
+  ['maxAssignments', 'Learner-course assignments', 'Maximum active learner × course assignment pairs.'],
+  ['maxQuizPlayers', 'Live Quizmoto players', 'Maximum connected players across all live sessions for this tenant at one time.']
 ];
 
 function blankLimits() {
-  return { maxCourses: '', maxActiveCourses: '', maxLearners: '', maxStaff: '', maxCampaigns: '', maxAssignments: '' };
+  return { maxCourses: '', maxActiveCourses: '', maxLearners: '', maxStaff: '', maxCampaigns: '', maxAssignments: '', maxQuizPlayers: '' };
 }
 
 function emptyForm() {
@@ -223,13 +225,14 @@ function TenantCard({ tenant, onRefresh }) {
       </div>
 
       <div className="p-4 md:p-5">
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-2.5">
           <Metric icon={BookOpen} label="AI generations used" value={u.aiCourseGenerations ?? 0} limit={e.maxCourses} emphasise />
           <Metric icon={BookOpen} label="Active courses" value={u.courses} limit={e.maxActiveCourses} />
           <Metric icon={UserCheck} label="Learners" value={u.learners} limit={e.maxLearners} />
           <Metric icon={Users} label="Staff" value={u.staff} limit={e.maxStaff} />
           <Metric icon={Megaphone} label="Campaigns" value={u.campaigns} limit={e.maxCampaigns} />
           <Metric icon={Link2} label="Assignments" value={u.assignments} limit={e.maxAssignments} />
+          <Metric icon={Gamepad2} label="Live players" value={u.quizPlayers} limit={e.maxQuizPlayers} />
         </div>
 
         {!tenant.protected && <div className="mt-3 rounded-xl border border-[#4FC9BF]/20 bg-[#4FC9BF]/5 px-3.5 py-3 text-[10px] leading-relaxed"><strong>AI credits and active capacity are separate.</strong> Every accepted new AI or PDF-to-course generation uses one AI credit permanently. Manual SCORM courses do not use AI credits. Archiving or deleting any course frees active capacity.</div>}

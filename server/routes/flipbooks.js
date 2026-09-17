@@ -18,19 +18,28 @@ const {
     listAdminUsers,
     MAX_PAGES
 } = require('../services/FlipbookService');
+const {
+    cleanShareSlug,
+    shareIdentifier,
+    publicationUrl,
+    assertBookSlugAvailable,
+    publicIdentifierWhere
+} = require('../services/PublicaBrandingService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
-const PUBLIC_APP_URL = String(
-    process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'https://www.lmsgen.in'
-).replace(/\/+$/, '');
-
 function sanitiseText(value, maxLength) {
     const text = String(value || '').trim();
     return text ? text.slice(0, maxLength) : '';
 }
 
 function publicFlipbookUrl(book) {
-    return `${PUBLIC_APP_URL}/publica/${book.shareToken}`;
+    return publicationUrl(book);
+}
+
+async function findPublicBook(identifier) {
+    return Flipbook.findOne({
+        where: { ...publicIdentifierWhere(identifier), status: 'published', shareEnabled: true }
+    });
 }
 
 function renderPublicReader(book) {
@@ -81,8 +90,10 @@ function ownerPayload(book) {
         status: book.status,
         shareEnabled: Boolean(book.shareEnabled),
         shareToken: book.shareToken,
+        shareSlug: book.shareSlug || '',
+        shareIdentifier: shareIdentifier(book),
         sharePath: published ? publicFlipbookUrl(book) : null,
-        coverPath: published && pageCount ? `/api/scorm/flipbooks/public/${book.shareToken}/pages/0` : null,
+        coverPath: published && pageCount ? `/api/scorm/flipbooks/public/${shareIdentifier(book)}/pages/0` : null,
         pageCount,
         viewCount: Number(book.viewCount || 0),
         lastViewedAt: book.lastViewedAt || null,
@@ -153,14 +164,13 @@ async function findOwnedBook(req, res, next) {
 router.get('/public/:shareToken/view', async (req, res, next) => {
     try {
         await ensureFlipbookSchema();
-        const book = await Flipbook.findOne({
-            where: { shareToken: req.params.shareToken, status: 'published', shareEnabled: true }
-        });
+        const book = await findPublicBook(req.params.shareToken);
         if (!book) {
             return res.status(404).type('html').send('<!doctype html><html><body style="font-family:Arial;padding:40px"><h1>Publication unavailable</h1><p>This link is invalid, unpublished or has been disabled.</p></body></html>');
         }
         res.setHeader('Cache-Control', 'private, no-store');
         res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+        res.setHeader('Content-Security-Policy', "default-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self'; frame-ancestors *");
         res.type('html').send(renderPublicReader(book));
     } catch (err) {
         next(err);
@@ -170,9 +180,7 @@ router.get('/public/:shareToken/view', async (req, res, next) => {
 router.get('/public/:shareToken', async (req, res, next) => {
     try {
         await ensureFlipbookSchema();
-        const book = await Flipbook.findOne({
-            where: { shareToken: req.params.shareToken, status: 'published', shareEnabled: true }
-        });
+        const book = await findPublicBook(req.params.shareToken);
         if (!book) return res.status(404).json({ message: 'This publication is not available.' });
         res.json({ flipbook: publicPayload(book) });
     } catch (err) {
@@ -183,16 +191,16 @@ router.get('/public/:shareToken', async (req, res, next) => {
 router.get('/public/:shareToken/pages/:index', async (req, res, next) => {
     try {
         await ensureFlipbookSchema();
-        const book = await Flipbook.findOne({
-            where: { shareToken: req.params.shareToken, status: 'published', shareEnabled: true }
-        });
+        const book = await findPublicBook(req.params.shareToken);
         if (!book) return res.status(404).end();
         const pages = Array.isArray(book.pages) ? book.pages : [];
         const index = Number(req.params.index);
         if (!Number.isInteger(index) || index < 0 || index >= pages.length) return res.status(404).end();
         const object = await getObjectStorage().getObjectStream(pages[index].key);
         res.setHeader('Content-Type', object.contentType || pages[index].contentType || 'image/jpeg');
-        res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
+        res.setHeader('Cache-Control', 'private, no-store, max-age=0');
+        res.setHeader('Content-Disposition', 'inline');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
         if (object.contentLength) res.setHeader('Content-Length', object.contentLength);
         object.stream.on('error', next);
         object.stream.pipe(res);
@@ -204,9 +212,7 @@ router.get('/public/:shareToken/pages/:index', async (req, res, next) => {
 router.post('/public/:shareToken/view', async (req, res, next) => {
     try {
         await ensureFlipbookSchema();
-        const book = await Flipbook.findOne({
-            where: { shareToken: req.params.shareToken, status: 'published', shareEnabled: true }
-        });
+        const book = await findPublicBook(req.params.shareToken);
         if (!book) return res.status(404).json({ message: 'This publication is not available.' });
         book.viewCount = Number(book.viewCount || 0) + 1;
         book.lastViewedAt = new Date();
@@ -280,12 +286,15 @@ router.post('/', async (req, res, next) => {
         await assertCanCreate(req.flipbookUser);
         const title = sanitiseText(req.body?.title, 180) || 'Untitled publication';
         const description = sanitiseText(req.body?.description, 3000) || null;
+        const nextSlug = cleanShareSlug(req.body?.shareSlug);
+        await assertBookSlugAvailable(nextSlug);
         const book = await Flipbook.create({
             ownerUserId: req.flipbookUser.id,
             ownerEmail: String(req.flipbookUser.email || '').trim().toLowerCase() || null,
             title,
             description,
             shareToken: createShareToken(),
+            shareSlug: nextSlug,
             status: 'draft',
             shareEnabled: true,
             pages: [],
@@ -336,6 +345,11 @@ router.patch('/:id', findOwnedBook, async (req, res, next) => {
         if (Object.prototype.hasOwnProperty.call(req.body || {}, 'shareEnabled')) {
             req.flipbook.shareEnabled = Boolean(req.body.shareEnabled);
         }
+        if (Object.prototype.hasOwnProperty.call(req.body || {}, 'shareSlug')) {
+            const nextSlug = cleanShareSlug(req.body.shareSlug);
+            await assertBookSlugAvailable(nextSlug, req.flipbook.id);
+            req.flipbook.shareSlug = nextSlug;
+        }
         if (req.body?.theme && typeof req.body.theme === 'object' && !Array.isArray(req.body.theme)) {
             req.flipbook.theme = {
                 background: sanitiseText(req.body.theme.background, 40) || undefined,
@@ -360,6 +374,7 @@ router.patch('/:id', findOwnedBook, async (req, res, next) => {
 router.post('/:id/regenerate-share-link', findOwnedBook, async (req, res, next) => {
     try {
         req.flipbook.shareToken = createShareToken();
+        req.flipbook.shareSlug = null;
         await req.flipbook.save();
         res.json({ flipbook: ownerPayload(req.flipbook) });
     } catch (err) {

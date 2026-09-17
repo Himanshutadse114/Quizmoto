@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Flipbook = require('../models/Flipbook');
+const { publicIdentifierWhere } = require('../services/PublicaBrandingService');
 const FlipbookReaderSession = require('../models/FlipbookReaderSession');
 const FlipbookReaderContext = require('../models/FlipbookReaderContext');
 const {
@@ -25,7 +26,7 @@ function assignmentTokenFromSource(source) {
 }
 
 async function publicBook(shareToken) {
-    return Flipbook.findOne({ where: { shareToken, status: 'published', shareEnabled: true } });
+    return Flipbook.findOne({ where: { ...publicIdentifierWhere(shareToken), status: 'published', shareEnabled: true } });
 }
 
 // Assigned Flipbooks reuse the normal public reader, but the opaque assignment

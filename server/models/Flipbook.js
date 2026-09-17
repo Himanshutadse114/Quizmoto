@@ -29,6 +29,11 @@ const Flipbook = sequelize.define('Flipbook', {
         allowNull: false,
         unique: true
     },
+    shareSlug: {
+        type: DataTypes.STRING(64),
+        allowNull: true,
+        unique: true
+    },
     status: {
         type: DataTypes.STRING(24),
         allowNull: false,

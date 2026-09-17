@@ -7,6 +7,7 @@ const AnswerSubmissionService = require('./AnswerSubmissionService');
 const SessionTokenService = require('./SessionTokenService');
 const SessionRecoveryService = require('./SessionRecoveryService');
 const HostLeaseService = require('./HostLeaseService');
+const { withQuizPlayerCapacity } = require('./QuizmotoCapacityService');
 const { validateSocketPayload } = require('../validators/socketSchemas');
 
 const logDiag = (event, pin, state, details = {}) => {
@@ -491,19 +492,23 @@ module.exports = (io) => {
               if (playerProfileId && !player.playerProfileId) player.playerProfileId = playerProfileId;
               await player.save();
             } else {
-              player = await Player.create({
-                nickname: cleanNickname,
-                teamName: teamName || null,
-                playerProfileId,
-                socketId: socket.id,
-                sessionId: session.id,
-                score: 0,
-                avatar: avatar || 'default'
-              });
+              player = await withQuizPlayerCapacity(session.hostId, () => Player.create({
+                  nickname: cleanNickname,
+                  teamName: teamName || null,
+                  playerProfileId,
+                  socketId: socket.id,
+                  sessionId: session.id,
+                  score: 0,
+                  avatar: avatar || 'default'
+              }));
             }
           } catch (dbErr) {
             if (dbErr.name === 'SequelizeUniqueConstraintError') {
               return socket.emit('error', 'That name is already taken');
+            }
+            if (dbErr.code === 'QUIZMOTO_PLAYER_CAPACITY_REACHED') {
+              socket.emit('capacity_reached', { message: dbErr.message, code: dbErr.code, capacity: dbErr.capacity });
+              return socket.emit('error', dbErr.message);
             }
             throw dbErr;
           }

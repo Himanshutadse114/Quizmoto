@@ -30,6 +30,16 @@ const FlipbookLibrary = sequelize.define('FlipbookLibrary', {
         allowNull: false,
         unique: true
     },
+    shareSlug: {
+        type: DataTypes.STRING(64),
+        allowNull: true,
+        unique: true
+    },
+    customSubdomain: {
+        type: DataTypes.STRING(63),
+        allowNull: true,
+        unique: true
+    },
     shareEnabled: {
         type: DataTypes.BOOLEAN,
         allowNull: false,

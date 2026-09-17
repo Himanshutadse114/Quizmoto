@@ -34,14 +34,14 @@ export default function FlipbookLibraryViewer() {
     try {
       if (navigator.share) await navigator.share({ title: library?.title || 'LMSGEN Publica Library', url });
       else await navigator.clipboard.writeText(url);
-    } catch (_) {}
+    } catch { return; }
   };
 
   if (loading) return <main className="public-flip-library loading"><RefreshCw size={22} className="animate-spin" /><span>Loading library…</span></main>;
   if (error || !library) return <main className="public-flip-library loading"><BookOpenCheck size={30} /><h1>Library unavailable</h1><p>{error || 'This library link is invalid.'}</p></main>;
 
   return (
-    <main className="public-flip-library">
+    <main className="public-flip-library" onContextMenu={(event) => event.preventDefault()} onDragStart={(event) => event.preventDefault()}>
       <header className="public-flip-library-header">
         <div className="public-flip-library-brand">LMSGEN Publica</div>
         <div className="public-flip-library-heading"><div><h1>{library.title}</h1><p>{library.description || 'Browse the published content in this shared Publica library.'}</p></div><button type="button" onClick={share}><Share2 size={15} /> Share library</button></div>
@@ -51,7 +51,7 @@ export default function FlipbookLibraryViewer() {
         {(library.books || []).map((book) => (
           <article className="public-flip-library-card" key={book.id}>
             <a href={book.shareUrl} className="public-flip-library-cover" aria-label={`Open ${book.title}`}>
-              {book.coverPath ? <img src={apiUrl(book.coverPath)} alt="" /> : <div className="public-flip-library-placeholder"><BookOpenCheck size={34} /></div>}
+              {book.coverPath ? <img src={apiUrl(book.coverPath)} alt="" draggable="false" /> : <div className="public-flip-library-placeholder"><BookOpenCheck size={34} /></div>}
             </a>
             <div className="public-flip-library-body"><h2>{book.title}</h2><p>{book.description || 'Trackable digital publication'}</p><div className="public-flip-library-meta"><span>{book.pageCount} pages</span><span>{book.viewCount} reader opens</span></div><a href={book.shareUrl} className="public-flip-library-open">Open publication <ExternalLink size={13} /></a></div>
           </article>

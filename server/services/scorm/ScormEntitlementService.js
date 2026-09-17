@@ -62,6 +62,7 @@ function serializeEntitlement(row, role = 'user') {
             maxStaff: null,
             maxCampaigns: null,
             maxAssignments: null,
+            maxQuizPlayers: null,
             permissions: { ...DEFAULT_PERMISSIONS, geometryPhysicsFullAccess: true },
             unlimited: true,
             protected: true
@@ -74,6 +75,7 @@ function serializeEntitlement(row, role = 'user') {
         maxStaff: normalizeLimit(row?.maxStaff),
         maxCampaigns: normalizeLimit(row?.maxCampaigns),
         maxAssignments: normalizeLimit(row?.maxAssignments),
+        maxQuizPlayers: normalizeLimit(row?.maxQuizPlayers),
         permissions: normalizePermissions(row?.permissions),
         unlimited: false,
         protected: false
@@ -89,6 +91,7 @@ function entitlementDefaults(email) {
         maxStaff: null,
         maxCampaigns: null,
         maxAssignments: null,
+        maxQuizPlayers: null,
         permissions: { ...DEFAULT_PERMISSIONS }
     };
 }
@@ -110,7 +113,7 @@ async function updateEntitlement(email, patch = {}, actor = {}) {
     const normalized = normalizeEmail(email);
     if (!normalized) throw new Error('Entitlement owner email is required.');
     const [row] = await ScormUserEntitlement.findOrCreate({ where: { email: normalized }, defaults: entitlementDefaults(normalized) });
-    for (const field of ['maxCourses', 'maxActiveCourses', 'maxLearners', 'maxStaff', 'maxCampaigns', 'maxAssignments']) {
+    for (const field of ['maxCourses', 'maxActiveCourses', 'maxLearners', 'maxStaff', 'maxCampaigns', 'maxAssignments', 'maxQuizPlayers']) {
         if (Object.prototype.hasOwnProperty.call(patch, field)) row[field] = normalizeLimit(patch[field]);
     }
     row.permissions = patch.permissions && typeof patch.permissions === 'object'
@@ -155,13 +158,13 @@ async function activeAssignmentCount(hostId) {
 }
 
 async function getUsageForHost(hostId, workspaceId = null) {
-    if (!hostId) return { aiCourseGenerations: 0, courseCreations: 0, activeCourses: 0, learners: 0, rosterLearners: 0, staff: 0, campaigns: 0, assignments: 0 };
+    if (!hostId) return { aiCourseGenerations: 0, courseCreations: 0, activeCourses: 0, learners: 0, rosterLearners: 0, staff: 0, campaigns: 0, assignments: 0, quizPlayers: 0 };
     let resolvedWorkspaceId = workspaceId;
     if (!resolvedWorkspaceId) {
         const workspace = await ScormWorkspace.findOne({ where: { ownerUserId: hostId }, attributes: ['id'], raw: true });
         resolvedWorkspaceId = workspace?.id || null;
     }
-    const [aiCourseGenerations, courseCreations, activeCourses, learners, rosterLearners, staff, campaigns, assignments] = await Promise.all([
+    const [aiCourseGenerations, courseCreations, activeCourses, learners, rosterLearners, staff, campaigns, assignments, quizPlayers] = await Promise.all([
         countAiGenerations(hostId),
         ScormCourse.count({ where: { hostId } }),
         ScormCourse.count({ where: { hostId, status: { [Op.ne]: 'archived' } } }),
@@ -169,15 +172,16 @@ async function getUsageForHost(hostId, workspaceId = null) {
         ScormLearnerRoster.count({ where: { hostId } }),
         resolvedWorkspaceId ? ScormWorkspaceMember.count({ where: { workspaceId: resolvedWorkspaceId } }) : 0,
         resolvedWorkspaceId ? ScormCampaign.count({ where: { workspaceId: resolvedWorkspaceId } }) : 0,
-        activeAssignmentCount(hostId)
+        activeAssignmentCount(hostId),
+        require('../QuizmotoCapacityService').quizPlayerUsageForEntitlementHost(hostId)
     ]);
-    return { aiCourseGenerations, courseCreations, activeCourses, learners, rosterLearners, staff, campaigns, assignments };
+    return { aiCourseGenerations, courseCreations, activeCourses, learners, rosterLearners, staff, campaigns, assignments, quizPlayers };
 }
 
 async function getUsageForEmail(email) {
     const normalized = normalizeEmail(email);
     const user = normalized ? await User.findOne({ where: { email: normalized } }) : null;
-    if (!user) return { courses: 0, aiCourseGenerations: 0, courseCreations: 0, activeCourses: 0, learners: 0, rosterLearners: 0, staff: 0, campaigns: 0, assignments: 0 };
+    if (!user) return { courses: 0, aiCourseGenerations: 0, courseCreations: 0, activeCourses: 0, learners: 0, rosterLearners: 0, staff: 0, campaigns: 0, assignments: 0, quizPlayers: 0 };
     const usage = await getUsageForHost(user.id);
     return { ...usage, courses: usage.activeCourses };
 }

@@ -27,7 +27,8 @@ const {
         rosterLearners: 0,
         staff: 0,
         campaigns: 0,
-        assignments: 0
+        assignments: 0,
+        quizPlayers: 0
     }),
     normalizeLimit
 } = require('./ScormEntitlementService');
@@ -49,7 +50,7 @@ function cleanTenantName(value) {
 
 function validateEntitlementPatch(patch = {}, { creating = false } = {}) {
     const normalized = { ...patch };
-    for (const field of ['maxCourses', 'maxActiveCourses', 'maxLearners', 'maxStaff', 'maxCampaigns', 'maxAssignments']) {
+    for (const field of ['maxCourses', 'maxActiveCourses', 'maxLearners', 'maxStaff', 'maxCampaigns', 'maxAssignments', 'maxQuizPlayers']) {
         if (Object.prototype.hasOwnProperty.call(normalized, field)) normalized[field] = normalizeLimit(normalized[field]);
     }
     if (creating && normalized.maxStaff !== null && normalized.maxStaff !== undefined && normalized.maxStaff < 1) {
@@ -74,7 +75,8 @@ async function tenantUsage(workspace) {
         learners: usage.learners,
         rosterLearners: usage.rosterLearners,
         campaigns: usage.campaigns,
-        assignments: usage.assignments
+        assignments: usage.assignments,
+        quizPlayers: Number(usage.quizPlayers || 0)
     };
 }
 
