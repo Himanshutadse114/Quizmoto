@@ -3,11 +3,11 @@ const JSZip = require('jszip');
 const {
     slideInstruction,
     coverInstruction
-} = require('../services/scorm/GeminiSlideVisualPromptService');
+} = require('../services/scorm/OpenAiSlideVisualPromptService');
 const {
     clearLegacyVisuals,
     assignRasterVisual
-} = require('../services/scorm/ReplicateCourseMediaService');
+} = require('../services/scorm/OpenAiCourseMediaService');
 const {
     canonicalizeRasterAnalysis,
     enrichAnalysis,
@@ -18,7 +18,7 @@ const {
 const { buildScormPackageZip } = require('../services/scorm/ScormReplicateMediaFinalizer');
 
 describe('SCORM course generation pipeline V6', () => {
-    it('asks Gemini for a prompt grounded only in the actual emotions slide', () => {
+    it('creates an OpenAI prompt grounded only in the actual emotions slide', () => {
         const instruction = slideInstruction({
             title: 'Applying Emotional Understanding at Work',
             content: 'Emotional understanding improves teamwork, leadership and client interactions. Recognising frustration helps you adjust your communication and respond with empathy.',
@@ -26,13 +26,13 @@ describe('SCORM course generation pipeline V6', () => {
             visualTitle: 'Workplace emotional understanding'
         }, { title: 'Understanding and Navigating Types of Emotions' }, 4);
 
-        expect(instruction).to.include('Slide topic: Applying Emotional Understanding at Work');
+        expect(instruction).to.include('Exact lesson topic: Applying Emotional Understanding at Work');
         expect(instruction).to.include('Emotional understanding improves teamwork');
         expect(instruction).to.include('Respond with empathy');
-        expect(instruction).to.include('Do not introduce cybersecurity objects');
-        expect(instruction).to.include('unless the supplied lesson itself is genuinely about those concepts');
-        expect(instruction).to.include('NON-HUMAN VISUAL ONLY');
-        expect(instruction).to.include('ABSOLUTELY NO TEXT IN THE IMAGE');
+        expect(instruction).to.include('No unrelated locks, shields');
+        expect(instruction).to.include('unless the lesson specifically requires them');
+        expect(instruction).to.include('Non-human scene');
+        expect(instruction).to.include('No text, letters, numbers');
     });
 
     it('does not hard-code cyber imagery into a non-cyber course cover', () => {
@@ -41,7 +41,7 @@ describe('SCORM course generation pipeline V6', () => {
             summary: 'A practical course about recognising emotions and responding constructively.'
         });
         expect(instruction).to.include('Understanding and Navigating Types of Emotions');
-        expect(instruction).to.include('Do not introduce cybersecurity objects');
+        expect(instruction).to.include('No unrelated locks, shields');
         expect(instruction).to.not.include('suspicious email ->');
         expect(instruction).to.not.include('credential safety ->');
     });
@@ -61,13 +61,13 @@ describe('SCORM course generation pipeline V6', () => {
     it('makes the generated WebP the canonical renderer asset', () => {
         const slide = assignRasterVisual({ title: 'Emotions' }, 'assets/media/slide-001.webp', {
             prompt: '16:9 abstract emotional balance visual, no people, no text',
-            model: 'gemini-2.5-flash'
+            model: 'gpt-image-2.5-flare'
         });
         expect(slide.rasterVisualAsset).to.equal('assets/media/slide-001.webp');
         expect(slide.visualAsset).to.equal('assets/media/slide-001.webp');
         expect(slide.mobileVisualAsset).to.equal('assets/media/slide-001.webp');
         expect(slide.visualSource).to.equal('ai_raster');
-        expect(slide.imagePromptProvider).to.equal('gemini');
+        expect(slide.imagePromptProvider).to.equal('openai');
     });
 
     it('strips SVG fallback paths from raster-authored courses', () => {
@@ -157,7 +157,7 @@ describe('SCORM course generation pipeline V6', () => {
         expect(zip.file('assets/media/slide-001.webp')).to.not.equal(null);
 
         const content = JSON.parse(await zip.file('content.json').async('string'));
-        expect(content.visualEngine).to.equal('gemini-prompted-flux-raster');
+        expect(content.visualEngine).to.equal('native-raster');
         expect(content.canonicalRasterVisuals).to.equal(true);
         expect(content.slides[0].visualAsset).to.equal('assets/media/slide-001.webp');
         expect(content.slides[1].visualAsset).to.equal(undefined);
@@ -165,6 +165,6 @@ describe('SCORM course generation pipeline V6', () => {
 
         const html = await zip.file('index.html').async('string');
         expect(html).to.include('assets/media/slide-001.webp');
-        expect(html).to.include('quizmoto-course-visual-v6');
+        expect(html).to.include('Quizmoto Native Raster Course Builder');
     });
 });

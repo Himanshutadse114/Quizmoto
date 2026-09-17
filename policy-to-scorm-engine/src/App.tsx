@@ -21,7 +21,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { FileUploader } from './components/FileUploader';
-import { analyzePolicy, PolicyAnalysis } from './services/geminiService';
+import { analyzePolicy, PolicyAnalysis } from './services/openaiService';
 import { generateScormPackage } from './services/scormGenerator';
 import JSZip from 'jszip';
 

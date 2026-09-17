@@ -1,5 +1,5 @@
 const { analyzePolicy } = require('./CourseAiService');
-const { prepareReplicateCourseMedia } = require('./ReplicateCourseMediaService');
+const { prepareOpenAiCourseMedia } = require('./OpenAiCourseMediaService');
 const { planExperienceV5 } = require('./ScormExperiencePlanner');
 const { planExperienceForTemplate } = require('./ScormTemplateExperiencePlanner');
 const { planScenarioGraph } = require('./ScormScenarioGraphPlanner');
@@ -177,7 +177,7 @@ async function generateScormCourse({ payload = {}, userId, onProgress = noop, ch
     analysis = applyVisualProductPromptDirection(analysis);
 
     checkCancelled();
-    const media = await prepareReplicateCourseMedia(analysis, {
+    const media = await prepareOpenAiCourseMedia(analysis, {
         onProgress,
         checkCancelled
     });

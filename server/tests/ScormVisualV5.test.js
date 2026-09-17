@@ -25,7 +25,7 @@ describe('SCORM Smart SVG visual engine', function () {
 
         expect(assets).to.have.length(1);
         const asset = assets[0];
-        expect(asset.visualEngine).to.equal('gemini-smart-svg');
+        expect(asset.visualEngine).to.equal('local-smart-svg');
         expect(asset.desktopZipPath).to.match(/smart-visual-001\.svg$/);
         expect(asset.mobileZipPath).to.match(/smart-visual-001-mobile\.svg$/);
         expect(asset.sceneSpec.scene).to.equal('email-threat');

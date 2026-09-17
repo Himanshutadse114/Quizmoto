@@ -59,9 +59,9 @@ router.post('/generate-ai', auth, async (req, res) => {
             ? 400
             : code === 'QUIZ_AI_FILE_TOO_LARGE'
                 ? 413
-                : code === 'GEMINI_KEY_MISSING'
+                : code === 'OPENAI_KEY_MISSING'
                     ? 503
-                    : code === 'GEMINI_QUOTA'
+                    : code === 'OPENAI_QUOTA'
                         ? 429
                         : 500;
         console.error('AI Generation Error:', err);

@@ -14,7 +14,7 @@ const {
     usageOperationKey
 } = require('../../services/scorm/ScormAiUsageService');
 
-const COURSE_GENERATION_RELEASE = 'gemini-course-durable-v5';
+const COURSE_GENERATION_RELEASE = 'openai-course-durable-v6';
 let generationStoreReadyPromise = null;
 
 // Routes are mounted after database initialisation, so starting the recovery
@@ -86,8 +86,11 @@ router.get('/version', (_req, res) => {
         ok: true,
         release: COURSE_GENERATION_RELEASE,
         commit: process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || null,
-        textModel: process.env.GOOGLE_TEXT_MODEL || process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-        imageModel: process.env.GOOGLE_IMAGE_MODEL || process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image'
+        provider: 'openai',
+        textModel: process.env.OPENAI_TEXT_MODEL || 'gpt-5.6-luna',
+        imageModel: process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2.5-flare',
+        targetCourseSeconds: 180,
+        budgetInr: Number(process.env.OPENAI_COURSE_BUDGET_INR || 10)
     });
 });
 

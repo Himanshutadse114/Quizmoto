@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import { PolicyAnalysis } from "./geminiService";
+import type { PolicyAnalysis } from "./openaiService";
 
 function escapeXML(str: string): string {
     return str.replace(/[<>&"']/g, (m) => {

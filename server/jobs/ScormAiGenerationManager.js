@@ -338,7 +338,15 @@ function startJob(job) {
             finalizeAiCourseGeneration(usageOperationKey(job.progressId), {
                 status: 'completed',
                 packageId: payload?.packageId || null,
-                courseId: payload?.courseId || null
+                courseId: payload?.courseId || null,
+                metadata: {
+                    provider: 'openai',
+                    model: payload?.media?.textModel || process.env.OPENAI_TEXT_MODEL || 'gpt-5.6-luna',
+                    imageModel: payload?.media?.imageModel || process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2.5-flare',
+                    estimatedCostInr: Number(payload?.media?.estimatedTotalCostInr || 0),
+                    budgetInr: Number(payload?.media?.budgetInr || process.env.OPENAI_COURSE_BUDGET_INR || 10),
+                    totalImages: Number(payload?.media?.totalImagesGenerated || 0)
+                }
             }).catch(() => {});
             logger.info('scorm_ai_worker_complete', {
                 module: 'scorm',

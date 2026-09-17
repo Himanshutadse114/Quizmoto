@@ -336,7 +336,7 @@ async function buildRasterCoursePackageZip(rawAnalysis, opts = {}) {
 
     zip.file('index.html', buildIndexHtml(analysis, theme, logoHtml));
     zip.file('scorm_api_wrapper.js', SCORM_WRAPPER);
-    zip.file('content.json', JSON.stringify({ ...analysis, generatedBy: 'quizmoto', generator: 'Quizmoto Native Raster Course Builder', version: 8, experienceVersion: 8, visualEngine: 'native-raster', courseTheme: analysis.courseTheme || theme.id || 'teal', courseFont: 'Inter' }, null, 2));
+    zip.file('content.json', JSON.stringify({ ...analysis, generatedBy: 'quizmoto', generator: 'Quizmoto Native Raster Course Builder', version: 8, experienceVersion: 8, visualEngine: 'native-raster', canonicalRasterVisuals: true, legacySvgFallback: false, courseTheme: analysis.courseTheme || theme.id || 'teal', courseFont: 'Inter' }, null, 2));
 
     const files = ['index.html', 'scorm_api_wrapper.js', 'content.json', ...(logoFileName ? [logoFileName] : []), ...mediaFiles.map((file) => String(file?.path || '')).filter(Boolean)];
     const fileEntries = [...new Set(files)].map((path) => `      <file href="${escapeXML(path)}"/>`).join('\n');

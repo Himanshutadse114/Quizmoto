@@ -2,20 +2,21 @@ const logger = require('../../utils/logger');
 const {
     generateCoverVisualPrompt,
     generateSlideVisualPrompt
-} = require('./GeminiSlideVisualPromptService');
+} = require('./OpenAiSlideVisualPromptService');
 const {
     coverInstruction,
     slideInstruction,
     sharedVisualRules
-} = require('./GeminiSlideVisualPromptService');
+} = require('./OpenAiSlideVisualPromptService');
 const { optimizeCourseMedia } = require('./ScormImageOptimizationService');
-
-const DEFAULT_IMAGE_MODEL = 'gemini-2.5-flash-image';
-const DEFAULT_TEXT_MODEL = 'gemini-2.5-flash';
-
-if (!process.env.GEMINI_MODEL) {
-    process.env.GEMINI_MODEL = String(process.env.GOOGLE_TEXT_MODEL || DEFAULT_TEXT_MODEL).trim();
-}
+const {
+    getApiKey: getOpenAiApiKey,
+    generateImage: requestOpenAiGeneratedImage,
+    DEFAULT_IMAGE_MODEL,
+    DEFAULT_TEXT_MODEL,
+    LOW_IMAGE_ESTIMATE_USD,
+    textModel
+} = require('../openai/OpenAiClient');
 
 function clean(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -28,19 +29,22 @@ function clampInt(value, fallback, min, max) {
 }
 
 function getApiKey() {
-    return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
+    return getOpenAiApiKey();
 }
 
 function mediaConfig() {
     return {
-        enabled: String(process.env.GEMINI_SCORM_MEDIA || 'true').trim().toLowerCase() !== 'false',
-        imageModel: clean(process.env.GOOGLE_IMAGE_MODEL || process.env.GEMINI_IMAGE_MODEL || DEFAULT_IMAGE_MODEL),
-        maxImages: clampInt(process.env.GEMINI_SCORM_MAX_IMAGES, 8, 1, 8),
-        minImages: clampInt(process.env.GEMINI_SCORM_MIN_IMAGES, 6, 1, 8),
-        imageRetries: clampInt(process.env.GEMINI_SCORM_IMAGE_RETRIES, 2, 0, 4),
-        imageConcurrency: clampInt(process.env.GEMINI_SCORM_IMAGE_CONCURRENCY, 2, 1, 3),
-        timeoutMs: clampInt(process.env.GEMINI_SCORM_IMAGE_TIMEOUT_MS, 180000, 30000, 300000),
-        retryBaseMs: clampInt(process.env.GEMINI_SCORM_IMAGE_RETRY_BASE_MS, 1500, 500, 10000)
+        enabled: String(process.env.OPENAI_SCORM_MEDIA || 'true').trim().toLowerCase() !== 'false',
+        imageModel: clean(process.env.OPENAI_IMAGE_MODEL || DEFAULT_IMAGE_MODEL),
+        maxImages: clampInt(process.env.OPENAI_SCORM_MAX_IMAGES, 5, 1, 6),
+        minImages: clampInt(process.env.OPENAI_SCORM_MIN_IMAGES, 5, 1, 6),
+        imageRetries: clampInt(process.env.OPENAI_SCORM_IMAGE_RETRIES, 0, 0, 1),
+        imageConcurrency: clampInt(process.env.OPENAI_SCORM_IMAGE_CONCURRENCY, 5, 1, 5),
+        timeoutMs: clampInt(process.env.OPENAI_SCORM_IMAGE_TIMEOUT_MS, 55000, 30000, 90000),
+        mediaDeadlineMs: clampInt(process.env.OPENAI_SCORM_MEDIA_DEADLINE_MS, 80000, 45000, 120000),
+        retryBaseMs: clampInt(process.env.OPENAI_SCORM_IMAGE_RETRY_BASE_MS, 1800, 500, 5000),
+        budgetInr: clampInt(process.env.OPENAI_COURSE_BUDGET_INR, 10, 5, 25),
+        usdToInr: clampInt(process.env.OPENAI_USD_TO_INR, 95, 80, 120)
     };
 }
 
@@ -195,9 +199,9 @@ function assignRasterVisual(slide, path, promptInfo, contentType = 'image/png') 
     slide.visualSource = 'ai_raster';
     slide.visualAssetType = contentType;
     slide.imagePrompt = promptInfo.prompt;
-    slide.imagePromptProvider = 'gemini';
-    slide.imagePromptAuth = 'api_key';
-    slide.imagePromptModel = promptInfo.model || process.env.GEMINI_MODEL || DEFAULT_TEXT_MODEL;
+    slide.imagePromptProvider = 'openai';
+    slide.imagePromptAuth = 'server_api_key';
+    slide.imagePromptModel = promptInfo.model || 'deterministic-course-grounded-v1';
     return slide;
 }
 
@@ -212,9 +216,9 @@ function imageError(message, code, status = 0, body = '') {
 function isRetryableImageError(error) {
     const status = Number(error?.status || 0);
     return status === 429 || status >= 500 || [
-        'GEMINI_IMAGE_NETWORK',
-        'GEMINI_IMAGE_TIMEOUT',
-        'GEMINI_IMAGE_EMPTY',
+        'OPENAI_NETWORK',
+        'OPENAI_IMAGE_TIMEOUT',
+        'OPENAI_IMAGE_EMPTY',
         'ECONNRESET',
         'ETIMEDOUT',
         'ENOTFOUND'
@@ -226,75 +230,19 @@ function retryDelayMs(error, attempt, config) {
     return Math.min(30000, base * Math.pow(2, Math.max(0, attempt)));
 }
 
-async function requestGeminiImage(apiKey, model, prompt, config) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
-    try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            signal: controller.signal,
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    responseModalities: ['IMAGE'],
-                    imageConfig: { aspectRatio: '16:9' }
-                }
-            })
-        });
-        const rawText = await response.text();
-        if (!response.ok) {
-            let code = 'GEMINI_IMAGE_API_ERROR';
-            if (response.status === 400 && /api key not valid|invalid api key/i.test(rawText)) code = 'GEMINI_KEY_INVALID';
-            else if (response.status === 403) code = 'GEMINI_FORBIDDEN';
-            else if (response.status === 404) code = 'GEMINI_MODEL_NOT_FOUND';
-            else if (response.status === 429) code = 'GEMINI_QUOTA';
-            throw imageError(`Gemini image request failed (${response.status})`, code, response.status, rawText);
-        }
-
-        let payload;
-        try {
-            payload = JSON.parse(rawText);
-        } catch (_) {
-            throw imageError('Gemini image API returned invalid JSON.', 'GEMINI_IMAGE_RESPONSE_INVALID');
-        }
-
-        const parts = Array.isArray(payload?.candidates?.[0]?.content?.parts)
-            ? payload.candidates[0].content.parts
-            : [];
-        const imagePart = parts.find((part) => part?.inlineData?.data || part?.inline_data?.data);
-        const inline = imagePart?.inlineData || imagePart?.inline_data;
-        if (!inline?.data) {
-            const blockReason = payload?.promptFeedback?.blockReason || payload?.candidates?.[0]?.finishReason || '';
-            throw imageError(
-                `Gemini image model returned no image${blockReason ? ` (${blockReason})` : ''}.`,
-                'GEMINI_IMAGE_EMPTY'
-            );
-        }
-
-        const body = Buffer.from(inline.data, 'base64');
-        if (!body || body.length < 512) {
-            throw imageError('Gemini image payload was empty or incomplete.', 'GEMINI_IMAGE_EMPTY');
-        }
-        return {
-            body,
-            contentType: inline.mimeType || inline.mime_type || 'image/png'
-        };
-    } catch (error) {
-        if (error?.name === 'AbortError') {
-            throw imageError('Gemini image generation timed out.', 'GEMINI_IMAGE_TIMEOUT');
-        }
-        if (error?.code) throw error;
-        throw imageError(`Gemini image network error: ${error.message}`, 'GEMINI_IMAGE_NETWORK');
-    } finally {
-        clearTimeout(timeout);
-    }
+async function requestOpenAiImage(_apiKey, model, prompt, config) {
+    return requestOpenAiGeneratedImage({
+        model,
+        prompt,
+        quality: 'low',
+        size: '1536x864',
+        timeoutMs: config.timeoutMs
+    });
 }
 
 async function generateImage(prompt, pathStem, config, onStatus, checkCancelled = null) {
     const apiKey = getApiKey();
-    if (!apiKey) throw imageError('GEMINI_API_KEY is not configured on the server.', 'GEMINI_KEY_MISSING');
+    if (!apiKey) throw imageError('OPENAI_API_KEY is not configured on the server.', 'OPENAI_KEY_MISSING');
 
     const preferredModel = config.imageModel || DEFAULT_IMAGE_MODEL;
     const models = [preferredModel, DEFAULT_IMAGE_MODEL].filter((model, index, all) => model && all.indexOf(model) === index);
@@ -317,7 +265,7 @@ async function generateImage(prompt, pathStem, config, onStatus, checkCancelled 
                     });
                 }, 8000);
                 progressHeartbeat.unref?.();
-                const generated = await requestGeminiImage(apiKey, model, prompt, config);
+                const generated = await requestOpenAiImage(apiKey, model, prompt, config);
                 if (typeof checkCancelled === 'function') checkCancelled();
                 const extension = mimeExtension(generated.contentType);
                 return {
@@ -332,7 +280,7 @@ async function generateImage(prompt, pathStem, config, onStatus, checkCancelled 
                 if (Number(error?.status || 0) === 404) break;
                 if (attempt >= config.imageRetries || !isRetryableImageError(error)) break;
                 const delayMs = retryDelayMs(error, attempt, config);
-                logger.warn('scorm_gemini_image_retry', {
+                logger.warn('scorm_openai_image_retry', {
                     module: 'scorm',
                     model,
                     attempt: attempt + 1,
@@ -348,15 +296,16 @@ async function generateImage(prompt, pathStem, config, onStatus, checkCancelled 
             }
         }
     }
-    throw lastError || imageError('Gemini image generation failed.', 'GEMINI_IMAGE_API_ERROR');
+    throw lastError || imageError('OpenAI image generation failed.', 'OPENAI_IMAGE_API_ERROR');
 }
 
-async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
+async function prepareOpenAiCourseMedia(rawAnalysis, opts = {}) {
     const onProgress = opts.onProgress;
     const checkCancelled = typeof opts.checkCancelled === 'function' ? opts.checkCancelled : () => {};
     checkCancelled();
 
     const config = mediaConfig();
+    const mediaDeadlineAt = Date.now() + config.mediaDeadlineMs;
     const key = getApiKey();
     if (!config.enabled || !key) {
         emit(onProgress, {
@@ -364,8 +313,8 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
             stage: 'Image generation unavailable',
             detail: 'Course visuals are temporarily unavailable.'
         });
-        const error = new Error('Gemini image generation is required. Configure GEMINI_API_KEY (or GOOGLE_API_KEY) and keep GEMINI_SCORM_MEDIA enabled.');
-        error.code = 'GEMINI_KEY_MISSING';
+        const error = new Error('OpenAI image generation is required. Configure OPENAI_API_KEY and keep OPENAI_SCORM_MEDIA enabled.');
+        error.code = 'OPENAI_KEY_MISSING';
         throw error;
     }
 
@@ -379,8 +328,15 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
     delete analysis.coverMobileVisualAsset;
 
     analysis.visualMode = 'raster';
-    analysis.visualProvider = 'gemini';
-    analysis.visualPromptProvider = 'gemini';
+    analysis.visualProvider = 'openai';
+    analysis.visualPromptProvider = 'deterministic_course_grounded';
+
+    const textCostUsd = Math.max(0, Number(analysis.aiEstimatedCostUsd) || 0);
+    const courseBudgetUsd = config.budgetInr / config.usdToInr;
+    const imageBudgetUsd = Math.max(LOW_IMAGE_ESTIMATE_USD, courseBudgetUsd - textCostUsd - 0.012);
+    const affordableImages = Math.max(1, Math.floor(imageBudgetUsd / LOW_IMAGE_ESTIMATE_USD));
+    config.maxImages = Math.min(config.maxImages, affordableImages);
+    config.minImages = Math.min(config.minImages, config.maxImages);
 
     const selectedIndexes = imageSlideIndexes(
         slides,
@@ -415,8 +371,8 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
             );
             promptModel = coverPrompt.model || promptModel;
             analysis.coverImagePrompt = coverPrompt.prompt;
-            analysis.coverImagePromptProvider = 'gemini';
-            analysis.coverImagePromptAuth = 'api_key';
+            analysis.coverImagePromptProvider = 'openai';
+            analysis.coverImagePromptAuth = 'server_api_key';
             analysis.coverImagePromptModel = coverPrompt.model;
 
             const coverFile = await generateImage(coverPrompt.prompt, 'assets/media/course-cover', config, (state) => {
@@ -450,7 +406,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
         } catch (error) {
             if (isGenerationCancelled(error)) throw error;
             warnings.push(`Cover image: ${error.message}`);
-            logger.warn('scorm_gemini_course_cover_failed', {
+            logger.warn('scorm_openai_course_cover_failed', {
                 module: 'scorm',
                 code: error.code || null,
                 status: error.status || null,
@@ -507,7 +463,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
         } catch (error) {
             if (isGenerationCancelled(error)) throw error;
             warnings.push(`Slide ${slideIndex + 1} image: ${error.message}`);
-            logger.warn('scorm_gemini_slide_image_failed', {
+            logger.warn('scorm_openai_slide_image_failed', {
                 module: 'scorm',
                 slideIndex,
                 code: error.code || null,
@@ -532,6 +488,8 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
         ];
         for (const slideIndex of recoveryCandidates) {
             checkCancelled();
+            const remainingMs = mediaDeadlineAt - Date.now();
+            if (remainingMs < 30000) break;
             if (slideImagesGenerated >= requiredSlideImages) break;
             try {
                 const promptInfo = anchorHighlyInteractivePrompt(
@@ -542,7 +500,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
                 const file = await generateImage(
                     promptInfo.prompt,
                     `assets/media/slide-${String(slideIndex + 1).padStart(3, '0')}`,
-                    config,
+                    { ...config, timeoutMs: Math.min(config.timeoutMs, remainingMs) },
                     null,
                     checkCancelled
                 );
@@ -561,8 +519,8 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
     if (!coverGenerated || slideImagesGenerated < requiredSlideImages) {
         const totalGenerated = (coverGenerated ? 1 : 0) + slideImagesGenerated;
         const reason = warningSummary(warnings);
-        const error = new Error(`Course image generation was incomplete. Generated ${totalGenerated} image(s), but at least ${requiredImages} including the front cover are required.${reason ? ` Gemini reported: ${reason}` : ''}`);
-        error.code = 'REPLICATE_IMAGES_INCOMPLETE';
+        const error = new Error(`Course image generation was incomplete. Generated ${totalGenerated} image(s), but at least ${requiredImages} including the front cover are required.${reason ? ` OpenAI reported: ${reason}` : ''}`);
+        error.code = 'OPENAI_IMAGES_INCOMPLETE';
         error.imageWarnings = warnings;
         emit(onProgress, { percent: 72, stage: 'Image generation incomplete', detail: error.message });
         throw error;
@@ -579,11 +537,11 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
 
     const totalImagesGenerated = (coverGenerated ? 1 : 0) + slideImagesGenerated;
     const mediaMetadata = {
-        provider: 'gemini',
-        auth: 'api_key',
-        textModel: process.env.GEMINI_MODEL || DEFAULT_TEXT_MODEL,
+        provider: 'openai',
+        auth: 'server_api_key',
+        textModel: textModel() || DEFAULT_TEXT_MODEL,
         imageModel,
-        visualPromptProvider: 'gemini',
+        visualPromptProvider: 'deterministic_course_grounded',
         visualPromptModel: promptModel,
         coverGenerated,
         slideImagesGenerated,
@@ -593,7 +551,13 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
         imageConcurrency: config.imageConcurrency,
         selectedSlideIndexes: selectedIndexes,
         successfulSlideIndexes: Array.from(successfulSlideIndexes).sort((a, b) => a - b),
-        imageStyle: 'gemini_generated_16_9_non_human_no_text',
+        imageStyle: 'openai_generated_16_9_non_human_no_text',
+        quality: 'low',
+        budgetInr: config.budgetInr,
+        usdToInr: config.usdToInr,
+        estimatedTextCostUsd: textCostUsd,
+        estimatedImageCostUsd: totalImagesGenerated * LOW_IMAGE_ESTIMATE_USD,
+        estimatedTotalCostInr: Math.round((textCostUsd + totalImagesGenerated * LOW_IMAGE_ESTIMATE_USD) * config.usdToInr * 100) / 100,
         canonicalVisualAssets: true,
         optimization: optimizedMedia.metadata,
         legacySvgFallback: false,
@@ -605,11 +569,10 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
         ...analysis,
         slides: analysis.slides,
         visualMode: 'raster',
-        visualProvider: 'gemini',
-        visualPromptProvider: 'gemini',
-        mediaProvider: 'gemini',
-        geminiMedia: mediaMetadata,
-        replicateMedia: mediaMetadata
+        visualProvider: 'openai',
+        visualPromptProvider: 'deterministic_course_grounded',
+        mediaProvider: 'openai',
+        openAiMedia: mediaMetadata
     };
 
     emit(onProgress, {
@@ -617,7 +580,7 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
         stage: 'Course images ready',
         detail: `${totalImagesGenerated} course visuals are ready.`
     });
-    logger.info('scorm_gemini_raster_media_ready', {
+    logger.info('scorm_openai_raster_media_ready', {
         module: 'scorm',
         imageModel,
         promptModel,
@@ -652,8 +615,7 @@ function noHumanNoTextRules() {
 }
 
 module.exports = {
-    prepareGeminiCourseMedia,
-    prepareReplicateCourseMedia: prepareGeminiCourseMedia,
+    prepareOpenAiCourseMedia,
     mediaConfig,
     getApiKey,
     runWithConcurrency,

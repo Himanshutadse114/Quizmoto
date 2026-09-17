@@ -38,7 +38,7 @@ describe('SCORM generation cancellation', () => {
 
     it('exposes a protected cancel endpoint and client stop/remove controls', () => {
         const author = fs.readFileSync(path.join(__dirname, '../routes/scorm/author.js'), 'utf8');
-        const media = fs.readFileSync(path.join(__dirname, '../services/scorm/GeminiCourseMediaService.js'), 'utf8');
+        const media = fs.readFileSync(path.join(__dirname, '../services/scorm/OpenAiCourseMediaService.js'), 'utf8');
         const jobs = fs.readFileSync(path.join(__dirname, '../../client/src/services/courseGenerationJobs.js'), 'utf8');
         const panel = fs.readFileSync(path.join(__dirname, '../../client/src/components/BackgroundCourseJobs.jsx'), 'utf8');
 

@@ -50,7 +50,7 @@ describe('SCORM professional course authoring quality', () => {
         expect(issues).to.include('only 1 learning screens');
     });
 
-    it('prompts Gemini as an instructional designer rather than a summariser', () => {
+    it('prompts OpenAI as an instructional designer rather than a summariser', () => {
         const prompt = professionalInstruction('detailed', DETAIL_CONFIG.detailed);
         expect(prompt).to.include('experienced human learning designer');
         expect(prompt).to.include('10-14');

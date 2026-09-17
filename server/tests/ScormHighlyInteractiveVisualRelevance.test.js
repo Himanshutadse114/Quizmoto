@@ -4,7 +4,7 @@ const {
     anchorHighlyInteractivePrompt,
     highlyInteractiveCoverPrompt,
     anchorHighlyInteractiveCoverPrompt
-} = require('../services/scorm/GeminiCourseMediaService');
+} = require('../services/scorm/OpenAiCourseMediaService');
 
 describe('Highly Interactive visual topic relevance', () => {
     const slide = {
@@ -36,11 +36,11 @@ describe('Highly Interactive visual topic relevance', () => {
 
     it('preserves prompt metadata while adding the topic anchor', () => {
         const anchored = anchorHighlyInteractivePrompt(
-            { prompt: 'A clean 3D scene.', model: 'gemini-test' },
+            { prompt: 'A clean 3D scene.', model: 'gpt-image-test' },
             slide,
             { templateBinding: { templateId: 'highly-interactive' } }
         );
-        expect(anchored.model).to.equal('gemini-test');
+        expect(anchored.model).to.equal('gpt-image-test');
         expect(anchored.prompt).to.include(slide.title);
     });
 
@@ -87,10 +87,10 @@ describe('Highly Interactive visual topic relevance', () => {
             slides: [{ title: 'Identify every energy source', keyPoints: ['Inspect before isolation'] }]
         };
         const anchored = anchorHighlyInteractiveCoverPrompt(
-            { prompt: 'A clean 3D hero scene.', model: 'gemini-test' },
+            { prompt: 'A clean 3D hero scene.', model: 'gpt-image-test' },
             analysis
         );
-        expect(anchored.model).to.equal('gemini-test');
+        expect(anchored.model).to.equal('gpt-image-test');
         expect(anchored.prompt).to.include(analysis.title);
         expect(anchored.prompt).to.include('Identify every energy source');
     });

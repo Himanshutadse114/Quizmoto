@@ -15,7 +15,7 @@ const {
 const {
     applyVisualProductPromptDirection
 } = require('../services/scorm/ScormVisualProductPromptService');
-const { templateInstruction } = require('../services/scorm/VertexPolicyAnalysisService');
+const { templateInstruction } = require('../services/scorm/PolicyAnalysisService');
 
 function analysis() {
     return {

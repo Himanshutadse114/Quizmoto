@@ -2,7 +2,7 @@ const { expect } = require('chai');
 const {
     parseAnalysis,
     jsonParseCandidates,
-    geminiCandidate
+    openAiCandidate
 } = require('../services/scorm/PolicyAnalysisService');
 
 function validAnalysis(overrides = {}) {
@@ -15,7 +15,7 @@ function validAnalysis(overrides = {}) {
     };
 }
 
-describe('PolicyAnalysisService Gemini JSON resilience', () => {
+describe('PolicyAnalysisService OpenAI JSON resilience', () => {
     it('parses normal structured JSON', () => {
         const parsed = parseAnalysis(JSON.stringify(validAnalysis()));
         expect(parsed.title).to.equal('Phishing awareness');
@@ -49,8 +49,8 @@ describe('PolicyAnalysisService Gemini JSON resilience', () => {
 
     it('rejects genuinely truncated JSON so the caller can try another model', () => {
         expect(() => parseAnalysis('{"title":"Course","summary":"Test","slides":['))
-            .to.throw('Gemini returned invalid JSON')
-            .with.property('code', 'GEMINI_BAD_JSON');
+            .to.throw('OpenAI returned invalid JSON')
+            .with.property('code', 'OPENAI_BAD_JSON');
     });
 
     it('rejects structurally incomplete JSON', () => {
@@ -58,24 +58,14 @@ describe('PolicyAnalysisService Gemini JSON resilience', () => {
             parseAnalysis(JSON.stringify({ title: 'Course', slides: [] }));
             throw new Error('Expected parseAnalysis to fail');
         } catch (err) {
-            expect(err.code).to.equal('GEMINI_INCOMPLETE');
+            expect(err.code).to.equal('OPENAI_INCOMPLETE');
         }
     });
 
-    it('extracts only visible candidate text and ignores Gemini thought parts', () => {
-        const candidate = geminiCandidate({
-            candidates: [{
-                finishReason: 'STOP',
-                content: {
-                    parts: [
-                        { thought: true, text: 'internal reasoning that is not JSON' },
-                        { text: JSON.stringify(validAnalysis()) }
-                    ]
-                }
-            }]
-        });
+    it('normalizes the structured OpenAI result', () => {
+        const candidate = openAiCandidate({ text: JSON.stringify(validAnalysis()), model: 'gpt-5.6-luna' });
 
-        expect(candidate.finishReason).to.equal('STOP');
+        expect(candidate.finishReason).to.equal('completed');
         expect(candidate.candidateCount).to.equal(1);
         expect(candidate.text).to.equal(JSON.stringify(validAnalysis()));
         expect(parseAnalysis(candidate.text).title).to.equal('Phishing awareness');

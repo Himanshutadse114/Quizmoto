@@ -69,9 +69,9 @@ function mergeExistingVisuals(nextAnalysis, previousAnalysis) {
     });
 
     next.visualMode = previous.visualMode || next.visualMode || 'raster';
-    next.visualProvider = previous.visualProvider || next.visualProvider || 'replicate';
-    next.visualPromptProvider = previous.visualPromptProvider || next.visualPromptProvider || 'gemini';
-    next.mediaProvider = previous.mediaProvider || next.mediaProvider || 'replicate';
+    next.visualProvider = previous.visualProvider || next.visualProvider || 'openai';
+    next.visualPromptProvider = previous.visualPromptProvider || next.visualPromptProvider || 'deterministic_course_grounded';
+    next.mediaProvider = previous.mediaProvider || next.mediaProvider || 'openai';
     return next;
 }
 
@@ -143,9 +143,11 @@ async function reuseExistingCourseMedia({ pkg, analysis, storage, onProgress }) 
     mergedAnalysis = optimizedMedia.analysis;
     files = optimizedMedia.files;
 
-    const previousMetadata = previousAnalysis.replicateMedia && typeof previousAnalysis.replicateMedia === 'object'
-        ? previousAnalysis.replicateMedia
-        : {};
+    const previousMetadata = previousAnalysis.openAiMedia && typeof previousAnalysis.openAiMedia === 'object'
+        ? previousAnalysis.openAiMedia
+        : (previousAnalysis.replicateMedia && typeof previousAnalysis.replicateMedia === 'object'
+            ? previousAnalysis.replicateMedia
+            : {});
     const metadata = {
         ...previousMetadata,
         reusedOnRebuild: true,
@@ -154,7 +156,7 @@ async function reuseExistingCourseMedia({ pkg, analysis, storage, onProgress }) 
         estimatedImageCostUsd: 0,
         optimization: optimizedMedia.metadata
     };
-    mergedAnalysis.replicateMedia = metadata;
+    mergedAnalysis.openAiMedia = metadata;
 
     if (typeof onProgress === 'function') {
         onProgress({

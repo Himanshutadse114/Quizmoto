@@ -37,8 +37,32 @@ services:
         value: "true"
       - key: JWT_SECRET
         generateValue: true
-      - key: REPLICATE_API_TOKEN
+      - key: OPENAI_API_KEY
         sync: false
+      - key: OPENAI_TEXT_MODEL
+        value: "gpt-5.6-luna"
+      - key: OPENAI_IMAGE_MODEL
+        value: "gpt-image-2.5-flare"
+      - key: OPENAI_COURSE_BUDGET_INR
+        value: "10"
+      - key: OPENAI_USD_TO_INR
+        value: "95"
+      - key: OPENAI_SCORM_MAX_IMAGES
+        value: "5"
+      - key: OPENAI_SCORM_MIN_IMAGES
+        value: "5"
+      - key: OPENAI_SCORM_IMAGE_CONCURRENCY
+        value: "5"
+      - key: OPENAI_SCORM_IMAGE_RETRIES
+        value: "0"
+      - key: OPENAI_SCORM_IMAGE_TIMEOUT_MS
+        value: "55000"
+      - key: OPENAI_SCORM_MEDIA_DEADLINE_MS
+        value: "80000"
+      - key: OPENAI_SCORM_REQUEST_TIMEOUT_MS
+        value: "80000"
+      - key: OPENAI_SCORM_CONTENT_TIMEOUT_MS
+        value: "90000"
       - key: CORS_ORIGIN
         value: "https://lmsgen.in,https://www.lmsgen.in,https://api.lmsgen.in,https://quizmoto-frontend.onrender.com,https://kahoot-awareness-frontend.onrender.com"
       - key: APP_BASE_URL

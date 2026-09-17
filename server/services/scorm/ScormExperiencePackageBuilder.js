@@ -283,7 +283,7 @@ async function buildScormPackageZip(rawAnalysis, opts = {}) {
     let assets = [];
     let coverAsset = null;
 
-    // Critical architectural rule: once Gemini/FLUX has produced raster visuals,
+    // Critical architectural rule: once OpenAI has produced raster visuals,
     // the SVG generator must never run because it overwrites visualAsset.
     if (!rasterMode) {
         const legacy = await buildLegacySvgAssets(analysis, opts);
@@ -345,7 +345,7 @@ async function buildScormPackageZip(rawAnalysis, opts = {}) {
         version: 6,
         experienceVersion: 6,
         screenTypes: SCREEN_TYPES,
-        visualEngine: rasterMode ? 'gemini-prompted-flux-raster' : (allAssets.length ? 'legacy-smart-svg' : 'html-layout-only'),
+        visualEngine: rasterMode ? 'openai-raster' : (allAssets.length ? 'local-smart-svg' : 'html-layout-only'),
         canonicalRasterVisuals: rasterMode,
         legacySvgFallback: !rasterMode && allAssets.length > 0
     }, null, 2));

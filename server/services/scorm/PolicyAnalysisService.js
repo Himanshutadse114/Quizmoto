@@ -1,9 +1,17 @@
 /**
  * Server-side policy/PDF/PPT -> professional visual learning analysis.
- * Gemini API key stays on the server (GEMINI_API_KEY).
+ * OpenAI API key stays on the server (OPENAI_API_KEY).
  */
-const JSZip = require('jszip');
 const logger = require('../../utils/logger');
+const {
+    getApiKey: openAiApiKey,
+    textModel,
+    createStructuredResponse
+} = require('../openai/OpenAiClient');
+const {
+    extractPptxText,
+    extractDocumentText
+} = require('../openai/DocumentTextExtractor');
 
 /**
  * Course depth is intentionally expressed as an instructional-design contract,
@@ -27,7 +35,7 @@ const DETAIL_CONFIG = {
         quizMin: 7,
         quizMax: 8,
         minScenarioRatio: 0.75,
-        refinementPasses: 2
+        refinementPasses: 0
     },
     detailed: {
         slides: '10-14',
@@ -45,7 +53,7 @@ const DETAIL_CONFIG = {
         quizMin: 6,
         quizMax: 8,
         minScenarioRatio: 0.65,
-        refinementPasses: 2
+        refinementPasses: 0
     },
     concise: {
         slides: '6-8',
@@ -63,7 +71,7 @@ const DETAIL_CONFIG = {
         quizMin: 5,
         quizMax: 7,
         minScenarioRatio: 0.5,
-        refinementPasses: 1
+        refinementPasses: 0
     },
     condensed: {
         slides: '6-8',
@@ -81,7 +89,7 @@ const DETAIL_CONFIG = {
         quizMin: 5,
         quizMax: 7,
         minScenarioRatio: 0.5,
-        refinementPasses: 1
+        refinementPasses: 0
     },
     summary: {
         slides: '4-5',
@@ -99,7 +107,7 @@ const DETAIL_CONFIG = {
         quizMin: 4,
         quizMax: 6,
         minScenarioRatio: 0.4,
-        refinementPasses: 1
+        refinementPasses: 0
     }
 };
 
@@ -143,16 +151,7 @@ const ACTION_PATTERN = /\b(verify|check|confirm|report|contact|stop|pause|do not
 const RATIONALE_PATTERN = /\b(because|which means|so that|works by|happens when|can lead to|may lead to|results? in|allows? an attacker|creates? a risk|reduces? the risk|prevents?|protects?|impact|consequence|exposure)\b/i;
 const SCENARIO_QUESTION_PATTERN = /\b(you|your|colleague|employee|manager|customer|vendor|receive|notice|message|email|call|request|asked|prompt|link|attachment|what should|best action|first action|next step)\b/i;
 
-const DEFAULT_MODEL_CANDIDATES = [
-    'gemini-3.6-flash',
-    'gemini-3.5-flash',
-    'gemini-3.5-flash-lite',
-    'gemini-2.5-flash',
-    'gemini-2.5-flash-lite',
-    'gemini-flash-latest'
-];
-
-const GEMINI_3_THINKING_LEVELS = new Set(['minimal', 'low', 'medium', 'high']);
+const DEFAULT_MODEL_CANDIDATES = ['gpt-5.6-luna'];
 
 const SCORM_ANALYSIS_SCHEMA = {
     type: 'object',
@@ -207,23 +206,7 @@ const SCORM_ANALYSIS_SCHEMA = {
 
 async function extractTextFromPptx(base64Data) {
     try {
-        const zip = await JSZip.loadAsync(base64Data, { base64: true });
-        let fullText = '';
-        const slideFiles = Object.keys(zip.files)
-            .filter((n) => n.startsWith('ppt/slides/slide') && n.endsWith('.xml'))
-            .sort((a, b) => {
-                const numA = parseInt(a.replace(/\D/g, '') || '0', 10);
-                const numB = parseInt(b.replace(/\D/g, '') || '0', 10);
-                return numA - numB;
-            });
-        for (const slide of slideFiles) {
-            const xmlText = await zip.file(slide).async('string');
-            const textMatches = xmlText.match(/<a:t>([^<]+)<\/a:t>/g);
-            if (textMatches) {
-                fullText += textMatches.map((t) => t.replace(/<\/?a:t>/g, '')).join(' ') + '\n\n';
-            }
-        }
-        return fullText || 'No text extracted from PowerPoint.';
+        return await extractPptxText(base64Data) || 'No text extracted from PowerPoint.';
     } catch (err) {
         logger.warn('scorm_pptx_extract_failed', { module: 'scorm', error: err.message });
         return 'Error extracting text from PowerPoint.';
@@ -231,7 +214,7 @@ async function extractTextFromPptx(base64Data) {
 }
 
 function getApiKey() {
-    return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
+    return openAiApiKey();
 }
 
 function normalizeDetailLevel(value) {
@@ -243,45 +226,44 @@ function normalizeDetailLevel(value) {
 }
 
 function modelCandidates() {
-    const preferred = (process.env.GEMINI_MODEL || '').trim();
-    return preferred
-        ? [preferred, ...DEFAULT_MODEL_CANDIDATES.filter((m) => m !== preferred)]
-        : [...DEFAULT_MODEL_CANDIDATES];
+    const preferred = textModel();
+    return [preferred, ...DEFAULT_MODEL_CANDIDATES.filter((model) => model !== preferred)];
 }
 
 function thinkingLevel() {
-    const configured = String(process.env.GEMINI_SCORM_THINKING_LEVEL || 'medium').trim().toLowerCase();
-    return GEMINI_3_THINKING_LEVELS.has(configured) ? configured : 'medium';
+    return 'none';
 }
 
 function generationConfigForModel(model) {
-    const config = {
-        responseMimeType: 'application/json',
-        responseJsonSchema: SCORM_ANALYSIS_SCHEMA,
-        maxOutputTokens: 32768,
-        temperature: 0.28
+    return {
+        model: String(model || textModel()),
+        reasoning: { effort: 'none' },
+        text: { format: { type: 'json_schema', name: 'scorm_course', strict: true, schema: SCORM_ANALYSIS_SCHEMA } },
+        maxOutputTokens: 14000
     };
-    if (/^gemini-3(?:\.|-|$)/i.test(String(model || ''))) {
-        config.thinkingConfig = { thinkingLevel: thinkingLevel() };
-    }
-    return config;
 }
 
-function geminiRequestTimeoutMs() {
-    const configured = Number(process.env.GEMINI_SCORM_REQUEST_TIMEOUT_MS);
-    if (!Number.isFinite(configured)) return 150000;
-    return Math.max(1000, Math.min(300000, Math.round(configured)));
+function openAiRequestTimeoutMs() {
+    const configured = Number(process.env.OPENAI_SCORM_REQUEST_TIMEOUT_MS);
+    if (!Number.isFinite(configured)) return 80000;
+    return Math.max(1000, Math.min(180000, Math.round(configured)));
 }
 
-function friendlyGeminiError(status, bodyText, lastModel) {
-    if (status === 400 && /api key not valid|invalid api key/i.test(bodyText || '')) {
-        return { message: 'Gemini API key is invalid. Create a key in Google AI Studio and set GEMINI_API_KEY on the backend.', code: 'GEMINI_KEY_INVALID' };
+function templateInstruction(courseTemplateId, interactionLevel) {
+    const templateId = String(courseTemplateId || '').trim().toLowerCase();
+    const level = String(interactionLevel || '').trim().toLowerCase() || 'balanced';
+
+    if (templateId === 'visual-product-training') {
+        return `SELECTED COURSE EXPERIENCE: VISUAL PRODUCT TRAINING (${level.toUpperCase()} INTERACTION)\n\n- Write a visual-first product walkthrough where text supports inspection rather than becoming a conventional slide deck.\n- Use concise feature, component, screen, state or procedure titles.\n- Use 3-4 short key points as numbered visual callouts, ordered steps or comparison cues.\n- For products, equipment, interfaces or dashboards, make every key point something the learner can locate visually.\n- For procedures, use genuine ordered steps that can become a guided visual step rail. For two states, write a meaningful before/after or correct/incorrect comparison.\n- Do not invent controls, specifications, locations or workflow steps that are absent from the source.\n- Every screen must answer a visual question: what am I seeing, what matters, what changes, or what happens next?`;
     }
-    if (status === 403) return { message: 'Gemini API rejected the key (403). Check API access and backend key restrictions.', code: 'GEMINI_FORBIDDEN' };
-    if (status === 404) return { message: `Gemini model not available (${lastModel || 'unknown'}). Configure a supported Flash model and redeploy.`, code: 'GEMINI_MODEL_NOT_FOUND' };
-    if (status === 429) return { message: 'Gemini rate limit / quota exceeded. Wait and retry or review quota.', code: 'GEMINI_QUOTA' };
-    if (/no longer available/i.test(bodyText || '')) return { message: 'Gemini model was retired. Configure a current Flash model and redeploy.', code: 'GEMINI_MODEL_RETIRED' };
-    return { message: `Gemini API error (${status})${lastModel ? ` model=${lastModel}` : ''}`, code: 'GEMINI_API_ERROR' };
+
+    if (templateId !== 'scenario-learning') return '';
+    const scenarioTarget = level === 'high'
+        ? 'About 35-50% of suitable screens should be genuine workplace decisions.'
+        : level === 'balanced'
+            ? 'About 25-35% of suitable screens should be genuine workplace decisions.'
+            : 'Use a small number of genuine workplace decisions and keep the remainder as guided explanation.';
+    return `SELECTED COURSE EXPERIENCE: SCENARIO LEARNING (${level.toUpperCase()} INTERACTION)\n\n- ${scenarioTarget}\n- Establish a concrete workplace moment before presenting choices.\n- On scenario screens, keyPoints must be 3-7 word response choices, decision factors or observable clues.\n- Include enough consequence and coaching in the body to explain why a response is safer, riskier or incomplete.\n- Do not force every screen into a decision. Keep definitions, procedures, comparisons and warning signs in the structure that teaches them best.\n- Do not invent organisation-specific policy, contacts, access rules or escalation routes.\n- Build a natural situation → judgement → consequence → safer-behaviour journey.`;
 }
 
 function wordCount(value) {
@@ -518,62 +500,55 @@ function parseAnalysis(text) {
         }
     }
     if (!analysis) {
-        const e = new Error('Gemini returned invalid JSON');
-        e.code = 'GEMINI_BAD_JSON';
+        const e = new Error('OpenAI returned invalid JSON');
+        e.code = 'OPENAI_BAD_JSON';
         e.cause = parseError || undefined;
         throw e;
     }
     if (!analysis.title || !Array.isArray(analysis.slides) || !Array.isArray(analysis.quiz)) {
-        const e = new Error('Gemini analysis missing required fields (title, slides, quiz)');
-        e.code = 'GEMINI_INCOMPLETE';
+        const e = new Error('OpenAI analysis missing required fields (title, slides, quiz)');
+        e.code = 'OPENAI_INCOMPLETE';
         throw e;
     }
     return analysis;
 }
 
-function geminiCandidate(raw) {
-    const candidate = raw?.candidates?.[0] || {};
-    const parts = Array.isArray(candidate?.content?.parts) ? candidate.content.parts : [];
-    const text = parts
-        .filter((part) => part && part.thought !== true)
-        .map((part) => part.text || '')
-        .join('')
-        .trim();
+function openAiCandidate(raw) {
     return {
-        text,
-        finishReason: String(candidate.finishReason || ''),
-        candidateCount: Array.isArray(raw?.candidates) ? raw.candidates.length : 0
+        text: String(raw?.text || '').trim(),
+        finishReason: 'completed',
+        candidateCount: raw?.text ? 1 : 0,
+        usage: raw?.usage || {},
+        estimatedCostUsd: Number(raw?.estimatedCostUsd || 0),
+        model: raw?.model || null
     };
 }
 
-async function callGemini({ apiKey, model, parts, timeoutMs = geminiRequestTimeoutMs() }) {
-    const body = {
-        contents: [{ parts }],
-        generationConfig: generationConfigForModel(model)
-    };
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    timeout.unref?.();
-    try {
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-            signal: controller.signal
-        });
-        const raw = res.ok ? await res.json() : await res.text().catch(() => '');
-        return { res, raw };
-    } catch (error) {
-        if (controller.signal.aborted || error?.name === 'AbortError') {
-            const timeoutError = new Error('Course content request timed out. Please retry.');
-            timeoutError.code = 'GEMINI_TIMEOUT';
-            throw timeoutError;
+async function callOpenAI({ model, parts, timeoutMs = openAiRequestTimeoutMs() }) {
+    const content = [];
+    for (const part of Array.isArray(parts) ? parts : []) {
+        if (part?.text) content.push({ type: 'input_text', text: String(part.text) });
+        const inline = part?.inlineData || part?.inline_data;
+        if (inline?.data) {
+            const mime = String(inline.mimeType || inline.mime_type || 'application/pdf');
+            content.push({
+                type: 'input_file',
+                filename: mime.includes('pdf') ? 'source.pdf' : 'source.txt',
+                file_data: `data:${mime};base64,${inline.data}`
+            });
         }
-        throw error;
-    } finally {
-        clearTimeout(timeout);
     }
+    const raw = await createStructuredResponse({
+        model,
+        input: [{ role: 'user', content }],
+        instructions: 'Create source-grounded professional learning content. Return only the requested structured course object.',
+        schema: SCORM_ANALYSIS_SCHEMA,
+        schemaName: 'scorm_course',
+        maxOutputTokens: 14000,
+        timeoutMs,
+        metadata: { workload: 'scorm_course_authoring' }
+    });
+    return { res: { ok: true, status: 200 }, raw };
 }
 
 function professionalInstruction(detailLevel, level) {
@@ -664,11 +639,17 @@ function refinementInstruction(analysis, issues, detailLevel, level) {
     return `SENIOR INSTRUCTIONAL EDITOR PASS:\nThe draft below is not yet publication quality. Fix the entire JSON as a professional course editor.\n\nQUALITY FINDINGS:\n- ${issues.join('\n- ')}\n\nEDITORIAL REQUIREMENTS:\n- Keep all source-grounded facts that are already correct. Do not invent facts.\n- Strengthen weak screens using additional explanation, reasoning, source details, application and learner action — never padding.\n- Aim for ${level.screenWords} words per screen, written as ${level.minSentences}-9 short sentences.\n- Keep sentences normally 12-18 words and below ${level.hardSentenceWords} words. Split dense clauses. Avoid semicolons.\n- Make the sequence feel like one coherent ${detailLevel} course, not independent AI summaries.\n- Each screen must teach one distinct lesson and include an application/example plus a clear behaviour when appropriate.\n- Use ${level.minPoints}-5 concise visual key points. Remove repeated wording.\n- Keep the summary within ${level.summaryMinWords}-${level.summaryMaxWords} words.\n- Use ${level.quizMin}-${level.quizMax} strong knowledge checks with mostly workplace scenarios and explanations of at least ${level.quizExplanationMinWords} words.\n- Return only the improved JSON.\n\nDRAFT:\n${JSON.stringify(analysis)}`;
 }
 
-async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' }) {
+async function analyzePolicy({
+    fileBase64,
+    mimeType,
+    detailLevel = 'detailed',
+    courseTemplateId = '',
+    interactionLevel = ''
+}) {
     const apiKey = getApiKey();
     if (!apiKey) {
-        const e = new Error('GEMINI_API_KEY is not configured on the server.');
-        e.code = 'GEMINI_KEY_MISSING';
+        const e = new Error('OPENAI_API_KEY is not configured on the server.');
+        e.code = 'OPENAI_KEY_MISSING';
         throw e;
     }
 
@@ -680,14 +661,26 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
         (mimeType || '').includes('powerpoint') ||
         (mimeType || '').includes('vnd.ms-powerpoint');
 
-    if (isPptx) {
-        const text = await extractTextFromPptx(fileBase64);
-        sourceParts.push({ text: `SOURCE DOCUMENT (extracted from PowerPoint):\n\n${text}` });
-    } else if (fileBase64) {
-        sourceParts.push({ inlineData: { data: fileBase64, mimeType: mimeType || 'application/pdf' } });
+    if (fileBase64) {
+        let text = '';
+        try {
+            text = isPptx
+                ? await extractTextFromPptx(fileBase64)
+                : await extractDocumentText({ fileBase64, mimeType });
+        } catch (error) {
+            logger.warn('scorm_openai_source_text_extract_failed', { module: 'scorm', error: error.message });
+        }
+        if (text.trim()) {
+            sourceParts.push({ text: `SOURCE DOCUMENT (locally extracted to control cost):\n\n${text}` });
+        } else {
+            const error = new Error('The uploaded document did not contain readable text. Upload a searchable PDF or text-based document so course cost stays predictable.');
+            error.code = 'SCORM_SOURCE_TEXT_REQUIRED';
+            throw error;
+        }
     }
 
-    const instruction = professionalInstruction(normalizedLevel, level);
+    const selectedTemplateInstruction = templateInstruction(courseTemplateId, interactionLevel);
+    const instruction = `${professionalInstruction(normalizedLevel, level)}${selectedTemplateInstruction ? `\n\n${selectedTemplateInstruction}` : ''}`;
     const baseParts = [...sourceParts, { text: instruction }];
     if (!fileBase64 && !sourceParts.length) {
         baseParts.unshift({ text: 'SOURCE: Course brief will be provided by the caller context or prior messages.' });
@@ -703,26 +696,23 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
         lastModel = model;
         let response;
         try {
-            response = await callGemini({ apiKey, model, parts: baseParts });
+            response = await callOpenAI({ model, parts: baseParts });
         } catch (netErr) {
-            logger.error('scorm_gemini_network', { module: 'scorm', model, error: netErr.message });
-            if (netErr?.code === 'GEMINI_TIMEOUT') throw netErr;
-            const e = new Error(`Gemini network error: ${netErr.message}`);
-            e.code = 'GEMINI_NETWORK';
-            throw e;
+            logger.error('scorm_openai_request_failed', { module: 'scorm', model, error: netErr.message, code: netErr.code || null });
+            throw netErr;
         }
 
         if (response.res.ok) {
-            const candidate = geminiCandidate(response.raw);
+            const candidate = openAiCandidate(response.raw);
             let analysis;
             try {
                 analysis = parseAnalysis(candidate.text);
             } catch (parseErr) {
-                if (parseErr.code === 'GEMINI_BAD_JSON' || parseErr.code === 'GEMINI_INCOMPLETE') {
+                if (parseErr.code === 'OPENAI_BAD_JSON' || parseErr.code === 'OPENAI_INCOMPLETE') {
                     lastStructuredError = parseErr;
                     lastStatus = 200;
                     lastBody = parseErr.code;
-                    logger.warn('scorm_gemini_structured_output_invalid', {
+                    logger.warn('scorm_openai_structured_output_invalid', {
                         module: 'scorm',
                         model,
                         code: parseErr.code,
@@ -740,9 +730,9 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
                 const beforeWords = courseWordCount(analysis);
                 const refinementPrompt = refinementInstruction(analysis, issues, normalizedLevel, level);
                 try {
-                    const refined = await callGemini({ apiKey, model, parts: [...baseParts, { text: refinementPrompt }] });
+                    const refined = await callOpenAI({ model, parts: [...baseParts, { text: refinementPrompt }] });
                     if (!refined.res.ok) break;
-                    const refinedCandidate = geminiCandidate(refined.raw);
+                    const refinedCandidate = openAiCandidate(refined.raw);
                     const candidateAnalysis = parseAnalysis(refinedCandidate.text);
                     const candidateIssues = qualityIssues(candidateAnalysis, normalizedLevel);
                     const candidateWords = courseWordCount(candidateAnalysis);
@@ -752,7 +742,7 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
                     if (!improved) break;
                     analysis = candidateAnalysis;
                     issues = candidateIssues;
-                    logger.info('scorm_gemini_refined', {
+                    logger.info('scorm_openai_refined', {
                         module: 'scorm',
                         model,
                         pass: pass + 1,
@@ -762,12 +752,16 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
                         wordsAfter: candidateWords
                     });
                 } catch (refineErr) {
-                    logger.warn('scorm_gemini_refinement_failed', { module: 'scorm', model, pass: pass + 1, error: refineErr.message });
+                    logger.warn('scorm_openai_refinement_failed', { module: 'scorm', model, pass: pass + 1, error: refineErr.message });
                     break;
                 }
             }
 
-            logger.info('scorm_gemini_ok', {
+            analysis.aiProvider = 'openai';
+            analysis.aiModel = candidate.model || model;
+            analysis.aiUsage = candidate.usage;
+            analysis.aiEstimatedCostUsd = candidate.estimatedCostUsd;
+            logger.info('scorm_openai_ok', {
                 module: 'scorm',
                 model,
                 detailLevel: normalizedLevel,
@@ -780,20 +774,19 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
 
         lastStatus = response.res.status;
         lastBody = String(response.raw || '');
-        logger.warn('scorm_gemini_try_failed', { module: 'scorm', model, status: response.res.status, body: lastBody.slice(0, 300) });
-        const retryable = response.res.status === 404 || /not found|no longer available|not supported for generatecontent/i.test(lastBody);
+        logger.warn('scorm_openai_try_failed', { module: 'scorm', model, status: response.res.status, body: lastBody.slice(0, 300) });
+        const retryable = response.res.status === 404;
         if (!retryable) break;
     }
 
     if (lastStructuredError && (!lastStatus || lastStatus === 200 || lastStatus === 404)) {
-        const e = new Error('Gemini could not produce a valid course structure. Please retry.');
-        e.code = lastStructuredError.code || 'GEMINI_BAD_JSON';
+        const e = new Error('OpenAI could not produce a valid course structure. Please retry.');
+        e.code = lastStructuredError.code || 'OPENAI_BAD_JSON';
         throw e;
     }
 
-    const friendly = friendlyGeminiError(lastStatus, lastBody, lastModel);
-    const e = new Error(friendly.message);
-    e.code = friendly.code;
+    const e = new Error(`OpenAI could not generate the course with ${lastModel}.`);
+    e.code = 'OPENAI_API_ERROR';
     e.status = lastStatus;
     throw e;
 }
@@ -806,8 +799,8 @@ module.exports = {
     modelCandidates,
     thinkingLevel,
     generationConfigForModel,
-    geminiRequestTimeoutMs,
-    callGemini,
+    openAiRequestTimeoutMs,
+    callOpenAI,
     DEFAULT_MODEL_CANDIDATES,
     DETAIL_CONFIG,
     VISUAL_POINT_WORD_LIMITS,
@@ -823,5 +816,6 @@ module.exports = {
     refinementInstruction,
     jsonParseCandidates,
     parseAnalysis,
-    geminiCandidate
+    openAiCandidate,
+    templateInstruction
 };

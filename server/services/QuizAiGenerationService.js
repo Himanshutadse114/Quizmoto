@@ -1,14 +1,13 @@
 const JSZip = require('jszip');
 const logger = require('../utils/logger');
+const {
+    getApiKey: getOpenAiApiKey,
+    textModel,
+    createStructuredResponse
+} = require('./openai/OpenAiClient');
+const { extractDocumentText } = require('./openai/DocumentTextExtractor');
 
-const DEFAULT_MODELS = [
-    'gemini-3.6-flash',
-    'gemini-3.5-flash',
-    'gemini-3.5-flash-lite',
-    'gemini-2.5-flash',
-    'gemini-2.5-flash-lite',
-    'gemini-flash-latest'
-];
+const DEFAULT_MODELS = ['gpt-5.6-luna'];
 
 const QUIZ_SCHEMA = {
     type: 'object',
@@ -40,11 +39,11 @@ const QUIZ_SCHEMA = {
 };
 
 function getApiKey() {
-    return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
+    return getOpenAiApiKey();
 }
 
 function modelCandidates() {
-    const preferred = String(process.env.GEMINI_QUIZ_MODEL || process.env.GEMINI_MODEL || '').trim();
+    const preferred = String(process.env.OPENAI_QUIZ_MODEL || process.env.OPENAI_TEXT_MODEL || textModel()).trim();
     return preferred ? [preferred, ...DEFAULT_MODELS.filter((model) => model !== preferred)] : [...DEFAULT_MODELS];
 }
 
@@ -116,12 +115,24 @@ async function buildSourceParts({ topic, description, fileBase64, mimeType, file
         extracted = await extractDocxText(raw);
     } else if (mime.startsWith('text/') || name.endsWith('.txt') || name.endsWith('.md')) {
         extracted = Buffer.from(raw, 'base64').toString('utf8');
+    } else if (mime.includes('pdf') || name.endsWith('.pdf')) {
+        try {
+            extracted = await extractDocumentText({ fileBase64: raw, mimeType: mimeType || 'application/pdf', fileName });
+        } catch (error) {
+            logger.warn('quiz_ai_pdf_text_extract_failed', { module: 'quiz', error: error.message });
+        }
     }
 
     if (extracted.trim()) {
         parts.push({ text: `UPLOADED DOCUMENT (${fileName || 'document'}):\n\n${extracted.slice(0, 120000)}` });
     } else {
-        parts.push({ inlineData: { data: raw, mimeType: mimeType || 'application/pdf' } });
+        parts.push({
+            inputFile: {
+                data: raw,
+                mimeType: mimeType || 'application/pdf',
+                fileName: fileName || 'document.pdf'
+            }
+        });
     }
 
     return parts;
@@ -147,7 +158,7 @@ function parseQuizJson(text) {
         } catch (_) {}
     }
     if (!parsed) {
-        const err = new Error('Gemini returned invalid quiz JSON.');
+        const err = new Error('OpenAI returned invalid quiz JSON.');
         err.code = 'QUIZ_AI_BAD_JSON';
         throw err;
     }
@@ -176,7 +187,7 @@ function normalizeQuiz(data) {
         item.correctIndex > 3
     ));
     if (invalid) {
-        const err = new Error('Gemini returned an incomplete quiz.');
+        const err = new Error('OpenAI returned an incomplete quiz.');
         err.code = 'QUIZ_AI_INCOMPLETE';
         throw err;
     }
@@ -186,8 +197,8 @@ function normalizeQuiz(data) {
 async function generateQuiz({ topic, description, fileBase64, mimeType, fileName, maxUploadMb }) {
     const apiKey = getApiKey();
     if (!apiKey) {
-        const err = new Error('GEMINI_API_KEY is not configured on the server.');
-        err.code = 'GEMINI_KEY_MISSING';
+        const err = new Error('OPENAI_API_KEY is not configured on the server.');
+        err.code = 'OPENAI_KEY_MISSING';
         throw err;
     }
 
@@ -213,42 +224,40 @@ Requirements:
 - Stay faithful to the supplied document. Do not invent policy facts, statistics or requirements.
 - Return only the structured JSON response.`;
 
-    const parts = [...sourceParts, { text: instruction }];
+    const content = [];
+    for (const part of sourceParts) {
+        if (part?.text) content.push({ type: 'input_text', text: part.text });
+        if (part?.inputFile?.data) {
+            content.push({
+                type: 'input_file',
+                filename: part.inputFile.fileName || 'document.pdf',
+                file_data: `data:${part.inputFile.mimeType || 'application/pdf'};base64,${part.inputFile.data}`
+            });
+        }
+    }
+    content.push({ type: 'input_text', text: instruction });
     let lastError = null;
 
     for (const model of modelCandidates()) {
         try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts }],
-                    generationConfig: {
-                        responseMimeType: 'application/json',
-                        responseJsonSchema: QUIZ_SCHEMA,
-                        maxOutputTokens: 8192,
-                        temperature: 0.45
-                    }
-                })
+            const response = await createStructuredResponse({
+                model,
+                input: [{ role: 'user', content }],
+                instructions: 'Create a source-grounded professional quiz. Return only the requested structured object.',
+                schema: QUIZ_SCHEMA,
+                schemaName: 'lmsgen_quiz',
+                maxOutputTokens: 5000,
+                timeoutMs: 75000,
+                metadata: { workload: 'quiz_generation' }
             });
-
-            if (!response.ok) {
-                const body = await response.text().catch(() => '');
-                lastError = new Error(`Gemini API error (${response.status})`);
-                lastError.code = response.status === 429 ? 'GEMINI_QUOTA' : 'GEMINI_API_ERROR';
-                logger.warn('quiz_ai_model_failed', { module: 'quiz', model, status: response.status, body: body.slice(0, 300) });
-                continue;
-            }
-
-            const raw = await response.json();
-            const candidate = raw?.candidates?.[0];
-            const text = (candidate?.content?.parts || [])
-                .filter((part) => part && part.thought !== true)
-                .map((part) => part.text || '')
-                .join('')
-                .trim();
-            const quiz = normalizeQuiz(parseQuizJson(text));
-            logger.info('quiz_ai_generated', { module: 'quiz', model, questions: quiz.questions.length });
+            const quiz = normalizeQuiz(parseQuizJson(response.text));
+            logger.info('quiz_ai_generated', {
+                module: 'quiz',
+                provider: 'openai',
+                model: response.model || model,
+                questions: quiz.questions.length,
+                estimatedCostUsd: response.estimatedCostUsd
+            });
             return quiz;
         } catch (err) {
             lastError = err;

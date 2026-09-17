@@ -8,7 +8,7 @@ const {
     inject,
     script
 } = require('../services/scorm/ScormScenarioLearningRuntime');
-const { templateInstruction } = require('../services/scorm/VertexPolicyAnalysisService');
+const { templateInstruction } = require('../services/scorm/PolicyAnalysisService');
 const { style: courseChromeStyle } = require('../services/scorm/ScormCourseChromeRuntime');
 
 function course(slides) {

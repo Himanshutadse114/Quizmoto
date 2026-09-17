@@ -1,18 +1,8 @@
 // Compatibility entry point retained for existing SCORM routes and tests.
-// Course generation uses Vertex AI Express Mode with the configured API key.
+// Course generation uses OpenAI with the configured server-side API key.
 // Keep the provider call behind a bounded progress wrapper: a model request can
 // legitimately take a while, but it must never leave a course frozen at 2%.
 const logger = require('../../utils/logger');
-const { installVertexExpressFetchAdapter, transportName } = require('./GoogleGenAiTransport');
-
-installVertexExpressFetchAdapter();
-
-if (!process.env.GEMINI_MODEL) {
-    process.env.GEMINI_MODEL = String(process.env.GOOGLE_TEXT_MODEL || 'gemini-2.5-flash').trim();
-}
-
-process.env.GOOGLE_GENAI_TRANSPORT = transportName();
-
 const PolicyAnalysisService = require('./PolicyAnalysisService');
 
 function emit(onProgress, patch) {
@@ -34,7 +24,7 @@ async function runWithProgressHeartbeat({
     stage,
     detail,
     timeoutMs,
-    timeoutCode = 'GEMINI_TIMEOUT'
+    timeoutCode = 'OPENAI_TIMEOUT'
 }) {
     let settled = false;
     let percent = Math.max(1, Number(startPercent) || 1);
@@ -77,8 +67,8 @@ async function runWithProgressHeartbeat({
 
 async function analyzePolicy(args = {}) {
     const contentTimeoutMs = positiveInt(
-        process.env.GEMINI_SCORM_CONTENT_TIMEOUT_MS,
-        210000,
+        process.env.OPENAI_SCORM_CONTENT_TIMEOUT_MS,
+        90000,
         30000,
         600000
     );
@@ -93,7 +83,7 @@ async function analyzePolicy(args = {}) {
             detail: 'Organising the source into clear learning sections and knowledge checks.',
             timeoutMs: contentTimeoutMs
         });
-        analysis.aiProvider = analysis.aiProvider || 'gemini';
+        analysis.aiProvider = analysis.aiProvider || 'openai';
         emit(args.onProgress, {
             percent: 26,
             stage: 'Course content ready',

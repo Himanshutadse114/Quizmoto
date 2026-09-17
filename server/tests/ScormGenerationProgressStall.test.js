@@ -10,7 +10,7 @@ describe('SCORM generation progress reliability', () => {
     it('keeps course-writing progress alive and bounds long-running content calls', () => {
         const source = read('../services/scorm/CourseAiService.js');
         expect(source).to.include('runWithProgressHeartbeat');
-        expect(source).to.include('GEMINI_SCORM_CONTENT_TIMEOUT_MS');
+        expect(source).to.include('OPENAI_SCORM_CONTENT_TIMEOUT_MS');
         expect(source).to.include("stage: 'Creating course content'");
         expect(source).to.include('maxPercent: 24');
         expect(source).to.include("stage: 'Course content ready'");
@@ -18,16 +18,15 @@ describe('SCORM generation progress reliability', () => {
 
     it('aborts a provider request instead of allowing an indefinite 2% stall', () => {
         const source = read('../services/scorm/PolicyAnalysisService.js');
-        expect(source).to.include('GEMINI_SCORM_REQUEST_TIMEOUT_MS');
-        expect(source).to.include('controller.abort()');
-        expect(source).to.include("timeoutError.code = 'GEMINI_TIMEOUT'");
+        expect(source).to.include('OPENAI_SCORM_REQUEST_TIMEOUT_MS');
+        const client = read('../services/openai/OpenAiClient.js');
+        expect(client).to.include('controller.abort()');
+        expect(client).to.include("timeoutError.code = timeoutCode");
     });
 
     it('keeps visual planning and image generation moving beyond content progress', () => {
-        const prompts = read('../services/scorm/GeminiSlideVisualPromptService.js');
-        const media = read('../services/scorm/GeminiCourseMediaService.js');
-        expect(prompts).to.include('GEMINI_SCORM_VISUAL_PROMPT_TIMEOUT_MS');
-        expect(prompts).to.include("'GEMINI_VISUAL_PROMPT_TIMEOUT'");
+        const media = read('../services/scorm/OpenAiCourseMediaService.js');
+        expect(media).to.include('OPENAI_SCORM_MEDIA_DEADLINE_MS');
         expect(media).to.include("status: 'working'");
         expect(media).to.include('percent: 28');
         expect(media).to.include('percent: 30');

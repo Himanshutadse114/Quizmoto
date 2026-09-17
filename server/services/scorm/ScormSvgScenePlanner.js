@@ -249,5 +249,5 @@ module.exports = {
     specSignature,
     diversifyCourse,
     planSvgScenes,
-    callGeminiPlanner: async () => null
+    callAiPlanner: async () => null
 };

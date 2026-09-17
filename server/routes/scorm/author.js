@@ -1,14 +1,13 @@
 /**
  * AI author: source brief / policy / PDF / PPT -> SCORM 1.2 package.
- * AI provider keys remain server-side. Replicate is preferred when
- * REPLICATE_API_TOKEN is configured; Gemini remains available as fallback.
+ * OpenAI provider keys remain server-side.
  */
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware');
 const { featureFlags, scormMaxUploadMb } = require('../../config/featureFlags');
 const { analyzePolicy } = require('../../services/scorm/CourseAiService');
-const { prepareReplicateCourseMedia } = require('../../services/scorm/ReplicateCourseMediaService');
+const { prepareOpenAiCourseMedia } = require('../../services/scorm/OpenAiCourseMediaService');
 const { planExperienceV5 } = require('../../services/scorm/ScormExperiencePlanner');
 const { ensureQuizIntegrity } = require('../../services/scorm/ScormQuizQualityService');
 const { buildScormPackageZip } = require('../../services/scorm/ScormReplicateMediaFinalizer');
@@ -33,11 +32,10 @@ function aiErrorStatus(code) {
     if (code === 'SCORM_GENERATION_CANCELLED') return 409;
     if (code === 'QUIZ_AI_SOURCE_REQUIRED') return 400;
     if (code === 'QUIZ_AI_FILE_TOO_LARGE') return 413;
-    if (code === 'GEMINI_KEY_MISSING' || code === 'REPLICATE_KEY_MISSING') return 503;
-    if (code === 'GEMINI_QUOTA' || code === 'REPLICATE_RATE_LIMIT') return 429;
-    if (code === 'REPLICATE_BILLING') return 402;
-    if (code === 'REPLICATE_SOURCE_NEEDS_TEXT' || code === 'SCORM_QUIZ_INCOMPLETE') return 422;
-    if (code === 'REPLICATE_IMAGES_REQUIRED' || code === 'REPLICATE_IMAGES_INCOMPLETE') return 502;
+    if (code === 'OPENAI_KEY_MISSING' || code === 'OPENAI_KEY_INVALID') return 503;
+    if (code === 'OPENAI_QUOTA') return 429;
+    if (code === 'SCORM_SOURCE_TEXT_REQUIRED' || code === 'SCORM_QUIZ_INCOMPLETE') return 422;
+    if (code === 'OPENAI_IMAGES_INCOMPLETE') return 502;
     return 500;
 }
 
@@ -68,7 +66,7 @@ function sendAuthorError(res, err, progressId, userId, eventName) {
 router.use((req, res, next) => {
     if (!featureFlags.scormAiAuthor) {
         return res.status(403).json({
-            message: 'AI author is disabled. Set SCORM_AI_AUTHOR=true and configure REPLICATE_API_TOKEN or GEMINI_API_KEY on the server.'
+            message: 'AI author is disabled. Set SCORM_AI_AUTHOR=true and configure OPENAI_API_KEY on the server.'
         });
     }
     next();
@@ -198,7 +196,7 @@ router.post('/analyze', auth, async (req, res) => {
         res.json({
             ok: true,
             analysis,
-            aiProvider: analysis.aiProvider || 'gemini',
+            aiProvider: analysis.aiProvider || 'openai',
             aiModel: analysis.aiModel || null,
             templateId: selectedThemeId,
             theme: { id: selectedThemeId, name: selectedTheme.name, slug: selectedTheme.slug }
@@ -263,7 +261,7 @@ router.post('/generate', auth, async (req, res) => {
         checkpoint(progressId, req.userId);
         // Only raster imagery is generated externally. Audio/TTS is intentionally
         // disabled so generated courses remain visual, lightweight and low-cost.
-        const media = await prepareReplicateCourseMedia(analysis, {
+        const media = await prepareOpenAiCourseMedia(analysis, {
             onProgress: report,
             checkCancelled: () => checkpoint(progressId, req.userId)
         });

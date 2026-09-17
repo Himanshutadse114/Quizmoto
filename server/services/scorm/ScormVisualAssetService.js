@@ -206,7 +206,7 @@ async function generateSmartSvgAssets(analysis = {}) {
             mobileFile,
             mobileZipPath: `assets/visuals/${mobileFile}`,
             mobileBody,
-            visualEngine: 'gemini-smart-svg',
+            visualEngine: 'local-smart-svg',
             sceneSpec: spec
         };
     });
@@ -224,7 +224,7 @@ async function generateVisualAssets(analysis) {
         return generateLegacyVisualAssets(analysis);
     }
 
-    logger.info('scorm_visual_engine_selected', { module: 'scorm', engine: 'gemini-smart-svg' });
+    logger.info('scorm_visual_engine_selected', { module: 'scorm', engine: 'local-smart-svg' });
     try {
         return await generateSmartSvgAssets(analysis);
     } catch (err) {

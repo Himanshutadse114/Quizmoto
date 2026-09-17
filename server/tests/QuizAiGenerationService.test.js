@@ -49,7 +49,7 @@ describe('QuizAiGenerationService', () => {
         const quiz = validQuiz();
         quiz.questions = quiz.questions.slice(0, 2);
         expect(() => normalizeQuiz(quiz))
-            .to.throw('Gemini returned an incomplete quiz')
+            .to.throw('OpenAI returned an incomplete quiz')
             .with.property('code', 'QUIZ_AI_INCOMPLETE');
     });
 
@@ -89,12 +89,12 @@ describe('QuizAiGenerationService', () => {
 
         const parts = await buildSourceParts({ fileBase64: raw, mimeType: 'application/pdf', fileName: 'deck.pdf', maxUploadMb: 3 });
         expect(parts).to.have.length(1);
-        expect(parts[0].inlineData.mimeType).to.equal('application/pdf');
+        expect(parts[0].inputFile.mimeType).to.equal('application/pdf');
     });
 
     it('rejects malformed JSON so model fallback can run', () => {
         expect(() => parseQuizJson('{"title":"Quiz","questions":['))
-            .to.throw('Gemini returned invalid quiz JSON')
+            .to.throw('OpenAI returned invalid quiz JSON')
             .with.property('code', 'QUIZ_AI_BAD_JSON');
     });
 });
