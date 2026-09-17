@@ -6,6 +6,8 @@
 const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
+const { Transform } = require('stream');
+const { pipeline } = require('stream/promises');
 
 function ensureDirSync(dir) {
     if (!fs.existsSync(dir)) {
@@ -65,6 +67,31 @@ class LocalObjectStorage {
         }
 
         return { key: this._safeKey(key), size: buf.length, contentType: contentType || null };
+    }
+
+    async putObjectStream({ key, stream, contentType }) {
+        const safeKey = this._safeKey(key);
+        const filePath = this.resolveLocalPath(safeKey);
+        ensureDirSync(path.dirname(filePath));
+        let size = 0;
+        const counter = new Transform({
+            transform(chunk, encoding, callback) {
+                size += chunk.length;
+                callback(null, chunk);
+            }
+        });
+
+        try {
+            await pipeline(stream, counter, fs.createWriteStream(filePath));
+            if (contentType) {
+                await fsp.writeFile(`${filePath}.meta.json`, JSON.stringify({ contentType }), 'utf8');
+            }
+            return { key: safeKey, size, contentType: contentType || null };
+        } catch (error) {
+            await fsp.unlink(filePath).catch(() => {});
+            await fsp.unlink(`${filePath}.meta.json`).catch(() => {});
+            throw error;
+        }
     }
 
     async exists(key) {

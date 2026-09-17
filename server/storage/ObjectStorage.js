@@ -7,6 +7,7 @@
  *
  * Interface (all drivers):
  *   putObject({ key, body, contentType }) -> { key, size }
+ *   putObjectStream({ key, stream, contentType, contentLength? }) -> { key, size }
  *   getObjectStream(key) -> { stream, contentType, contentLength? }
  *   getObjectBuffer(key) -> Buffer
  *   deleteObject(key) -> void

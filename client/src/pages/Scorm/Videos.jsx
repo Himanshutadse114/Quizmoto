@@ -82,7 +82,9 @@ export default function Videos() {
       setFile(null); setTitle(''); setDescription(''); setProgress(0);
       if (fileRef.current) fileRef.current.value = '';
       setMessage('Trackable video uploaded. It is now available in campaign creation.');
-    } catch (err) { setError(err.response?.data?.message || 'Video upload failed.'); }
+    } catch (err) {
+      setError(err.response?.data?.message || 'The video service became temporarily unavailable. Your file is still selected—please retry the upload.');
+    }
     finally { setBusy(false); }
   };
 

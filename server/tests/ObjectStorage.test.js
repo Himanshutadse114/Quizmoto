@@ -2,6 +2,7 @@ const { expect } = require('chai');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { Readable } = require('stream');
 const {
     createObjectStorage,
     _resetObjectStorageCache
@@ -41,6 +42,20 @@ describe('ObjectStorage (Phase 3)', function () {
         expect(await storage.exists(key)).to.equal(true);
         const buf = await storage.getObjectBuffer(key);
         expect(buf.toString()).to.include('%PDF-1.4');
+    });
+
+    it('putObjectStream writes incrementally without requiring a complete buffer', async () => {
+        const key = 'videos/streamed/source.mp4';
+        const source = Readable.from([Buffer.from('video-'), Buffer.from('content')]);
+        const result = await storage.putObjectStream({
+            key,
+            stream: source,
+            contentType: 'video/mp4',
+            contentLength: 13
+        });
+
+        expect(result.size).to.equal(13);
+        expect((await storage.getObjectBuffer(key)).toString()).to.equal('video-content');
     });
 
     it('getObjectStream returns readable stream', async () => {

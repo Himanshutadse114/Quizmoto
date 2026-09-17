@@ -1,4 +1,5 @@
 const express = require('express');
+const { Transform } = require('stream');
 const router = express.Router();
 const auth = require('../middleware');
 const { ScormVideo, ScormCampaignVideo, ScormVideoProgress } = require('../../models/scorm');
@@ -6,8 +7,8 @@ const { getObjectStorage } = require('../../storage/ObjectStorage');
 const { ensureVideoSchema, listVideos, launchAdminVideo } = require('../../services/scorm/ScormVideoService');
 
 const MAX_VIDEO_MB = Math.max(25, Math.min(1000, Number(process.env.SCORM_MAX_VIDEO_MB || 250)));
+const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
 const ACCEPTED = new Set(['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime']);
-const parseVideoBody = express.raw({ type: ['video/*', 'application/octet-stream'], limit: `${MAX_VIDEO_MB}mb` });
 
 function workspaceRequired(req) {
     if (req.scormWorkspaceId) return;
@@ -34,6 +35,38 @@ function uploadMetadata(req) {
     }
 }
 
+function declaredContentLength(req) {
+    const value = Number(req.headers['content-length']);
+    return Number.isSafeInteger(value) && value > 0 ? value : 0;
+}
+
+function limitUploadStream(source, maxBytes) {
+    let bytes = 0;
+    const limiter = new Transform({
+        transform(chunk, encoding, callback) {
+            bytes += chunk.length;
+            if (bytes > maxBytes) {
+                const error = new Error(`Video exceeds the ${MAX_VIDEO_MB} MB upload limit.`);
+                error.status = 413;
+                error.code = 'VIDEO_TOO_LARGE';
+                callback(error);
+                return;
+            }
+            callback(null, chunk);
+        }
+    });
+    limiter.bytesReceived = () => bytes;
+    source.once('error', (error) => limiter.destroy(error));
+    source.once('aborted', () => {
+        const error = new Error('The video upload was interrupted. Please retry.');
+        error.status = 400;
+        error.code = 'VIDEO_UPLOAD_ABORTED';
+        limiter.destroy(error);
+    });
+    source.pipe(limiter);
+    return limiter;
+}
+
 router.get('/', auth, async (req, res) => {
     try {
         workspaceRequired(req);
@@ -44,21 +77,15 @@ router.get('/', auth, async (req, res) => {
     }
 });
 
-router.post('/upload', auth, (req, res, next) => {
-    parseVideoBody(req, res, (error) => {
-        if (error?.type === 'entity.too.large') {
-            return res.status(413).json({ message: `Video exceeds the ${MAX_VIDEO_MB} MB upload limit.` });
-        }
-        if (error) return next(error);
-        next();
-    });
-}, async (req, res) => {
+router.post('/upload', auth, async (req, res) => {
     let video = null;
     try {
         workspaceRequired(req);
         const mimeType = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
         if (!ACCEPTED.has(mimeType)) return res.status(415).json({ message: 'Upload an MP4, WebM, OGG or MOV video.' });
-        if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).json({ message: 'Video file is required.' });
+        const contentLength = declaredContentLength(req);
+        if (!contentLength) return res.status(411).json({ message: 'The video file size could not be determined. Please choose the file again.' });
+        if (contentLength > MAX_VIDEO_BYTES) return res.status(413).json({ message: `Video exceeds the ${MAX_VIDEO_MB} MB upload limit.` });
         await ensureVideoSchema();
         const metadata = uploadMetadata(req);
         const title = String(metadata.title || req.query.title || req.headers['x-video-title'] || 'Untitled video').trim().slice(0, 200) || 'Untitled video';
@@ -72,12 +99,25 @@ router.post('/upload', auth, (req, res, next) => {
             description,
             storageKey: `videos/pending-${Date.now()}`,
             mimeType,
-            byteSize: req.body.length,
+            byteSize: contentLength,
             durationSeconds,
             status: 'processing'
         });
         video.storageKey = `videos/${video.id}/source.${safeExtension(mimeType)}`;
-        await getObjectStorage().putObject({ key: video.storageKey, body: req.body, contentType: mimeType });
+        const uploadStream = limitUploadStream(req, MAX_VIDEO_BYTES);
+        const stored = await getObjectStorage().putObjectStream({
+            key: video.storageKey,
+            stream: uploadStream,
+            contentType: mimeType,
+            contentLength
+        });
+        if (Number(stored.size) !== contentLength || uploadStream.bytesReceived() !== contentLength) {
+            const error = new Error('The video upload was interrupted before the complete file arrived. Please retry.');
+            error.status = 400;
+            error.code = 'INCOMPLETE_VIDEO_UPLOAD';
+            throw error;
+        }
+        video.byteSize = stored.size;
         video.status = 'ready';
         await video.save();
         res.status(201).json({ ok: true, video: { id: video.id, title: video.title, description: video.description, mimeType, byteSize: Number(video.byteSize), durationSeconds, status: video.status, createdAt: video.createdAt } });
@@ -121,3 +161,4 @@ router.delete('/:videoId', auth, async (req, res) => {
 });
 
 module.exports = router;
+module.exports._test = { declaredContentLength, limitUploadStream, MAX_VIDEO_BYTES };

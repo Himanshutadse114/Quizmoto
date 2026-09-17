@@ -79,6 +79,26 @@ class S3ObjectStorage {
         return { key: safeKey, size: buf.length, contentType: contentType || null };
     }
 
+    async putObjectStream({ key, stream, contentType, contentLength }) {
+        const safeKey = this._safeKey(key);
+        const size = Number(contentLength);
+        if (!Number.isSafeInteger(size) || size <= 0) {
+            const error = new Error('A valid content length is required for streamed S3 uploads.');
+            error.code = 'STREAM_CONTENT_LENGTH_REQUIRED';
+            throw error;
+        }
+        await this.client.send(
+            new this.PutObjectCommand({
+                Bucket: this.bucket,
+                Key: safeKey,
+                Body: stream,
+                ContentLength: size,
+                ContentType: contentType || 'application/octet-stream'
+            })
+        );
+        return { key: safeKey, size, contentType: contentType || null };
+    }
+
     async exists(key) {
         try {
             await this.client.send(
