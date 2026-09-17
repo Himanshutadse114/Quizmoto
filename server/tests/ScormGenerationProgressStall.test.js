@@ -8,12 +8,19 @@ function read(relativePath) {
 
 describe('SCORM generation progress reliability', () => {
     it('keeps course-writing progress alive and bounds long-running content calls', () => {
-        const source = read('../services/scorm/GeminiServiceAccountCourseAiService.js');
+        const source = read('../services/scorm/CourseAiService.js');
         expect(source).to.include('runWithProgressHeartbeat');
         expect(source).to.include('GEMINI_SCORM_CONTENT_TIMEOUT_MS');
         expect(source).to.include("stage: 'Creating course content'");
-        expect(source).to.include('maxPercent: 26');
-        expect(source).to.include("stage: 'Planning course visuals'");
+        expect(source).to.include('maxPercent: 24');
+        expect(source).to.include("stage: 'Course content ready'");
+    });
+
+    it('aborts a provider request instead of allowing an indefinite 2% stall', () => {
+        const source = read('../services/scorm/PolicyAnalysisService.js');
+        expect(source).to.include('GEMINI_SCORM_REQUEST_TIMEOUT_MS');
+        expect(source).to.include('controller.abort()');
+        expect(source).to.include("timeoutError.code = 'GEMINI_TIMEOUT'");
     });
 
     it('never lets browser progress move backwards and expires orphaned jobs', () => {

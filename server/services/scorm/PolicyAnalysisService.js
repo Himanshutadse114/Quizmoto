@@ -267,6 +267,12 @@ function generationConfigForModel(model) {
     return config;
 }
 
+function geminiRequestTimeoutMs() {
+    const configured = Number(process.env.GEMINI_SCORM_REQUEST_TIMEOUT_MS);
+    if (!Number.isFinite(configured)) return 150000;
+    return Math.max(1000, Math.min(300000, Math.round(configured)));
+}
+
 function friendlyGeminiError(status, bodyText, lastModel) {
     if (status === 400 && /api key not valid|invalid api key/i.test(bodyText || '')) {
         return { message: 'Gemini API key is invalid. Create a key in Google AI Studio and set GEMINI_API_KEY on the backend.', code: 'GEMINI_KEY_INVALID' };
@@ -540,19 +546,34 @@ function geminiCandidate(raw) {
     };
 }
 
-async function callGemini({ apiKey, model, parts }) {
+async function callGemini({ apiKey, model, parts, timeoutMs = geminiRequestTimeoutMs() }) {
     const body = {
         contents: [{ parts }],
         generationConfig: generationConfigForModel(model)
     };
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-    });
-    const raw = res.ok ? await res.json() : await res.text().catch(() => '');
-    return { res, raw };
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    timeout.unref?.();
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: controller.signal
+        });
+        const raw = res.ok ? await res.json() : await res.text().catch(() => '');
+        return { res, raw };
+    } catch (error) {
+        if (controller.signal.aborted || error?.name === 'AbortError') {
+            const timeoutError = new Error('Course content request timed out. Please retry.');
+            timeoutError.code = 'GEMINI_TIMEOUT';
+            throw timeoutError;
+        }
+        throw error;
+    } finally {
+        clearTimeout(timeout);
+    }
 }
 
 function professionalInstruction(detailLevel, level) {
@@ -685,6 +706,7 @@ async function analyzePolicy({ fileBase64, mimeType, detailLevel = 'detailed' })
             response = await callGemini({ apiKey, model, parts: baseParts });
         } catch (netErr) {
             logger.error('scorm_gemini_network', { module: 'scorm', model, error: netErr.message });
+            if (netErr?.code === 'GEMINI_TIMEOUT') throw netErr;
             const e = new Error(`Gemini network error: ${netErr.message}`);
             e.code = 'GEMINI_NETWORK';
             throw e;
@@ -784,6 +806,8 @@ module.exports = {
     modelCandidates,
     thinkingLevel,
     generationConfigForModel,
+    geminiRequestTimeoutMs,
+    callGemini,
     DEFAULT_MODEL_CANDIDATES,
     DETAIL_CONFIG,
     VISUAL_POINT_WORD_LIMITS,
