@@ -122,6 +122,42 @@ function anchorHighlyInteractivePrompt(promptInfo, slide, analysis) {
     };
 }
 
+function highlyInteractiveCoverPrompt(prompt, analysis) {
+    const base = clean(prompt);
+    if (!base || !isHighlyInteractiveAnalysis(analysis)) return base;
+
+    const courseTitle = clean(analysis?.title) || 'this course';
+    const summary = sentenceExcerpt(analysis?.summary, 320);
+    const coreLessons = (Array.isArray(analysis?.slides) ? analysis.slides : [])
+        .slice(0, 4)
+        .map((slide) => {
+            const title = sentenceExcerpt(slide?.title, 100);
+            const point = (Array.isArray(slide?.keyPoints) ? slide.keyPoints : [])
+                .map((value) => sentenceExcerpt(value, 100))
+                .find(Boolean);
+            return [title, point].filter(Boolean).join(': ');
+        })
+        .filter(Boolean);
+
+    return clean([
+        base,
+        `HIGHLY INTERACTIVE COVER FIDELITY: create a strong opening visual that unmistakably represents the complete course subject ${courseTitle}.`,
+        summary ? `Course meaning to express visually: ${summary}.` : '',
+        coreLessons.length ? `Ground the hero scene in these actual course concepts: ${coreLessons.join('; ')}.` : '',
+        'Choose one recognisable topic-specific hero scene with concrete objects and meaningful relationships. The image must preview what the learner will study, not merely create atmosphere.',
+        'Reject generic abstract shapes, random technology, decorative office scenes and unrelated cybersecurity symbols unless those exact concepts belong to this course.',
+        'Keep the image non-human and completely free of text, letters, numbers, logos and watermarks.'
+    ].filter(Boolean).join(' '));
+}
+
+function anchorHighlyInteractiveCoverPrompt(promptInfo, analysis) {
+    if (!promptInfo || typeof promptInfo !== 'object') return promptInfo;
+    return {
+        ...promptInfo,
+        prompt: highlyInteractiveCoverPrompt(promptInfo.prompt, analysis)
+    };
+}
+
 function warningSummary(warnings, max = 3) {
     const unique = [];
     for (const warning of warnings || []) {
@@ -355,7 +391,10 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
 
     try {
         checkCancelled();
-        const coverPrompt = await generateCoverVisualPrompt({ ...analysis, slides });
+        const coverPrompt = anchorHighlyInteractiveCoverPrompt(
+            await generateCoverVisualPrompt({ ...analysis, slides }),
+            { ...analysis, slides }
+        );
         promptModel = coverPrompt.model || promptModel;
         analysis.coverImagePrompt = coverPrompt.prompt;
         analysis.coverImagePromptProvider = 'gemini';
@@ -588,6 +627,8 @@ module.exports = {
     isHighlyInteractiveAnalysis,
     highlyInteractiveTopicPrompt,
     anchorHighlyInteractivePrompt,
+    highlyInteractiveCoverPrompt,
+    anchorHighlyInteractiveCoverPrompt,
     coverImagePrompt,
     slideImagePrompt,
     recoverySlideImagePrompt,

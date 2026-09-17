@@ -1,7 +1,9 @@
 const { expect } = require('chai');
 const {
     highlyInteractiveTopicPrompt,
-    anchorHighlyInteractivePrompt
+    anchorHighlyInteractivePrompt,
+    highlyInteractiveCoverPrompt,
+    anchorHighlyInteractiveCoverPrompt
 } = require('../services/scorm/GeminiCourseMediaService');
 
 describe('Highly Interactive visual topic relevance', () => {
@@ -40,5 +42,56 @@ describe('Highly Interactive visual topic relevance', () => {
         );
         expect(anchored.model).to.equal('gemini-test');
         expect(anchored.prompt).to.include(slide.title);
+    });
+
+    it('grounds the opening image in the complete course rather than a generic hero graphic', () => {
+        const analysis = {
+            title: 'Phishing Awareness for Finance Teams',
+            summary: 'Finance staff learn to inspect payment requests, verify senders independently and report suspicious messages before transferring money.',
+            templateBinding: { templateId: 'highly-interactive' },
+            slides: [
+                slide,
+                {
+                    title: 'Verify payment requests independently',
+                    keyPoints: ['Use a trusted contact channel']
+                }
+            ]
+        };
+        const prompt = highlyInteractiveCoverPrompt(
+            'A premium modern 3D course cover with cinematic lighting, no text and no logos.',
+            analysis
+        );
+
+        expect(prompt).to.include(analysis.title);
+        expect(prompt).to.include('verify senders independently');
+        expect(prompt).to.include('Recognizing common email phishing');
+        expect(prompt).to.include('Verify payment requests independently');
+        expect(prompt).to.include('not merely create atmosphere');
+        expect(prompt).to.include('Reject generic abstract shapes');
+    });
+
+    it('keeps other course-template cover prompts unchanged', () => {
+        const original = 'A professional course cover.';
+        const analysis = {
+            title: 'A course',
+            templateBinding: { templateId: 'professional-classic' }
+        };
+        expect(highlyInteractiveCoverPrompt(original, analysis)).to.equal(original);
+    });
+
+    it('preserves cover prompt metadata while applying course-level topic fidelity', () => {
+        const analysis = {
+            title: 'Safe equipment isolation',
+            summary: 'Operators identify energy sources before maintenance.',
+            templateBinding: { templateId: 'highly-interactive' },
+            slides: [{ title: 'Identify every energy source', keyPoints: ['Inspect before isolation'] }]
+        };
+        const anchored = anchorHighlyInteractiveCoverPrompt(
+            { prompt: 'A clean 3D hero scene.', model: 'gemini-test' },
+            analysis
+        );
+        expect(anchored.model).to.equal('gemini-test');
+        expect(anchored.prompt).to.include(analysis.title);
+        expect(anchored.prompt).to.include('Identify every energy source');
     });
 });
