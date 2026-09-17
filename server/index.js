@@ -84,23 +84,12 @@ const allowedCorsOrigins = new Set([
 ]);
 if (renderExternalOrigin) allowedCorsOrigins.add(renderExternalOrigin);
 
-function isPublicaSubdomainOrigin(origin) {
-    if (!origin) return false;
-    try {
-        const root = String(process.env.PUBLICA_ROOT_DOMAIN || 'lmsgen.in').trim().toLowerCase().replace(/^\.+|\.+$/g, '');
-        const url = new URL(origin);
-        return url.protocol === 'https:' && url.hostname.toLowerCase().endsWith(`.${root}`);
-    } catch (_) {
-        return false;
-    }
-}
-
 const corsOrigin = (origin, callback) => {
     // Native/mobile clients, health checks and server-to-server requests may not
     // include an Origin header. Browser origins must match the configured list,
     // a known deployed frontend, or the backend's own public Render origin.
     const normalizedRequestOrigin = normalizeOrigin(origin);
-    if (!origin || allowDevelopmentWildcard || allowedCorsOrigins.has(normalizedRequestOrigin) || isPublicaSubdomainOrigin(origin)) {
+    if (!origin || allowDevelopmentWildcard || allowedCorsOrigins.has(normalizedRequestOrigin)) {
         return callback(null, true);
     }
     logger.warn('cors_origin_rejected', {

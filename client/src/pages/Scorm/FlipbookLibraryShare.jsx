@@ -19,13 +19,11 @@ export default function FlipbookLibraryShare() {
   const [saved, setSaved] = useState(false);
   const [name, setName] = useState('');
   const [shareSlug, setShareSlug] = useState('');
-  const [subdomain, setSubdomain] = useState('');
 
   const acceptLibrary = useCallback((next) => {
     setLibrary(next);
     setName(next?.title || '');
     setShareSlug(next?.shareSlug || '');
-    setSubdomain(next?.customSubdomain || '');
   }, []);
 
   const load = useCallback(async () => {
@@ -58,8 +56,7 @@ export default function FlipbookLibraryShare() {
     try {
       const res = await axios.patch(apiUrl(`${API}/library`), {
         title: name,
-        shareSlug,
-        customSubdomain: subdomain
+        shareSlug
       }, { headers });
       acceptLibrary(res.data?.library || null);
       setSaved(true);
@@ -87,7 +84,6 @@ export default function FlipbookLibraryShare() {
       <div className="flip-library-settings">
         <label className="flip-library-setting"><span>Gallery name</span><input value={name} onChange={(event) => setName(event.target.value)} maxLength={180} placeholder="Your publication library" /></label>
         <label className="flip-library-setting"><span><Link2 size={12} /> Custom library link</span><div className="flip-library-input-affix"><em>/publica-library/</em><input value={shareSlug} onChange={(event) => setShareSlug(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} maxLength={64} placeholder={library.shareToken?.slice(0, 12)} /></div></label>
-        <label className={`flip-library-setting ${library.canUseCustomSubdomain ? '' : 'is-locked'}`}><span><Globe2 size={12} /> LMSGEN subdomain {!library.canUseCustomSubdomain && <b>Paid</b>}</span><div className="flip-library-input-affix"><input value={subdomain} onChange={(event) => setSubdomain(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} maxLength={63} placeholder="yourbrand" disabled={!library.canUseCustomSubdomain} /><em>.{library.customDomainRoot}</em></div></label>
         <button type="button" className="flip-library-save" onClick={saveBranding} disabled={saving}><Save size={14} /> {saving ? 'Saving…' : saved ? 'Saved' : 'Save settings'}</button>
       </div>
       <div className="flip-library-link-preview"><Globe2 size={13} /><span>{library.shareUrl}</span></div>

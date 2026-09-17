@@ -6,17 +6,12 @@ const router = express.Router();
 const User = require('../models/User');
 const Flipbook = require('../models/Flipbook');
 const FlipbookLibrary = require('../models/FlipbookLibrary');
-const { getQuota } = require('../services/FlipbookService');
 const {
     cleanShareSlug,
-    cleanSubdomain,
     shareIdentifier,
     publicationUrl,
     libraryUrl,
-    rootDomain,
-    hasPaidBranding,
     assertLibrarySlugAvailable,
-    assertSubdomainAvailable,
     publicIdentifierWhere
 } = require('../services/PublicaBrandingService');
 
@@ -30,11 +25,9 @@ async function ensureLibrarySchema() {
             const table = FlipbookLibrary.getTableName();
             const columns = await qi.describeTable(table);
             if (!columns.shareSlug) await qi.addColumn(table, 'shareSlug', { type: DataTypes.STRING(64), allowNull: true });
-            if (!columns.customSubdomain) await qi.addColumn(table, 'customSubdomain', { type: DataTypes.STRING(63), allowNull: true });
             const indexes = await qi.showIndex(table);
             const indexed = (field) => indexes.some((index) => index.unique && index.fields?.some((item) => item.attribute === field || item.name === field));
             if (!indexed('shareSlug')) await qi.addIndex(table, ['shareSlug'], { unique: true, name: 'flipbook_libraries_share_slug_unique' });
-            if (!indexed('customSubdomain')) await qi.addIndex(table, ['customSubdomain'], { unique: true, name: 'flipbook_libraries_subdomain_unique' });
         }).catch((err) => {
             schemaPromise = null;
             throw err;
@@ -52,8 +45,8 @@ function cleanText(value, maxLength) {
     return text ? text.slice(0, maxLength) : '';
 }
 
-function bookShareUrl(book, library, source = '') {
-    const base = publicationUrl(book, { customSubdomain: library?.customSubdomain });
+function bookShareUrl(book, source = '') {
+    const base = publicationUrl(book);
     return source ? `${base}?source=${encodeURIComponent(source)}` : base;
 }
 
@@ -99,8 +92,7 @@ async function publishedBooks(ownerUserId) {
     });
 }
 
-function libraryPayload(library, books = [], options = {}) {
-    const canUseCustomSubdomain = hasPaidBranding(options.quota);
+function libraryPayload(library, books = []) {
     return {
         id: library.id,
         title: publicTitleForLegacyLibrary(library.title),
@@ -109,9 +101,6 @@ function libraryPayload(library, books = [], options = {}) {
         shareToken: library.shareToken,
         shareSlug: library.shareSlug || '',
         shareIdentifier: shareIdentifier(library),
-        customSubdomain: library.customSubdomain || '',
-        customDomainRoot: rootDomain(),
-        canUseCustomSubdomain,
         shareUrl: library.shareEnabled ? libraryUrl(library) : null,
         bookCount: books.length,
         updatedAt: library.updatedAt,
@@ -122,7 +111,7 @@ function libraryPayload(library, books = [], options = {}) {
             pageCount: Number(book.pageCount || 0),
             viewCount: Number(book.viewCount || 0),
             publishedAt: book.publishedAt || null,
-            shareUrl: bookShareUrl(book, library, 'library'),
+            shareUrl: bookShareUrl(book, 'library'),
             coverPath: Number(book.pageCount || 0) ? `/api/scorm/flipbooks/public/${shareIdentifier(book)}/pages/0` : null
         }))
     };
@@ -159,8 +148,7 @@ router.get('/library', genericPlatformAuth, async (req, res, next) => {
     try {
         const library = await getOrCreateLibrary(req.flipbookLibraryUser);
         const books = await publishedBooks(req.flipbookLibraryUser.id);
-        const quota = await getQuota(req.flipbookLibraryUser);
-        res.json({ library: libraryPayload(library, books, { quota }) });
+        res.json({ library: libraryPayload(library, books) });
     } catch (err) {
         next(err);
     }
@@ -183,18 +171,9 @@ router.patch('/library', genericPlatformAuth, async (req, res, next) => {
             await assertLibrarySlugAvailable(nextSlug, library.id);
             library.shareSlug = nextSlug;
         }
-        const quota = await getQuota(req.flipbookLibraryUser);
-        if (Object.prototype.hasOwnProperty.call(req.body || {}, 'customSubdomain')) {
-            const nextSubdomain = cleanSubdomain(req.body.customSubdomain);
-            if (nextSubdomain && !hasPaidBranding(quota)) {
-                return res.status(403).json({ message: 'A paid Publica plan is required for a custom LMSGEN subdomain.', code: 'PUBLICA_PAID_SUBDOMAIN_REQUIRED' });
-            }
-            await assertSubdomainAvailable(nextSubdomain, library.id);
-            library.customSubdomain = nextSubdomain;
-        }
         await library.save();
         const books = await publishedBooks(req.flipbookLibraryUser.id);
-        res.json({ library: libraryPayload(library, books, { quota }) });
+        res.json({ library: libraryPayload(library, books) });
     } catch (err) {
         next(err);
     }
@@ -207,8 +186,7 @@ router.post('/library/regenerate-share-link', genericPlatformAuth, async (req, r
         library.shareSlug = null;
         await library.save();
         const books = await publishedBooks(req.flipbookLibraryUser.id);
-        const quota = await getQuota(req.flipbookLibraryUser);
-        res.json({ library: libraryPayload(library, books, { quota }) });
+        res.json({ library: libraryPayload(library, books) });
     } catch (err) {
         next(err);
     }
