@@ -408,7 +408,7 @@ function ensureHeadAssets(html, baseHref) {
   }
 
   if (!html.includes('/landing/css/atelora-home-refresh.css')) {
-    inserts.push('<link rel="stylesheet" href="/landing/css/atelora-home-refresh.css?v=20260917-mobile-hero" />');
+    inserts.push('<link rel="stylesheet" href="/landing/css/atelora-home-refresh.css?v=20260917-mobile-hero2" />');
   }
 
   if (!html.includes('/landing/css/lmsgen-advantage-assets.css')) {

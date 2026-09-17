@@ -279,13 +279,15 @@ body.atelora-home-refresh .global-footer-strip-c .animate-strip {
   }
 
   body.atelora-home-refresh .hp-hero-w {
-    align-items: flex-start !important;
+    align-items: center !important;
     row-gap: 1.35rem;
-    text-align: left;
+    text-align: center;
   }
 
   body.atelora-home-refresh .caption.text-color-lemon.font-weight-normal {
     max-width: 31rem;
+    margin-left: auto;
+    margin-right: auto;
     font-size: 1.1rem;
     letter-spacing: 0.085em;
     line-height: 1.35;
@@ -293,8 +295,8 @@ body.atelora-home-refresh .global-footer-strip-c .animate-strip {
 
   body.atelora-home-refresh .hp-hero-h1 {
     max-width: 38rem;
-    margin-left: 0;
-    margin-right: 0;
+    margin-left: auto;
+    margin-right: auto;
     font-size: clamp(3rem, 8.4vw, 3.55rem) !important;
     letter-spacing: -0.04em;
     line-height: 1.07 !important;
@@ -303,8 +305,8 @@ body.atelora-home-refresh .global-footer-strip-c .animate-strip {
 
   body.atelora-home-refresh .hp-hero-p {
     max-width: 37rem;
-    margin-left: 0;
-    margin-right: 0;
+    margin-left: auto;
+    margin-right: auto;
     font-size: 1.42rem;
     line-height: 1.52;
   }
