@@ -19,7 +19,8 @@ describe('PolicyAnalysisService OpenAI performance config', () => {
     it('defines the required course structure in the OpenAI JSON schema', () => {
         expect(SCORM_ANALYSIS_SCHEMA.required).to.deep.equal(['title', 'summary', 'slides', 'quiz']);
         expect(SCORM_ANALYSIS_SCHEMA.properties.slides.items.required).to.include.members([
-            'title', 'content', 'keyPoints', 'layout', 'visualTitle', 'interaction', 'imageQuery'
+            'title', 'learningPurpose', 'content', 'keyPoints', 'layout', 'visualTitle',
+            'visualDirection', 'interaction', 'imageQuery'
         ]);
         expect(SCORM_ANALYSIS_SCHEMA.properties.quiz.items.required).to.deep.equal([
             'question', 'options', 'correctAnswer', 'explanation'

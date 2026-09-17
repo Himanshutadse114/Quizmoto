@@ -151,6 +151,37 @@ const ACTION_PATTERN = /\b(verify|check|confirm|report|contact|stop|pause|do not
 const RATIONALE_PATTERN = /\b(because|which means|so that|works by|happens when|can lead to|may lead to|results? in|allows? an attacker|creates? a risk|reduces? the risk|prevents?|protects?|impact|consequence|exposure)\b/i;
 const SCENARIO_QUESTION_PATTERN = /\b(you|your|colleague|employee|manager|customer|vendor|receive|notice|message|email|call|request|asked|prompt|link|attachment|what should|best action|first action|next step)\b/i;
 
+const SEMANTIC_STOP_WORDS = new Set([
+    'a', 'an', 'and', 'are', 'as', 'at', 'be', 'because', 'before', 'by', 'can', 'do', 'does',
+    'for', 'from', 'has', 'have', 'if', 'in', 'into', 'is', 'it', 'its', 'may', 'of', 'on', 'or',
+    'that', 'the', 'their', 'then', 'this', 'through', 'to', 'use', 'when', 'where', 'which', 'while',
+    'with', 'you', 'your'
+]);
+
+const SEMANTIC_CANONICAL_TERMS = new Map([
+    ['checking', 'verify'], ['checked', 'verify'], ['check', 'verify'], ['confirm', 'verify'],
+    ['confirmed', 'verify'], ['confirmation', 'verify'], ['validate', 'verify'], ['validation', 'verify'],
+    ['reporting', 'report'], ['reported', 'report'], ['escalate', 'report'], ['escalation', 'report'],
+    ['notify', 'report'], ['notification', 'report'], ['email', 'message'], ['emails', 'message'],
+    ['messages', 'message'], ['requesting', 'request'], ['requests', 'request'], ['requested', 'request'],
+    ['suspicion', 'suspicious'], ['uncertain', 'suspicious'], ['unusual', 'suspicious'],
+    ['independently', 'trusted'], ['independent', 'trusted'], ['separate', 'trusted'], ['official', 'trusted'],
+    ['credentials', 'credential'], ['passwords', 'credential'], ['password', 'credential']
+]);
+
+const LEARNING_CONCEPT_PATTERNS = {
+    verify: /\b(verify|verification|confirm|confirmation|check|validate|trusted route|trusted channel|independent)\b/i,
+    report: /\b(report|reporting|escalat(?:e|ed|es|ing|ion)|notify|designated route|security process)\b/i,
+    pressure: /\b(urgency|urgent|pressure|rushed|immediate|secret|fear|authority|reward)\b/i,
+    identity: /\b(sender|identity|impersonat(?:e|ed|es|ing|ion)|lookalike|domain|address|familiar person|manager|supplier)\b/i,
+    unsafeContent: /\b(link|attachment|download|sign-in page|login page|open content|click)\b/i,
+    payment: /\b(payment|bank|money|transfer value|account details|supplier account)\b/i,
+    credentials: /\b(credential|password|sign in|login|sensitive information|confidential information)\b/i,
+    normalProcess: /\b(normal process|usual process|approval|control|process change|established work process)\b/i,
+    preserveEvidence: /\b(preserve|record what happened|message details|useful evidence|include useful)\b/i,
+    stopAction: /\b(stop|pause|do not proceed|avoid clicking|refusing to be rushed)\b/i
+};
+
 const DEFAULT_MODEL_CANDIDATES = ['gpt-5.6-luna'];
 
 const SCORM_ANALYSIS_SCHEMA = {
@@ -164,6 +195,7 @@ const SCORM_ANALYSIS_SCHEMA = {
                 type: 'object',
                 properties: {
                     title: { type: 'string' },
+                    learningPurpose: { type: 'string' },
                     content: { type: 'string' },
                     keyPoints: { type: 'array', items: { type: 'string' } },
                     layout: {
@@ -171,6 +203,7 @@ const SCORM_ANALYSIS_SCHEMA = {
                         enum: ['process', 'cards', 'timeline', 'comparison', 'hub', 'spotlight', 'matrix', 'cycle']
                     },
                     visualTitle: { type: 'string' },
+                    visualDirection: { type: 'string' },
                     interaction: {
                         type: 'object',
                         properties: {
@@ -184,7 +217,7 @@ const SCORM_ANALYSIS_SCHEMA = {
                     },
                     imageQuery: { type: 'string' }
                 },
-                required: ['title', 'content', 'keyPoints', 'layout', 'visualTitle', 'interaction', 'imageQuery']
+                required: ['title', 'learningPurpose', 'content', 'keyPoints', 'layout', 'visualTitle', 'visualDirection', 'interaction', 'imageQuery']
             }
         },
         quiz: {
@@ -276,6 +309,110 @@ function normalizedText(value) {
         .replace(/[^a-z0-9]+/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
+}
+
+function semanticTokens(value) {
+    return normalizedText(value)
+        .split(' ')
+        .map((token) => SEMANTIC_CANONICAL_TERMS.get(token) || token)
+        .map((token) => {
+            if (token.length > 5 && token.endsWith('ing')) return token.slice(0, -3);
+            if (token.length > 4 && token.endsWith('ed')) return token.slice(0, -2);
+            if (token.length > 4 && token.endsWith('s')) return token.slice(0, -1);
+            return token;
+        })
+        .filter((token) => token.length > 2 && !SEMANTIC_STOP_WORDS.has(token));
+}
+
+function semanticSimilarity(left, right) {
+    const a = new Set(semanticTokens(left));
+    const b = new Set(semanticTokens(right));
+    if (a.size < 3 || b.size < 3) return 0;
+    let intersection = 0;
+    for (const token of a) if (b.has(token)) intersection += 1;
+    const union = a.size + b.size - intersection;
+    const jaccard = union ? intersection / union : 0;
+    const containment = intersection / Math.min(a.size, b.size);
+    return Math.max(jaccard, containment * 0.92);
+}
+
+function learningConceptTags(value) {
+    const text = String(value || '');
+    return Object.entries(LEARNING_CONCEPT_PATTERNS)
+        .filter(([, pattern]) => pattern.test(text))
+        .map(([tag]) => tag);
+}
+
+function conceptSimilarity(left, right) {
+    const a = new Set(learningConceptTags(left));
+    const b = new Set(learningConceptTags(right));
+    if (a.size < 2 || b.size < 2) return 0;
+    let intersection = 0;
+    for (const tag of a) if (b.has(tag)) intersection += 1;
+    if (intersection < 2) return 0;
+    return intersection / Math.min(a.size, b.size);
+}
+
+function semanticDuplicationIssues(analysis) {
+    const slides = Array.isArray(analysis?.slides) ? analysis.slides : [];
+    const purposePairs = [];
+    const pointPairs = [];
+    const sentencePairs = [];
+
+    for (let leftIndex = 0; leftIndex < slides.length; leftIndex += 1) {
+        const left = slides[leftIndex] || {};
+        const leftPurpose = String(left.learningPurpose || '').trim();
+        const leftPoints = Array.isArray(left.keyPoints) ? left.keyPoints : [];
+        const leftTeachingFocus = [left.title, leftPurpose, ...leftPoints].filter(Boolean).join(' ');
+        const leftSentences = sentenceList(left.content).filter((sentence) => wordCount(sentence) >= 6);
+
+        for (let rightIndex = leftIndex + 1; rightIndex < slides.length; rightIndex += 1) {
+            const right = slides[rightIndex] || {};
+            const rightPurpose = String(right.learningPurpose || '').trim();
+            const rightPoints = Array.isArray(right.keyPoints) ? right.keyPoints : [];
+            const rightTeachingFocus = [right.title, rightPurpose, ...rightPoints].filter(Boolean).join(' ');
+            if (
+                (leftPurpose && rightPurpose && semanticSimilarity(leftPurpose, rightPurpose) >= 0.6) ||
+                conceptSimilarity(leftTeachingFocus, rightTeachingFocus) >= 0.74
+            ) {
+                purposePairs.push([leftIndex + 1, rightIndex + 1]);
+            }
+
+            for (const leftPoint of leftPoints) {
+                for (const rightPoint of rightPoints) {
+                    if (semanticSimilarity(leftPoint, rightPoint) >= 0.76) {
+                        pointPairs.push([leftIndex + 1, rightIndex + 1]);
+                    }
+                }
+            }
+
+            const rightSentences = sentenceList(right.content).filter((sentence) => wordCount(sentence) >= 6);
+            for (const leftSentence of leftSentences) {
+                for (const rightSentence of rightSentences) {
+                    if (semanticSimilarity(leftSentence, rightSentence) >= 0.86) {
+                        sentencePairs.push([leftIndex + 1, rightIndex + 1]);
+                    }
+                }
+            }
+        }
+    }
+
+    const uniquePairCount = (pairs) => new Set(pairs.map((pair) => pair.join(':'))).size;
+    const issues = [];
+    const repeatedPurposes = uniquePairCount(purposePairs);
+    const repeatedPoints = uniquePairCount(pointPairs);
+    const repeatedSentences = uniquePairCount(sentencePairs);
+    if (repeatedPurposes) issues.push(`${repeatedPurposes} screen pairs teach substantially the same primary lesson.`);
+    if (repeatedPoints) issues.push(`${repeatedPoints} screen pairs contain semantically repeated supporting points.`);
+    if (repeatedSentences) issues.push(`${repeatedSentences} screen pairs repeat substantially the same teaching sentence.`);
+    return issues;
+}
+
+function semanticDuplicationScore(analysis) {
+    return semanticDuplicationIssues(analysis).reduce((total, issue) => {
+        const count = Number(String(issue || '').match(/^\d+/)?.[0] || 0);
+        return total + count;
+    }, 0);
 }
 
 function sentenceList(value) {
@@ -422,6 +559,9 @@ function qualityIssues(analysis, detailLevel) {
     if (duplicatePoints > 0) issues.push(`${duplicatePoints} supporting points repeat wording already used elsewhere.`);
     if (duplicateTitles > 0) issues.push('At least one screen title is duplicated.');
     if (repeatedOpeners > 0) issues.push(`${repeatedOpeners} screens begin with nearly identical sentence openings, which makes the course feel machine-written.`);
+    if (slides.length && slides.every((slide) => String(slide?.learningPurpose || '').trim())) {
+        issues.push(...semanticDuplicationIssues(analysis));
+    }
 
     const quiz = Array.isArray(analysis?.quiz) ? analysis.quiz : [];
     if (quiz.length) {
@@ -556,8 +696,10 @@ function professionalInstruction(detailLevel, level) {
 
 BEFORE WRITING:
 - Silently build a coverage map of the source: core concepts, risks, mechanisms, warning signs, roles, required actions, decisions, procedures, exceptions and escalation/reporting routes.
+- Turn that map into an exclusive screen ledger. Assign every fact, example, decision and behaviour to one primary screen only.
 - Silently decide the best teaching sequence. Do not output the coverage map or planning notes.
 - Give each learning screen one primary teaching purpose. Never create several screens that merely restate the same definition.
+- A concept may be briefly referenced later for continuity, but it must not be retaught, paraphrased into another key point, or reused as filler.
 
 SOURCE GROUNDING — NON-NEGOTIABLE:
 - Treat the source as authoritative. Preserve names, responsibilities, required actions, ordered steps, thresholds, timeframes, exceptions and escalation routes when provided.
@@ -584,6 +726,7 @@ COURSE SUMMARY:
 
 LEARNING SCREENS — target ${level.slides} screens when the source supports them:
 - title: 4-10 words, specific and message-led. The title should communicate the lesson or decision, not a category label. Never use Introduction, Overview, Key Points, Summary, Conclusion or Best Practices.
+- learningPurpose: one precise sentence naming the new capability or understanding taught only on this screen. Every learningPurpose must be materially different across the course.
 - content: approximately ${level.screenWords} words. Each screen should normally contain ${level.minSentences}-9 complete teaching sentences.
 - Use this instructional micro-structure naturally, not as labelled headings:
   • establish the concept, rule or situation in context;
@@ -594,6 +737,7 @@ LEARNING SCREENS — target ${level.slides} screens when the source supports the
   • state exactly what the learner should notice, verify, decide, avoid, report or do.
 - Do not write a dictionary definition followed by generic advice. Teach the reasoning that helps the learner make a decision.
 - Do not use bullet lists inside content. The body must read as polished course prose.
+- Do not repeat the same warning, verification advice, reporting instruction, example or consequence across several screens. Teach it fully once, then refer to it briefly without re-explaining it.
 
 READABILITY — VERY IMPORTANT:
 - Write for a non-technical adult at about an 8th-grade reading level without sounding childish.
@@ -611,8 +755,10 @@ VISUAL KEY POINTS:
 - Each point should usually be 3-10 words and contain useful meaning on its own.
 - Key points should support the visual and add recall value. Do not simply copy a sentence from content.
 - Do not reuse the same key-point phrase on another screen.
+- Do not create synonymous duplicates such as "check independently", "confirm another way" and "verify through a trusted route" on different screens unless each phrase teaches a genuinely different condition or method.
 - Choose layout semantically: process=ordered steps; timeline=time/sequence; comparison=meaningful contrast; matrix=two-factor decisions; hub/cards=distinct categories; spotlight=one scenario or decisive lesson; cycle=recurring activity.
 - visualTitle: 2-5 words that communicate the centre of the visual.
+- visualDirection: 25-55 words describing a concrete, topic-specific scene, its main objects, environment, camera angle and composition. Keep the art style consistent, but make every screen use a different setting, object family and visual structure. Never default to repeated desk, laptop, phone, notebook, mug or plant arrangements.
 - interaction: choose one of step_explore|hotspot_explore|compare_reveal|focus_reveal and write a short purposeful prompt.
 - imageQuery: 2-3 specific keywords based on the actual screen meaning.
 
@@ -625,10 +771,12 @@ KNOWLEDGE CHECK:
 
 FINAL SELF-REVIEW BEFORE OUTPUT:
 - Check that every screen teaches something distinct and useful.
+- Compare every learningPurpose, key point and teaching sentence against every other screen. Rewrite semantic repetition, not only identical wording.
 - Check that every screen has enough substance, but no wall-of-text sentence chains.
 - Check that the course moves from understanding to recognition to application and action.
 - Check that source-specific details have not been lost.
 - Check that examples do not introduce unsupported policy facts.
+- Check that visualDirection changes the setting, composition and main object family from one generated image to the next.
 - Check that a learner could act differently after taking the course.
 
 OUTPUT:
@@ -636,7 +784,11 @@ Return only valid JSON with keys title, summary, slides and quiz. Do not output 
 }
 
 function refinementInstruction(analysis, issues, detailLevel, level) {
-    return `SENIOR INSTRUCTIONAL EDITOR PASS:\nThe draft below is not yet publication quality. Fix the entire JSON as a professional course editor.\n\nQUALITY FINDINGS:\n- ${issues.join('\n- ')}\n\nEDITORIAL REQUIREMENTS:\n- Keep all source-grounded facts that are already correct. Do not invent facts.\n- Strengthen weak screens using additional explanation, reasoning, source details, application and learner action — never padding.\n- Aim for ${level.screenWords} words per screen, written as ${level.minSentences}-9 short sentences.\n- Keep sentences normally 12-18 words and below ${level.hardSentenceWords} words. Split dense clauses. Avoid semicolons.\n- Make the sequence feel like one coherent ${detailLevel} course, not independent AI summaries.\n- Each screen must teach one distinct lesson and include an application/example plus a clear behaviour when appropriate.\n- Use ${level.minPoints}-5 concise visual key points. Remove repeated wording.\n- Keep the summary within ${level.summaryMinWords}-${level.summaryMaxWords} words.\n- Use ${level.quizMin}-${level.quizMax} strong knowledge checks with mostly workplace scenarios and explanations of at least ${level.quizExplanationMinWords} words.\n- Return only the improved JSON.\n\nDRAFT:\n${JSON.stringify(analysis)}`;
+    return `SENIOR INSTRUCTIONAL EDITOR PASS:\nThe draft below is not yet publication quality. Fix the entire JSON as a professional course editor.\n\nQUALITY FINDINGS:\n- ${issues.join('\n- ')}\n\nEDITORIAL REQUIREMENTS:\n- Keep all source-grounded facts that are already correct. Do not invent facts.\n- Strengthen weak screens using additional explanation, reasoning, source details, application and learner action — never padding.\n- Aim for ${level.screenWords} words per screen, written as ${level.minSentences}-9 short sentences.\n- Keep sentences normally 12-18 words and below ${level.hardSentenceWords} words. Split dense clauses. Avoid semicolons.\n- Make the sequence feel like one coherent ${detailLevel} course, not independent AI summaries.\n- Give every screen a unique learningPurpose and one distinct lesson, application/example and learner behaviour.\n- Use ${level.minPoints}-5 concise visual key points. Remove exact and semantic repetition across screens.\n- Give every screen a concrete visualDirection with a distinct setting, object family, camera angle and composition.\n- Keep the summary within ${level.summaryMinWords}-${level.summaryMaxWords} words.\n- Use ${level.quizMin}-${level.quizMax} strong knowledge checks with mostly workplace scenarios and explanations of at least ${level.quizExplanationMinWords} words.\n- Return only the improved JSON.\n\nDRAFT:\n${JSON.stringify(analysis)}`;
+}
+
+function uniquenessRefinementInstruction(analysis, issues, detailLevel, level) {
+    return `COURSE UNIQUENESS EDITOR PASS:\nThe draft repeats learning points or teaching language across screens. Rewrite it into a premium ${detailLevel} course with no redundant teaching.\n\nREPETITION FINDINGS:\n- ${issues.join('\n- ')}\n\nREQUIRED EDIT:\n- Preserve accurate source-grounded facts, the course title and the overall sequence.\n- Build an exclusive coverage ledger internally. Each fact, decision, example, consequence and behaviour must have one primary screen.\n- Give every screen a unique learningPurpose. If two screens have the same purpose, merge the useful reasoning into the stronger screen and use the other screen for a different source-supported lesson.\n- Remove semantic repetition, including paraphrases and synonyms. A repeated idea may receive one brief continuity reference, but it must not be retaught.\n- Rewrite keyPoints so every point contributes new recall value and no two screens carry the same advice in different words.\n- Keep each screen near ${level.screenWords} words and preserve practical examples, consequences and learner actions without padding.\n- Give every screen a 25-55 word visualDirection. Keep one premium art style, but vary setting, object family, camera angle and composition. Do not repeat generic desk, laptop, phone, notebook, mug or plant scenes.\n- Keep ${level.quizMin}-${level.quizMax} distinct knowledge checks. Avoid asking the same decision in different wording.\n- Return the complete improved JSON only.\n\nDRAFT:\n${JSON.stringify(analysis)}`;
 }
 
 async function analyzePolicy({
@@ -646,6 +798,7 @@ async function analyzePolicy({
     courseTemplateId = '',
     interactionLevel = ''
 }) {
+    const generationStartedAt = Date.now();
     const apiKey = getApiKey();
     if (!apiKey) {
         const e = new Error('OPENAI_API_KEY is not configured on the server.');
@@ -704,6 +857,7 @@ async function analyzePolicy({
 
         if (response.res.ok) {
             const candidate = openAiCandidate(response.raw);
+            let totalEstimatedCostUsd = candidate.estimatedCostUsd;
             let analysis;
             try {
                 analysis = parseAnalysis(candidate.text);
@@ -733,6 +887,7 @@ async function analyzePolicy({
                     const refined = await callOpenAI({ model, parts: [...baseParts, { text: refinementPrompt }] });
                     if (!refined.res.ok) break;
                     const refinedCandidate = openAiCandidate(refined.raw);
+                    totalEstimatedCostUsd += refinedCandidate.estimatedCostUsd;
                     const candidateAnalysis = parseAnalysis(refinedCandidate.text);
                     const candidateIssues = qualityIssues(candidateAnalysis, normalizedLevel);
                     const candidateWords = courseWordCount(candidateAnalysis);
@@ -757,10 +912,66 @@ async function analyzePolicy({
                 }
             }
 
+            const uniquenessIssues = semanticDuplicationIssues(analysis);
+            const uniquenessDeadlineMs = Math.min(85000, openAiRequestTimeoutMs() + 5000);
+            const uniquenessRemainingMs = uniquenessDeadlineMs - (Date.now() - generationStartedAt);
+            if (uniquenessIssues.length && uniquenessRemainingMs >= 8000) {
+                const beforeUniquenessCount = semanticDuplicationScore(analysis);
+                const uniquenessPrompt = uniquenessRefinementInstruction(
+                    analysis,
+                    uniquenessIssues,
+                    normalizedLevel,
+                    level
+                );
+                try {
+                    const refined = await callOpenAI({
+                        model,
+                        parts: [...baseParts, { text: uniquenessPrompt }],
+                        timeoutMs: Math.min(20000, uniquenessRemainingMs)
+                    });
+                    if (refined.res.ok) {
+                        const refinedCandidate = openAiCandidate(refined.raw);
+                        totalEstimatedCostUsd += refinedCandidate.estimatedCostUsd;
+                        const candidateAnalysis = parseAnalysis(refinedCandidate.text);
+                        const candidateUniquenessIssues = semanticDuplicationIssues(candidateAnalysis);
+                        const candidateUniquenessCount = semanticDuplicationScore(candidateAnalysis);
+                        const originalQualityCount = qualityIssues(analysis, normalizedLevel).length;
+                        const candidateQualityCount = qualityIssues(candidateAnalysis, normalizedLevel).length;
+                        const improved = candidateUniquenessCount < beforeUniquenessCount
+                            && candidateQualityCount <= originalQualityCount + 1;
+                        if (improved) {
+                            analysis = candidateAnalysis;
+                            issues = qualityIssues(analysis, normalizedLevel);
+                        }
+                        logger.info('scorm_openai_uniqueness_refined', {
+                            module: 'scorm',
+                            model,
+                            accepted: improved,
+                            issuesBefore: beforeUniquenessCount,
+                            issuesAfter: candidateUniquenessCount,
+                            issueTypesAfter: candidateUniquenessIssues.length
+                        });
+                    }
+                } catch (refineErr) {
+                    logger.warn('scorm_openai_uniqueness_refinement_failed', {
+                        module: 'scorm',
+                        model,
+                        error: refineErr.message
+                    });
+                }
+            } else if (uniquenessIssues.length) {
+                logger.warn('scorm_openai_uniqueness_refinement_skipped_for_sla', {
+                    module: 'scorm',
+                    model,
+                    issues: uniquenessIssues.length,
+                    remainingMs: Math.max(0, uniquenessRemainingMs)
+                });
+            }
+
             analysis.aiProvider = 'openai';
             analysis.aiModel = candidate.model || model;
             analysis.aiUsage = candidate.usage;
-            analysis.aiEstimatedCostUsd = candidate.estimatedCostUsd;
+            analysis.aiEstimatedCostUsd = totalEstimatedCostUsd;
             logger.info('scorm_openai_ok', {
                 module: 'scorm',
                 model,
@@ -810,10 +1021,17 @@ module.exports = {
     wordCount,
     sentenceList,
     averageSentenceWords,
+    semanticTokens,
+    semanticSimilarity,
+    learningConceptTags,
+    conceptSimilarity,
+    semanticDuplicationIssues,
+    semanticDuplicationScore,
     instructionalSignals,
     courseWordCount,
     professionalInstruction,
     refinementInstruction,
+    uniquenessRefinementInstruction,
     jsonParseCandidates,
     parseAnalysis,
     openAiCandidate,

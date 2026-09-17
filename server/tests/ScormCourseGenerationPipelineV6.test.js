@@ -2,7 +2,8 @@ const { expect } = require('chai');
 const JSZip = require('jszip');
 const {
     slideInstruction,
-    coverInstruction
+    coverInstruction,
+    visualDiversityInstruction
 } = require('../services/scorm/OpenAiSlideVisualPromptService');
 const {
     clearLegacyVisuals,
@@ -23,7 +24,8 @@ describe('SCORM course generation pipeline V6', () => {
             title: 'Applying Emotional Understanding at Work',
             content: 'Emotional understanding improves teamwork, leadership and client interactions. Recognising frustration helps you adjust your communication and respond with empathy.',
             keyPoints: ['Improve teamwork', 'Enhance client interactions', 'Respond with empathy'],
-            visualTitle: 'Workplace emotional understanding'
+            visualTitle: 'Workplace emotional understanding',
+            visualDirection: 'A branching communication pathway in a calm meeting environment, shown from an elevated angle.'
         }, { title: 'Understanding and Navigating Types of Emotions' }, 4);
 
         expect(instruction).to.include('Exact lesson topic: Applying Emotional Understanding at Work');
@@ -33,6 +35,9 @@ describe('SCORM course generation pipeline V6', () => {
         expect(instruction).to.include('unless the lesson specifically requires them');
         expect(instruction).to.include('Non-human scene');
         expect(instruction).to.include('No text, letters, numbers');
+        expect(instruction).to.include('branching communication pathway');
+        expect(instruction).to.include('COURSE-WIDE DIVERSITY');
+        expect(instruction).to.include('Never repeat a staged desk');
     });
 
     it('does not hard-code cyber imagery into a non-cyber course cover', () => {
@@ -44,6 +49,16 @@ describe('SCORM course generation pipeline V6', () => {
         expect(instruction).to.include('No unrelated locks, shields');
         expect(instruction).to.not.include('suspicious email ->');
         expect(instruction).to.not.include('credential safety ->');
+        expect(instruction).to.include('will not be reused for lesson images');
+    });
+
+    it('assigns different course-wide composition profiles to different lessons', () => {
+        const analysis = { slides: [{ title: 'First lesson' }, { title: 'Second lesson' }] };
+        const first = visualDiversityInstruction(analysis.slides[0], analysis, 0);
+        const second = visualDiversityInstruction(analysis.slides[1], analysis, 1);
+        expect(first).to.include('Causal chain composition');
+        expect(second).to.include('Split-scene contrast');
+        expect(first).to.not.equal(second);
     });
 
     it('clears all old generated visual paths before FLUX media is attached', () => {

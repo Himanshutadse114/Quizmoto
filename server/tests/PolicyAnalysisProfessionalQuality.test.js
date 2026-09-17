@@ -5,7 +5,9 @@ const {
     qualityIssues,
     averageSentenceWords,
     instructionalSignals,
-    professionalInstruction
+    professionalInstruction,
+    semanticDuplicationIssues,
+    uniquenessRefinementInstruction
 } = require('../services/scorm/PolicyAnalysisService');
 
 describe('SCORM professional course authoring quality', () => {
@@ -58,5 +60,43 @@ describe('SCORM professional course authoring quality', () => {
         expect(prompt).to.include('12-18 words per sentence');
         expect(prompt).to.include('realistic workplace');
         expect(prompt).to.include('learner could act differently');
+        expect(prompt).to.include('exclusive screen ledger');
+        expect(prompt).to.include('learningPurpose');
+        expect(prompt).to.include('visualDirection');
+        expect(prompt).to.include('semantic repetition');
+    });
+
+    it('detects paraphrased learning points across different screens', () => {
+        const analysis = {
+            slides: [
+                {
+                    title: 'Verify unusual payment requests',
+                    learningPurpose: 'Confirm unusual payment requests through an independent trusted channel.',
+                    content: 'A changed payment request needs independent confirmation before any records are updated.',
+                    keyPoints: ['Confirm payment changes independently']
+                },
+                {
+                    title: 'Check a changed supplier account',
+                    learningPurpose: 'Check changed supplier payment requests using a separate official contact route.',
+                    content: 'Use known supplier details to validate a changed account before making a payment.',
+                    keyPoints: ['Verify payment changes through a trusted route']
+                }
+            ]
+        };
+        const issues = semanticDuplicationIssues(analysis).join(' ');
+        expect(issues).to.include('primary lesson');
+        expect(issues).to.include('supporting points');
+    });
+
+    it('gives the corrective pass an explicit premium no-repetition contract', () => {
+        const prompt = uniquenessRefinementInstruction(
+            { title: 'Course', slides: [], quiz: [] },
+            ['Two screens repeat the same lesson.'],
+            'detailed',
+            DETAIL_CONFIG.detailed
+        );
+        expect(prompt).to.include('exclusive coverage ledger');
+        expect(prompt).to.include('semantic repetition');
+        expect(prompt).to.include('Do not repeat generic desk');
     });
 });
