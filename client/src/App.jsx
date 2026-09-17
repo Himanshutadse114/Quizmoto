@@ -32,6 +32,7 @@ const PlayerDashboard = lazy(() => import('./pages/Player/PlayerDashboard'));
 const ScormAuth = lazy(() => import('./pages/Scorm/ScormAuth'));
 const MicrosoftDiscovery = lazy(() => import('./pages/Scorm/MicrosoftDiscovery'));
 const ScormPlatformShell = lazy(() => import('./pages/Scorm/ScormPlatformShell'));
+const ScormAccountSettings = lazy(() => import('./pages/Scorm/AccountSettings'));
 const ScormHome = lazy(() => import('./pages/Scorm/Home'));
 const PendingScormHome = lazy(() => import('./pages/Scorm/PendingHome'));
 const ScormFeatureLocked = lazy(() => import('./pages/Scorm/FeatureLocked'));
@@ -246,6 +247,7 @@ function AppRoutes() {
           <Route path="team" element={<WorkspaceAdminGate><ScormTeamAccess /></WorkspaceAdminGate>} />
           <Route path="learner-access" element={<WorkspaceAdminGate><ScormLearnerAccessSettings /></WorkspaceAdminGate>} />
           <Route path="access" element={<AccessAdminGate />} />
+          <Route path="settings" element={<ScormAccountSettings />} />
         </Route>
 
         <Route path="/scorm/live-quiz" element={<LegacyQuizRedirect kind="dashboard" />} />

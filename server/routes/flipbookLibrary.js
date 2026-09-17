@@ -6,6 +6,7 @@ const router = express.Router();
 const User = require('../models/User');
 const Flipbook = require('../models/Flipbook');
 const FlipbookLibrary = require('../models/FlipbookLibrary');
+const { assertActiveAccount } = require('../services/AccountProfileService');
 const {
     cleanShareSlug,
     shareIdentifier,
@@ -64,7 +65,7 @@ async function getOrCreateLibrary(user) {
         defaults: {
             ownerUserId: user.id,
             ownerEmail: String(user.email || '').trim().toLowerCase() || null,
-            title: `${user.username || 'My'} Publica Library`.slice(0, 180),
+            title: `${user.displayName || user.username || 'My'} Publica Library`.slice(0, 180),
             description: null,
             shareToken: shareToken(),
             shareEnabled: true
@@ -122,12 +123,11 @@ async function genericPlatformAuth(req, res, next) {
     if (!token) return res.status(401).json({ message: 'No token, authorization denied' });
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        const user = await User.findByPk(decoded.userId);
-        if (!user) return res.status(401).json({ message: 'Account no longer exists.' });
+        const user = assertActiveAccount(await User.findByPk(decoded.userId));
         req.flipbookLibraryUser = user;
         next();
-    } catch (_) {
-        return res.status(401).json({ message: 'Token is not valid' });
+    } catch (err) {
+        return res.status(err.status || 401).json({ message: err.message || 'Token is not valid', code: err.code });
     }
 }
 

@@ -227,6 +227,7 @@ const startServer = async () => {
         }
 
         app.use('/api/auth', require('./routes/auth'));
+        app.use('/api/account', require('./routes/account'));
         app.use('/api/player', require('./routes/playerAuth'));
         app.use('/api/quizzes', require('./routes/quizzes'));
         app.use('/api/sessions', require('./routes/sessions'));
@@ -266,6 +267,7 @@ const startServer = async () => {
             const { ScormCourse } = require('./models/scorm');
             const { getAccessRole } = require('./services/scorm/ScormAccessService');
             const { resolveWorkspaceContext } = require('./services/scorm/ScormWorkspaceService');
+            const { assertActiveAccount } = require('./services/AccountProfileService');
             const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
             io.on('connection', (socket) => {
                 socket.on('join_scorm_course', async (payload) => {
@@ -275,8 +277,7 @@ const startServer = async () => {
                         if (!courseId || !token) return;
                         const decoded = jwt.verify(token, JWT_SECRET);
                         if (!decoded?.userId || decoded.scope !== 'scorm') return;
-                        const user = await User.findByPk(decoded.userId);
-                        if (!user) return;
+                        const user = assertActiveAccount(await User.findByPk(decoded.userId));
                         const role = await getAccessRole(user.email);
                         if (!role) return;
                         const workspaceContext = await resolveWorkspaceContext({ user, role });

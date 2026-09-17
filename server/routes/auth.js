@@ -15,6 +15,7 @@ const {
     pendingApprovalPayload
 } = require('../services/scorm/ScormAccessService');
 const { verifyOtpToken } = require('../services/mail/MailOtpService');
+const { accountStatus, assertActiveAccount } = require('../services/AccountProfileService');
 
 const { OAuth2Client } = require('google-auth-library');
 
@@ -47,7 +48,8 @@ function issueToken(user, scope = 'quizmoto', extraClaims = {}) {
 function publicUser(user, token, extras = {}) {
     return {
         token,
-        username: user.username,
+        username: user.displayName || user.username,
+        displayName: user.displayName || user.username,
         avatar: user.avatar || null,
         email: user.email || null,
         ...extras
@@ -117,7 +119,7 @@ function pendingResponse(user, captured = true) {
         ...pendingApprovalPayload({ captured }),
         token,
         email: user?.email || null,
-        username: user?.username || null,
+        username: user?.displayName || user?.username || null,
         role: 'pending',
         isSuperAdmin: false,
         product: 'scorm-ai',
@@ -190,9 +192,20 @@ async function ensureGoogleUser(payload) {
     if (!user) user = await User.findOne({ where: { email } });
 
     if (user) {
+        if (accountStatus(user) === 'blocked') {
+            const err = new Error('This account has been blocked. Contact the LMSGEN administrator.');
+            err.status = 403;
+            err.code = 'PLATFORM_ACCOUNT_BLOCKED';
+            throw err;
+        }
+        if (accountStatus(user) === 'removed') {
+            user.accountStatus = 'active';
+            user.removedAt = null;
+        }
         user.googleId = googleId;
         if (picture) user.avatar = picture;
         if (!user.username) user.username = name || email.split('@')[0];
+        if (!user.displayName) user.displayName = name || user.username;
         await user.save();
         return user;
     }
@@ -203,7 +216,8 @@ async function ensureGoogleUser(payload) {
         username: usernameTaken ? `${baseUsername}-${Math.floor(1000 + Math.random() * 9000)}` : baseUsername,
         email,
         googleId,
-        avatar: picture
+        avatar: picture,
+        displayName: name || baseUsername
     });
 }
 
@@ -257,7 +271,19 @@ router.post('/scorm/register', async (req, res) => {
         }
 
         let user = await User.findOne({ where: { email } });
-        if (user?.password) {
+        const wasRemoved = Boolean(user && accountStatus(user) === 'removed');
+        if (user && accountStatus(user) === 'blocked') {
+            return res.status(403).json({
+                message: 'This account has been blocked and cannot be registered again. Contact the LMSGEN administrator.',
+                code: 'PLATFORM_ACCOUNT_BLOCKED'
+            });
+        }
+        if (wasRemoved) {
+            user.accountStatus = 'active';
+            user.removedAt = null;
+            user.blockedAt = null;
+        }
+        if (user?.password && !wasRemoved) {
             await captureAccessRequest({
                 userId: user.id,
                 email,
@@ -284,11 +310,12 @@ router.post('/scorm/register', async (req, res) => {
         if (user) {
             user.password = password;
             if (!user.username) user.username = username;
+            user.displayName = username;
             await user.save();
         } else {
             const usernameTaken = await User.findOne({ where: { username } });
             const safeUsername = usernameTaken ? `${username}-${Math.floor(1000 + Math.random() * 9000)}` : username;
-            user = await User.create({ username: safeUsername, email, password });
+            user = await User.create({ username: safeUsername, displayName: username, email, password });
         }
 
         await captureAccessRequest({
@@ -326,6 +353,8 @@ router.post('/scorm/login', async (req, res) => {
         if (!user || !user.password || !(await user.comparePassword(password))) {
             return res.status(401).json({ message: 'Invalid email/username or password.' });
         }
+
+        assertActiveAccount(user);
 
         const role = await getAccessRole(user.email);
         if (!role) {
@@ -367,6 +396,8 @@ router.post('/scorm/reset-password', async (req, res) => {
                 code: 'SCORM_ACCOUNT_NOT_FOUND'
             });
         }
+
+        assertActiveAccount(user);
 
         user.password = newPassword;
         await user.save();

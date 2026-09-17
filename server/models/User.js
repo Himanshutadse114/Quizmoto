@@ -22,8 +22,25 @@ const User = sequelize.define('User', {
         allowNull: true,
         unique: true
     },
+    displayName: {
+        type: DataTypes.STRING(160),
+        allowNull: true
+    },
     avatar: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    accountStatus: {
+        type: DataTypes.STRING(24),
+        allowNull: false,
+        defaultValue: 'active'
+    },
+    removedAt: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    blockedAt: {
+        type: DataTypes.DATE,
         allowNull: true
     }
 }, {

@@ -9,6 +9,8 @@ const SessionRecoveryService = require('./SessionRecoveryService');
 const HostLeaseService = require('./HostLeaseService');
 const { withQuizPlayerCapacity } = require('./QuizmotoCapacityService');
 const { validateSocketPayload } = require('../validators/socketSchemas');
+const User = require('../models/User');
+const { accountStatus } = require('./AccountProfileService');
 
 const logDiag = (event, pin, state, details = {}) => {
   console.log(JSON.stringify({
@@ -206,6 +208,10 @@ module.exports = (io) => {
     const hostId = SessionTokenService.verifyHostToken(token);
     if (!hostId || Number(session.hostId) !== Number(hostId)) {
       return { ok: false, code: 'UNAUTHORIZED' };
+    }
+    const hostAccount = await User.findByPk(hostId, { attributes: ['id', 'accountStatus'] });
+    if (!hostAccount || accountStatus(hostAccount) !== 'active') {
+      return { ok: false, code: 'ACCOUNT_INACTIVE' };
     }
     if (socket.data && socket.data.role && socket.data.role !== 'host') {
       return { ok: false, code: 'UNAUTHORIZED' };

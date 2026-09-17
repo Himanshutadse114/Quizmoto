@@ -4,7 +4,9 @@ const auth = require('../middleware');
 const {
     listPlatformUsers,
     assignPlatformUser,
-    unassignPlatformUser
+    unassignPlatformUser,
+    updatePlatformUserProfile,
+    setPlatformUserStatus
 } = require('../../services/scorm/ScormPlatformUserService');
 
 function requireSuperAdmin(req, res, next) {
@@ -63,6 +65,40 @@ router.delete('/:userId/tenant', async (req, res) => {
         console.error('[scorm-platform-users] unassign failed', err);
         res.status(err.status || 500).json({
             message: err.message || 'Could not unassign this platform user.',
+            code: err.code
+        });
+    }
+});
+
+router.patch('/:userId/profile', async (req, res) => {
+    try {
+        const result = await updatePlatformUserProfile({
+            userId: req.params.userId,
+            displayName: req.body?.displayName,
+            avatar: req.body?.avatar,
+            publicaLibraryName: req.body?.publicaLibraryName
+        });
+        res.json({ ok: true, ...result });
+    } catch (err) {
+        console.error('[scorm-platform-users] profile update failed', err);
+        res.status(err.status || 500).json({
+            message: err.message || 'Could not update this platform user.',
+            code: err.code
+        });
+    }
+});
+
+router.post('/:userId/status', async (req, res) => {
+    try {
+        const result = await setPlatformUserStatus({
+            userId: req.params.userId,
+            action: req.body?.action
+        });
+        res.json({ ok: true, ...result });
+    } catch (err) {
+        console.error('[scorm-platform-users] status update failed', err);
+        res.status(err.status || 500).json({
+            message: err.message || 'Could not update this account status.',
             code: err.code
         });
     }

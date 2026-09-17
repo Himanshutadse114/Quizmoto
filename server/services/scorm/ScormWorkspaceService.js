@@ -31,7 +31,7 @@ function normalizeTeamRole(value) {
 }
 
 function defaultWorkspaceName(user) {
-    const label = String(user?.username || '').trim() || normalizeEmail(user?.email).split('@')[0] || 'LMSGEN';
+    const label = String(user?.displayName || user?.username || '').trim() || normalizeEmail(user?.email).split('@')[0] || 'LMSGEN';
     return `${label} tenant`.slice(0, 160);
 }
 
@@ -99,7 +99,7 @@ async function ensureOwnerWorkspace(user) {
             workspaceId: workspace.id,
             userId: user.id,
             email,
-            displayName: user.username || null,
+            displayName: user.displayName || user.username || null,
             role: 'admin',
             status: 'active',
             invitedByUserId: user.id,
@@ -124,8 +124,8 @@ async function ensureOwnerWorkspace(user) {
             member.joinedAt = new Date();
             changed = true;
         }
-        if (!member.displayName && user.username) {
-            member.displayName = user.username;
+        if (!member.displayName && (user.displayName || user.username)) {
+            member.displayName = user.displayName || user.username;
             changed = true;
         }
         if (changed) await member.save();
@@ -189,8 +189,8 @@ async function resolveWorkspaceContext({ user, role }) {
         member.joinedAt = new Date();
         changed = true;
     }
-    if (!member.displayName && user.username) {
-        member.displayName = user.username;
+    if (!member.displayName && (user.displayName || user.username)) {
+        member.displayName = user.displayName || user.username;
         changed = true;
     }
     if (changed) await member.save();

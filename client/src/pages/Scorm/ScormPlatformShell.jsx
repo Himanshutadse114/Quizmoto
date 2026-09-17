@@ -23,7 +23,8 @@ import {
   Moon,
   UserCheck,
   Users,
-  Megaphone
+  Megaphone,
+  Settings
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import ScormGenerationNotifier from '../../components/ScormGenerationNotifier';
@@ -122,6 +123,14 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess, role, quizmotoOnly 
       }
     ];
   }
+
+  groups = [
+    ...groups,
+    {
+      label: 'Account',
+      items: [{ to: '/scorm/settings', label: 'Settings', icon: Settings }]
+    }
+  ];
 
   return (
     <nav className="scorm-nav flex-1 px-3 py-5 overflow-y-auto">
@@ -247,12 +256,14 @@ export default function ScormPlatformShell() {
         <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} quizmotoOnly={quizmotoOnly} />
         <div className="scorm-sidebar-footer p-3 border-t space-y-2.5">
           {(scormAccess || quizmotoOnly) && (
-            <div className="scorm-sidebar-profile rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
-              <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]">
-                {quizmotoOnly ? <BookOpenCheck size={13} /> : analyticsOnly ? <BarChart3 size={13} /> : <ShieldCheck size={13} />} {roleName}
+            <Link to="/scorm/settings" className="scorm-sidebar-profile rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321] block">
+              <div className="flex items-center gap-2">
+                {user?.avatar ? <img src={user.avatar} alt="" className="w-8 h-8 rounded-lg object-cover" /> : <div className="w-8 h-8 rounded-lg grid place-items-center bg-[#4FC9BF]/15 text-[#4FC9BF] text-[10px] font-bold">{String(user?.username || 'U').trim().slice(0, 1).toUpperCase()}</div>}
+                <div className="min-w-0"><div className="text-[10px] font-semibold text-[#93c5fd] truncate">{user?.username || roleName}</div><div className="mt-0.5 text-[8px] text-[#8295ae] truncate">{roleName}</div></div>
+                <Settings size={12} className="ml-auto text-[#8295ae]" />
               </div>
               <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae] break-all">{user?.email}</div>
-            </div>
+            </Link>
           )}
 
           {quizmotoOnly ? (

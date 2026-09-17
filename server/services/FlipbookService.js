@@ -245,13 +245,13 @@ async function listAdminUsers(search = '') {
     const query = String(search || '').trim().toLowerCase();
     const filtered = users.filter((user) => {
         if (!query) return true;
-        return [user.email, user.username].some((value) => String(value || '').toLowerCase().includes(query));
+        return [user.email, user.displayName, user.username].some((value) => String(value || '').toLowerCase().includes(query));
     });
     return Promise.all(filtered.map(async (user) => {
         const scope = await resolveFlipbookScope(user);
         return {
             id: user.id,
-            username: user.username || null,
+            username: user.displayName || user.username || null,
             email: user.email || null,
             isSuperAdmin: await isSuperAdmin(user),
             tenantManaged: scope.mode === 'tenant',

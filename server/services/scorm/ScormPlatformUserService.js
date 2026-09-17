@@ -1,6 +1,7 @@
 const User = require('../../models/User');
 const ScormAccessGrant = require('../../models/ScormAccessGrant');
 const ScormAccessRequest = require('../../models/ScormAccessRequest');
+const FlipbookLibrary = require('../../models/FlipbookLibrary');
 const {
     ScormWorkspace,
     ScormWorkspaceMember
@@ -13,6 +14,13 @@ const {
     removeGrantByEmail
 } = require('./ScormAccessService');
 const { getEntitlement } = require('./ScormEntitlementService');
+const {
+    accountStatus,
+    cleanAvatar,
+    cleanDisplayName,
+    cleanLibraryTitle,
+    getOrCreateLibrary
+} = require('../AccountProfileService');
 
 const ASSIGNABLE_ROLES = new Set(['admin', 'co_admin', 'analytics_viewer']);
 
@@ -46,12 +54,13 @@ function isSyntheticTenantHost(user) {
 }
 
 async function listPlatformUsers({ search = '', scope = 'all' } = {}) {
-    const [users, memberships, workspaces, grants, requests] = await Promise.all([
+    const [users, memberships, workspaces, grants, requests, libraries] = await Promise.all([
         User.findAll({ order: [['createdAt', 'DESC']], limit: 2500 }),
         ScormWorkspaceMember.findAll(),
         ScormWorkspace.findAll(),
         ScormAccessGrant.findAll(),
-        ScormAccessRequest.findAll()
+        ScormAccessRequest.findAll(),
+        FlipbookLibrary.findAll()
     ]);
 
     const membershipByUserId = new Map();
@@ -63,6 +72,7 @@ async function listPlatformUsers({ search = '', scope = 'all' } = {}) {
     const workspaceById = new Map(workspaces.map((workspace) => [String(workspace.id), workspace]));
     const grantByEmail = new Map(grants.map((grant) => [normalizeEmail(grant.email), grant]));
     const requestByEmail = new Map(requests.map((request) => [normalizeEmail(request.email), request]));
+    const libraryByUserId = new Map(libraries.map((library) => [String(library.ownerUserId), library]));
     const query = String(search || '').trim().toLowerCase();
     const wantedScope = ['assigned', 'unassigned'].includes(String(scope || '').toLowerCase())
         ? String(scope).toLowerCase()
@@ -79,9 +89,12 @@ async function listPlatformUsers({ search = '', scope = 'all' } = {}) {
             const protectedUser = isSuperAdminEmail(email) || normalizeScormRole(grant?.role) === 'super_admin';
             return {
                 id: user.id,
-                username: user.username || null,
+                username: user.displayName || user.username || null,
+                legacyUsername: user.username || null,
                 email: user.email || null,
                 avatar: user.avatar || null,
+                accountStatus: accountStatus(user),
+                publicaLibraryName: libraryByUserId.get(String(user.id))?.title || `${user.displayName || user.username || 'My'} Publica Library`,
                 authMethod: authMethodForUser(user),
                 googleConnected: Boolean(user.googleId),
                 passwordEnabled: Boolean(user.password),
@@ -132,6 +145,7 @@ async function assignPlatformUser({
 }) {
     const user = await User.findByPk(userId);
     if (!user || isSyntheticTenantHost(user)) throw fail('Platform user not found.', 'SCORM_PLATFORM_USER_NOT_FOUND', 404);
+    if (accountStatus(user) !== 'active') throw fail('Restore this account before assigning it to a tenant.', 'SCORM_PLATFORM_USER_INACTIVE', 409);
     const email = normalizeEmail(user.email);
     if (!email) throw fail('This account does not have an email address and cannot be assigned.', 'SCORM_PLATFORM_USER_EMAIL_REQUIRED', 400);
     if (isSuperAdminEmail(email)) throw fail('The platform Super Admin cannot be assigned to a customer tenant.', 'SCORM_PLATFORM_USER_PROTECTED', 400);
@@ -166,7 +180,7 @@ async function assignPlatformUser({
             workspaceId: workspace.id,
             userId: user.id,
             email,
-            displayName: String(user.username || '').trim().slice(0, 160) || null,
+            displayName: String(user.displayName || user.username || '').trim().slice(0, 160) || null,
             role: assignedRole,
             status: 'active',
             invitedByUserId: actorUserId || null,
@@ -175,7 +189,7 @@ async function assignPlatformUser({
         });
     } else {
         membership.userId = user.id;
-        membership.displayName = membership.displayName || String(user.username || '').trim().slice(0, 160) || null;
+        membership.displayName = membership.displayName || String(user.displayName || user.username || '').trim().slice(0, 160) || null;
         membership.role = assignedRole;
         membership.status = 'active';
         membership.joinedAt = membership.joinedAt || new Date();
@@ -205,7 +219,7 @@ async function assignPlatformUser({
     return {
         user: {
             id: user.id,
-            username: user.username || null,
+            username: user.displayName || user.username || null,
             email: user.email || null,
             authMethod: authMethodForUser(user)
         },
@@ -234,8 +248,73 @@ async function unassignPlatformUser({ userId }) {
     return { removed: true, userId: user.id, workspaceId };
 }
 
+async function updatePlatformUserProfile({ userId, displayName, avatar, publicaLibraryName }) {
+    const user = await User.findByPk(userId);
+    if (!user || isSyntheticTenantHost(user)) throw fail('Platform user not found.', 'SCORM_PLATFORM_USER_NOT_FOUND', 404);
+    const library = await getOrCreateLibrary(user);
+
+    if (displayName !== undefined) user.displayName = cleanDisplayName(displayName);
+    if (avatar !== undefined) user.avatar = cleanAvatar(avatar);
+    if (publicaLibraryName !== undefined) library.title = cleanLibraryTitle(publicaLibraryName);
+    await user.save();
+    await library.save();
+
+    const membership = await ScormWorkspaceMember.findOne({ where: { email: normalizeEmail(user.email) } });
+    if (membership && user.displayName) {
+        membership.displayName = user.displayName;
+        await membership.save();
+    }
+
+    return {
+        user: {
+            id: user.id,
+            username: user.displayName || user.username,
+            email: user.email || null,
+            avatar: user.avatar || null,
+            accountStatus: accountStatus(user),
+            publicaLibraryName: library.title
+        }
+    };
+}
+
+async function setPlatformUserStatus({ userId, action }) {
+    const user = await User.findByPk(userId);
+    if (!user || isSyntheticTenantHost(user)) throw fail('Platform user not found.', 'SCORM_PLATFORM_USER_NOT_FOUND', 404);
+    const email = normalizeEmail(user.email);
+    if (isSuperAdminEmail(email)) throw fail('The protected Super Admin account cannot be removed or blocked.', 'SCORM_PLATFORM_USER_PROTECTED', 400);
+
+    const normalizedAction = String(action || '').trim().toLowerCase();
+    if (!['remove', 'block', 'restore'].includes(normalizedAction)) {
+        throw fail('Choose remove, block, or restore.', 'SCORM_PLATFORM_USER_ACTION_INVALID');
+    }
+
+    if (normalizedAction === 'restore') {
+        user.accountStatus = 'active';
+        user.removedAt = null;
+        user.blockedAt = null;
+        await user.save();
+        return { userId: user.id, accountStatus: 'active' };
+    }
+
+    const now = new Date();
+    user.accountStatus = normalizedAction === 'block' ? 'blocked' : 'removed';
+    user.removedAt = now;
+    user.blockedAt = normalizedAction === 'block' ? now : null;
+    await user.save();
+
+    await Promise.all([
+        ScormWorkspaceMember.destroy({ where: { email } }),
+        removeGrantByEmail(email).catch(() => null),
+        ScormAccessRequest.update({ status: 'denied' }, { where: { email } }).catch(() => null)
+    ]);
+
+    return { userId: user.id, accountStatus: user.accountStatus };
+}
+
 module.exports = {
     listPlatformUsers,
     assignPlatformUser,
-    unassignPlatformUser
+    unassignPlatformUser,
+    updatePlatformUserProfile,
+    setPlatformUserStatus
 };

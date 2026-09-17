@@ -139,10 +139,12 @@ async function verifyStaffIdentity({ workspaceId, provider, credential }) {
         const usernameTaken = await User.findOne({ where: { username: baseUsername } });
         user = await User.create({
             username: usernameTaken ? `${baseUsername}-${Math.floor(1000 + Math.random() * 9000)}` : baseUsername,
+            displayName: baseUsername,
             email
         });
     } else if (!user.username && identity.name) {
         user.username = String(identity.name).trim().slice(0, 80);
+        user.displayName = user.displayName || user.username;
         await user.save();
     }
 

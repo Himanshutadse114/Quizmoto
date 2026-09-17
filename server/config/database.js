@@ -117,6 +117,11 @@ const connectDB = async () => {
             await addColumnIfMissing(`ALTER TABLE "Users" ADD COLUMN "googleId" VARCHAR(255) NULL`);
             await addColumnIfMissing(`ALTER TABLE "Users" ADD COLUMN "email" VARCHAR(255) NULL`);
             await addColumnIfMissing(`ALTER TABLE "Users" ADD COLUMN "avatar" VARCHAR(255) NULL`);
+            await addColumnIfMissing(`ALTER TABLE "Users" ADD COLUMN "displayName" VARCHAR(160) NULL`);
+            await addColumnIfMissing(`ALTER TABLE "Users" ADD COLUMN "accountStatus" VARCHAR(24) NOT NULL DEFAULT 'active'`);
+            await addColumnIfMissing(`ALTER TABLE "Users" ADD COLUMN "removedAt" TIMESTAMP WITH TIME ZONE NULL`);
+            await addColumnIfMissing(`ALTER TABLE "Users" ADD COLUMN "blockedAt" TIMESTAMP WITH TIME ZONE NULL`);
+            await addColumnIfMissing(`ALTER TABLE "Users" ALTER COLUMN "avatar" TYPE TEXT`);
             await addColumnIfMissing(`ALTER TABLE "Users" ALTER COLUMN "password" DROP NOT NULL`);
             await addColumnIfMissing(`ALTER TABLE "PlayerProfiles" ADD COLUMN "googleId" VARCHAR(255) NULL`);
             await addColumnIfMissing(`ALTER TABLE "PlayerProfiles" ALTER COLUMN "password" DROP NOT NULL`);
@@ -143,6 +148,11 @@ const connectDB = async () => {
             await addColumnIfMissing('ALTER TABLE `Users` ADD COLUMN `googleId` VARCHAR(255) NULL');
             await addColumnIfMissing('ALTER TABLE `Users` ADD COLUMN `email` VARCHAR(255) NULL');
             await addColumnIfMissing('ALTER TABLE `Users` ADD COLUMN `avatar` VARCHAR(255) NULL');
+            await addColumnIfMissing('ALTER TABLE `Users` ADD COLUMN `displayName` VARCHAR(160) NULL');
+            await addColumnIfMissing("ALTER TABLE `Users` ADD COLUMN `accountStatus` VARCHAR(24) NOT NULL DEFAULT 'active'");
+            await addColumnIfMissing('ALTER TABLE `Users` ADD COLUMN `removedAt` DATETIME NULL');
+            await addColumnIfMissing('ALTER TABLE `Users` ADD COLUMN `blockedAt` DATETIME NULL');
+            await addColumnIfMissing('ALTER TABLE `Users` MODIFY `avatar` LONGTEXT NULL');
             await addColumnIfMissing('ALTER TABLE `Users` MODIFY `password` VARCHAR(255) NULL');
             await addColumnIfMissing('ALTER TABLE `PlayerProfiles` ADD COLUMN `googleId` VARCHAR(255) NULL');
             await addColumnIfMissing('ALTER TABLE `PlayerProfiles` MODIFY `password` VARCHAR(255) NULL');
@@ -159,6 +169,14 @@ const connectDB = async () => {
             await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `recoverySchemaVersion` INTEGER NOT NULL DEFAULT 1');
             await addColumnIfMissing('ALTER TABLE `GameSessions` ADD COLUMN `lastErrorCode` VARCHAR(64) NULL');
             await addColumnIfMissing('ALTER TABLE `PlayerAnswers` ADD COLUMN `roundId` VARCHAR(36) NULL');
+        } else {
+            const sqliteTables = await sequelize.getQueryInterface().showAllTables();
+            if (sqliteTables.some((table) => String(table).toLowerCase() === 'users')) {
+                await addColumnIfMissing('ALTER TABLE `Users` ADD COLUMN `displayName` VARCHAR(160) NULL');
+                await addColumnIfMissing("ALTER TABLE `Users` ADD COLUMN `accountStatus` VARCHAR(24) NOT NULL DEFAULT 'active'");
+                await addColumnIfMissing('ALTER TABLE `Users` ADD COLUMN `removedAt` DATETIME NULL');
+                await addColumnIfMissing('ALTER TABLE `Users` ADD COLUMN `blockedAt` DATETIME NULL');
+            }
         }
 
         // Standard sync (without alter) to ensure basic table existence including Phase 2 + SCORM models.

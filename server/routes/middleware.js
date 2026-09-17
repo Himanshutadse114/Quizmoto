@@ -8,6 +8,7 @@ const { enforceRequestEntitlement } = require('../services/scorm/ScormEntitlemen
 const { resolveWorkspaceContext } = require('../services/scorm/ScormWorkspaceService');
 const { getStaffPolicyForEmail } = require('../services/scorm/ScormStaffAuthService');
 const { assertScormRouteAllowed } = require('../services/scorm/ScormRbacService');
+const { assertActiveAccount } = require('../services/AccountProfileService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -96,6 +97,10 @@ module.exports = async (req, res, next) => {
         req.authenticatedUserId = decoded.userId;
         req.authScope = decoded.scope || null;
         req.authMethod = decoded.authMethod || null;
+
+        const authenticatedUser = await User.findByPk(decoded.userId);
+        if (authenticatedUser) assertActiveAccount(authenticatedUser);
+        req.authenticatedUser = authenticatedUser || null;
 
         if (isScormAdminRequest && process.env.NODE_ENV !== 'test') {
             if (decoded.scope !== 'scorm') {

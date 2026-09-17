@@ -5,9 +5,13 @@ import {
   CheckCircle2,
   KeyRound,
   Link2,
+  Pencil,
   RefreshCw,
+  RotateCcw,
   Search,
   ShieldCheck,
+  ShieldX,
+  Trash2,
   Unlink,
   UserRound,
   UsersRound
@@ -35,6 +39,28 @@ function UserAvatar({ user }) {
   return <div className="w-10 h-10 rounded-xl grid place-items-center border bg-[#4FC9BF]/8 text-[#4FC9BF] text-xs font-bold">{initials(user)}</div>;
 }
 
+function resizeAvatar(file) {
+  return new Promise((resolve, reject) => {
+    if (!/^image\/(?:png|jpeg|webp)$/i.test(file?.type || '')) return reject(new Error('Choose a PNG, JPEG, or WebP image.'));
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read that image.'));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error('Could not open that image.'));
+      image.onload = () => {
+        const side = Math.min(image.naturalWidth, image.naturalHeight);
+        const size = Math.min(512, side);
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        canvas.getContext('2d').drawImage(image, (image.naturalWidth - side) / 2, (image.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/webp', 0.84));
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function PlatformUsersAdmin() {
   const { token } = useAuth();
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
@@ -46,6 +72,8 @@ export default function PlatformUsersAdmin() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [editingUser, setEditingUser] = useState(null);
+  const [profileUser, setProfileUser] = useState(null);
+  const [profileForm, setProfileForm] = useState({ displayName: '', avatar: null, publicaLibraryName: '' });
   const [assignment, setAssignment] = useState({ workspaceId: '', role: 'co_admin' });
   const [tenantDraft, setTenantDraft] = useState({ open: false, name: '' });
   const [saving, setSaving] = useState(false);
@@ -79,6 +107,61 @@ export default function PlatformUsersAdmin() {
     });
     setTenantDraft({ open: false, name: '' });
     setError(''); setMessage('');
+  };
+
+  const openProfile = (user) => {
+    setProfileUser(user);
+    setProfileForm({
+      displayName: user.username || '',
+      avatar: user.avatar || null,
+      publicaLibraryName: user.publicaLibraryName || `${user.username || 'My'} Publica Library`
+    });
+    setEditingUser(null);
+    setError(''); setMessage('');
+  };
+
+  const uploadAvatar = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      const avatar = await resizeAvatar(file);
+      setProfileForm((current) => ({ ...current, avatar }));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const saveProfile = async () => {
+    if (!profileUser) return;
+    setSaving(true); setError(''); setMessage('');
+    try {
+      await axios.patch(apiUrl(`/api/scorm/platform-users/${profileUser.id}/profile`), profileForm, { headers });
+      setMessage(`${profileForm.displayName}'s profile and Publica library name were updated.`);
+      setProfileUser(null);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not update this user.');
+    } finally { setSaving(false); }
+  };
+
+  const changeAccountStatus = async (user, action) => {
+    const copy = action === 'remove'
+      ? `Remove ${user.email}'s access? Their content and analytics will be preserved. They can register again later.`
+      : action === 'block'
+        ? `Remove and block ${user.email}? Their content is preserved, but this identity cannot register or sign in until restored.`
+        : `Restore ${user.email}? This re-enables sign-in, but tenant access must be assigned separately.`;
+    if (!window.confirm(copy)) return;
+    setSaving(true); setError(''); setMessage('');
+    try {
+      await axios.post(apiUrl(`/api/scorm/platform-users/${user.id}/status`), { action }, { headers });
+      setMessage(action === 'restore' ? `${user.email} was restored.` : action === 'block' ? `${user.email} was removed and blocked.` : `${user.email} was removed.`);
+      if (editingUser?.id === user.id) setEditingUser(null);
+      if (profileUser?.id === user.id) setProfileUser(null);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not update this account.');
+    } finally { setSaving(false); }
   };
 
   const assign = async () => {
@@ -177,7 +260,7 @@ export default function PlatformUsersAdmin() {
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <UserAvatar user={user} />
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2"><div className="text-sm font-semibold truncate">{user.username || 'Platform user'}</div>{user.protected && <span className="rounded-full border px-2 py-0.5 text-[8px] uppercase font-semibold text-[#4FC9BF]">Protected</span>}</div>
+                      <div className="flex flex-wrap items-center gap-2"><div className="text-sm font-semibold truncate">{user.username || 'Platform user'}</div>{user.protected && <span className="rounded-full border px-2 py-0.5 text-[8px] uppercase font-semibold text-[#4FC9BF]">Protected</span>}{user.accountStatus !== 'active' && <span className={`rounded-full border px-2 py-0.5 text-[8px] uppercase font-semibold ${user.accountStatus === 'blocked' ? 'text-rose-500 border-rose-500/30' : 'text-amber-500 border-amber-500/30'}`}>{user.accountStatus}</span>}</div>
                       <div className="mt-0.5 text-[10px] opacity-55 break-all">{user.email || 'No email address'}</div>
                     </div>
                   </div>
@@ -189,10 +272,30 @@ export default function PlatformUsersAdmin() {
                   </div>
 
                   <div className="flex flex-wrap gap-2 xl:justify-end">
-                    {!user.protected && <button type="button" onClick={() => openManage(user)} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2"><Link2 size={13} /> {user.tenant ? 'Manage assignment' : 'Assign user'}</button>}
-                    {user.tenant && user.tenant.role !== 'admin' && !user.protected && <button type="button" onClick={() => unassign(user)} disabled={saving} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2 disabled:opacity-50"><Unlink size={13} /> Unassign</button>}
+                    <button type="button" onClick={() => openProfile(user)} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2"><Pencil size={13} /> Edit profile</button>
+                    {user.accountStatus === 'active' && !user.protected && <button type="button" onClick={() => openManage(user)} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2"><Link2 size={13} /> {user.tenant ? 'Manage assignment' : 'Assign user'}</button>}
+                    {user.accountStatus === 'active' && user.tenant && user.tenant.role !== 'admin' && !user.protected && <button type="button" onClick={() => unassign(user)} disabled={saving} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2 disabled:opacity-50"><Unlink size={13} /> Unassign</button>}
+                    {user.accountStatus === 'active' && !user.protected && <button type="button" onClick={() => changeAccountStatus(user, 'remove')} disabled={saving} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2 disabled:opacity-50"><Trash2 size={13} /> Remove</button>}
+                    {user.accountStatus === 'active' && !user.protected && <button type="button" onClick={() => changeAccountStatus(user, 'block')} disabled={saving} className="min-h-9 px-3 rounded-lg border border-rose-500/30 text-rose-500 text-[10px] font-semibold inline-flex items-center gap-2 disabled:opacity-50"><ShieldX size={13} /> Remove & block</button>}
+                    {user.accountStatus !== 'active' && !user.protected && <button type="button" onClick={() => changeAccountStatus(user, 'restore')} disabled={saving} className="scorm-button-primary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2 disabled:opacity-50"><RotateCcw size={13} /> Restore</button>}
                   </div>
                 </div>
+
+                {profileUser?.id === user.id && <div className="mt-4 rounded-xl border border-[#4FC9BF]/20 bg-[#4FC9BF]/5 p-4">
+                  <div className="flex items-center gap-2"><Pencil size={15} className="text-[#4FC9BF]" /><div className="text-xs font-semibold">Edit account appearance</div></div>
+                  <div className="mt-3 grid md:grid-cols-[110px_1fr] gap-4">
+                    <div>
+                      <div className="w-20 h-20 rounded-2xl border overflow-hidden grid place-items-center bg-[#4FC9BF]/10 text-[#4FC9BF] font-semibold">{profileForm.avatar ? <img src={profileForm.avatar} alt="" className="w-full h-full object-cover" /> : initials({ username: profileForm.displayName })}</div>
+                      <label className="mt-2 scorm-button-secondary min-h-8 px-2.5 text-[9px] font-semibold inline-flex items-center cursor-pointer">Upload avatar<input type="file" accept="image/png,image/jpeg,image/webp" onChange={uploadAvatar} className="sr-only" /></label>
+                      {profileForm.avatar && <button type="button" onClick={() => setProfileForm((current) => ({ ...current, avatar: null }))} className="mt-1 block text-[9px] opacity-60 hover:opacity-100">Remove avatar</button>}
+                    </div>
+                    <div className="grid lg:grid-cols-2 gap-3">
+                      <label className="block"><span className="text-[9px] uppercase opacity-50">Display name</span><input value={profileForm.displayName} onChange={(event) => setProfileForm((current) => ({ ...current, displayName: event.target.value }))} minLength={2} maxLength={80} className="mt-1.5 w-full rounded-lg border bg-transparent px-3 h-10 text-xs outline-none focus:border-[#4FC9BF]" /></label>
+                      <label className="block"><span className="text-[9px] uppercase opacity-50">Publica library name</span><input value={profileForm.publicaLibraryName} onChange={(event) => setProfileForm((current) => ({ ...current, publicaLibraryName: event.target.value }))} minLength={2} maxLength={180} className="mt-1.5 w-full rounded-lg border bg-transparent px-3 h-10 text-xs outline-none focus:border-[#4FC9BF]" /></label>
+                      <div className="lg:col-span-2 flex gap-2"><button type="button" onClick={saveProfile} disabled={saving || profileForm.displayName.trim().length < 2 || profileForm.publicaLibraryName.trim().length < 2} className="scorm-button-primary h-10 px-4 text-[10px] font-semibold disabled:opacity-50">{saving ? 'Saving…' : 'Save profile'}</button><button type="button" onClick={() => setProfileUser(null)} className="scorm-button-secondary h-10 px-3 text-[10px] font-semibold">Cancel</button></div>
+                    </div>
+                  </div>
+                </div>}
 
                 {editingUser?.id === user.id && <div className="mt-4 rounded-xl border border-[#4FC9BF]/20 bg-[#4FC9BF]/5 p-4">
                   <div className="flex items-center gap-2"><UsersRound size={15} className="text-[#4FC9BF]" /><div className="text-xs font-semibold">Manage {user.email}</div></div>

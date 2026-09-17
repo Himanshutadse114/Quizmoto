@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 const User = require('../models/User');
+const { assertActiveAccount } = require('../services/AccountProfileService');
 const Flipbook = require('../models/Flipbook');
 const { publicIdentifierWhere } = require('../services/PublicaBrandingService');
 const {
@@ -316,12 +317,11 @@ async function genericPlatformAuth(req, res, next) {
     if (!token) return res.status(401).json({ message: 'No token, authorization denied' });
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        const user = await User.findByPk(decoded.userId);
-        if (!user) return res.status(401).json({ message: 'Account no longer exists.' });
+        const user = assertActiveAccount(await User.findByPk(decoded.userId));
         req.flipbookAnalyticsUser = user;
         next();
-    } catch (_) {
-        return res.status(401).json({ message: 'Token is not valid' });
+    } catch (err) {
+        return res.status(err.status || 401).json({ message: err.message || 'Token is not valid', code: err.code });
     }
 }
 

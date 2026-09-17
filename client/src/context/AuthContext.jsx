@@ -233,6 +233,15 @@ export const AuthProvider = ({ children }) => {
         persistSession(null, null);
     };
 
+    const updateCurrentUser = (updates = {}) => {
+        setUser((current) => {
+            if (!current) return current;
+            const next = normalizeStoredUser({ ...current, ...updates });
+            localStorage.setItem('user', JSON.stringify(next));
+            return next;
+        });
+    };
+
     return (
         <AuthContext.Provider value={{
             user,
@@ -252,6 +261,7 @@ export const AuthProvider = ({ children }) => {
             leaveScorm,
             platformAccess,
             scormAccess,
+            updateCurrentUser,
             logout,
             loading
         }}>
