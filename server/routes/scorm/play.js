@@ -60,20 +60,11 @@ router.get('/:regId', async (req, res) => {
         const learnerName = reg.learnerName || 'Learner';
         const courseTitle = reg.course.title || 'SCORM Player';
         const presentationLight = pkg.source === 'presentation_import';
-        let authoredTemplateId = '';
-        if (pkg.source === 'ai_author' && pkg.analysisJson) {
-            try {
-                const authoredAnalysis = JSON.parse(pkg.analysisJson);
-                authoredTemplateId = String(authoredAnalysis?.templateBinding?.templateId || '').trim();
-            } catch (_) {
-                authoredTemplateId = '';
-            }
-        }
-        const highlyInteractive = authoredTemplateId === 'highly-interactive';
-        // Highly Interactive owns its complete course chrome and autosaves through
-        // the parent SCORM API. Keep the floating Save/Exit utility exclusively
-        // out of this template so it cannot cover the authored progress header.
-        const showUtilityBar = !highlyInteractive;
+        // Authored course formats own their complete course chrome and autosave
+        // through the parent SCORM API. The floating Save/Exit utility belongs
+        // only to exact PDF presentation courses, where it is part of the
+        // dedicated presentation player experience.
+        const showUtilityBar = presentationLight;
         const shellTheme = presentationLight
             ? {
                 background: '#eef8f6',

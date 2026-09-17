@@ -67,6 +67,18 @@ body[data-qmx-course-template="scenario-learning"] .slide.qmx-scenario-two-colum
 body[data-qmx-course-template="scenario-learning"] .slide.qmx-scenario-two-column .qmx-scenario-option{min-height:76px!important;padding:11px 13px!important}
 body[data-qmx-course-template="scenario-learning"] .slide.qmx-scenario-two-column .qmx-scenario-panel{padding:14px 16px 15px 18px!important}
 
+@media(min-width:1181px) and (min-height:680px){
+body[data-qmx-course-template="scenario-learning"] .slide.qmx-scenario-two-column .qmx-learning-shell.no-image{width:min(1360px,100%)!important;padding:0 10px!important;box-sizing:border-box!important}
+body[data-qmx-course-template="scenario-learning"] .slide.qmx-scenario-two-column .qmx-learning-shell.no-image .qmx-copy{width:min(1280px,100%)!important;min-height:510px!important;grid-template-columns:minmax(0,.92fr) minmax(460px,1.08fr)!important;column-gap:clamp(42px,4.5vw,72px)!important;row-gap:14px!important;padding:clamp(28px,3vw,46px)!important;border:1px solid var(--paper-3,#d8e5e2)!important;border-radius:28px!important;background:linear-gradient(145deg,var(--surface,#fff) 0%,var(--paper,#f3f8f7) 100%)!important;box-shadow:0 24px 64px rgba(15,52,48,.09)!important;box-sizing:border-box!important}
+body[data-qmx-course-template="scenario-learning"] .slide.qmx-scenario-two-column .qmx-learning-shell.no-image .qmx-copy>h2{max-width:600px!important;font-size:clamp(42px,3.35vw,58px)!important}
+body[data-qmx-course-template="scenario-learning"] .slide.qmx-scenario-two-column .qmx-learning-shell.no-image .qmx-copy>p{max-width:600px!important;font-size:16.5px!important;line-height:1.58!important}
+body[data-qmx-course-template="scenario-learning"] .slide.qmx-scenario-two-column .qmx-scenario-option{min-height:94px!important;padding:15px 17px!important;border-radius:18px!important;box-shadow:0 10px 24px rgba(15,52,48,.045)!important}
+body[data-qmx-course-template="scenario-learning"] .slide.qmx-scenario-two-column .qmx-scenario-option .qmx-scenario-label{font-size:15px!important;line-height:1.32!important}
+body[data-qmx-course-template="scenario-learning"] .slide.qmx-scenario-two-column .qmx-scenario-panel{min-height:92px!important;padding:18px 20px 19px 22px!important;border-radius:18px!important}
+body[data-qmx-course-template="scenario-learning"] .slide.qmx-scenario-two-column .qmx-scenario-panel p{font-size:14.5px!important;line-height:1.5!important}
+body[data-qmx-course-template="scenario-learning"] .slide.qmx-scenario-two-column .qmx-scenario-instruction{margin-top:3px!important;font-size:12px!important}
+}
+
 @media(max-width:1180px){
 body[data-qmx-course-template] .qmx-course-sidebar,
 body[data-qmx-course-template] .qmx-scenario-sidebar{flex-basis:198px!important;width:198px!important;min-width:198px!important}

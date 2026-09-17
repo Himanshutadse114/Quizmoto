@@ -84,10 +84,10 @@ describe('SCORM player local-first persistence', () => {
         expect(source).to.include("frameBackground: '#eef8f6'");
     });
 
-    it('keeps the floating utility bar out of Highly Interactive courses only', () => {
-        expect(source).to.include("authoredTemplateId = String(authoredAnalysis?.templateBinding?.templateId || '').trim()");
-        expect(source).to.include("const highlyInteractive = authoredTemplateId === 'highly-interactive'");
-        expect(source).to.include('const showUtilityBar = !highlyInteractive');
+    it('keeps the floating utility bar exclusive to exact PDF presentation courses', () => {
+        expect(source).to.include("const presentationLight = pkg.source === 'presentation_import'");
+        expect(source).to.include('const showUtilityBar = presentationLight');
+        expect(source).to.not.include('const showUtilityBar = !highlyInteractive');
         expect(source).to.include('${showUtilityBar ? `<div id="bar">');
         expect(source).to.include('if(saveButton)saveButton.onclick');
         expect(source).to.include('if(exitButton)exitButton.onclick');

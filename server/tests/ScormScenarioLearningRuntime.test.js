@@ -9,6 +9,7 @@ const {
     script
 } = require('../services/scorm/ScormScenarioLearningRuntime');
 const { templateInstruction } = require('../services/scorm/VertexPolicyAnalysisService');
+const { style: courseChromeStyle } = require('../services/scorm/ScormCourseChromeRuntime');
 
 function course(slides) {
     return {
@@ -88,5 +89,15 @@ describe('Scenario Learning template runtime', () => {
         expect(scenario).to.include('Do not force every screen into a decision');
         expect(scenario).to.include('keyPoints must be 3-7 word response choices');
         expect(templateInstruction('highly-interactive', 'high')).to.equal('');
+    });
+
+    it('uses a substantial desktop activity canvas while preserving the responsive breakpoint', () => {
+        const css = courseChromeStyle();
+        expect(css).to.include('@media(min-width:1181px) and (min-height:680px)');
+        expect(css).to.include('width:min(1280px,100%)!important;min-height:510px!important');
+        expect(css).to.include('border-radius:28px!important');
+        expect(css).to.include('min-height:94px!important');
+        expect(css).to.include('min-height:92px!important');
+        expect(css).to.include('@media(max-width:1180px)');
     });
 });
