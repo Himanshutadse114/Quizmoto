@@ -51,6 +51,17 @@ describe('Highly Interactive learner sidebar runtime', () => {
         expect(css).to.include('grid-template-rows:repeat(2,minmax(112px,1fr))!important');
     });
 
+    it('keeps interaction geometry stable while cards and detail panels change state', () => {
+        const css = style();
+        expect(css).to.include('height:112px;min-height:112px');
+        expect(css).to.include('contain:layout paint');
+        expect(css).to.include('transform:none!important');
+        expect(css).to.include('height:124px;min-height:124px;max-height:124px');
+        expect(css).to.include('max-height:76px');
+        expect(css).to.include('overflow:auto');
+        expect(css).to.include('.qmx-reveal-back{overflow-y:auto');
+    });
+
     it('uses teaser-first cards so full learning detail is only on the revealed face', () => {
         const css = style();
         const js = script();

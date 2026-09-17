@@ -117,6 +117,15 @@ describe('SCORM template fixed-stage rendering', () => {
         expect(() => new Function(js)).not.to.throw();
     });
 
+    it('does not rescale the Highly Interactive stage after an activity click', () => {
+        const js = runtimeScript('highly-interactive', slideDescriptors(planExperienceForTemplate(
+            analysisWithLongSlides(),
+            createTemplateBinding('highly-interactive', { interactionLevel: 'high' })
+        )));
+        expect(js).to.include("if(TEMPLATE!=='highly-interactive'){document.addEventListener('click'");
+        expect(js).to.include("mutation.target.classList.contains('slide')");
+    });
+
     it('keeps generated images clean instead of inventing arbitrary numbered hotspots', () => {
         const js = runtimeScript('highly-interactive', [{
             section: 1,

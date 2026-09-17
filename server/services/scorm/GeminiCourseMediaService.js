@@ -92,6 +92,36 @@ function sentenceExcerpt(value, maxChars) {
     return `${text.slice(0, maxChars).replace(/\s+\S*$/, '').replace(/[,:;\-]+$/, '').trim()}…`;
 }
 
+function isHighlyInteractiveAnalysis(analysis) {
+    return clean(analysis?.templateBinding?.templateId).toLowerCase() === 'highly-interactive';
+}
+
+function highlyInteractiveTopicPrompt(prompt, slide, analysis) {
+    const base = clean(prompt);
+    if (!base || !isHighlyInteractiveAnalysis(analysis)) return base;
+    const title = clean(slide?.title) || 'this exact lesson';
+    const keyIdeas = (Array.isArray(slide?.keyPoints) ? slide.keyPoints : [])
+        .map((point) => sentenceExcerpt(point, 130))
+        .filter(Boolean)
+        .slice(0, 3);
+    const lesson = sentenceExcerpt(slide?.content || slide?.introText || slide?.revealText, 240);
+    const anchors = keyIdeas.length ? keyIdeas.join('; ') : lesson;
+    return clean([
+        base,
+        `TOPIC FIDELITY: the scene must unmistakably communicate the lesson concept ${title}.`,
+        anchors ? `Use concrete objects, setting and visual relationships grounded in these lesson details: ${anchors}.` : '',
+        'Do not substitute a generic decorative, abstract or unrelated illustration.'
+    ].filter(Boolean).join(' '));
+}
+
+function anchorHighlyInteractivePrompt(promptInfo, slide, analysis) {
+    if (!promptInfo || typeof promptInfo !== 'object') return promptInfo;
+    return {
+        ...promptInfo,
+        prompt: highlyInteractiveTopicPrompt(promptInfo.prompt, slide, analysis)
+    };
+}
+
 function warningSummary(warnings, max = 3) {
     const unique = [];
     for (const warning of warnings || []) {
@@ -372,7 +402,11 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
                 stage: `Planning slide ${slideIndex + 1} visual`,
                 detail: `Preparing visual ${jobPosition + 1} of ${selectedIndexes.length}.`
             });
-            const promptInfo = await generateSlideVisualPrompt(slides[slideIndex], { ...analysis, slides }, slideIndex);
+            const promptInfo = anchorHighlyInteractivePrompt(
+                await generateSlideVisualPrompt(slides[slideIndex], { ...analysis, slides }, slideIndex),
+                slides[slideIndex],
+                analysis
+            );
             promptModel = promptModel || promptInfo.model;
             const file = await generateImage(
                 promptInfo.prompt,
@@ -426,7 +460,11 @@ async function prepareGeminiCourseMedia(rawAnalysis, opts = {}) {
             checkCancelled();
             if (slideImagesGenerated >= requiredSlideImages) break;
             try {
-                const promptInfo = await generateSlideVisualPrompt(slides[slideIndex], { ...analysis, slides }, slideIndex);
+                const promptInfo = anchorHighlyInteractivePrompt(
+                    await generateSlideVisualPrompt(slides[slideIndex], { ...analysis, slides }, slideIndex),
+                    slides[slideIndex],
+                    analysis
+                );
                 const file = await generateImage(
                     promptInfo.prompt,
                     `assets/media/slide-${String(slideIndex + 1).padStart(3, '0')}`,
@@ -547,6 +585,9 @@ module.exports = {
     runWithConcurrency,
     imageSlideIndexes,
     sentenceExcerpt,
+    isHighlyInteractiveAnalysis,
+    highlyInteractiveTopicPrompt,
+    anchorHighlyInteractivePrompt,
     coverImagePrompt,
     slideImagePrompt,
     recoverySlideImagePrompt,

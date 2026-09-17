@@ -60,6 +60,20 @@ router.get('/:regId', async (req, res) => {
         const learnerName = reg.learnerName || 'Learner';
         const courseTitle = reg.course.title || 'SCORM Player';
         const presentationLight = pkg.source === 'presentation_import';
+        let authoredTemplateId = '';
+        if (pkg.source === 'ai_author' && pkg.analysisJson) {
+            try {
+                const authoredAnalysis = JSON.parse(pkg.analysisJson);
+                authoredTemplateId = String(authoredAnalysis?.templateBinding?.templateId || '').trim();
+            } catch (_) {
+                authoredTemplateId = '';
+            }
+        }
+        const highlyInteractive = authoredTemplateId === 'highly-interactive';
+        // Highly Interactive owns its complete course chrome and autosaves through
+        // the parent SCORM API. Keep the floating Save/Exit utility exclusively
+        // out of this template so it cannot cover the authored progress header.
+        const showUtilityBar = !highlyInteractive;
         const shellTheme = presentationLight
             ? {
                 background: '#eef8f6',
@@ -249,10 +263,10 @@ window.addEventListener("DOMContentLoaded",loadSavedState);
 </script>
 </head>
 <body>
-<div id="bar">
+${showUtilityBar ? `<div id="bar">
   <span id="status">SCORM - preparing learner state</span>
   <div><button type="button" id="btnSave">Save</button><button type="button" id="btnExit">Exit</button></div>
-</div>
+</div>` : '<span id="status">SCORM - preparing learner state</span>'}
 <iframe id="frame" name="scorm_content" title="SCORM Content" src="about:blank" allow="autoplay; fullscreen" allowfullscreen></iframe>
 <script>
 (function(){
@@ -275,8 +289,9 @@ function closePlayer(){
   try{window.close();}catch(e){}
   setTimeout(function(){try{window.location.href="about:blank";}catch(e2){}},200);
 }
-document.getElementById("btnSave").onclick=function(){try{window.__quizmotoPersistState("manual-save");}catch(e){try{window.API.LMSCommit("");}catch(e2){}}};
-document.getElementById("btnExit").onclick=function(){persistAndFinish();closePlayer();};
+var saveButton=document.getElementById("btnSave"),exitButton=document.getElementById("btnExit");
+if(saveButton)saveButton.onclick=function(){try{window.__quizmotoPersistState("manual-save");}catch(e){try{window.API.LMSCommit("");}catch(e2){}}};
+if(exitButton)exitButton.onclick=function(){persistAndFinish();closePlayer();};
 })();
 </script>
 </body>
