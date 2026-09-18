@@ -38,4 +38,11 @@ describe('SCORM admin preview frame policy', () => {
             else process.env.CORS_ORIGIN = previous;
         }
     });
+
+    it('selects the requested slide directly instead of clicking through learner gates', () => {
+        const source = require('fs').readFileSync(require.resolve('../routes/scorm/slidePreview'), 'utf8');
+        expect(source).to.include('showTarget(courseDoc,slides,target)');
+        expect(source).to.not.include('button.click();');
+        expect(source).to.include("part.textContent='Part '+(target+1)+' of '+slides.length");
+    });
 });

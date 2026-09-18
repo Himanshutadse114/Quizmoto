@@ -172,6 +172,17 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070d}
     if(loading)loading.classList.add('hidden');
   }
 
+  function showTarget(doc,slides,target){
+    slides.forEach(function(slide,index){slide.classList.toggle('active',index===target);});
+    var part=doc.getElementById('slide-number');
+    if(part)part.textContent='Part '+(target+1)+' of '+slides.length;
+    var percent=Math.round(target/Math.max(1,slides.length-1)*100);
+    var progress=doc.getElementById('progress-fill');
+    if(progress)progress.style.width=percent+'%';
+    var progressText=doc.getElementById('progress-text');
+    if(progressText)progressText.textContent=percent+'%';
+  }
+
   function tune(){
     attempts+=1;
     if(attempts>360){
@@ -193,14 +204,13 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070d}
 
       if(current===target){finish(courseDoc);return;}
 
-      var button=courseDoc.getElementById(current<target?'next-btn':'prev-btn');
-      if(button){
-        button.click();
-        setTimeout(tune,70);
-        return;
-      }
-
-      slides.forEach(function(slide,index){slide.classList.toggle('active',index===target);});
+      // Do not navigate through the learner Next button here. Interactive and
+      // Scenario courses intentionally gate that button until the current
+      // activity is completed, which used to trap an editor preview on the
+      // first gated screen until this wrapper timed out. The editor is a
+      // read-only, single-slide view, so selecting its requested slide directly
+      // preserves the learner gate while making every authored slide previewable.
+      showTarget(courseDoc,slides,target);
       finish(courseDoc);
     }catch(e){
       setTimeout(tune,100);
