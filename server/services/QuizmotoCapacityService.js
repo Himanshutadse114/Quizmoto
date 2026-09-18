@@ -1,4 +1,5 @@
 const { Op } = require('sequelize');
+const { sequelize } = require('../config/database');
 const User = require('../models/User');
 const { GameSession, Player } = require('../models/GameSession');
 const { ScormWorkspace, ScormWorkspaceMember } = require('../models/scorm');
@@ -9,7 +10,7 @@ const capacityLocks = new Map();
 
 async function resolveCapacityScope(hostId) {
     const host = await User.findByPk(hostId);
-    if (!host) return { key: `user:${hostId}`, hostIds: [hostId], entitlement: { maxQuizPlayers: null } };
+    if (!host) return { key: `user:${hostId}`, hostIds: [hostId], entitlement: { maxQuizPlayers: 10 } };
     const email = String(host.email || '').trim().toLowerCase();
     const member = await ScormWorkspaceMember.findOne({
         where: { [Op.or]: [{ userId: host.id }, { email }] }
@@ -41,15 +42,26 @@ async function resolveCapacityScope(hostId) {
     };
 }
 
-async function activePlayerCount(hostIds) {
+async function activePlayerCount(hostIds, sessionId = null, transaction = null) {
+    if (sessionId) {
+        const session = await GameSession.findOne({
+            where: { id: sessionId, hostId: { [Op.in]: hostIds }, status: { [Op.ne]: 'finished' } },
+            attributes: ['id'],
+            raw: true,
+            transaction
+        });
+        if (!session) return 0;
+        return Player.count({ where: { sessionId, socketId: { [Op.ne]: null } }, transaction });
+    }
     const sessions = await GameSession.findAll({
         where: { hostId: { [Op.in]: hostIds }, status: { [Op.ne]: 'finished' } },
         attributes: ['id'],
-        raw: true
+        raw: true,
+        transaction
     });
     const sessionIds = sessions.map((session) => session.id);
     if (!sessionIds.length) return 0;
-    return Player.count({ where: { sessionId: { [Op.in]: sessionIds }, socketId: { [Op.ne]: null } } });
+    return Player.count({ where: { sessionId: { [Op.in]: sessionIds }, socketId: { [Op.ne]: null } }, transaction });
 }
 
 async function quizPlayerUsageForEntitlementHost(hostId) {
@@ -63,26 +75,36 @@ async function quizPlayerUsageForEntitlementHost(hostId) {
     return activePlayerCount([...new Set([hostId, ...members.map((row) => row.userId)].filter(Boolean))]);
 }
 
-async function withQuizPlayerCapacity(hostId, createPlayer) {
+async function withQuizPlayerCapacity(hostId, sessionId, createPlayer) {
     const scope = await resolveCapacityScope(hostId);
-    const previous = capacityLocks.get(scope.key) || Promise.resolve();
-    const current = previous.catch(() => {}).then(async () => {
-        const maximum = normalizeLimit(scope.entitlement?.maxQuizPlayers);
-        const currentPlayers = await activePlayerCount(scope.hostIds);
+    const capacityKey = `${scope.key}:session:${sessionId}`;
+    const previous = capacityLocks.get(capacityKey) || Promise.resolve();
+    const current = previous.catch(() => {}).then(() => sequelize.transaction(async (transaction) => {
+        if (typeof sequelize.getDialect === 'function' && sequelize.getDialect() === 'postgres') {
+            await sequelize.query('SELECT pg_advisory_xact_lock(hashtext(:lockKey))', {
+                replacements: { lockKey: `quizmoto-capacity:${capacityKey}` },
+                transaction
+            });
+        }
+        const configuredMaximum = normalizeLimit(scope.entitlement?.maxQuizPlayers);
+        const maximum = scope.entitlement?.unlimited === true
+            ? null
+            : Math.max(10, configuredMaximum ?? 10);
+        const currentPlayers = await activePlayerCount(scope.hostIds, sessionId, transaction);
         if (maximum !== null && currentPlayers >= maximum) {
-            const error = new Error(`This Quizmoto account has reached its live player capacity (${currentPlayers}/${maximum}).`);
+            const error = new Error(`This Quizmoto session has reached its player capacity (${currentPlayers}/${maximum}).`);
             error.code = 'QUIZMOTO_PLAYER_CAPACITY_REACHED';
             error.status = 403;
             error.capacity = { current: currentPlayers, max: maximum };
             throw error;
         }
-        return createPlayer();
-    });
-    capacityLocks.set(scope.key, current);
+        return createPlayer(transaction);
+    }));
+    capacityLocks.set(capacityKey, current);
     try {
         return await current;
     } finally {
-        if (capacityLocks.get(scope.key) === current) capacityLocks.delete(scope.key);
+        if (capacityLocks.get(capacityKey) === current) capacityLocks.delete(capacityKey);
     }
 }
 

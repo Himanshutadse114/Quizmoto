@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, Gamepad2, LockKeyhole, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowUpRight, BookOpen, Gamepad2, LockKeyhole, ShieldCheck, Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { SCORM_FEATURE_ORDER, getScormFeature } from './scormFeatureCatalog';
 
@@ -27,12 +27,17 @@ export default function PendingScormHome() {
             </div>
             <h1 className="scorm-display"><span>Welcome to</span> <span className="text-blue-400">LMSGEN</span></h1>
             <p className="mt-3 text-sm md:text-[15px] max-w-2xl">
-              Your platform account is active. Quizmoto is ready now, while trackable course authoring, operations and learner intelligence unlock after administrator approval.
+              Your starter account includes Quizmoto for up to 10 players per live session and 2 Publica uploads. Trackable course creation and every expanded allowance require Super Admin approval.
             </p>
           </div>
-          <Link to="/scorm/quizmoto" className="scorm-button-primary inline-flex items-center justify-center gap-2 px-5 py-3 text-xs font-semibold">
-            <Gamepad2 size={16} /> Open Quizmoto
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/scorm/quizmoto" className="scorm-button-primary inline-flex items-center justify-center gap-2 px-5 py-3 text-xs font-semibold">
+              <Gamepad2 size={16} /> Open Quizmoto
+            </Link>
+            <Link to="/scorm/publica" className="scorm-button-secondary inline-flex items-center justify-center gap-2 px-5 py-3 text-xs font-semibold">
+              <BookOpen size={16} /> Open Publica
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -40,12 +45,13 @@ export default function PendingScormHome() {
         <section className="scorm-light-feature-hero rounded-3xl border border-[#315a8b] bg-[radial-gradient(circle_at_85%_15%,rgba(59,130,246,.18),transparent_35%),linear-gradient(145deg,#0b213c,#071426)] p-6 md:p-7 min-h-[260px] flex flex-col justify-between">
           <div>
             <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[.12em] font-semibold text-[#93c5fd]"><Gamepad2 size={14} /> Unlocked now</div>
-            <h2 className="text-3xl md:text-4xl font-semibold tracking-[-.045em] text-[#f8fafc] mt-3">Quizmoto Live Quiz</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#b8c7da]">Create live quizzes, generate quiz drafts with AI, host real-time sessions and review Quizmoto reports while your course-authoring approval is pending.</p>
+            <h2 className="text-3xl md:text-4xl font-semibold tracking-[-.045em] text-[#f8fafc] mt-3">Quizmoto + LMSGEN Publica</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#b8c7da]">Host Quizmoto sessions for up to 10 players at a time and publish up to 2 trackable Publica items while course-authoring approval is pending.</p>
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
             <Link to="/scorm/quizmoto" className="scorm-button-primary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">Launch workspace <ArrowUpRight size={14} /></Link>
             <Link to="/scorm/quizmoto/create" className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">Create quiz <Sparkles size={14} /></Link>
+            <Link to="/scorm/publica" className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">Open Publica <BookOpen size={14} /></Link>
           </div>
         </section>
 

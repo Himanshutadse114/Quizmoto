@@ -106,7 +106,7 @@ function AdminLimits({ token }) {
       const res = await axios.get(apiUrl(`${API}/admin/users`), { headers, params: query ? { q: query } : undefined });
       setUsers(res.data.users || []);
       const next = {};
-      (res.data.users || []).forEach((item) => { next[item.id] = item.quota?.max === null ? '' : String(item.quota?.max ?? 3); });
+      (res.data.users || []).forEach((item) => { next[item.id] = item.quota?.max === null ? '' : String(item.quota?.max ?? 2); });
       setDrafts(next);
     } catch (err) {
       setError(err.response?.data?.message || 'Could not load user Publica limits.');

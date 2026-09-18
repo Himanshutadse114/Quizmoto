@@ -5,7 +5,7 @@ const FlipbookTenantLink = require('../models/FlipbookTenantLink');
 const FlipbookTenantEntitlement = require('../models/FlipbookTenantEntitlement');
 const { ScormWorkspace, ScormWorkspaceMember } = require('../models/scorm');
 
-const DEFAULT_TENANT_FLIPBOOK_LIMIT = 3;
+const DEFAULT_TENANT_FLIPBOOK_LIMIT = 2;
 let schemaPromise = null;
 
 function normaliseEmail(value) {

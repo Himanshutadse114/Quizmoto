@@ -24,7 +24,7 @@ export default function FlipbookTenantAdmin() {
       rows.forEach((tenant) => {
         next[tenant.id] = {
           enabled: tenant.quota?.enabled !== false,
-          maxFlipbooks: tenant.quota?.max === null ? '' : String(tenant.quota?.max ?? 3)
+          maxFlipbooks: tenant.quota?.max === null ? '' : String(tenant.quota?.max ?? 2)
         };
       });
       setDrafts(next);
@@ -67,7 +67,7 @@ export default function FlipbookTenantAdmin() {
       {loading && !tenants.length ? <div className="scorm-panel min-h-[180px] rounded-2xl border grid place-items-center"><RefreshCw size={19} className="animate-spin opacity-50" /></div> : (
         <div className="grid gap-3">
           {tenants.map((tenant) => {
-            const draft = drafts[tenant.id] || { enabled: true, maxFlipbooks: '3' };
+            const draft = drafts[tenant.id] || { enabled: true, maxFlipbooks: '2' };
             return (
               <section key={tenant.id} className="scorm-panel rounded-2xl border p-4 md:p-5">
                 <div className="flex flex-col xl:flex-row xl:items-center gap-4">
@@ -77,7 +77,7 @@ export default function FlipbookTenantAdmin() {
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2 xl:w-[430px]">
                     <div className="rounded-xl border px-3 py-2.5"><div className="text-[8px] uppercase opacity-45">Used</div><div className="mt-1 text-base font-semibold">{tenant.quota?.used || 0}</div></div>
-                    <div className="rounded-xl border px-3 py-2.5"><div className="text-[8px] uppercase opacity-45">Allowance</div><div className="mt-1 text-base font-semibold">{tenant.quota?.max === null ? 'Unlimited' : tenant.quota?.max ?? 3}</div></div>
+                    <div className="rounded-xl border px-3 py-2.5"><div className="text-[8px] uppercase opacity-45">Allowance</div><div className="mt-1 text-base font-semibold">{tenant.quota?.max === null ? 'Unlimited' : tenant.quota?.max ?? 2}</div></div>
                     <div className="rounded-xl border px-3 py-2.5 col-span-2 md:col-span-1"><div className="text-[8px] uppercase opacity-45">Published / total</div><div className="mt-1 text-base font-semibold"><BookOpenCheck size={13} className="inline mr-1.5" />{(tenant.flipbooks || []).filter((book) => book.status === 'published').length} / {(tenant.flipbooks || []).length}</div></div>
                   </div>
                   <div className="flex flex-wrap items-end gap-2 xl:justify-end">

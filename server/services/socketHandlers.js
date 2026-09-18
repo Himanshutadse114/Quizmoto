@@ -498,7 +498,7 @@ module.exports = (io) => {
               if (playerProfileId && !player.playerProfileId) player.playerProfileId = playerProfileId;
               await player.save();
             } else {
-              player = await withQuizPlayerCapacity(session.hostId, () => Player.create({
+              player = await withQuizPlayerCapacity(session.hostId, session.id, (transaction) => Player.create({
                   nickname: cleanNickname,
                   teamName: teamName || null,
                   playerProfileId,
@@ -506,7 +506,7 @@ module.exports = (io) => {
                   sessionId: session.id,
                   score: 0,
                   avatar: avatar || 'default'
-              }));
+              }, { transaction }));
             }
           } catch (dbErr) {
             if (dbErr.name === 'SequelizeUniqueConstraintError') {

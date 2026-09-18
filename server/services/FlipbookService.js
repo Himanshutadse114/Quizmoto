@@ -14,7 +14,7 @@ const {
     adoptLegacyFlipbooks
 } = require('./FlipbookTenantService');
 
-const DEFAULT_FREE_FLIPBOOKS = 3;
+const DEFAULT_FREE_FLIPBOOKS = 2;
 const MAX_PAGES = 100;
 const MAX_PAGE_BYTES = 4 * 1024 * 1024;
 const ALLOWED_PAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);

@@ -4,8 +4,8 @@ const proxyquire = require('proxyquire').noCallThru();
 
 function entitlementRow(values = {}) {
     return {
-        maxCourses: values.maxCourses ?? 3,
-        maxActiveCourses: values.maxActiveCourses ?? 2,
+        maxCourses: Object.prototype.hasOwnProperty.call(values, 'maxCourses') ? values.maxCourses : 3,
+        maxActiveCourses: Object.prototype.hasOwnProperty.call(values, 'maxActiveCourses') ? values.maxActiveCourses : 2,
         maxLearners: values.maxLearners ?? null,
         maxStaff: values.maxStaff ?? null,
         maxCampaigns: values.maxCampaigns ?? null,
@@ -61,6 +61,35 @@ function loadService(values = {}) {
 }
 
 describe('Scorm tenant entitlements', () => {
+    it('defaults new and previously blank accounts to no course creation and 10 Quizmoto players', async () => {
+        const { service } = loadService({ maxCourses: null, maxActiveCourses: null });
+        const entitlement = await service.getEntitlement('new-user@example.com', 'admin');
+        expect(entitlement.maxCourses).to.equal(0);
+        expect(entitlement.maxActiveCourses).to.equal(0);
+        expect(entitlement.maxQuizPlayers).to.equal(10);
+    });
+
+    it('blocks course authoring until the Super Admin assigns an allowance', async () => {
+        const { service } = loadService({ maxCourses: 0, maxActiveCourses: 0 });
+        let caught;
+        try {
+            await service.enforceRequestEntitlement({
+                originalUrl: '/api/scorm/author/generate', method: 'POST', body: {}, scormWorkspaceId: 'tenant-1'
+            }, { userId: 55, email: 'tenant@lmsgen.internal', role: 'admin' });
+        } catch (error) { caught = error; }
+        expect(caught?.code).to.equal('SCORM_COURSE_CREATION_NOT_ENABLED');
+        expect(caught?.status).to.equal(403);
+    });
+
+    it('still permits cancellation when a course allowance is revoked', async () => {
+        const { service } = loadService({ maxCourses: 0, maxActiveCourses: 0 });
+        const entitlement = await service.enforceRequestEntitlement({
+            originalUrl: '/api/scorm/author/progress/job-123/cancel', method: 'POST', body: {}, scormWorkspaceId: 'tenant-1'
+        }, { userId: 55, email: 'tenant@lmsgen.internal', role: 'admin' });
+
+        expect(entitlement.maxCourses).to.equal(0);
+    });
+
     it('uses active capacity, not AI credits, for a manually created course', async () => {
         const { service, aiUsage } = loadService();
         await service.enforceRequestEntitlement({

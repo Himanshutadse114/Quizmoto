@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, Gamepad2, LockKeyhole, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
+import { BookOpen, CheckCircle2, Gamepad2, LockKeyhole, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getScormFeature } from './scormFeatureCatalog';
 
@@ -18,7 +18,7 @@ export default function ScormFeatureLocked({ featureId }) {
       if (result?.scormAccess && !result?.pendingApproval) {
         setNotice('Access approved. Opening the feature…');
       } else {
-        setNotice('Approval is still pending. Quizmoto remains available while you wait.');
+        setNotice('Approval is still pending. Your starter Quizmoto and Publica access remains available.');
       }
     } catch (err) {
       setNotice(err.response?.data?.message || err.message || 'Could not refresh approval status.');
@@ -39,6 +39,9 @@ export default function ScormFeatureLocked({ featureId }) {
           <div className="flex flex-wrap gap-2">
             <Link to="/scorm/quizmoto" className="scorm-button-primary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">
               <Gamepad2 size={15} /> Open Quizmoto
+            </Link>
+            <Link to="/scorm/publica" className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">
+              <BookOpen size={15} /> Open Publica
             </Link>
             <button type="button" onClick={checkAccess} disabled={checking} className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold disabled:opacity-50">
               <RefreshCw size={14} className={checking ? 'animate-spin' : ''} /> {checking ? 'Checking…' : 'Refresh approval'}
@@ -79,10 +82,13 @@ export default function ScormFeatureLocked({ featureId }) {
           </section>
 
           <section className="scorm-light-feature-hero rounded-2xl border border-[#315a8b] bg-[linear-gradient(145deg,#0b213c,#071426)] p-5">
-            <div className="flex items-center gap-2 text-[#93c5fd] text-xs font-semibold"><Sparkles size={15} /> Available now</div>
-            <h3 className="text-lg mt-3 text-[#f8fafc]">Quizmoto Live Quiz</h3>
-            <p className="mt-2 text-xs leading-relaxed text-[#b8c7da]">Create quizzes, generate questions with AI, launch live sessions and review Quizmoto reports while your course-authoring approval is pending.</p>
-            <Link to="/scorm/quizmoto" className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-[#60a5fa]">Open Quizmoto →</Link>
+            <div className="flex items-center gap-2 text-[#93c5fd] text-xs font-semibold"><Sparkles size={15} /> Starter access available now</div>
+            <h3 className="text-lg mt-3 text-[#f8fafc]">Quizmoto + LMSGEN Publica</h3>
+            <p className="mt-2 text-xs leading-relaxed text-[#b8c7da]">Run a Quizmoto session with up to 10 players and upload up to 2 Publica items. The Super Admin can expand these allowances after approval.</p>
+            <div className="mt-4 flex flex-wrap gap-4">
+              <Link to="/scorm/quizmoto" className="inline-flex items-center gap-2 text-xs font-semibold text-[#60a5fa]">Open Quizmoto →</Link>
+              <Link to="/scorm/publica" className="inline-flex items-center gap-2 text-xs font-semibold text-[#60a5fa]">Open Publica →</Link>
+            </div>
           </section>
         </aside>
       </div>

@@ -61,11 +61,11 @@ const LIMIT_FIELDS = [
   ['maxStaff', 'Staff seats', 'Tenant Admin, Co-admins and Analytics Viewers.'],
   ['maxCampaigns', 'Campaigns', 'Maximum campaigns stored in the tenant.'],
   ['maxAssignments', 'Learner-course assignments', 'Maximum active learner × course assignment pairs.'],
-  ['maxQuizPlayers', 'Live Quizmoto players', 'Maximum connected players across all live sessions for this tenant at one time.']
+  ['maxQuizPlayers', 'Quizmoto players per session', 'Maximum connected players allowed in each live Quizmoto session. Every account receives at least 10.']
 ];
 
 function blankLimits() {
-  return { maxCourses: '', maxActiveCourses: '', maxLearners: '', maxStaff: '', maxCampaigns: '', maxAssignments: '', maxQuizPlayers: '' };
+  return { maxCourses: '0', maxActiveCourses: '0', maxLearners: '', maxStaff: '', maxCampaigns: '', maxAssignments: '', maxQuizPlayers: '10' };
 }
 
 function emptyForm() {
@@ -91,7 +91,15 @@ function limitPayload(source) {
 function entitlementForm(entitlement = {}) {
   const limits = {};
   LIMIT_FIELDS.forEach(([key]) => {
-    limits[key] = entitlement[key] === null || entitlement[key] === undefined ? '' : String(entitlement[key]);
+    if (entitlement[key] !== null && entitlement[key] !== undefined) {
+      limits[key] = String(entitlement[key]);
+    } else if (key === 'maxCourses' || key === 'maxActiveCourses') {
+      limits[key] = '0';
+    } else if (key === 'maxQuizPlayers') {
+      limits[key] = '10';
+    } else {
+      limits[key] = '';
+    }
   });
   return { ...limits, permissions: { ...DEFAULT_PERMISSIONS, ...(entitlement.permissions || {}) } };
 }
@@ -120,11 +128,11 @@ function LimitInputs({ value, onChange }) {
           <span className="text-[9px] uppercase tracking-[.07em] opacity-60">{label}</span>
           <input
             type="number"
-            min="0"
+            min={key === 'maxQuizPlayers' ? '10' : '0'}
             step="1"
             value={value[key]}
             onChange={(event) => onChange({ ...value, [key]: event.target.value })}
-            placeholder="Unlimited"
+            placeholder={key === 'maxQuizPlayers' ? '10 minimum' : (key === 'maxCourses' || key === 'maxActiveCourses' ? '0 — disabled' : 'Unlimited')}
             className="mt-2 w-full rounded-lg border px-3 py-2.5 text-xs bg-transparent outline-none focus:border-[#4FC9BF]"
           />
           <span className="mt-2 block text-[9px] leading-relaxed opacity-45">{help}</span>
@@ -232,14 +240,14 @@ function TenantCard({ tenant, onRefresh }) {
           <Metric icon={Users} label="Staff" value={u.staff} limit={e.maxStaff} />
           <Metric icon={Megaphone} label="Campaigns" value={u.campaigns} limit={e.maxCampaigns} />
           <Metric icon={Link2} label="Assignments" value={u.assignments} limit={e.maxAssignments} />
-          <Metric icon={Gamepad2} label="Live players" value={u.quizPlayers} limit={e.maxQuizPlayers} />
+          <Metric icon={Gamepad2} label="Live players / per-session cap" value={u.quizPlayers} limit={e.maxQuizPlayers} />
         </div>
 
         {!tenant.protected && <div className="mt-3 rounded-xl border border-[#4FC9BF]/20 bg-[#4FC9BF]/5 px-3.5 py-3 text-[10px] leading-relaxed"><strong>AI credits and active capacity are separate.</strong> Every accepted new AI or PDF-to-course generation uses one AI credit permanently. Manually uploaded trackable courses do not use AI credits. Archiving or deleting any course frees active capacity.</div>}
 
         {editingEntitlement && <div className="mt-4 rounded-xl border p-4 bg-[rgba(79,201,191,.025)]">
           <div className="flex items-center gap-2"><Gauge size={15} className="text-[#4FC9BF]" /><div className="text-xs font-semibold">Tenant limits</div></div>
-          <p className="mt-1 text-[10px] opacity-55">Leave a limit blank for unlimited. Setting a limit below current usage blocks new usage without deleting existing data.</p>
+          <p className="mt-1 text-[10px] opacity-55">Course creation starts at zero and is enabled only when the Super Admin assigns an allowance. Quizmoto always permits at least 10 players per session.</p>
           <div className="mt-3"><LimitInputs value={entitlement} onChange={setEntitlement} /></div>
           <div className="mt-5 text-xs font-semibold">Enabled tenant features</div>
           <p className="mt-1 text-[10px] opacity-55">The first 25 Geometry Physics levels stay free for every tenant. Enable Geometry Physics full access here to unlock Levels 26–132. Other disabled features are enforced by the backend.</p>
@@ -302,7 +310,7 @@ export default function TenantAdmin() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl grid place-items-center bg-[#4FC9BF]/10 text-[#4FC9BF] border border-[#4FC9BF]/20"><Plus size={18} /></div><div><h2 className="text-base font-semibold">Create Tenant</h2><p className="mt-0.5 text-[10px] opacity-55">Define the tenant, Admin, capacity and enabled features before it goes live.</p></div></div><button type="button" onClick={() => setAdvanced((value) => !value)} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2"><Settings2 size={13} /> {advanced ? 'Hide advanced configuration' : 'Show advanced configuration'}</button></div>
         <form onSubmit={create} className="mt-4">
           <div className="grid md:grid-cols-3 gap-3"><label className="block"><span className="text-[9px] uppercase tracking-[.08em] opacity-55">Tenant name</span><input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required minLength={2} placeholder="Acme Corporation" className="mt-1.5 w-full rounded-lg border px-3 py-2.5 text-xs bg-transparent outline-none focus:border-[#4FC9BF]" /></label><label className="block"><span className="text-[9px] uppercase tracking-[.08em] opacity-55">Tenant Admin email</span><input type="email" value={form.adminEmail} onChange={(event) => setForm((current) => ({ ...current, adminEmail: event.target.value }))} required placeholder="admin@company.com" className="mt-1.5 w-full rounded-lg border px-3 py-2.5 text-xs bg-transparent outline-none focus:border-[#4FC9BF]" /></label><label className="block"><span className="text-[9px] uppercase tracking-[.08em] opacity-55">Admin name (optional)</span><input value={form.adminName} onChange={(event) => setForm((current) => ({ ...current, adminName: event.target.value }))} placeholder="Admin name" className="mt-1.5 w-full rounded-lg border px-3 py-2.5 text-xs bg-transparent outline-none focus:border-[#4FC9BF]" /></label></div>
-          {advanced && <div className="mt-5 border-t pt-5"><div className="flex items-center gap-2"><Gauge size={15} className="text-[#4FC9BF]" /><div className="text-xs font-semibold">Capacity limits</div></div><p className="mt-1 text-[10px] opacity-55">Blank means unlimited. AI generation credits are permanent consumption; active course capacity is restored when a course is archived or deleted.</p><div className="mt-3"><LimitInputs value={form} onChange={(next) => setForm((current) => ({ ...current, ...next }))} /></div><div className="mt-5 text-xs font-semibold">Enabled tenant features</div><p className="mt-1 text-[10px] opacity-55">The first 25 Geometry Physics levels are always free. Enable full access only for tenants that should receive Levels 26–132.</p><div className="mt-3"><PermissionGrid permissions={form.permissions} onChange={(permissions) => setForm((current) => ({ ...current, permissions }))} /></div></div>}
+          {advanced && <div className="mt-5 border-t pt-5"><div className="flex items-center gap-2"><Gauge size={15} className="text-[#4FC9BF]" /><div className="text-xs font-semibold">Capacity limits</div></div><p className="mt-1 text-[10px] opacity-55">New tenants start with no course creation allowance, 10 Quizmoto players per session, and 2 Publica uploads. Assign course credits here only after approval.</p><div className="mt-3"><LimitInputs value={form} onChange={(next) => setForm((current) => ({ ...current, ...next }))} /></div><div className="mt-5 text-xs font-semibold">Enabled tenant features</div><p className="mt-1 text-[10px] opacity-55">The first 25 Geometry Physics levels are always free. Enable full access only for tenants that should receive Levels 26–132.</p><div className="mt-3"><PermissionGrid permissions={form.permissions} onChange={(permissions) => setForm((current) => ({ ...current, permissions }))} /></div></div>}
           <div className="mt-4 flex justify-end"><button type="submit" disabled={creating} className="scorm-button-primary min-h-10 px-4 text-[10px] font-semibold inline-flex items-center gap-2 disabled:opacity-50"><Building2 size={14} /> {creating ? 'Creating…' : 'Create Tenant'}</button></div>
         </form>
       </section>

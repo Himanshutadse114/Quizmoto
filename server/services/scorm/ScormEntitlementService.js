@@ -15,6 +15,9 @@ const {
 } = require('./ScormAiUsageService');
 
 const INACTIVE_ASSIGNMENT_STATUSES = ['revoked', 'superseded'];
+const DEFAULT_COURSE_CREATION_LIMIT = 0;
+const DEFAULT_ACTIVE_COURSE_LIMIT = 0;
+const DEFAULT_QUIZMOTO_PLAYERS_PER_SESSION = 10;
 
 const DEFAULT_PERMISSIONS = Object.freeze({
     courseAuthoring: true,
@@ -43,6 +46,13 @@ function normalizeLimit(value) {
     return Math.max(0, Math.floor(number));
 }
 
+function normalizeQuizPlayerLimit(value) {
+    const normalized = normalizeLimit(value);
+    return normalized === null
+        ? DEFAULT_QUIZMOTO_PLAYERS_PER_SESSION
+        : Math.max(DEFAULT_QUIZMOTO_PLAYERS_PER_SESSION, normalized);
+}
+
 function normalizePermissions(value) {
     const input = value && typeof value === 'object' ? value : {};
     return Object.fromEntries(
@@ -69,13 +79,15 @@ function serializeEntitlement(row, role = 'user') {
         };
     }
     return {
-        maxCourses: normalizeLimit(row?.maxCourses),
-        maxActiveCourses: normalizeLimit(row?.maxActiveCourses),
+        // Course access is deny-by-default. Only the Super Admin can grant a
+        // finite creation allowance through Tenant Management.
+        maxCourses: normalizeLimit(row?.maxCourses) ?? DEFAULT_COURSE_CREATION_LIMIT,
+        maxActiveCourses: normalizeLimit(row?.maxActiveCourses) ?? DEFAULT_ACTIVE_COURSE_LIMIT,
         maxLearners: normalizeLimit(row?.maxLearners),
         maxStaff: normalizeLimit(row?.maxStaff),
         maxCampaigns: normalizeLimit(row?.maxCampaigns),
         maxAssignments: normalizeLimit(row?.maxAssignments),
-        maxQuizPlayers: normalizeLimit(row?.maxQuizPlayers),
+        maxQuizPlayers: normalizeQuizPlayerLimit(row?.maxQuizPlayers),
         permissions: normalizePermissions(row?.permissions),
         unlimited: false,
         protected: false
@@ -85,13 +97,13 @@ function serializeEntitlement(row, role = 'user') {
 function entitlementDefaults(email) {
     return {
         email,
-        maxCourses: null,
-        maxActiveCourses: null,
+        maxCourses: DEFAULT_COURSE_CREATION_LIMIT,
+        maxActiveCourses: DEFAULT_ACTIVE_COURSE_LIMIT,
         maxLearners: null,
         maxStaff: null,
         maxCampaigns: null,
         maxAssignments: null,
-        maxQuizPlayers: null,
+        maxQuizPlayers: DEFAULT_QUIZMOTO_PLAYERS_PER_SESSION,
         permissions: { ...DEFAULT_PERMISSIONS }
     };
 }
@@ -114,7 +126,10 @@ async function updateEntitlement(email, patch = {}, actor = {}) {
     if (!normalized) throw new Error('Entitlement owner email is required.');
     const [row] = await ScormUserEntitlement.findOrCreate({ where: { email: normalized }, defaults: entitlementDefaults(normalized) });
     for (const field of ['maxCourses', 'maxActiveCourses', 'maxLearners', 'maxStaff', 'maxCampaigns', 'maxAssignments', 'maxQuizPlayers']) {
-        if (Object.prototype.hasOwnProperty.call(patch, field)) row[field] = normalizeLimit(patch[field]);
+        if (!Object.prototype.hasOwnProperty.call(patch, field)) continue;
+        row[field] = field === 'maxQuizPlayers'
+            ? normalizeQuizPlayerLimit(patch[field])
+            : normalizeLimit(patch[field]);
     }
     row.permissions = patch.permissions && typeof patch.permissions === 'object'
         ? normalizePermissions({ ...normalizePermissions(row.permissions), ...patch.permissions })
@@ -337,6 +352,27 @@ async function enforceRequestEntitlement(req, { userId, email, role }) {
     }
     const path = String(req.originalUrl || '').split('?')[0];
     const method = String(req.method || 'GET').toUpperCase();
+    const mutating = !['GET', 'HEAD', 'OPTIONS'].includes(method);
+    const courseJobCancellation = method === 'POST' && /^\/api\/scorm\/author\/progress\/[^/]+\/cancel$/.test(path);
+    const courseAuthoringRequest = mutating && path.startsWith('/api/scorm/author') && !courseJobCancellation;
+    const newVideoCourse = method === 'POST' && path === '/api/scorm/video-courses';
+    const newPackageUpload = method === 'POST' && (
+        path === '/api/scorm/packages/upload' || path === '/api/scorm/packages/upload-json'
+    );
+    const newCourse = method === 'POST' && path === '/api/scorm/courses';
+
+    if (courseAuthoringRequest && normalizeLimit(entitlement.maxCourses) === 0) {
+        throw deny(
+            'Course creation is not enabled for this account. Ask the Super Admin to assign a course allowance.',
+            'SCORM_COURSE_CREATION_NOT_ENABLED'
+        );
+    }
+    if ((newVideoCourse || newPackageUpload || newCourse) && normalizeLimit(entitlement.maxActiveCourses) === 0) {
+        throw deny(
+            'Course creation is not enabled for this account. Ask the Super Admin to assign a course allowance.',
+            'SCORM_COURSE_CREATION_NOT_ENABLED'
+        );
+    }
     if (method === 'POST' && path === '/api/scorm/courses') await assertActiveCourseCapacity(userId, entitlement);
     if (path.startsWith('/api/scorm/roster')) await assertLearnerLimit(req, userId, entitlement);
     if (method === 'POST' && path === '/api/scorm/team') await assertStaffLimit(req.scormWorkspaceId, entitlement);
@@ -347,7 +383,11 @@ async function enforceRequestEntitlement(req, { userId, email, role }) {
 
 module.exports = {
     DEFAULT_PERMISSIONS,
+    DEFAULT_COURSE_CREATION_LIMIT,
+    DEFAULT_ACTIVE_COURSE_LIMIT,
+    DEFAULT_QUIZMOTO_PLAYERS_PER_SESSION,
     normalizeLimit,
+    normalizeQuizPlayerLimit,
     normalizePermissions,
     getEntitlement,
     updateEntitlement,

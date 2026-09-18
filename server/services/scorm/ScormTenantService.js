@@ -30,7 +30,8 @@ const {
         assignments: 0,
         quizPlayers: 0
     }),
-    normalizeLimit
+    normalizeLimit,
+    normalizeQuizPlayerLimit
 } = require('./ScormEntitlementService');
 const { accountStatus } = require('../AccountProfileService');
 
@@ -52,7 +53,10 @@ function cleanTenantName(value) {
 function validateEntitlementPatch(patch = {}, { creating = false } = {}) {
     const normalized = { ...patch };
     for (const field of ['maxCourses', 'maxActiveCourses', 'maxLearners', 'maxStaff', 'maxCampaigns', 'maxAssignments', 'maxQuizPlayers']) {
-        if (Object.prototype.hasOwnProperty.call(normalized, field)) normalized[field] = normalizeLimit(normalized[field]);
+        if (!Object.prototype.hasOwnProperty.call(normalized, field)) continue;
+        normalized[field] = field === 'maxQuizPlayers'
+            ? normalizeQuizPlayerLimit(normalized[field])
+            : normalizeLimit(normalized[field]);
     }
     if (creating && normalized.maxStaff !== null && normalized.maxStaff !== undefined && normalized.maxStaff < 1) {
         throw fail('A tenant needs at least 1 staff seat for its Tenant Admin.', 'SCORM_TENANT_STAFF_LIMIT_INVALID', 400);

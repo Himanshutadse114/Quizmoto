@@ -21,10 +21,6 @@ function loadService({ aiCount = 0, activeCourses = 0, pending = 0 } = {}) {
 }
 
 describe('SCORM AI usage ledger', () => {
-    afterEach(() => {
-        delete process.env.AI_COURSE_DAILY_LIMIT;
-        delete process.env.AI_MAX_PENDING_COURSES_PER_HOST;
-    });
     it('bills new generated and presentation courses but not simple rebuilds', () => {
         const { service } = loadService();
         expect(service.isBillableAiGenerationPayload({ courseMode: 'generated' })).to.equal(true);
@@ -82,36 +78,16 @@ describe('SCORM AI usage ledger', () => {
         )).to.equal(true);
     });
 
-    it('enforces a persistent daily course-generation safety cap', async () => {
-        process.env.AI_COURSE_DAILY_LIMIT = '3';
-        const { service } = loadService({ aiCount: 3 });
-        let caught;
-        try {
-            await service.reserveAiCourseGeneration({
-                hostId: 9,
-                entitlementEmail: 'tenant@lmsgen.internal',
-                entitlement: { maxCourses: 100, maxActiveCourses: 100 },
-                operationKey: 'course-generation:daily-cap'
-            });
-        } catch (error) { caught = error; }
-        expect(caught?.code).to.equal('AI_DAILY_LIMIT_REACHED');
-        expect(caught?.status).to.equal(429);
-    });
-
-    it('limits concurrent queued course generations per host', async () => {
-        process.env.AI_MAX_PENDING_COURSES_PER_HOST = '1';
-        const { service } = loadService({ aiCount: 0, pending: 1 });
-        let caught;
-        try {
-            await service.reserveAiCourseGeneration({
-                hostId: 9,
-                entitlementEmail: 'tenant@lmsgen.internal',
-                entitlement: { maxCourses: 100, maxActiveCourses: 100 },
-                operationKey: 'course-generation:concurrent-cap'
-            });
-        } catch (error) { caught = error; }
-        expect(caught?.code).to.equal('AI_CONCURRENT_GENERATION_LIMIT_REACHED');
-        expect(caught?.status).to.equal(429);
+    it('uses only the Super Admin course allowance instead of hidden daily or concurrency quotas', async () => {
+        const { service, ScormAiUsageEvent } = loadService({ aiCount: 3, pending: 2, activeCourses: 1 });
+        const result = await service.reserveAiCourseGeneration({
+            hostId: 9,
+            entitlementEmail: 'tenant@lmsgen.internal',
+            entitlement: { maxCourses: 10, maxActiveCourses: 10 },
+            operationKey: 'course-generation:admin-allowance'
+        });
+        expect(result.duplicate).to.equal(false);
+        expect(ScormAiUsageEvent.create.calledOnce).to.equal(true);
     });
 
     it('records quiz generation separately from course credits', async () => {

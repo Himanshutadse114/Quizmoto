@@ -56,7 +56,6 @@ function publicQueueError(error) {
     const safeCodes = new Set([
         'SCORM_AI_GENERATION_LIMIT_REACHED',
         'SCORM_ACTIVE_COURSE_LIMIT_REACHED',
-        'AI_DAILY_LIMIT_REACHED',
         'AI_CONCURRENT_GENERATION_LIMIT_REACHED',
         'SCORM_GENERATION_STORAGE_UNAVAILABLE',
         'SCORM_PROGRESS_FORBIDDEN'
@@ -147,9 +146,7 @@ router.post(
             });
         } catch (error) {
             return res.status(Number(error.status) || 500).json({
-                message: error.code === 'AI_DAILY_LIMIT_REACHED'
-                    ? error.message
-                    : 'Unable to store exact visual PDF.',
+                message: 'Unable to store exact visual PDF.',
                 code: error.code || 'SCORM_VISUAL_SOURCE_UPLOAD_FAILED'
             });
         }
@@ -195,9 +192,7 @@ router.post(
             });
         } catch (error) {
             return res.status(Number(error.status) || 500).json({
-                message: error.code === 'AI_DAILY_LIMIT_REACHED'
-                    ? error.message
-                    : 'Unable to store source file.',
+                message: 'Unable to store source file.',
                 code: error.code || 'SCORM_SOURCE_UPLOAD_FAILED'
             });
         }
