@@ -60,37 +60,18 @@ router.get('/:regId', async (req, res) => {
         const learnerName = reg.learnerName || 'Learner';
         const courseTitle = reg.course.title || 'Course Player';
         const presentationLight = pkg.source === 'presentation_import';
-        // Authored course formats own their complete course chrome and autosave
-        // through the parent SCORM API. The floating Save/Exit utility belongs
-        // only to exact PDF presentation courses, where it is part of the
-        // dedicated presentation player experience.
-        const showUtilityBar = presentationLight;
+        // Every course autosaves through the parent runtime. Course-specific
+        // navigation stays inside the player so no floating controls obscure it.
         const shellTheme = presentationLight
             ? {
                 background: '#eef8f6',
                 text: '#123c38',
-                barBackground: '#ffffffee',
-                barBorder: '#147d7538',
-                barShadow: '#123c3824',
-                buttonBackground: '#e5f5f2',
-                buttonBorder: '#147d7533',
-                buttonText: '#123c38',
-                buttonHover: '#d4eee9',
-                frameBackground: '#eef8f6',
-                mobileBar: 'top:max(6px,env(safe-area-inset-top));bottom:auto'
+                frameBackground: '#eef8f6'
             }
             : {
                 background: '#080b10',
                 text: '#ffffff',
-                barBackground: '#07100fe8',
-                barBorder: '#ffffff24',
-                barShadow: '#0007',
-                buttonBackground: '#ffffff12',
-                buttonBorder: '#ffffff12',
-                buttonText: '#ffffff',
-                buttonHover: '#ffffff25',
-                frameBackground: '#111111',
-                mobileBar: 'top:auto;bottom:max(6px,env(safe-area-inset-bottom))'
+                frameBackground: '#111111'
             };
 
         const boot = JSON.stringify({
@@ -110,14 +91,8 @@ router.get('/:regId', async (req, res) => {
 <title>${escapeHtml(courseTitle)}</title>
 <style>
 html,body{margin:0;height:100%;overflow:hidden;background:${shellTheme.background};color:${shellTheme.text};font-family:system-ui,sans-serif}
-#bar{position:fixed;z-index:10;top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));display:flex;align-items:center;padding:6px;border:1px solid ${shellTheme.barBorder};border-radius:14px;background:${shellTheme.barBackground};box-shadow:0 8px 28px ${shellTheme.barShadow};backdrop-filter:blur(10px)}
-#bar>div{display:flex;align-items:center;gap:6px}
-#bar button{min-width:64px;min-height:36px;background:${shellTheme.buttonBackground};border:1px solid ${shellTheme.buttonBorder};color:${shellTheme.buttonText};padding:7px 14px;border-radius:9px;font-weight:700;cursor:pointer;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
-#bar button:hover,#bar button:focus-visible{background:${shellTheme.buttonHover};outline:none}
-#bar button:focus-visible{box-shadow:0 0 0 2px #56d7cf}
 #frame{border:0;width:100%;height:100%;display:block;background:${shellTheme.frameBackground}}
 #status{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
-@media(max-width:520px){#bar{${shellTheme.mobileBar};right:max(6px,env(safe-area-inset-right));padding:5px}#bar>div{gap:5px}#bar button{min-width:58px;min-height:32px;padding:6px 11px;font-size:9px}}
 </style>
 <script>
 (function(){
@@ -254,10 +229,7 @@ window.addEventListener("DOMContentLoaded",loadSavedState);
 </script>
 </head>
 <body>
-${showUtilityBar ? `<div id="bar">
-  <span id="status">Course - preparing learner state</span>
-  <div><button type="button" id="btnSave">Save</button><button type="button" id="btnExit">Exit</button></div>
-</div>` : '<span id="status">Course - preparing learner state</span>'}
+<span id="status">Course - preparing learner state</span>
 <iframe id="frame" name="scorm_content" title="Course content" src="about:blank" allow="autoplay; fullscreen" allowfullscreen></iframe>
 <script>
 (function(){

@@ -68,27 +68,23 @@ describe('SCORM player local-first persistence', () => {
         expect(block.indexOf('window.API.LMSFinish')).to.be.greaterThan(block.indexOf('flushFrameState()'));
     });
 
-    it('keeps the course at full viewport height while retaining accessible save and exit controls', () => {
+    it('keeps the course at full viewport height with an unobstructed player surface', () => {
         expect(source).to.include('#frame{border:0;width:100%;height:100%');
-        expect(source).to.include('#bar{position:fixed;z-index:10');
         expect(source).to.include('#status{position:absolute!important;width:1px!important');
         expect(source).to.not.include('height:calc(100% - 42px)');
-        expect(source).to.include('#bar>div{display:flex;align-items:center;gap:6px}');
-        expect(source).to.include('min-width:64px;min-height:36px');
+        expect(source).to.not.include('id="btnSave"');
+        expect(source).to.not.include('id="btnExit"');
     });
 
     it('uses a light Quizmoto shell for presentation courses without changing other course formats', () => {
         expect(source).to.include("const presentationLight = pkg.source === 'presentation_import'");
         expect(source).to.include("background: '#eef8f6'");
-        expect(source).to.include("barBackground: '#ffffffee'");
         expect(source).to.include("frameBackground: '#eef8f6'");
     });
 
-    it('keeps the floating utility bar exclusive to exact PDF presentation courses', () => {
-        expect(source).to.include("const presentationLight = pkg.source === 'presentation_import'");
-        expect(source).to.include('const showUtilityBar = presentationLight');
-        expect(source).to.not.include('const showUtilityBar = !highlyInteractive');
-        expect(source).to.include('${showUtilityBar ? `<div id="bar">');
+    it('autosaves without rendering floating save or exit controls', () => {
+        expect(source).to.not.include('const showUtilityBar');
+        expect(source).to.include('<span id="status">Course - preparing learner state</span>');
         expect(source).to.include('if(saveButton)saveButton.onclick');
         expect(source).to.include('if(exitButton)exitButton.onclick');
     });

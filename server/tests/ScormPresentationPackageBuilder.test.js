@@ -78,8 +78,12 @@ describe('ScormPresentationPackageBuilder', () => {
         expect(zip.file('assets/fonts/OpenSauceSans-Regular.woff2')).to.not.equal(null);
         expect(zip.file('assets/fonts/OpenSauce-SemiBold.woff2')).to.not.equal(null);
         expect(html).to.not.include('--primary:#f97316');
-        expect(html).to.include('object-fit:contain');
-        expect(html).to.include('height:min(58vw,430px)');
+        expect(html).to.include('object-fit:cover');
+        expect(html).to.include('background:var(--primary)');
+        expect(html).to.include('grid-template-rows:auto auto');
+        expect(html).to.include('aspect-ratio:var(--slide-ratio)');
+        expect(html).to.not.include('Preparing your presentation');
+        expect(html).to.include('height:auto;min-height:0;aspect-ratio:var(--slide-ratio)');
         expect(html).to.include('grid-template-areas:"stage controls"');
         expect(html).to.include('@media(max-width:820px)');
         expect(html).to.include('.quiz-card,.result-card{width:min(620px,100%);border-radius:16px;padding:18px}');
