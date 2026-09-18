@@ -773,21 +773,6 @@ body .scorm-auth-workbench.scorm-theme-light .sa-theme-toggle:hover {
   color: #146F66 !important;
 }
 
-/* Exact generated course preview: only the platform chrome changes. The iframe
- * keeps the generated learner-course design exactly as built. */
-body.scorm-platform-light .scorm-exact-preview-modal {
-  background: rgba(232, 240, 238, .90) !important;
-}
-
-body.scorm-platform-light .scorm-exact-preview-modal .scorm-preview-modal-header {
-  color: #14201E !important;
-}
-
-body.scorm-platform-light .scorm-exact-preview-modal .scorm-preview-modal-header [class*="text-white/"],
-body.scorm-platform-light .scorm-exact-preview-modal .scorm-preview-modal-caption {
-  color: #657773 !important;
-}
-
 @media (max-width: 640px) {
   .scorm-theme-toggle,
   .sa-theme-toggle {

@@ -5,12 +5,10 @@ import axios from 'axios';
 import {
   ChevronLeft,
   ChevronRight,
-  Eye,
   FileUp,
   Loader2,
   Play,
-  Wand2,
-  X
+  Wand2
 } from 'lucide-react';
 import { apiUrl } from '../../config';
 import {
@@ -207,42 +205,6 @@ function GenerationProgressModal({ task, elapsed, progress }) {
   );
 }
 
-function ExactSlidePreviewModal({ src, index, total, stale, onClose }) {
-  if (!src || typeof document === 'undefined') return null;
-
-  const modal = (
-    <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-sm p-3 md:p-6 overflow-auto" role="dialog" aria-modal="true" aria-label="Exact generated slide preview">
-      <div className="max-w-[1320px] mx-auto">
-        <div className="flex items-center justify-between gap-3 mb-3 text-white">
-          <div>
-            <div className="text-[10px] uppercase tracking-[.12em] text-white/45 font-bold">Learner course preview</div>
-            <div className="text-sm font-semibold mt-1">Slide {index + 1} of {total}</div>
-          </div>
-          <button type="button" onClick={onClose} className="scorm-button-secondary w-10 h-10 grid place-items-center" aria-label="Close preview"><X size={17} /></button>
-        </div>
-
-        {stale && (
-          <div className="mb-3 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs text-amber-100">
-            This preview shows the last generated course. Use Save & rebuild course to apply your current text changes to the exact learner output.
-          </div>
-        )}
-
-        <div className="rounded-[18px] overflow-hidden border border-white/15 shadow-2xl bg-[#05070d] h-[78vh] min-h-[520px] max-h-[860px]">
-          <iframe
-            src={src}
-            title={`Generated slide ${index + 1} preview`}
-            className="w-full h-full border-0 block bg-[#05070d]"
-            allow="fullscreen"
-          />
-        </div>
-        <p className="text-center text-[11px] text-white/45 mt-3">This preview uses the same layout and visuals learners will see. Navigation is locked to the selected slide.</p>
-      </div>
-    </div>
-  );
-
-  return createPortal(modal, document.body);
-}
-
 export default function AuthorVisual() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -255,10 +217,6 @@ export default function AuthorVisual() {
   const [detailLevel, setDetailLevel] = useState('detailed');
   const [analysis, setAnalysis] = useState(null);
   const [selected, setSelected] = useState(0);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [previewBusy, setPreviewBusy] = useState(false);
-  const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [busyTask, setBusyTask] = useState('');
   const [busyStartedAt, setBusyStartedAt] = useState(0);
@@ -357,7 +315,6 @@ export default function AuthorVisual() {
       .then((res) => {
         setAnalysis(normalizeAnalysis(res.data.analysis || {}));
         setSelected(0);
-        setDirty(false);
       })
       .catch((err) => setError(publicGenerationError(err.response?.data?.message || err.message)))
       .finally(() => setBusy(false));
@@ -400,7 +357,6 @@ export default function AuthorVisual() {
       }, { headers, timeout: 360000 });
       setAnalysis(normalizeAnalysis(res.data.analysis));
       setSelected(0);
-      setDirty(true);
       setNotice('Learning content is ready. Review and edit it, then generate the course.');
     } catch (err) {
       setError(publicGenerationError(err.response?.data?.message || err.message));
@@ -410,7 +366,6 @@ export default function AuthorVisual() {
   };
 
   const updateSlide = (patch) => {
-    setDirty(true);
     setAnalysis((prev) => {
       if (!prev) return prev;
       const slides = [...prev.slides];
@@ -438,40 +393,11 @@ export default function AuthorVisual() {
   };
 
   const updateQuiz = (quiz) => {
-    setDirty(true);
     setAnalysis((prev) => prev ? { ...prev, quiz } : prev);
   };
 
   const updateCourseTitle = (value) => {
-    setDirty(true);
     setAnalysis((prev) => prev ? { ...prev, title: value } : prev);
-  };
-
-  const openExactPreview = async () => {
-    if (!editId) {
-      setNotice('The learner preview is available after the course is generated.');
-      return;
-    }
-    setPreviewBusy(true);
-    setError('');
-    try {
-      const res = await axios.post(apiUrl(`/api/scorm/courses/${editId}/preview`), {}, { headers });
-      const registrationId = res.data?.registrationId;
-      const previewToken = res.data?.token;
-      if (!registrationId || !previewToken) throw new Error('Preview session could not be created.');
-      const query = new URLSearchParams({ token: previewToken, slide: String(selected) });
-      setPreviewUrl(apiUrl(`/api/scorm/slide-preview/${registrationId}?${query.toString()}`));
-      setPreviewOpen(true);
-    } catch (err) {
-      setError(publicGenerationError(err.response?.data?.message || err.message));
-    } finally {
-      setPreviewBusy(false);
-    }
-  };
-
-  const closePreview = () => {
-    setPreviewOpen(false);
-    setPreviewUrl('');
   };
 
   const generate = async () => {
@@ -501,7 +427,6 @@ export default function AuthorVisual() {
       try { localStorage.removeItem(DRAFT_KEY); } catch {
         // The generated course is already safe even if the local draft cannot be removed.
       }
-      setDirty(false);
       const id = res.data?.courseId || null;
       setNotice(editId ? 'Course content rebuilt successfully.' : 'Course generated successfully.');
       if (id) navigate(`/scorm/courses/${id}`);
@@ -523,16 +448,6 @@ export default function AuthorVisual() {
         </div>
         {analysis && (
           <div className="flex items-center gap-2 flex-wrap">
-            {slide && editId && (
-              <button type="button" onClick={openExactPreview} disabled={previewBusy} className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold disabled:opacity-50">
-                {previewBusy ? <Loader2 size={16} className="animate-spin" /> : <Eye size={16} />} Preview slide
-              </button>
-            )}
-            {slide && !editId && (
-              <button type="button" disabled title="Generate the course first to open the learner preview" className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold opacity-45 cursor-not-allowed">
-                <Eye size={16} /> Preview after generation
-              </button>
-            )}
             <button type="button" onClick={generate} disabled={busy} className="scorm-button-primary inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold disabled:opacity-50">
               {busy ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
               {editId ? 'Save & rebuild course' : 'Generate course'}
@@ -591,13 +506,6 @@ export default function AuthorVisual() {
                   <div className="flex gap-2 flex-wrap">
                     <button type="button" disabled={selected === 0} onClick={() => setSelected((value) => Math.max(0, value - 1))} className="scorm-button-secondary p-2.5 disabled:opacity-30" aria-label="Previous slide"><ChevronLeft size={16} /></button>
                     <button type="button" disabled={selected >= analysis.slides.length - 1} onClick={() => setSelected((value) => Math.min(analysis.slides.length - 1, value + 1))} className="scorm-button-secondary p-2.5 disabled:opacity-30" aria-label="Next slide"><ChevronRight size={16} /></button>
-                    {editId ? (
-                      <button type="button" onClick={openExactPreview} disabled={previewBusy} className="scorm-button-secondary inline-flex items-center gap-2 px-3 py-2.5 text-xs font-semibold disabled:opacity-50">
-                        {previewBusy ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />} Preview slide
-                      </button>
-                    ) : (
-                      <button type="button" disabled title="Generate the course first to open the learner preview" className="scorm-button-secondary inline-flex items-center gap-2 px-3 py-2.5 text-xs font-semibold opacity-45 cursor-not-allowed"><Eye size={14} /> Preview after generation</button>
-                    )}
                   </div>
                 </div>
 
@@ -647,16 +555,6 @@ export default function AuthorVisual() {
             <AuthorQuizEditor quiz={analysis.quiz || []} onChange={updateQuiz} />
           </section>
         </div>
-      )}
-
-      {previewOpen && previewUrl && (
-        <ExactSlidePreviewModal
-          src={previewUrl}
-          index={selected}
-          total={analysis?.slides?.length || 1}
-          stale={dirty}
-          onClose={closePreview}
-        />
       )}
 
       <GenerationProgressModal
