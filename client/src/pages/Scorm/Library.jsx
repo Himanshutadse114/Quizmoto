@@ -8,6 +8,7 @@ import {
   Download,
   FileArchive,
   FileUp,
+  LoaderCircle,
   Pencil,
   Plus,
   Search,
@@ -43,6 +44,7 @@ export default function ScormLibrary() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [selectedFile, setSelectedFile] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const headers = { Authorization: `Bearer ${token}` };
   const load = () => axios.get(apiUrl('/api/scorm/packages'), { headers }).then((r) => setPackages(r.data || []));
@@ -139,10 +141,20 @@ export default function ScormLibrary() {
     navigate(isPresentation(p) ? `/scorm/presentation/edit/${p.id}` : `/scorm/author?edit=${p.id}`);
   };
 
-  const removePkg = async (id) => {
-    if (!window.confirm('Delete this package? Linked courses are archived and files are removed from storage.')) return;
-    try { await axios.delete(apiUrl(`/api/scorm/packages/${id}`), { headers }); await load(); }
-    catch (err) { setMsg(err.response?.data?.message || err.message); }
+  const removePkg = async (pkg) => {
+    if (deletingId) return;
+    if (!window.confirm(`Delete “${pkg.title || 'this course'}”? Linked courses are archived and files are removed from storage.`)) return;
+    setDeletingId(pkg.id);
+    setMsg(`Deleting “${pkg.title || 'course'}”… This may take a moment while linked course data and files are safely removed.`);
+    try {
+      await axios.delete(apiUrl(`/api/scorm/packages/${pkg.id}`), { headers });
+      await load();
+      setMsg(`“${pkg.title || 'Course'}” was deleted successfully.`);
+    } catch (err) {
+      setMsg(err.response?.data?.message || err.message || 'Course deletion failed.');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const readyCount = packages.filter((p) => p.status === 'ready').length;
@@ -199,7 +211,8 @@ export default function ScormLibrary() {
             const videoCourse = isVideoCourse(p);
             const editable = isQuizmotoAi(p) || videoCourse;
             const sourceLabel = videoCourse ? 'Video course' : generated ? 'Generated' : 'External';
-            return <div key={p.id} className="scorm-course-row px-5 md:px-6 py-5 transition-colors"><div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_130px_150px_auto] gap-4 xl:items-center"><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap min-w-0"><h3 className="font-semibold text-[14px] truncate max-w-full" title={p.title}>{p.title}</h3><span className={`scorm-course-status scorm-micro shrink-0 px-2 py-1 rounded-md text-[8px] uppercase font-semibold border ${p.status === 'ready' ? 'is-published' : 'is-draft'}`}>{p.status}</span></div><div className="scorm-micro text-[9px] mt-1 flex flex-wrap gap-x-1"><span>Trackable package</span><span>·</span><span>{sourceLabel}</span>{p.fileCount != null && <><span>·</span><span>{p.fileCount} files</span></>}{p.entryHref && <><span>·</span><span className="truncate max-w-[260px]">{p.entryHref}</span></>}</div>{p.status === 'processing' && <div className="text-[10px] mt-2" style={{ color: 'var(--scorm-amber)' }}>Validating and extracting package…</div>}{p.errorMessage && <div className="text-[10px] mt-2" style={{ color: 'var(--scorm-red)' }}>{p.errorMessage}</div>}</div><div><div className="text-xs font-semibold" style={ink}>{sourceLabel}</div><div className="scorm-micro text-[8px] uppercase mt-1">Source</div></div><div><div className="text-xs font-semibold" style={ink}>{p.fileCount != null ? p.fileCount : '—'}</div><div className="scorm-micro text-[8px] uppercase mt-1">Files</div></div><div className="flex flex-wrap gap-2 xl:justify-end">{p.status === 'ready' && !videoCourse && <button onClick={() => createCourse(p.id, p.title)} className="scorm-button-primary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5"><Plus size={13} /> Create course</button>}{(p.status === 'ready' || p.storageKeyZip) && <button onClick={() => downloadPkg(p.id, p.title)} className="scorm-button-secondary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5"><Download size={13} /> Download</button>}<button onClick={() => editPkg(p)} disabled={!editable} title={editable ? (videoCourse ? 'Replace video and rebuild this course' : 'Edit generated package') : 'Only generated packages can be edited'} className="scorm-button-secondary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"><Pencil size={13} /> {videoCourse ? 'Replace video' : 'Edit'}</button><button onClick={() => removePkg(p.id)} className="px-3 py-2 rounded-lg border text-[10px] font-semibold inline-flex items-center gap-1.5" style={{ color: 'var(--scorm-red)', borderColor: 'color-mix(in srgb, var(--scorm-red) 28%, transparent)', background: 'var(--scorm-red-soft)' }}><Trash2 size={13} /> Delete</button></div></div></div>;
+            const deleting = String(deletingId) === String(p.id);
+            return <div key={p.id} className={`scorm-course-row px-5 md:px-6 py-5 transition-all ${deleting ? 'opacity-70' : ''}`} aria-busy={deleting}><div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_130px_150px_auto] gap-4 xl:items-center"><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap min-w-0"><h3 className="font-semibold text-[14px] truncate max-w-full" title={p.title}>{p.title}</h3><span className={`scorm-course-status scorm-micro shrink-0 px-2 py-1 rounded-md text-[8px] uppercase font-semibold border ${deleting ? 'is-draft' : (p.status === 'ready' ? 'is-published' : 'is-draft')}`}>{deleting ? 'deleting' : p.status}</span></div><div className="scorm-micro text-[9px] mt-1 flex flex-wrap gap-x-1"><span>Trackable package</span><span>·</span><span>{sourceLabel}</span>{p.fileCount != null && <><span>·</span><span>{p.fileCount} files</span></>}{p.entryHref && <><span>·</span><span className="truncate max-w-[260px]">{p.entryHref}</span></>}</div>{p.status === 'processing' && !deleting && <div className="text-[10px] mt-2" style={{ color: 'var(--scorm-amber)' }}>Validating and extracting package…</div>}{deleting && <div className="text-[10px] mt-2 inline-flex items-center gap-2" style={{ color: 'var(--scorm-amber)' }}><LoaderCircle size={13} className="animate-spin" /> Deleting course and stored files…</div>}{p.errorMessage && <div className="text-[10px] mt-2" style={{ color: 'var(--scorm-red)' }}>{p.errorMessage}</div>}</div><div><div className="text-xs font-semibold" style={ink}>{sourceLabel}</div><div className="scorm-micro text-[8px] uppercase mt-1">Source</div></div><div><div className="text-xs font-semibold" style={ink}>{p.fileCount != null ? p.fileCount : '—'}</div><div className="scorm-micro text-[8px] uppercase mt-1">Files</div></div><div className="flex flex-wrap gap-2 xl:justify-end">{p.status === 'ready' && !videoCourse && <button disabled={deleting} onClick={() => createCourse(p.id, p.title)} className="scorm-button-primary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-wait"><Plus size={13} /> Create course</button>}{(p.status === 'ready' || p.storageKeyZip) && <button disabled={deleting} onClick={() => downloadPkg(p.id, p.title)} className="scorm-button-secondary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-wait"><Download size={13} /> Download</button>}<button onClick={() => editPkg(p)} disabled={!editable || deleting} title={editable ? (videoCourse ? 'Replace video and rebuild this course' : 'Edit generated package') : 'Only generated packages can be edited'} className="scorm-button-secondary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"><Pencil size={13} /> {videoCourse ? 'Replace video' : 'Edit'}</button><button disabled={Boolean(deletingId)} onClick={() => removePkg(p)} className="px-3 py-2 rounded-lg border text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-55 disabled:cursor-wait" style={{ color: 'var(--scorm-red)', borderColor: 'color-mix(in srgb, var(--scorm-red) 28%, transparent)', background: 'var(--scorm-red-soft)' }}>{deleting ? <LoaderCircle size={13} className="animate-spin" /> : <Trash2 size={13} />} {deleting ? 'Deleting…' : 'Delete'}</button></div></div></div>;
           })}
         </div>
       </section>
