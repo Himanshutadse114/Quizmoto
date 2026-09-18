@@ -93,7 +93,8 @@ describe('ScormPresentationPackageBuilder', () => {
         expect(html).to.include('.option{min-height:44px;padding:10px 12px;border-width:1px');
         expect(html).to.include('@media(max-width:420px)');
         expect(html).to.include('class="course-rail"');
-        expect(html).to.include('--panel-width:clamp(240px,22vw,310px)');
+        expect(html).to.include('--panel-width:clamp(190px,16vw,225px)');
+        expect(html).to.include('--panel-width:clamp(185px,14vw,210px)');
         expect(html).to.include('grid-template-columns:minmax(0,1fr) var(--panel-width)');
         expect(html).to.include('id="section-label"');
         expect(html).to.include("classList.toggle('is-assessment'");

@@ -80,6 +80,10 @@ describe('SCORM player local-first persistence', () => {
         expect(source).to.include("const presentationLight = pkg.source === 'presentation_import'");
         expect(source).to.include("background: '#eef8f6'");
         expect(source).to.include("frameBackground: '#eef8f6'");
+        expect(source).to.include('presentationLight');
+        expect(source).to.include('function applyPresentationLayoutGuard()');
+        expect(source).to.include('.presentation-page img{object-fit:contain!important}');
+        expect(source).to.include('frame.addEventListener("load",applyPresentationLayoutGuard)');
     });
 
     it('autosaves without rendering floating save or exit controls', () => {

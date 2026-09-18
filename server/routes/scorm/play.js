@@ -80,7 +80,8 @@ router.get('/:regId', async (req, res) => {
             sessionEndpoint,
             xapiEndpoint,
             learnerName,
-            contentSrc
+            contentSrc,
+            presentationLight
         });
 
         const html = `<!DOCTYPE html>
@@ -170,8 +171,18 @@ function beaconPersist(eventName){
   }
   return true;
 }
+function applyPresentationLayoutGuard(){
+  if(!BOOT.presentationLight)return;
+  try{
+    var frame=document.getElementById("frame"),doc=frame&&frame.contentDocument;if(!doc)return;
+    var style=doc.getElementById("lmsgen-exact-slide-fit-guard");
+    if(!style){style=doc.createElement("style");style.id="lmsgen-exact-slide-fit-guard";style.textContent=":root{--panel-width:clamp(190px,16vw,225px)!important}#app{padding:clamp(10px,1.5vw,18px)!important;gap:clamp(10px,1.2vw,15px)!important}.course-rail{padding:clamp(14px,1.4vw,19px)!important;gap:14px!important}.presentation-page img{object-fit:contain!important}.presentation-page,main{background:#fff!important}main{width:100%!important;height:auto!important;min-height:0!important;aspect-ratio:var(--slide-ratio)!important;align-self:center!important;justify-self:center!important}#app.is-assessment main{height:100%!important;aspect-ratio:auto!important}html:fullscreen #app,html:-webkit-full-screen #app{--panel-width:clamp(185px,14vw,210px)!important;padding:8px!important;gap:10px!important}@media(max-width:820px){main{height:auto!important;min-height:0!important}.course-rail{width:100%!important;max-width:720px!important}}";(doc.head||doc.documentElement).appendChild(style);}
+    var image=doc.querySelector(".presentation-page img"),width=Number(image&&image.getAttribute("width")),height=Number(image&&image.getAttribute("height"));
+    if(width>0&&height>0)doc.documentElement.style.setProperty("--slide-ratio",width+" / "+height);
+  }catch(e){}
+}
 function loadContent(){
-  try{var frame=document.getElementById("frame");if(frame&&!frame.getAttribute("data-loaded")){frame.setAttribute("data-loaded","1");frame.src=BOOT.contentSrc;}}catch(e){}
+  try{var frame=document.getElementById("frame");if(frame&&!frame.getAttribute("data-loaded")){frame.setAttribute("data-loaded","1");frame.addEventListener("load",applyPresentationLayoutGuard);frame.src=BOOT.contentSrc;}}catch(e){}
 }
 function beginLaunchTracking(d){
   installDefaults(!!(d&&d.resume));installTimeBaseline(d||{});stateLoaded=true;dirty=true;revision++;
