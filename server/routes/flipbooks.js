@@ -283,13 +283,16 @@ router.get('/quota', async (req, res, next) => {
 router.get('/', async (req, res, next) => {
     try {
         await ensureFlipbookSchema();
-        const books = await Flipbook.findAll({
-            where: { ownerUserId: req.flipbookUser.id },
-            order: [['updatedAt', 'DESC']]
-        });
+        const [books, quota] = await Promise.all([
+            Flipbook.findAll({
+                where: { ownerUserId: req.flipbookUser.id },
+                order: [['updatedAt', 'DESC']]
+            }),
+            getQuota(req.flipbookUser)
+        ]);
         res.json({
             flipbooks: books.map(ownerPayload),
-            quota: await getQuota(req.flipbookUser),
+            quota,
             maxPages: MAX_PAGES
         });
     } catch (err) {

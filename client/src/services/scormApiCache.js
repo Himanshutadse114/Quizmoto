@@ -16,6 +16,7 @@ const HARD_EXPIRE_MS = 10 * 60 * 1000;
 const cache = new Map();
 const revalidating = new Map();
 let installed = false;
+let cacheEpoch = 0;
 
 const REALTIME_FRAGMENTS = [
   '/author/progress/',
@@ -130,6 +131,11 @@ function isReadCacheEligibleUrl(url) {
   return isPlatformCacheUrl(url) && (!isRealtimeUrl(url) || isRealtimeCacheOverride(url));
 }
 
+function invalidatesPlatformCache(method, url) {
+  if (method === 'get') return false;
+  return isReadCacheEligibleUrl(url) || String(url || '').includes('/api/account');
+}
+
 function authHeader(config) {
   return config?.headers?.Authorization || config?.headers?.authorization || '';
 }
@@ -210,7 +216,7 @@ function persist(key, entry, url) {
       status: entry.status,
       statusText: entry.statusText
     }));
-  } catch (_) {
+  } catch {
     // Session storage is an optimisation only. Large report datasets can exceed
     // browser quota; in that case the in-memory cache remains active.
   }
@@ -227,7 +233,7 @@ function restore(key) {
       return null;
     }
     return { ...entry, headers: {} };
-  } catch (_) {
+  } catch {
     return null;
   }
 }
@@ -249,7 +255,7 @@ function read(config) {
   if (Date.now() >= Number(entry.expiresAt || 0)) {
     cache.delete(key);
     if (typeof window !== 'undefined') {
-      try { window.sessionStorage.removeItem(sessionKey(key)); } catch (_) {}
+      try { window.sessionStorage.removeItem(sessionKey(key)); } catch { /* Storage can be browser-blocked. */ }
     }
     return null;
   }
@@ -312,6 +318,7 @@ function notifyInvalidated() {
 }
 
 export function invalidateScormApiCache({ notify = true } = {}) {
+  cacheEpoch += 1;
   cache.clear();
   revalidating.clear();
   if (typeof window !== 'undefined') {
@@ -322,7 +329,7 @@ export function invalidateScormApiCache({ notify = true } = {}) {
         if (key?.startsWith(SESSION_PREFIX)) keys.push(key);
       }
       keys.forEach((key) => window.sessionStorage.removeItem(key));
-    } catch (_) {}
+    } catch { /* Storage can be browser-blocked. */ }
   }
   if (notify) notifyInvalidated();
 }
@@ -340,7 +347,7 @@ async function warmDataset(token, dataset, { force = false } = {}) {
     });
     if (dataset.dataKey) setScormData(dataset.dataKey, token, response.data);
     return { ok: true, data: response.data };
-  } catch (_) {
+  } catch {
     return { ok: false, data: null };
   }
 }
@@ -446,7 +453,11 @@ export function installScormApiCache() {
 
     // Clear prepared reads before a data-changing platform request, but never let
     // high-frequency learner runtime/auth traffic churn the whole admin cache.
-    if (method !== 'get' && isReadCacheEligibleUrl(url)) invalidateScormApiCache({ notify: false });
+    if (invalidatesPlatformCache(method, url)) invalidateScormApiCache({ notify: false });
+
+    if (method === 'get' && isReadCacheEligibleUrl(url) && Boolean(authHeader(config))) {
+      config.__lmsgenCacheEpoch = cacheEpoch;
+    }
 
     if (!isCacheable(config) || config.__lmsgenForceRefresh) return config;
     const cached = read(config);
@@ -477,10 +488,11 @@ export function installScormApiCache() {
 
       const eligible = method === 'get'
         && isReadCacheEligibleUrl(url)
-        && Boolean(authHeader(config));
+        && Boolean(authHeader(config))
+        && Number(config.__lmsgenCacheEpoch) === cacheEpoch;
       if (eligible && !config.__lmsgenCacheHit && success) write(config, response);
 
-      if (method !== 'get' && isReadCacheEligibleUrl(url) && success) notifyInvalidated();
+      if (invalidatesPlatformCache(method, url) && success) notifyInvalidated();
       return response;
     },
     (error) => Promise.reject(error)

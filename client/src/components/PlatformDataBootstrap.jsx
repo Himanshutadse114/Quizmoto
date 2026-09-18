@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { warmScormPlatformData } from '../services/scormApiCache';
 
-const TOKEN_CHECK_MS = 250;
-const BACKGROUND_REFRESH_MS = 45_000;
-const HEAVY_WARM_DELAY_MS = 1_500;
+const TOKEN_CHECK_MS = 1_000;
+const BACKGROUND_REFRESH_MS = 2 * 60_000;
+const INITIAL_WARM_DELAY_MS = 2_500;
 
 function readSession() {
   let user = null;
@@ -25,13 +25,6 @@ function platformRoute() {
   return window.location.pathname === '/scorm' || window.location.pathname.startsWith('/scorm/');
 }
 
-function connectionAllowsHeavyWarmup() {
-  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  if (!connection) return true;
-  if (connection.saveData) return false;
-  return !['slow-2g', '2g'].includes(String(connection.effectiveType || '').toLowerCase());
-}
-
 /**
  * Warms commonly used platform reads without gating the application UI.
  *
@@ -44,10 +37,10 @@ export default function PlatformDataBootstrap() {
   useEffect(() => {
     let disposed = false;
     let warmedToken = '';
-    let heavyTimer = null;
+    let warmTimer = null;
     let warmPromise = null;
 
-    const runBackgroundWarm = async ({ force = false, includeHeavy = false } = {}) => {
+    const runBackgroundWarm = async ({ force = false, essentialOnly = false } = {}) => {
       if (disposed || !platformRoute()) return null;
 
       const { token, user, scormAccess, quizmotoOnly } = readSession();
@@ -59,7 +52,8 @@ export default function PlatformDataBootstrap() {
 
       const request = warmScormPlatformData(token, {
         force,
-        includeHeavy,
+        includeHeavy: false,
+        essentialOnly,
         role: user?.role || '',
         scormAccess,
         quizmotoOnly
@@ -73,33 +67,27 @@ export default function PlatformDataBootstrap() {
       return request;
     };
 
-    const scheduleHeavyWarm = () => {
-      if (!connectionAllowsHeavyWarmup()) return;
-      window.clearTimeout(heavyTimer);
-      heavyTimer = window.setTimeout(() => {
-        if (!disposed && document.visibilityState === 'visible' && platformRoute()) {
-          void runBackgroundWarm({ force: false, includeHeavy: true });
-        }
-      }, HEAVY_WARM_DELAY_MS);
-    };
-
     const ensureWarm = () => {
       if (disposed || !platformRoute()) return;
       const { token } = readSession();
       if (!token || token === warmedToken) return;
 
       warmedToken = token;
-      void runBackgroundWarm({ force: false, includeHeavy: false })
-        .finally(() => {
-          if (!disposed) scheduleHeavyWarm();
-        });
+      window.clearTimeout(warmTimer);
+      // Let the active route populate its own data first. The shared cache then
+      // turns this warm-up into cache hits instead of duplicate initial reads.
+      warmTimer = window.setTimeout(() => {
+        if (!disposed && platformRoute()) void runBackgroundWarm({ force: false });
+      }, INITIAL_WARM_DELAY_MS);
     };
 
     const refreshVisibleData = () => {
       if (disposed || document.visibilityState !== 'visible' || !platformRoute()) return;
       const { token } = readSession();
       if (!token) return;
-      void runBackgroundWarm({ force: true, includeHeavy: false });
+      // Focus and visibility events often arrive together. Cached responses are
+      // immediate and only stale datasets revalidate in the background.
+      void runBackgroundWarm({ force: false });
     };
 
     const onFocus = () => {
@@ -121,7 +109,10 @@ export default function PlatformDataBootstrap() {
 
     const onCacheInvalidated = () => {
       if (disposed || !platformRoute()) return;
-      refreshVisibleData();
+      window.clearTimeout(warmTimer);
+      warmTimer = window.setTimeout(() => {
+        if (!disposed && platformRoute()) void runBackgroundWarm({ essentialOnly: true });
+      }, INITIAL_WARM_DELAY_MS);
     };
 
     ensureWarm();
@@ -140,7 +131,7 @@ export default function PlatformDataBootstrap() {
       disposed = true;
       window.clearInterval(tokenTimer);
       window.clearInterval(refreshTimer);
-      window.clearTimeout(heavyTimer);
+      window.clearTimeout(warmTimer);
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('storage', onStorage);
       window.removeEventListener('lmsgen-platform-cache-invalidated', onCacheInvalidated);
