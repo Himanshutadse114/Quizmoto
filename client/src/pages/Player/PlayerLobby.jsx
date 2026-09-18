@@ -4,7 +4,7 @@ import { useSocket } from '../../context/SocketContext';
 import { motion as Motion } from 'framer-motion';
 import ReactionBar from '../../components/ReactionBar';
 import AvatarDisplay from '../../components/AvatarDisplay';
-import { exitLiveQuizFullscreen } from '../../utils/fullscreen';
+import { exitLiveQuizFullscreen, returnToLmsgenHomepage } from '../../utils/fullscreen';
 
 function readStoredPlayerInfo() {
     try {
@@ -79,7 +79,7 @@ const PlayerLobby = () => {
             try { localStorage.removeItem('player_info'); } catch { /* Storage can be unavailable in private browsing. */ }
             await exitLiveQuizFullscreen();
             alert((data && data.message) || 'Host left the session.');
-            navigate('/', { replace: true });
+            returnToLmsgenHomepage();
         };
 
         const onHostDisconnected = () => setIsHostDisconnected(true);
@@ -88,7 +88,7 @@ const PlayerLobby = () => {
             if (msg === 'Game not found' || msg === 'Game is already finished' || msg === 'Unauthorized Host Entry') {
                 alert(msg);
                 try { localStorage.removeItem('player_info'); } catch { /* Storage can be unavailable in private browsing. */ }
-                void exitLiveQuizFullscreen().then(() => navigate('/', { replace: true }));
+                void exitLiveQuizFullscreen().then(returnToLmsgenHomepage);
             }
         };
 
@@ -115,7 +115,7 @@ const PlayerLobby = () => {
     const handleLeaveClick = async () => {
         leaveSession({ clearStorage: true });
         await exitLiveQuizFullscreen();
-        navigate('/', { replace: true });
+        returnToLmsgenHomepage();
     };
 
     return (

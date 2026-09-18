@@ -63,4 +63,9 @@ export async function exitLiveQuizFullscreen() {
     }
 }
 
+export function returnToLmsgenHomepage() {
+    const homepage = new URL('/', window.location.origin).toString();
+    window.location.replace(homepage);
+}
+
 export { fullscreenElement as getLiveQuizFullscreenElement };

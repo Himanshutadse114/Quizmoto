@@ -322,10 +322,25 @@ function applySharedMarketingUi(frame, src) {
 function syncMarketingFrameViewport(frame) {
   if (!frame) return;
   const viewport = window.visualViewport;
-  const width = Math.max(1, Math.round(viewport?.width || window.innerWidth));
-  const height = Math.max(1, Math.round(viewport?.height || window.innerHeight));
+  const widthCandidates = [
+    viewport?.width,
+    window.innerWidth,
+    document.documentElement?.clientWidth,
+  ].filter((value) => Number.isFinite(value) && value > 0);
+  const heightCandidates = [
+    viewport?.height,
+    window.innerHeight,
+    document.documentElement?.clientHeight,
+  ].filter((value) => Number.isFinite(value) && value > 0);
+  // Mobile Chromium can briefly retain the wider fullscreen viewport after the
+  // quiz exits. The smallest live measurement is the visible page and prevents
+  // desktop media queries from being applied inside a portrait phone iframe.
+  const width = Math.max(1, Math.round(widthCandidates.length ? Math.min(...widthCandidates) : 1));
+  const height = Math.max(1, Math.round(heightCandidates.length ? Math.min(...heightCandidates) : 1));
   frame.style.width = `${width}px`;
   frame.style.height = `${height}px`;
+  frame.style.maxWidth = '100vw';
+  frame.style.maxHeight = '100dvh';
   try {
     frame.contentWindow?.dispatchEvent(new Event('resize'));
   } catch {
@@ -380,6 +395,9 @@ export default function MarketingSite({ src, title, tabTitle }) {
         window.setTimeout(() => {
           if (frame.isConnected) syncMarketingFrameViewport(frame);
         }, 160);
+        window.setTimeout(() => {
+          if (frame.isConnected) syncMarketingFrameViewport(frame);
+        }, 520);
       }}
       style={{
         position: 'fixed',

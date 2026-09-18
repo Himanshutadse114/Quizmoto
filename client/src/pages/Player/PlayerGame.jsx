@@ -8,7 +8,7 @@ import ReactionBar from '../../components/ReactionBar';
 import FinalPodium from '../../components/FinalPodium';
 import CountdownDisplay from '../../components/CountdownDisplay';
 import { audio } from '../../utils/audioEngine';
-import { exitLiveQuizFullscreen } from '../../utils/fullscreen';
+import { exitLiveQuizFullscreen, returnToLmsgenHomepage } from '../../utils/fullscreen';
 
 const ANSWER_META = [
     { label: 'A', symbol: '▲' },
@@ -120,7 +120,7 @@ const PlayerGame = () => {
                         : 'The host ended this session.';
                     await exitLiveQuizFullscreen();
                     alert(reason);
-                    navigate('/', { replace: true });
+                    returnToLmsgenHomepage();
                     return true;
                 }
 
@@ -304,7 +304,7 @@ const PlayerGame = () => {
             try { localStorage.removeItem('player_info'); } catch { /* Storage can be unavailable in private browsing. */ }
             await exitLiveQuizFullscreen();
             alert((data && data.message) || 'Host left the session.');
-            navigate('/', { replace: true });
+            returnToLmsgenHomepage();
         };
 
         const onSocketError = (msg) => {
@@ -314,7 +314,7 @@ const PlayerGame = () => {
                         skipLeaveRef.current = true;
                         try { localStorage.removeItem('player_info'); } catch { /* Storage can be unavailable in private browsing. */ }
                         await exitLiveQuizFullscreen();
-                        navigate('/', { replace: true });
+                        returnToLmsgenHomepage();
                     }
                 });
                 return;
@@ -323,7 +323,7 @@ const PlayerGame = () => {
                 skipLeaveRef.current = true;
                 alert(msg);
                 try { localStorage.removeItem('player_info'); } catch { /* Storage can be unavailable in private browsing. */ }
-                void exitLiveQuizFullscreen().then(() => navigate('/', { replace: true }));
+                void exitLiveQuizFullscreen().then(returnToLmsgenHomepage);
             }
         };
 
@@ -428,7 +428,7 @@ const PlayerGame = () => {
         skipLeaveRef.current = true;
         leaveSession({ clearStorage: true });
         await exitLiveQuizFullscreen();
-        navigate('/', { replace: true });
+        returnToLmsgenHomepage();
     };
 
     const options = (() => {
@@ -592,7 +592,7 @@ const PlayerGame = () => {
                                     try { localStorage.removeItem('player_info'); } catch { /* Storage can be unavailable in private browsing. */ }
                                     await exitLiveQuizFullscreen();
                                     if (localStorage.getItem('playerToken')) navigate('/player/dashboard');
-                                    else navigate('/', { replace: true });
+                                    else returnToLmsgenHomepage();
                                 }}
                                 className="min-h-11 px-4 py-2 rounded-xl bg-white text-quizmoto-purple text-xs font-black shadow-lg"
                             >

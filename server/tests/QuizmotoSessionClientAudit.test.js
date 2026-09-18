@@ -43,6 +43,8 @@ describe('Quizmoto live-session client safeguards', () => {
         expect(fullscreen).to.include('document.webkitExitFullscreen');
         expect(fullscreen).to.include('waitForStableViewport');
         expect(fullscreen).to.include("window.dispatchEvent(new Event('resize'))");
+        expect(fullscreen).to.include('window.location.replace(homepage)');
+        expect(game).to.include('returnToLmsgenHomepage()');
     });
 
     it('resynchronizes the marketing frame after mobile fullscreen exits', () => {
@@ -50,8 +52,9 @@ describe('Quizmoto live-session client safeguards', () => {
         const homeTheme = fs.readFileSync(path.join(clientRoot, '..', 'public', 'landing', 'css', 'atelora-home-refresh.css'), 'utf8');
         expect(marketing).to.include('window.visualViewport');
         expect(marketing).to.include('syncMarketingFrameViewport');
+        expect(marketing).to.include('Math.min(...widthCandidates)');
         expect(marketing).to.include("height: '100dvh'");
-        expect(homeTheme).to.include('font-size: clamp(3.2rem, 9.5vw, 3.8rem) !important');
+        expect(homeTheme).to.include('font-size: clamp(3rem, 8.4vw, 3.55rem) !important');
     });
 
     it('handles host control conflicts and suppresses game-screen background shapes', () => {
