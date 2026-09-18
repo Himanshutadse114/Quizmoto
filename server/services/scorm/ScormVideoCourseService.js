@@ -180,14 +180,29 @@ function readAnalysis(value) {
     }
 }
 
-async function createVideoCourse({ hostId, title, description, mimeType, durationSeconds, sourcePath, sourceStorageKey = '', tempDir, replacePackageId = '' }) {
+async function createVideoCourse({ hostId, title, description, mimeType, durationSeconds, sourcePath = '', sourceStorageKey = '', sourceByteSize = 0, tempDir = '', replacePackageId = '' }) {
     let pkg = null;
     let createdPackage = false;
     const storage = getObjectStorage();
     try {
         const safeTitle = String(title || 'Video course').trim().slice(0, 200) || 'Video course';
         const safeDescription = String(description || '').trim().slice(0, 1200) || null;
-        const sourceStat = await fsp.stat(sourcePath);
+        const cloudNativePackage = Boolean(
+            sourceStorageKey
+            && storage?.driver === 's3'
+            && typeof storage.copyObject === 'function'
+        );
+        const sourceStat = sourcePath ? await fsp.stat(sourcePath) : null;
+        const sourceSize = Number(sourceByteSize || sourceStat?.size || 0);
+        if (!Number.isSafeInteger(sourceSize) || sourceSize <= 0) {
+            const error = new Error('The uploaded video size could not be verified.');
+            error.status = 400;
+            error.code = 'VIDEO_COURSE_SIZE_INVALID';
+            throw error;
+        }
+        if (!cloudNativePackage && !sourcePath) {
+            throw new Error('A local video source is required when direct object storage is unavailable.');
+        }
         const extension = videoExtension(mimeType);
         const mediaPath = `media/course-video.${extension}`;
         const html = playerHtml({ title: safeTitle, description: safeDescription, mediaPath, mimeType, durationSeconds });
@@ -210,13 +225,15 @@ async function createVideoCourse({ hostId, title, description, mimeType, duratio
                 status: 'processing',
                 source: 'video_course',
                 standard: 'scorm_1_2',
-                byteSize: sourceStat.size,
+                byteSize: sourceSize,
                 analysisJson: JSON.stringify({
                     generatedBy: 'lmsgen',
                     type: 'video_course',
                     title: safeTitle,
                     description: safeDescription,
                     mimeType,
+                    mediaPath,
+                    browserBundle: cloudNativePackage,
                     durationSeconds: Number(durationSeconds) || null,
                     revision: 1
                 })
@@ -224,22 +241,31 @@ async function createVideoCourse({ hostId, title, description, mimeType, duratio
             createdPackage = true;
         }
 
-        const zipPath = path.join(tempDir, 'video-course.zip');
-        await createZipFile({ outputPath: zipPath, videoPath: sourcePath, mediaPath, html, manifest });
-        const zipStat = await fsp.stat(zipPath);
-        const zipKey = packageZipKey(pkg.id);
+        const previousZipKey = pkg.storageKeyZip || '';
+        let zipKey = '';
+        let zipSize = sourceSize;
+        let zipPath = '';
+        if (!cloudNativePackage) {
+            zipPath = path.join(tempDir, 'video-course.zip');
+            await createZipFile({ outputPath: zipPath, videoPath: sourcePath, mediaPath, html, manifest });
+            const zipStat = await fsp.stat(zipPath);
+            zipSize = zipStat.size;
+            zipKey = packageZipKey(pkg.id);
+        }
 
         // Publish the replacement media first and the entry document last so a
         // learner can never receive a new player that points at an unavailable file.
-        if (sourceStorageKey && typeof storage.copyObject === 'function') {
+        if (cloudNativePackage) {
             await storage.copyObject(sourceStorageKey, packageContentKey(pkg.id, mediaPath), { contentType: mimeType });
         } else {
-            await storage.putObjectStream({ key: packageContentKey(pkg.id, mediaPath), stream: fs.createReadStream(sourcePath), contentType: mimeType, contentLength: sourceStat.size });
+            await storage.putObjectStream({ key: packageContentKey(pkg.id, mediaPath), stream: fs.createReadStream(sourcePath), contentType: mimeType, contentLength: sourceSize });
         }
         await storage.putObject({ key: packageContentKey(pkg.id, 'scorm_api_wrapper.js'), body: Buffer.from(SCORM_WRAPPER), contentType: 'application/javascript' });
         await storage.putObject({ key: packageContentKey(pkg.id, 'imsmanifest.xml'), body: Buffer.from(manifest), contentType: 'application/xml' });
         await storage.putObject({ key: packageContentKey(pkg.id, 'index.html'), body: Buffer.from(html), contentType: 'text/html; charset=utf-8' });
-        await storage.putObjectStream({ key: zipKey, stream: fs.createReadStream(zipPath), contentType: 'application/zip', contentLength: zipStat.size });
+        if (zipKey) {
+            await storage.putObjectStream({ key: zipKey, stream: fs.createReadStream(zipPath), contentType: 'application/zip', contentLength: zipSize });
+        }
 
         const meta = {
             entryHref: 'index.html',
@@ -247,8 +273,10 @@ async function createVideoCourse({ hostId, title, description, mimeType, duratio
             standard: 'scorm_1_2',
             fileCount: 4,
             manifestHash,
-            totalUncompressed: sourceStat.size + Buffer.byteLength(html) + Buffer.byteLength(SCORM_WRAPPER) + Buffer.byteLength(manifest),
-            courseType: 'video_course'
+            totalUncompressed: sourceSize + Buffer.byteLength(html) + Buffer.byteLength(SCORM_WRAPPER) + Buffer.byteLength(manifest),
+            courseType: 'video_course',
+            browserBundle: cloudNativePackage,
+            mediaPath
         };
         await storage.putObject({ key: packageMetaKey(pkg.id), body: Buffer.from(JSON.stringify(meta, null, 2)), contentType: 'application/json' });
 
@@ -263,15 +291,17 @@ async function createVideoCourse({ hostId, title, description, mimeType, duratio
             title: safeTitle,
             description: safeDescription,
             mimeType,
+            mediaPath,
+            browserBundle: cloudNativePackage,
             durationSeconds: Number(durationSeconds) || null,
             revision: Math.max(0, Number(previousAnalysis.revision) || 0) + (createdPackage ? 0 : 1),
             replacedAt: createdPackage ? null : new Date().toISOString()
         });
-        pkg.storageKeyZip = zipKey;
+        pkg.storageKeyZip = zipKey || null;
         pkg.storagePrefixContent = packageContentPrefix(pkg.id);
         pkg.entryHref = 'index.html';
         pkg.manifestHash = manifestHash;
-        pkg.byteSize = zipStat.size;
+        pkg.byteSize = zipSize;
         pkg.fileCount = 4;
         pkg.status = 'ready';
         pkg.errorMessage = null;
@@ -288,6 +318,12 @@ async function createVideoCourse({ hostId, title, description, mimeType, duratio
             videoRevision: Math.max(1, Number(readAnalysis(pkg.analysisJson).revision) || 1)
         };
         await course.save();
+
+        // Older video courses may have a full ZIP in object storage. Remove
+        // that duplicate only after the replacement workspace is fully ready.
+        if (cloudNativePackage && previousZipKey) {
+            await storage.deleteObject(previousZipKey).catch(() => {});
+        }
 
         return { package: pkg, course };
     } catch (error) {

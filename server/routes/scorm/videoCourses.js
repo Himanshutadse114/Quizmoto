@@ -110,7 +110,6 @@ router.post('/upload-ticket', auth, async (req, res) => {
 });
 
 router.post('/upload-complete', auth, async (req, res) => {
-    let tempDir = null;
     const storage = getObjectStorage();
     const sourceKey = String(req.body?.sourceKey || '');
     try {
@@ -126,19 +125,14 @@ router.post('/upload-complete', auth, async (req, res) => {
         const head = await storage.headObject(sourceKey);
         if (Number(head.contentLength) !== byteSize) return res.status(400).json({ message: 'The complete video did not arrive. Please retry the upload.' });
         const metadata = cleanMetadata(req.body?.metadata);
-        tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'lmsgen-video-course-direct-'));
-        const sourcePath = path.join(tempDir, `source.${videoExtension(mimeType)}`);
-        const object = await storage.getObjectStream(sourceKey);
-        await pipeline(object.stream, fs.createWriteStream(sourcePath));
         const created = await createVideoCourse({
             hostId: req.userId,
             title: metadata.title,
             description: metadata.description,
             mimeType,
             durationSeconds: metadata.durationSeconds,
-            sourcePath,
             sourceStorageKey: sourceKey,
-            tempDir,
+            sourceByteSize: byteSize,
             replacePackageId
         });
         res.status(replacePackageId ? 200 : 201).json({
@@ -161,7 +155,6 @@ router.post('/upload-complete', auth, async (req, res) => {
         });
     } finally {
         if (sourceKey.startsWith(directVideoPrefix(req.userId))) await storage.deleteObject(sourceKey).catch(() => {});
-        if (tempDir) await fsp.rm(tempDir, { recursive: true, force: true }).catch(() => {});
     }
 });
 

@@ -9,7 +9,7 @@ const {
     redirectToSignedObject,
     signedReadUrl
 } = require('../../storage/DirectObjectDelivery');
-const { packageZipKey } = require('../../services/scorm/storageKeys');
+const { packageZipKey, packageContentKey } = require('../../services/scorm/storageKeys');
 const { scormMaxUploadMb } = require('../../config/featureFlags');
 const JobQueueService = require('../../jobs/JobQueueService');
 const { JOB_TYPES } = require('../../jobs/jobTypes');
@@ -390,9 +390,43 @@ router.get('/:id/download-link', auth, async (req, res) => {
     try {
         const pkg = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId } });
         if (!pkg || pkg.status === 'deleted') return res.status(404).json({ message: 'Not found' });
-        if (!pkg.storageKeyZip) return res.status(404).json({ message: 'ZIP not stored' });
         const safeName = `${String(pkg.title || 'trackable-package').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 80)}.zip`;
-        const url = await signedReadUrl(getObjectStorage(), pkg.storageKeyZip, {
+        const storage = getObjectStorage();
+        if (!pkg.storageKeyZip && pkg.source === 'video_course') {
+            if (!(await prepareDirectUpload(storage))) {
+                return res.status(503).json({ message: 'This video course download is temporarily unavailable.' });
+            }
+            let analysis = {};
+            try { analysis = JSON.parse(String(pkg.analysisJson || '{}')); } catch (_) {}
+            const extensionByType = {
+                'video/mp4': 'mp4',
+                'video/webm': 'webm',
+                'video/ogg': 'ogv',
+                'video/quicktime': 'mov'
+            };
+            const mediaPath = String(analysis.mediaPath || `media/course-video.${extensionByType[analysis.mimeType] || 'mp4'}`);
+            if (!/^media\/course-video\.(mp4|webm|ogv|mov)$/i.test(mediaPath)) {
+                return res.status(500).json({ message: 'The video course download metadata is invalid.' });
+            }
+            const definitions = [
+                ['index.html', 'text/html; charset=utf-8'],
+                ['scorm_api_wrapper.js', 'application/javascript'],
+                ['imsmanifest.xml', 'application/xml'],
+                [mediaPath, analysis.mimeType || 'application/octet-stream']
+            ];
+            const files = await Promise.all(definitions.map(async ([filePath, contentType]) => ({
+                path: filePath,
+                contentType,
+                url: await signedReadUrl(storage, packageContentKey(pkg.id, filePath), { expiresIn: 15 * 60, contentType })
+            })));
+            if (files.some((file) => !file.url)) {
+                return res.status(503).json({ message: 'This video course download is temporarily unavailable.' });
+            }
+            res.setHeader('Cache-Control', 'private, no-store');
+            return res.json({ direct: false, clientBundle: true, downloadName: safeName, files });
+        }
+        if (!pkg.storageKeyZip) return res.status(404).json({ message: 'ZIP not stored' });
+        const url = await signedReadUrl(storage, pkg.storageKeyZip, {
             expiresIn: 15 * 60,
             contentType: 'application/zip',
             downloadName: safeName

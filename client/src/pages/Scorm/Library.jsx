@@ -141,6 +141,31 @@ export default function ScormLibrary() {
   const downloadPkg = async (id, packageTitle) => {
     try {
       const linkResponse = await axios.get(apiUrl(`/api/scorm/packages/${id}/download-link`), { headers });
+      if (linkResponse.data?.clientBundle && Array.isArray(linkResponse.data?.files)) {
+        setMsg('Preparing your trackable video package in this browser…');
+        const { default: JSZip } = await import('jszip');
+        const zip = new JSZip();
+        await Promise.all(linkResponse.data.files.map(async (file) => {
+          const response = await axios.get(file.url, { responseType: 'arraybuffer', timeout: 300000 });
+          const isVideo = String(file.contentType || '').startsWith('video/');
+          zip.file(file.path, response.data, {
+            binary: true,
+            compression: isVideo ? 'STORE' : 'DEFLATE'
+          });
+        }));
+        const blob = await zip.generateAsync({
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 6 }
+        });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = linkResponse.data.downloadName || `${(packageTitle || 'trackable-video-course').replace(/[^a-zA-Z0-9._-]+/g, '_')}.zip`;
+        document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(url);
+        setMsg('Your trackable video package is ready and the download has started.');
+        return;
+      }
       if (linkResponse.data?.direct && linkResponse.data?.url) {
         const a = document.createElement('a');
         a.href = linkResponse.data.url;

@@ -12,6 +12,29 @@ const MISSING_PROGRESS_GRACE_MS = 30 * 1000;
 const requestControllers = new Map();
 const cancelledJobs = new Set();
 
+function tokenOwnerKey(token) {
+  try {
+    const value = String(token || '').split('.')[1] || '';
+    const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(window.atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')));
+    const id = payload.userId ?? payload.id ?? payload.sub;
+    return id == null ? '' : `user:${String(id)}`;
+  } catch {
+    return '';
+  }
+}
+
+function activeOwnerKey(token = '') {
+  if (typeof window === 'undefined') return '';
+  return tokenOwnerKey(token || window.localStorage.getItem('token'));
+}
+
+function readAllStoredJobs() {
+  if (typeof window === 'undefined') return [];
+  const jobs = safeParse(window.localStorage.getItem(STORAGE_KEY) || '[]', []);
+  return Array.isArray(jobs) ? jobs : [];
+}
+
 function safeParse(value, fallback) {
   try { return JSON.parse(value); } catch { return fallback; }
 }
@@ -143,45 +166,51 @@ async function prepareGenerationPayload({ token, id, payload, file, visualPdfFil
   return prepared;
 }
 
-export function readCourseGenerationJobs() {
+export function readCourseGenerationJobs(token = '') {
   if (typeof window === 'undefined') return [];
   const now = Date.now();
-  const jobs = safeParse(window.localStorage.getItem(STORAGE_KEY) || '[]', []);
-  if (!Array.isArray(jobs)) return [];
-  return jobs
+  const ownerKey = activeOwnerKey(token);
+  if (!ownerKey) return [];
+  return readAllStoredJobs()
     .filter((job) => job && job.id)
+    .filter((job) => job.ownerKey === ownerKey)
     .filter((job) => ['running', 'queued', 'cancelling'].includes(job.status) || now - Number(job.updatedAt || job.createdAt || now) < KEEP_MS)
     .slice(0, MAX_JOBS);
 }
 
-function writeJobs(jobs) {
+function writeJobs(ownerKey, jobs) {
   if (typeof window === 'undefined') return;
   const next = Array.isArray(jobs) ? jobs.slice(0, MAX_JOBS) : [];
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  const otherOwners = readAllStoredJobs().filter((job) => job?.ownerKey && job.ownerKey !== ownerKey);
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...next, ...otherOwners].slice(0, MAX_JOBS * 4)));
   window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: next }));
 }
 
-export function upsertCourseGenerationJob(id, patch = {}) {
-  const jobs = readCourseGenerationJobs();
+export function upsertCourseGenerationJob(id, patch = {}, token = '') {
+  const ownerKey = activeOwnerKey(token);
+  if (!ownerKey) return null;
+  const jobs = readCourseGenerationJobs(token);
   const index = jobs.findIndex((job) => job.id === id);
   const now = Date.now();
-  const current = index >= 0 ? jobs[index] : { id, createdAt: now, notifiedAt: 0 };
-  const nextJob = { ...current, ...patch, id, updatedAt: now };
+  const current = index >= 0 ? jobs[index] : { id, ownerKey, createdAt: now, notifiedAt: 0 };
+  const nextJob = { ...current, ...patch, id, ownerKey, updatedAt: now };
   const next = index >= 0
     ? jobs.map((job, i) => (i === index ? nextJob : job))
     : [nextJob, ...jobs];
-  writeJobs(next);
+  writeJobs(ownerKey, next);
   return nextJob;
 }
 
-export function removeCourseGenerationJob(id) {
-  const next = readCourseGenerationJobs().filter((job) => job.id !== id);
-  writeJobs(next);
+export function removeCourseGenerationJob(id, token = '') {
+  const ownerKey = activeOwnerKey(token);
+  if (!ownerKey) return [];
+  const next = readCourseGenerationJobs(token).filter((job) => job.id !== id);
+  writeJobs(ownerKey, next);
   return next;
 }
 
-export function markCourseGenerationJobNotified(id) {
-  return upsertCourseGenerationJob(id, { notifiedAt: Date.now() });
+export function markCourseGenerationJobNotified(id, token = '') {
+  return upsertCourseGenerationJob(id, { notifiedAt: Date.now() }, token);
 }
 
 export function publicGenerationError(value) {
@@ -306,7 +335,7 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
     progressUpdatedAt: now,
     missingProgressCount: 0,
     serverStatus: 'running'
-  });
+  }, token);
 
   // The page can navigate immediately. Source files are uploaded as raw binary
   // data after the job is registered, avoiding Base64 conversion and huge JSON
@@ -336,12 +365,12 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
       if (res.status === 202 || data.accepted) {
         upsertCourseGenerationJob(id, {
           status: 'running',
-          percent: Math.max(1, Number(readCourseGenerationJobs().find((job) => job.id === id)?.percent || 1)),
+          percent: Math.max(1, Number(readCourseGenerationJobs(token).find((job) => job.id === id)?.percent || 1)),
           stage: data.status === 'queued' ? 'Queued for generation' : 'Starting generation',
           detail: 'Course generation is running in the background. You can continue using the platform.',
           missingProgressCount: 0,
           serverStatus: data.status || 'queued'
-        });
+        }, token);
         return;
       }
 
@@ -362,7 +391,7 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
         progressUpdatedAt: Date.now(),
         missingProgressCount: 0,
         serverStatus: 'complete'
-      });
+      }, token);
     })
     .catch((err) => {
       if (cancelledJobs.has(id) || err?.code === 'ERR_CANCELED' || axios.isCancel?.(err)) return;
@@ -373,14 +402,14 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
           error: 'The selected source file could not be read. Please choose the file again and retry.',
           progressUpdatedAt: Date.now(),
           serverStatus: 'error'
-        });
+        }, token);
         return;
       }
       if (!err.response) {
         upsertCourseGenerationJob(id, {
           status: 'running',
           detail: 'Checking course creation progress.'
-        });
+        }, token);
         return;
       }
       upsertCourseGenerationJob(id, {
@@ -389,7 +418,7 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
         error: publicGenerationError(err.response?.data?.message || err.message),
         progressUpdatedAt: Date.now(),
         serverStatus: 'error'
-      });
+      }, token);
     })
     .finally(() => {
       if (requestControllers.get(id) === controller) requestControllers.delete(id);
@@ -403,13 +432,13 @@ export async function cancelCourseGenerationJob(token, jobOrId) {
   if (!token || !id) return false;
 
   cancelledJobs.add(id);
-  const existing = readCourseGenerationJobs().find((job) => job.id === id);
+  const existing = readCourseGenerationJobs(token).find((job) => job.id === id);
   if (existing) {
     upsertCourseGenerationJob(id, {
       status: 'cancelling',
       stage: 'Stopping generation',
       detail: 'Stopping this course generation process.'
-    });
+    }, token);
   }
 
   let stopped = false;
@@ -426,7 +455,7 @@ export async function cancelCourseGenerationJob(token, jobOrId) {
     const controller = requestControllers.get(id);
     if (controller) controller.abort();
     requestControllers.delete(id);
-    if (stopped) removeCourseGenerationJob(id);
+    if (stopped) removeCourseGenerationJob(id, token);
   }
   return stopped;
 }
@@ -443,7 +472,7 @@ export async function refreshCourseGenerationJob(token, job) {
     if (!progress) return job;
     if (progress.status === 'cancelled') {
       cancelledJobs.add(job.id);
-      removeCourseGenerationJob(job.id);
+      removeCourseGenerationJob(job.id, token);
       return { ...job, status: 'cancelled' };
     }
 
@@ -467,7 +496,7 @@ export async function refreshCourseGenerationJob(token, job) {
         progressUpdatedAt: now,
         missingProgressCount: 0,
         serverStatus: 'error'
-      });
+      }, token);
     }
     if (progress.status === 'complete' || visible.percent >= 100) {
       return upsertCourseGenerationJob(job.id, {
@@ -482,7 +511,7 @@ export async function refreshCourseGenerationJob(token, job) {
         progressUpdatedAt: now,
         missingProgressCount: 0,
         serverStatus: 'complete'
-      });
+      }, token);
     }
 
     if (now - progressUpdatedAt > STALE_PROGRESS_MS) {
@@ -493,7 +522,7 @@ export async function refreshCourseGenerationJob(token, job) {
         progressUpdatedAt: now,
         missingProgressCount: 0,
         serverStatus
-      });
+      }, token);
     }
 
     return upsertCourseGenerationJob(job.id, {
@@ -504,7 +533,7 @@ export async function refreshCourseGenerationJob(token, job) {
       progressUpdatedAt,
       missingProgressCount: 0,
       serverStatus
-    });
+    }, token);
   } catch (err) {
     const status = Number(err.response?.status || 0);
     if (status === 404) {
@@ -518,9 +547,9 @@ export async function refreshCourseGenerationJob(token, job) {
           missingProgressCount,
           progressUpdatedAt: now,
           serverStatus: 'missing'
-        });
+        }, token);
       }
-      return upsertCourseGenerationJob(job.id, { missingProgressCount });
+      return upsertCourseGenerationJob(job.id, { missingProgressCount }, token);
     }
 
     if (now - Number(job.progressUpdatedAt || job.createdAt || now) > STALE_PROGRESS_MS) {
@@ -529,33 +558,34 @@ export async function refreshCourseGenerationJob(token, job) {
         stage: 'Generation interrupted',
         error: 'Course generation could not be reached. Please remove this attempt and try again.',
         progressUpdatedAt: now
-      });
+      }, token);
     }
     return job;
   }
 }
 
 export function useCourseGenerationJobs(token, { poll = true } = {}) {
-  const [jobs, setJobs] = useState(() => readCourseGenerationJobs());
+  const [jobs, setJobs] = useState(() => readCourseGenerationJobs(token));
 
   useEffect(() => {
-    const sync = () => setJobs(readCourseGenerationJobs());
+    const sync = () => setJobs(readCourseGenerationJobs(token));
+    sync();
     window.addEventListener(EVENT_NAME, sync);
     window.addEventListener('storage', sync);
     return () => {
       window.removeEventListener(EVENT_NAME, sync);
       window.removeEventListener('storage', sync);
     };
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (!poll || !token) return undefined;
     let cancelled = false;
     const tick = async () => {
-      const active = readCourseGenerationJobs().filter((job) => ['running', 'queued'].includes(job.status));
+      const active = readCourseGenerationJobs(token).filter((job) => ['running', 'queued'].includes(job.status));
       if (!active.length) return;
       await Promise.all(active.map((job) => refreshCourseGenerationJob(token, job)));
-      if (!cancelled) setJobs(readCourseGenerationJobs());
+      if (!cancelled) setJobs(readCourseGenerationJobs(token));
     };
     tick();
     const timer = window.setInterval(tick, 2000);

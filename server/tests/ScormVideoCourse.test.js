@@ -3,6 +3,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const JSZip = require('jszip');
+const proxyquire = require('proxyquire');
+const sinon = require('sinon');
 const {
     acceptedVideoType,
     playerHtml,
@@ -84,5 +86,50 @@ describe('SCORM video course', () => {
         ]);
         expect(await zip.file(mediaPath).async('string')).to.equal('fake-video-content');
         expect(await zip.file('imsmanifest.xml').async('string')).to.include('adlcp:scormtype="sco"');
+    });
+
+    it('publishes direct-upload video courses inside object storage without creating or uploading a server ZIP', async () => {
+        const storage = {
+            driver: 's3',
+            copyObject: sinon.stub().resolves({}),
+            putObject: sinon.stub().resolves({}),
+            putObjectStream: sinon.stub().rejects(new Error('A full ZIP must not be uploaded by the server.')),
+            deleteObject: sinon.stub().resolves()
+        };
+        const pkg = {
+            id: 'video-package-1',
+            storageKeyZip: null,
+            analysisJson: '{}',
+            save: sinon.stub().resolves()
+        };
+        const course = {
+            id: 'video-course-1',
+            settings: {},
+            save: sinon.stub().resolves()
+        };
+        const service = proxyquire('../services/scorm/ScormVideoCourseService', {
+            '../../models/scorm': { ScormPackage: { create: sinon.stub().resolves(pkg) } },
+            '../../storage/ObjectStorage': { getObjectStorage: () => storage },
+            './ScormCourseWorkspaceService': { ensureCourseForPackage: sinon.stub().resolves(course) },
+            './ScormPackageCleanup': { deletePackageFromStorage: sinon.stub().resolves({ deleted: 0 }) }
+        });
+
+        const result = await service.createVideoCourse({
+            hostId: 42,
+            title: 'Direct video',
+            description: 'A direct-storage lesson.',
+            mimeType: 'video/mp4',
+            durationSeconds: 60,
+            sourceStorageKey: 'direct-uploads/video-courses/42/source.mp4',
+            sourceByteSize: 100 * 1024 * 1024
+        });
+
+        expect(result.package).to.equal(pkg);
+        expect(storage.copyObject.calledOnce).to.equal(true);
+        expect(storage.putObjectStream.called).to.equal(false);
+        expect(pkg.storageKeyZip).to.equal(null);
+        expect(pkg.status).to.equal('ready');
+        expect(pkg.byteSize).to.equal(100 * 1024 * 1024);
+        expect(JSON.parse(pkg.analysisJson)).to.include({ browserBundle: true, mediaPath: 'media/course-video.mp4' });
     });
 });

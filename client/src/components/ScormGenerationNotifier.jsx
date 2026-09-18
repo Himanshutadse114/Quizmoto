@@ -71,8 +71,8 @@ export default function ScormGenerationNotifier() {
   useEffect(() => {
     if (!pendingNotice) return;
     setVisibleId(pendingNotice.id);
-    markCourseGenerationJobNotified(pendingNotice.id);
-  }, [pendingNotice]);
+    markCourseGenerationJobNotified(pendingNotice.id, token);
+  }, [pendingNotice, token]);
 
   const job = jobs.find((item) => item.id === visibleId);
   if (!job || !['ready', 'failed'].includes(job.status)) return null;

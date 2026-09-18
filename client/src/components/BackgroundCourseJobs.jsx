@@ -123,7 +123,7 @@ export default function BackgroundCourseJobs() {
             </div>
             <button
               type="button"
-              onClick={() => removeCourseGenerationJob(job.id)}
+              onClick={() => removeCourseGenerationJob(job.id, token)}
               className="inline-flex items-center justify-center gap-1.5 min-h-9 px-3 rounded-lg border opacity-75 hover:opacity-100 text-[10px] font-semibold"
               title="Remove failed generation"
             >
