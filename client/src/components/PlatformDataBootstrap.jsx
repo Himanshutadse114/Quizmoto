@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { warmScormPlatformData } from '../services/scormApiCache';
+import { isPlatformPreparationPending } from '../services/platformPreparationSession';
 
 const TOKEN_CHECK_MS = 1_000;
 const BACKGROUND_REFRESH_MS = 2 * 60_000;
@@ -41,7 +42,7 @@ export default function PlatformDataBootstrap() {
     let warmPromise = null;
 
     const runBackgroundWarm = async ({ force = false, essentialOnly = false } = {}) => {
-      if (disposed || !platformRoute()) return null;
+      if (disposed || !platformRoute() || isPlatformPreparationPending()) return null;
 
       const { token, user, scormAccess, quizmotoOnly } = readSession();
       if (!token) return null;
@@ -68,7 +69,7 @@ export default function PlatformDataBootstrap() {
     };
 
     const ensureWarm = () => {
-      if (disposed || !platformRoute()) return;
+      if (disposed || !platformRoute() || isPlatformPreparationPending()) return;
       const { token } = readSession();
       if (!token || token === warmedToken) return;
 
@@ -82,7 +83,7 @@ export default function PlatformDataBootstrap() {
     };
 
     const refreshVisibleData = () => {
-      if (disposed || document.visibilityState !== 'visible' || !platformRoute()) return;
+      if (disposed || document.visibilityState !== 'visible' || !platformRoute() || isPlatformPreparationPending()) return;
       const { token } = readSession();
       if (!token) return;
       // Focus and visibility events often arrive together. Cached responses are
@@ -108,11 +109,16 @@ export default function PlatformDataBootstrap() {
     };
 
     const onCacheInvalidated = () => {
-      if (disposed || !platformRoute()) return;
+      if (disposed || !platformRoute() || isPlatformPreparationPending()) return;
       window.clearTimeout(warmTimer);
       warmTimer = window.setTimeout(() => {
         if (!disposed && platformRoute()) void runBackgroundWarm({ essentialOnly: true });
       }, INITIAL_WARM_DELAY_MS);
+    };
+
+    const onPlatformPrepared = () => {
+      warmedToken = '';
+      ensureWarm();
     };
 
     ensureWarm();
@@ -125,6 +131,7 @@ export default function PlatformDataBootstrap() {
     window.addEventListener('focus', onFocus);
     window.addEventListener('storage', onStorage);
     window.addEventListener('lmsgen-platform-cache-invalidated', onCacheInvalidated);
+    window.addEventListener('lmsgen-platform-prepared', onPlatformPrepared);
     document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
@@ -135,6 +142,7 @@ export default function PlatformDataBootstrap() {
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('storage', onStorage);
       window.removeEventListener('lmsgen-platform-cache-invalidated', onCacheInvalidated);
+      window.removeEventListener('lmsgen-platform-prepared', onPlatformPrepared);
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);

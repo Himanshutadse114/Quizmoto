@@ -2,6 +2,10 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import axios from 'axios';
 import { apiUrl } from '../config';
+import {
+    clearPlatformPreparationState,
+    markPlatformPreparationPending
+} from '../services/platformPreparationSession';
 
 const AuthContext = createContext();
 
@@ -145,34 +149,40 @@ export const AuthProvider = ({ children }) => {
         return enterScormSession(data);
     };
 
+    const resolveFreshPlatformLogin = (data) => {
+        const result = resolveScormAuthResponse(data);
+        if (result?.token) markPlatformPreparationPending();
+        return result;
+    };
+
     const loginWithGoogle = async (credential) => {
         const res = await axios.post(`${API_URL}/google`, { credential });
-        return resolveScormAuthResponse(res.data);
+        return resolveFreshPlatformLogin(res.data);
     };
 
     const loginScorm = async ({ identifier, password }) => {
         const res = await axios.post(`${API_URL}/scorm/login`, { identifier, password });
-        return resolveScormAuthResponse(res.data);
+        return resolveFreshPlatformLogin(res.data);
     };
 
     const loginScormWithGoogle = async (credential) => {
         const res = await axios.post(`${API_URL}/google`, { credential });
-        return resolveScormAuthResponse(res.data);
+        return resolveFreshPlatformLogin(res.data);
     };
 
     const loginQuizmotoOnlyWithGoogle = async (credential) => {
         const res = await axios.post(`${API_URL}/google`, { credential });
-        return resolveScormAuthResponse(res.data);
+        return resolveFreshPlatformLogin(res.data);
     };
 
     const loginScormWorkspaceWithGoogle = async (workspaceId, credential) => {
         const res = await axios.post(apiUrl(`/api/scorm/staff-auth/workspace/${workspaceId}/google`), { credential });
-        return resolveScormAuthResponse(res.data);
+        return resolveFreshPlatformLogin(res.data);
     };
 
     const loginScormWorkspaceWithMicrosoft = async (workspaceId, idToken) => {
         const res = await axios.post(apiUrl(`/api/scorm/staff-auth/workspace/${workspaceId}/microsoft`), { idToken });
-        return resolveScormAuthResponse(res.data);
+        return resolveFreshPlatformLogin(res.data);
     };
 
     const requestMailOtp = async ({ email, purpose, name = null }) => {
@@ -187,7 +197,7 @@ export const AuthProvider = ({ children }) => {
 
     const registerScorm = async ({ username, email, password, verificationToken }) => {
         const res = await axios.post(`${API_URL}/scorm/register`, { username, email, password, verificationToken });
-        return resolveScormAuthResponse(res.data);
+        return resolveFreshPlatformLogin(res.data);
     };
 
     const resetScormPassword = async ({ email, newPassword, verificationToken }) => {
@@ -205,12 +215,13 @@ export const AuthProvider = ({ children }) => {
     };
 
     const leaveScorm = () => {
+        clearPlatformPreparationState();
         const hostToken = localStorage.getItem(HOST_TOKEN_BACKUP);
         let hostUser = null;
         try {
             const raw = localStorage.getItem(HOST_USER_BACKUP);
             if (raw) hostUser = JSON.parse(raw);
-        } catch (_) {}
+        } catch { /* Ignore an invalid legacy backup and continue signing out. */ }
 
         setAccessFlags({ platform: false, scorm: false });
         localStorage.removeItem(HOST_TOKEN_BACKUP);
@@ -226,6 +237,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
+        clearPlatformPreparationState();
         setAccessFlags({ platform: false, scorm: false });
         localStorage.removeItem(HOST_TOKEN_BACKUP);
         localStorage.removeItem(HOST_USER_BACKUP);

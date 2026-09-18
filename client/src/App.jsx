@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
 import ClipboardFeedback from './components/ClipboardFeedback';
+import PlatformStartupGate from './components/PlatformStartupGate';
 import MarketingSite from './pages/Marketing/MarketingSite';
 import './pages/Host/liveQuizTheme.css';
 import './pages/Host/classicQuizmoto.css';
@@ -212,7 +213,7 @@ function AppRoutes() {
         <Route path="/host/lobby/:pin" element={<Lobby />} />
         <Route path="/host/game/:pin" element={<GameView />} />
 
-        <Route path="/scorm" element={<PlatformProtected><ScormPlatformShell /></PlatformProtected>}>
+        <Route path="/scorm" element={<PlatformProtected><PlatformStartupGate><ScormPlatformShell /></PlatformStartupGate></PlatformProtected>}>
           <Route index element={<ScormHomeGate />} />
           <Route path="quizmoto" element={<ScormOperationalGate><QuizmotoModule /></ScormOperationalGate>} />
           <Route path="quizmoto/create" element={<ScormOperationalGate><CreateQuiz embedded /></ScormOperationalGate>} />

@@ -51,6 +51,7 @@ const PERSISTABLE_PATHS = [
   '/api/scorm/access/tenants',
   '/api/scorm/platform-users',
   '/api/scorm/flipbook-tenants',
+  '/api/scorm/flipbooks/library',
   '/api/scorm/mail/templates',
   '/api/scorm/mail/status',
   '/api/scorm/flipbooks',
@@ -61,6 +62,7 @@ const PERSISTABLE_PATHS = [
 
 const FREE_TOOL_DATASETS = [
   { path: '/api/scorm/flipbooks', label: 'Preparing Publica', priority: 1 },
+  { path: '/api/scorm/flipbooks/library', label: 'Preparing your Publica library', priority: 2 },
   { path: '/api/quizzes', label: 'Preparing Quizmoto', priority: 1 },
   { path: '/api/quizzes/active-sessions', label: 'Checking live sessions', priority: 2 }
 ];
@@ -373,6 +375,7 @@ export async function warmScormPlatformData(token, options = {}) {
     force = false,
     includeHeavy = false,
     essentialOnly = false,
+    maxPriority = null,
     role = '',
     scormAccess = true,
     quizmotoOnly = false,
@@ -400,6 +403,8 @@ export async function warmScormPlatformData(token, options = {}) {
     // workspace. Admin, email, access and report configuration is intentionally
     // left to the quiet background warm-up.
     datasets = datasets.filter((dataset) => Number(dataset.priority || 9) <= 1);
+  } else if (maxPriority !== null && maxPriority !== undefined && Number.isFinite(Number(maxPriority))) {
+    datasets = datasets.filter((dataset) => Number(dataset.priority || 9) <= Number(maxPriority));
   }
   const total = datasets.length;
   let completed = 0;

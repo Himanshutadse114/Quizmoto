@@ -1,0 +1,174 @@
+.platform-startup,
+.platform-startup * {
+  box-sizing: border-box;
+}
+
+.platform-startup {
+  position: fixed;
+  z-index: 9999;
+  inset: 0;
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  overflow: hidden;
+  padding: 22px;
+  background: #050b13;
+  color: #f5fbfa;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.platform-startup-light {
+  background: #edf7f5;
+  color: #10211f;
+}
+
+.platform-startup-glow {
+  position: absolute;
+  width: min(680px, 90vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(55, 199, 187, .14);
+  filter: blur(90px);
+  pointer-events: none;
+}
+
+.platform-startup-card {
+  position: relative;
+  width: min(560px, 100%);
+  padding: clamp(28px, 5vw, 46px);
+  border: 1px solid rgba(106, 211, 202, .2);
+  border-radius: 26px;
+  background: rgba(8, 20, 31, .94);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, .34);
+}
+
+.platform-startup-light .platform-startup-card {
+  border-color: #cce3df;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 28px 70px rgba(18, 61, 56, .13);
+}
+
+.platform-startup-logo {
+  display: block;
+  width: min(188px, 55vw);
+  height: auto;
+  margin: 0 auto 28px;
+}
+
+.platform-startup-kicker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #54cfc4;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.platform-startup h1 {
+  margin: 12px 0 0;
+  font-size: clamp(29px, 6vw, 42px);
+  line-height: 1.05;
+  letter-spacing: -.04em;
+}
+
+.platform-startup p {
+  margin: 14px 0 0;
+  color: #9eb0bd;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.platform-startup-light p {
+  color: #607773;
+}
+
+.platform-startup-progress-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 30px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.platform-startup-progress-heading strong {
+  color: #54cfc4;
+  font-size: 12px;
+}
+
+.platform-startup-track {
+  height: 7px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(144, 174, 184, .2);
+}
+
+.platform-startup-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #4fc9bf;
+  transition: width .28s ease;
+}
+
+.platform-startup-status {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.platform-startup-status span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid rgba(113, 177, 171, .15);
+  border-radius: 11px;
+  color: #8ca5a2;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.platform-startup-light .platform-startup-status span {
+  border-color: #dcebe8;
+  color: #66807b;
+  background: #f7fbfa;
+}
+
+.platform-startup-status svg {
+  flex: 0 0 auto;
+  color: #4fc9bf;
+}
+
+@media (max-width: 560px) {
+  .platform-startup {
+    align-items: stretch;
+    padding: 12px;
+  }
+
+  .platform-startup-card {
+    align-self: center;
+    padding: 28px 22px;
+    border-radius: 21px;
+  }
+
+  .platform-startup-logo {
+    margin-bottom: 24px;
+  }
+
+  .platform-startup-status {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .platform-startup-track span {
+    transition: none;
+  }
+}
