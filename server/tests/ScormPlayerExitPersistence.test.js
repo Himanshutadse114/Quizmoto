@@ -83,6 +83,8 @@ describe('SCORM player local-first persistence', () => {
         expect(source).to.include('presentationLight');
         expect(source).to.include('function applyPresentationLayoutGuard()');
         expect(source).to.include('.presentation-page img{object-fit:contain!important}');
+        expect(source).to.include('grid-template-areas:"stage" "controls"!important');
+        expect(source).to.include('presentationInterFonts');
         expect(source).to.include('frame.addEventListener("load",applyPresentationLayoutGuard)');
     });
 

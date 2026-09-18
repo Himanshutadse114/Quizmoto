@@ -19,6 +19,7 @@
   "description": "",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.758.0",
+    "@fontsource/inter": "^5.2.8",
     "archiver": "^5.3.2",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",

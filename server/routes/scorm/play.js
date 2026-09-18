@@ -7,9 +7,24 @@
  * so a quiet or imperfect SCO cannot leave an opened course as "not attempted".
  */
 const express = require('express');
+const fs = require('fs');
 const router = express.Router();
 const { verifyRegistrationToken } = require('../../services/scorm/ScormInviteService');
 const { ScormRegistration, ScormCourse, ScormPackage } = require('../../models/scorm');
+
+function embeddedInterFont(weight) {
+    try {
+        return fs.readFileSync(require.resolve(`@fontsource/inter/files/inter-latin-${weight}-normal.woff2`)).toString('base64');
+    } catch (_) {
+        return '';
+    }
+}
+
+const PRESENTATION_INTER_FONTS = Object.freeze({
+    regular: embeddedInterFont(400),
+    semibold: embeddedInterFont(600),
+    bold: embeddedInterFont(800)
+});
 
 function escapeHtml(s) {
     return String(s || '')
@@ -81,7 +96,8 @@ router.get('/:regId', async (req, res) => {
             xapiEndpoint,
             learnerName,
             contentSrc,
-            presentationLight
+            presentationLight,
+            presentationInterFonts: presentationLight ? PRESENTATION_INTER_FONTS : null
         });
 
         const html = `<!DOCTYPE html>
@@ -176,7 +192,13 @@ function applyPresentationLayoutGuard(){
   try{
     var frame=document.getElementById("frame"),doc=frame&&frame.contentDocument;if(!doc)return;
     var style=doc.getElementById("lmsgen-exact-slide-fit-guard");
-    if(!style){style=doc.createElement("style");style.id="lmsgen-exact-slide-fit-guard";style.textContent=":root{--panel-width:clamp(190px,16vw,225px)!important}#app{padding:clamp(10px,1.5vw,18px)!important;gap:clamp(10px,1.2vw,15px)!important}.course-rail{padding:clamp(14px,1.4vw,19px)!important;gap:14px!important}.presentation-page img{object-fit:contain!important}.presentation-page,main{background:#fff!important}main{width:100%!important;height:auto!important;min-height:0!important;aspect-ratio:var(--slide-ratio)!important;align-self:center!important;justify-self:center!important}#app.is-assessment main{height:100%!important;aspect-ratio:auto!important}html:fullscreen #app,html:-webkit-full-screen #app{--panel-width:clamp(185px,14vw,210px)!important;padding:8px!important;gap:10px!important}@media(max-width:820px){main{height:auto!important;min-height:0!important}.course-rail{width:100%!important;max-width:720px!important}}";(doc.head||doc.documentElement).appendChild(style);}
+    if(!style){
+      var fonts=BOOT.presentationInterFonts||{},fontCss="";
+      if(fonts.regular)fontCss+='@font-face{font-family:"Inter";src:url("data:font/woff2;base64,'+fonts.regular+'") format("woff2");font-style:normal;font-weight:400;font-display:swap}';
+      if(fonts.semibold)fontCss+='@font-face{font-family:"Inter";src:url("data:font/woff2;base64,'+fonts.semibold+'") format("woff2");font-style:normal;font-weight:600;font-display:swap}';
+      if(fonts.bold)fontCss+='@font-face{font-family:"Inter";src:url("data:font/woff2;base64,'+fonts.bold+'") format("woff2");font-style:normal;font-weight:800;font-display:swap}';
+      style=doc.createElement("style");style.id="lmsgen-exact-slide-fit-guard";style.textContent=fontCss+'html,body{font-family:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif!important}#app{padding:clamp(8px,1vw,14px)!important;gap:clamp(8px,.8vw,12px)!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) auto!important;grid-template-areas:"stage" "controls"!important}.course-rail{padding:10px clamp(12px,1.4vw,20px)!important;display:grid!important;grid-template-columns:minmax(220px,.9fr) minmax(230px,1.1fr) auto!important;align-items:center!important;gap:clamp(14px,2vw,30px)!important;overflow:hidden!important}.rail-heading{display:flex!important;align-items:center!important;gap:14px!important}.rail-logo{max-width:128px!important;max-height:40px!important;margin:0!important}.title{font-size:clamp(.82rem,1.05vw,1rem)!important;-webkit-line-clamp:2!important}.rail-section{display:none!important}.rail-controls{margin:0!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:9px!important}.nav-buttons{display:flex!important;gap:7px!important}.btn{min-width:88px!important;min-height:40px!important;padding:8px 12px!important}.btn-presentation{width:auto!important}.shortcut{display:none!important}.presentation-page img{object-fit:contain!important}.presentation-page,main{background:#fff!important}main{width:auto!important;height:100%!important;max-width:100%!important;max-height:100%!important;min-height:0!important;aspect-ratio:var(--slide-ratio)!important;align-self:center!important;justify-self:center!important}#app.is-assessment main{width:100%!important;height:100%!important;aspect-ratio:auto!important}html:fullscreen #app,html:-webkit-full-screen #app{padding:6px!important;gap:8px!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) auto!important;grid-template-areas:"stage" "controls"!important}@media(max-height:620px) and (orientation:landscape){#app{padding:6px!important;gap:6px!important}.course-rail{padding:7px 10px!important;gap:12px!important}.rail-logo{max-height:30px!important;max-width:104px!important}.btn{min-width:76px!important;min-height:34px!important;padding:6px 8px!important}}@media(max-width:820px){#app,html:fullscreen #app,html:-webkit-full-screen #app{height:100%!important;min-height:100%!important;padding:8px!important;gap:8px!important}.course-rail{width:100%!important;max-width:720px!important;padding:9px 10px!important;grid-template-columns:minmax(0,1fr)!important;gap:7px!important}.rail-heading{display:none!important}.rail-controls{width:100%!important;display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;gap:7px!important}.nav-buttons{display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important}.btn{min-width:0!important;min-height:36px!important;padding:7px 8px!important}.btn-presentation{min-width:38px!important;padding:7px!important}.btn-presentation span{display:none!important}main{width:auto!important;height:100%!important;max-width:100%!important;max-height:100%!important}}';(doc.head||doc.documentElement).appendChild(style);
+    }
     var image=doc.querySelector(".presentation-page img"),width=Number(image&&image.getAttribute("width")),height=Number(image&&image.getAttribute("height"));
     if(width>0&&height>0)doc.documentElement.style.setProperty("--slide-ratio",width+" / "+height);
   }catch(e){}
