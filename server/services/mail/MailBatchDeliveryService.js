@@ -54,22 +54,24 @@ async function sendInBatches(items, sender, input = {}, options = {}) {
     );
     const results = [];
 
+    delivery:
     for (let batchIndex = 0; batchIndex < plan.batchCount; batchIndex += 1) {
         const start = batchIndex * plan.batchSize;
         const batch = recipients.slice(start, start + plan.batchSize);
         if (!batch.length) break;
 
-        if (options.shouldContinue && !(await options.shouldContinue({ batchIndex, plan }))) {
-            logger.warn('mail_batch_delivery_cancelled', {
-                module: 'mail',
-                batchIndex: batchIndex + 1,
-                batchCount: plan.batchCount,
-                context: options.context
-            });
-            break;
-        }
-
         for (let itemIndex = 0; itemIndex < batch.length; itemIndex += 1) {
+            if (options.shouldContinue && !(await options.shouldContinue({ batchIndex, itemIndex, plan }))) {
+                logger.warn('mail_batch_delivery_cancelled', {
+                    module: 'mail',
+                    batchIndex: batchIndex + 1,
+                    itemIndex: itemIndex + 1,
+                    batchCount: plan.batchCount,
+                    context: options.context
+                });
+                break delivery;
+            }
+
             try {
                 results.push(await sender(batch[itemIndex], {
                     batchIndex,

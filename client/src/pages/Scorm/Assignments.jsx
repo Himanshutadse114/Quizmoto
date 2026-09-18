@@ -10,6 +10,7 @@ import {
   Eye,
   FileSpreadsheet,
   KeyRound,
+  LoaderCircle,
   Play,
   Plus,
   RefreshCw,
@@ -66,6 +67,7 @@ export default function Assignments() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [actionBusy, setActionBusy] = useState('');
+  const [deletingId, setDeletingId] = useState('');
   const [message, setMessage] = useState(location.state?.campaignMessage || '');
   const [error, setError] = useState('');
 
@@ -144,20 +146,21 @@ export default function Assignments() {
   };
 
   const deleteCampaign = async (campaign) => {
-    const prompt = campaign.status === 'stopped'
-      ? `Delete stopped campaign “${campaign.name}”? This removes the campaign permanently.`
-      : `Delete draft campaign “${campaign.name}”?`;
+    if (deletingId) return;
+    const prompt = `Permanently delete “${campaign.name}”?\n\nThis removes the campaign, learner access, assignments, progress, scores, analytics, Publica reading activity and video progress. This cannot be undone.`;
     if (!window.confirm(prompt)) return;
-    setActionBusy(campaign.id);
+    setDeletingId(campaign.id);
     setError('');
+    setMessage(`Deleting campaign “${campaign.name}”…`);
     try {
       await axios.delete(apiUrl(`/api/scorm/campaigns/${campaign.id}`), { headers });
       setCampaigns((current) => current.filter((item) => item.id !== campaign.id));
-      setMessage(`Campaign “${campaign.name}” deleted.`);
+      setMessage(`Campaign “${campaign.name}” and all related campaign data were permanently deleted.`);
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to delete campaign.');
+      setMessage('');
     } finally {
-      setActionBusy('');
+      setDeletingId('');
     }
   };
 
@@ -248,8 +251,9 @@ export default function Assignments() {
             <div className="divide-y" style={{ borderColor: 'var(--scorm-line)' }}>
               {visibleCampaigns.map((campaign) => {
                 const busy = actionBusy === campaign.id;
+                const deleting = deletingId === campaign.id;
                 return (
-                  <div key={campaign.id} className="campaign-list-row px-4 py-4 md:px-5 grid 2xl:grid-cols-[minmax(240px,1.2fr)_90px_90px_minmax(190px,.75fr)_minmax(0,auto)] gap-4 2xl:items-center">
+                  <div key={campaign.id} aria-busy={deleting} className={`campaign-list-row px-4 py-4 md:px-5 grid 2xl:grid-cols-[minmax(240px,1.2fr)_90px_90px_minmax(190px,.75fr)_minmax(0,auto)] gap-4 2xl:items-center transition-opacity ${deleting ? 'opacity-65 pointer-events-none select-none' : ''}`}>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
                         <Link to={`/scorm/campaigns/${campaign.id}`} className="text-sm font-semibold truncate hover:underline">{campaign.name}</Link>
@@ -268,11 +272,11 @@ export default function Assignments() {
                       <Link to={`/scorm/campaigns/${campaign.id}`} className="scorm-button-secondary h-10 px-3 inline-flex items-center gap-2 text-xs font-semibold"><Eye size={13} /> Details</Link>
                       <Link to={`/scorm/campaigns/${campaign.id}/analytics`} className="scorm-button-secondary h-10 px-3 inline-flex items-center gap-2 text-xs font-semibold"><BarChart3 size={13} /> Analytics</Link>
                       {campaign.status === 'active' && <Link to={`/scorm/campaigns/${campaign.id}/learners`} className="scorm-button-primary h-10 px-3 inline-flex items-center gap-2 text-xs font-semibold"><UserRoundCog size={13} /> Manage learners</Link>}
-                      {campaign.status === 'draft' && <button type="button" disabled={busy} onClick={() => startCampaign(campaign)} className="scorm-button-primary h-10 px-3 inline-flex items-center gap-2 text-xs font-semibold disabled:opacity-50"><Play size={13} /> {busy ? 'Starting…' : 'Start'}</button>}
+                      {campaign.status === 'draft' && <button type="button" disabled={busy || deleting} onClick={() => startCampaign(campaign)} className="scorm-button-primary h-10 px-3 inline-flex items-center gap-2 text-xs font-semibold disabled:opacity-50"><Play size={13} /> {busy ? 'Starting…' : 'Start'}</button>}
                       {campaign.status === 'active' && <button type="button" onClick={() => copyPortal(campaign)} className="scorm-button-secondary h-10 px-3 inline-flex items-center gap-2 text-xs font-semibold"><Copy size={13} /> Portal</button>}
                       {campaign.status === 'active' && campaign.authMode === 'email_code' && <button type="button" onClick={() => downloadAccessList(campaign)} className="scorm-button-secondary h-10 px-3 inline-flex items-center gap-2 text-xs font-semibold"><KeyRound size={13} /> Codes</button>}
-                      {campaign.status === 'active' && <button type="button" disabled={busy} onClick={() => stopCampaign(campaign)} className="scorm-button-secondary h-10 px-3 inline-flex items-center gap-2 text-xs font-semibold disabled:opacity-50"><Square size={12} /> {busy ? 'Stopping…' : 'Stop'}</button>}
-                      {['draft', 'stopped'].includes(campaign.status) && <button type="button" disabled={busy} onClick={() => deleteCampaign(campaign)} className="scorm-button-secondary w-10 h-10 grid place-items-center disabled:opacity-50" title="Delete campaign"><Trash2 size={14} /></button>}
+                      {campaign.status === 'active' && <button type="button" disabled={busy || deleting} onClick={() => stopCampaign(campaign)} className="scorm-button-secondary h-10 px-3 inline-flex items-center gap-2 text-xs font-semibold disabled:opacity-50"><Square size={12} /> {busy ? 'Stopping…' : 'Stop'}</button>}
+                      {['draft', 'stopped'].includes(campaign.status) && <button type="button" disabled={busy || Boolean(deletingId)} onClick={() => deleteCampaign(campaign)} className="scorm-button-secondary h-10 px-3 inline-flex items-center gap-2 text-xs font-semibold text-rose-500 disabled:opacity-50 disabled:cursor-wait" title="Permanently delete campaign">{deleting ? <LoaderCircle size={14} className="animate-spin" /> : <Trash2 size={14} />}{deleting ? 'Deleting…' : 'Delete'}</button>}
                     </div>
                   </div>
                 );

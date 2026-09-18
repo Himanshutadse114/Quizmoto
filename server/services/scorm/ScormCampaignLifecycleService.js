@@ -2,12 +2,21 @@ const { Op } = require('sequelize');
 const { sequelize } = require('../../config/database');
 const {
     ScormCampaign,
+    ScormCampaignCourse,
+    ScormCampaignLearner,
     ScormRegistration,
+    ScormAttempt,
+    ScormCmiState,
+    ScormRuntimeSnapshot,
+    ScormXapiStatement,
     ScormCampaignVideo,
     ScormVideoProgress
 } = require('../../models/scorm');
 const ScormCampaignFlipbook = require('../../models/scorm/ScormCampaignFlipbook');
 const ScormFlipbookAssignment = require('../../models/scorm/ScormFlipbookAssignment');
+const FlipbookReaderContext = require('../../models/FlipbookReaderContext');
+const FlipbookReaderEvent = require('../../models/FlipbookReaderEvent');
+const FlipbookReaderSession = require('../../models/FlipbookReaderSession');
 const { ensureFlipbookAssignmentSchema } = require('./ScormFlipbookAssignmentService');
 const { ensureVideoSchema } = require('./ScormVideoService');
 
@@ -85,6 +94,9 @@ async function stopCampaign({ campaignId, hostId, workspaceId }) {
 
 async function deleteCampaign({ campaignId, hostId, workspaceId }) {
     let removedId = campaignId;
+    let removedRegistrations = 0;
+    let removedFlipbookAssignments = 0;
+    let removedReaderSessions = 0;
 
     await Promise.all([ensureFlipbookAssignmentSchema(), ensureVideoSchema()]);
 
@@ -106,27 +118,84 @@ async function deleteCampaign({ campaignId, hostId, workspaceId }) {
             );
         }
 
-        // Keep runtime history internally but detach it from the deleted campaign.
-        // Revoked registrations are ignored by active learner/tracking queries.
-        await ScormRegistration.update(
-            { campaignId: null, status: 'revoked' },
-            { where: { campaignId: campaign.id }, transaction }
-        );
-        await ScormFlipbookAssignment.update(
-            { campaignId: null, status: 'revoked' },
-            { where: { campaignId: campaign.id }, transaction }
-        );
+        // A permanent campaign deletion removes its learner runtime history as
+        // well as the campaign shell. Keeping this in one transaction prevents
+        // partially deleted campaigns and immediately invalidates learner links.
+        const registrations = await ScormRegistration.findAll({
+            where: { campaignId: campaign.id },
+            attributes: ['id'],
+            raw: true,
+            transaction
+        });
+        const registrationIds = registrations.map((row) => row.id);
+        if (registrationIds.length) {
+            const registrationWhere = { registrationId: { [Op.in]: registrationIds } };
+            await Promise.all([
+                ScormCmiState.destroy({ where: registrationWhere, transaction }),
+                ScormRuntimeSnapshot.destroy({ where: registrationWhere, transaction }),
+                ScormXapiStatement.destroy({ where: registrationWhere, transaction })
+            ]);
+            await ScormAttempt.destroy({ where: registrationWhere, transaction });
+            removedRegistrations = await ScormRegistration.destroy({
+                where: { id: { [Op.in]: registrationIds } },
+                transaction
+            });
+        }
+
+        const flipbookAssignments = await ScormFlipbookAssignment.findAll({
+            where: { campaignId: campaign.id },
+            attributes: ['id'],
+            raw: true,
+            transaction
+        });
+        const assignmentIds = flipbookAssignments.map((row) => row.id);
+        const contextClauses = [{ campaignId: campaign.id }];
+        if (assignmentIds.length) contextClauses.push({ assignmentId: { [Op.in]: assignmentIds } });
+        const readerContexts = await FlipbookReaderContext.findAll({
+            where: { [Op.or]: contextClauses },
+            attributes: ['sessionId'],
+            raw: true,
+            transaction
+        });
+        const readerSessionIds = [...new Set(readerContexts.map((row) => row.sessionId).filter(Boolean))];
+        if (readerSessionIds.length) {
+            await FlipbookReaderEvent.destroy({
+                where: { sessionId: { [Op.in]: readerSessionIds } },
+                transaction
+            });
+            await FlipbookReaderContext.destroy({
+                where: { sessionId: { [Op.in]: readerSessionIds } },
+                transaction
+            });
+            removedReaderSessions = await FlipbookReaderSession.destroy({
+                where: { id: { [Op.in]: readerSessionIds } },
+                transaction
+            });
+        }
+        removedFlipbookAssignments = await ScormFlipbookAssignment.destroy({
+            where: { campaignId: campaign.id },
+            transaction
+        });
+
         await Promise.all([
             ScormCampaignFlipbook.destroy({ where: { campaignId: campaign.id }, transaction }),
             ScormCampaignVideo.destroy({ where: { campaignId: campaign.id }, transaction }),
-            ScormVideoProgress.destroy({ where: { campaignId: campaign.id }, transaction })
+            ScormVideoProgress.destroy({ where: { campaignId: campaign.id }, transaction }),
+            ScormCampaignCourse.destroy({ where: { campaignId: campaign.id }, transaction }),
+            ScormCampaignLearner.destroy({ where: { campaignId: campaign.id }, transaction })
         ]);
 
         removedId = campaign.id;
         await campaign.destroy({ transaction });
     });
 
-    return { removed: true, id: removedId };
+    return {
+        removed: true,
+        id: removedId,
+        removedRegistrations: Number(removedRegistrations || 0),
+        removedFlipbookAssignments: Number(removedFlipbookAssignments || 0),
+        removedReaderSessions: Number(removedReaderSessions || 0)
+    };
 }
 
 module.exports = {

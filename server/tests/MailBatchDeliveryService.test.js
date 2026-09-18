@@ -41,7 +41,7 @@ describe('MailBatchDeliveryService', function () {
         });
     });
 
-    it('checks whether delivery should continue before every batch', async function () {
+    it('checks whether delivery should continue before every recipient', async function () {
         const sent = [];
         let checks = 0;
         const outcome = await sendInBatches(
@@ -56,12 +56,13 @@ describe('MailBatchDeliveryService', function () {
                 sleepFn: async () => {},
                 shouldContinue: async () => {
                     checks += 1;
-                    return checks === 1;
+                    return checks <= 2;
                 }
             }
         );
 
         expect(sent).to.deep.equal([1, 2]);
         expect(outcome.results).to.have.length(2);
+        expect(checks).to.equal(3);
     });
 });
