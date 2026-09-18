@@ -78,10 +78,13 @@ describe('ScormPresentationPackageBuilder', () => {
         expect(zip.file('assets/fonts/OpenSauceSans-Regular.woff2')).to.not.equal(null);
         expect(zip.file('assets/fonts/OpenSauce-SemiBold.woff2')).to.not.equal(null);
         expect(html).to.not.include('--primary:#f97316');
-        expect(html).to.include('object-fit:cover');
+        expect(html).to.include('object-fit:contain');
         expect(html).to.include('background:var(--primary)');
         expect(html).to.include('grid-template-rows:auto auto');
         expect(html).to.include('aspect-ratio:var(--slide-ratio)');
+        expect(html).to.include('Open the course in full screen');
+        expect(html).to.include('The course will be visible in full screen.');
+        expect(html).to.include("gate.classList.toggle('is-hidden',active)");
         expect(html).to.not.include('Preparing your presentation');
         expect(html).to.include('height:auto;min-height:0;aspect-ratio:var(--slide-ratio)');
         expect(html).to.include('grid-template-areas:"stage controls"');
