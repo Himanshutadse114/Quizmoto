@@ -53,6 +53,15 @@ function canvasToJpeg(canvas, quality = 0.82) {
   return canvas.toDataURL('image/jpeg', quality);
 }
 
+function dataUrlToBlob(dataUrl) {
+  const [header, encoded] = String(dataUrl || '').split(',', 2);
+  const contentType = /^data:([^;]+);base64$/i.exec(header || '')?.[1] || 'application/octet-stream';
+  const binary = window.atob(encoded || '');
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return new Blob([bytes], { type: contentType });
+}
+
 async function imageFileToPage(file) {
   const url = URL.createObjectURL(file);
   try {
@@ -176,7 +185,35 @@ export default function FlipbookEditor() {
         }
         for (let index = 0; index < pages.length; index += 1) {
           setProgress({ stage: 'uploading', current: index + 1, total: pages.length });
-          await axios.post(apiUrl(`${API}/${activeBook.id}/pages`), pages[index], { headers });
+          const page = pages[index];
+          const blob = dataUrlToBlob(page.dataUrl);
+          const ticket = await axios.post(apiUrl(`${API}/${activeBook.id}/pages/upload-ticket`), {
+            contentType: blob.type,
+            byteSize: blob.size,
+            width: page.width,
+            height: page.height
+          }, { headers });
+          if (ticket.data?.direct && ticket.data?.uploadUrl) {
+            try {
+              await axios.put(ticket.data.uploadUrl, blob, {
+                headers: ticket.data.headers || { 'Content-Type': blob.type },
+                timeout: 120000
+              });
+            } catch (uploadError) {
+              const error = new Error('Direct publication upload was blocked. Please retry after storage access is configured.');
+              error.cause = uploadError;
+              throw error;
+            }
+            await axios.post(apiUrl(`${API}/${activeBook.id}/pages/upload-complete`), {
+              sourceKey: ticket.data.sourceKey,
+              contentType: blob.type,
+              byteSize: blob.size,
+              width: page.width,
+              height: page.height
+            }, { headers });
+          } else {
+            await axios.post(apiUrl(`${API}/${activeBook.id}/pages`), page, { headers });
+          }
         }
         activeBook = { ...activeBook, pageCount: pages.length };
       }

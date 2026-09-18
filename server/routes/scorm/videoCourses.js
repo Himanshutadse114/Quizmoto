@@ -3,12 +3,15 @@ const fs = require('fs');
 const fsp = fs.promises;
 const os = require('os');
 const path = require('path');
+const crypto = require('crypto');
 const { Transform } = require('stream');
 const { pipeline } = require('stream/promises');
 const router = express.Router();
 const auth = require('../middleware');
 const { ScormPackage } = require('../../models/scorm');
 const { assertActiveCourseCapacity } = require('../../services/scorm/ScormAiUsageService');
+const { getObjectStorage } = require('../../storage/ObjectStorage');
+const { isDirectUploadEnabled, prepareDirectUpload } = require('../../storage/DirectObjectDelivery');
 const {
     acceptedVideoType,
     videoExtension,
@@ -35,6 +38,25 @@ function contentLength(req) {
     return Number.isSafeInteger(value) && value > 0 ? value : 0;
 }
 
+function validByteSize(value) {
+    const bytes = Number(value);
+    return Number.isSafeInteger(bytes) && bytes > 0 && bytes <= MAX_VIDEO_BYTES ? bytes : 0;
+}
+
+function cleanMetadata(value = {}) {
+    const input = value && typeof value === 'object' ? value : {};
+    return {
+        title: String(input.title || input.fileName || 'Video course').replace(/\.[^.]+$/, '').trim().slice(0, 200) || 'Video course',
+        description: String(input.description || '').trim().slice(0, 1200) || null,
+        durationSeconds: Math.max(0, Number(input.durationSeconds || 0)) || null,
+        fileName: String(input.fileName || '').slice(0, 255)
+    };
+}
+
+function directVideoPrefix(userId) {
+    return `direct-uploads/video-courses/${String(userId || 'unknown')}/`;
+}
+
 function byteLimiter(maxBytes) {
     let bytes = 0;
     const stream = new Transform({
@@ -57,6 +79,90 @@ function byteLimiter(maxBytes) {
 router.get('/config', auth, (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.json({ ok: true, maxUploadMb: MAX_VIDEO_MB, acceptedMimeTypes: Object.keys(require('../../services/scorm/ScormVideoCourseService').VIDEO_TYPES) });
+});
+
+router.post('/upload-ticket', auth, async (req, res) => {
+    try {
+        const mimeType = acceptedVideoType(req.body?.mimeType);
+        const byteSize = validByteSize(req.body?.byteSize);
+        if (!mimeType) return res.status(415).json({ message: 'Upload an MP4, WebM, OGG or MOV video.' });
+        if (!byteSize) return res.status(413).json({ message: `Video must be between 1 byte and ${MAX_VIDEO_MB} MB.` });
+        const replacePackageId = String(req.body?.replacePackageId || '').trim();
+        if (!replacePackageId) await assertActiveCourseCapacity(req.userId, req.scormEntitlement);
+        const storage = getObjectStorage();
+        if (!(await prepareDirectUpload(storage))) return res.json({ direct: false });
+        const sourceKey = `${directVideoPrefix(req.userId)}${crypto.randomUUID()}.${videoExtension(mimeType)}`;
+        const uploadUrl = await storage.createSignedPutUrl(sourceKey, { expiresIn: 15 * 60, contentType: mimeType });
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.json({
+            direct: true,
+            uploadUrl,
+            sourceKey,
+            mimeType,
+            byteSize,
+            metadata: cleanMetadata(req.body?.metadata),
+            headers: { 'Content-Type': mimeType },
+            expiresIn: 15 * 60
+        });
+    } catch (error) {
+        res.status(Number(error.status) || 500).json({ message: error.message || 'Unable to prepare video upload.', code: error.code });
+    }
+});
+
+router.post('/upload-complete', auth, async (req, res) => {
+    let tempDir = null;
+    const storage = getObjectStorage();
+    const sourceKey = String(req.body?.sourceKey || '');
+    try {
+        if (!isDirectUploadEnabled(storage)) return res.status(409).json({ message: 'Direct video upload is unavailable.' });
+        if (!sourceKey.startsWith(directVideoPrefix(req.userId)) || !/^[a-zA-Z0-9/_\-.]+$/.test(sourceKey)) {
+            return res.status(400).json({ message: 'Invalid video upload reference.' });
+        }
+        const mimeType = acceptedVideoType(req.body?.mimeType);
+        const byteSize = validByteSize(req.body?.byteSize);
+        if (!mimeType || !byteSize) return res.status(400).json({ message: 'Invalid video upload metadata.' });
+        const replacePackageId = String(req.body?.replacePackageId || '').trim();
+        if (!replacePackageId) await assertActiveCourseCapacity(req.userId, req.scormEntitlement);
+        const head = await storage.headObject(sourceKey);
+        if (Number(head.contentLength) !== byteSize) return res.status(400).json({ message: 'The complete video did not arrive. Please retry the upload.' });
+        const metadata = cleanMetadata(req.body?.metadata);
+        tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'lmsgen-video-course-direct-'));
+        const sourcePath = path.join(tempDir, `source.${videoExtension(mimeType)}`);
+        const object = await storage.getObjectStream(sourceKey);
+        await pipeline(object.stream, fs.createWriteStream(sourcePath));
+        const created = await createVideoCourse({
+            hostId: req.userId,
+            title: metadata.title,
+            description: metadata.description,
+            mimeType,
+            durationSeconds: metadata.durationSeconds,
+            sourcePath,
+            sourceStorageKey: sourceKey,
+            tempDir,
+            replacePackageId
+        });
+        res.status(replacePackageId ? 200 : 201).json({
+            ok: true,
+            courseId: created.course.id,
+            packageId: created.package.id,
+            title: created.course.title,
+            status: created.course.status,
+            source: created.package.source,
+            standard: created.package.standard,
+            byteSize: Number(created.package.byteSize || 0),
+            downloadPath: `/api/scorm/packages/${created.package.id}/download`,
+            replaced: Boolean(replacePackageId)
+        });
+    } catch (error) {
+        const status = Number(error.status) || 500;
+        res.status(status).json({
+            message: status >= 500 ? 'The video course could not be created. Please retry.' : error.message,
+            code: error.code || 'VIDEO_COURSE_CREATION_FAILED'
+        });
+    } finally {
+        if (sourceKey.startsWith(directVideoPrefix(req.userId))) await storage.deleteObject(sourceKey).catch(() => {});
+        if (tempDir) await fsp.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
 });
 
 router.get('/:packageId', auth, async (req, res) => {
@@ -85,6 +191,12 @@ router.get('/:packageId', auth, async (req, res) => {
 async function uploadVideoCourse(req, res, replacePackageId = '') {
     let tempDir = null;
     try {
+        if (isDirectUploadEnabled(getObjectStorage())) {
+            return res.status(409).json({
+                message: 'Use the secure direct upload flow for this video.',
+                code: 'DIRECT_UPLOAD_REQUIRED'
+            });
+        }
         const mimeType = acceptedVideoType(req.headers['content-type']);
         if (!mimeType) return res.status(415).json({ message: 'Upload an MP4, WebM, OGG or MOV video.' });
         const declaredBytes = contentLength(req);

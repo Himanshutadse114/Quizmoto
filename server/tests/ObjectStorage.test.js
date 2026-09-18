@@ -86,6 +86,27 @@ describe('ObjectStorage (Phase 3)', function () {
         expect(obj.contentRange).to.equal('bytes 2-5/10');
     });
 
+    it('headObject reports metadata without downloading the body', async () => {
+        const key = 'uploads/source.pdf';
+        await storage.putObject({ key, body: Buffer.from('%PDF-'), contentType: 'application/pdf' });
+
+        const head = await storage.headObject(key);
+
+        expect(head.contentLength).to.equal(5);
+        expect(head.contentType).to.equal('application/pdf');
+    });
+
+    it('copyObject duplicates content and preserves its media type', async () => {
+        await storage.putObject({ key: 'uploads/video.mp4', body: Buffer.from('video'), contentType: 'video/mp4' });
+
+        await storage.copyObject('uploads/video.mp4', 'courses/1/video.mp4');
+
+        const copied = await storage.getObjectBuffer('courses/1/video.mp4');
+        const head = await storage.headObject('courses/1/video.mp4');
+        expect(copied.toString()).to.equal('video');
+        expect(head.contentType).to.equal('video/mp4');
+    });
+
     it('deleteObject removes the key', async () => {
         const key = 'reports/3/gone.pdf';
         await storage.putObject({ key, body: Buffer.from('x') });

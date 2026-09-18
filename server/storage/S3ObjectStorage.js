@@ -18,6 +18,9 @@ class S3ObjectStorage {
         let DeleteObjectsCommand;
         let HeadObjectCommand;
         let ListObjectsV2Command;
+        let CopyObjectCommand;
+        let GetBucketCorsCommand;
+        let PutBucketCorsCommand;
 
         try {
             const sdk = require('@aws-sdk/client-s3');
@@ -28,6 +31,9 @@ class S3ObjectStorage {
             DeleteObjectsCommand = sdk.DeleteObjectsCommand;
             HeadObjectCommand = sdk.HeadObjectCommand;
             ListObjectsV2Command = sdk.ListObjectsV2Command;
+            CopyObjectCommand = sdk.CopyObjectCommand;
+            GetBucketCorsCommand = sdk.GetBucketCorsCommand;
+            PutBucketCorsCommand = sdk.PutBucketCorsCommand;
         } catch (err) {
             const e = new Error(
                 'STORAGE_DRIVER=s3 requires @aws-sdk/client-s3. Run: npm install @aws-sdk/client-s3'
@@ -51,6 +57,10 @@ class S3ObjectStorage {
         this.DeleteObjectsCommand = DeleteObjectsCommand;
         this.HeadObjectCommand = HeadObjectCommand;
         this.ListObjectsV2Command = ListObjectsV2Command;
+        this.CopyObjectCommand = CopyObjectCommand;
+        this.GetBucketCorsCommand = GetBucketCorsCommand;
+        this.PutBucketCorsCommand = PutBucketCorsCommand;
+        this.corsReadyPromise = null;
         this.driver = 's3';
     }
 
@@ -114,6 +124,117 @@ class S3ObjectStorage {
             }
             throw err;
         }
+    }
+
+    async headObject(key) {
+        try {
+            const out = await this.client.send(
+                new this.HeadObjectCommand({
+                    Bucket: this.bucket,
+                    Key: this._safeKey(key)
+                })
+            );
+            return {
+                key: this._safeKey(key),
+                contentLength: Number(out.ContentLength || 0),
+                contentType: out.ContentType || 'application/octet-stream',
+                etag: out.ETag || null,
+                lastModified: out.LastModified || null
+            };
+        } catch (err) {
+            if (err.name === 'NotFound' || err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {
+                const e = new Error('Object not found');
+                e.code = 'OBJECT_NOT_FOUND';
+                throw e;
+            }
+            throw err;
+        }
+    }
+
+    async createSignedGetUrl(key, options = {}) {
+        const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+        const expiresIn = Math.max(30, Math.min(86400, Number(options.expiresIn || 900)));
+        const command = new this.GetObjectCommand({
+            Bucket: this.bucket,
+            Key: this._safeKey(key),
+            ...(options.responseContentType ? { ResponseContentType: options.responseContentType } : {}),
+            ...(options.responseContentDisposition ? { ResponseContentDisposition: options.responseContentDisposition } : {})
+        });
+        return getSignedUrl(this.client, command, { expiresIn });
+    }
+
+    async createSignedPutUrl(key, options = {}) {
+        const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+        const expiresIn = Math.max(30, Math.min(3600, Number(options.expiresIn || 600)));
+        const contentType = options.contentType || 'application/octet-stream';
+        const command = new this.PutObjectCommand({
+            Bucket: this.bucket,
+            Key: this._safeKey(key),
+            ContentType: contentType
+        });
+        return getSignedUrl(this.client, command, { expiresIn });
+    }
+
+    async ensureBrowserCors(origins = []) {
+        if (this.corsReadyPromise) return this.corsReadyPromise;
+        this.corsReadyPromise = (async () => {
+            const allowedOrigins = [...new Set(origins.map((value) => String(value || '').replace(/\/$/, '')).filter(Boolean))];
+            if (!allowedOrigins.length) return false;
+            let rules = [];
+            try {
+                const current = await this.client.send(new this.GetBucketCorsCommand({ Bucket: this.bucket }));
+                rules = Array.isArray(current.CORSRules) ? current.CORSRules : [];
+            } catch (error) {
+                const status = Number(error.$metadata?.httpStatusCode || 0);
+                if (![0, 404].includes(status) && error.name !== 'NoSuchCORSConfiguration') throw error;
+            }
+            const id = 'lmsgen-direct-browser-transfers';
+            const retained = rules.filter((rule) => String(rule.ID || '') !== id);
+            const matching = rules.find((rule) => String(rule.ID || '') === id);
+            const desired = {
+                ID: id,
+                AllowedHeaders: ['content-type'],
+                AllowedMethods: ['GET', 'HEAD', 'PUT'],
+                AllowedOrigins: allowedOrigins,
+                ExposeHeaders: ['ETag', 'Content-Length', 'Content-Range'],
+                MaxAgeSeconds: 7200
+            };
+            const normalized = (value) => JSON.stringify({
+                ...value,
+                AllowedHeaders: [...(value?.AllowedHeaders || [])].sort(),
+                AllowedMethods: [...(value?.AllowedMethods || [])].sort(),
+                AllowedOrigins: [...(value?.AllowedOrigins || [])].sort(),
+                ExposeHeaders: [...(value?.ExposeHeaders || [])].sort()
+            });
+            if (matching && normalized(matching) === normalized(desired)) return true;
+            await this.client.send(new this.PutBucketCorsCommand({
+                Bucket: this.bucket,
+                CORSConfiguration: { CORSRules: [...retained, desired] }
+            }));
+            return true;
+        })().catch((error) => {
+            this.corsReadyPromise = null;
+            throw error;
+        });
+        return this.corsReadyPromise;
+    }
+
+    async copyObject(sourceKey, destinationKey, options = {}) {
+        const source = `${this.bucket}/${this._safeKey(sourceKey)}`
+            .split('/')
+            .map((part) => encodeURIComponent(part))
+            .join('/');
+        const safeDestination = this._safeKey(destinationKey);
+        await this.client.send(new this.CopyObjectCommand({
+            Bucket: this.bucket,
+            Key: safeDestination,
+            CopySource: source,
+            ...(options.contentType ? {
+                ContentType: options.contentType,
+                MetadataDirective: 'REPLACE'
+            } : {})
+        }));
+        return { key: safeDestination };
     }
 
     async getObjectStream(key, options = {}) {

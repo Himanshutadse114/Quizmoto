@@ -4,6 +4,7 @@ const auth = require('../middleware');
 const { featureFlags, scormMaxUploadMb } = require('../../config/featureFlags');
 const { cleanId } = require('../../services/scorm/ScormGenerationProgress');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
+const { isDirectUploadEnabled, prepareDirectUpload } = require('../../storage/DirectObjectDelivery');
 const ScormGenerationJob = require('../../models/scorm/ScormGenerationJob');
 const ScormAiGenerationManager = require('../../jobs/ScormAiGenerationManager');
 const { aiCourseLimiter, aiUploadLimiter, aiHealthLimiter } = require('../../middleware/AiAbuseProtection');
@@ -33,6 +34,24 @@ function visualPdfSourceKey(userId, progressId) {
 
 function isPdfBuffer(value) {
     return Buffer.isBuffer(value) && value.length >= 5 && value.subarray(0, 5).toString('ascii') === '%PDF-';
+}
+
+function sourceMime(value, visual = false) {
+    if (visual) return 'application/pdf';
+    return String(value || 'application/octet-stream').split(';')[0].trim().toLowerCase();
+}
+
+function sourceByteSize(value) {
+    const bytes = Number(value);
+    const maximum = scormMaxUploadMb() * 1024 * 1024;
+    return Number.isSafeInteger(bytes) && bytes > 0 && bytes <= maximum ? bytes : 0;
+}
+
+async function startsWithPdf(storage, key) {
+    const object = await storage.getObjectStream(key, { start: 0, end: 4 });
+    const chunks = [];
+    for await (const chunk of object.stream) chunks.push(Buffer.from(chunk));
+    return isPdfBuffer(Buffer.concat(chunks));
 }
 
 const ACCEPTED_SOURCE_MIME_TYPES = new Set([
@@ -114,10 +133,97 @@ router.get('/version', auth, aiHealthLimiter, (_req, res) => {
     });
 });
 
+async function createSourceUploadTicket(req, res, visual = false) {
+    if (!featureFlags.scormAiAuthor) return res.status(403).json({ message: 'AI author is disabled.' });
+    const progressId = cleanId(req.params.progressId);
+    if (!progressId) return res.status(400).json({ message: 'Invalid progressId.', code: 'SCORM_PROGRESS_ID_REQUIRED' });
+    const mimeType = sourceMime(req.body?.mimeType, visual);
+    const byteSize = sourceByteSize(req.body?.byteSize);
+    if (!byteSize) return res.status(413).json({ message: `Source must be between 1 byte and ${scormMaxUploadMb()} MB.`, code: 'SCORM_SOURCE_SIZE_INVALID' });
+    if (!ACCEPTED_SOURCE_MIME_TYPES.has(mimeType) || (visual && mimeType !== 'application/pdf')) {
+        return res.status(415).json({ message: 'This source file type is not supported.', code: 'SCORM_SOURCE_TYPE_UNSUPPORTED' });
+    }
+    try {
+        const storage = getObjectStorage();
+        if (!(await prepareDirectUpload(storage))) {
+            return res.json({ direct: false, maxUploadMb: scormMaxUploadMb() });
+        }
+        const key = visual ? visualPdfSourceKey(req.userId, progressId) : sourceKey(req.userId, progressId);
+        const uploadUrl = await storage.createSignedPutUrl(key, { expiresIn: 10 * 60, contentType: mimeType });
+        res.setHeader('Cache-Control', 'private, no-store');
+        return res.json({
+            direct: true,
+            uploadUrl,
+            sourceKey: key,
+            mimeType,
+            byteSize,
+            headers: { 'Content-Type': mimeType },
+            expiresIn: 10 * 60
+        });
+    } catch (error) {
+        return res.status(500).json({ message: 'Unable to prepare direct source upload.', code: 'SCORM_SOURCE_TICKET_FAILED' });
+    }
+}
+
+async function completeSourceUpload(req, res, visual = false) {
+    if (!featureFlags.scormAiAuthor) return res.status(403).json({ message: 'AI author is disabled.' });
+    const progressId = cleanId(req.params.progressId);
+    if (!progressId) return res.status(400).json({ message: 'Invalid progressId.', code: 'SCORM_PROGRESS_ID_REQUIRED' });
+    const mimeType = sourceMime(req.body?.mimeType, visual);
+    const byteSize = sourceByteSize(req.body?.byteSize);
+    if (!byteSize) return res.status(400).json({ message: 'The uploaded source size is invalid.', code: 'SCORM_SOURCE_SIZE_INVALID' });
+    const key = visual ? visualPdfSourceKey(req.userId, progressId) : sourceKey(req.userId, progressId);
+    try {
+        const storage = getObjectStorage();
+        if (!isDirectUploadEnabled(storage)) return res.status(409).json({ message: 'Direct source upload is unavailable.', code: 'SCORM_DIRECT_UPLOAD_UNAVAILABLE' });
+        const metadata = await runMeteredAiOperation(req, {
+            kind: 'source_upload',
+            source: visual ? 'presentation_visual_pdf' : 'course_source'
+        }, async () => {
+            const head = await storage.headObject(key);
+            if (Number(head.contentLength) !== byteSize) {
+                const error = new Error('The source upload was incomplete. Please retry.');
+                error.status = 400;
+                error.code = 'SCORM_SOURCE_UPLOAD_INCOMPLETE';
+                throw error;
+            }
+            if (visual && !(await startsWithPdf(storage, key))) {
+                const error = new Error('The exact visual source must be a valid PDF.');
+                error.status = 400;
+                error.code = 'SCORM_PRESENTATION_VISUAL_PDF_INVALID';
+                throw error;
+            }
+            return head;
+        });
+        res.setHeader('Cache-Control', 'private, no-store');
+        return res.status(201).json({ ok: true, direct: true, sourceKey: key, mimeType, byteSize: Number(metadata.contentLength) });
+    } catch (error) {
+        await getObjectStorage().deleteObject(key).catch(() => {});
+        return res.status(Number(error.status) || 500).json({
+            message: Number(error.status) && Number(error.status) < 500 ? error.message : 'Unable to confirm source upload.',
+            code: error.code || 'SCORM_SOURCE_UPLOAD_FAILED'
+        });
+    }
+}
+
+router.post('/source/:progressId/upload-ticket', auth, aiUploadLimiter, (req, res) => createSourceUploadTicket(req, res, false));
+router.post('/source/:progressId/upload-complete', auth, aiUploadLimiter, (req, res) => completeSourceUpload(req, res, false));
+router.post('/source/:progressId/visual-pdf/upload-ticket', auth, aiUploadLimiter, (req, res) => createSourceUploadTicket(req, res, true));
+router.post('/source/:progressId/visual-pdf/upload-complete', auth, aiUploadLimiter, (req, res) => completeSourceUpload(req, res, true));
+
+function rejectProxiedSourceWhenDirect(req, res, next) {
+    if (!isDirectUploadEnabled(getObjectStorage())) return next();
+    return res.status(409).json({
+        message: 'Use the secure direct upload flow for this source file.',
+        code: 'DIRECT_UPLOAD_REQUIRED'
+    });
+}
+
 router.post(
     '/source/:progressId/visual-pdf',
     auth,
     aiUploadLimiter,
+    rejectProxiedSourceWhenDirect,
     express.raw({ type: 'application/octet-stream', limit: `${scormMaxUploadMb()}mb` }),
     async (req, res) => {
         if (!featureFlags.scormAiAuthor) return res.status(403).json({ message: 'AI author is disabled.' });
@@ -157,6 +263,7 @@ router.post(
     '/source/:progressId',
     auth,
     aiUploadLimiter,
+    rejectProxiedSourceWhenDirect,
     express.raw({ type: 'application/octet-stream', limit: `${scormMaxUploadMb()}mb` }),
     async (req, res) => {
         if (!featureFlags.scormAiAuthor) return res.status(403).json({ message: 'AI author is disabled.' });

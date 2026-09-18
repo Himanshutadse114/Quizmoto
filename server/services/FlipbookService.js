@@ -200,6 +200,62 @@ function extensionFor(contentType) {
     return 'jpg';
 }
 
+function validateStoredPage({ flipbook, key, contentType, byteSize }) {
+    const type = String(contentType || '').toLowerCase();
+    const size = Number(byteSize || 0);
+    const safeKey = String(key || '');
+    const prefix = `flipbooks/${flipbook.ownerUserId}/${flipbook.id}/`;
+    if (!ALLOWED_PAGE_TYPES.has(type)) {
+        const err = new Error('Unsupported page image type.');
+        err.status = 415;
+        throw err;
+    }
+    if (!Number.isSafeInteger(size) || size <= 0 || size > MAX_PAGE_BYTES) {
+        const err = new Error(`Each publication page must be smaller than ${Math.floor(MAX_PAGE_BYTES / (1024 * 1024))} MB.`);
+        err.status = 413;
+        throw err;
+    }
+    if (!safeKey.startsWith(prefix) || !/^[a-zA-Z0-9/_\-.]+$/.test(safeKey)) {
+        const err = new Error('Invalid publication page upload reference.');
+        err.status = 400;
+        throw err;
+    }
+    return { key: safeKey, contentType: type, byteSize: size };
+}
+
+function createPageStorageKey(flipbook, contentType) {
+    const extension = extensionFor(String(contentType || '').toLowerCase());
+    return `flipbooks/${flipbook.ownerUserId}/${flipbook.id}/direct-${crypto.randomBytes(16).toString('hex')}.${extension}`;
+}
+
+async function appendStoredPage({ flipbook, key, contentType, byteSize, width, height }) {
+    const pages = Array.isArray(flipbook.pages) ? [...flipbook.pages] : [];
+    if (pages.length >= MAX_PAGES) {
+        const err = new Error(`A publication can contain up to ${MAX_PAGES} pages.`);
+        err.status = 400;
+        err.code = 'FLIPBOOK_PAGE_LIMIT_REACHED';
+        throw err;
+    }
+    const valid = validateStoredPage({ flipbook, key, contentType, byteSize });
+    if (pages.some((page) => page.key === valid.key)) {
+        const err = new Error('This publication page was already added.');
+        err.status = 409;
+        throw err;
+    }
+    const page = {
+        key: valid.key,
+        contentType: valid.contentType,
+        byteSize: valid.byteSize,
+        width: Number.isFinite(Number(width)) ? Math.max(1, Math.floor(Number(width))) : null,
+        height: Number.isFinite(Number(height)) ? Math.max(1, Math.floor(Number(height))) : null
+    };
+    pages.push(page);
+    flipbook.pages = pages;
+    flipbook.pageCount = pages.length;
+    await flipbook.save();
+    return page;
+}
+
 async function appendPage({ flipbook, dataUrl, width, height }) {
     const pages = Array.isArray(flipbook.pages) ? [...flipbook.pages] : [];
     if (pages.length >= MAX_PAGES) {
@@ -264,6 +320,7 @@ async function listAdminUsers(search = '') {
 module.exports = {
     DEFAULT_FREE_FLIPBOOKS,
     MAX_PAGES,
+    MAX_PAGE_BYTES,
     ensureFlipbookSchema,
     isSuperAdmin,
     getQuota,
@@ -271,6 +328,9 @@ module.exports = {
     registerCreatedFlipbook,
     setUserLimit,
     createShareToken,
+    createPageStorageKey,
+    validateStoredPage,
+    appendStoredPage,
     appendPage,
     clearPages,
     deleteFlipbook,

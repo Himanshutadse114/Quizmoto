@@ -180,7 +180,7 @@ function readAnalysis(value) {
     }
 }
 
-async function createVideoCourse({ hostId, title, description, mimeType, durationSeconds, sourcePath, tempDir, replacePackageId = '' }) {
+async function createVideoCourse({ hostId, title, description, mimeType, durationSeconds, sourcePath, sourceStorageKey = '', tempDir, replacePackageId = '' }) {
     let pkg = null;
     let createdPackage = false;
     const storage = getObjectStorage();
@@ -231,7 +231,11 @@ async function createVideoCourse({ hostId, title, description, mimeType, duratio
 
         // Publish the replacement media first and the entry document last so a
         // learner can never receive a new player that points at an unavailable file.
-        await storage.putObjectStream({ key: packageContentKey(pkg.id, mediaPath), stream: fs.createReadStream(sourcePath), contentType: mimeType, contentLength: sourceStat.size });
+        if (sourceStorageKey && typeof storage.copyObject === 'function') {
+            await storage.copyObject(sourceStorageKey, packageContentKey(pkg.id, mediaPath), { contentType: mimeType });
+        } else {
+            await storage.putObjectStream({ key: packageContentKey(pkg.id, mediaPath), stream: fs.createReadStream(sourcePath), contentType: mimeType, contentLength: sourceStat.size });
+        }
         await storage.putObject({ key: packageContentKey(pkg.id, 'scorm_api_wrapper.js'), body: Buffer.from(SCORM_WRAPPER), contentType: 'application/javascript' });
         await storage.putObject({ key: packageContentKey(pkg.id, 'imsmanifest.xml'), body: Buffer.from(manifest), contentType: 'application/xml' });
         await storage.putObject({ key: packageContentKey(pkg.id, 'index.html'), body: Buffer.from(html), contentType: 'text/html; charset=utf-8' });

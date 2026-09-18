@@ -103,6 +103,36 @@ class LocalObjectStorage {
         }
     }
 
+    async headObject(key) {
+        const filePath = this.resolveLocalPath(key);
+        if (!(await this.exists(key))) {
+            const err = new Error('Object not found');
+            err.code = 'OBJECT_NOT_FOUND';
+            throw err;
+        }
+        const [stat, meta] = await Promise.all([fsp.stat(filePath), this._readMeta(filePath)]);
+        return {
+            key: this._safeKey(key),
+            contentLength: stat.size,
+            contentType: meta.contentType || 'application/octet-stream',
+            etag: null,
+            lastModified: stat.mtime
+        };
+    }
+
+    async copyObject(sourceKey, destinationKey, options = {}) {
+        const sourcePath = this.resolveLocalPath(sourceKey);
+        const destinationPath = this.resolveLocalPath(destinationKey);
+        ensureDirSync(path.dirname(destinationPath));
+        await fsp.copyFile(sourcePath, destinationPath);
+        const sourceMeta = await this._readMeta(sourcePath);
+        const contentType = options.contentType || sourceMeta.contentType;
+        if (contentType) {
+            await fsp.writeFile(`${destinationPath}.meta.json`, JSON.stringify({ contentType }), 'utf8');
+        }
+        return { key: this._safeKey(destinationKey) };
+    }
+
     async _readMeta(filePath) {
         try {
             const raw = await fsp.readFile(`${filePath}.meta.json`, 'utf8');

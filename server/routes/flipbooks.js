@@ -5,6 +5,11 @@ const User = require('../models/User');
 const { assertActiveAccount } = require('../services/AccountProfileService');
 const Flipbook = require('../models/Flipbook');
 const { getObjectStorage } = require('../storage/ObjectStorage');
+const {
+    isDirectUploadEnabled,
+    prepareDirectUpload,
+    redirectToSignedObject
+} = require('../storage/DirectObjectDelivery');
 const { renderFlipbookReader } = require('../views/flipbookReader');
 const {
     ensureFlipbookSchema,
@@ -13,11 +18,15 @@ const {
     assertCanCreate,
     setUserLimit,
     createShareToken,
+    createPageStorageKey,
+    validateStoredPage,
+    appendStoredPage,
     appendPage,
     clearPages,
     deleteFlipbook,
     listAdminUsers,
-    MAX_PAGES
+    MAX_PAGES,
+    MAX_PAGE_BYTES
 } = require('../services/FlipbookService');
 const {
     cleanShareSlug,
@@ -173,7 +182,7 @@ router.get('/public/:shareToken/view', async (req, res, next) => {
         }
         res.setHeader('Cache-Control', 'private, no-store');
         res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
-        res.setHeader('Content-Security-Policy', "default-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self'; frame-ancestors *");
+        res.setHeader('Content-Security-Policy', "default-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self'; frame-ancestors *");
         res.type('html').send(renderPublicReader(book));
     } catch (err) {
         next(err);
@@ -199,7 +208,12 @@ router.get('/public/:shareToken/pages/:index', async (req, res, next) => {
         const pages = Array.isArray(book.pages) ? book.pages : [];
         const index = Number(req.params.index);
         if (!Number.isInteger(index) || index < 0 || index >= pages.length) return res.status(404).end();
-        const object = await getObjectStorage().getObjectStream(pages[index].key);
+        const storage = getObjectStorage();
+        if (await redirectToSignedObject(res, storage, pages[index].key, {
+            expiresIn: 60 * 60,
+            contentType: pages[index].contentType || 'image/jpeg'
+        })) return;
+        const object = await storage.getObjectStream(pages[index].key);
         res.setHeader('Content-Type', object.contentType || pages[index].contentType || 'image/jpeg');
         res.setHeader('Cache-Control', 'private, no-store, max-age=0');
         res.setHeader('Content-Disposition', 'inline');
@@ -314,8 +328,72 @@ router.get('/:id', findOwnedBook, async (req, res) => {
     res.json({ flipbook: ownerPayload(req.flipbook), quota: await getQuota(req.flipbookUser), maxPages: MAX_PAGES });
 });
 
+router.post('/:id/pages/upload-ticket', findOwnedBook, async (req, res, next) => {
+    try {
+        const storage = getObjectStorage();
+        if (!(await prepareDirectUpload(storage))) return res.json({ direct: false });
+        if (Number(req.flipbook.pageCount || 0) >= MAX_PAGES) {
+            return res.status(400).json({ message: `A publication can contain up to ${MAX_PAGES} pages.`, code: 'FLIPBOOK_PAGE_LIMIT_REACHED' });
+        }
+        const contentType = String(req.body?.contentType || '').toLowerCase();
+        const byteSize = Number(req.body?.byteSize || 0);
+        const key = createPageStorageKey(req.flipbook, contentType);
+        validateStoredPage({ flipbook: req.flipbook, key, contentType, byteSize });
+        const uploadUrl = await storage.createSignedPutUrl(key, { expiresIn: 10 * 60, contentType });
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.json({
+            direct: true,
+            uploadUrl,
+            sourceKey: key,
+            contentType,
+            byteSize,
+            headers: { 'Content-Type': contentType },
+            expiresIn: 10 * 60
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
+router.post('/:id/pages/upload-complete', findOwnedBook, async (req, res, next) => {
+    const storage = getObjectStorage();
+    const key = String(req.body?.sourceKey || '');
+    try {
+        if (!isDirectUploadEnabled(storage)) return res.status(409).json({ message: 'Direct page upload is unavailable.' });
+        const expected = validateStoredPage({
+            flipbook: req.flipbook,
+            key,
+            contentType: req.body?.contentType,
+            byteSize: req.body?.byteSize
+        });
+        const head = await storage.headObject(expected.key);
+        if (Number(head.contentLength) !== expected.byteSize || String(head.contentType || '').toLowerCase() !== expected.contentType) {
+            await storage.deleteObject(expected.key).catch(() => {});
+            return res.status(400).json({ message: 'The publication page upload was incomplete. Please retry.' });
+        }
+        const page = await appendStoredPage({
+            flipbook: req.flipbook,
+            ...expected,
+            width: req.body?.width,
+            height: req.body?.height
+        });
+        res.status(201).json({ ok: true, page, pageCount: req.flipbook.pageCount });
+    } catch (err) {
+        const alreadyAttached = (Array.isArray(req.flipbook.pages) ? req.flipbook.pages : [])
+            .some((page) => page.key === key);
+        if (key && !alreadyAttached) await storage.deleteObject(key).catch(() => {});
+        next(err);
+    }
+});
+
 router.post('/:id/pages', findOwnedBook, async (req, res, next) => {
     try {
+        if (isDirectUploadEnabled(getObjectStorage())) {
+            return res.status(409).json({
+                message: 'Use the secure direct upload flow for publication pages.',
+                code: 'DIRECT_UPLOAD_REQUIRED'
+            });
+        }
         const page = await appendPage({
             flipbook: req.flipbook,
             dataUrl: req.body?.dataUrl,

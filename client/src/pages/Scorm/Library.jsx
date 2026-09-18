@@ -91,12 +91,32 @@ export default function ScormLibrary() {
     setMsg('Uploading trackable package…');
     try {
       const packageTitle = title || file.name.replace(/\.zip$/i, '');
-      const res = await axios.post(apiUrl('/api/scorm/packages/upload'), file, {
-        headers: { ...headers, 'Content-Type': 'application/zip', 'X-SCORM-Title': packageTitle },
-        timeout: 300000,
-        maxBodyLength: Infinity,
-        maxContentLength: Infinity
-      });
+      const ticket = await axios.post(apiUrl('/api/scorm/packages/upload-ticket'), {
+        title: packageTitle, byteSize: file.size
+      }, { headers });
+      let res;
+      if (ticket.data?.direct && ticket.data?.uploadUrl) {
+        try {
+          await axios.put(ticket.data.uploadUrl, file, {
+            headers: ticket.data.headers || { 'Content-Type': 'application/zip' },
+            timeout: 300000,
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity
+          });
+        } catch (uploadError) {
+          const error = new Error('The secure package upload could not start. Please retry or contact support.');
+          error.cause = uploadError;
+          throw error;
+        }
+        res = await axios.post(apiUrl(`/api/scorm/packages/${encodeURIComponent(ticket.data.packageId)}/upload-complete`), {}, { headers, timeout: 300000 });
+      } else {
+        res = await axios.post(apiUrl('/api/scorm/packages/upload'), file, {
+          headers: { ...headers, 'Content-Type': 'application/zip', 'X-SCORM-Title': packageTitle },
+          timeout: 300000,
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity
+        });
+      }
       setMsg(res.data.status === 'processing' ? 'Upload complete. The package is being validated in the background.' : `Package ${res.data.status}${res.data.errorMessage ? ` · ${res.data.errorMessage}` : ''}`);
       setTitle('');
       setSelectedFile(null);
@@ -120,6 +140,15 @@ export default function ScormLibrary() {
 
   const downloadPkg = async (id, packageTitle) => {
     try {
+      const linkResponse = await axios.get(apiUrl(`/api/scorm/packages/${id}/download-link`), { headers });
+      if (linkResponse.data?.direct && linkResponse.data?.url) {
+        const a = document.createElement('a');
+        a.href = linkResponse.data.url;
+        a.download = linkResponse.data.downloadName || `${(packageTitle || 'trackable-package').replace(/[^a-zA-Z0-9._-]+/g, '_')}.zip`;
+        a.rel = 'noopener';
+        document.body.appendChild(a); a.click(); a.remove();
+        return;
+      }
       const res = await axios.get(apiUrl(`/api/scorm/packages/${id}/download`), { headers, responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/zip' }));
       const a = document.createElement('a');

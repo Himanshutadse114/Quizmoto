@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { ScormVideo } = require('../models/scorm');
 const { getObjectStorage } = require('../storage/ObjectStorage');
+const { redirectToSignedObject } = require('../storage/DirectObjectDelivery');
 const { authorizeVideoStream, ensureVideoSchema } = require('../services/scorm/ScormVideoService');
 
 function parseRange(value, total) {
@@ -19,9 +20,14 @@ router.get('/:videoId/stream', async (req, res) => {
         await authorizeVideoStream(req.query.token, req.params.videoId);
         const video = await ScormVideo.findOne({ where: { id: req.params.videoId, status: 'ready' } });
         if (!video) return res.status(404).json({ message: 'Video not found.' });
+        const storage = getObjectStorage();
+        if (await redirectToSignedObject(res, storage, video.storageKey, {
+            expiresIn: 4 * 60 * 60,
+            contentType: video.mimeType || 'video/mp4'
+        })) return;
         const total = Number(video.byteSize || 0);
         const range = total ? parseRange(req.headers.range, total) : null;
-        const object = await getObjectStorage().getObjectStream(video.storageKey, range || {});
+        const object = await storage.getObjectStream(video.storageKey, range || {});
         res.setHeader('Content-Type', video.mimeType || object.contentType || 'video/mp4');
         res.setHeader('Content-Disposition', 'inline');
         res.setHeader('X-Content-Type-Options', 'nosniff');

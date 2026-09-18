@@ -220,25 +220,52 @@ export default function CourseGenerator() {
     try {
       if (videoMode) {
         const durationSeconds = await videoDuration(file);
-        const response = await axios({
-          method: replaceVideoId ? 'put' : 'post',
-          url: apiUrl(replaceVideoId ? `/api/scorm/video-courses/${encodeURIComponent(replaceVideoId)}` : '/api/scorm/video-courses'),
-          data: file,
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': videoMimeType(file),
-            'X-Video-Course-Metadata': encodeVideoMetadata({
-              title: displayTitle,
-              description: description.trim(),
-              durationSeconds,
-              fileName: file.name
-            })
-          },
-          timeout: 15 * 60 * 1000,
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
-          onUploadProgress: (event) => setUploadProgress(event.total ? Math.round((event.loaded / event.total) * 100) : 0)
-        });
+        const metadata = { title: displayTitle, description: description.trim(), durationSeconds, fileName: file.name };
+        const ticketResponse = await axios.post(apiUrl('/api/scorm/video-courses/upload-ticket'), {
+          mimeType: videoMimeType(file),
+          byteSize: file.size,
+          metadata,
+          replacePackageId: replaceVideoId || ''
+        }, { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 });
+        let response;
+        if (ticketResponse.data?.direct && ticketResponse.data?.uploadUrl) {
+          try {
+            await axios.put(ticketResponse.data.uploadUrl, file, {
+              headers: ticketResponse.data.headers || { 'Content-Type': videoMimeType(file) },
+              timeout: 15 * 60 * 1000,
+              maxBodyLength: Infinity,
+              maxContentLength: Infinity,
+              onUploadProgress: (event) => setUploadProgress(event.total ? Math.round((event.loaded / event.total) * 100) : 0)
+            });
+          } catch (uploadError) {
+            const error = new Error('The secure video upload could not start. Please retry or contact support.');
+            error.cause = uploadError;
+            throw error;
+          }
+          setUploadProgress(100);
+          response = await axios.post(apiUrl('/api/scorm/video-courses/upload-complete'), {
+            sourceKey: ticketResponse.data.sourceKey,
+            mimeType: ticketResponse.data.mimeType || videoMimeType(file),
+            byteSize: file.size,
+            metadata,
+            replacePackageId: replaceVideoId || ''
+          }, { headers: { Authorization: `Bearer ${token}` }, timeout: 15 * 60 * 1000 });
+        } else {
+          response = await axios({
+            method: replaceVideoId ? 'put' : 'post',
+            url: apiUrl(replaceVideoId ? `/api/scorm/video-courses/${encodeURIComponent(replaceVideoId)}` : '/api/scorm/video-courses'),
+            data: file,
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': videoMimeType(file),
+              'X-Video-Course-Metadata': encodeVideoMetadata(metadata)
+            },
+            timeout: 15 * 60 * 1000,
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity,
+            onUploadProgress: (event) => setUploadProgress(event.total ? Math.round((event.loaded / event.total) * 100) : 0)
+          });
+        }
         navigate(`/scorm/courses/${response.data.courseId}`, { replace: true, state: { courseMessage: replaceVideoId ? 'Video replaced and trackable course rebuilt.' : 'Video course created and ready to preview.' } });
         return;
       }

@@ -4,6 +4,7 @@ const router = express.Router();
 const auth = require('../middleware');
 const { ScormVideo, ScormCampaignVideo, ScormVideoProgress } = require('../../models/scorm');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
+const { isDirectUploadEnabled, prepareDirectUpload } = require('../../storage/DirectObjectDelivery');
 const { ensureVideoSchema, listVideos, launchAdminVideo } = require('../../services/scorm/ScormVideoService');
 
 const MAX_VIDEO_MB = Math.max(25, Math.min(1000, Number(process.env.SCORM_MAX_VIDEO_MB || 250)));
@@ -77,10 +78,102 @@ router.get('/', auth, async (req, res) => {
     }
 });
 
+router.post('/upload-ticket', auth, async (req, res) => {
+    let video = null;
+    try {
+        workspaceRequired(req);
+        const mimeType = String(req.body?.mimeType || '').split(';')[0].trim().toLowerCase();
+        const contentLength = Number(req.body?.byteSize || 0);
+        if (!ACCEPTED.has(mimeType)) return res.status(415).json({ message: 'Upload an MP4, WebM, OGG or MOV video.' });
+        if (!Number.isSafeInteger(contentLength) || contentLength <= 0 || contentLength > MAX_VIDEO_BYTES) {
+            return res.status(413).json({ message: `Video must be between 1 byte and ${MAX_VIDEO_MB} MB.` });
+        }
+        const storage = getObjectStorage();
+        if (!(await prepareDirectUpload(storage))) return res.json({ direct: false });
+        await ensureVideoSchema();
+        const metadata = req.body?.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : {};
+        const title = String(metadata.title || 'Untitled video').trim().slice(0, 200) || 'Untitled video';
+        const description = String(metadata.description || '').trim().slice(0, 1200) || null;
+        const durationSeconds = Math.max(0, Number(metadata.durationSeconds || 0)) || null;
+        video = await ScormVideo.create({
+            workspaceId: req.scormWorkspaceId,
+            hostId: req.userId,
+            ownerUserId: req.authenticatedUserId || req.userId,
+            title,
+            description,
+            storageKey: `videos/pending-${Date.now()}`,
+            mimeType,
+            byteSize: contentLength,
+            durationSeconds,
+            status: 'processing'
+        });
+        video.storageKey = `videos/${video.id}/source.${safeExtension(mimeType)}`;
+        await video.save();
+        const uploadUrl = await storage.createSignedPutUrl(video.storageKey, { expiresIn: 15 * 60, contentType: mimeType });
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.status(201).json({
+            direct: true,
+            uploadUrl,
+            videoId: video.id,
+            mimeType,
+            byteSize: contentLength,
+            headers: { 'Content-Type': mimeType },
+            expiresIn: 15 * 60
+        });
+    } catch (error) {
+        if (video) {
+            video.status = 'failed';
+            await video.save().catch(() => {});
+        }
+        res.status(error.status || 500).json({ message: error.message || 'Unable to prepare video upload.' });
+    }
+});
+
+router.post('/:videoId/upload-complete', auth, async (req, res) => {
+    try {
+        workspaceRequired(req);
+        await ensureVideoSchema();
+        const video = await ScormVideo.findOne({ where: { id: req.params.videoId, workspaceId: req.scormWorkspaceId, hostId: req.userId, status: 'processing' } });
+        if (!video) return res.status(404).json({ message: 'Pending video upload not found.' });
+        const storage = getObjectStorage();
+        if (!isDirectUploadEnabled(storage)) return res.status(409).json({ message: 'Direct video upload is unavailable.' });
+        const head = await storage.headObject(video.storageKey);
+        if (Number(head.contentLength) !== Number(video.byteSize)) {
+            await storage.deleteObject(video.storageKey).catch(() => {});
+            video.status = 'failed';
+            await video.save();
+            return res.status(400).json({ message: 'The video upload was incomplete. Please retry.' });
+        }
+        video.status = 'ready';
+        await video.save();
+        res.status(201).json({
+            ok: true,
+            video: {
+                id: video.id,
+                title: video.title,
+                description: video.description,
+                mimeType: video.mimeType,
+                byteSize: Number(video.byteSize),
+                durationSeconds: video.durationSeconds == null ? null : Number(video.durationSeconds),
+                status: video.status,
+                createdAt: video.createdAt
+            }
+        });
+    } catch (error) {
+        res.status(error.status || 500).json({ message: error.message || 'Unable to confirm video upload.' });
+    }
+});
+
 router.post('/upload', auth, async (req, res) => {
     let video = null;
     try {
         workspaceRequired(req);
+        if (isDirectUploadEnabled(getObjectStorage())) {
+            return res.status(409).json({
+                message: 'Use the secure direct upload flow for this video.',
+                code: 'DIRECT_UPLOAD_REQUIRED'
+            });
+        }
         const mimeType = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
         if (!ACCEPTED.has(mimeType)) return res.status(415).json({ message: 'Upload an MP4, WebM, OGG or MOV video.' });
         const contentLength = declaredContentLength(req);

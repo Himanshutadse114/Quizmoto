@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getObjectStorage } = require('../../storage/ObjectStorage');
+const { redirectToSignedObject } = require('../../storage/DirectObjectDelivery');
 const { packageContentKey } = require('../../services/scorm/storageKeys');
 const { ScormPackage, ScormRegistration, ScormCourse } = require('../../models/scorm');
 const jwt = require('jsonwebtoken');
@@ -397,7 +398,15 @@ function isVideoContent(rel) {
     return /\.(?:mp4|webm|ogv|ogg|mov)$/i.test(String(rel || ''));
 }
 
+function isDirectBinaryContent(rel) {
+    return /\.(?:avif|bmp|gif|jpe?g|png|svg|webp|ico|woff2?|ttf|otf|eot|mp3|m4a|aac|wav|flac|pdf)$/i.test(String(rel || ''));
+}
+
 async function streamVideoContent(req, res, storage, key, rel, { allowPreviewEmbed = false } = {}) {
+    if (await redirectToSignedObject(res, storage, key, {
+        expiresIn: 4 * 60 * 60,
+        contentType: guessContentType(rel)
+    })) return;
     const rangeHeader = req.headers.range;
     const range = requestedByteRange(rangeHeader);
     if (rangeHeader && !range) {
@@ -428,6 +437,10 @@ async function sendContent(req, res, packageId, rel, { allowPreviewEmbed = false
         await streamVideoContent(req, res, storage, key, rel, { allowPreviewEmbed });
         return;
     }
+    if (isDirectBinaryContent(rel) && await redirectToSignedObject(res, storage, key, {
+        expiresIn: 60 * 60,
+        contentType: guessContentType(rel)
+    })) return;
     const buf = await storage.getObjectBuffer(key);
     const served = await patchHtmlIfNeeded(packageId, rel, buf);
 

@@ -3,6 +3,12 @@ const router = express.Router();
 const auth = require('../middleware');
 const { ScormPackage, ScormCourse } = require('../../models/scorm');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
+const {
+    isDirectUploadEnabled,
+    prepareDirectUpload,
+    redirectToSignedObject,
+    signedReadUrl
+} = require('../../storage/DirectObjectDelivery');
 const { packageZipKey } = require('../../services/scorm/storageKeys');
 const { scormMaxUploadMb } = require('../../config/featureFlags');
 const JobQueueService = require('../../jobs/JobQueueService');
@@ -100,7 +106,94 @@ async function tryExtractAiAnalysis(zipBuf) {
     }
 }
 
-router.post('/upload', auth, express.raw({
+router.post('/upload-ticket', auth, async (req, res) => {
+    try {
+        const byteSize = Number(req.body?.byteSize || 0);
+        const max = scormMaxUploadMb() * 1024 * 1024;
+        if (!Number.isSafeInteger(byteSize) || byteSize <= 0 || byteSize > max) {
+            return res.status(413).json({ message: `Maximum trackable package size is ${scormMaxUploadMb()} MB.` });
+        }
+        const storage = getObjectStorage();
+        if (!(await prepareDirectUpload(storage))) return res.json({ direct: false });
+        const pkg = await ScormPackage.create({
+            hostId: req.userId,
+            title: String(req.body?.title || 'Uploaded package').slice(0, 200),
+            status: 'processing',
+            source: 'upload',
+            byteSize,
+            analysisJson: null
+        });
+        const zipKey = packageZipKey(pkg.id);
+        pkg.storageKeyZip = zipKey;
+        await pkg.save();
+        const uploadUrl = await storage.createSignedPutUrl(zipKey, { expiresIn: 15 * 60, contentType: 'application/zip' });
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.status(201).json({
+            direct: true,
+            packageId: pkg.id,
+            uploadUrl,
+            byteSize,
+            headers: { 'Content-Type': 'application/zip' },
+            expiresIn: 15 * 60
+        });
+    } catch (err) {
+        logger.error('scorm_upload_ticket_failed', { module: 'scorm', error: err.message });
+        res.status(500).json({ message: 'Unable to prepare direct package upload.' });
+    }
+});
+
+router.post('/:id/upload-complete', auth, async (req, res) => {
+    try {
+        const pkg = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId, source: 'upload', status: 'processing' } });
+        if (!pkg || !pkg.storageKeyZip) return res.status(404).json({ message: 'Pending package upload not found.' });
+        const storage = getObjectStorage();
+        if (!isDirectUploadEnabled(storage)) return res.status(409).json({ message: 'Direct package upload is unavailable.' });
+        const head = await storage.headObject(pkg.storageKeyZip);
+        if (Number(head.contentLength) !== Number(pkg.byteSize)) {
+            await storage.deleteObject(pkg.storageKeyZip).catch(() => {});
+            pkg.status = 'failed';
+            pkg.errorMessage = 'The package upload was incomplete.';
+            await pkg.save();
+            return res.status(400).json({ message: pkg.errorMessage });
+        }
+        const processInline = process.env.SCORM_PROCESS_INLINE === '1' || process.env.NODE_ENV === 'test' || process.env.REPORTS_PROCESS_INLINE === '1';
+        let jobId = null;
+        if (processInline) {
+            try { await unpackPackage(pkg.id); } catch (error) { logger.error('scorm_inline_unpack_failed', { module: 'scorm', packageId: pkg.id, error: error.message }); }
+            await pkg.reload();
+        } else if (usesDedicatedScormWorker()) {
+            try {
+                const job = await enqueueDedicatedUnpack(pkg, req.userId);
+                jobId = job.id;
+            } catch (error) {
+                logger.warn('scorm_unpack_job_enqueue_failed', { module: 'scorm', packageId: pkg.id, error: error.message });
+            }
+        } else {
+            scheduleBackgroundUnpack(pkg.id);
+        }
+        res.status(201).json({
+            packageId: pkg.id,
+            status: pkg.status,
+            jobId,
+            entryHref: pkg.entryHref || null,
+            errorMessage: pkg.errorMessage || null,
+            source: pkg.source
+        });
+    } catch (err) {
+        logger.error('scorm_direct_upload_complete_failed', { module: 'scorm', packageId: req.params.id, error: err.message });
+        res.status(500).json({ message: 'Unable to confirm package upload.' });
+    }
+});
+
+function rejectProxiedUploadWhenDirect(req, res, next) {
+    if (!isDirectUploadEnabled(getObjectStorage())) return next();
+    return res.status(409).json({
+        message: 'Use the secure direct upload flow for this package.',
+        code: 'DIRECT_UPLOAD_REQUIRED'
+    });
+}
+
+router.post('/upload', auth, rejectProxiedUploadWhenDirect, express.raw({
     type: ['application/zip', 'application/octet-stream'],
     limit: `${scormMaxUploadMb()}mb`
 }), async (req, res) => {
@@ -293,6 +386,24 @@ router.get('/', auth, async (req, res) => {
     res.json(list.filter((p) => p.status !== 'deleted'));
 });
 
+router.get('/:id/download-link', auth, async (req, res) => {
+    try {
+        const pkg = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId } });
+        if (!pkg || pkg.status === 'deleted') return res.status(404).json({ message: 'Not found' });
+        if (!pkg.storageKeyZip) return res.status(404).json({ message: 'ZIP not stored' });
+        const safeName = `${String(pkg.title || 'trackable-package').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 80)}.zip`;
+        const url = await signedReadUrl(getObjectStorage(), pkg.storageKeyZip, {
+            expiresIn: 15 * 60,
+            contentType: 'application/zip',
+            downloadName: safeName
+        });
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.json({ direct: Boolean(url), url: url || null, downloadName: safeName });
+    } catch (err) {
+        res.status(500).json({ message: 'Unable to prepare the package download.' });
+    }
+});
+
 router.get('/:id/download', auth, async (req, res) => {
     try {
         const pkg = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId } });
@@ -300,6 +411,15 @@ router.get('/:id/download', auth, async (req, res) => {
         if (!pkg.storageKeyZip) return res.status(404).json({ message: 'ZIP not stored' });
 
         const storage = getObjectStorage();
+        const directName = `${String(pkg.title || 'trackable-package')
+            .replace(/[^a-zA-Z0-9._-]+/g, '_')
+            .slice(0, 80)}.zip`;
+        if (await redirectToSignedObject(res, storage, pkg.storageKeyZip, {
+            expiresIn: 15 * 60,
+            contentType: 'application/zip',
+            downloadName: directName,
+            statusCode: 302
+        })) return;
         const object = await storage.getObjectStream(pkg.storageKeyZip);
         const safeName = String(pkg.title || 'scorm-package')
             .replace(/[^a-zA-Z0-9._-]+/g, '_')

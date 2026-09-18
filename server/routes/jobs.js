@@ -9,6 +9,7 @@ const auth = require('./middleware');
 const JobQueueService = require('../jobs/JobQueueService');
 const { JOB_STATUS } = require('../jobs/jobTypes');
 const { getObjectStorage } = require('../storage/ObjectStorage');
+const { redirectToSignedObject } = require('../storage/DirectObjectDelivery');
 
 const router = express.Router();
 
@@ -74,6 +75,11 @@ router.get('/:id/download', auth, async (req, res) => {
         if (job.result.storageKey) {
             const storage = getObjectStorage();
             try {
+                if (await redirectToSignedObject(res, storage, job.result.storageKey, {
+                    expiresIn: 15 * 60,
+                    contentType,
+                    downloadName
+                })) return;
                 const obj = await storage.getObjectStream(job.result.storageKey);
                 res.setHeader('Content-Type', obj.contentType || contentType);
                 if (obj.contentLength != null) {

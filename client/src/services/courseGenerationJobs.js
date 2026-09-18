@@ -35,6 +35,39 @@ function fileToBase64(file) {
 
 async function uploadSourceFile({ token, id, file, signal, visual = false }) {
   const suffix = visual ? '/visual-pdf' : '';
+  let ticket = null;
+  try {
+    const ticketResponse = await axios.post(
+      apiUrl(`/api/scorm/author/source/${encodeURIComponent(id)}${suffix}/upload-ticket`),
+      { mimeType: visual ? 'application/pdf' : (file.type || 'application/octet-stream'), byteSize: file.size },
+      { headers: { Authorization: `Bearer ${token}` }, timeout: 30000, signal }
+    );
+    ticket = ticketResponse.data || {};
+  } catch (err) {
+    if (![404, 405].includes(Number(err.response?.status || 0))) throw err;
+  }
+
+  if (ticket?.direct && ticket.uploadUrl) {
+    try {
+      await axios.put(ticket.uploadUrl, file, {
+        headers: ticket.headers || { 'Content-Type': visual ? 'application/pdf' : (file.type || 'application/octet-stream') },
+        timeout: 120000,
+        signal
+      });
+    } catch (err) {
+      const directError = new Error('The secure source upload could not start. Please retry or contact support.');
+      directError.code = 'DIRECT_STORAGE_UPLOAD_FAILED';
+      directError.cause = err;
+      throw directError;
+    }
+    const complete = await axios.post(
+      apiUrl(`/api/scorm/author/source/${encodeURIComponent(id)}${suffix}/upload-complete`),
+      { mimeType: ticket.mimeType || file.type || 'application/octet-stream', byteSize: file.size },
+      { headers: { Authorization: `Bearer ${token}` }, timeout: 30000, signal }
+    );
+    return complete.data || {};
+  }
+
   const upload = await axios.post(
     apiUrl(`/api/scorm/author/source/${encodeURIComponent(id)}${suffix}`),
     file,

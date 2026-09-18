@@ -74,10 +74,29 @@ export default function Videos() {
     setBusy(true); setProgress(0); setError(''); setMessage('');
     try {
       const durationSeconds = await readDuration(file);
-      const response = await axios.post(apiUrl('/api/scorm/videos/upload'), file, {
-        headers: { ...headers, 'Content-Type': file.type || 'video/mp4', 'X-Video-Metadata': encodeUploadMetadata({ title: title.trim(), description: description.trim(), durationSeconds }) },
-        onUploadProgress: (value) => setProgress(value.total ? Math.round((value.loaded / value.total) * 100) : 0)
-      });
+      const metadata = { title: title.trim(), description: description.trim(), durationSeconds };
+      const ticket = await axios.post(apiUrl('/api/scorm/videos/upload-ticket'), {
+        mimeType: file.type || 'video/mp4', byteSize: file.size, metadata
+      }, { headers });
+      let response;
+      if (ticket.data?.direct && ticket.data?.uploadUrl) {
+        try {
+          await axios.put(ticket.data.uploadUrl, file, {
+            headers: ticket.data.headers || { 'Content-Type': file.type || 'video/mp4' },
+            onUploadProgress: (value) => setProgress(value.total ? Math.round((value.loaded / value.total) * 100) : 0)
+          });
+        } catch (uploadError) {
+          const error = new Error('The secure video upload could not start. Please retry or contact support.');
+          error.cause = uploadError;
+          throw error;
+        }
+        response = await axios.post(apiUrl(`/api/scorm/videos/${encodeURIComponent(ticket.data.videoId)}/upload-complete`), {}, { headers });
+      } else {
+        response = await axios.post(apiUrl('/api/scorm/videos/upload'), file, {
+          headers: { ...headers, 'Content-Type': file.type || 'video/mp4', 'X-Video-Metadata': encodeUploadMetadata(metadata) },
+          onUploadProgress: (value) => setProgress(value.total ? Math.round((value.loaded / value.total) * 100) : 0)
+        });
+      }
       setVideos((current) => [response.data.video, ...current]);
       setFile(null); setTitle(''); setDescription(''); setProgress(0);
       if (fileRef.current) fileRef.current.value = '';
