@@ -61,8 +61,8 @@ const PERSISTABLE_PATHS = [
 ];
 
 const FREE_TOOL_DATASETS = [
-  { path: '/api/scorm/flipbooks', label: 'Preparing Publica', priority: 1 },
-  { path: '/api/scorm/flipbooks/library', label: 'Preparing your Publica library', priority: 2 },
+  { path: '/api/scorm/flipbooks', dataKey: 'flipbooks', label: 'Preparing Publica', priority: 1 },
+  { path: '/api/scorm/flipbooks/library', dataKey: 'flipbook-library', label: 'Preparing your Publica library', priority: 2 },
   { path: '/api/quizzes', label: 'Preparing Quizmoto', priority: 1 },
   { path: '/api/quizzes/active-sessions', label: 'Checking live sessions', priority: 2 }
 ];

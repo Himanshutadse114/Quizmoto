@@ -1,6 +1,5 @@
 const { Op } = require('sequelize');
 const Flipbook = require('../models/Flipbook');
-const FlipbookLibrary = require('../models/FlipbookLibrary');
 
 function publicAppUrl() {
     return String(process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'https://www.lmsgen.in').replace(/\/+$/, '');
@@ -29,7 +28,7 @@ function publicationUrl(book) {
 }
 
 function libraryUrl(library) {
-    return `${publicAppUrl()}/publica-library/${shareIdentifier(library)}`;
+    return `${publicAppUrl()}/publica-library/${library?.shareToken || ''}`;
 }
 
 async function assertBookSlugAvailable(slug, currentId = null) {
@@ -38,15 +37,6 @@ async function assertBookSlugAvailable(slug, currentId = null) {
     if (currentId) where.id = { [Op.ne]: currentId };
     if (await Flipbook.findOne({ where, attributes: ['id'] })) {
         throw Object.assign(new Error('That publication link is already in use.'), { status: 409, code: 'PUBLICA_LINK_TAKEN' });
-    }
-}
-
-async function assertLibrarySlugAvailable(slug, currentId = null) {
-    if (!slug) return;
-    const where = { shareSlug: slug };
-    if (currentId) where.id = { [Op.ne]: currentId };
-    if (await FlipbookLibrary.findOne({ where, attributes: ['id'] })) {
-        throw Object.assign(new Error('That library link is already in use.'), { status: 409, code: 'PUBLICA_LINK_TAKEN' });
     }
 }
 
@@ -61,6 +51,5 @@ module.exports = {
     publicationUrl,
     libraryUrl,
     assertBookSlugAvailable,
-    assertLibrarySlugAvailable,
     publicIdentifierWhere
 };

@@ -8,11 +8,9 @@ const Flipbook = require('../models/Flipbook');
 const FlipbookLibrary = require('../models/FlipbookLibrary');
 const { assertActiveAccount } = require('../services/AccountProfileService');
 const {
-    cleanShareSlug,
     shareIdentifier,
     publicationUrl,
     libraryUrl,
-    assertLibrarySlugAvailable,
     publicIdentifierWhere
 } = require('../services/PublicaBrandingService');
 
@@ -100,8 +98,7 @@ function libraryPayload(library, books = []) {
         description: library.description || '',
         shareEnabled: Boolean(library.shareEnabled),
         shareToken: library.shareToken,
-        shareSlug: library.shareSlug || '',
-        shareIdentifier: shareIdentifier(library),
+        shareIdentifier: library.shareToken,
         shareUrl: library.shareEnabled ? libraryUrl(library) : null,
         bookCount: books.length,
         updatedAt: library.updatedAt,
@@ -168,11 +165,6 @@ router.patch('/library', genericPlatformAuth, async (req, res, next) => {
         }
         if (Object.prototype.hasOwnProperty.call(req.body || {}, 'shareEnabled')) {
             library.shareEnabled = Boolean(req.body.shareEnabled);
-        }
-        if (Object.prototype.hasOwnProperty.call(req.body || {}, 'shareSlug')) {
-            const nextSlug = cleanShareSlug(req.body.shareSlug);
-            await assertLibrarySlugAvailable(nextSlug, library.id);
-            library.shareSlug = nextSlug;
         }
         await library.save();
         const books = await publishedBooks(req.flipbookLibraryUser.id);

@@ -12,6 +12,9 @@ describe('one-time platform startup preparation', () => {
     const gate = clientSource('components/PlatformStartupGate.jsx');
     const session = clientSource('services/platformPreparationSession.js');
     const bootstrap = clientSource('components/PlatformDataBootstrap.jsx');
+    const apiCache = clientSource('services/scormApiCache.js');
+    const publica = clientSource('pages/Scorm/Flipbooks.jsx');
+    const publicaLibrary = clientSource('pages/Scorm/FlipbookLibraryShare.jsx');
 
     it('runs the preparation gate inside authenticated platform routes', () => {
         expect(app).to.include('<PlatformStartupGate><ScormPlatformShell /></PlatformStartupGate>');
@@ -31,5 +34,17 @@ describe('one-time platform startup preparation', () => {
     it('prevents the normal background warmer from duplicating startup reads', () => {
         expect(bootstrap).to.include('isPlatformPreparationPending()');
         expect(bootstrap).to.include("'lmsgen-platform-prepared'");
+    });
+
+    it('hydrates Publica from the data prepared behind the login loader', () => {
+        expect(apiCache).to.include("dataKey: 'flipbooks'");
+        expect(apiCache).to.include("dataKey: 'flipbook-library'");
+        expect(publica).to.include("peekScormData('flipbooks', token)");
+        expect(publicaLibrary).to.include("peekScormData('flipbook-library', token)");
+    });
+
+    it('does not expose editable shared-library URLs', () => {
+        expect(publicaLibrary).not.to.include('Custom library link');
+        expect(publicaLibrary).not.to.include('shareSlug');
     });
 });

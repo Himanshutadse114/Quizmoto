@@ -17,7 +17,8 @@ describe('Platform data bootstrap', () => {
     it('continues to warm platform data in the background', () => {
         expect(source).to.include('warmScormPlatformData(token');
         expect(source).to.include('BACKGROUND_REFRESH_MS');
-        expect(source).to.include('scheduleHeavyWarm');
+        expect(source).to.include('includeHeavy: false');
+        expect(source).to.include('window.setInterval(refreshVisibleData, BACKGROUND_REFRESH_MS)');
     });
 
     it('deduplicates overlapping cache warm-up requests', () => {

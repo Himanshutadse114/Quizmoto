@@ -20,6 +20,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import { copyText } from '../../utils/clipboard';
+import { invalidateScormData, peekScormData, setScormData } from '../../services/scormDataCache';
 import FlipbookLibraryShare from './FlipbookLibraryShare';
 import './flipbooks.css';
 
@@ -55,13 +56,13 @@ function FlipbookCard({ book, onDelete, onCopied }) {
     try {
       await copyText(url, { successMessage: 'Publication share link copied.' });
       onCopied(book.id);
-    } catch (_) {}
+    } catch { /* Clipboard feedback is handled by the shared copy helper. */ }
   };
   const nativeShare = async () => {
     if (!published) return;
     const url = shareUrl(book);
     if (navigator.share) {
-      try { await navigator.share({ title: book.title, url }); } catch (_) {}
+      try { await navigator.share({ title: book.title, url }); } catch { /* The user cancelled the native share sheet. */ }
     } else {
       await copy();
     }
@@ -158,23 +159,33 @@ function AdminLimits({ token }) {
 export default function Flipbooks() {
   const { token, user } = useAuth();
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
-  const [books, setBooks] = useState([]);
-  const [quota, setQuota] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const prepared = useMemo(() => peekScormData('flipbooks', token), [token]);
+  const [books, setBooks] = useState(() => prepared?.flipbooks || []);
+  const [quota, setQuota] = useState(() => prepared?.quota || null);
+  const [loading, setLoading] = useState(() => !prepared);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState('');
   const isSuperAdmin = Boolean(user?.isSuperAdmin || user?.role === 'super_admin');
 
   const load = useCallback(async () => {
-    setLoading(true); setError('');
+    const cached = peekScormData('flipbooks', token);
+    if (cached) {
+      setBooks(cached.flipbooks || []);
+      setQuota(cached.quota || null);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+    setError('');
     try {
       const res = await axios.get(apiUrl(API), { headers });
       setBooks(res.data.flipbooks || []);
       setQuota(res.data.quota || null);
+      setScormData('flipbooks', token, res.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not load your publications.');
+      if (!cached) setError(err.response?.data?.message || 'Could not load your publications.');
     } finally { setLoading(false); }
-  }, [headers]);
+  }, [headers, token]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -182,6 +193,8 @@ export default function Flipbooks() {
     if (!window.confirm(`Delete “${book.title}”? Its public link will stop working.`)) return;
     try {
       await axios.delete(apiUrl(`${API}/${book.id}`), { headers });
+      invalidateScormData('flipbooks', token);
+      invalidateScormData('flipbook-library', token);
       await load();
     } catch (err) { setError(err.response?.data?.message || 'Could not delete this publication.'); }
   };

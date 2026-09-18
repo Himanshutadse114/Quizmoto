@@ -3,6 +3,7 @@ import axios from 'axios';
 import { BookOpenCheck, Camera, CheckCircle2, ImageOff, RefreshCw, Save, UserRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import { peekScormData, setScormData } from '../../services/scormDataCache';
 
 function initials(value) {
   return String(value || 'U').trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
@@ -101,6 +102,16 @@ export default function AccountSettings() {
         displayName: profile.displayName,
         avatar: profile.avatar
       });
+      const cachedLibrary = peekScormData('flipbook-library', token);
+      if (cachedLibrary?.library) {
+        setScormData('flipbook-library', token, {
+          ...cachedLibrary,
+          library: {
+            ...cachedLibrary.library,
+            title: profile.publicaLibraryName || form.publicaLibraryName
+          }
+        });
+      }
       setMessage('Your profile and Publica library name have been updated.');
     } catch (err) {
       setError(err.response?.data?.message || 'Could not save account settings.');
@@ -149,7 +160,7 @@ export default function AccountSettings() {
           <div className="px-5 py-4 border-b flex items-center gap-2"><BookOpenCheck size={16} className="text-[#4FC9BF]" /><div><h2 className="text-sm font-semibold">LMSGEN Publica</h2><p className="mt-0.5 text-[10px] opacity-55">This is the gallery name readers see when they open your shared library.</p></div></div>
           <div className="p-5">
             <label className="block"><span className="text-[9px] uppercase tracking-[.08em] opacity-55">Publica library name</span><input value={form.publicaLibraryName} onChange={(event) => setForm((current) => ({ ...current, publicaLibraryName: event.target.value }))} minLength={2} maxLength={180} required placeholder="My Publica Library" className="mt-1.5 w-full h-11 rounded-xl border bg-transparent px-3.5 text-sm outline-none focus:border-[#4FC9BF]" /></label>
-            <p className="mt-2 text-[10px] leading-relaxed opacity-55">You can also manage the custom library link from the Publica page.</p>
+            <p className="mt-2 text-[10px] leading-relaxed opacity-55">Your secure library link is generated automatically and remains unique to your account.</p>
           </div>
         </section>
 
