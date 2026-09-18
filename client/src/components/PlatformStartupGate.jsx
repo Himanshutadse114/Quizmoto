@@ -68,7 +68,6 @@ export default function PlatformStartupGate({ children }) {
     const dataPreparation = sharedPreparation(token, {
       force: false,
       includeHeavy: false,
-      maxPriority: 2,
       role: user?.role || '',
       scormAccess,
       quizmotoOnly: Boolean(user?.quizmotoOnly)

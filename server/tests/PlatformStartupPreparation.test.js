@@ -16,7 +16,7 @@ describe('one-time platform startup preparation', () => {
     it('runs the preparation gate inside authenticated platform routes', () => {
         expect(app).to.include('<PlatformStartupGate><ScormPlatformShell /></PlatformStartupGate>');
         expect(gate).to.include('warmScormPlatformData');
-        expect(gate).to.include('maxPriority: 2');
+        expect(gate).to.include('includeHeavy: false');
         expect(gate).to.include('preloadInitialWorkspace');
     });
 

@@ -375,7 +375,6 @@ export async function warmScormPlatformData(token, options = {}) {
     force = false,
     includeHeavy = false,
     essentialOnly = false,
-    maxPriority = null,
     role = '',
     scormAccess = true,
     quizmotoOnly = false,
@@ -403,8 +402,6 @@ export async function warmScormPlatformData(token, options = {}) {
     // workspace. Admin, email, access and report configuration is intentionally
     // left to the quiet background warm-up.
     datasets = datasets.filter((dataset) => Number(dataset.priority || 9) <= 1);
-  } else if (maxPriority !== null && maxPriority !== undefined && Number.isFinite(Number(maxPriority))) {
-    datasets = datasets.filter((dataset) => Number(dataset.priority || 9) <= Number(maxPriority));
   }
   const total = datasets.length;
   let completed = 0;
