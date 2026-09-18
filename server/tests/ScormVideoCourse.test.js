@@ -52,6 +52,10 @@ describe('SCORM video course', () => {
         expect(html).to.include('seekCount');
         expect(html).to.include('@media(max-width:520px)');
         expect(html).to.include('to-from<=allowed');
+        expect(html).to.include('Skipping ahead is disabled');
+        expect(html).to.include('furthestPosition');
+        expect(html).to.include('webkitEnterFullscreen');
+        expect(html).to.include('requestFullscreen');
     });
 
     it('creates a portable SCORM 1.2 ZIP with the video and runtime files', async () => {
