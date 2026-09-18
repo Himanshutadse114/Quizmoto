@@ -22,6 +22,18 @@ const requestLimiter = rateLimit({
     }
 });
 
+const requestIpLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => process.env.NODE_ENV === 'test',
+    message: {
+        message: 'Too many verification requests from this network. Please wait and try again.',
+        code: 'MAIL_OTP_IP_RATE_LIMITED'
+    }
+});
+
 const verifyLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 15,
@@ -43,7 +55,7 @@ router.get('/status', (req, res) => {
     });
 });
 
-router.post('/request', requestLimiter, async (req, res) => {
+router.post('/request', requestIpLimiter, requestLimiter, async (req, res) => {
     try {
         const result = await requestOtp({
             email: req.body?.email,

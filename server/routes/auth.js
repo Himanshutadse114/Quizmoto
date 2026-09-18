@@ -7,7 +7,6 @@ const User = require('../models/User');
 const { ScormWorkspace, ScormWorkspaceMember } = require('../models/scorm');
 const auth = require('./middleware');
 const {
-    ADMIN_CONTACT_EMAIL,
     normalizeEmail,
     getAccessRole,
     ensureSuperAdminGrant,
@@ -23,6 +22,30 @@ const { OAuth2Client } = require('google-auth-library');
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1001652255296-695gf3vjul0fjh1oden4k2n6tvvdvncn.apps.googleusercontent.com';
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+function logAuthError(event, error) {
+    console.error(event, {
+        code: error?.code || null,
+        status: Number(error?.status) || null,
+        message: String(error?.message || 'Authentication error').slice(0, 300)
+    });
+}
+
+function publicAuthError(error, fallback) {
+    return error?.status && error?.code ? String(error.message || fallback) : fallback;
+}
+
+const publicAuthIpLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => process.env.NODE_ENV === 'test',
+    message: {
+        message: 'Too many authentication requests from this network. Please wait and try again.',
+        code: 'AUTH_IP_RATE_LIMITED'
+    }
+});
 
 const scormAuthLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -43,7 +66,15 @@ const scormAuthLimiter = rateLimit({
 });
 
 function issueToken(user, scope = 'quizmoto', extraClaims = {}) {
-    return jwt.sign({ userId: user.id, scope, ...extraClaims }, JWT_SECRET, { expiresIn: '30d' });
+    const expiresIn = scope === 'quizmoto'
+        ? (process.env.QUIZMOTO_AUTH_TOKEN_TTL || '7d')
+        : (process.env.LMSGEN_AUTH_TOKEN_TTL || '24h');
+    return jwt.sign({
+        userId: user.id,
+        scope,
+        authVersion: Number(user.authVersion || 0),
+        ...extraClaims
+    }, JWT_SECRET, { expiresIn, algorithm: 'HS256' });
 }
 
 function publicUser(user, token, extras = {}) {
@@ -112,7 +143,6 @@ async function scormAuthResponse(user, role, { authMethod = 'password', staffSso
     return publicUser(user, token, {
         role,
         isSuperAdmin: role === 'super_admin',
-        adminContact: ADMIN_CONTACT_EMAIL,
         product: 'scorm-ai',
         platformAccess: true,
         scormAccess: true,
@@ -174,7 +204,7 @@ router.get('/scorm/status', auth, async (req, res) => {
             staffSso: req.staffSso === true
         }));
     } catch (err) {
-        console.error('LMSGEN access status error:', err);
+        logAuthError('LMSGEN access status error', err);
         return res.status(err.status || 500).json({
             message: err.message || 'Could not refresh LMSGEN access status.',
             code: err.code
@@ -182,7 +212,7 @@ router.get('/scorm/status', auth, async (req, res) => {
     }
 });
 
-router.use('/scorm', scormAuthLimiter);
+router.use('/scorm', publicAuthIpLimiter, scormAuthLimiter);
 
 async function ensureGoogleUser(payload) {
     const googleId = String(payload?.sub || '');
@@ -241,13 +271,14 @@ async function googleLogin(req, res) {
     try {
         const credential = String(req.body?.credential || '');
         if (!credential) return res.status(400).json({ message: 'Google credential missing' });
+        if (credential.length > 8192) return res.status(400).json({ message: 'Google credential is invalid.' });
         const ticket = await client.verifyIdToken({ idToken: credential, audience: GOOGLE_CLIENT_ID });
         const user = await ensureGoogleUser(ticket.getPayload() || {});
         res.json(await platformGoogleResponse(user));
     } catch (err) {
-        console.error('Google Auth Error:', err);
+        logAuthError('Google Auth Error', err);
         res.status(err.status || 500).json({
-            message: err.message || 'Google authentication failed.',
+            message: publicAuthError(err, 'Google authentication failed.'),
             code: err.code
         });
     }
@@ -255,7 +286,7 @@ async function googleLogin(req, res) {
 
 // Common Google sign-in: authorised tenant staff and the protected Super Admin
 // receive full LMSGEN access. Unassigned Google identities remain Quizmoto-only.
-router.post('/google', googleLogin);
+router.post('/google', publicAuthIpLimiter, googleLogin);
 router.post('/scorm/google', googleLogin);
 
 router.post('/scorm/register', async (req, res) => {
@@ -271,8 +302,8 @@ router.post('/scorm/register', async (req, res) => {
         if (!/^\S+@\S+\.\S+$/.test(email)) {
             return res.status(400).json({ message: 'Enter a valid email address.' });
         }
-        if (password.length < 8) {
-            return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+        if (password.length < 8 || password.length > 128) {
+            return res.status(400).json({ message: 'Password must be between 8 and 128 characters.' });
         }
 
         requireVerifiedOtpForEmail(verificationToken, 'email_verification', email);
@@ -282,7 +313,6 @@ router.post('/scorm/register', async (req, res) => {
             return res.status(403).json({
                 message: 'The Super Admin account already exists. Sign in with its existing password or Google account.',
                 code: 'SCORM_SUPER_ADMIN_ACCOUNT_MANAGED',
-                adminContact: ADMIN_CONTACT_EMAIL
             });
         }
 
@@ -310,7 +340,7 @@ router.post('/scorm/register', async (req, res) => {
             if (!role) {
                 return res.status(409).json({
                     ...pendingResponse(user, false),
-                    message: `This account is already registered but has not been assigned to an LMSGEN tenant. Please contact ${ADMIN_CONTACT_EMAIL}.`,
+                    message: 'This account is already registered but has not been assigned to an LMSGEN tenant. Contact your LMSGEN administrator.',
                     code: 'SCORM_ACCOUNT_EXISTS_PENDING'
                 });
             }
@@ -319,7 +349,6 @@ router.post('/scorm/register', async (req, res) => {
                 message: 'This LMSGEN account is already registered. Please sign in with the same credentials.',
                 code: 'SCORM_ACCOUNT_EXISTS',
                 pendingApproval: false,
-                adminContact: ADMIN_CONTACT_EMAIL
             });
         }
 
@@ -344,8 +373,8 @@ router.post('/scorm/register', async (req, res) => {
         if (!role) return res.status(202).json(pendingResponse(user, true));
         res.status(201).json(await scormAuthResponse(user, role, { authMethod: 'password' }));
     } catch (err) {
-        console.error('LMSGEN registration error:', err);
-        res.status(err.status || 500).json({ message: err.message || 'Could not create the LMSGEN account.', code: err.code });
+        logAuthError('LMSGEN registration error', err);
+        res.status(err.status || 500).json({ message: publicAuthError(err, 'Could not create the LMSGEN account.'), code: err.code });
     }
 });
 
@@ -353,6 +382,9 @@ router.post('/scorm/login', async (req, res) => {
     try {
         const identifier = String(req.body?.identifier || '').trim();
         const password = String(req.body?.password || '');
+        if (identifier.length > 320 || password.length > 128) {
+            return res.status(400).json({ message: 'Invalid email/username or password.' });
+        }
         if (!identifier || !password) {
             return res.status(400).json({ message: 'Email or username and password are required.' });
         }
@@ -385,8 +417,8 @@ router.post('/scorm/login', async (req, res) => {
 
         res.json(await scormAuthResponse(user, role, { authMethod: 'password' }));
     } catch (err) {
-        console.error('LMSGEN login error:', err);
-        res.status(err.status || 500).json({ message: err.message || 'LMSGEN login failed.', code: err.code });
+        logAuthError('LMSGEN login error', err);
+        res.status(err.status || 500).json({ message: publicAuthError(err, 'LMSGEN login failed.'), code: err.code });
     }
 });
 
@@ -399,8 +431,8 @@ router.post('/scorm/reset-password', async (req, res) => {
         if (!/^\S+@\S+\.\S+$/.test(email)) {
             return res.status(400).json({ message: 'Enter a valid email address.' });
         }
-        if (newPassword.length < 8) {
-            return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+        if (newPassword.length < 8 || newPassword.length > 128) {
+            return res.status(400).json({ message: 'Password must be between 8 and 128 characters.' });
         }
 
         requireVerifiedOtpForEmail(verificationToken, 'password_reset', email);
@@ -416,6 +448,7 @@ router.post('/scorm/reset-password', async (req, res) => {
         assertActiveAccount(user);
 
         user.password = newPassword;
+        user.authVersion = Number(user.authVersion || 0) + 1;
         await user.save();
 
         res.json({
@@ -423,9 +456,9 @@ router.post('/scorm/reset-password', async (req, res) => {
             message: 'Your password has been reset. You can now sign in with the new password.'
         });
     } catch (err) {
-        console.error('LMSGEN password reset error:', err);
+        logAuthError('LMSGEN password reset error', err);
         res.status(err.status || 500).json({
-            message: err.message || 'Could not reset the password.',
+            message: publicAuthError(err, 'Could not reset the password.'),
             code: err.code
         });
     }
@@ -446,7 +479,7 @@ router.post('/test-login', async (req, res) => {
         const token = jwt.sign({ userId: user.id, scope: 'quizmoto' }, JWT_SECRET, { expiresIn: '1d' });
         res.json({ token, username: user.username, avatar: user.avatar });
     } catch (err) {
-        console.error('Test Auth Error:', err);
+        logAuthError('Test Auth Error', err);
         res.status(500).json({ message: 'Auth failed' });
     }
 });

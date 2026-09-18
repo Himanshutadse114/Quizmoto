@@ -122,8 +122,11 @@ async function genericPlatformAuth(req, res, next) {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) return res.status(401).json({ message: 'No token, authorization denied' });
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         const user = assertActiveAccount(await User.findByPk(decoded.userId));
+        if (Number(decoded.authVersion || 0) !== Number(user.authVersion || 0)) {
+            return res.status(401).json({ message: 'Session expired. Sign in again.', code: 'AUTH_SESSION_REVOKED' });
+        }
         req.flipbookLibraryUser = user;
         next();
     } catch (err) {

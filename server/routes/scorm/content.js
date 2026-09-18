@@ -17,7 +17,7 @@ async function resolvePackageAccess(accessToken, packageIdHint) {
     if (!accessToken) return null;
     let decoded;
     try {
-        decoded = jwt.verify(accessToken, JWT_SECRET);
+        decoded = jwt.verify(accessToken, JWT_SECRET, { algorithms: ['HS256'] });
     } catch (_) {
         return null;
     }

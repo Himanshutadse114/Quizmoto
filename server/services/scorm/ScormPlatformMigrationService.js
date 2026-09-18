@@ -445,6 +445,11 @@ async function backfillTenantHostData() {
 async function ensurePlatformSchema() {
     resetSchemaCache();
     const changes = [];
+    if (await ensureColumn('Users', 'authVersion', {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+    })) changes.push('Users.authVersion');
     changes.push(...await ensureWorkspaceSchema());
     changes.push(...await ensureEntitlementSchema());
     changes.push(...await ensureAiUsageSchema());

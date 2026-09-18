@@ -87,12 +87,11 @@ async function hasAccess(email) {
 function pendingApprovalPayload({ captured = true } = {}) {
     return {
         message: captured
-            ? `Your registration has been captured, but your SCORM AI account is not authorised yet. Please contact the administrator at ${ADMIN_CONTACT_EMAIL} to unlock access. After approval, you can sign in using the same credentials you just registered.`
-            : `Your SCORM AI account is registered but not authorised yet. Please contact the administrator at ${ADMIN_CONTACT_EMAIL} to unlock access. After approval, use the same registered credentials to sign in.`,
+            ? 'Your registration has been captured, but your LMSGEN account is not authorised yet. Contact your LMSGEN administrator to unlock access. After approval, sign in using the same credentials.'
+            : 'Your LMSGEN account is registered but not authorised yet. Contact your LMSGEN administrator to unlock access. After approval, use the same registered credentials to sign in.',
         code: 'SCORM_APPROVAL_PENDING',
         pendingApproval: true,
-        registrationCaptured: captured,
-        adminContact: ADMIN_CONTACT_EMAIL
+        registrationCaptured: captured
     };
 }
 

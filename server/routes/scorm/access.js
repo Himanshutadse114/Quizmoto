@@ -3,7 +3,6 @@ const router = express.Router();
 const auth = require('../middleware');
 const ScormAccessGrant = require('../../models/ScormAccessGrant');
 const {
-    ADMIN_CONTACT_EMAIL,
     SUPER_ADMIN_EMAIL,
     normalizeScormRole,
     listGrants,
@@ -76,7 +75,6 @@ router.get('/me', auth, async (req, res) => {
         email: req.scormEmail || null,
         role: normalizeScormRole(req.scormRole || 'admin'),
         isSuperAdmin: req.scormRole === 'super_admin',
-        adminContact: ADMIN_CONTACT_EMAIL,
         workspace: serializeWorkspace(req.scormWorkspace),
         tenant: serializeWorkspace(req.scormWorkspace),
         workspaceId: req.scormWorkspaceId || null,
@@ -163,8 +161,6 @@ router.get('/', auth, requireSuperAdmin, async (req, res) => {
     try {
         const [grants, requests, tenants] = await Promise.all([listGrants(), listAccessRequests(), listTenants()]);
         res.json({
-            superAdminEmail: SUPER_ADMIN_EMAIL,
-            adminContact: ADMIN_CONTACT_EMAIL,
             tenants,
             grants: await Promise.all(grants.map(serializeGrant)),
             requests: requests.map(serializeRequest),

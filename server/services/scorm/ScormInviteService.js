@@ -38,13 +38,13 @@ function signRegistrationToken(registrationId, courseId) {
     return jwt.sign(
         { scormRegId: registrationId, courseId, typ: 'scorm_reg' },
         JWT_SECRET,
-        { expiresIn: '7d' }
+        { expiresIn: '7d', algorithm: 'HS256' }
     );
 }
 
 function verifyRegistrationToken(token) {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         if (decoded.typ !== 'scorm_reg' || !decoded.scormRegId) {
             const err = new Error('Invalid registration token');
             err.code = 'FORBIDDEN';

@@ -6,6 +6,8 @@ const { cleanId } = require('../../services/scorm/ScormGenerationProgress');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
 const ScormGenerationJob = require('../../models/scorm/ScormGenerationJob');
 const ScormAiGenerationManager = require('../../jobs/ScormAiGenerationManager');
+const { aiCourseLimiter, aiUploadLimiter, aiHealthLimiter } = require('../../middleware/AiAbuseProtection');
+const { runMeteredAiOperation } = require('../../services/scorm/AiOperationGuard');
 const {
     isBillableAiGenerationPayload,
     generationSource,
@@ -33,11 +35,35 @@ function isPdfBuffer(value) {
     return Buffer.isBuffer(value) && value.length >= 5 && value.subarray(0, 5).toString('ascii') === '%PDF-';
 }
 
+const ACCEPTED_SOURCE_MIME_TYPES = new Set([
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/plain',
+    'text/markdown',
+    'application/octet-stream'
+]);
+
 function storageUnavailableError(cause = null) {
     const error = new Error('Course generation storage is temporarily unavailable. Please retry in a moment.');
     error.code = 'SCORM_GENERATION_STORAGE_UNAVAILABLE';
     if (cause) error.cause = cause;
     return error;
+}
+
+function publicQueueError(error) {
+    const safeCodes = new Set([
+        'SCORM_AI_GENERATION_LIMIT_REACHED',
+        'SCORM_ACTIVE_COURSE_LIMIT_REACHED',
+        'AI_DAILY_LIMIT_REACHED',
+        'AI_CONCURRENT_GENERATION_LIMIT_REACHED',
+        'SCORM_GENERATION_STORAGE_UNAVAILABLE',
+        'SCORM_PROGRESS_FORBIDDEN'
+    ]);
+    return safeCodes.has(String(error?.code || ''))
+        ? String(error.message || 'Unable to queue course generation.')
+        : 'Unable to queue course generation. Please try again.';
 }
 
 async function ensureGenerationStoreReady() {
@@ -78,25 +104,21 @@ async function durableStoreAvailable(progressId) {
     }
 }
 
-// Lightweight public marker for confirming which course-generation backend is
-// actually serving the custom API domain. It never exposes credentials.
-router.get('/version', (_req, res) => {
+// Authenticated, rate-limited marker for confirming the deployed generator
+// release without exposing provider configuration or credentials.
+router.get('/version', auth, aiHealthLimiter, (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.json({
         ok: true,
         release: COURSE_GENERATION_RELEASE,
-        commit: process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || null,
-        provider: 'openai',
-        textModel: process.env.OPENAI_TEXT_MODEL || 'gpt-5.6-luna',
-        imageModel: process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2.5-flare',
-        targetCourseSeconds: 180,
-        budgetInr: Number(process.env.OPENAI_COURSE_BUDGET_INR || 10)
+        targetCourseSeconds: 180
     });
 });
 
 router.post(
     '/source/:progressId/visual-pdf',
     auth,
+    aiUploadLimiter,
     express.raw({ type: 'application/octet-stream', limit: `${scormMaxUploadMb()}mb` }),
     async (req, res) => {
         if (!featureFlags.scormAiAuthor) return res.status(403).json({ message: 'AI author is disabled.' });
@@ -112,7 +134,10 @@ router.post(
         try {
             const key = visualPdfSourceKey(req.userId, progressId);
             const storage = getObjectStorage();
-            await storage.putObject({ key, body: req.body, contentType: 'application/pdf' });
+            await runMeteredAiOperation(req, {
+                kind: 'source_upload',
+                source: 'presentation_visual_pdf'
+            }, () => storage.putObject({ key, body: req.body, contentType: 'application/pdf' }));
             res.setHeader('Cache-Control', 'no-store');
             return res.status(201).json({
                 ok: true,
@@ -121,8 +146,10 @@ router.post(
                 byteSize: req.body.length
             });
         } catch (error) {
-            return res.status(500).json({
-                message: error.message || 'Unable to store exact visual PDF.',
+            return res.status(Number(error.status) || 500).json({
+                message: error.code === 'AI_DAILY_LIMIT_REACHED'
+                    ? error.message
+                    : 'Unable to store exact visual PDF.',
                 code: error.code || 'SCORM_VISUAL_SOURCE_UPLOAD_FAILED'
             });
         }
@@ -132,6 +159,7 @@ router.post(
 router.post(
     '/source/:progressId',
     auth,
+    aiUploadLimiter,
     express.raw({ type: 'application/octet-stream', limit: `${scormMaxUploadMb()}mb` }),
     async (req, res) => {
         if (!featureFlags.scormAiAuthor) return res.status(403).json({ message: 'AI author is disabled.' });
@@ -143,9 +171,21 @@ router.post(
 
         try {
             const key = sourceKey(req.userId, progressId);
-            const mimeType = String(req.headers['x-source-mime'] || 'application/octet-stream').slice(0, 180);
+            const mimeType = String(req.headers['x-source-mime'] || 'application/octet-stream')
+                .split(';')[0]
+                .trim()
+                .toLowerCase();
+            if (!ACCEPTED_SOURCE_MIME_TYPES.has(mimeType)) {
+                return res.status(415).json({
+                    message: 'This source file type is not supported.',
+                    code: 'SCORM_SOURCE_TYPE_UNSUPPORTED'
+                });
+            }
             const storage = getObjectStorage();
-            await storage.putObject({ key, body: req.body, contentType: mimeType });
+            await runMeteredAiOperation(req, {
+                kind: 'source_upload',
+                source: 'course_source'
+            }, () => storage.putObject({ key, body: req.body, contentType: mimeType }));
             res.setHeader('Cache-Control', 'no-store');
             return res.status(201).json({
                 ok: true,
@@ -154,15 +194,17 @@ router.post(
                 byteSize: req.body.length
             });
         } catch (error) {
-            return res.status(500).json({
-                message: error.message || 'Unable to store source file.',
+            return res.status(Number(error.status) || 500).json({
+                message: error.code === 'AI_DAILY_LIMIT_REACHED'
+                    ? error.message
+                    : 'Unable to store source file.',
                 code: error.code || 'SCORM_SOURCE_UPLOAD_FAILED'
             });
         }
     }
 );
 
-router.post('/generate', auth, async (req, res) => {
+router.post('/generate', auth, aiCourseLimiter, async (req, res) => {
     if (!featureFlags.scormAiAuthor) return res.status(403).json({ message: 'AI author is disabled.' });
 
     const progressId = cleanId(req.body?.progressId);
@@ -232,7 +274,7 @@ router.post('/generate', auth, async (req, res) => {
                 ? 503
                 : 500);
         return res.status(status).json({
-            message: error.message || 'Unable to queue course generation.',
+            message: publicQueueError(error),
             code: error.code || 'SCORM_GENERATION_QUEUE_FAILED',
             release: COURSE_GENERATION_RELEASE
         });

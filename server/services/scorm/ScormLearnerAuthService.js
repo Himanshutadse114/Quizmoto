@@ -303,12 +303,12 @@ function issueLearnerToken({ workspace, identity }) {
         email: identity.email,
         name: identity.name,
         provider: identity.provider || 'email'
-    }, JWT_SECRET, { expiresIn: '12h' });
+    }, JWT_SECRET, { expiresIn: '12h', algorithm: 'HS256' });
 }
 
 function verifyLearnerToken(token) {
     try {
-        const decoded = jwt.verify(String(token || ''), JWT_SECRET);
+        const decoded = jwt.verify(String(token || ''), JWT_SECRET, { algorithms: ['HS256'] });
         if (decoded.typ !== 'scorm_learner' || !decoded.workspaceId || !decoded.hostId || !decoded.email) {
             throw new Error('invalid learner token');
         }

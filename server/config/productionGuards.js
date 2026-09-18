@@ -40,6 +40,35 @@ function assertProductionDatabase(env = process.env) {
     return { ok: true, dialect };
 }
 
+function assertProductionSecurity(env = process.env) {
+    const nodeEnv = String(env.NODE_ENV || '').toLowerCase();
+    if (nodeEnv !== 'production') {
+        return { ok: true, skipped: true, reason: 'NOT_PRODUCTION' };
+    }
+
+    const secret = String(env.JWT_SECRET || '').trim();
+    const unsafeSecrets = new Set(['fallback_secret', 'secret', 'changeme', 'change-me', 'development']);
+    if (secret.length < 32 || unsafeSecrets.has(secret.toLowerCase())) {
+        const err = new Error('Production requires a unique JWT_SECRET containing at least 32 characters.');
+        err.code = 'PROD_JWT_SECRET_UNSAFE';
+        throw err;
+    }
+
+    const aiEnabled = String(env.SCORM_AI_AUTHOR || '').toLowerCase() === 'true';
+    if (aiEnabled) {
+        const apiKey = String(env.OPENAI_API_KEY || '').trim();
+        const placeholder = /^(replace|change|your[-_ ]?key|test|demo)/i.test(apiKey);
+        if (apiKey.length < 20 || placeholder) {
+            const err = new Error('SCORM_AI_AUTHOR=true requires a valid server-side OPENAI_API_KEY.');
+            err.code = 'PROD_OPENAI_KEY_MISSING';
+            throw err;
+        }
+    }
+
+    return { ok: true, jwtSecretConfigured: true, aiEnabled };
+}
+
 module.exports = {
-    assertProductionDatabase
+    assertProductionDatabase,
+    assertProductionSecurity
 };

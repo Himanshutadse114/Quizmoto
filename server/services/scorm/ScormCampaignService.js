@@ -519,12 +519,12 @@ function issueCampaignToken({ campaign, workspace, identity }) {
         email: identity.email,
         name: identity.name,
         provider: identity.provider
-    }, JWT_SECRET, { expiresIn: '12h' });
+    }, JWT_SECRET, { expiresIn: '12h', algorithm: 'HS256' });
 }
 
 function verifyCampaignToken(token) {
     try {
-        const decoded = jwt.verify(String(token || ''), JWT_SECRET);
+        const decoded = jwt.verify(String(token || ''), JWT_SECRET, { algorithms: ['HS256'] });
         if (decoded.typ !== 'scorm_campaign_learner' || !decoded.campaignId || !decoded.email || !decoded.hostId) throw new Error('invalid campaign token');
         return decoded;
     } catch (_) {

@@ -42,6 +42,11 @@ const User = sequelize.define('User', {
     blockedAt: {
         type: DataTypes.DATE,
         allowNull: true
+    },
+    authVersion: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
     }
 }, {
     hooks: {

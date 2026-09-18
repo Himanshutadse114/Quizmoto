@@ -24,7 +24,7 @@ class SessionTokenService {
     static verifyHostToken(token) {
         if (!token) return null;
         try {
-            const decoded = jwt.verify(token, JWT_SECRET);
+            const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
             return decoded.userId;
         } catch (err) {
             return null;
@@ -39,7 +39,7 @@ class SessionTokenService {
     static verifyPlayerToken(token) {
         if (!token) return null;
         try {
-            return jwt.verify(token, JWT_SECRET);
+            return jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         } catch (err) {
             return null;
         }
@@ -56,7 +56,7 @@ class SessionTokenService {
         return jwt.sign(
             { sessionId, nickname, playerId },
             JWT_SECRET,
-            { expiresIn: '24h' }
+            { expiresIn: '24h', algorithm: 'HS256' }
         );
     }
 }

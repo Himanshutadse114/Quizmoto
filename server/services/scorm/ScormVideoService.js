@@ -209,7 +209,7 @@ async function launchCampaignVideo(context, videoId) {
         hostId: context.hostId,
         email: normalizeEmail(context.email),
         nonce: crypto.randomBytes(8).toString('hex')
-    }, JWT_SECRET, { expiresIn: '2h' });
+    }, JWT_SECRET, { expiresIn: '2h', algorithm: 'HS256' });
     return {
         video: serializeVideo(video),
         streamUrl: `/api/scorm-learner/video/${video.id}/stream?token=${encodeURIComponent(token)}`
@@ -226,13 +226,13 @@ async function launchAdminVideo({ workspaceId, hostId }, videoId) {
         workspaceId,
         hostId,
         nonce: crypto.randomBytes(8).toString('hex')
-    }, JWT_SECRET, { expiresIn: '1h' });
+    }, JWT_SECRET, { expiresIn: '1h', algorithm: 'HS256' });
     return { video: serializeVideo(video), streamUrl: `/api/scorm-learner/video/${video.id}/stream?token=${encodeURIComponent(token)}` };
 }
 
 function verifyVideoToken(token, videoId) {
     try {
-        const decoded = jwt.verify(String(token || ''), JWT_SECRET);
+        const decoded = jwt.verify(String(token || ''), JWT_SECRET, { algorithms: ['HS256'] });
         if (!['scorm_video_play', 'scorm_video_admin'].includes(decoded.typ) || String(decoded.videoId) !== String(videoId)) throw new Error('invalid token');
         return decoded;
     } catch (_) {

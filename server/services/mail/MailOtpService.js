@@ -57,7 +57,7 @@ async function pruneExpired() {
 async function requestOtp({ email, purpose = 'email_verification', requestedIp = null, name = null }) {
     const normalizedEmail = normalizeEmail(email);
     const normalizedPurpose = normalizePurpose(purpose);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    if (normalizedEmail.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
         throw fail('Enter a valid email address.', 'MAIL_OTP_EMAIL_INVALID', 400);
     }
     if (!MailService.isConfigured()) {
@@ -95,7 +95,7 @@ async function requestOtp({ email, purpose = 'email_verification', requestedIp =
                 code,
                 purpose: normalizedPurpose,
                 expiresMinutes: OTP_TTL_MINUTES,
-                name
+                name: String(name || '').slice(0, 160)
             }
         });
     } catch (error) {
@@ -164,7 +164,7 @@ async function verifyOtp({ email, purpose = 'email_verification', code }) {
         email: normalizedEmail,
         purpose: normalizedPurpose,
         otpId: row.id
-    }, JWT_SECRET, { expiresIn: '15m' });
+    }, JWT_SECRET, { expiresIn: '15m', algorithm: 'HS256' });
 
     return {
         ok: true,
@@ -176,7 +176,7 @@ async function verifyOtp({ email, purpose = 'email_verification', code }) {
 
 function verifyOtpToken(token, purpose = null) {
     try {
-        const decoded = jwt.verify(String(token || ''), JWT_SECRET);
+        const decoded = jwt.verify(String(token || ''), JWT_SECRET, { algorithms: ['HS256'] });
         if (decoded.typ !== 'mail_otp' || !decoded.email || !decoded.purpose) throw new Error('Invalid verification token');
         if (purpose && decoded.purpose !== normalizePurpose(purpose)) throw new Error('Verification purpose mismatch');
         return decoded;

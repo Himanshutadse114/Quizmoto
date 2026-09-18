@@ -27,6 +27,8 @@ const {
     failProgress
 } = require('../../services/scorm/ScormGenerationProgress');
 const logger = require('../../utils/logger');
+const { aiQuizLimiter, aiAnalysisLimiter } = require('../../middleware/AiAbuseProtection');
+const { runMeteredAiOperation } = require('../../services/scorm/AiOperationGuard');
 
 function aiErrorStatus(code) {
     if (code === 'SCORM_GENERATION_CANCELLED') return 409;
@@ -34,9 +36,19 @@ function aiErrorStatus(code) {
     if (code === 'QUIZ_AI_FILE_TOO_LARGE') return 413;
     if (code === 'OPENAI_KEY_MISSING' || code === 'OPENAI_KEY_INVALID') return 503;
     if (code === 'OPENAI_QUOTA') return 429;
+    if (code === 'AI_DAILY_LIMIT_REACHED' || code === 'AI_RATE_LIMITED') return 429;
     if (code === 'SCORM_SOURCE_TEXT_REQUIRED' || code === 'SCORM_QUIZ_INCOMPLETE') return 422;
     if (code === 'OPENAI_IMAGES_INCOMPLETE') return 502;
     return 500;
+}
+
+function publicAiMessage(err, fallback) {
+    const code = String(err?.code || '');
+    if (['AI_DAILY_LIMIT_REACHED', 'AI_RATE_LIMITED', 'AI_CONCURRENT_GENERATION_LIMIT_REACHED',
+        'QUIZ_AI_SOURCE_REQUIRED', 'QUIZ_AI_FILE_TOO_LARGE', 'SCORM_SOURCE_TEXT_REQUIRED'].includes(code)) {
+        return String(err.message || fallback);
+    }
+    return fallback;
 }
 
 function reporter(progressId, userId, task) {
@@ -60,7 +72,10 @@ function sendAuthorError(res, err, progressId, userId, eventName) {
         return;
     }
     logger.error(eventName, { module: 'scorm', error: err.message, code: err.code });
-    if (!res.headersSent) res.status(aiErrorStatus(err.code)).json({ message: err.message, code: err.code || 'AI_ERROR' });
+    if (!res.headersSent) res.status(aiErrorStatus(err.code)).json({
+        message: publicAiMessage(err, 'AI processing failed. Please try again.'),
+        code: err.code || 'AI_ERROR'
+    });
 }
 
 router.use((req, res, next) => {
@@ -110,25 +125,31 @@ router.get('/themes', auth, (_req, res) => {
     });
 });
 
-router.post('/quiz-generate', auth, async (req, res) => {
+router.post('/quiz-generate', auth, aiQuizLimiter, async (req, res) => {
     try {
         const body = req.body || {};
-        const quiz = await generateQuiz({
+        const quiz = await runMeteredAiOperation(req, {
+            kind: 'quiz_generation',
+            source: 'course_quiz'
+        }, () => generateQuiz({
             topic: body.topic || body.prompt || '',
             description: body.description || '',
             fileBase64: body.fileBase64 || '',
             mimeType: body.mimeType || '',
             fileName: body.fileName || ''
-        });
+        }));
         res.json(quiz);
     } catch (err) {
         const code = err.code || 'QUIZ_AI_ERROR';
         logger.error('live_quiz_ai_generate_failed', { module: 'quiz', error: err.message, code });
-        res.status(aiErrorStatus(code)).json({ message: err.message || 'AI failed to generate quiz. Please try again.', code });
+        res.status(aiErrorStatus(code)).json({
+            message: publicAiMessage(err, 'AI failed to generate quiz. Please try again.'),
+            code
+        });
     }
 });
 
-router.post('/analyze', auth, async (req, res) => {
+router.post('/analyze', auth, aiAnalysisLimiter, async (req, res) => {
     const progressId = cleanProgressId(req.body?.progressId);
     const report = reporter(progressId, req.userId, 'analyze');
     if (progressId) {
@@ -165,12 +186,15 @@ router.post('/analyze', auth, async (req, res) => {
         checkpoint(progressId, req.userId);
         const selectedThemeId = normalizeThemeId(themeId || templateId || 1);
         const selectedTheme = getTheme(selectedThemeId);
-        let analysis = await analyzePolicy({
+        let analysis = await runMeteredAiOperation(req, {
+            kind: 'source_analysis',
+            source: 'course_analysis'
+        }, () => analyzePolicy({
             fileBase64: sourceBase64,
             mimeType: sourceMimeType,
             detailLevel: detailLevel || 'detailed',
             onProgress: report
-        });
+        }));
 
         checkpoint(progressId, req.userId);
         report({ percent: 96, stage: 'Formatting learning content', detail: 'Applying varied course layouts while keeping the full learner text visible.' });

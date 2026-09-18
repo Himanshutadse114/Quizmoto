@@ -172,14 +172,14 @@ describe('ScormAccessService', () => {
         expect(protectedResult.reason).to.equal('super_admin');
     });
 
-    it('returns the pending-approval message with the administrator contact', () => {
+    it('returns the pending-approval message without exposing the administrator email', () => {
         const payload = Access.pendingApprovalPayload({ captured: true });
         expect(payload.code).to.equal('SCORM_APPROVAL_PENDING');
         expect(payload.pendingApproval).to.equal(true);
         expect(payload.registrationCaptured).to.equal(true);
-        expect(payload.adminContact).to.equal(Access.ADMIN_CONTACT_EMAIL);
+        expect(payload).to.not.have.property('adminContact');
         expect(payload.message).to.include('registration has been captured');
-        expect(payload.message).to.include(Access.ADMIN_CONTACT_EMAIL);
+        expect(payload.message).to.include('LMSGEN administrator');
         expect(payload.message).to.include('same credentials');
     });
 });

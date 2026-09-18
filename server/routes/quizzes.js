@@ -20,6 +20,8 @@ const { JOB_TYPES } = require('../jobs/jobTypes');
 const { registerReportHandlers } = require('../jobs/handlers/reportHandlers');
 const { sequelize } = require('../config/database');
 const { generateQuiz } = require('../services/QuizAiGenerationService');
+const { aiQuizLimiter } = require('../middleware/AiAbuseProtection');
+const { runMeteredAiOperation } = require('../services/scorm/AiOperationGuard');
 
 registerReportHandlers();
 
@@ -42,16 +44,19 @@ const quizSchema = Joi.object({
         .required()
 }).unknown(true);
 
-router.post('/generate-ai', auth, async (req, res) => {
+router.post('/generate-ai', auth, aiQuizLimiter, async (req, res) => {
     try {
         const body = req.body || {};
-        const quiz = await generateQuiz({
+        const quiz = await runMeteredAiOperation(req, {
+            kind: 'quiz_generation',
+            source: 'quizmoto'
+        }, () => generateQuiz({
             topic: body.topic || body.prompt || '',
             description: body.description || '',
             fileBase64: body.fileBase64 || '',
             mimeType: body.mimeType || '',
             fileName: body.fileName || ''
-        });
+        }));
         res.json(quiz);
     } catch (err) {
         const code = err.code || 'QUIZ_AI_ERROR';
@@ -64,8 +69,11 @@ router.post('/generate-ai', auth, async (req, res) => {
                     : code === 'OPENAI_QUOTA'
                         ? 429
                         : 500;
-        console.error('AI Generation Error:', err);
-        res.status(status).json({ message: err.message || 'AI failed to generate quiz. Please try again.', code });
+        console.error('AI Generation Error:', { code, message: String(err.message || '').slice(0, 300) });
+        const publicMessage = code === 'AI_DAILY_LIMIT_REACHED' || code === 'AI_RATE_LIMITED'
+            ? err.message
+            : 'AI failed to generate quiz. Please try again.';
+        res.status(Number(err.status) || status).json({ message: publicMessage, code });
     }
 });
 

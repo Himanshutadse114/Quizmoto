@@ -5,17 +5,27 @@ const { PlayerProfile } = require('../models/PlayerProfile');
 const { Player, GameSession, PlayerAnswer } = require('../models/GameSession');
 const { Quiz, Question } = require('../models/Quiz');
 const { OAuth2Client } = require('google-auth-library');
+const rateLimit = require('express-rate-limit');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1001652255296-695gf3vjul0fjh1oden4k2n6tvvdvncn.apps.googleusercontent.com';
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+const playerAuthLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => process.env.NODE_ENV === 'test',
+    message: { message: 'Too many sign-in attempts. Please wait and try again.', code: 'PLAYER_AUTH_RATE_LIMITED' }
+});
 
 // Middleware to protect routes
 const auth = (req, res, next) => {
     const token = req.header('Authorization');
     if (!token) return res.status(401).json({ message: 'No token, authorization denied' });
     try {
-        const decoded = jwt.verify(token.replace('Bearer ', ''), JWT_SECRET);
+        const decoded = jwt.verify(token.replace('Bearer ', ''), JWT_SECRET, { algorithms: ['HS256'] });
+        if (!decoded?.playerId) throw new Error('Invalid player token');
         req.player = decoded;
         next();
     } catch (err) {
@@ -24,13 +34,14 @@ const auth = (req, res, next) => {
 };
 
 // Google Sign-In for Player
-router.post('/google', async (req, res) => {
+router.post('/google', playerAuthLimiter, async (req, res) => {
     try {
         const { credential } = req.body;
         
         if (!credential) {
             return res.status(400).json({ message: 'Google credential missing' });
         }
+        if (String(credential).length > 8192) return res.status(400).json({ message: 'Google credential is invalid.' });
 
         const ticket = await client.verifyIdToken({
             idToken: credential,
@@ -39,6 +50,9 @@ router.post('/google', async (req, res) => {
 
         const payload = ticket.getPayload();
         const { sub: googleId, email, name, picture } = payload;
+        if (!googleId || !email || payload.email_verified !== true) {
+            return res.status(401).json({ message: 'A verified Google email address is required.' });
+        }
 
         let player = await PlayerProfile.findOne({ where: { googleId } });
 
@@ -64,7 +78,7 @@ router.post('/google', async (req, res) => {
             }
         }
 
-        const token = jwt.sign({ playerId: player.id }, JWT_SECRET, { expiresIn: '30d' });
+        const token = jwt.sign({ playerId: player.id, typ: 'player_profile' }, JWT_SECRET, { expiresIn: '7d', algorithm: 'HS256' });
         res.json({ 
             token, 
             player: {
@@ -76,7 +90,7 @@ router.post('/google', async (req, res) => {
             }
         });
     } catch (err) {
-        console.error('Google Auth Error:', err);
+        console.error('Google Auth Error:', { message: String(err?.message || '').slice(0, 300), code: err?.code || null });
         res.status(500).json({ message: 'Authentication failed' });
     }
 });
@@ -100,6 +114,7 @@ router.put('/avatar', auth, async (req, res) => {
     try {
         const { avatar } = req.body;
         if (!avatar) return res.status(400).json({ message: 'Avatar is required' });
+        if (String(avatar).length > 2 * 1024 * 1024) return res.status(413).json({ message: 'Avatar image is too large.' });
 
         const player = await PlayerProfile.findByPk(req.player.playerId);
         if (!player) return res.status(404).json({ message: 'Player not found' });

@@ -30,8 +30,9 @@ function issueScormToken(user, role, workspaceId, authMethod) {
         scormRole: role,
         workspaceId,
         authMethod,
-        staffSso: true
-    }, JWT_SECRET, { expiresIn: '30d' });
+        staffSso: true,
+        authVersion: Number(user.authVersion || 0)
+    }, JWT_SECRET, { expiresIn: process.env.LMSGEN_AUTH_TOKEN_TTL || '24h', algorithm: 'HS256' });
 }
 
 function responseFor(result) {

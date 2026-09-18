@@ -5,9 +5,10 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 // Phase 3: refuse unsafe production DB configuration before anything else
-const { assertProductionDatabase } = require('./config/productionGuards');
+const { assertProductionDatabase, assertProductionSecurity } = require('./config/productionGuards');
 try {
     assertProductionDatabase();
+    assertProductionSecurity();
 } catch (guardErr) {
     console.error('[productionGuards]', guardErr.message);
     process.exit(1);
@@ -174,6 +175,27 @@ app.use((req, res, next) => cors({
     credentials: true
 })(req, res, next));
 
+// Reject abusive authentication/AI bursts before parsing large JSON bodies.
+// Account-level limiters still run after authentication; this IP layer protects
+// CPU and memory when the caller has no valid token at all.
+app.use(rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: Number(process.env.SENSITIVE_INGRESS_15M_LIMIT || 120),
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => {
+        if (process.env.NODE_ENV === 'test' || String(req.method).toUpperCase() !== 'POST') return true;
+        const url = String(req.originalUrl || req.url || '');
+        return !(url.startsWith('/api/auth/')
+            || url === '/api/quizzes/generate-ai'
+            || url.startsWith('/api/scorm/author/'));
+    },
+    message: {
+        message: 'Too many sensitive requests from this network. Please wait and try again.',
+        code: 'SENSITIVE_INGRESS_RATE_LIMITED'
+    }
+}));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -275,9 +297,10 @@ const startServer = async () => {
                         const courseId = payload && payload.courseId;
                         const token = payload && payload.token;
                         if (!courseId || !token) return;
-                        const decoded = jwt.verify(token, JWT_SECRET);
+                        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
                         if (!decoded?.userId || decoded.scope !== 'scorm') return;
                         const user = assertActiveAccount(await User.findByPk(decoded.userId));
+                        if (Number(decoded.authVersion || 0) !== Number(user.authVersion || 0)) return;
                         const role = await getAccessRole(user.email);
                         if (!role) return;
                         const workspaceContext = await resolveWorkspaceContext({ user, role });

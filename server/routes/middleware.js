@@ -89,7 +89,7 @@ module.exports = async (req, res, next) => {
     if (!token) return res.status(401).json({ message: 'No token, authorization denied' });
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         const url = String(req.originalUrl || req.baseUrl || '');
         const isScormAdminRequest = url.startsWith('/api/scorm/');
 
@@ -100,7 +100,19 @@ module.exports = async (req, res, next) => {
         req.staffSso = decoded.staffSso === true;
 
         const authenticatedUser = await User.findByPk(decoded.userId);
-        if (authenticatedUser) assertActiveAccount(authenticatedUser);
+        if (!authenticatedUser) {
+            return res.status(401).json({
+                message: 'Platform account no longer exists.',
+                code: 'PLATFORM_AUTH_REQUIRED'
+            });
+        }
+        assertActiveAccount(authenticatedUser);
+        if (Number(decoded.authVersion || 0) !== Number(authenticatedUser.authVersion || 0)) {
+            return res.status(401).json({
+                message: 'This session is no longer valid. Please sign in again.',
+                code: 'AUTH_SESSION_REVOKED'
+            });
+        }
         req.authenticatedUser = authenticatedUser || null;
 
         if (isScormAdminRequest && process.env.NODE_ENV !== 'test' && decoded.scope !== 'scorm') {

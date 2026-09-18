@@ -63,6 +63,26 @@ services:
         value: "80000"
       - key: OPENAI_SCORM_CONTENT_TIMEOUT_MS
         value: "90000"
+      - key: AI_COURSE_DAILY_LIMIT
+        value: "10"
+      - key: AI_QUIZ_DAILY_LIMIT
+        value: "30"
+      - key: AI_ANALYSIS_DAILY_LIMIT
+        value: "15"
+      - key: AI_SOURCE_UPLOAD_DAILY_LIMIT
+        value: "25"
+      - key: AI_MAX_PENDING_COURSES_PER_HOST
+        value: "2"
+      - key: AI_COURSE_HOURLY_LIMIT
+        value: "6"
+      - key: AI_QUIZ_HOURLY_LIMIT
+        value: "20"
+      - key: AI_ANALYSIS_HOURLY_LIMIT
+        value: "10"
+      - key: LMSGEN_AUTH_TOKEN_TTL
+        value: "24h"
+      - key: QUIZMOTO_AUTH_TOKEN_TTL
+        value: "7d"
       - key: CORS_ORIGIN
         value: "https://lmsgen.in,https://www.lmsgen.in,https://api.lmsgen.in,https://quizmoto-frontend.onrender.com,https://kahoot-awareness-frontend.onrender.com"
       - key: APP_BASE_URL

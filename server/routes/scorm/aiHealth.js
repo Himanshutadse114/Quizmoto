@@ -2,6 +2,8 @@
 
 const express = require('express');
 const { API_ROOT, getApiKey, textModel, imageModel, requestHeaders } = require('../../services/openai/OpenAiClient');
+const auth = require('../middleware');
+const { aiHealthLimiter } = require('../../middleware/AiAbuseProtection');
 
 const router = express.Router();
 const DIAGNOSTIC_RELEASE = 'openai-budget-course-v1';
@@ -90,7 +92,10 @@ async function runProbe() {
     };
 }
 
-router.get('/', async (req, res) => {
+router.get('/', auth, aiHealthLimiter, async (req, res) => {
+    if (req.scormRole !== 'super_admin') {
+        return res.status(403).json({ message: 'Super Admin access required.', code: 'SCORM_SUPER_ADMIN_REQUIRED' });
+    }
     res.setHeader('Cache-Control', 'no-store');
     const force = String(req.query?.refresh || '') === '1';
     if (!force && cached && Date.now() - cached.at < CACHE_MS) {

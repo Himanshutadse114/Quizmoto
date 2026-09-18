@@ -21,6 +21,10 @@ function loadService({ aiCount = 0, activeCourses = 0, pending = 0 } = {}) {
 }
 
 describe('SCORM AI usage ledger', () => {
+    afterEach(() => {
+        delete process.env.AI_COURSE_DAILY_LIMIT;
+        delete process.env.AI_MAX_PENDING_COURSES_PER_HOST;
+    });
     it('bills new generated and presentation courses but not simple rebuilds', () => {
         const { service } = loadService();
         expect(service.isBillableAiGenerationPayload({ courseMode: 'generated' })).to.equal(true);
@@ -76,5 +80,54 @@ describe('SCORM AI usage ledger', () => {
             { status: 'released' },
             { where: { operationKey: 'course-generation:ghi' } }
         )).to.equal(true);
+    });
+
+    it('enforces a persistent daily course-generation safety cap', async () => {
+        process.env.AI_COURSE_DAILY_LIMIT = '3';
+        const { service } = loadService({ aiCount: 3 });
+        let caught;
+        try {
+            await service.reserveAiCourseGeneration({
+                hostId: 9,
+                entitlementEmail: 'tenant@lmsgen.internal',
+                entitlement: { maxCourses: 100, maxActiveCourses: 100 },
+                operationKey: 'course-generation:daily-cap'
+            });
+        } catch (error) { caught = error; }
+        expect(caught?.code).to.equal('AI_DAILY_LIMIT_REACHED');
+        expect(caught?.status).to.equal(429);
+    });
+
+    it('limits concurrent queued course generations per host', async () => {
+        process.env.AI_MAX_PENDING_COURSES_PER_HOST = '1';
+        const { service } = loadService({ aiCount: 0, pending: 1 });
+        let caught;
+        try {
+            await service.reserveAiCourseGeneration({
+                hostId: 9,
+                entitlementEmail: 'tenant@lmsgen.internal',
+                entitlement: { maxCourses: 100, maxActiveCourses: 100 },
+                operationKey: 'course-generation:concurrent-cap'
+            });
+        } catch (error) { caught = error; }
+        expect(caught?.code).to.equal('AI_CONCURRENT_GENERATION_LIMIT_REACHED');
+        expect(caught?.status).to.equal(429);
+    });
+
+    it('records quiz generation separately from course credits', async () => {
+        const { service, ScormAiUsageEvent } = loadService({ aiCount: 0 });
+        await service.reserveAiOperation({
+            hostId: 9,
+            entitlementEmail: 'tenant@lmsgen.internal',
+            operationKey: 'quiz-generation:one',
+            kind: 'quiz_generation',
+            source: 'quizmoto'
+        });
+        expect(ScormAiUsageEvent.create.firstCall.args[0]).to.include({
+            kind: 'quiz_generation',
+            source: 'quizmoto',
+            status: 'reserved',
+            reservesActiveSlot: false
+        });
     });
 });

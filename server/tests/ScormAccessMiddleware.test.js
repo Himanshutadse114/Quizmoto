@@ -207,6 +207,24 @@ describe('SCORM access middleware', () => {
         expect(res.body.code).to.equal('SCORM_AUTH_REQUIRED');
     });
 
+    it('rejects an otherwise valid token after the account session version changes', async () => {
+        process.env.NODE_ENV = 'production';
+        const middleware = buildMiddleware({
+            decoded: { userId: 19, scope: 'quizmoto', authVersion: 1 },
+            user: { id: 19, email: 'reset@example.com', authVersion: 2 },
+            role: 'user'
+        });
+        const req = { header: () => 'Bearer revoked-token', originalUrl: '/api/quizzes' };
+        const res = makeResponse();
+        let nextCalled = false;
+
+        await middleware(req, res, () => { nextCalled = true; });
+
+        expect(nextCalled).to.equal(false);
+        expect(res.statusCode).to.equal(401);
+        expect(res.body.code).to.equal('AUTH_SESSION_REVOKED');
+    });
+
     it('rejects a pending platform token from every protected SCORM AI API', async () => {
         process.env.NODE_ENV = 'production';
         const middleware = buildMiddleware({
