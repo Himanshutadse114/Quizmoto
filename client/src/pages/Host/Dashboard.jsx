@@ -160,10 +160,10 @@ const Dashboard = () => {
         { label: 'Create quiz', icon: Plus, action: () => go('/create-quiz') },
         { label: 'Reports', icon: FileText, action: () => go('/reports') },
         {
-            label: 'SCORM AI',
+            label: 'AI Course Author',
             icon: BookOpenCheck,
             action: () => go('/scorm'),
-            note: 'Approval required · Contact tadsehimanshu@gmail.com'
+            note: 'Approval required · Contact your platform administrator'
         },
         { label: 'Import defaults', icon: Download, action: handleImportDefaults }
     ];
@@ -223,7 +223,7 @@ const Dashboard = () => {
                             <div className="qh-kicker">Live learning operations</div>
                             <h1 className="qh-title">Quizmoto Host</h1>
                             <p className="qh-subtitle">
-                                Build quizzes, launch live sessions and move between Quizmoto and SCORM AI from one focused host workspace.
+                                Build quizzes, launch live sessions and move between Quizmoto and AI Course Author from one focused host workspace.
                             </p>
                         </div>
                         <button type="button" className="qh-primary" onClick={() => navigate('/create-quiz')}>

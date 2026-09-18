@@ -147,7 +147,7 @@ export default function ScormHome() {
             </div>
             <h2 className="scorm-display"><span>Learning</span> <span className="wb-accent">Workbench</span></h2>
             <p className="mt-3 text-sm md:text-[15px] max-w-2xl">
-              Create and publish SCORM learning, monitor direct learner activity and keep campaign performance in its own analytics flow.
+              Create and publish trackable learning, monitor direct learner activity and keep campaign performance in its own analytics flow.
             </p>
           </div>
           <div className="flex flex-wrap gap-2.5">

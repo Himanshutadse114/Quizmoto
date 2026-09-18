@@ -235,7 +235,7 @@ function TenantCard({ tenant, onRefresh }) {
           <Metric icon={Gamepad2} label="Live players" value={u.quizPlayers} limit={e.maxQuizPlayers} />
         </div>
 
-        {!tenant.protected && <div className="mt-3 rounded-xl border border-[#4FC9BF]/20 bg-[#4FC9BF]/5 px-3.5 py-3 text-[10px] leading-relaxed"><strong>AI credits and active capacity are separate.</strong> Every accepted new AI or PDF-to-course generation uses one AI credit permanently. Manual SCORM courses do not use AI credits. Archiving or deleting any course frees active capacity.</div>}
+        {!tenant.protected && <div className="mt-3 rounded-xl border border-[#4FC9BF]/20 bg-[#4FC9BF]/5 px-3.5 py-3 text-[10px] leading-relaxed"><strong>AI credits and active capacity are separate.</strong> Every accepted new AI or PDF-to-course generation uses one AI credit permanently. Manually uploaded trackable courses do not use AI credits. Archiving or deleting any course frees active capacity.</div>}
 
         {editingEntitlement && <div className="mt-4 rounded-xl border p-4 bg-[rgba(79,201,191,.025)]">
           <div className="flex items-center gap-2"><Gauge size={15} className="text-[#4FC9BF]" /><div className="text-xs font-semibold">Tenant limits</div></div>

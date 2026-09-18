@@ -171,8 +171,18 @@ async function createZipFile({ outputPath, videoPath, mediaPath, html, manifest 
     });
 }
 
-async function createVideoCourse({ hostId, title, description, mimeType, durationSeconds, sourcePath, tempDir }) {
+function readAnalysis(value) {
+    try {
+        const parsed = JSON.parse(String(value || '{}'));
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch (_) {
+        return {};
+    }
+}
+
+async function createVideoCourse({ hostId, title, description, mimeType, durationSeconds, sourcePath, tempDir, replacePackageId = '' }) {
     let pkg = null;
+    let createdPackage = false;
     const storage = getObjectStorage();
     try {
         const safeTitle = String(title || 'Video course').trim().slice(0, 200) || 'Video course';
@@ -184,36 +194,48 @@ async function createVideoCourse({ hostId, title, description, mimeType, duratio
         const manifest = manifestXml({ title: safeTitle, mediaPath });
         const manifestHash = crypto.createHash('sha256').update(manifest).digest('hex');
 
-        pkg = await ScormPackage.create({
-            hostId,
-            title: safeTitle,
-            description: safeDescription,
-            status: 'processing',
-            source: 'video_course',
-            standard: 'scorm_1_2',
-            byteSize: sourceStat.size,
-            analysisJson: JSON.stringify({
-                generatedBy: 'lmsgen',
-                type: 'video_course',
+        if (replacePackageId) {
+            pkg = await ScormPackage.findOne({ where: { id: replacePackageId, hostId } });
+            if (!pkg || pkg.status === 'deleted' || pkg.source !== 'video_course') {
+                const error = new Error('Editable video course not found.');
+                error.status = 404;
+                error.code = 'VIDEO_COURSE_NOT_FOUND';
+                throw error;
+            }
+        } else {
+            pkg = await ScormPackage.create({
+                hostId,
                 title: safeTitle,
                 description: safeDescription,
-                mimeType,
-                durationSeconds: Number(durationSeconds) || null
-            })
-        });
+                status: 'processing',
+                source: 'video_course',
+                standard: 'scorm_1_2',
+                byteSize: sourceStat.size,
+                analysisJson: JSON.stringify({
+                    generatedBy: 'lmsgen',
+                    type: 'video_course',
+                    title: safeTitle,
+                    description: safeDescription,
+                    mimeType,
+                    durationSeconds: Number(durationSeconds) || null,
+                    revision: 1
+                })
+            });
+            createdPackage = true;
+        }
 
         const zipPath = path.join(tempDir, 'video-course.zip');
         await createZipFile({ outputPath: zipPath, videoPath: sourcePath, mediaPath, html, manifest });
         const zipStat = await fsp.stat(zipPath);
         const zipKey = packageZipKey(pkg.id);
 
-        await Promise.all([
-            storage.putObjectStream({ key: zipKey, stream: fs.createReadStream(zipPath), contentType: 'application/zip', contentLength: zipStat.size }),
-            storage.putObject({ key: packageContentKey(pkg.id, 'index.html'), body: Buffer.from(html), contentType: 'text/html; charset=utf-8' }),
-            storage.putObject({ key: packageContentKey(pkg.id, 'scorm_api_wrapper.js'), body: Buffer.from(SCORM_WRAPPER), contentType: 'application/javascript' }),
-            storage.putObject({ key: packageContentKey(pkg.id, 'imsmanifest.xml'), body: Buffer.from(manifest), contentType: 'application/xml' }),
-            storage.putObjectStream({ key: packageContentKey(pkg.id, mediaPath), stream: fs.createReadStream(sourcePath), contentType: mimeType, contentLength: sourceStat.size })
-        ]);
+        // Publish the replacement media first and the entry document last so a
+        // learner can never receive a new player that points at an unavailable file.
+        await storage.putObjectStream({ key: packageContentKey(pkg.id, mediaPath), stream: fs.createReadStream(sourcePath), contentType: mimeType, contentLength: sourceStat.size });
+        await storage.putObject({ key: packageContentKey(pkg.id, 'scorm_api_wrapper.js'), body: Buffer.from(SCORM_WRAPPER), contentType: 'application/javascript' });
+        await storage.putObject({ key: packageContentKey(pkg.id, 'imsmanifest.xml'), body: Buffer.from(manifest), contentType: 'application/xml' });
+        await storage.putObject({ key: packageContentKey(pkg.id, 'index.html'), body: Buffer.from(html), contentType: 'text/html; charset=utf-8' });
+        await storage.putObjectStream({ key: zipKey, stream: fs.createReadStream(zipPath), contentType: 'application/zip', contentLength: zipStat.size });
 
         const meta = {
             entryHref: 'index.html',
@@ -226,6 +248,21 @@ async function createVideoCourse({ hostId, title, description, mimeType, duratio
         };
         await storage.putObject({ key: packageMetaKey(pkg.id), body: Buffer.from(JSON.stringify(meta, null, 2)), contentType: 'application/json' });
 
+        const previousAnalysis = readAnalysis(pkg.analysisJson);
+        pkg.title = safeTitle;
+        pkg.description = safeDescription;
+        pkg.source = 'video_course';
+        pkg.standard = 'scorm_1_2';
+        pkg.analysisJson = JSON.stringify({
+            generatedBy: 'lmsgen',
+            type: 'video_course',
+            title: safeTitle,
+            description: safeDescription,
+            mimeType,
+            durationSeconds: Number(durationSeconds) || null,
+            revision: Math.max(0, Number(previousAnalysis.revision) || 0) + (createdPackage ? 0 : 1),
+            replacedAt: createdPackage ? null : new Date().toISOString()
+        });
         pkg.storageKeyZip = zipKey;
         pkg.storagePrefixContent = packageContentPrefix(pkg.id);
         pkg.entryHref = 'index.html';
@@ -238,17 +275,19 @@ async function createVideoCourse({ hostId, title, description, mimeType, duratio
 
         const course = await ensureCourseForPackage({ packageId: pkg.id, hostId, title: safeTitle });
         if (!course) throw new Error('The video package was created but its course workspace could not be prepared.');
+        course.title = safeTitle;
         course.description = safeDescription;
         course.settings = {
             ...(course.settings && typeof course.settings === 'object' ? course.settings : {}),
             courseType: 'video_course',
-            durationSeconds: Number(durationSeconds) || null
+            durationSeconds: Number(durationSeconds) || null,
+            videoRevision: Math.max(1, Number(readAnalysis(pkg.analysisJson).revision) || 1)
         };
         await course.save();
 
         return { package: pkg, course };
     } catch (error) {
-        if (pkg) {
+        if (pkg && createdPackage) {
             pkg.status = 'failed';
             pkg.errorMessage = String(error.message || 'Video course creation failed.').slice(0, 2000);
             await pkg.save().catch(() => {});
@@ -266,5 +305,6 @@ module.exports = {
     playerHtml,
     manifestXml,
     createZipFile,
-    createVideoCourse
+    createVideoCourse,
+    readAnalysis
 };

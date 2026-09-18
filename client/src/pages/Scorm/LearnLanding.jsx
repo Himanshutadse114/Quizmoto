@@ -108,7 +108,7 @@ export default function ScormLearnLanding() {
             <div className="w-11 h-11 rounded-xl bg-[#0e2039] grid place-items-center text-[#bfdbfe] border border-[#2a4b74] mb-7">
               <BookOpen size={20} />
             </div>
-            <div className="text-[11px] font-semibold text-[#93a4bb]">SCORM AI</div>
+            <div className="text-[11px] font-semibold text-[#93a4bb]">LMSGEN Learning</div>
             <h1
               className="max-w-full text-3xl sm:text-4xl md:text-[44px] font-semibold tracking-[-0.045em] leading-[1.02] text-[#f8fafc]"
               style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}

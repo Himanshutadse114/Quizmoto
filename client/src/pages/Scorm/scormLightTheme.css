@@ -100,24 +100,30 @@
 
 body .scorm-editorial.scorm-theme-light {
   color-scheme: light;
-  --scorm-canvas: var(--scorm-light-bg);
-  --scorm-surface: var(--scorm-light-surface);
-  --scorm-surface-soft: var(--scorm-light-surface-2);
-  --scorm-surface-muted: var(--scorm-light-surface-3);
-  --scorm-ink: var(--scorm-light-text);
-  --scorm-ink-soft: var(--scorm-light-body);
-  --scorm-muted: var(--scorm-light-muted);
-  --scorm-subtle: var(--scorm-light-subtle);
-  --scorm-line: var(--scorm-light-border);
-  --scorm-line-strong: var(--scorm-light-border-strong);
-  --scorm-sidebar: #FFFFFF;
-  --scorm-sidebar-soft: #F8FBFA;
-  --scorm-sidebar-line: var(--scorm-light-border);
-  --scorm-sidebar-text: var(--scorm-light-text);
-  --scorm-sidebar-muted: var(--scorm-light-muted);
-  --scorm-accent: var(--scorm-light-teal-brand);
-  --scorm-accent-strong: var(--scorm-light-teal-strong);
-  --scorm-accent-soft: var(--scorm-light-teal-soft);
+  --scorm-canvas: var(--scorm-light-bg) !important;
+  --scorm-surface: var(--scorm-light-surface) !important;
+  --scorm-surface-soft: var(--scorm-light-surface-2) !important;
+  --scorm-surface-muted: var(--scorm-light-surface-3) !important;
+  --scorm-ink: var(--scorm-light-text) !important;
+  --scorm-ink-soft: var(--scorm-light-body) !important;
+  --scorm-muted: var(--scorm-light-muted) !important;
+  --scorm-subtle: var(--scorm-light-subtle) !important;
+  --scorm-line: var(--scorm-light-border) !important;
+  --scorm-line-strong: var(--scorm-light-border-strong) !important;
+  --scorm-sidebar: #FFFFFF !important;
+  --scorm-sidebar-soft: #F8FBFA !important;
+  --scorm-sidebar-line: var(--scorm-light-border) !important;
+  --scorm-sidebar-text: var(--scorm-light-text) !important;
+  --scorm-sidebar-muted: var(--scorm-light-muted) !important;
+  --scorm-accent: var(--scorm-light-teal-brand) !important;
+  --scorm-accent-strong: var(--scorm-light-teal-strong) !important;
+  --scorm-accent-soft: var(--scorm-light-teal-soft) !important;
+  --scorm-green: #087A55 !important;
+  --scorm-green-soft: #E8F7F1 !important;
+  --scorm-amber: #8A5A08 !important;
+  --scorm-amber-soft: #FFF7E6 !important;
+  --scorm-red: #B42318 !important;
+  --scorm-red-soft: #FFF1F0 !important;
   background: var(--scorm-light-bg) !important;
   color: var(--scorm-light-text) !important;
 }

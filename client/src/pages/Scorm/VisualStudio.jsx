@@ -120,7 +120,7 @@ function ThemeModal({ course, value, loading, saving, onChange, onClose, onSave 
           )}
 
           <div className="mt-4 rounded-xl border px-3.5 py-3 text-[11px] leading-relaxed" style={{ background: 'var(--scorm-surface-soft)', borderColor: 'var(--scorm-line)', color: 'var(--scorm-muted)' }}>
-            Theme changes rebuild only the SCORM styling. Course visuals are reused, so no new image generation is requested.
+            Theme changes rebuild only the course styling. Course visuals are reused, so no new image generation is requested.
           </div>
         </div>
 
@@ -333,8 +333,8 @@ export default function VisualStudio() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold">{String(item.standard || 'SCORM 1.2').replace(/_/g, ' ')}</div>
-                  <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Standard</div>
+                  <div className="text-xs font-semibold">Trackable package</div>
+                  <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Format</div>
                 </div>
                 <div>
                   <span className={`scorm-course-status scorm-micro inline-flex px-2 py-1 rounded-md text-[8px] uppercase font-semibold border ${item.status === 'ready' ? 'is-published' : 'is-draft'}`}>

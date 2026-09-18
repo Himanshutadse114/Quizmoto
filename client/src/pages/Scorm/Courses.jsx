@@ -194,7 +194,7 @@ export default function ScormCourses() {
                     <h3 className="font-semibold text-[14px] truncate text-[#f1f5f9]">{course.title}</h3>
                     <span className={`scorm-course-status scorm-micro shrink-0 px-2 py-1 rounded-md text-[8px] uppercase font-semibold border ${course.status === 'published' ? 'is-published' : 'is-draft'}`}>{course.status}</span>
                   </div>
-                  <div className="scorm-micro text-[9px] text-[#8295ae] mt-1">{course.inviteCode || 'No invite code'} · {course.package?.standard || 'SCORM'}</div>
+                  <div className="scorm-micro text-[9px] text-[#8295ae] mt-1">{course.inviteCode || 'No invite code'} · Trackable course</div>
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-[#f1f5f9]">{trackingLoading ? '…' : (stats.learners || 0)}</div>

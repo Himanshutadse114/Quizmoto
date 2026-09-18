@@ -7,11 +7,13 @@ const { Transform } = require('stream');
 const { pipeline } = require('stream/promises');
 const router = express.Router();
 const auth = require('../middleware');
+const { ScormPackage } = require('../../models/scorm');
 const { assertActiveCourseCapacity } = require('../../services/scorm/ScormAiUsageService');
 const {
     acceptedVideoType,
     videoExtension,
-    createVideoCourse
+    createVideoCourse,
+    readAnalysis
 } = require('../../services/scorm/ScormVideoCourseService');
 
 const MAX_VIDEO_MB = Math.max(25, Math.min(1000, Number(process.env.SCORM_MAX_VIDEO_MB || 250)));
@@ -57,7 +59,30 @@ router.get('/config', auth, (_req, res) => {
     res.json({ ok: true, maxUploadMb: MAX_VIDEO_MB, acceptedMimeTypes: Object.keys(require('../../services/scorm/ScormVideoCourseService').VIDEO_TYPES) });
 });
 
-router.post('/', auth, async (req, res) => {
+router.get('/:packageId', auth, async (req, res) => {
+    try {
+        const pkg = await ScormPackage.findOne({ where: { id: req.params.packageId, hostId: req.userId } });
+        if (!pkg || pkg.status === 'deleted' || pkg.source !== 'video_course') {
+            return res.status(404).json({ message: 'Editable video course not found.' });
+        }
+        const analysis = readAnalysis(pkg.analysisJson);
+        res.setHeader('Cache-Control', 'no-store');
+        return res.json({
+            ok: true,
+            packageId: pkg.id,
+            title: pkg.title,
+            description: pkg.description || '',
+            status: pkg.status,
+            mimeType: analysis.mimeType || '',
+            durationSeconds: Number(analysis.durationSeconds) || null,
+            revision: Math.max(1, Number(analysis.revision) || 1)
+        });
+    } catch (error) {
+        return res.status(500).json({ message: 'The video course could not be loaded. Please retry.' });
+    }
+});
+
+async function uploadVideoCourse(req, res, replacePackageId = '') {
     let tempDir = null;
     try {
         const mimeType = acceptedVideoType(req.headers['content-type']);
@@ -66,7 +91,7 @@ router.post('/', auth, async (req, res) => {
         if (!declaredBytes) return res.status(411).json({ message: 'The selected video size could not be determined. Choose the file again and retry.' });
         if (declaredBytes > MAX_VIDEO_BYTES) return res.status(413).json({ message: `Video exceeds the ${MAX_VIDEO_MB} MB upload limit.` });
 
-        await assertActiveCourseCapacity(req.userId, req.scormEntitlement);
+        if (!replacePackageId) await assertActiveCourseCapacity(req.userId, req.scormEntitlement);
         const metadata = decodeMetadata(req);
         const fallbackTitle = String(metadata.fileName || 'Video course').replace(/\.[^.]+$/, '');
         const title = String(metadata.title || fallbackTitle || 'Video course').trim().slice(0, 200) || 'Video course';
@@ -99,9 +124,10 @@ router.post('/', auth, async (req, res) => {
             mimeType,
             durationSeconds,
             sourcePath,
-            tempDir
+            tempDir,
+            replacePackageId
         });
-        res.status(201).json({
+        res.status(replacePackageId ? 200 : 201).json({
             ok: true,
             courseId: created.course.id,
             packageId: created.package.id,
@@ -110,18 +136,22 @@ router.post('/', auth, async (req, res) => {
             source: created.package.source,
             standard: created.package.standard,
             byteSize: Number(created.package.byteSize || 0),
-            downloadPath: `/api/scorm/packages/${created.package.id}/download`
+            downloadPath: `/api/scorm/packages/${created.package.id}/download`,
+            replaced: Boolean(replacePackageId)
         });
     } catch (error) {
         const status = Number(error.status) || 500;
         res.status(status).json({
-            message: status >= 500 ? 'The video course could not be created. Please retry.' : error.message,
+            message: status >= 500 ? `The video course could not be ${replacePackageId ? 'rebuilt' : 'created'}. Please retry.` : error.message,
             code: error.code || 'VIDEO_COURSE_CREATION_FAILED'
         });
     } finally {
         if (tempDir) await fsp.rm(tempDir, { recursive: true, force: true }).catch(() => {});
     }
-});
+}
+
+router.post('/', auth, (req, res) => uploadVideoCourse(req, res));
+router.put('/:packageId', auth, (req, res) => uploadVideoCourse(req, res, String(req.params.packageId || '').trim()));
 
 module.exports = router;
 module.exports._test = { decodeMetadata, contentLength, byteLimiter, MAX_VIDEO_BYTES };

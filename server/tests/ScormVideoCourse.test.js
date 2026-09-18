@@ -7,7 +7,8 @@ const {
     acceptedVideoType,
     playerHtml,
     manifestXml,
-    createZipFile
+    createZipFile,
+    readAnalysis
 } = require('../services/scorm/ScormVideoCourseService');
 const contentRouter = require('../routes/scorm/content');
 
@@ -26,6 +27,12 @@ describe('SCORM video course', () => {
         expect(acceptedVideoType('video/mp4')).to.equal('video/mp4');
         expect(acceptedVideoType('video/webm; charset=binary')).to.equal('video/webm');
         expect(acceptedVideoType('application/pdf')).to.equal(null);
+    });
+
+    it('safely reads stored video metadata used by the replace workflow', () => {
+        expect(readAnalysis('{"revision":2,"mimeType":"video/mp4"}')).to.deep.equal({ revision: 2, mimeType: 'video/mp4' });
+        expect(readAnalysis('not-json')).to.deep.equal({});
+        expect(readAnalysis('[]')).to.deep.equal({});
     });
 
     it('recognizes valid media ranges used by desktop and mobile video players', () => {

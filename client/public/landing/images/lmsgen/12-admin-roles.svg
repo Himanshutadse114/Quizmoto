@@ -30,7 +30,7 @@
   <rect x="388" y="276" width="22" height="22" rx="6" fill="#4FC9BF"/>
   <text x="424" y="294" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="15">Manage roles</text>
   <rect x="388" y="322" width="22" height="22" rx="6" fill="#4FC9BF"/>
-  <text x="424" y="340" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="15">Export SCORM</text>
+  <text x="424" y="340" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="15">Download course</text>
   <rect x="388" y="368" width="22" height="22" rx="6" fill="#4FC9BF"/>
   <text x="424" y="386" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="15">View all reports</text>
   <rect x="388" y="520" width="200" height="48" rx="24" fill="url(#teal)"/>

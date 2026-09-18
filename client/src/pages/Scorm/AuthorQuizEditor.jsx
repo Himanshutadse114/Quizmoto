@@ -88,7 +88,7 @@ export default function AuthorQuizEditor({ quiz = [], onChange }) {
         <div>
           <div className="scorm-eyebrow">Knowledge check editor</div>
           <h2 className="text-xl mt-1">Edit the generated quiz</h2>
-          <p className="qmx-quiz-editor-copy text-xs mt-2 max-w-2xl">Change the question, all four answers, the correct answer and learner explanation before generating or rebuilding the SCORM package.</p>
+          <p className="qmx-quiz-editor-copy text-xs mt-2 max-w-2xl">Change the question, all four answers, the correct answer and learner explanation before generating or rebuilding the trackable course.</p>
         </div>
         <button type="button" onClick={add} className="scorm-button-primary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold">
           <Plus size={14} /> Add question
@@ -159,7 +159,7 @@ export default function AuthorQuizEditor({ quiz = [], onChange }) {
         })}
 
         {!!questions.length && (
-          <div className="qmx-quiz-footnote text-[10px] px-1">Recommended: 5–8 well-structured knowledge-check questions. Missing legacy explanations are repaired automatically; the final SCORM still receives a full course-grounded learner explanation.</div>
+          <div className="qmx-quiz-footnote text-[10px] px-1">Recommended: 5–8 well-structured knowledge-check questions. Missing legacy explanations are repaired automatically; the final course still receives a full course-grounded learner explanation.</div>
         )}
       </div>
     </section>

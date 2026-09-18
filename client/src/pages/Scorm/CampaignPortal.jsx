@@ -318,7 +318,7 @@ export default function CampaignPortal() {
           <>
             <section className="rounded-[24px] bg-[#102321] text-white p-6 md:p-8 overflow-hidden relative">
               <div className="relative grid md:grid-cols-[1fr_auto] gap-7 md:items-end">
-                <div><div className="text-[10px] uppercase tracking-[.16em] font-bold text-[#8bd8d1]">{dashboard.workspace?.name || 'LMSGEN'}</div><h1 className="text-3xl md:text-[46px] font-semibold tracking-[-.045em] mt-2">{dashboard.campaign?.name}</h1><p className="text-sm text-white/65 mt-3 max-w-2xl">Welcome, {dashboard.learner?.name || 'Learner'}. Your SCORM modules, publications and videos are collected here.</p></div>
+                <div><div className="text-[10px] uppercase tracking-[.16em] font-bold text-[#8bd8d1]">{dashboard.workspace?.name || 'LMSGEN'}</div><h1 className="text-3xl md:text-[46px] font-semibold tracking-[-.045em] mt-2">{dashboard.campaign?.name}</h1><p className="text-sm text-white/65 mt-3 max-w-2xl">Welcome, {dashboard.learner?.name || 'Learner'}. Your trackable courses, publications and videos are collected here.</p></div>
                 <div className="min-w-[180px]"><div className="flex justify-between text-xs mb-2"><span>Campaign progress</span><strong>{progress}%</strong></div><div className="h-2 rounded-full bg-white/15 overflow-hidden"><div className="h-full bg-[#45c5bc] rounded-full" style={{ width: `${progress}%` }} /></div><div className="text-[10px] text-white/55 mt-2">{completed} of {allItems.length} completed</div></div>
               </div>
             </section>

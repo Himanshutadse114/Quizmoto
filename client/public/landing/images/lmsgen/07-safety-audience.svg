@@ -27,5 +27,5 @@
   <text x="592" y="490" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">Managers</text>
   <text x="804" y="490" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="16">Learners</text>
   <rect x="64" y="540" width="972" height="80" rx="16" fill="#122825"/>
-  <text x="88" y="588" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="18">Role-based access, SCORM packages, live Quizmoto and completion reports.</text>
+  <text x="88" y="588" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="18">Role-based access, trackable courses, live Quizmoto and completion reports.</text>
 </svg>

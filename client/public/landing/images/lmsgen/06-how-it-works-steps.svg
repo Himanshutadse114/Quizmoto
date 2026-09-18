@@ -27,7 +27,7 @@
   <circle cx="674" cy="220" r="28" fill="#4FC9BF"/>
   <text x="666" y="228" fill="#0A0F0E" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">3</text>
   <text x="596" y="300" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">Publish</text>
-  <text x="596" y="336" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="15">SCORM or share link</text>
+  <text x="596" y="336" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="15">Download or share link</text>
   <rect x="814" y="150" width="220" height="420" rx="20" fill="#122825"/>
   <circle cx="924" cy="220" r="28" fill="#4FC9BF"/>
   <text x="916" y="228" fill="#0A0F0E" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">4</text>

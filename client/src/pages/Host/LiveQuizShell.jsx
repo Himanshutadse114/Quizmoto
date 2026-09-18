@@ -65,7 +65,7 @@ export default function LiveQuizShell() {
         <div className="lq-sidebar-footer">
           <button type="button" onClick={openScormAi} className="lq-platform-button">
             <Sparkles size={16} />
-            <span><strong>SCORM AI</strong><small>AI course creation workspace</small></span>
+            <span><strong>AI Course Author</strong><small>Trackable course creation workspace</small></span>
             <ChevronRight size={14} />
           </button>
           <div className="lq-user-card">
@@ -91,7 +91,7 @@ export default function LiveQuizShell() {
             <NavItems onNavigate={() => setMobileOpen(false)} />
             <div className="lq-mobile-actions">
               <button type="button" onClick={openScormAi} className="lq-platform-button">
-                <Sparkles size={16} /><span><strong>SCORM AI</strong><small>AI course workspace</small></span><ChevronRight size={14} />
+                <Sparkles size={16} /><span><strong>AI Course Author</strong><small>Trackable course workspace</small></span><ChevronRight size={14} />
               </button>
               <button type="button" onClick={signOut} className="lq-logout-button"><LogOut size={16} /> LOG OUT</button>
             </div>

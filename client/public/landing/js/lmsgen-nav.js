@@ -294,8 +294,8 @@
       "Create Training Faster with AI": "Create with AI in minutes",
       "Engage Learners with Quizmoto": "Engage teams with live Quizmoto",
       "Publish on LMSGEN and invite your team": "Engage teams with live Quizmoto",
-      "Track Progress with Clear Analytics": "Publish SCORM or track in LMSGEN",
-      "Or export SCORM to your own LMS": "Publish SCORM or track in LMSGEN",
+      "Track Progress with Clear Analytics": "Publish or track in LMSGEN",
+      "Or export to your own LMS": "Publish or track in LMSGEN",
     };
 
     document.querySelectorAll(".platform-h2").forEach((el) => {
@@ -325,7 +325,7 @@
     const cardCopy = {
       "AI Course Studio": {
         title: "AI Course Studio",
-        body: "Upload a brief or document. AI builds slides, a quiz and a SCORM course you can publish.",
+        body: "Upload a brief or document. AI builds slides, a quiz and a trackable course you can publish.",
       },
       "Learner Workspace": {
         title: "Learner Hub",
@@ -343,13 +343,13 @@
         title: "Live Quizmoto",
         body: "A separate live-quiz feature. Host a session, share a join code or link and everyone plays the same questions in realtime.",
       },
-      "SCORM Course": {
-        title: "SCORM Delivery",
-        body: "Publish inside LMSGEN or export a SCORM package to another compatible LMS.",
+      "Trackable Course": {
+        title: "Trackable Delivery",
+        body: "Publish inside LMSGEN or download a portable package for another compatible learning platform.",
       },
       "Content Library": {
-        title: "SCORM Delivery",
-        body: "Publish inside LMSGEN or export a SCORM package to another compatible LMS.",
+        title: "Trackable Delivery",
+        body: "Publish inside LMSGEN or download a portable package for another compatible learning platform.",
       },
       "Learner Progress": {
         title: "Invites & Access",
@@ -394,7 +394,7 @@
     block.innerHTML =
       '<div class="lmsgen-qm-inner">' +
         '<div class="lmsgen-qm-copy">' +
-          '<p class="lmsgen-qm-kicker">Live quiz · separate from the SCORM player</p>' +
+          '<p class="lmsgen-qm-kicker">Live quiz · a focused realtime experience</p>' +
           '<h2>Quizmoto is LMSGEN’s live quiz engine</h2>' +
           '<p class="lmsgen-qm-lead">Quizmoto is a dedicated live-quiz feature in the same workspace. The host starts a session, shares a join code or link and every player answers the same questions in realtime.</p>' +
           '<ul class="lmsgen-qm-steps">' +

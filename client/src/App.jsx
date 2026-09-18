@@ -59,7 +59,6 @@ const ScormMicrosoftCampaignCallback = lazy(() => import('./pages/Scorm/Microsof
 const ScormMicrosoftStaffCallback = lazy(() => import('./pages/Scorm/MicrosoftStaffCallback'));
 const ScormMicrosoftUniversalCallback = lazy(() => import('./pages/Scorm/MicrosoftUniversalCallback'));
 const ScormLibrary = lazy(() => import('./pages/Scorm/Library'));
-const ScormPublishingGuide = lazy(() => import('./pages/Scorm/ScormPublishingGuide'));
 const ScormCourseDetail = lazy(() => import('./pages/Scorm/CourseDetail'));
 const ScormLearnLanding = lazy(() => import('./pages/Scorm/LearnLanding'));
 const ScormPlayerShell = lazy(() => import('./pages/Scorm/PlayerShell'));
@@ -133,12 +132,12 @@ function WorkspaceAdminGate({ children }) {
 }
 
 const BLOG_POST_TITLES = {
-  'why-scorm-courses-go-unfinished': 'Why Most SCORM Courses Go Unfinished (And How to Fix It)',
+  'why-scorm-courses-go-unfinished': 'Why Most Online Courses Go Unfinished (And How to Fix It)',
   'live-quizzes-vs-static-assessments': 'Live Quizzes vs. Static Assessments: What Actually Improves Retention',
-  'scorm-1-2-vs-scorm-2004': 'SCORM 1.2 vs. SCORM 2004: What Actually Matters for Course Authors',
+  'scorm-1-2-vs-scorm-2004': 'Trackable Course Formats: What Actually Matters for Course Authors',
   'ai-assisted-authoring-course-timeline': 'How AI-Assisted Authoring Changes the Course Creation Timeline',
   'signs-security-awareness-training-needs-refresh': '5 Signs Your Security Awareness Training Needs a Refresh',
-  'slide-deck-to-scorm-migration-guide': 'From Slide Deck to SCORM Package: A Practical Migration Guide',
+  'slide-deck-to-scorm-migration-guide': 'From Slide Deck to Trackable Course: A Practical Guide',
   'quizmoto-as-a-full-learning-platform': 'What We Learned Building Quizmoto Into a Full Learning Platform',
   'designing-knowledge-checks-that-dont-feel-like-a-test': "Designing Knowledge Checks That Don't Feel Like a Test",
 };
@@ -188,9 +187,9 @@ function AppRoutes() {
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/" element={<MarketingSite src="/landing/index.html" title="LMSGEN" tabTitle="LMSGEN | AI-Powered Learning Platform" />} />
-        <Route path="/solutions" element={<MarketingSite src="/landing/solutions/index.html" title="LMSGEN solutions" tabTitle="AI Course Authoring, SCORM & Live Quizzes | LMSGEN" />} />
+        <Route path="/solutions" element={<MarketingSite src="/landing/solutions/index.html" title="LMSGEN solutions" tabTitle="AI Course Authoring, Trackable Learning & Live Quizzes | LMSGEN" />} />
         <Route path="/about" element={<MarketingSite src="/landing/about/index.html" title="About LMSGEN" tabTitle="About LMSGEN: Learning Platform for L&D and Security Awareness Teams" />} />
-        <Route path="/blog" element={<MarketingSite src="/landing/blog/index.html" title="LMSGEN blog" tabTitle="LMSGEN Blog: Insights on Learning, SCORM & Security Awareness" />} />
+        <Route path="/blog" element={<MarketingSite src="/landing/blog/index.html" title="LMSGEN blog" tabTitle="LMSGEN Blog: Insights on Trackable Learning & Security Awareness" />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/contact" element={<MarketingSite src="/landing/contact/index.html" title="Contact LMSGEN" tabTitle="Contact LMSGEN | Learning Platform" />} />
         <Route path="/login" element={<PlatformEntry />} />
@@ -240,7 +239,6 @@ function AppRoutes() {
           <Route path="campaigns/:campaignId/analytics" element={<ScormFeatureGate featureId="reports" analyticsAllowed><ScormCampaignAnalytics /></ScormFeatureGate>} />
           <Route path="tracking" element={<ScormFeatureGate featureId="tracking" analyticsAllowed><ScormTracking /></ScormFeatureGate>} />
           <Route path="library" element={<ScormFeatureGate featureId="library"><ScormLibrary /></ScormFeatureGate>} />
-          <Route path="library/publishing-guide" element={<ScormFeatureGate featureId="library"><ScormPublishingGuide /></ScormFeatureGate>} />
           <Route path="author" element={<ScormFeatureGate featureId="author"><ScormAuthor /></ScormFeatureGate>} />
           <Route path="presentation/edit/:packageId" element={<ScormFeatureGate featureId="author"><ScormPresentationEditor /></ScormFeatureGate>} />
           <Route path="visual-studio" element={<ScormFeatureGate featureId="visualStudio"><ScormVisualStudio /></ScormFeatureGate>} />

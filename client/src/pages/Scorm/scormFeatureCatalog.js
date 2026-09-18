@@ -3,12 +3,12 @@ export const SCORM_FEATURES = {
     id: 'author',
     label: 'AI Course Author',
     short: 'Create complete learning experiences from a brief or source document.',
-    description: 'Turn policies, procedures, presentations and learning briefs into editable SCORM courses with AI-assisted structure, visuals and assessments.',
+    description: 'Turn policies, procedures, presentations and learning briefs into editable trackable courses with AI-assisted structure, visuals and assessments.',
     capabilities: [
       'Generate course structure from a topic, description, PDF or PowerPoint',
       'Edit screens, learning copy, visuals, interactions and knowledge checks',
       'Choose learner themes and rebuild the course without starting over',
-      'Publish a standards-based SCORM package and course workspace'
+      'Publish a portable trackable package and course workspace'
     ]
   },
   courses: {
@@ -37,11 +37,11 @@ export const SCORM_FEATURES = {
   },
   library: {
     id: 'library',
-    label: 'SCORM Library',
-    short: 'Import, validate and manage SCORM packages.',
+    label: 'Course Library',
+    short: 'Import, validate and manage trackable course packages.',
     description: 'Use LMSGEN as a package operations workspace for both AI-generated content and compatible third-party learning packages.',
     capabilities: [
-      'Upload and inspect SCORM packages from other authoring tools',
+      'Upload and inspect trackable packages from other authoring tools',
       'Keep generated and uploaded packages in one managed library',
       'Resolve launch metadata and prepare learner-ready delivery',
       'Reuse packages when creating or maintaining course workspaces'

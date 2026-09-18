@@ -87,7 +87,7 @@
 
   const art=[
     ["#ai-course-authoring .sl-feat-common-img", ART_BASE+"02-ai-from-documents.svg", "LMSGEN turns documents into structured courses"],
-    ["#scorm-ready-delivery .sl-feat-common-img", ART_BASE+"10-scorm-package.svg", "Publish in LMSGEN or export a SCORM package"],
+    ["#scorm-ready-delivery .sl-feat-common-img", ART_BASE+"10-scorm-package.svg", "Publish in LMSGEN or download a portable course package"],
     ["#quizmoto-engagement .sl-feat-common-img", ART_BASE+"11-quizmoto-live.svg", "Quizmoto live quiz — separate realtime feature"],
     ["#learning-analytics .sl-feat-common-img", ART_BASE+"04-tracking-dashboard.svg", "LMSGEN learner tracking dashboard"],
     ["#admin-access .sl-feat-common-img", ART_BASE+"12-admin-roles.svg", "Admin roles, approvals and access controls"],
@@ -117,9 +117,9 @@
   if(og) og.setAttribute("content", ART_BASE+"08-og-banner.svg"+ART_VER);
 
   const Q_HEAD = "Quizmoto — a separate live-quiz feature";
-  const Q_BODY = "Quizmoto is a separate feature in your LMSGEN workspace. Conduct live quizzes where participants join with a code and play in realtime — it is not the SCORM course player.";
-  const SCORM_HEAD = "SCORM-Ready Delivery";
-  const SCORM_BODY = "LMSGEN has its own LMS — publish a course and start tracking learners right away. You can also export the course as SCORM and add it to your own LMS.";
+  const Q_BODY = "Quizmoto is a separate feature in your LMSGEN workspace. Conduct live quizzes where participants join with a code and play in realtime.";
+  const SCORM_HEAD = "Trackable Course Delivery";
+  const SCORM_BODY = "Publish a course in LMSGEN and start tracking learners right away, or download a portable package for another compatible learning platform.";
   const section = document.querySelector("#quizmoto-engagement");
   if(section){
     const h = section.querySelector("h3");
@@ -148,7 +148,7 @@
     if(t === "Quizmoto, Live"){
       el.textContent = Q_HEAD;
     }
-    if(t === "Package and deliver standards-ready SCORM courses through any LMS in minutes."){
+    if(t === "Package and deliver portable, trackable courses through your learning platform in minutes."){
       el.textContent = SCORM_BODY;
     }
   });

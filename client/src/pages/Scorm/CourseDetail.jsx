@@ -287,7 +287,7 @@ export default function ScormCourseDetail() {
           <div className="mt-4 flex flex-wrap gap-2 items-center">
             <span className={`scorm-micro text-[8px] uppercase font-semibold px-2.5 py-1 rounded-full border ${course.status === 'published' ? 'bg-[#ECFDF3] text-[#027A48] border-[#ABEFC6]' : 'bg-[#F2F4F7] text-[#344054] border-[#D0D5DD]'}`}>{course.status}</span>
             <span className="scorm-micro text-[9px] text-[#667085]">Invite {course.inviteCode}</span>
-            <span className="scorm-micro text-[9px] text-[#667085]">{course.package?.standard || 'SCORM'}</span>
+            <span className="scorm-micro text-[9px] text-[#667085]">Trackable course</span>
             {previewStats && (
               <span className="scorm-micro text-[8px] uppercase font-semibold px-2.5 py-1 rounded-full border bg-[#EEF4FF] text-[#3538CD] border-[#C7D7FE]">
                 QA preview available
@@ -298,6 +298,9 @@ export default function ScormCourseDetail() {
         <div className="flex flex-wrap gap-2">
           {course.package?.source === 'presentation_import' && (
             <button type="button" onClick={() => navigate(`/scorm/presentation/edit/${course.package.id}`)} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center gap-2"><Pencil size={14} /> Edit presentation</button>
+          )}
+          {course.package?.source === 'video_course' && (
+            <button type="button" onClick={() => navigate(`/scorm/author?mode=video&replaceVideo=${encodeURIComponent(course.package.id)}`)} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center gap-2"><Pencil size={14} /> Replace video</button>
           )}
           {course.status !== 'published' ? (
             <button onClick={publish} className="scorm-button-primary px-4 py-2.5 text-xs font-semibold">Publish</button>
@@ -320,7 +323,7 @@ export default function ScormCourseDetail() {
             </div>
             <h3 className="text-[22px] md:text-[25px] font-semibold mt-2">Admin Preview Results</h3>
             <p className="scorm-preview-muted text-xs md:text-[13px] leading-relaxed mt-2">
-              Test the course exactly like a learner, then verify the captured SCORM result here. Preview data is intentionally excluded from learner counts, tracking and report exports.
+              Test the course exactly like a learner, then verify the captured result here. Preview data is intentionally excluded from learner counts, tracking and report exports.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 shrink-0">
@@ -387,7 +390,7 @@ export default function ScormCourseDetail() {
                 detail="Captured in this QA run"
               />
               <PreviewStat
-                label="SCORM state"
+                label="Course state"
                 value={previewStats.lessonStatus || '—'}
                 icon={CheckCircle2}
                 detail={previewStats.initialized ? `State v${previewStats.stateVersion ?? 0}` : 'Waiting for initialize'}

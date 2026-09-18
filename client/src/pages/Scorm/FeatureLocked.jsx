@@ -67,13 +67,13 @@ export default function ScormFeatureLocked({ featureId }) {
           <section className="scorm-panel p-5 md:p-6">
             <div className="w-11 h-11 rounded-xl grid place-items-center bg-[#0b1e34] border border-[#315a8b] text-[#93c5fd]"><ShieldCheck size={19} /></div>
             <div className="scorm-eyebrow mt-5">Your access state</div>
-            <h3 className="text-lg mt-1">SCORM AI approval pending</h3>
+            <h3 className="text-lg mt-1">Course authoring approval pending</h3>
             <p className="mt-3 text-xs leading-relaxed text-[#9fb0c5]">
-              Your platform account is active. SCORM AI authoring, course operations, tracking and reporting remain locked until the administrator approves your account.
+              Your platform account is active. Course authoring, operations, tracking and reporting remain locked until the administrator approves your account.
             </p>
             <div className="mt-4 rounded-xl border border-[#29405f] bg-[#07111f] px-3.5 py-3">
               <div className="text-[10px] uppercase tracking-[.12em] font-semibold text-[#8295ae]">Administrator</div>
-              <div className="mt-1 text-xs font-mono break-all text-[#dce7f5]">{user?.adminContact || 'tadsehimanshu@gmail.com'}</div>
+              <div className="mt-1 text-xs text-[#dce7f5]">Contact your platform administrator for access.</div>
             </div>
             {notice && <div className="mt-3 text-xs leading-relaxed text-[#93c5fd]">{notice}</div>}
           </section>
@@ -81,7 +81,7 @@ export default function ScormFeatureLocked({ featureId }) {
           <section className="scorm-light-feature-hero rounded-2xl border border-[#315a8b] bg-[linear-gradient(145deg,#0b213c,#071426)] p-5">
             <div className="flex items-center gap-2 text-[#93c5fd] text-xs font-semibold"><Sparkles size={15} /> Available now</div>
             <h3 className="text-lg mt-3 text-[#f8fafc]">Quizmoto Live Quiz</h3>
-            <p className="mt-2 text-xs leading-relaxed text-[#b8c7da]">Create quizzes, generate questions with AI, launch live sessions and review Quizmoto reports while your SCORM AI approval is pending.</p>
+            <p className="mt-2 text-xs leading-relaxed text-[#b8c7da]">Create quizzes, generate questions with AI, launch live sessions and review Quizmoto reports while your course-authoring approval is pending.</p>
             <Link to="/scorm/quizmoto" className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-[#60a5fa]">Open Quizmoto →</Link>
           </section>
         </aside>

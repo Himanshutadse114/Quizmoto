@@ -80,7 +80,7 @@ export default function ScormAuthor() {
 
   return (
     <div className="min-h-screen p-6 text-white">
-      <h1 className="text-2xl font-bold mb-4">SCORM Author</h1>
+      <h1 className="text-2xl font-bold mb-4">Trackable Course Author</h1>
       <p className="text-white/60">Author flow restored. Learner course styling is managed by the platform.</p>
       {error && <div className="text-rose-300 mt-4">{error}</div>}
       <p className="mt-6 text-sm text-white/40">If you see this minimal shell, the full Author.jsx restore is still in progress.</p>

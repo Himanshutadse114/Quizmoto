@@ -136,7 +136,7 @@ export default function CampaignAnalytics() {
         campaign.name,
         learner.learnerName,
         learner.email,
-        'SCORM',
+        'Trackable course',
         entry.courseTitle,
         entry.result,
         entry.progressPercent ?? '',
@@ -197,7 +197,7 @@ export default function CampaignAnalytics() {
         <>
           <section className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
             <Metric icon={Users} label="Learners" value={campaign.learnerCount ?? 0} hint={`${campaign.learnerStartedCount ?? 0} started`} />
-            <Metric icon={BookOpen} label="Learning items" value={(campaign.courseCount || 0) + (campaign.publicationCount || 0) + (campaign.videoCount || 0)} hint={`${campaign.courseCount || 0} SCORM · ${campaign.publicationCount || 0} Publica · ${campaign.videoCount || 0} video`} />
+            <Metric icon={BookOpen} label="Learning items" value={(campaign.courseCount || 0) + (campaign.publicationCount || 0) + (campaign.videoCount || 0)} hint={`${campaign.courseCount || 0} course · ${campaign.publicationCount || 0} Publica · ${campaign.videoCount || 0} video`} />
             <Metric icon={Target} label="Assignments" value={campaign.learningItemAssignmentCount ?? campaign.assignmentCount ?? 0} />
             <Metric icon={CheckCircle2} label="Completion" value={pct(campaign.learningCompletionRate ?? campaign.completionRate)} hint={`${campaign.learningItemCompletedCount ?? campaign.completedCount ?? 0} completed`} />
             <Metric icon={Trophy} label="Average score" value={score(campaign.averageScore)} />

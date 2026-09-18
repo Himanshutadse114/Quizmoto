@@ -495,7 +495,7 @@ export default function AuthorVisual() {
     <div className="scorm-light-adapted scorm-author-visual min-h-screen max-w-[1450px] mx-auto p-4 md:p-7 pb-24 relative">
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">SCORM AI · Content Editor</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">LMSGEN AI · Content Editor</div>
           <h1 className="text-2xl md:text-3xl font-semibold text-white mt-1">{editId ? 'Edit course content' : 'Create AI course'}</h1>
           <p className="text-sm text-slate-400 mt-1 max-w-2xl">Only learner-visible text is editable here. Visual layout, raster artwork and course styling are managed by the course generator. No audio is added.</p>
         </div>

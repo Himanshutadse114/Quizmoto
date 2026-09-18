@@ -66,7 +66,7 @@ const FREE_TOOL_DATASETS = [
 
 const SCORM_DATASETS = [
   { path: '/api/scorm/courses', dataKey: 'courses', label: 'Loading courses', priority: 1 },
-  { path: '/api/scorm/packages', dataKey: 'packages', label: 'Loading SCORM library', priority: 1 },
+  { path: '/api/scorm/packages', dataKey: 'packages', label: 'Loading course library', priority: 1 },
   { path: '/api/scorm/tracking/summary', dataKey: 'tracking-summary', label: 'Preparing learner tracking', priority: 1 },
   { path: '/api/scorm/campaigns', label: 'Loading campaigns', priority: 2 },
   { path: '/api/scorm/roster', label: 'Loading learner roster', priority: 2 },

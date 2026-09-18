@@ -22,12 +22,12 @@ export default function PendingScormHome() {
         <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-6">
           <div className="max-w-3xl">
             <div className="flex flex-wrap items-center gap-2 mb-3">
-              <span className="scorm-eyebrow">SCORM AI Platform</span>
+              <span className="scorm-eyebrow">LMSGEN Learning Platform</span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-[#315a8b] bg-[#08182b] px-2.5 py-1 text-[9px] font-semibold text-[#93c5fd]"><LockKeyhole size={11} /> Approval pending</span>
             </div>
-            <h1 className="scorm-display"><span>Welcome to</span> <span className="text-blue-400">SCORM AI</span></h1>
+            <h1 className="scorm-display"><span>Welcome to</span> <span className="text-blue-400">LMSGEN</span></h1>
             <p className="mt-3 text-sm md:text-[15px] max-w-2xl">
-              Your platform account is active. Quizmoto is ready now, while SCORM AI authoring, course operations and learner intelligence unlock after administrator approval.
+              Your platform account is active. Quizmoto is ready now, while trackable course authoring, operations and learner intelligence unlock after administrator approval.
             </p>
           </div>
           <Link to="/scorm/quizmoto" className="scorm-button-primary inline-flex items-center justify-center gap-2 px-5 py-3 text-xs font-semibold">
@@ -41,7 +41,7 @@ export default function PendingScormHome() {
           <div>
             <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[.12em] font-semibold text-[#93c5fd]"><Gamepad2 size={14} /> Unlocked now</div>
             <h2 className="text-3xl md:text-4xl font-semibold tracking-[-.045em] text-[#f8fafc] mt-3">Quizmoto Live Quiz</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#b8c7da]">Create live quizzes, generate quiz drafts with AI, host real-time sessions and review Quizmoto reports while your SCORM AI approval is pending.</p>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#b8c7da]">Create live quizzes, generate quiz drafts with AI, host real-time sessions and review Quizmoto reports while your course-authoring approval is pending.</p>
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
             <Link to="/scorm/quizmoto" className="scorm-button-primary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">Launch workspace <ArrowUpRight size={14} /></Link>
@@ -52,18 +52,18 @@ export default function PendingScormHome() {
         <section className="scorm-panel p-5 md:p-6">
           <div className="w-11 h-11 rounded-xl grid place-items-center bg-[#0a1d33] border border-[#315a8b] text-[#93c5fd]"><ShieldCheck size={19} /></div>
           <div className="scorm-eyebrow mt-5">Approval status</div>
-          <h3 className="text-xl mt-1">SCORM AI features are protected</h3>
+          <h3 className="text-xl mt-1">Course-authoring features are protected</h3>
           <p className="mt-3 text-xs leading-relaxed text-[#9fb0c5]">You can explore every capability below. Opening a locked module shows what it provides instead of blocking you at the login page.</p>
           <div className="mt-4 rounded-xl border border-[#29405f] bg-[#07111f] px-3.5 py-3">
             <div className="text-[10px] uppercase tracking-[.12em] font-semibold text-[#8295ae]">Approval administrator</div>
-            <div className="mt-1 text-xs font-mono break-all text-[#dce7f5]">{user?.adminContact || 'tadsehimanshu@gmail.com'}</div>
+            <div className="mt-1 text-xs text-[#dce7f5]">Contact your platform administrator for access.</div>
           </div>
         </section>
       </div>
 
       <section className="scorm-panel overflow-hidden">
         <div className="scorm-panel-header">
-          <div className="scorm-eyebrow">SCORM AI capability map</div>
+          <div className="scorm-eyebrow">Trackable learning capability map</div>
           <h2 className="text-[19px] mt-1">What your account unlocks after approval</h2>
           <p className="text-xs mt-2 max-w-2xl text-[#8fa2ba]">The modules stay visible so you can understand the complete platform before access is granted.</p>
         </div>

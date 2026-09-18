@@ -58,7 +58,7 @@ router.get('/:regId', async (req, res) => {
         const sessionEndpoint = '/api/scorm/session/' + reg.id;
         const xapiEndpoint = '/api/scorm/xapi/statements';
         const learnerName = reg.learnerName || 'Learner';
-        const courseTitle = reg.course.title || 'SCORM Player';
+        const courseTitle = reg.course.title || 'Course Player';
         const presentationLight = pkg.source === 'presentation_import';
         // Authored course formats own their complete course chrome and autosave
         // through the parent SCORM API. The floating Save/Exit utility belongs
@@ -175,10 +175,10 @@ function persist(eventName,keepalive){
     .then(function(d){
       lastError.code=0;savedRevision=Math.max(savedRevision,capturedRevision);
       if(revision===capturedRevision)dirty=false;
-      if(d&&d.summary&&d.summary.lessonStatus)setStatus("SCORM - "+d.summary.lessonStatus+" · saved");else setStatus("SCORM - progress saved");
+      if(d&&d.summary&&d.summary.lessonStatus)setStatus("Course - "+d.summary.lessonStatus+" · saved");else setStatus("Course - progress saved");
       notifyOpener("quizmoto-scorm-progress",d&&d.summary?d.summary:null);
     })
-    .catch(function(){dirty=true;lastError.code=101;setStatus("SCORM - saving will retry");})
+    .catch(function(){dirty=true;lastError.code=101;setStatus("Course - saving will retry");})
     .finally(function(){saveInFlight=false;if(saveAgain||dirty&&revision>savedRevision){saveAgain=false;scheduleSave(1500,"retry");}});
 }
 function beaconPersist(eventName){
@@ -203,21 +203,21 @@ function beginLaunchTracking(d){
   scheduleSave(150,"launch");
 }
 function loadSavedState(){
-  setStatus("SCORM - loading saved progress");
+  setStatus("Course - loading saved progress");
   fetch(SESSION,{method:"GET",headers:{"Authorization":"Bearer "+TOKEN},credentials:"same-origin",cache:"no-store"})
     .then(function(r){if(!r.ok)throw new Error("state load "+r.status);return r.json();})
-    .then(function(d){localValues=copyValues(d&&d.values);revision=Math.max(0,Number(d&&d.clientRevision||0));savedRevision=revision;beginLaunchTracking(d||{});setStatus("SCORM - "+(d&&d.resume?"progress restored":"started"));})
-    .catch(function(){localValues=Object.create(null);revision=0;savedRevision=-1;beginLaunchTracking({});setStatus("SCORM - started · save service retrying");})
+    .then(function(d){localValues=copyValues(d&&d.values);revision=Math.max(0,Number(d&&d.clientRevision||0));savedRevision=revision;beginLaunchTracking(d||{});setStatus("Course - "+(d&&d.resume?"progress restored":"started"));})
+    .catch(function(){localValues=Object.create(null);revision=0;savedRevision=-1;beginLaunchTracking({});setStatus("Course - started · save service retrying");})
     .finally(loadContent);
 }
 
 var api12={
   LMSInitialize:function(){
     initialized=true;if(!sessionStartedAt)sessionStartedAt=Date.now();lastError.code=0;dirty=true;revision++;
-    setStatus("SCORM - "+(localValues["cmi.core.entry"]==="resume"?"resumed":"started"));
+    setStatus("Course - "+(localValues["cmi.core.entry"]==="resume"?"resumed":"started"));
     scheduleSave(120,"initialize");return "true";
   },
-  LMSFinish:function(){dirty=true;revision++;beaconPersist("finish");initialized=false;lastError.code=0;setStatus("SCORM - finished · saving");return "true";},
+  LMSFinish:function(){dirty=true;revision++;beaconPersist("finish");initialized=false;lastError.code=0;setStatus("Course - finished · saving");return "true";},
   LMSGetValue:function(el){var key=String(el||"");lastError.code=0;return Object.prototype.hasOwnProperty.call(localValues,key)?String(localValues[key]):"";},
   LMSSetValue:function(el,v){if(!initialized){lastError.code=301;return "false";}var key=String(el||"");localValues[key]=v==null?"":String(v);dirty=true;revision++;lastError.code=0;scheduleSave(900,"autosave");return "true";},
   LMSCommit:function(){if(stateLoaded){dirty=true;revision++;persist("commit",false);}lastError.code=0;return "true";},
@@ -255,10 +255,10 @@ window.addEventListener("DOMContentLoaded",loadSavedState);
 </head>
 <body>
 ${showUtilityBar ? `<div id="bar">
-  <span id="status">SCORM - preparing learner state</span>
+  <span id="status">Course - preparing learner state</span>
   <div><button type="button" id="btnSave">Save</button><button type="button" id="btnExit">Exit</button></div>
-</div>` : '<span id="status">SCORM - preparing learner state</span>'}
-<iframe id="frame" name="scorm_content" title="SCORM Content" src="about:blank" allow="autoplay; fullscreen" allowfullscreen></iframe>
+</div>` : '<span id="status">Course - preparing learner state</span>'}
+<iframe id="frame" name="scorm_content" title="Course content" src="about:blank" allow="autoplay; fullscreen" allowfullscreen></iframe>
 <script>
 (function(){
 var exiting=false;

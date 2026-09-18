@@ -1,4 +1,4 @@
-<svg viewBox="0 0 792 492" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="From Slide Deck to SCORM Package: A Practical Migration Guide">
+<svg viewBox="0 0 792 492" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="From Slide Deck to Trackable Course: A Practical Guide">
   <rect width="792" height="492" fill="#003f3a"/>
   
       <g>
@@ -15,7 +15,7 @@
         <rect x="520" y="140" width="190" height="190" rx="16" fill="#003f3a" stroke="#fafa45" stroke-width="3"/>
         <path d="M520 190h190" stroke="#fafa45" stroke-width="2"/>
         <path d="M615 140v190" stroke="#fafa45" stroke-width="2" opacity="0.5"/>
-        <text x="615" y="270" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#fafa45" letter-spacing="1">SCORM</text>
+        <text x="615" y="270" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#fafa45" letter-spacing="1">TRACK</text>
         <text x="615" y="290" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#cfe9e5">PACKAGE</text>
       </g>
 </svg>

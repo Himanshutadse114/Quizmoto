@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   Archive,
-  BookOpenCheck,
   CheckCircle2,
   Clock3,
   Download,
@@ -80,14 +79,14 @@ export default function ScormLibrary() {
     if (!file) return;
     const maxBytes = MAX_SCORM_UPLOAD_MB * 1024 * 1024;
     if (file.size > maxBytes) {
-      setMsg(`Maximum SCORM ZIP size is ${MAX_SCORM_UPLOAD_MB} MB.`);
+      setMsg(`Maximum trackable package size is ${MAX_SCORM_UPLOAD_MB} MB.`);
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     setUploading(true);
-    setMsg('Uploading SCORM package…');
+    setMsg('Uploading trackable package…');
     try {
       const packageTitle = title || file.name.replace(/\.zip$/i, '');
       const res = await axios.post(apiUrl('/api/scorm/packages/upload'), file, {
@@ -130,7 +129,7 @@ export default function ScormLibrary() {
 
   const editPkg = (p) => {
     if (isVideoCourse(p)) {
-      setMsg('Video courses are recreated from their source video. Download this SCORM package or create a new video course to replace it.');
+      navigate(`/scorm/author?mode=video&replaceVideo=${encodeURIComponent(p.id)}`);
       return;
     }
     if (!isQuizmotoAi(p)) {
@@ -159,8 +158,8 @@ export default function ScormLibrary() {
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7 pb-7 border-b border-white/10">
         <div className="max-w-3xl">
           <div className="scorm-micro text-[10px] uppercase font-semibold">Content operations</div>
-          <h1 className="scorm-display text-[42px] md:text-[56px] mt-2">SCORM Library</h1>
-          <p className="text-sm mt-3 leading-relaxed max-w-2xl">Manage generated, presentation and video courses alongside uploaded SCORM packages. Every ready package remains available for launch and download.</p>
+          <h1 className="scorm-display text-[42px] md:text-[56px] mt-2">Trackable Course Library</h1>
+          <p className="text-sm mt-3 leading-relaxed max-w-2xl">Manage generated, presentation and video courses alongside uploaded trackable packages. Every ready package remains available for launch and download.</p>
         </div>
         <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold"><Sparkles size={15} /> Create course</Link>
       </div>
@@ -176,19 +175,13 @@ export default function ScormLibrary() {
 
       <section className="scorm-course-list-shell rounded-xl overflow-hidden border mb-6">
         <div className="scorm-course-toolbar p-4 md:p-5 border-b flex items-center justify-between gap-3">
-          <div><div className="scorm-micro text-[9px] uppercase font-semibold">Upload package</div><div className="mt-1 text-base font-semibold" style={ink}>Add a SCORM ZIP</div><p className="mt-1 text-xs">ZIP files up to {MAX_SCORM_UPLOAD_MB} MB are validated before becoming available.</p></div>
+          <div><div className="scorm-micro text-[9px] uppercase font-semibold">Upload package</div><div className="mt-1 text-base font-semibold" style={ink}>Add a trackable course ZIP</div><p className="mt-1 text-xs">ZIP files up to {MAX_SCORM_UPLOAD_MB} MB are validated before becoming available.</p></div>
           <div className="hidden sm:grid w-10 h-10 place-items-center rounded-lg border" style={{ ...softSurface, color: 'var(--scorm-accent)' }}><UploadCloud size={18} /></div>
-        </div>
-
-        <div className="p-4 md:px-5 md:pt-5 pb-0">
-          <Link to="/scorm/library/publishing-guide" className="group flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-xl border p-4 transition hover:border-[var(--scorm-accent-strong)]" style={{ borderColor: 'rgba(79,201,191,.30)', background: 'rgba(79,201,191,.07)' }}>
-            <div className="flex items-start gap-3 min-w-0"><div className="w-10 h-10 rounded-xl border grid place-items-center shrink-0" style={{ borderColor: 'rgba(79,201,191,.32)', color: 'var(--scorm-accent-strong)', background: 'var(--scorm-surface)' }}><BookOpenCheck size={17} /></div><div className="min-w-0"><div className="scorm-micro text-[8px] uppercase font-semibold">Before publishing from Articulate</div><div className="text-sm font-semibold mt-1" style={ink}>Choose our LMS and build like a pro</div><p className="text-[11px] mt-1 leading-relaxed" style={muted}>Open the Storyline / Rise guide for SCORM 2004 4th Edition settings that enable richer question, answer, score and time tracking.</p></div></div><span className="scorm-button-secondary h-9 px-3 inline-flex items-center justify-center text-[10px] font-semibold shrink-0">Open guide</span>
-          </Link>
         </div>
 
         <div className="p-4 md:p-5 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] gap-3 items-end">
           <label className="block"><span className="scorm-micro text-[9px] uppercase">Package title</span><input type="text" placeholder="Optional title" value={title} onChange={(e) => setTitle(e.target.value)} className="scorm-course-search mt-1.5 w-full px-3 py-2.5 text-sm" /></label>
-          <label className="block"><span className="scorm-micro text-[9px] uppercase">SCORM ZIP</span><div className="mt-1.5 min-h-[42px] rounded-lg border px-3 flex items-center gap-3" style={surface}><FileArchive size={16} className="shrink-0" style={{ color: 'var(--scorm-accent)' }} /><span className="text-xs truncate flex-1" style={{ color: 'var(--scorm-ink-soft)' }}>{selectedFile ? selectedFile.name : 'Choose a .zip file'}</span><label className="scorm-button-secondary cursor-pointer px-3 py-2 text-[10px] font-semibold shrink-0">Browse<input ref={fileInputRef} type="file" accept=".zip,application/zip" disabled={uploading} onChange={onFile} className="sr-only" /></label></div></label>
+          <label className="block"><span className="scorm-micro text-[9px] uppercase">Trackable course ZIP</span><div className="mt-1.5 min-h-[42px] rounded-lg border px-3 flex items-center gap-3" style={surface}><FileArchive size={16} className="shrink-0" style={{ color: 'var(--scorm-accent)' }} /><span className="text-xs truncate flex-1" style={{ color: 'var(--scorm-ink-soft)' }}>{selectedFile ? selectedFile.name : 'Choose a .zip file'}</span><label className="scorm-button-secondary cursor-pointer px-3 py-2 text-[10px] font-semibold shrink-0">Browse<input ref={fileInputRef} type="file" accept=".zip,application/zip" disabled={uploading} onChange={onFile} className="sr-only" /></label></div></label>
           <button type="button" disabled={!selectedFile || uploading} onClick={() => uploadFile(selectedFile)} className="scorm-button-primary min-h-[42px] px-4 text-xs font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"><FileUp size={15} /> {uploading ? 'Uploading…' : 'Upload ZIP'}</button>
         </div>
       </section>
@@ -200,13 +193,13 @@ export default function ScormLibrary() {
         </div>
 
         <div className="scorm-course-rows divide-y">
-          {filtered.length === 0 && <div className="p-10 text-center"><FileArchive size={24} className="mx-auto mb-3" style={muted} /><div className="text-sm font-semibold" style={ink}>No packages match this view</div><div className="text-xs mt-1" style={muted}>Try another search or upload a SCORM ZIP.</div></div>}
+          {filtered.length === 0 && <div className="p-10 text-center"><FileArchive size={24} className="mx-auto mb-3" style={muted} /><div className="text-sm font-semibold" style={ink}>No packages match this view</div><div className="text-xs mt-1" style={muted}>Try another search or upload a trackable course ZIP.</div></div>}
           {filtered.map((p) => {
             const generated = isGenerated(p);
             const videoCourse = isVideoCourse(p);
-            const editable = isQuizmotoAi(p);
+            const editable = isQuizmotoAi(p) || videoCourse;
             const sourceLabel = videoCourse ? 'Video course' : generated ? 'Generated' : 'External';
-            return <div key={p.id} className="scorm-course-row px-5 md:px-6 py-5 transition-colors"><div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_130px_150px_auto] gap-4 xl:items-center"><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap min-w-0"><h3 className="font-semibold text-[14px] truncate max-w-full" title={p.title}>{p.title}</h3><span className={`scorm-course-status scorm-micro shrink-0 px-2 py-1 rounded-md text-[8px] uppercase font-semibold border ${p.status === 'ready' ? 'is-published' : 'is-draft'}`}>{p.status}</span></div><div className="scorm-micro text-[9px] mt-1 flex flex-wrap gap-x-1"><span>{p.standard || 'scorm_1_2'}</span><span>·</span><span>{sourceLabel}</span>{p.fileCount != null && <><span>·</span><span>{p.fileCount} files</span></>}{p.entryHref && <><span>·</span><span className="truncate max-w-[260px]">{p.entryHref}</span></>}</div>{p.status === 'processing' && <div className="text-[10px] mt-2" style={{ color: 'var(--scorm-amber)' }}>Validating and extracting package…</div>}{p.errorMessage && <div className="text-[10px] mt-2" style={{ color: 'var(--scorm-red)' }}>{p.errorMessage}</div>}</div><div><div className="text-xs font-semibold" style={ink}>{sourceLabel}</div><div className="scorm-micro text-[8px] uppercase mt-1">Source</div></div><div><div className="text-xs font-semibold" style={ink}>{p.fileCount != null ? p.fileCount : '—'}</div><div className="scorm-micro text-[8px] uppercase mt-1">Files</div></div><div className="flex flex-wrap gap-2 xl:justify-end">{p.status === 'ready' && !videoCourse && <button onClick={() => createCourse(p.id, p.title)} className="scorm-button-primary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5"><Plus size={13} /> Create course</button>}{(p.status === 'ready' || p.storageKeyZip) && <button onClick={() => downloadPkg(p.id, p.title)} className="scorm-button-secondary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5"><Download size={13} /> Download</button>}<button onClick={() => editPkg(p)} disabled={!editable} title={editable ? 'Edit generated package' : videoCourse ? 'Recreate video courses from their source video' : 'Only generated packages can be edited'} className="scorm-button-secondary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"><Pencil size={13} /> Edit</button><button onClick={() => removePkg(p.id)} className="px-3 py-2 rounded-lg border text-[10px] font-semibold inline-flex items-center gap-1.5" style={{ color: 'var(--scorm-red)', borderColor: 'color-mix(in srgb, var(--scorm-red) 28%, transparent)', background: 'var(--scorm-red-soft)' }}><Trash2 size={13} /> Delete</button></div></div></div>;
+            return <div key={p.id} className="scorm-course-row px-5 md:px-6 py-5 transition-colors"><div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_130px_150px_auto] gap-4 xl:items-center"><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap min-w-0"><h3 className="font-semibold text-[14px] truncate max-w-full" title={p.title}>{p.title}</h3><span className={`scorm-course-status scorm-micro shrink-0 px-2 py-1 rounded-md text-[8px] uppercase font-semibold border ${p.status === 'ready' ? 'is-published' : 'is-draft'}`}>{p.status}</span></div><div className="scorm-micro text-[9px] mt-1 flex flex-wrap gap-x-1"><span>Trackable package</span><span>·</span><span>{sourceLabel}</span>{p.fileCount != null && <><span>·</span><span>{p.fileCount} files</span></>}{p.entryHref && <><span>·</span><span className="truncate max-w-[260px]">{p.entryHref}</span></>}</div>{p.status === 'processing' && <div className="text-[10px] mt-2" style={{ color: 'var(--scorm-amber)' }}>Validating and extracting package…</div>}{p.errorMessage && <div className="text-[10px] mt-2" style={{ color: 'var(--scorm-red)' }}>{p.errorMessage}</div>}</div><div><div className="text-xs font-semibold" style={ink}>{sourceLabel}</div><div className="scorm-micro text-[8px] uppercase mt-1">Source</div></div><div><div className="text-xs font-semibold" style={ink}>{p.fileCount != null ? p.fileCount : '—'}</div><div className="scorm-micro text-[8px] uppercase mt-1">Files</div></div><div className="flex flex-wrap gap-2 xl:justify-end">{p.status === 'ready' && !videoCourse && <button onClick={() => createCourse(p.id, p.title)} className="scorm-button-primary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5"><Plus size={13} /> Create course</button>}{(p.status === 'ready' || p.storageKeyZip) && <button onClick={() => downloadPkg(p.id, p.title)} className="scorm-button-secondary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5"><Download size={13} /> Download</button>}<button onClick={() => editPkg(p)} disabled={!editable} title={editable ? (videoCourse ? 'Replace video and rebuild this course' : 'Edit generated package') : 'Only generated packages can be edited'} className="scorm-button-secondary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"><Pencil size={13} /> {videoCourse ? 'Replace video' : 'Edit'}</button><button onClick={() => removePkg(p.id)} className="px-3 py-2 rounded-lg border text-[10px] font-semibold inline-flex items-center gap-1.5" style={{ color: 'var(--scorm-red)', borderColor: 'color-mix(in srgb, var(--scorm-red) 28%, transparent)', background: 'var(--scorm-red-soft)' }}><Trash2 size={13} /> Delete</button></div></div></div>;
           })}
         </div>
       </section>

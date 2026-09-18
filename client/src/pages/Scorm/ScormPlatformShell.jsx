@@ -57,7 +57,7 @@ const OPERATIONAL_NAV_GROUPS = [
       { to: '/scorm/roster', label: 'Learner Roster', icon: UserCheck, requiresScorm: true },
       { to: '/scorm/assignments', label: 'Campaigns', icon: Megaphone, requiresScorm: true },
       { to: '/scorm/visual-studio', label: 'Content Editor', icon: Palette, requiresScorm: true },
-      { to: '/scorm/library', label: 'SCORM Library', icon: Library, requiresScorm: true },
+      { to: '/scorm/library', label: 'Course Library', icon: Library, requiresScorm: true },
       { to: '/scorm/tracking', label: 'Learner Tracking', icon: Activity, requiresScorm: true },
       { to: '/scorm/reports', label: 'Reports & Insights', icon: BarChart3, requiresScorm: true }
     ]

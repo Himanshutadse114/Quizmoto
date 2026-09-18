@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="980" height="720" viewBox="0 0 980 720" role="img" aria-label="LMSGEN SCORM package">
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="720" viewBox="0 0 980 720" role="img" aria-label="LMSGEN trackable course package">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#071614"/><stop offset="1" stop-color="#0A0F0E"/></linearGradient>
     <linearGradient id="teal" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4FC9BF"/><stop offset="1" stop-color="#9BE8E1"/></linearGradient>
@@ -11,7 +11,7 @@
   <circle cx="48" cy="47" r="6" fill="#FF6B6B"/>
   <circle cx="68" cy="47" r="6" fill="#F7D774"/>
   <circle cx="88" cy="47" r="6" fill="#4FC9BF"/>
-  <text x="116" y="52" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="600">LMSGEN  SCORM package</text>
+  <text x="116" y="52" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="600">LMSGEN  trackable package</text>
   <rect x="80" y="140" width="360" height="480" rx="20" fill="#0C1A18" stroke="#4FC9BF" stroke-opacity="0.3"/>
   <rect x="110" y="176" width="300" height="18" rx="9" fill="#4FC9BF"/>
   <rect x="110" y="214" width="220" height="10" rx="5" fill="#2A4440"/>
@@ -24,7 +24,7 @@
   <rect x="110" y="514" width="300" height="70" rx="12" fill="#132826"/>
   <text x="130" y="556" fill="#CDE7E3" font-family="Inter,Arial,sans-serif" font-size="16">quiz.xml</text>
   <text x="490" y="200" fill="#7BDCD3" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="700">STANDARDS READY</text>
-  <text x="490" y="248" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="32" font-weight="700">SCORM 1.2</text>
+  <text x="490" y="248" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="32" font-weight="700">PORTABLE</text>
   <text x="490" y="292" fill="#EDF4F2" font-family="Inter,Arial,sans-serif" font-size="32" font-weight="700">and 2004</text>
   <text x="490" y="340" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="16">Publish inside LMSGEN, or export a ZIP</text>
   <text x="490" y="366" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="16">for Moodle, Docebo, Cornerstone.</text>

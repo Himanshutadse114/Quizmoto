@@ -4,12 +4,12 @@ import { createRoot } from 'react-dom/client'
 const root = createRoot(document.getElementById('root'))
 
 const BLOG_POST_TITLES = {
-  'why-scorm-courses-go-unfinished': 'Why Most SCORM Courses Go Unfinished (And How to Fix It)',
+  'why-scorm-courses-go-unfinished': 'Why Most Online Courses Go Unfinished (And How to Fix It)',
   'live-quizzes-vs-static-assessments': 'Live Quizzes vs. Static Assessments: What Actually Improves Retention',
-  'scorm-1-2-vs-scorm-2004': 'SCORM 1.2 vs. SCORM 2004: What Actually Matters for Course Authors',
+  'scorm-1-2-vs-scorm-2004': 'Trackable Course Formats: What Matters for Course Authors',
   'ai-assisted-authoring-course-timeline': 'How AI-Assisted Authoring Changes the Course Creation Timeline',
   'signs-security-awareness-training-needs-refresh': '5 Signs Your Security Awareness Training Needs a Refresh',
-  'slide-deck-to-scorm-migration-guide': 'From Slide Deck to SCORM Package: A Practical Migration Guide',
+  'slide-deck-to-scorm-migration-guide': 'From Slide Deck to Trackable Course: A Practical Guide',
   'quizmoto-as-a-full-learning-platform': 'What We Learned Building Quizmoto Into a Full Learning Platform',
   'designing-knowledge-checks-that-dont-feel-like-a-test': "Designing Knowledge Checks That Don't Feel Like a Test",
 }
@@ -30,7 +30,7 @@ function getMarketingPage(pathname) {
     '/solutions': {
       src: '/landing/solutions/index.html',
       title: 'LMSGEN solutions',
-      tabTitle: 'AI Course Authoring, SCORM & Live Quizzes | LMSGEN',
+      tabTitle: 'Trackable Course Authoring & Live Quizzes | LMSGEN',
     },
     '/about': {
       src: '/landing/about/index.html',
@@ -40,7 +40,7 @@ function getMarketingPage(pathname) {
     '/blog': {
       src: '/landing/blog/index.html',
       title: 'LMSGEN blog',
-      tabTitle: 'LMSGEN Blog: Insights on Learning, SCORM & Security Awareness',
+      tabTitle: 'LMSGEN Blog: Insights on Learning & Security Awareness',
     },
     '/contact': {
       src: '/landing/contact/index.html',

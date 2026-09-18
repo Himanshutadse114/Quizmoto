@@ -46,6 +46,19 @@ html body .scorm-editorial.scorm-theme-light .scorm-course-toolbar {
   color: var(--slp-text) !important;
 }
 
+html body .scorm-editorial.scorm-theme-light .scorm-course-list-shell h1,
+html body .scorm-editorial.scorm-theme-light .scorm-course-list-shell h2,
+html body .scorm-editorial.scorm-theme-light .scorm-course-list-shell h3,
+html body .scorm-editorial.scorm-theme-light .scorm-course-list-shell .font-semibold,
+html body .scorm-editorial.scorm-theme-light .scorm-course-toolbar .font-semibold {
+  color: var(--slp-text) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-course-list-shell p,
+html body .scorm-editorial.scorm-theme-light .scorm-course-toolbar p {
+  color: var(--slp-body) !important;
+}
+
 html body .scorm-editorial.scorm-theme-light main [class*="border-white/"] {
   border-color: var(--slp-line) !important;
 }

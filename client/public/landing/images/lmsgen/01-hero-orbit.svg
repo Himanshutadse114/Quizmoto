@@ -52,7 +52,7 @@
       <g>
         <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="-360 0 0" dur="36s" repeatCount="indefinite"/>
         <rect x="-52" y="-18" width="104" height="36" rx="18" fill="#071412" stroke="#4FC9BF" stroke-width="1.4"/>
-        <text y="5" text-anchor="middle" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="650" letter-spacing="1.4">SCORM</text>
+        <text y="5" text-anchor="middle" fill="#9BE8E1" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="650" letter-spacing="1.4">TRACK</text>
       </g>
     </g>
     <g transform="translate(1116 520)">

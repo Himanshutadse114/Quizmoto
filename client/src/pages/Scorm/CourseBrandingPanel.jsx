@@ -44,7 +44,7 @@ export function PresentationLogoPanel({ logoDataUrl = '', onChange, error, onErr
           <div className="scorm-micro text-[9px] uppercase font-semibold">Presentation logo</div>
           <div className="text-sm font-semibold mt-1" style={{ color: 'var(--scorm-ink)' }}>Brand the learner side panel</div>
           <div className="text-[11px] leading-relaxed mt-1" style={{ color: 'var(--scorm-muted)' }}>
-            Your logo replaces the “Presentation course” label and is embedded inside the SCORM package.
+            Your logo replaces the “Presentation course” label and is embedded inside the trackable package.
           </div>
         </div>
         {logoDataUrl && (
@@ -118,7 +118,7 @@ export default function CourseBrandingPanel({ value, onChange, error, onError })
           <div className="scorm-micro text-[9px] uppercase font-semibold">Course branding</div>
           <div className="text-sm font-semibold mt-1" style={{ color: 'var(--scorm-ink)' }}>Add your logo and colours</div>
           <div className="text-[11px] leading-relaxed mt-1" style={{ color: 'var(--scorm-muted)' }}>
-            Branding is embedded into the learner course and remains inside the downloaded SCORM package.
+            Branding is embedded into the learner course and remains inside the downloaded course package.
           </div>
         </div>
         <button
