@@ -30,6 +30,7 @@ const BODY_WORD_BUDGETS = Object.freeze({
 });
 
 const INTERACTION_POINT_WORD_LIMIT = 28;
+const INTERACTION_LABEL_WORD_LIMIT = 8;
 const TOKEN_STOP_WORDS = new Set([
     'the', 'a', 'an', 'and', 'or', 'to', 'of', 'for', 'in', 'on', 'with', 'from', 'your', 'you',
     'is', 'are', 'be', 'as', 'at', 'this', 'that', 'these', 'those', 'it', 'its', 'can', 'may', 'will',
@@ -159,22 +160,85 @@ function supportingSentence(point, sentences, usedIndexes) {
     return best && bestScore >= 3.8 ? best : null;
 }
 
-function enrichInteractiveKeyPoints(slide) {
+function conciseInteractionLabel(value, index = 0) {
+    const source = clean(value).replace(/^[0-9]+[.)\s-]*/, '').replace(/[.!?]+$/, '');
+    if (!source) return `Point ${String(index + 1).padStart(2, '0')}`;
+    const allWords = words(source);
+    if (allWords.length <= INTERACTION_LABEL_WORD_LIMIT) return source;
+
+    const meaningful = source
+        .split(/\s+/)
+        .map((word) => word.replace(/[^A-Za-z0-9'-]/g, ''))
+        .filter((word) => word && !TOKEN_STOP_WORDS.has(word.toLowerCase()))
+        .slice(0, 6);
+    const selected = meaningful.length >= 3 ? meaningful : allWords.slice(0, 6);
+    const label = selected.join(' ');
+    return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function interactionDetailIsDistinct(label, detail) {
+    const cleanLabel = clean(label).toLowerCase();
+    const cleanDetail = clean(detail).toLowerCase();
+    if (!cleanLabel || !cleanDetail || cleanLabel === cleanDetail) return false;
+    const labelTokens = new Set(meaningfulTokens(label));
+    const detailTokens = new Set(meaningfulTokens(detail));
+    let overlap = 0;
+    labelTokens.forEach((token) => {
+        if (detailTokens.has(token)) overlap += 1;
+    });
+    const containment = overlap / Math.max(1, labelTokens.size);
+    return words(detail).length >= Math.max(9, words(label).length + 4)
+        || (containment < 0.8 && words(detail).length >= 7);
+}
+
+function buildInteractionPoints(slide) {
     const source = slide && typeof slide === 'object' ? slide : {};
     const points = Array.isArray(source.keyPoints) ? source.keyPoints.map(clean).filter(Boolean) : [];
-    if (!points.length) return points;
-
+    const authored = Array.isArray(source.interactionPoints) ? source.interactionPoints : [];
     const sentences = sentenceChunks(source.content).map(clean).filter(Boolean);
-    if (!sentences.length) return points;
-
     const usedIndexes = new Set();
-    return points.map((point) => {
-        const match = supportingSentence(point, sentences, usedIndexes);
-        if (!match) return point;
-        if (words(match.sentence).length > INTERACTION_POINT_WORD_LIMIT) return point;
-        usedIndexes.add(match.index);
-        return match.sentence;
+
+    return points.map((point, index) => {
+        const authoredPoint = authored[index] && typeof authored[index] === 'object' ? authored[index] : {};
+        const label = conciseInteractionLabel(authoredPoint.label || point, index);
+        let detail = clean(authoredPoint.detail);
+
+        if (!interactionDetailIsDistinct(label, detail)) {
+            const match = supportingSentence(point, sentences, usedIndexes);
+            if (match) {
+                usedIndexes.add(match.index);
+                detail = match.sentence;
+                const next = sentences[match.index + 1];
+                if (!interactionDetailIsDistinct(label, detail) && next && !usedIndexes.has(match.index + 1)) {
+                    detail = clean(`${detail} ${next}`);
+                    usedIndexes.add(match.index + 1);
+                }
+            }
+        }
+
+        if (!interactionDetailIsDistinct(label, detail)) {
+            const fallbackIndex = sentences.findIndex((sentence, sentenceIndex) => (
+                !usedIndexes.has(sentenceIndex) && interactionDetailIsDistinct(label, sentence)
+            ));
+            if (fallbackIndex >= 0) {
+                detail = sentences[fallbackIndex];
+                usedIndexes.add(fallbackIndex);
+            }
+        }
+
+        if (!interactionDetailIsDistinct(label, detail)) {
+            detail = clean(source.content) || clean(point);
+        }
+
+        return {
+            label,
+            detail: trimToWordBudget(detail, INTERACTION_POINT_WORD_LIMIT)
+        };
     });
+}
+
+function enrichInteractiveKeyPoints(slide) {
+    return buildInteractionPoints(slide).map((point) => point.label);
 }
 
 // Backwards-compatible export retained for existing callers/tests.
@@ -215,6 +279,7 @@ function fitSlidePresentationContent(slide, templateId) {
     return {
         ...source,
         ...(enrichPoints ? { keyPoints: enrichInteractiveKeyPoints(source) } : {}),
+        interactionPoints: buildInteractionPoints(source),
         displayContent: templateId === 'highly-interactive'
             ? trimToTeachingBudget(source.content, maxWords)
             : trimToWordBudget(source.content, maxWords),
@@ -226,18 +291,28 @@ function fitTemplatePresentationContent(analysis, binding) {
     const source = analysis && typeof analysis === 'object' ? analysis : {};
     const template = getCourseTemplate(binding?.templateId);
 
-    if (template.id === 'professional-classic') return source;
-
     return {
         ...source,
         slides: (Array.isArray(source.slides) ? source.slides : [])
-            .map((slide) => fitSlidePresentationContent(slide, template.id))
+            .map((slide) => {
+                if (template.id === 'professional-classic') {
+                    return {
+                        ...slide,
+                        keyPoints: enrichInteractiveKeyPoints(slide),
+                        interactionPoints: buildInteractionPoints(slide)
+                    };
+                }
+                return fitSlidePresentationContent(slide, template.id);
+            })
     };
 }
 
 module.exports = {
     BODY_WORD_BUDGETS,
+    INTERACTION_LABEL_WORD_LIMIT,
     INTERACTION_POINT_WORD_LIMIT,
+    buildInteractionPoints,
+    conciseInteractionLabel,
     enrichInteractiveKeyPoints,
     enrichHighlyInteractiveKeyPoints,
     fitSlidePresentationContent,

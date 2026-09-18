@@ -85,7 +85,13 @@ function cleanForGenerate(analysis) {
       delete cleanedSlide.narrationText;
       return {
         ...cleanedSlide,
-        keyPoints: (Array.isArray(cleanedSlide.keyPoints) ? cleanedSlide.keyPoints : []).slice(0, visiblePointLimit(cleanedSlide))
+        keyPoints: (Array.isArray(cleanedSlide.keyPoints) ? cleanedSlide.keyPoints : []).slice(0, visiblePointLimit(cleanedSlide)),
+        interactionPoints: (Array.isArray(cleanedSlide.interactionPoints) ? cleanedSlide.interactionPoints : [])
+          .slice(0, visiblePointLimit(cleanedSlide))
+          .map((item) => ({
+            label: String(item?.label || '').trim(),
+            detail: String(item?.detail || '').trim()
+          }))
       };
     }),
     quiz: (analysis.quiz || []).map((question) => ({
@@ -368,6 +374,10 @@ export default function AuthorVisual() {
   const slide = analysis?.slides?.[selected];
   const pointLimit = visiblePointLimit(slide);
   const visiblePoints = (slide?.keyPoints || []).slice(0, pointLimit);
+  const visibleInteractionPoints = visiblePoints.map((point, index) => ({
+    label: String(slide?.interactionPoints?.[index]?.label || point || ''),
+    detail: String(slide?.interactionPoints?.[index]?.detail || '')
+  }));
 
   const analyze = async () => {
     if (!hasSource) {
@@ -409,10 +419,22 @@ export default function AuthorVisual() {
     });
   };
 
-  const updatePoint = (index, value) => {
+  const updatePointLabel = (index, value) => {
     const points = [...(slide?.keyPoints || [])];
     points[index] = value;
-    updateSlide({ keyPoints: points });
+    const interactions = [...(slide?.interactionPoints || [])];
+    interactions[index] = { ...(interactions[index] || {}), label: value };
+    updateSlide({ keyPoints: points, interactionPoints: interactions });
+  };
+
+  const updatePointDetail = (index, value) => {
+    const interactions = [...(slide?.interactionPoints || [])];
+    interactions[index] = {
+      ...(interactions[index] || {}),
+      label: String(interactions[index]?.label || slide?.keyPoints?.[index] || ''),
+      detail: value
+    };
+    updateSlide({ interactionPoints: interactions });
   };
 
   const updateQuiz = (quiz) => {
@@ -587,21 +609,24 @@ export default function AuthorVisual() {
 
                   <div>
                     <label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Learner text</label>
-                    <textarea rows={5} value={slide.introText || ''} onChange={(e) => updateSlide({ introText: e.target.value })} className="w-full p-3 text-sm leading-relaxed" placeholder="Main text shown on this learner slide" />
+                    <textarea rows={5} value={slide.content || slide.introText || ''} onChange={(e) => updateSlide({ content: e.target.value, introText: e.target.value })} className="w-full p-3 text-sm leading-relaxed" placeholder="Main text shown on this learner slide" />
                   </div>
 
-                  {!!visiblePoints.length && (
+                  {!!visibleInteractionPoints.length && (
                     <div>
-                      <label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Visible key points</label>
+                      <label className="block text-[10px] uppercase tracking-[.11em] text-slate-500 font-semibold mb-2">Interactive cards and points</label>
                       <div className="grid md:grid-cols-2 gap-2.5">
-                        {visiblePoints.map((point, index) => (
+                        {visibleInteractionPoints.map((point, index) => (
                           <div key={index} className="rounded-xl border border-white/10 bg-white/[.03] p-3">
-                            <div className="text-[9px] uppercase tracking-[.1em] text-slate-600 font-bold mb-1.5">Point {index + 1}</div>
-                            <textarea rows={2} value={point || ''} onChange={(e) => updatePoint(index, e.target.value)} className="w-full p-2.5 text-sm leading-snug" placeholder={`Point ${index + 1}`} />
+                            <div className="text-[9px] uppercase tracking-[.1em] text-slate-600 font-bold mb-2">Card / point {index + 1}</div>
+                            <label className="block text-[9px] uppercase tracking-[.08em] text-slate-500 font-semibold mb-1">Preview label</label>
+                            <textarea rows={2} value={point.label} onChange={(e) => updatePointLabel(index, e.target.value)} className="w-full p-2.5 text-sm leading-snug" placeholder="Short label shown before interaction" />
+                            <label className="block text-[9px] uppercase tracking-[.08em] text-slate-500 font-semibold mt-3 mb-1">Reveal explanation</label>
+                            <textarea rows={3} value={point.detail} onChange={(e) => updatePointDetail(index, e.target.value)} className="w-full p-2.5 text-sm leading-relaxed" placeholder="Add the explanation, consequence, example or action revealed after click" />
                           </div>
                         ))}
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-2">This layout renders up to {pointLimit} key points in the learner course. Only those visible points are editable here.</div>
+                      <div className="text-[10px] text-slate-500 mt-2">Edit each preview and its separate reveal. This layout renders up to {pointLimit} points in the learner course.</div>
                     </div>
                   )}
 

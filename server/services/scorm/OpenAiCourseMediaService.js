@@ -145,7 +145,7 @@ function highlyInteractiveCoverPrompt(prompt, analysis) {
 
     return clean([
         base,
-        `HIGHLY INTERACTIVE COVER FIDELITY: create a strong opening visual that unmistakably represents the complete course subject ${courseTitle}.`,
+        `INTERACTIVE COVER FIDELITY: create a strong opening visual that unmistakably represents the complete course subject ${courseTitle}.`,
         summary ? `Course meaning to express visually: ${summary}.` : '',
         coreLessons.length ? `Ground the hero scene in these actual course concepts: ${coreLessons.join('; ')}.` : '',
         'Choose one recognisable topic-specific hero scene with concrete objects and meaningful relationships. The image must preview what the learner will study, not merely create atmosphere.',

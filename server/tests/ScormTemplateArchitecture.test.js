@@ -186,7 +186,7 @@ describe('SCORM versioned template architecture', () => {
         course.slides[1].layoutId = 'scenario-learning.scene';
 
         expect(() => validateTemplateAnalysis(course, binding))
-            .to.throw(/does not satisfy the locked Highly Interactive template contract/);
+            .to.throw(/does not satisfy the locked Interactive template contract/);
     });
 
     it('prevents a normal rebuild request from switching templates', () => {

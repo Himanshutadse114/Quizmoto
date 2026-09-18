@@ -81,13 +81,19 @@ export function wordCount(value) {
 
 export function normalizeCourseSlide(slide, index) {
   const s = slide || {};
+  const keyPoints = Array.isArray(s.keyPoints) ? s.keyPoints : [];
+  const authoredInteractions = Array.isArray(s.interactionPoints) ? s.interactionPoints : [];
   return {
     ...s,
     title: s.title || `Section ${index + 1}`,
     content: s.content || '',
     introText: s.introText || '',
     revealText: s.revealText || '',
-    keyPoints: Array.isArray(s.keyPoints) ? s.keyPoints : [],
+    keyPoints,
+    interactionPoints: keyPoints.map((point, pointIndex) => ({
+      label: String(authoredInteractions[pointIndex]?.label || point || ''),
+      detail: String(authoredInteractions[pointIndex]?.detail || '')
+    })),
     layout: s.layout || 'cards',
     screenType: s.screenType || 'concept',
     backgroundStyle: s.backgroundStyle || 'mesh',

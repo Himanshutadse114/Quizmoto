@@ -198,6 +198,17 @@ const SCORM_ANALYSIS_SCHEMA = {
                     learningPurpose: { type: 'string' },
                     content: { type: 'string' },
                     keyPoints: { type: 'array', items: { type: 'string' } },
+                    interactionPoints: {
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                label: { type: 'string' },
+                                detail: { type: 'string' }
+                            },
+                            required: ['label', 'detail']
+                        }
+                    },
                     layout: {
                         type: 'string',
                         enum: ['process', 'cards', 'timeline', 'comparison', 'hub', 'spotlight', 'matrix', 'cycle']
@@ -217,7 +228,7 @@ const SCORM_ANALYSIS_SCHEMA = {
                     },
                     imageQuery: { type: 'string' }
                 },
-                required: ['title', 'learningPurpose', 'content', 'keyPoints', 'layout', 'visualTitle', 'visualDirection', 'interaction', 'imageQuery']
+                required: ['title', 'learningPurpose', 'content', 'keyPoints', 'interactionPoints', 'layout', 'visualTitle', 'visualDirection', 'interaction', 'imageQuery']
             }
         },
         quiz: {
@@ -290,13 +301,21 @@ function templateInstruction(courseTemplateId, interactionLevel) {
         return `SELECTED COURSE EXPERIENCE: VISUAL PRODUCT TRAINING (${level.toUpperCase()} INTERACTION)\n\n- Write a visual-first product walkthrough where text supports inspection rather than becoming a conventional slide deck.\n- Use concise feature, component, screen, state or procedure titles.\n- Use 3-4 short key points as numbered visual callouts, ordered steps or comparison cues.\n- For products, equipment, interfaces or dashboards, make every key point something the learner can locate visually.\n- For procedures, use genuine ordered steps that can become a guided visual step rail. For two states, write a meaningful before/after or correct/incorrect comparison.\n- Do not invent controls, specifications, locations or workflow steps that are absent from the source.\n- Every screen must answer a visual question: what am I seeing, what matters, what changes, or what happens next?`;
     }
 
+    if (templateId === 'highly-interactive') {
+        return `SELECTED COURSE EXPERIENCE: INTERACTIVE (${level.toUpperCase()} INTERACTION)\n\n- Build purposeful discovery activities, not decorative cards.\n- Every interactionPoint label must be a concise 3-7 word preview. Its detail must add a distinct explanation, reason, consequence, example or action; never restate the label.\n- The learner should gain new understanding after every click. If nothing new can be revealed, use a readable non-reveal structure instead.\n- Use ordered steps only for a real sequence, comparisons only for a meaningful contrast, and inspect/reveal patterns only where deeper supporting detail exists.\n- Keep the body as connected teaching prose that explains the lesson before the activity reinforces it.`;
+    }
+
+    if (templateId === 'professional-classic') {
+        return `SELECTED COURSE EXPERIENCE: BASIC (${level.toUpperCase()} INTERACTION)\n\n- Write calm, professional teaching screens with a clear concept, explanation, realistic application and learner action.\n- Avoid presenting disconnected facts or labels without explaining why they matter.\n- Every interactionPoint label must preview a concise idea and its detail must add new explanation, consequence, example or action. Never repeat the label as the reveal.\n- Prefer immediate readability. Use an interaction only when it adds learning value.`;
+    }
+
     if (templateId !== 'scenario-learning') return '';
     const scenarioTarget = level === 'high'
         ? 'About 35-50% of suitable screens should be genuine workplace decisions.'
         : level === 'balanced'
             ? 'About 25-35% of suitable screens should be genuine workplace decisions.'
             : 'Use a small number of genuine workplace decisions and keep the remainder as guided explanation.';
-    return `SELECTED COURSE EXPERIENCE: SCENARIO LEARNING (${level.toUpperCase()} INTERACTION)\n\n- ${scenarioTarget}\n- Establish a concrete workplace moment before presenting choices.\n- On scenario screens, keyPoints must be 3-7 word response choices, decision factors or observable clues.\n- Include enough consequence and coaching in the body to explain why a response is safer, riskier or incomplete.\n- Do not force every screen into a decision. Keep definitions, procedures, comparisons and warning signs in the structure that teaches them best.\n- Do not invent organisation-specific policy, contacts, access rules or escalation routes.\n- Build a natural situation → judgement → consequence → safer-behaviour journey.`;
+    return `SELECTED COURSE EXPERIENCE: SCENARIO LEARNING (${level.toUpperCase()} INTERACTION)\n\n- ${scenarioTarget}\n- Establish a concrete workplace moment before presenting choices.\n- On scenario screens, keyPoints must be 3-7 word response choices, decision factors or observable clues.\n- For every interactionPoint, write a short response or clue label and a separate detail explaining its consequence, reasoning or coaching. Never repeat the option text as its reveal.\n- Include enough consequence and coaching in the body to explain why a response is safer, riskier or incomplete.\n- Do not force every screen into a decision. Keep definitions, procedures, comparisons and warning signs in the structure that teaches them best.\n- Do not invent organisation-specific policy, contacts, access rules or escalation routes.\n- Build a natural situation → judgement → consequence → safer-behaviour journey.`;
 }
 
 function wordCount(value) {
@@ -479,6 +498,8 @@ function qualityIssues(analysis, detailLevel) {
     let complexPunctuation = 0;
     let duplicateTitles = 0;
     let repeatedOpeners = 0;
+    let missingInteractionDetails = 0;
+    let repeatedInteractionDetails = 0;
     const seenTitles = new Set();
     const seenPointsAcrossCourse = new Set();
     const seenOpeners = new Set();
@@ -520,6 +541,22 @@ function qualityIssues(analysis, detailLevel) {
             : [];
         if (points.length < level.minPoints) weakPoints += 1;
 
+        const interactionPoints = Array.isArray(slide?.interactionPoints)
+            ? slide.interactionPoints.filter((item) => item && typeof item === 'object')
+            : [];
+        if (interactionPoints.length !== points.length) missingInteractionDetails += 1;
+        for (const item of interactionPoints) {
+            const label = String(item?.label || '').trim();
+            const detail = String(item?.detail || '').trim();
+            if (!label || !detail) {
+                missingInteractionDetails += 1;
+                continue;
+            }
+            const sameText = normalizedText(label) === normalizedText(detail);
+            const tooShallow = wordCount(detail) < Math.max(9, wordCount(label) + 4);
+            if (sameText || tooShallow) repeatedInteractionDetails += 1;
+        }
+
         const layout = String(slide?.layout || '').toLowerCase();
         const pointLimit = VISUAL_POINT_WORD_LIMITS[layout] || 11;
         for (const point of points) {
@@ -555,6 +592,8 @@ function qualityIssues(analysis, detailLevel) {
     if (premium && missingRationale > allowance) issues.push(`${missingRationale} screens do not adequately explain why the lesson matters or how the risk/mechanism works.`);
     if (weakPoints > allowance) issues.push(`${weakPoints} screens have weak visual points. Use ${level.minPoints}-5 concise, information-rich labels rather than stubs.`);
     if (overlongPoints > allowance) issues.push(`${overlongPoints} visual points are too long for clean diagrams.`);
+    if (missingInteractionDetails > allowance) issues.push(`${missingInteractionDetails} screens do not provide one complete interactionPoint label-and-detail pair for every key point.`);
+    if (repeatedInteractionDetails > allowance) issues.push(`${repeatedInteractionDetails} interaction reveals repeat their preview or add too little teaching value. Add reasoning, consequence, application or a specific action.`);
     if (genericTitles > allowance) issues.push(`${genericTitles} screen titles are generic rather than message-led.`);
     if (duplicatePoints > 0) issues.push(`${duplicatePoints} supporting points repeat wording already used elsewhere.`);
     if (duplicateTitles > 0) issues.push('At least one screen title is duplicated.');
@@ -755,6 +794,8 @@ VISUAL KEY POINTS:
 - Provide ${level.minPoints}-5 keyPoints per screen.
 - Each point should usually be 3-10 words and contain useful meaning on its own.
 - Key points should support the visual and add recall value. Do not simply copy a sentence from content.
+- Provide one interactionPoint for every keyPoint, in the same order. Use a 3-7 word label and a 12-35 word detail.
+- The interactionPoint detail must deepen the label with reasoning, consequence, application, evidence or a specific learner action. It must never repeat or lightly paraphrase the label.
 - Do not reuse the same key-point phrase on another screen.
 - Do not create synonymous duplicates such as "check independently", "confirm another way" and "verify through a trusted route" on different screens unless each phrase teaches a genuinely different condition or method.
 - Choose layout semantically: process=ordered steps; timeline=time/sequence; comparison=meaningful contrast; matrix=two-factor decisions; hub/cards=distinct categories; spotlight=one scenario or decisive lesson; cycle=recurring activity.
@@ -785,11 +826,11 @@ Return only valid JSON with keys title, summary, slides and quiz. Do not output 
 }
 
 function refinementInstruction(analysis, issues, detailLevel, level) {
-    return `SENIOR INSTRUCTIONAL EDITOR PASS:\nThe draft below is not yet publication quality. Fix the entire JSON as a professional course editor.\n\nQUALITY FINDINGS:\n- ${issues.join('\n- ')}\n\nEDITORIAL REQUIREMENTS:\n- Keep all source-grounded facts that are already correct. Do not invent facts.\n- Strengthen weak screens using additional explanation, reasoning, source details, application and learner action — never padding.\n- Aim for ${level.screenWords} words per screen, written as ${level.minSentences}-9 short sentences.\n- Keep sentences normally 12-18 words and below ${level.hardSentenceWords} words. Split dense clauses. Avoid semicolons.\n- Make the sequence feel like one coherent ${detailLevel} course, not independent AI summaries.\n- Give every screen a unique learningPurpose and one distinct lesson, application/example and learner behaviour.\n- Use ${level.minPoints}-5 concise visual key points. Remove exact and semantic repetition across screens.\n- Give every screen a concrete visualDirection with a distinct setting, object family, camera angle and composition.\n- Keep the summary within ${level.summaryMinWords}-${level.summaryMaxWords} words.\n- Use ${level.quizMin}-${level.quizMax} strong knowledge checks with mostly workplace scenarios and explanations of at least ${level.quizExplanationMinWords} words.\n- Return only the improved JSON.\n\nDRAFT:\n${JSON.stringify(analysis)}`;
+    return `SENIOR INSTRUCTIONAL EDITOR PASS:\nThe draft below is not yet publication quality. Fix the entire JSON as a professional course editor.\n\nQUALITY FINDINGS:\n- ${issues.join('\n- ')}\n\nEDITORIAL REQUIREMENTS:\n- Keep all source-grounded facts that are already correct. Do not invent facts.\n- Strengthen weak screens using additional explanation, reasoning, source details, application and learner action — never padding.\n- Aim for ${level.screenWords} words per screen, written as ${level.minSentences}-9 short sentences.\n- Keep sentences normally 12-18 words and below ${level.hardSentenceWords} words. Split dense clauses. Avoid semicolons.\n- Make the sequence feel like one coherent ${detailLevel} course, not independent AI summaries.\n- Give every screen a unique learningPurpose and one distinct lesson, application/example and learner behaviour.\n- Use ${level.minPoints}-5 concise visual key points. Remove exact and semantic repetition across screens.\n- Preserve or improve interactionPoints. Every label must be concise and every detail must teach something beyond its label.\n- Give every screen a concrete visualDirection with a distinct setting, object family, camera angle and composition.\n- Keep the summary within ${level.summaryMinWords}-${level.summaryMaxWords} words.\n- Use ${level.quizMin}-${level.quizMax} strong knowledge checks with mostly workplace scenarios and explanations of at least ${level.quizExplanationMinWords} words.\n- Return only the improved JSON.\n\nDRAFT:\n${JSON.stringify(analysis)}`;
 }
 
 function uniquenessRefinementInstruction(analysis, issues, detailLevel, level) {
-    return `COURSE UNIQUENESS EDITOR PASS:\nThe draft repeats learning points or teaching language across screens. Rewrite it into a premium ${detailLevel} course with no redundant teaching.\n\nREPETITION FINDINGS:\n- ${issues.join('\n- ')}\n\nREQUIRED EDIT:\n- Preserve accurate source-grounded facts, the course title and the overall sequence.\n- Build an exclusive coverage ledger internally. Each fact, decision, example, consequence and behaviour must have one primary screen.\n- Give every screen a unique learningPurpose. If two screens have the same purpose, merge the useful reasoning into the stronger screen and use the other screen for a different source-supported lesson.\n- Remove semantic repetition, including paraphrases and synonyms. A repeated idea may receive one brief continuity reference, but it must not be retaught.\n- Rewrite keyPoints so every point contributes new recall value and no two screens carry the same advice in different words.\n- Keep each screen near ${level.screenWords} words and preserve practical examples, consequences and learner actions without padding.\n- Give every screen a 25-55 word visualDirection. Keep one premium art style, but vary setting, object family, camera angle and composition. Do not repeat generic desk, laptop, phone, notebook, mug or plant scenes.\n- Keep ${level.quizMin}-${level.quizMax} distinct knowledge checks. Avoid asking the same decision in different wording.\n- Return the complete improved JSON only.\n\nDRAFT:\n${JSON.stringify(analysis)}`;
+    return `COURSE UNIQUENESS EDITOR PASS:\nThe draft repeats learning points or teaching language across screens. Rewrite it into a premium ${detailLevel} course with no redundant teaching.\n\nREPETITION FINDINGS:\n- ${issues.join('\n- ')}\n\nREQUIRED EDIT:\n- Preserve accurate source-grounded facts, the course title and the overall sequence.\n- Build an exclusive coverage ledger internally. Each fact, decision, example, consequence and behaviour must have one primary screen.\n- Give every screen a unique learningPurpose. If two screens have the same purpose, merge the useful reasoning into the stronger screen and use the other screen for a different source-supported lesson.\n- Remove semantic repetition, including paraphrases and synonyms. A repeated idea may receive one brief continuity reference, but it must not be retaught.\n- Rewrite keyPoints and interactionPoints so every preview and reveal contributes new recall value and no two screens carry the same advice in different words.\n- Keep each screen near ${level.screenWords} words and preserve practical examples, consequences and learner actions without padding.\n- Give every screen a 25-55 word visualDirection. Keep one premium art style, but vary setting, object family, camera angle and composition. Do not repeat generic desk, laptop, phone, notebook, mug or plant scenes.\n- Keep ${level.quizMin}-${level.quizMax} distinct knowledge checks. Avoid asking the same decision in different wording.\n- Return the complete improved JSON only.\n\nDRAFT:\n${JSON.stringify(analysis)}`;
 }
 
 async function analyzePolicy({

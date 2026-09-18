@@ -39,6 +39,10 @@ export function useAuthorEditLoad({
           title: s.title || '',
           content: s.content || '',
           keyPoints: Array.isArray(s.keyPoints) ? s.keyPoints : [],
+          interactionPoints: (Array.isArray(s.keyPoints) ? s.keyPoints : []).map((point, pointIndex) => ({
+            label: String(s.interactionPoints?.[pointIndex]?.label || point || ''),
+            detail: String(s.interactionPoints?.[pointIndex]?.detail || '')
+          })),
           imageQuery: s.imageQuery || '',
           layout: s.layout || s.slideType || 'cards',
           visualTitle: s.visualTitle || s.title || `Section ${index + 1}`,

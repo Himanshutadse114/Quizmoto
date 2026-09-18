@@ -138,11 +138,11 @@ function upgradeProgressCopy(migration) {
     }
     if (migration?.upgradeKind === 'highly-interactive') {
         return {
-            stage: 'Balancing Highly Interactive activities',
+            stage: 'Balancing Interactive activities',
             detail: 'Replacing repeated select-to-explore screens with a varied activity sequence while keeping the existing course media.',
             packageDetail: 'Combining the balanced interaction plan with the latest mobile learner runtime and existing images.',
-            savedDetail: `Highly Interactive was upgraded from ${migration.previousVersion} to ${migration.currentVersion}.`,
-            completeDetail: 'Highly Interactive now uses varied activity patterns and fully stacked mobile layouts.'
+            savedDetail: `Interactive was upgraded from ${migration.previousVersion} to ${migration.currentVersion}.`,
+            completeDetail: 'Interactive now uses varied activity patterns and fully stacked mobile layouts.'
         };
     }
     return {

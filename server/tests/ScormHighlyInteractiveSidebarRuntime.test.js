@@ -73,7 +73,8 @@ describe('Highly Interactive learner sidebar runtime', () => {
         expect(js).to.include("front.appendChild(make('span','qmx-interaction-hint','Click to reveal'))");
         expect(js).to.include("back.appendChild(make('span','qmx-interaction-detail',item.detail))");
         expect(js).to.include("back.appendChild(make('span','qmx-interaction-hint','Click to flip back'))");
-        expect(js).to.include('labelFrom(detailFrom(card),i)');
+        expect(js).to.include('data-qmx-label');
+        expect(js).to.include('label:labelOf(card,i)');
     });
 
     it('gives reveal, step and explore interactions explicit learner instructions', () => {

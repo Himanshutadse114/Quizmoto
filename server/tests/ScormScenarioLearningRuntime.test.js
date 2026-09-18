@@ -59,8 +59,10 @@ describe('Scenario Learning template runtime', () => {
             keyPoints: ['Exploit human courtesy', 'Distracted employee', 'Individual authentication']
         }, 'scenario-learning');
 
-        expect(fitted.keyPoints[0]).to.match(/courtesy/i);
-        expect(fitted.keyPoints[0].split(/\s+/).length).to.be.greaterThan(4);
+        expect(fitted.keyPoints[0]).to.equal('Exploit human courtesy');
+        expect(fitted.interactionPoints[0].label).to.equal('Exploit human courtesy');
+        expect(fitted.interactionPoints[0].detail).to.match(/carrying boxes|secure door/i);
+        expect(fitted.interactionPoints[0].detail).to.not.equal(fitted.interactionPoints[0].label);
     });
 
     it('injects a dedicated Scenario Learning experience without affecting other templates', () => {
@@ -88,7 +90,8 @@ describe('Scenario Learning template runtime', () => {
         expect(scenario).to.include('SCENARIO LEARNING');
         expect(scenario).to.include('Do not force every screen into a decision');
         expect(scenario).to.include('keyPoints must be 3-7 word response choices');
-        expect(templateInstruction('highly-interactive', 'high')).to.equal('');
+        expect(templateInstruction('highly-interactive', 'high')).to.include('INTERACTIVE');
+        expect(templateInstruction('highly-interactive', 'high')).to.include('never restate the label');
     });
 
     it('uses a substantial desktop activity canvas while preserving the responsive breakpoint', () => {

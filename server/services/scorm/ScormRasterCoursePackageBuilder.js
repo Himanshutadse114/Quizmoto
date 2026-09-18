@@ -118,6 +118,15 @@ function html(value) {
         .replace(/'/g, '&#39;');
 }
 
+function attribute(value) {
+    return text(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function resolveCourseTheme(analysis, templateId) {
     const requested = text(analysis?.courseTheme).toLowerCase();
     if (requested && COURSE_THEMES[requested]) return COURSE_THEMES[requested];
@@ -161,25 +170,41 @@ function keyPoints(slide, limit = 4) {
         .slice(0, limit);
 }
 
+function interactionPoints(slide, limit = 4) {
+    const labels = keyPoints(slide, limit);
+    const authored = Array.isArray(slide?.interactionPoints) ? slide.interactionPoints : [];
+    return labels.map((fallbackLabel, index) => {
+        const item = authored[index] && typeof authored[index] === 'object' ? authored[index] : {};
+        return {
+            label: text(item.label || fallbackLabel),
+            detail: text(item.detail || fallbackLabel)
+        };
+    });
+}
+
+function pointAttributes(point) {
+    return ` data-qmx-label="${attribute(point.label)}" data-qmx-detail="${attribute(point.detail)}"`;
+}
+
 function imageFigure(path, alt, extraClass = '') {
     if (!path) return '';
     return `<figure class="qmx-native-media ${extraClass}"><img src="${html(path)}" alt="${html(alt || 'Learning visual')}" loading="eager" decoding="async"></figure>`;
 }
 
 function renderPoints(slide) {
-    const points = keyPoints(slide, 4);
+    const points = interactionPoints(slide, 4);
     if (!points.length) return '';
     const layout = text(slide?.layout).toLowerCase();
     if (layout === 'process' || layout === 'timeline' || layout === 'cycle') {
-        return `<div class="qmx-process">${points.map((point, index) => `<div class="qmx-step"><span>${String(index + 1).padStart(2, '0')}</span><p>${html(point)}</p></div>`).join('')}</div>`;
+        return `<div class="qmx-process">${points.map((point, index) => `<div class="qmx-step"${pointAttributes(point)}><span>${String(index + 1).padStart(2, '0')}</span><p${pointAttributes(point)}>${html(point.detail)}</p></div>`).join('')}</div>`;
     }
     if (layout === 'comparison') {
         const split = Math.max(1, Math.ceil(points.length / 2));
         const left = points.slice(0, split);
         const right = points.slice(split);
-        return `<div class="qmx-compare"><div class="qmx-compare-col"><b>Consider</b>${left.map((point) => `<p>${html(point)}</p>`).join('')}</div><div class="qmx-compare-col qmx-compare-accent"><b>Apply</b>${(right.length ? right : left.slice(-1)).map((point) => `<p>${html(point)}</p>`).join('')}</div></div>`;
+        return `<div class="qmx-compare"><div class="qmx-compare-col"><b>Consider</b>${left.map((point) => `<p${pointAttributes(point)}>${html(point.detail)}</p>`).join('')}</div><div class="qmx-compare-col qmx-compare-accent"><b>Apply</b>${(right.length ? right : left.slice(-1)).map((point) => `<p${pointAttributes(point)}>${html(point.detail)}</p>`).join('')}</div></div>`;
     }
-    return `<div class="qmx-cards">${points.map((point, index) => `<div class="qmx-card"><span>${String(index + 1).padStart(2, '0')}</span><p>${html(point)}</p></div>`).join('')}</div>`;
+    return `<div class="qmx-cards">${points.map((point, index) => `<div class="qmx-card"${pointAttributes(point)}><span>${String(index + 1).padStart(2, '0')}</span><p${pointAttributes(point)}>${html(point.detail)}</p></div>`).join('')}</div>`;
 }
 
 function renderCover(analysis) {

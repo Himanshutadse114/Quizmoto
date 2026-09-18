@@ -115,7 +115,7 @@ const COURSE_TEMPLATE_VERSIONS = Object.freeze({
         '1.0.0': template({
             id: 'highly-interactive',
             version: '1.0.0',
-            name: 'Highly Interactive',
+            name: 'Interactive',
             shortName: 'Interactive',
             description: 'Exploration-led learning with flip cards, hotspots, reveals, timelines and decisions.',
             experience: 'Explore and discover',
@@ -139,7 +139,7 @@ const COURSE_TEMPLATE_VERSIONS = Object.freeze({
             id: 'highly-interactive',
             version: '1.1.0',
             rendererVersion: 2,
-            name: 'Highly Interactive',
+            name: 'Interactive',
             shortName: 'Interactive',
             description: 'Varied activity-led learning with balanced reveals, comparisons, guided sequences and focused takeaways.',
             experience: 'Interact in different ways',

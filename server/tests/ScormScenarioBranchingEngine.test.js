@@ -67,7 +67,7 @@ describe('Scenario Learning branching engine v3', () => {
         expect(fitted.keyPoints).to.deep.equal(slide.keyPoints);
     });
 
-    it('continues enriching non-decision Scenario learning screens', () => {
+    it('keeps concise labels and adds distinct explanations to non-decision Scenario screens', () => {
         const slide = {
             title: 'Warning signs',
             content: 'An urgent deadline is designed to reduce careful checking. A mismatched sender address can reveal impersonation.',
@@ -78,7 +78,11 @@ describe('Scenario Learning branching engine v3', () => {
         };
         const fitted = fitSlidePresentationContent(slide, 'scenario-learning');
         expect(fitted.keyPoints).to.have.length(2);
-        expect(fitted.keyPoints.join(' ')).to.include('urgent');
+        expect(fitted.keyPoints).to.deep.equal(slide.keyPoints);
+        expect(fitted.interactionPoints).to.have.length(2);
+        expect(fitted.interactionPoints[0].label).to.equal('Urgent deadline');
+        expect(fitted.interactionPoints[0].detail.toLowerCase()).to.include('urgent');
+        expect(fitted.interactionPoints[0].detail).to.not.equal(fitted.interactionPoints[0].label);
     });
 
     it('builds decision nodes with a unique consequence branch for every response', () => {

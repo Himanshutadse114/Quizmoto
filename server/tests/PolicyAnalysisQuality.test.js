@@ -34,7 +34,11 @@ describe('PolicyAnalysisService content quality', () => {
                 title: `Recognise the warning signal ${index + 1}`,
                 content: richContent(index),
                 layout: 'process',
-                keyPoints: pointSets[index]
+                keyPoints: pointSets[index],
+                interactionPoints: pointSets[index].map((label) => ({
+                    label,
+                    detail: `${label} matters because it helps the learner assess the request, verify it independently and choose a safer response.`
+                }))
             })),
             quiz: goodQuiz
         };

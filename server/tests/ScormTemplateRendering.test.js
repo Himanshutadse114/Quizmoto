@@ -97,19 +97,26 @@ describe('SCORM template fixed-stage rendering', () => {
         expect(wordCount(fitted.displayContent)).to.be.at.most(BODY_WORD_BUDGETS['highly-interactive'].cards);
     });
 
-    it('uses complete supporting statements instead of clipped card fragments', () => {
+    it('keeps concise previews separate from complete reveal explanations', () => {
         const fitted = fitSlidePresentationContent({
             title: 'Inspect PDF attachments',
             layout: 'cards',
-            content: 'A PDF attachment can contain a malicious script or a deceptive link. Verify unexpected files before opening them.',
+            content: 'A PDF attachment can contain a malicious script or a deceptive link. Verify unexpected files through a trusted channel before opening them or entering credentials.',
             keyPoints: ['Malicious PDF content', 'Verify unexpected files']
         }, 'highly-interactive');
 
-        expect(fitted.keyPoints).to.deep.equal([
-            'A PDF attachment can contain a malicious script or a deceptive link.',
-            'Verify unexpected files before opening them.'
+        expect(fitted.keyPoints).to.deep.equal(['Malicious PDF content', 'Verify unexpected files']);
+        expect(fitted.interactionPoints).to.deep.equal([
+            {
+                label: 'Malicious PDF content',
+                detail: 'A PDF attachment can contain a malicious script or a deceptive link.'
+            },
+            {
+                label: 'Verify unexpected files',
+                detail: 'Verify unexpected files through a trusted channel before opening them or entering credentials.'
+            }
         ]);
-        fitted.keyPoints.forEach((point) => expect(point).to.match(/[.!?]$/));
+        fitted.interactionPoints.forEach((point) => expect(point.detail).to.not.equal(point.label));
     });
 
     it('injects template metadata before generic body interaction scripts and has no clipping floor', () => {

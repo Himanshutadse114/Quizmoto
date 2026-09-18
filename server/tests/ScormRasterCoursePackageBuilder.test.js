@@ -14,6 +14,11 @@ function analysisFixture() {
                 title: 'Why Emotional Understanding Matters',
                 content: 'Emotional understanding supports self-awareness, empathy and better decisions.',
                 keyPoints: ['Self-awareness', 'Empathy', 'Thoughtful decisions'],
+                interactionPoints: [
+                    { label: 'Notice your response', detail: 'Recognising your own emotional response helps you pause before choosing how to act.' },
+                    { label: 'Consider another view', detail: 'Empathy helps you test your first interpretation against what another person may be experiencing.' },
+                    { label: 'Choose deliberately', detail: 'Using both perspectives supports a calmer decision instead of an immediate reaction.' }
+                ],
                 layout: 'cards',
                 visualAsset: 'assets/media/slide-001.webp',
                 rasterVisualAsset: 'assets/media/slide-001.webp'
@@ -46,6 +51,9 @@ describe('native raster SCORM course builder', () => {
         expect(html).to.include('assets/media/slide-001.webp');
         expect(html).to.include('assets/media/slide-002.webp');
         expect(html).to.include('<img src="assets/media/slide-001.webp"');
+        expect(html).to.include('data-qmx-label="Notice your response"');
+        expect(html).to.include('data-qmx-detail="Recognising your own emotional response helps you pause before choosing how to act."');
+        expect(html).to.include('>Recognising your own emotional response helps you pause before choosing how to act.</p>');
         expect(html).to.not.include('<svg');
         expect(html).to.not.include('quizmoto-replicate-media-script');
         expect(html).to.not.include('quizmoto-course-visual-v6-script');

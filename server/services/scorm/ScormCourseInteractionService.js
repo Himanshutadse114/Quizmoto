@@ -207,8 +207,10 @@ function courseInteractionScript() {
     var numberNode = card.querySelector('span');
     var copyNode = card.querySelector('p');
     var number = clean(numberNode && numberNode.textContent) || String(index + 1).padStart(2,'0');
-    var copy = clean(copyNode && copyNode.textContent);
+    var copy = clean(card.getAttribute('data-qmx-detail') || (copyNode && copyNode.getAttribute('data-qmx-detail')) || (copyNode && copyNode.textContent));
+    var label = clean(card.getAttribute('data-qmx-label') || (copyNode && copyNode.getAttribute('data-qmx-label')));
     if (!copy) return;
+    if (!label) label = 'Key point ' + number;
 
     card.textContent = '';
     card.classList.add('qmx-flip-card');
@@ -224,7 +226,7 @@ function courseInteractionScript() {
     var back = makeNode('div','qmx-flip-face qmx-flip-back');
 
     front.appendChild(makeNode('span','qmx-flip-number',number));
-    front.appendChild(makeNode('div','qmx-flip-title','Key point ' + number));
+    front.appendChild(makeNode('div','qmx-flip-title',label));
     front.appendChild(makeNode('div','qmx-flip-hint','Click to reveal'));
 
     back.appendChild(makeNode('span','qmx-flip-number',number));
