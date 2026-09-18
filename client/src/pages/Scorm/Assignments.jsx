@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import { copyText } from '../../utils/clipboard';
 import './scormCampaignReporting.css';
 
 const PAGE_SIZE = 6;
@@ -167,7 +168,7 @@ export default function Assignments() {
   const copyPortal = async (campaign) => {
     if (!campaign?.portalPath) return;
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}${campaign.portalPath}`);
+      await copyText(`${window.location.origin}${campaign.portalPath}`, { successMessage: 'Campaign learner link copied.' });
       setMessage('Campaign learner link copied.');
     } catch (_) {
       setError('Could not copy the campaign portal link.');

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import { copyText } from '../../utils/clipboard';
 
 function Notice({ notice }) {
   if (!notice) return null;
@@ -225,7 +226,7 @@ export default function EmailTemplatesPanel() {
                         key={variable}
                         type="button"
                         title="Insert into HTML at the current cursor position by copying this variable"
-                        onClick={() => navigator.clipboard?.writeText(`{{${variable}}}`)}
+                        onClick={() => copyText(`{{${variable}}}`, { successMessage: `Variable {{${variable}}} copied.`, errorMessage: 'Could not copy the variable.' }).catch(() => {})}
                         className="rounded-lg border px-2 py-1.5 text-[9px] font-mono hover:border-[#4FC9BF] transition"
                         style={{ borderColor: 'var(--scorm-line)' }}
                       >

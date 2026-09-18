@@ -4,6 +4,7 @@ import axios from 'axios';
 import { ArrowLeft, BarChart3, BookOpen, BookOpenCheck, Copy, Film, KeyRound, RefreshCw, UserRoundCog, Users } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import { copyText } from '../../utils/clipboard';
 import './scormCampaignReporting.css';
 
 function statusLabel(status) {
@@ -49,7 +50,7 @@ export default function CampaignDetail() {
 
   const copyPortal = async () => {
     if (!campaign?.portalPath) return;
-    try { await navigator.clipboard.writeText(`${window.location.origin}${campaign.portalPath}`); setMessage('Campaign learner link copied.'); }
+    try { await copyText(`${window.location.origin}${campaign.portalPath}`, { successMessage: 'Campaign learner link copied.' }); setMessage('Campaign learner link copied.'); }
     catch { setError('Could not copy the campaign learner link.'); }
   };
 

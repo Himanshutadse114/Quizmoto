@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { BookOpenCheck, ExternalLink, RefreshCw, Share2 } from 'lucide-react';
 import axios from 'axios';
 import { apiUrl } from '../../config';
+import { copyText } from '../../utils/clipboard';
 import './flipbookLibrary.css';
 
 const API = '/api/scorm/flipbooks';
@@ -33,7 +34,7 @@ export default function FlipbookLibraryViewer() {
     const url = window.location.href;
     try {
       if (navigator.share) await navigator.share({ title: library?.title || 'LMSGEN Publica Library', url });
-      else await navigator.clipboard.writeText(url);
+      else await copyText(url, { successMessage: 'Library link copied.' });
     } catch { return; }
   };
 

@@ -7,6 +7,7 @@ import { Users, Play, Wifi, WifiOff, Copy, Check } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import ReactionCanvas from '../../components/ReactionCanvas';
 import AvatarDisplay from '../../components/AvatarDisplay';
+import { copyText } from '../../utils/clipboard';
 
 const PlayerCard = ({ player }) => {
     const online = !!player.socketId;
@@ -110,15 +111,11 @@ const Lobby = () => {
 
     const copyJoinLink = async () => {
         try {
-            if (navigator.clipboard?.writeText) {
-                await navigator.clipboard.writeText(joinUrl);
-            } else {
-                window.prompt('Copy this join link', joinUrl);
-            }
+            await copyText(joinUrl, { successMessage: 'Quiz join link copied.' });
             setCopied(true);
             window.setTimeout(() => setCopied(false), 1800);
         } catch {
-            window.prompt('Copy this join link', joinUrl);
+            setCopied(false);
         }
     };
 

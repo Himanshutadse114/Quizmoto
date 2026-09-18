@@ -4,6 +4,7 @@ import { BarChart3, Copy, ExternalLink, Globe2, Library, Link2, RefreshCw, Save,
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import { copyText } from '../../utils/clipboard';
 import './flipbookLibraryShare.css';
 
 const API = '/api/scorm/flipbooks';
@@ -40,7 +41,7 @@ export default function FlipbookLibraryShare() {
 
   const copy = async () => {
     if (!library?.shareUrl) return;
-    try { await navigator.clipboard.writeText(library.shareUrl); setCopied(true); window.setTimeout(() => setCopied(false), 1300); } catch { setError('Could not copy the library link.'); }
+    try { await copyText(library.shareUrl, { successMessage: 'Publica library link copied.' }); setCopied(true); window.setTimeout(() => setCopied(false), 1300); } catch { setError('Could not copy the library link.'); }
   };
 
   const share = async () => {

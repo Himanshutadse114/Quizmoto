@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import { copyText } from '../../utils/clipboard';
 import './flipbooks.css';
 
 const API = '/api/scorm/flipbooks';
@@ -207,7 +208,7 @@ export default function FlipbookEditor() {
 
   const copyShare = async () => {
     if (!publishedUrl) return;
-    try { await navigator.clipboard.writeText(publishedUrl); setSuccess('Share link copied.'); } catch { setError('Could not copy the share link.'); }
+    try { await copyText(publishedUrl, { successMessage: 'Publication share link copied.' }); setSuccess('Share link copied.'); } catch { setError('Could not copy the share link.'); }
   };
 
   if (loading) return <div className="flip-loading"><Loader2 size={20} className="animate-spin" /> Loading editor…</div>;

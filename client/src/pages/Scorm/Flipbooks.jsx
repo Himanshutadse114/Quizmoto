@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import { copyText } from '../../utils/clipboard';
 import FlipbookLibraryShare from './FlipbookLibraryShare';
 import './flipbooks.css';
 
@@ -52,7 +53,7 @@ function FlipbookCard({ book, onDelete, onCopied }) {
     if (!published) return;
     const url = shareUrl(book);
     try {
-      await navigator.clipboard.writeText(url);
+      await copyText(url, { successMessage: 'Publication share link copied.' });
       onCopied(book.id);
     } catch (_) {}
   };

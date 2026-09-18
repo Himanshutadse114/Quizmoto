@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import { copyText } from '../../utils/clipboard';
 
 const DEFAULT_PERMISSIONS = {
   courseAuthoring: true,
@@ -204,7 +205,7 @@ function TenantCard({ tenant, onRefresh }) {
   };
 
   const copyLogin = async () => {
-    try { await navigator.clipboard.writeText(`${window.location.origin}/login`); setCopied(true); window.setTimeout(() => setCopied(false), 1400); } catch { setCopied(false); }
+    try { await copyText(`${window.location.origin}/login`, { successMessage: 'Staff login link copied.' }); setCopied(true); window.setTimeout(() => setCopied(false), 1400); } catch { setCopied(false); }
   };
 
   const e = tenant.entitlement || {};

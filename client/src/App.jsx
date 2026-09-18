@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocatio
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
+import ClipboardFeedback from './components/ClipboardFeedback';
 import MarketingSite from './pages/Marketing/MarketingSite';
 import './pages/Host/liveQuizTheme.css';
 import './pages/Host/classicQuizmoto.css';
@@ -309,6 +310,7 @@ function App() {
       <Router basename={import.meta.env.VITE_APP_BASENAME || '/'}>
         <SocketProvider>
           <LiveQuizAudioDirector />
+          <ClipboardFeedback />
           <AppSurface />
         </SocketProvider>
       </Router>

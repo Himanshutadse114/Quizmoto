@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import { copyText } from '../../utils/clipboard';
 
 const LEARNER_JOINING_MODES = [
   {
@@ -159,7 +160,7 @@ export default function LearnerAccessSettings() {
 
   const copy = async (value, label) => {
     try {
-      await navigator.clipboard.writeText(value);
+      await copyText(value, { successMessage: `${label} copied.` });
       setMessage(`${label} copied.`);
     } catch (_) {
       setError(`Could not copy ${label.toLowerCase()}.`);

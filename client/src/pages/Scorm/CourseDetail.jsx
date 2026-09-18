@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import { copyText } from '../../utils/clipboard';
 import { useSocket } from '../../context/SocketContext';
 import LearnerAuditDetail from './LearnerAuditDetail';
 
@@ -264,9 +265,13 @@ export default function ScormCourseDetail() {
     } catch (err) { setMsg(err.response?.data?.message || err.message); }
   };
 
-  const copyInvite = () => {
-    navigator.clipboard?.writeText(inviteUrl);
-    setMsg('Invite link copied');
+  const copyInvite = async () => {
+    try {
+      await copyText(inviteUrl, { successMessage: 'Learner invite link copied.' });
+      setMsg('Invite link copied');
+    } catch {
+      setMsg('Could not copy the learner invite link.');
+    }
   };
 
   if (!course) return <div className="p-8 text-[#667085]">{msg || 'Loading course…'}</div>;
