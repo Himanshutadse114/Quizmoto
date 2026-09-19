@@ -174,7 +174,12 @@ function cacheKey(config) {
 
 function freshFor(url) {
   const clean = String(url || '').toLowerCase();
-  if (clean.includes('/tracking') || clean.includes('/analytics') || clean.includes('/active-sessions')) return 15_000;
+  // Live Quizmoto sessions remain near-real-time. Administrative tracking and
+  // analytics are comparatively expensive relational reads, so keep their
+  // prepared response for one minute instead of re-querying Postgres whenever
+  // the user moves between dashboard pages.
+  if (clean.includes('/active-sessions')) return 15_000;
+  if (clean.includes('/tracking') || clean.includes('/analytics')) return 60_000;
   if (clean.includes('/reports')) return 30_000;
   if (
     clean.includes('/courses') ||

@@ -381,6 +381,28 @@ router.post('/:id/reprocess', auth, async (req, res) => {
 router.get('/', auth, async (req, res) => {
     const list = await ScormPackage.findAll({
         where: { hostId: req.userId },
+        // Inventory views only need compact package metadata. analysisJson can
+        // contain the complete authored course (including every slide, quiz and
+        // visual reference), so selecting it here sends the same large payload
+        // from Postgres on every dashboard/library refresh. Editors retrieve the
+        // full document explicitly through /:id/analysis instead.
+        attributes: [
+            'id',
+            'hostId',
+            'title',
+            'description',
+            'standard',
+            'storageKeyZip',
+            'entryHref',
+            'byteSize',
+            'fileCount',
+            'status',
+            'source',
+            'templateId',
+            'errorMessage',
+            'createdAt',
+            'updatedAt'
+        ],
         order: [['createdAt', 'DESC']]
     });
     res.json(list.filter((p) => p.status !== 'deleted'));

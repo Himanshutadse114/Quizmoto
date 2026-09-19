@@ -62,7 +62,9 @@ export default function ScormLibrary() {
 
   const isPresentation = (p) => p?.source === 'presentation_import';
   const isVideoCourse = (p) => p?.source === 'video_course';
-  const isQuizmotoAi = (p) => p?.source === 'ai_author' || isPresentation(p) || (p?.analysisJson && String(p.analysisJson).includes('quizmoto'));
+  // The inventory endpoint deliberately returns metadata only. Full authored
+  // course JSON is fetched solely by the editor's /analysis request.
+  const isQuizmotoAi = (p) => p?.source === 'ai_author' || isPresentation(p);
   const isGenerated = (p) => isQuizmotoAi(p) || isVideoCourse(p);
 
   const filtered = useMemo(() => {

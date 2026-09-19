@@ -15,6 +15,8 @@ describe('one-time platform startup preparation', () => {
     const apiCache = clientSource('services/scormApiCache.js');
     const publica = clientSource('pages/Scorm/Flipbooks.jsx');
     const publicaLibrary = clientSource('pages/Scorm/FlipbookLibraryShare.jsx');
+    const courseLibrary = clientSource('pages/Scorm/Library.jsx');
+    const packagesRoute = fs.readFileSync(path.join(__dirname, '..', 'routes', 'scorm', 'packages.js'), 'utf8');
 
     it('runs the preparation gate inside authenticated platform routes', () => {
         expect(app).to.include('<PlatformStartupGate><ScormPlatformShell /></PlatformStartupGate>');
@@ -46,5 +48,21 @@ describe('one-time platform startup preparation', () => {
     it('does not expose editable shared-library URLs', () => {
         expect(publicaLibrary).not.to.include('Custom library link');
         expect(publicaLibrary).not.to.include('shareSlug');
+    });
+
+    it('keeps full authored course JSON out of package inventory reads', () => {
+        const inventoryRoute = packagesRoute.slice(
+            packagesRoute.indexOf("router.get('/', auth"),
+            packagesRoute.indexOf("router.get('/:id/download-link'")
+        );
+        expect(inventoryRoute).to.include("attributes: [");
+        expect(inventoryRoute).not.to.include("'analysisJson'");
+        expect(courseLibrary).not.to.include("p?.analysisJson");
+        expect(courseLibrary).to.include("p?.source === 'ai_author'");
+    });
+
+    it('does not re-query administrative tracking on every route change', () => {
+        expect(apiCache).to.include("if (clean.includes('/active-sessions')) return 15_000");
+        expect(apiCache).to.include("if (clean.includes('/tracking') || clean.includes('/analytics')) return 60_000");
     });
 });
