@@ -1,0 +1,58 @@
+name: Production database backup
+
+on:
+  schedule:
+    # 03:00 India Standard Time every day.
+    - cron: "30 21 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-database-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install server dependencies
+        run: npm ci --prefix server
+
+      - name: Install PostgreSQL 17 client tools
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common ca-certificates
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+          pg_dump --version
+          pg_restore --version
+
+      - name: Create, verify and upload encrypted-in-transit backup
+        working-directory: server
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          S3_BUCKET: ${{ secrets.R2_BACKUP_BUCKET }}
+          S3_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          S3_REGION: auto
+          S3_FORCE_PATH_STYLE: "1"
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_BACKUP_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_BACKUP_SECRET_ACCESS_KEY }}
+          DB_BACKUP_PREFIX: database-backups/lmsgen/daily
+          DB_BACKUP_RETENTION_DAYS: "7"
+          DB_BACKUP_MINIMUM_COUNT: "7"
+        run: npm run backup:database
