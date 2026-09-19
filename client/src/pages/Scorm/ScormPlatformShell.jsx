@@ -78,6 +78,18 @@ const ANALYTICS_NAV_GROUPS = [
   }
 ];
 
+const SALES_CONTACT_URL = 'https://www.lmsgen.in/contact';
+
+function FreeAccessCard() {
+  return (
+    <div className="scorm-status-card rounded-xl px-3.5 py-3">
+      <div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />You are on free access</div>
+      <div className="mt-1.5 text-[10px] leading-relaxed">For the full LMS and AI course generation experience, contact sales.</div>
+      <a href={SALES_CONTACT_URL} className="scorm-button-primary mt-3 w-full min-h-9 px-3 inline-flex items-center justify-center gap-1.5 text-[10px] font-semibold">Contact sales <ChevronRight size={12} /></a>
+    </div>
+  );
+}
+
 const QUIZMOTO_ONLY_GROUPS = [
   {
     label: 'Free tools',
@@ -267,10 +279,7 @@ export default function ScormPlatformShell() {
           )}
 
           {quizmotoOnly ? (
-            <div className="scorm-status-card rounded-xl px-3.5 py-3">
-              <div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />Free tools access</div>
-              <div className="mt-1.5 text-[10px] leading-relaxed">Quizmoto and LMSGEN Publica are available on this account. LMSGEN tenant features unlock after the Super Admin assigns this email to a tenant.</div>
-            </div>
+            <FreeAccessCard />
           ) : !scormAccess ? (
             <div className="scorm-sidebar-profile rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
               <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={13} /> Approval pending</div>
@@ -282,7 +291,22 @@ export default function ScormPlatformShell() {
         </div>
       </aside>
 
-      {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><button aria-label="Close navigation" className="absolute inset-0 bg-[#02050b]/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)} /><div className="scorm-mobile-drawer absolute inset-y-0 left-0 w-[304px] max-w-[88vw] border-r flex flex-col"><div className="h-[72px] px-4 flex items-center justify-between border-b"><Brand theme={theme} /><button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="scorm-drawer-close w-9 h-9 grid place-items-center"><X size={17} /></button></div><Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} quizmotoOnly={quizmotoOnly} onNavigate={() => setMobileOpen(false)} /><div className="p-3 border-t"><button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><LogOut size={14} /> Sign out</span><ChevronRight size={13} /></button></div></div></div>}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button aria-label="Close navigation" className="absolute inset-0 bg-[#02050b]/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+          <div className="scorm-mobile-drawer absolute inset-y-0 left-0 w-[304px] max-w-[88vw] border-r flex flex-col">
+            <div className="h-[72px] px-4 flex items-center justify-between border-b">
+              <Brand theme={theme} />
+              <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="scorm-drawer-close w-9 h-9 grid place-items-center"><X size={17} /></button>
+            </div>
+            <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} quizmotoOnly={quizmotoOnly} onNavigate={() => setMobileOpen(false)} />
+            <div className="p-3 border-t space-y-2.5">
+              {quizmotoOnly && <FreeAccessCard />}
+              <button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><LogOut size={14} /> Sign out</span><ChevronRight size={13} /></button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="lg:pl-[268px] min-h-screen">
         <header className="scorm-topbar sticky top-0 z-30 min-h-[64px] border-b px-4 md:px-7 py-2.5 flex items-center gap-3 md:gap-4">

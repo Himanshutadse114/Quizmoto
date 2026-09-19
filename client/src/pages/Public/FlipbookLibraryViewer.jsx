@@ -1,20 +1,26 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { BookOpenCheck, ExternalLink, RefreshCw, Share2 } from 'lucide-react';
+import { BookOpenCheck, ChevronLeft, ChevronRight, ExternalLink, RefreshCw, Share2 } from 'lucide-react';
 import axios from 'axios';
 import { apiUrl } from '../../config';
 import { copyText } from '../../utils/clipboard';
 import './flipbookLibrary.css';
 
 const API = '/api/scorm/flipbooks';
+const BOOKS_PER_PAGE = 6;
 
 export default function FlipbookLibraryViewer() {
   const { shareToken = '' } = useParams();
   const [library, setLibrary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
 
   const endpoint = useMemo(() => shareToken ? apiUrl(`${API}/public-library/${encodeURIComponent(shareToken)}`) : '', [shareToken]);
+  const books = library?.books || [];
+  const pageCount = Math.max(1, Math.ceil(books.length / BOOKS_PER_PAGE));
+  const currentPage = Math.min(page, pageCount);
+  const visibleBooks = books.slice((currentPage - 1) * BOOKS_PER_PAGE, currentPage * BOOKS_PER_PAGE);
 
   useEffect(() => {
     let active = true;
@@ -29,6 +35,15 @@ export default function FlipbookLibraryViewer() {
     })();
     return () => { active = false; };
   }, [endpoint]);
+
+  useEffect(() => { setPage(1); }, [shareToken]);
+
+  const changePage = (nextPage) => {
+    setPage(Math.max(1, Math.min(pageCount, nextPage)));
+    window.requestAnimationFrame(() => {
+      document.querySelector('.public-flip-library-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
 
   const share = async () => {
     const url = window.location.href;
@@ -49,7 +64,7 @@ export default function FlipbookLibraryViewer() {
         <div className="public-flip-library-count">{library.bookCount} published publication{library.bookCount === 1 ? '' : 's'}</div>
       </header>
       <section className="public-flip-library-grid">
-        {(library.books || []).map((book) => (
+        {visibleBooks.map((book) => (
           <article className="public-flip-library-card" key={book.id}>
             <a href={book.shareUrl} className="public-flip-library-cover" aria-label={`Open ${book.title}`}>
               {book.coverPath ? <img src={apiUrl(book.coverPath)} alt="" draggable="false" /> : <div className="public-flip-library-placeholder"><BookOpenCheck size={34} /></div>}
@@ -58,6 +73,13 @@ export default function FlipbookLibraryViewer() {
           </article>
         ))}
       </section>
+      {pageCount > 1 && (
+        <nav className="public-flip-library-pagination" aria-label="Publications pages">
+          <button type="button" onClick={() => changePage(currentPage - 1)} disabled={currentPage === 1}><ChevronLeft size={15} /> Previous</button>
+          <span>Page {currentPage} of {pageCount}</span>
+          <button type="button" onClick={() => changePage(currentPage + 1)} disabled={currentPage === pageCount}>Next <ChevronRight size={15} /></button>
+        </nav>
+      )}
       {!library.books?.length && <section className="public-flip-library-empty"><BookOpenCheck size={32} /><h2>No publications yet</h2><p>The author has not published anything to this Publica library.</p></section>}
     </main>
   );
