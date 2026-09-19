@@ -23,6 +23,7 @@ const {
     updateEntitlement,
     getUsageForEmail
 } = require('../../services/scorm/ScormEntitlementService');
+const { getInfrastructureHealth } = require('../../services/scorm/InfrastructureHealthService');
 
 function requireSuperAdmin(req, res, next) {
     if (req.scormRole !== 'super_admin') {
@@ -86,6 +87,18 @@ router.get('/me', auth, async (req, res) => {
             req.scormRole === 'super_admin' ? 'super_admin' : 'admin'
         )
     });
+});
+
+router.get('/infrastructure-health', auth, requireSuperAdmin, async (req, res) => {
+    try {
+        res.set('Cache-Control', 'private, no-store');
+        res.json(await getInfrastructureHealth());
+    } catch (err) {
+        console.error('[scorm-access] infrastructure health check failed', {
+            code: err?.code || err?.name || 'UNKNOWN'
+        });
+        res.status(503).json({ message: 'Could not verify platform infrastructure right now.' });
+    }
 });
 
 router.get('/tenants', auth, requireSuperAdmin, async (req, res) => {
