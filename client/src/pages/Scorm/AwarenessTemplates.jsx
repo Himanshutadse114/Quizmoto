@@ -193,18 +193,26 @@ export default function AwarenessTemplates(){
     return html;
   };
 
+  const persistEditor=async()=>{
+    if(!editor)return null;
+    const res=await axios.put(apiUrl(API+'/mine/'+editor.id),{
+      title,subject,html:serializeEditor()
+    },{headers});
+    const saved=res.data?.template;
+    if(saved){
+      setEditor(saved);
+      setTitle(saved.title||'');
+      setSubject(saved.subject||'');
+      setMine(current=>current.map(item=>item.id===saved.id?{...item,...saved}:item));
+    }
+    return saved;
+  };
+
   const saveEditor=async()=>{
     if(!editor)return;
     setBusy('save');setNotice(null);
     try{
-      const res=await axios.put(apiUrl(API+'/mine/'+editor.id),{
-        title,subject,html:serializeEditor()
-      },{headers});
-      const saved=res.data?.template;
-      setEditor(saved);
-      setTitle(saved?.title||'');
-      setSubject(saved?.subject||'');
-      setMine(current=>current.map(item=>item.id===saved.id?{...item,...saved}:item));
+      await persistEditor();
       setNotice({type:'success',text:'Your template copy has been saved.'});
     }catch(error){setNotice({type:'error',text:apiError(error,'Unable to save the template.')})}
     finally{setBusy('')}
@@ -255,7 +263,7 @@ export default function AwarenessTemplates(){
     if(!item)return;
     setBusy('export');
     try{
-      if(editor?.id===item.id)await saveEditor();
+      if(editor?.id===item.id)await persistEditor();
       const res=await axios.post(apiUrl(API+'/mine/'+item.id+'/export-eml'),{},{headers,responseType:'blob'});
       const disposition=res.headers?.['content-disposition']||'';
       const match=disposition.match(/filename="?([^";]+)"?/i);
@@ -282,7 +290,7 @@ export default function AwarenessTemplates(){
     if(!editor||!recipients.trim())return;
     setBusy('send');setNotice(null);
     try{
-      await saveEditor();
+      await persistEditor();
       const res=await axios.post(apiUrl(API+'/mine/'+editor.id+'/send'),{recipients},{headers});
       const d=res.data?.delivery||{};
       setNotice({type:d.failed?'error':'success',text:d.failed?(d.sent+' sent, '+d.failed+' failed.'):(d.sent+' email'+(d.sent===1?'':'s')+' sent successfully.')});
