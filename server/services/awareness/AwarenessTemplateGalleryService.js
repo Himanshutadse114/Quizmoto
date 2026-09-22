@@ -160,9 +160,29 @@ function referenceZipPath(){
  ].filter(Boolean);
  return candidates.find(fp=>fs.existsSync(fp))||'';
 }
+async function ensureCentralThumbnail(r){
+ if(!r)return false;
+ const man=cManifest(r),current=man.find(a=>a.id===r.coverAssetId);
+ if(current?.role==='thumbnail')return false;
+ const storage=getObjectStorage();
+ let body;
+ try{
+  const source=current||man.find(a=>a.role!=='thumbnail');
+  body=source?await makeThumbnail(await storage.getObjectBuffer(source.storageKey)):await fallbackThumbnail();
+ }catch(_){body=await fallbackThumbnail()}
+ const asset=await putCentralAsset({storage,templateId:r.id,body,contentType:'image/jpeg',originalPath:'__generated-thumbnail__',role:'thumbnail',index:man.length});
+ r.coverAssetId=asset.id;r.assetManifestJson=JSON.stringify([...man,asset]);
+ try{await r.save()}catch(error){await storage.deleteObject(asset.storageKey).catch(()=>{});throw error}
+ return true;
+}
+async function ensureCentralThumbnails(rows){
+ let updated=0;
+ for(const row of rows||[])if(await ensureCentralThumbnail(row))updated++;
+ return updated;
+}
 async function seedReferenceTemplates(){await ensureSchema();if(String(process.env.AWARENESS_SEED_REFERENCE_TEMPLATES||'true').toLowerCase()==='false')return{seeded:0};const fp=referenceZipPath();if(!fp){logger.warn('awareness_reference_zip_missing',{module:'awareness-gallery'});return{seeded:0,missing:true}}const z=await loadZip(fs.readFileSync(fp));let seeded=0;const warnings=[];for(const[k,v]of Object.entries(REF)){if(await Central.findOne({where:{seedKey:v[0]}}))continue;const actual=Object.keys(z.files||{}).find(n=>pathKey(n)===k);if(!actual){warnings.push('Missing '+k);continue}try{await importOne(z,actual,null,'Educational-email-Templete.zip',{seedKey:v[0],title:v[1],category:v[2],description:v[3]});seeded++}catch(e){warnings.push(v[1]+': '+e.message)}}if(warnings.length)logger.warn('awareness_reference_seed_warnings',{module:'awareness-gallery',warnings});return{seeded,warnings}}
 async function ensureReady(){await ensureSchema();if(!seedPromise)seedPromise=seedReferenceTemplates().catch(e=>{seedPromise=null;throw e});return seedPromise}
-async function listCentral(includeInactive=false){await ensureReady();const rows=await Central.findAll({where:includeInactive?{}:{isActive:true},order:[['category','ASC'],['title','ASC']]});return rows.map(r=>central(r))}
+async function listCentral(includeInactive=false){await ensureReady();const rows=await Central.findAll({where:includeInactive?{}:{isActive:true},order:[['category','ASC'],['title','ASC']]});await ensureCentralThumbnails(rows);return rows.map(r=>central(r))}
 async function getCentral(id,includeInactive=false){await ensureReady();const where={id};if(!includeInactive)where.isActive=true;const r=await Central.findOne({where});if(!r)throw Object.assign(new Error('Central template not found.'),{status:404});return central(r,true)}
 async function updateCentral(id,p={}){await ensureReady();const r=await Central.findByPk(id);if(!r)throw Object.assign(new Error('Central template not found.'),{status:404});for(const[k,n]of[['title',180],['description',1500],['category',120],['subject',240]])if(Object.prototype.hasOwnProperty.call(p,k))r[k]=clean(p[k],n)||r[k];if(Object.prototype.hasOwnProperty.call(p,'isActive'))r.isActive=!!p.isActive;await r.save();return central(r)}
 async function importMine({centralTemplateId,hostId,createdByUserId=null}){await ensureReady();const source=await Central.findOne({where:{id:centralTemplateId,isActive:true}});if(!source)throw Object.assign(new Error('Central template not found.'),{status:404});const r=await UserTemplate.create({id:crypto.randomUUID(),hostId,createdByUserId,centralTemplateId:source.id,title:source.title,subject:source.subject,htmlContent:source.htmlTemplate,userAssetManifestJson:'[]',publicAssetToken:token(),status:'ready'});return mine(r,true,source)}
@@ -204,4 +224,4 @@ function toText(h){return clean(decode(String(h||'').replace(/<style\b[\s\S]*?<\
 async function each(items,n,fn){const out=new Array(items.length);let c=0;await Promise.all(Array.from({length:Math.min(n,items.length)},async()=>{for(;;){const i=c++;if(i>=items.length)return;out[i]=await fn(items[i],i)}}));return out}
 async function sendMine(id,hostId,to){if(!MailService.isConfigured())throw Object.assign(new Error('Outbound email is not configured.'),{status:503});const r=await owned(id,hostId),list=recipients(to),smtp=MailService.mailProvider()==='smtp',prep=smtp?await inlineAssets(r.htmlContent):{html:r.htmlContent,attachments:[]},txt=toText(r.htmlContent),res=await each(list,3,async email=>{try{const x=await Delivery.sendContent({to:email,subject:r.subject,html:prep.html,text:txt,attachments:prep.attachments,headers:{'X-LMSGEN-Content-Type':'awareness-library-template'}});return{email,sent:!!x.sent,messageId:x.messageId||null}}catch(e){return{email,sent:false,reason:e.code||'MAIL_SEND_FAILED'}}});const sent=res.filter(x=>x.sent).length;if(sent){r.lastSentAt=new Date();await r.save()}return{requested:list.length,sent,failed:res.length-sent,results:res}}
 async function exportMine(id,hostId,to=''){const r=await owned(id,hostId),prep=await inlineAssets(r.htmlContent),message=await Delivery.createEml({to:to?[to]:[],subject:r.subject,html:prep.html,text:toText(r.htmlContent),attachments:prep.attachments,headers:{'X-LMSGEN-Content-Type':'awareness-library-template'}});return{message,title:r.title}}
-module.exports={MAX_RECIPIENTS_PER_SEND,REF,ensureSchema,ensureReady,seedReferenceTemplates,discoverZipTemplateEntries,importCentralZip,listCentral,getCentral,updateCentral,replaceCentralThumbnail,importMine,listMine,getMine,updateMine,replaceMineImage,deleteMine,getAsset,sendMine,exportMine,assetUrl,sanitize,images,assetRefs,rewrite,resolveAsset,zipBuf,parseAssetUrl,inlineAssets,toText,referenceZipPath,thumbnailEntry,makeThumbnail};
+module.exports={MAX_RECIPIENTS_PER_SEND,REF,ensureSchema,ensureReady,seedReferenceTemplates,discoverZipTemplateEntries,importCentralZip,listCentral,getCentral,updateCentral,replaceCentralThumbnail,ensureCentralThumbnail,ensureCentralThumbnails,importMine,listMine,getMine,updateMine,replaceMineImage,deleteMine,getAsset,sendMine,exportMine,assetUrl,sanitize,images,assetRefs,rewrite,resolveAsset,zipBuf,parseAssetUrl,inlineAssets,toText,referenceZipPath,thumbnailEntry,makeThumbnail};
