@@ -223,6 +223,9 @@ export default function AwarenessTemplates(){
     if(file.size>8*1024*1024){setNotice({type:'error',text:'Choose an image smaller than 8 MB.'});return}
     setBusy('image');setNotice(null);
     try{
+      // Save any in-place text edits before replacing an image so the iframe
+      // cannot be refreshed from an older server copy and lose the user's work.
+      await persistEditor();
       const dataUrl=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)});
       const res=await axios.post(apiUrl(API+'/mine/'+editor.id+'/image'),{oldSrc:selectedImage.src,dataUrl},{headers});
       const next=res.data?.template;
