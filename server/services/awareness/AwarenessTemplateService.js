@@ -16,12 +16,14 @@ const {
     LAYOUT_IDS,
     cleanText,
     normaliseContent,
-    renderAwarenessEmail
+    renderAwarenessEmail,
+    layoutVisualSlots
 } = require('./AwarenessEmailRenderer');
 
 const MAX_RECIPIENTS_PER_SEND = 50;
 const HERO_CID = 'awareness-hero@lmsgen';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SLOT_RE = /^[a-z0-9-]{1,40}$/i;
 
 function parseJson(value, fallback = {}) {
     if (!value) return fallback;
@@ -33,10 +35,86 @@ function parseJson(value, fallback = {}) {
     }
 }
 
-function publicAssetUrl(token) {
-    return token
-        ? `${MailService.appBaseUrl()}/api/scorm/awareness-assets/${encodeURIComponent(token)}`
-        : '';
+function clampInt(value, fallback, min, max) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(min, Math.min(max, Math.floor(parsed)));
+}
+
+function maxAiImages() {
+    return clampInt(process.env.AWARENESS_MAX_AI_IMAGES, 5, 1, 5);
+}
+
+function imageConcurrency() {
+    return clampInt(process.env.AWARENESS_IMAGE_CONCURRENCY, 2, 1, 3);
+}
+
+function awarenessAssetBaseUrl() {
+    return String(
+        process.env.AWARENESS_ASSET_BASE_URL ||
+        process.env.PUBLIC_API_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        MailService.appBaseUrl()
+    ).trim().replace(/\/$/, '');
+}
+
+function publicAssetUrl(token, slot = 'hero') {
+    if (!token) return '';
+    const root = `${awarenessAssetBaseUrl()}/api/scorm/awareness-assets/${encodeURIComponent(token)}`;
+    return slot === 'hero' ? root : `${root}/${encodeURIComponent(slot)}`;
+}
+
+function cidForSlot(slot = 'hero') {
+    const safe = String(slot || 'hero').toLowerCase().replace(/[^a-z0-9-]+/g, '-').slice(0, 40) || 'visual';
+    return safe === 'hero' ? HERO_CID : `awareness-${safe}@lmsgen`;
+}
+
+function extensionForContentType(contentType = '') {
+    const type = String(contentType || '').toLowerCase();
+    if (type.includes('png')) return 'png';
+    if (type.includes('webp')) return 'webp';
+    if (type.includes('gif')) return 'gif';
+    return 'jpg';
+}
+
+function normaliseVisualAsset(asset) {
+    if (!asset || typeof asset !== 'object') return null;
+    const slot = String(asset.slot || '').trim().toLowerCase();
+    const storageKey = String(asset.storageKey || '').trim();
+    const contentType = String(asset.contentType || 'image/jpeg').trim() || 'image/jpeg';
+    if (!SLOT_RE.test(slot) || !storageKey) return null;
+    return {
+        slot,
+        storageKey,
+        contentType,
+        model: cleanText(asset.model, 120) || null,
+        estimatedCostUsd: Math.max(0, Number(asset.estimatedCostUsd) || 0)
+    };
+}
+
+function visualAssetRecords(row, aiInput = null) {
+    if (!row) return [];
+    const ai = aiInput || parseJson(row.aiMetadataJson, {});
+    const records = [];
+    const seenSlots = new Set();
+
+    for (const raw of Array.isArray(ai.visualAssets) ? ai.visualAssets : []) {
+        const asset = normaliseVisualAsset(raw);
+        if (!asset || seenSlots.has(asset.slot)) continue;
+        records.push(asset);
+        seenSlots.add(asset.slot);
+    }
+
+    if (row.heroStorageKey && !seenSlots.has('hero')) {
+        records.unshift({
+            slot: 'hero',
+            storageKey: row.heroStorageKey,
+            contentType: row.heroContentType || 'image/jpeg',
+            model: ai.imageModel || null,
+            estimatedCostUsd: 0
+        });
+    }
+    return records;
 }
 
 function serializeTemplate(row) {
@@ -44,6 +122,15 @@ function serializeTemplate(row) {
     const plain = typeof row.toJSON === 'function' ? row.toJSON() : row;
     const content = normaliseContent(parseJson(plain.contentJson, {}));
     const ai = parseJson(plain.aiMetadataJson, {});
+    const assets = visualAssetRecords(plain, ai);
+    const visualUrls = plain.publicAssetToken
+        ? assets.map((asset) => ({
+            slot: asset.slot,
+            url: publicAssetUrl(plain.publicAssetToken, asset.slot)
+        }))
+        : [];
+    const hero = visualUrls.find((asset) => asset.slot === 'hero') || visualUrls[0] || null;
+
     return {
         id: plain.id,
         title: plain.title,
@@ -56,9 +143,11 @@ function serializeTemplate(row) {
         preheader: plain.preheader || '',
         content,
         heroAltText: plain.heroAltText || '',
-        imageAvailable: Boolean(plain.heroStorageKey && plain.publicAssetToken),
-        imageUrl: plain.heroStorageKey && plain.publicAssetToken ? publicAssetUrl(plain.publicAssetToken) : '',
-        imageStatus: ai.imageStatus || (plain.heroStorageKey ? 'ready' : 'unavailable'),
+        imageAvailable: assets.length > 0,
+        imageUrl: hero?.url || '',
+        imageStatus: ai.imageStatus || (assets.length ? 'ready' : 'unavailable'),
+        visualCount: assets.length,
+        visuals: visualUrls,
         ai: {
             textModel: ai.textModel || null,
             imageModel: ai.imageModel || null,
@@ -144,13 +233,15 @@ function generationSchema() {
 }
 
 function generationInstructions() {
-    const layouts = LAYOUT_CATALOG.map((layout) => `${layout.id}: ${layout.description}`).join('\n');
+    const layouts = LAYOUT_CATALOG.map((layout) => `${layout.id}: ${layout.name} — ${layout.description}`).join('\n');
     return `You create professional employee-awareness email copy for a learning platform.
 
 Return concise educational content only. The email must teach a useful behaviour or concept, not imitate a real person or brand, not request passwords, codes or credentials, and not create a deceptive phishing lure. Avoid fearmongering and unsupported claims. Use clear international English. The user will edit only text after generation, so each field must be complete and ready to publish.
 
 Choose the layout that best matches the topic unless the input explicitly requests one of the layout IDs below.
 ${layouts}
+
+Write three to five practical key points. For attack or threat topics, make the points distinct scenarios, stages, tactics or red flags. For best-practice topics, make them distinct habits or actions.
 
 The imagePrompt must describe a premium, topic-specific editorial illustration or realistic conceptual scene. It must contain no written words, letters, numbers, logos, watermarks, UI screenshots or trademarked branding. Do not put important explanatory text inside the image.
 
@@ -187,15 +278,115 @@ async function generateCopy(input) {
     return { parsed, response };
 }
 
-function imagePromptFor(ai, input) {
+function layoutDirection(layoutId) {
+    const layout = LAYOUT_CATALOG.find((item) => item.id === layoutId);
+    if (!layout) return '';
+    return `Design language: ${layout.name}. ${layout.description}`;
+}
+
+function visualSubjectForSlot(slot, content, ai) {
+    if (slot === 'hero') return cleanText(ai.imagePrompt, 900);
+    const pointMatch = String(slot).match(/^point-(\d+)$/);
+    if (pointMatch) {
+        const point = content.keyPoints[Math.max(0, Number(pointMatch[1]) - 1)];
+        if (point) return `Illustrate this exact learning point: ${point.title}. ${point.body}`;
+    }
+    if (slot === 'case-study') {
+        const focus = content.keyPoints.slice(0, 3).map((point) => `${point.title}: ${point.body}`).join(' ');
+        return `Create one concrete visual case-study scene showing the warning signs in this awareness topic. Focus on: ${focus}`;
+    }
+    if (slot === 'banner') {
+        return `Create a strong supporting banner scene that reinforces the final safety lesson: ${content.footerNote || content.headline}.`;
+    }
+    return `Create a supporting editorial awareness illustration for: ${content.headline}.`;
+}
+
+function imagePromptForSlot({ slot, ai, input, content, layoutId }) {
+    const slotRole = slot === 'hero'
+        ? 'This is the main opening hero visual.'
+        : slot === 'banner'
+            ? 'This is a wide supporting transition or closing visual.'
+            : slot === 'case-study'
+                ? 'This is a concrete visual case study.'
+                : 'This is a supporting learning-section illustration.';
     return [
-        cleanText(ai.imagePrompt, 900),
+        visualSubjectForSlot(slot, content, ai),
         `Employee awareness topic: ${cleanText(input.topic, 220)}.`,
         `Audience: ${cleanText(input.audience || 'employees', 160)}.`,
-        'Premium editorial email hero image, visually simple, strong focal point, professional workplace learning aesthetic.',
-        'No text, letters, numbers, logos, watermarks, user interfaces or brand marks.',
-        'Landscape composition with safe central crop and enough negative space around the subject.'
+        layoutDirection(layoutId),
+        slotRole,
+        'Premium editorial email artwork with a strong focal point and a professional workplace-learning aesthetic.',
+        'Show the concept through objects, environments, actions and visual relationships rather than written labels.',
+        'No written words, letters, numbers, logos, watermarks, readable user interfaces, brand marks or trademarked characters.',
+        'Landscape composition, clean edges, email-friendly crop and enough negative space around the focal subject.'
     ].filter(Boolean).join(' ');
+}
+
+async function runWithConcurrency(items, concurrency, worker) {
+    const results = new Array(items.length);
+    let cursor = 0;
+    await Promise.all(Array.from({ length: Math.min(Math.max(1, concurrency), items.length) }, async () => {
+        while (true) {
+            const index = cursor;
+            cursor += 1;
+            if (index >= items.length) return;
+            results[index] = await worker(items[index], index);
+        }
+    }));
+    return results;
+}
+
+async function generateVisualAssets({ storage, hostId, templateId, layoutId, ai, input, content }) {
+    const requestedSlots = layoutVisualSlots(layoutId).slice(0, maxAiImages());
+    const warnings = [];
+
+    const results = await runWithConcurrency(requestedSlots, imageConcurrency(), async (slot) => {
+        try {
+            const image = await generateImage({
+                prompt: imagePromptForSlot({ slot, ai, input, content, layoutId }),
+                quality: 'low',
+                size: '1536x864',
+                timeoutMs: 85000
+            });
+            const contentType = image.contentType || 'image/jpeg';
+            const ext = extensionForContentType(contentType);
+            const storageKey = `awareness/${hostId}/${templateId}/${slot}.${ext}`;
+            await storage.putObject({
+                key: storageKey,
+                body: image.body,
+                contentType
+            });
+            return {
+                slot,
+                storageKey,
+                contentType,
+                model: image.model || null,
+                estimatedCostUsd: Number(image.estimatedCostUsd || 0)
+            };
+        } catch (error) {
+            warnings.push({ slot, code: error.code || null, message: error.message });
+            logger.warn('awareness_email_visual_generation_failed', {
+                module: 'awareness-email',
+                hostId,
+                templateId,
+                slot,
+                code: error.code || null,
+                error: error.message
+            });
+            return null;
+        }
+    });
+
+    const visualAssets = results.filter(Boolean);
+    const imageCostUsd = visualAssets.reduce((sum, asset) => sum + Number(asset.estimatedCostUsd || 0), 0);
+    const imageModel = visualAssets.find((asset) => asset.model)?.model || null;
+    const imageStatus = visualAssets.length === requestedSlots.length
+        ? 'ready'
+        : visualAssets.length
+            ? 'partial'
+            : 'unavailable';
+
+    return { requestedSlots, visualAssets, warnings, imageCostUsd, imageModel, imageStatus };
 }
 
 async function createTemplate({ hostId, createdByUserId = null, input = {} }) {
@@ -229,43 +420,6 @@ async function createTemplate({ hostId, createdByUserId = null, input = {} }) {
             ? ai.layoutId
             : chooseFallbackLayout(topic);
 
-    const templateId = crypto.randomUUID();
-    const assetToken = crypto.randomBytes(32).toString('hex');
-    const storage = getObjectStorage();
-    let heroStorageKey = null;
-    let heroContentType = null;
-    let generatedImageModel = null;
-    let imageCostUsd = 0;
-    let imageStatus = 'unavailable';
-    let imageWarning = null;
-
-    try {
-        const image = await generateImage({
-            prompt: imagePromptFor(ai, generationInput),
-            quality: 'low',
-            size: '1536x864',
-            timeoutMs: 85000
-        });
-        heroStorageKey = `awareness/${hostId}/${templateId}/hero.jpg`;
-        heroContentType = image.contentType || 'image/jpeg';
-        generatedImageModel = image.model || null;
-        imageCostUsd = Number(image.estimatedCostUsd || 0);
-        await storage.putObject({
-            key: heroStorageKey,
-            body: image.body,
-            contentType: heroContentType
-        });
-        imageStatus = 'ready';
-    } catch (error) {
-        imageWarning = error.message;
-        logger.warn('awareness_email_image_generation_failed', {
-            module: 'awareness-email',
-            hostId,
-            code: error.code || null,
-            error: error.message
-        });
-    }
-
     const content = normaliseContent({
         headline: ai.headline,
         intro: ai.intro,
@@ -276,33 +430,57 @@ async function createTemplate({ hostId, createdByUserId = null, input = {} }) {
         footerNote: ai.footerNote
     });
 
-    const row = await ScormAwarenessEmailTemplate.create({
-        id: templateId,
+    const templateId = crypto.randomUUID();
+    const assetToken = crypto.randomBytes(32).toString('hex');
+    const storage = getObjectStorage();
+    const visuals = await generateVisualAssets({
+        storage,
         hostId,
-        createdByUserId,
-        title: requiredText(ai.title || topic, 'Title', 180),
-        topic,
-        audience,
-        goal,
-        tone,
+        templateId,
         layoutId,
-        subject: requiredText(ai.subject || topic, 'Subject', 240),
-        preheader: cleanText(ai.preheader, 240),
-        contentJson: JSON.stringify(content),
-        heroStorageKey,
-        heroContentType,
-        heroAltText: cleanText(ai.heroAltText || `${topic} awareness visual`, 320),
-        publicAssetToken: heroStorageKey ? assetToken : null,
-        aiMetadataJson: JSON.stringify({
-            textModel: response.model || null,
-            imageModel: generatedImageModel,
-            textResponseId: response.responseId || null,
-            estimatedCostUsd: Number(response.estimatedCostUsd || 0) + imageCostUsd,
-            imageStatus,
-            imageWarning
-        }),
-        status: 'ready'
+        ai,
+        input: generationInput,
+        content
     });
+    const hero = visuals.visualAssets.find((asset) => asset.slot === 'hero') || null;
+
+    let row;
+    try {
+        row = await ScormAwarenessEmailTemplate.create({
+            id: templateId,
+            hostId,
+            createdByUserId,
+            title: requiredText(ai.title || topic, 'Title', 180),
+            topic,
+            audience,
+            goal,
+            tone,
+            layoutId,
+            subject: requiredText(ai.subject || topic, 'Subject', 240),
+            preheader: cleanText(ai.preheader, 240),
+            contentJson: JSON.stringify(content),
+            heroStorageKey: hero?.storageKey || null,
+            heroContentType: hero?.contentType || null,
+            heroAltText: cleanText(ai.heroAltText || `${topic} awareness visual`, 320),
+            publicAssetToken: visuals.visualAssets.length ? assetToken : null,
+            aiMetadataJson: JSON.stringify({
+                textModel: response.model || null,
+                imageModel: visuals.imageModel,
+                textResponseId: response.responseId || null,
+                estimatedCostUsd: Number(response.estimatedCostUsd || 0) + visuals.imageCostUsd,
+                imageStatus: visuals.imageStatus,
+                imageWarnings: visuals.warnings,
+                requestedVisualSlots: visuals.requestedSlots,
+                visualAssets: visuals.visualAssets
+            }),
+            status: 'ready'
+        });
+    } catch (error) {
+        await Promise.all(visuals.visualAssets.map((asset) =>
+            storage.deleteObject(asset.storageKey).catch(() => {})
+        ));
+        throw error;
+    }
 
     return serializeTemplate(row);
 }
@@ -348,13 +526,15 @@ async function updateTemplate(id, hostId, patch = {}) {
 
 async function deleteTemplate(id, hostId) {
     const row = await findOwnedTemplate(id, hostId);
-    if (row.heroStorageKey) {
+    const storage = getObjectStorage();
+    const keys = [...new Set(visualAssetRecords(row).map((asset) => asset.storageKey).filter(Boolean))];
+    for (const key of keys) {
         try {
-            await getObjectStorage().deleteObject(row.heroStorageKey);
+            await storage.deleteObject(key);
         } catch (error) {
             logger.warn('awareness_email_asset_delete_failed', {
                 module: 'awareness-email',
-                key: row.heroStorageKey,
+                key,
                 error: error.message
             });
         }
@@ -363,14 +543,18 @@ async function deleteTemplate(id, hostId) {
     return true;
 }
 
+function imageSourcesForRow(row, mode = 'public') {
+    const sources = {};
+    for (const asset of visualAssetRecords(row)) {
+        sources[asset.slot] = mode === 'cid'
+            ? `cid:${cidForSlot(asset.slot)}`
+            : publicAssetUrl(row.publicAssetToken, asset.slot);
+    }
+    return sources;
+}
+
 function renderRow(row, mode = 'public') {
     const content = normaliseContent(parseJson(row.contentJson, {}));
-    const heroSrc = row.heroStorageKey
-        ? mode === 'cid'
-            ? `cid:${HERO_CID}`
-            : publicAssetUrl(row.publicAssetToken)
-        : '';
-
     return renderAwarenessEmail({
         title: row.title,
         topic: row.topic,
@@ -379,23 +563,37 @@ function renderRow(row, mode = 'public') {
         preheader: row.preheader,
         heroAltText: row.heroAltText,
         content
-    }, { heroSrc });
+    }, { imageSources: imageSourcesForRow(row, mode) });
 }
 
 async function renderPreview(id, hostId) {
     return renderRow(await findOwnedTemplate(id, hostId), 'public');
 }
 
-async function heroAttachment(row) {
-    if (!row.heroStorageKey) return null;
-    const body = await getObjectStorage().getObjectBuffer(row.heroStorageKey);
-    return {
-        filename: 'awareness-hero.jpg',
-        content: body,
-        contentType: row.heroContentType || 'image/jpeg',
-        cid: HERO_CID,
-        contentDisposition: 'inline'
-    };
+async function visualAttachments(row) {
+    const storage = getObjectStorage();
+    const assets = visualAssetRecords(row);
+    const attachments = [];
+    for (const asset of assets) {
+        try {
+            const body = await storage.getObjectBuffer(asset.storageKey);
+            attachments.push({
+                filename: `awareness-${asset.slot}.${extensionForContentType(asset.contentType)}`,
+                content: body,
+                contentType: asset.contentType || 'image/jpeg',
+                cid: cidForSlot(asset.slot),
+                contentDisposition: 'inline'
+            });
+        } catch (error) {
+            logger.warn('awareness_email_attachment_read_failed', {
+                module: 'awareness-email',
+                templateId: row.id,
+                slot: asset.slot,
+                error: error.message
+            });
+        }
+    }
+    return attachments;
 }
 
 function normaliseRecipients(value) {
@@ -417,20 +615,6 @@ function normaliseRecipients(value) {
     return unique;
 }
 
-async function runWithConcurrency(items, concurrency, worker) {
-    const results = new Array(items.length);
-    let cursor = 0;
-    await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, async () => {
-        while (true) {
-            const index = cursor;
-            cursor += 1;
-            if (index >= items.length) return;
-            results[index] = await worker(items[index], index);
-        }
-    }));
-    return results;
-}
-
 async function sendTemplate(id, hostId, recipientsInput) {
     if (!MailService.isConfigured()) {
         const error = new Error('Outbound email is not configured for this platform.');
@@ -443,7 +627,7 @@ async function sendTemplate(id, hostId, recipientsInput) {
     const recipients = normaliseRecipients(recipientsInput);
     const smtp = MailService.mailProvider() === 'smtp';
     const rendered = renderRow(row, smtp ? 'cid' : 'public');
-    const attachment = smtp ? await heroAttachment(row) : null;
+    const attachments = smtp ? await visualAttachments(row) : [];
 
     const results = await runWithConcurrency(recipients, 3, async (email) => {
         try {
@@ -452,7 +636,7 @@ async function sendTemplate(id, hostId, recipientsInput) {
                 subject: rendered.subject,
                 html: rendered.html,
                 text: rendered.text,
-                attachments: attachment ? [attachment] : [],
+                attachments,
                 headers: { 'X-LMSGEN-Content-Type': 'awareness-template' }
             });
             return { email, sent: Boolean(result.sent), messageId: result.messageId || null };
@@ -479,21 +663,22 @@ async function sendTemplate(id, hostId, recipientsInput) {
 async function exportEml(id, hostId, recipient = '') {
     const row = await findOwnedTemplate(id, hostId);
     const rendered = renderRow(row, 'cid');
-    const attachment = await heroAttachment(row);
+    const attachments = await visualAttachments(row);
     const message = await AwarenessMailDeliveryService.createEml({
         to: recipient ? [recipient] : [],
         subject: rendered.subject,
         html: rendered.html,
         text: rendered.text,
-        attachments: attachment ? [attachment] : [],
+        attachments,
         headers: { 'X-LMSGEN-Content-Type': 'awareness-template' }
     });
     return { message, title: row.title };
 }
 
-async function getPublicAsset(token) {
+async function getPublicAsset(token, slot = 'hero') {
     const safeToken = String(token || '').trim();
-    if (!/^[a-f0-9]{64}$/i.test(safeToken)) {
+    const safeSlot = String(slot || 'hero').trim().toLowerCase();
+    if (!/^[a-f0-9]{64}$/i.test(safeToken) || !SLOT_RE.test(safeSlot)) {
         const error = new Error('Awareness image not found.');
         error.code = 'AWARENESS_ASSET_NOT_FOUND';
         error.status = 404;
@@ -501,7 +686,14 @@ async function getPublicAsset(token) {
     }
 
     const row = await ScormAwarenessEmailTemplate.findOne({ where: { publicAssetToken: safeToken } });
-    if (!row?.heroStorageKey) {
+    if (!row) {
+        const error = new Error('Awareness image not found.');
+        error.code = 'AWARENESS_ASSET_NOT_FOUND';
+        error.status = 404;
+        throw error;
+    }
+    const asset = visualAssetRecords(row).find((item) => item.slot === safeSlot);
+    if (!asset) {
         const error = new Error('Awareness image not found.');
         error.code = 'AWARENESS_ASSET_NOT_FOUND';
         error.status = 404;
@@ -509,13 +701,16 @@ async function getPublicAsset(token) {
     }
 
     return {
-        body: await getObjectStorage().getObjectBuffer(row.heroStorageKey),
-        contentType: row.heroContentType || 'image/jpeg'
+        body: await getObjectStorage().getObjectBuffer(asset.storageKey),
+        contentType: asset.contentType || 'image/jpeg'
     };
 }
 
 function catalogue() {
-    return LAYOUT_CATALOG.map(({ mode, ...item }) => ({ ...item }));
+    return LAYOUT_CATALOG.map(({ mode, imageSlots, ...item }) => ({
+        ...item,
+        visualCount: imageSlots.length
+    }));
 }
 
 function mailStatus() {
@@ -541,5 +736,11 @@ module.exports = {
     exportEml,
     getPublicAsset,
     normaliseRecipients,
-    chooseFallbackLayout
+    chooseFallbackLayout,
+    awarenessAssetBaseUrl,
+    publicAssetUrl,
+    cidForSlot,
+    visualAssetRecords,
+    imagePromptForSlot,
+    maxAiImages
 };
