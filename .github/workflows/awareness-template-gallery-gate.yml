@@ -33,3 +33,5 @@ jobs:
           node --check server/services/awareness/AwarenessTemplateGalleryService.js
           node --check server/routes/scorm/awarenessGallery.js
           node --check server/routes/scorm/awarenessTemplateAssets.js
+
+# final gallery verification
