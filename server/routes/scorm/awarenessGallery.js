@@ -4,6 +4,7 @@ const express=require('express');
 const router=express.Router();
 const auth=require('../middleware');
 const Gallery=require('../../services/awareness/AwarenessTemplateGalleryService');
+const EmailCampaigns=require('../../services/awareness/AwarenessEmailCampaignService');
 const MailService=require('../../services/mail/MailService');
 
 function editor(req,res,next){
@@ -108,6 +109,49 @@ router.post('/central/:id/import',auth,editor,async(req,res)=>{
         });
         res.status(201).json({ok:true,template});
     }catch(e){fail(res,e,'Unable to add this template to My Library.')}
+});
+
+router.get('/email-campaigns',auth,editor,async(req,res)=>{
+    try{
+        res.setHeader('Cache-Control','no-store');
+        res.json({ok:true,campaigns:await EmailCampaigns.listCampaigns(req.userId)});
+    }catch(e){fail(res,e,'Unable to load email campaigns.')}
+});
+router.post('/email-campaigns/preview-csv',auth,editor,async(req,res)=>{
+    try{res.json({ok:true,...EmailCampaigns.previewCsv(req.body?.csvText)})}
+    catch(e){fail(res,e,'Unable to read the campaign CSV.')}
+});
+router.post('/email-campaigns',auth,editor,async(req,res)=>{
+    try{
+        const result=await EmailCampaigns.createCampaign({
+            hostId:req.userId,
+            createdByUserId:req.authenticatedUserId||req.userId,
+            name:req.body?.name,
+            userTemplateId:req.body?.userTemplateId,
+            csvText:req.body?.csvText,
+            mailBatchCount:req.body?.mailBatchCount,
+            mailBatchDelaySeconds:req.body?.mailBatchDelaySeconds
+        });
+        res.status(201).json({ok:true,...result});
+    }catch(e){fail(res,e,'Unable to create the email campaign.')}
+});
+router.get('/email-campaigns/:id',auth,editor,async(req,res)=>{
+    try{
+        res.setHeader('Cache-Control','no-store');
+        res.json({ok:true,campaign:await EmailCampaigns.getCampaign(req.params.id,req.userId,{includeRecipients:true})});
+    }catch(e){fail(res,e,'Unable to load the email campaign.')}
+});
+router.post('/email-campaigns/:id/start',auth,editor,async(req,res)=>{
+    try{res.json({ok:true,campaign:await EmailCampaigns.startCampaign(req.params.id,req.userId)})}
+    catch(e){fail(res,e,'Unable to start the email campaign.')}
+});
+router.post('/email-campaigns/:id/stop',auth,editor,async(req,res)=>{
+    try{res.json({ok:true,campaign:await EmailCampaigns.stopCampaign(req.params.id,req.userId)})}
+    catch(e){fail(res,e,'Unable to stop the email campaign.')}
+});
+router.delete('/email-campaigns/:id',auth,editor,async(req,res)=>{
+    try{res.json({ok:true,...await EmailCampaigns.deleteCampaign(req.params.id,req.userId)})}
+    catch(e){fail(res,e,'Unable to delete the email campaign.')}
 });
 
 router.get('/mine',auth,editor,async(req,res)=>{
