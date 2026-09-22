@@ -13,8 +13,9 @@ describe('Publica shared library pagination', () => {
         expect(viewer).to.include('Page {currentPage} of {pageCount}');
     });
 
-    it('uses a two-column desktop grid for three rows of publications', () => {
-        expect(styles).to.include('grid-template-columns: repeat(2, minmax(0, 1fr));');
+    it('uses a three-column desktop grid for two rows of publications', () => {
+        expect(styles).to.include('grid-template-columns: repeat(3, minmax(0, 1fr));');
+        expect(styles).to.include('align-items: start;');
         expect(styles).to.include('.public-flip-library-pagination');
     });
 });
