@@ -1,0 +1,47 @@
+name: Awareness template reference audit
+
+on:
+  push:
+    branches:
+      - awareness-template-audit
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-reference-templates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect educational email template archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP="Educational-email-Templete.zip"
+          OUT="/tmp/awareness-reference"
+          rm -rf "$OUT"
+          mkdir -p "$OUT"
+
+          echo "===== ARCHIVE LIST ====="
+          unzip -l "$ZIP"
+
+          unzip -q "$ZIP" -d "$OUT"
+
+          echo "===== EXTRACTED TREE ====="
+          find "$OUT" -maxdepth 5 -type f -printf '%P\n' | sort
+
+          echo "===== IMAGE METADATA ====="
+          find "$OUT" -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.gif' -o -iname '*.svg' \) -print0 |
+          while IFS= read -r -d '' f; do
+            echo "--- ${f#$OUT/} ---"
+            file "$f" || true
+          done
+
+          echo "===== TEXT SOURCES ====="
+          find "$OUT" -type f \( -iname '*.html' -o -iname '*.htm' -o -iname '*.css' -o -iname '*.json' -o -iname '*.txt' -o -iname '*.md' \) -print0 |
+          while IFS= read -r -d '' f; do
+            echo
+            echo "===== FILE: ${f#$OUT/} ====="
+            sed -n '1,500p' "$f"
+          done
