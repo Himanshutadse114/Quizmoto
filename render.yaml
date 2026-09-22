@@ -73,6 +73,18 @@ services:
         value: "https://api.lmsgen.in"
       - key: AWARENESS_SEED_REFERENCE_TEMPLATES
         value: "true"
+      - key: STORAGE_DRIVER
+        value: "s3"
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        value: "auto"
+      - key: S3_ENDPOINT
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
       - key: LMSGEN_AUTH_TOKEN_TTL
         value: "24h"
       - key: QUIZMOTO_AUTH_TOKEN_TTL

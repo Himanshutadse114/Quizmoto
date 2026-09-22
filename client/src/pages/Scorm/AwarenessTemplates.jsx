@@ -160,25 +160,44 @@ export default function AwarenessTemplates(){
 
   const decorateEditor=(doc)=>{
     if(!doc?.body)return;
-    doc.body.setAttribute('contenteditable','true');
+    doc.body.removeAttribute('contenteditable');
     let style=doc.getElementById('awareness-editor-helper');
     if(!style){
       style=doc.createElement('style');
       style.id='awareness-editor-helper';
-      style.textContent='body{cursor:text} img{cursor:pointer} img[data-awareness-selected="1"]{outline:4px solid #14b8a6!important;outline-offset:3px!important} a{cursor:text!important}';
+      style.textContent='body{cursor:default} img{cursor:pointer} img[data-awareness-selected="1"]{outline:4px solid #14b8a6!important;outline-offset:3px!important}[data-awareness-text-selected="1"]{outline:2px dashed #14b8a6!important;outline-offset:2px!important;cursor:text!important} a{cursor:text!important}';
       doc.head?.appendChild(style);
     }
+    const clearSelection=()=>{
+      doc.querySelectorAll('[data-awareness-selected]').forEach(el=>el.removeAttribute('data-awareness-selected'));
+      doc.querySelectorAll('[data-awareness-text-selected]').forEach(el=>{
+        el.removeAttribute('data-awareness-text-selected');
+        el.removeAttribute('contenteditable');
+      });
+    };
     doc.querySelectorAll('a').forEach(a=>{a.onclick=(event)=>event.preventDefault()});
+    doc.onpaste=(event)=>{
+      const active=doc.activeElement;
+      if(active?.getAttribute?.('data-awareness-text-selected')!=='1')return;
+      event.preventDefault();
+      const plain=event.clipboardData?.getData('text/plain')||'';
+      doc.execCommand?.('insertText',false,plain);
+    };
     doc.onclick=(event)=>{
       const target=event.target;
-      doc.querySelectorAll('[data-awareness-selected]').forEach(el=>el.removeAttribute('data-awareness-selected'));
+      clearSelection();
       if(target?.tagName==='IMG'){
         event.preventDefault();
         target.setAttribute('data-awareness-selected','1');
         setSelectedImage({src:target.getAttribute('src')||'',alt:target.getAttribute('alt')||''});
-      }else{
-        setSelectedImage(null);
+        return;
       }
+      setSelectedImage(null);
+      const editable=target?.closest?.('p,h1,h2,h3,h4,h5,h6,span,td,th,li,a,strong,b,em,i,div');
+      if(!editable||editable===doc.body||!String(editable.textContent||'').trim())return;
+      editable.setAttribute('contenteditable','true');
+      editable.setAttribute('data-awareness-text-selected','1');
+      editable.focus();
     };
   };
 
@@ -187,6 +206,10 @@ export default function AwarenessTemplates(){
     if(!doc)return editor?.html||'';
     doc.getElementById('awareness-editor-helper')?.remove();
     doc.querySelectorAll('[data-awareness-selected]').forEach(el=>el.removeAttribute('data-awareness-selected'));
+    doc.querySelectorAll('[data-awareness-text-selected]').forEach(el=>{
+      el.removeAttribute('data-awareness-text-selected');
+      el.removeAttribute('contenteditable');
+    });
     doc.body?.removeAttribute('contenteditable');
     const html='<!doctype html>\n'+doc.documentElement.outerHTML;
     decorateEditor(doc);
@@ -223,6 +246,9 @@ export default function AwarenessTemplates(){
     if(file.size>8*1024*1024){setNotice({type:'error',text:'Choose an image smaller than 8 MB.'});return}
     setBusy('image');setNotice(null);
     try{
+      // Save any in-place text edits before replacing an image so the iframe
+      // cannot be refreshed from an older server copy and lose the user's work.
+      await persistEditor();
       const dataUrl=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)});
       const res=await axios.post(apiUrl(API+'/mine/'+editor.id+'/image'),{oldSrc:selectedImage.src,dataUrl},{headers});
       const next=res.data?.template;
@@ -354,7 +380,7 @@ export default function AwarenessTemplates(){
       <div className="aw-editor-fields"><label><span>Template name</span><input value={title} onChange={e=>setTitle(e.target.value)} maxLength={180}/></label><label><span>Email subject</span><input value={subject} onChange={e=>setSubject(e.target.value)} maxLength={240}/></label></div>
       {selectedImage&&<div className="aw-image-toolbar"><ImageIcon size={15}/><div><strong>Image selected</strong><span>{selectedImage.alt||'Template image'}</span></div><label className="aw-btn-primary"><ImageIcon size={14}/> Replace image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={e=>{replaceImage(e.target.files?.[0]);e.target.value=''}}/></label><button className="aw-btn-secondary" onClick={removeSelectedImage}><Trash2 size={14}/> Remove</button></div>}
       {sendOpen&&<div className="aw-send-panel"><div><strong>Send this template</strong><span>{status.mail?.configured?'Using '+String(status.mail?.provider||'mail').toUpperCase()+'. Each recipient is sent separately.':'Mail is not configured on the platform.'}</span></div><textarea value={recipients} onChange={e=>setRecipients(e.target.value)} placeholder="alex@example.com, sam@example.com"/><select value="" onChange={e=>addRoster(e.target.value)} disabled={!roster.length}><option value="">{rosterLoading?'Loading roster…':roster.length?'Add from learner roster…':'No roster learners loaded'}</option>{roster.map(x=><option key={x.id||x.email} value={x.email}>{x.learnerName?x.learnerName+' — '+x.email:x.email}</option>)}</select><button className="aw-btn-primary" onClick={sendMail} disabled={!status.mail?.configured||busy==='send'}><Send size={14}/> {busy==='send'?'Sending…':'Send email'}</button><button className="aw-icon-btn" onClick={()=>setSendOpen(false)}><X size={14}/></button></div>}
-      <div className="aw-editor-note"><Pencil size={14}/> Visual editing is intentionally limited to text and image replacement so the original email design stays intact.</div>
+      <div className="aw-editor-note"><Pencil size={14}/> Click a text block to edit only that text. Click an image to replace or remove it. The layout structure stays protected.</div>
       <div className="aw-editor-frame"><iframe ref={frameRef} title="Editable awareness email" srcDoc={editor.html} onLoad={e=>decorateEditor(e.currentTarget.contentDocument)}/></div>
     </section>}
 

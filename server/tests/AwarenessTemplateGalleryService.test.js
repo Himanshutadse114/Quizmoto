@@ -94,9 +94,56 @@ describe('AwarenessTemplateGalleryService',function(){
         expect(clean).to.not.include('onload=');
     });
 
+    it('recognises img, background attributes and CSS url assets',()=>{
+        const html='<html><head><style>.hero{background-image:url("./images/bg.png")}</style></head><body background="./images/paper.jpg"><img src="./images/hero.png"></body></html>';
+        expect(Gallery.assetRefs(html)).to.deep.equal([
+            './images/hero.png',
+            './images/paper.jpg',
+            './images/bg.png'
+        ]);
+        const map=new Map([
+            ['./images/hero.png','https://cdn.example/hero.png'],
+            ['./images/paper.jpg','https://cdn.example/paper.jpg'],
+            ['./images/bg.png','https://cdn.example/bg.png']
+        ]);
+        const rewritten=Gallery.rewrite(html,map);
+        expect(rewritten).to.include('src="https://cdn.example/hero.png"');
+        expect(rewritten).to.include('background="https://cdn.example/paper.jpg"');
+        expect(rewritten).to.include('url("https://cdn.example/bg.png")');
+    });
+
+    it('replaces a user-owned image without leaving the previous object orphaned',async()=>{
+        const central=await Central.findOne({where:{seedKey:'reference:data-privacy'}});
+        const mine=await Gallery.importMine({centralTemplateId:central.id,hostId:88,createdByUserId:88});
+        const firstSrc=Gallery.images(mine.html)[0];
+        const firstParsed=Gallery.parseAssetUrl(firstSrc);
+        const original=await Gallery.getAsset(firstParsed.scope,firstParsed.token,firstParsed.id);
+        const dataUrl='data:'+original.contentType+';base64,'+original.body.toString('base64');
+
+        const first=await Gallery.replaceMineImage({id:mine.id,hostId:88,oldSrc:firstSrc,dataUrl});
+        const rowAfterFirst=await UserTemplate.findByPk(mine.id);
+        const firstManifest=JSON.parse(rowAfterFirst.userAssetManifestJson);
+        expect(firstManifest).to.have.length(1);
+        expect(await getObjectStorage().exists(firstManifest[0].storageKey)).to.equal(true);
+
+        const second=await Gallery.replaceMineImage({id:mine.id,hostId:88,oldSrc:first.url,dataUrl});
+        const rowAfterSecond=await UserTemplate.findByPk(mine.id);
+        const secondManifest=JSON.parse(rowAfterSecond.userAssetManifestJson);
+        expect(secondManifest).to.have.length(1);
+        expect(second.url).to.not.equal(first.url);
+        expect(await getObjectStorage().exists(firstManifest[0].storageKey)).to.equal(false);
+        expect(await getObjectStorage().exists(secondManifest[0].storageKey)).to.equal(true);
+    });
+
     it('resolves image-folder paths relative to each HTML template',()=>{
         expect(Gallery.resolveAsset('folder/email.html','./images/hero.png')).to.equal('folder/images/hero.png');
         expect(Gallery.resolveAsset('folder/sub/email.html','../images/card.png')).to.equal('folder/images/card.png');
         expect(Gallery.resolveAsset('folder/email.html','../../../secret.png')).to.equal('');
+    });
+
+    it('finds the production-bundled reference ZIP path',()=>{
+        const seedPath=Gallery.referenceZipPath();
+        expect(seedPath).to.match(/Educational-email-Templete\.zip$/);
+        expect(fs.existsSync(seedPath)).to.equal(true);
     });
 });
