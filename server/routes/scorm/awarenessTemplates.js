@@ -3,6 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware');
+const { aiAwarenessLimiter } = require('../../middleware/AiAbuseProtection');
 const AwarenessTemplateService = require('../../services/awareness/AwarenessTemplateService');
 
 function requireEditor(req, res, next) {
@@ -46,7 +47,7 @@ router.get('/', auth, requireEditor, async (req, res) => {
     }
 });
 
-router.post('/generate', auth, requireEditor, async (req, res) => {
+router.post('/generate', auth, requireEditor, aiAwarenessLimiter, async (req, res) => {
     try {
         const template = await AwarenessTemplateService.createTemplate({
             hostId: req.userId,
