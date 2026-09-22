@@ -46,7 +46,7 @@ The repository file `Educational-email-Templete.zip` is automatically seeded int
 7. Modern Threats
 8. AI Scams & Deepfakes
 
-Seeding is idempotent using stable seed keys, so restarting the service does not create duplicates.
+Seeding is idempotent using stable seed keys, so restarting the service does not create duplicates. The reference ZIP is bundled under the backend `seed-assets` directory so Docker/Render deployments can seed the same eight templates in production.
 
 ## Editing model
 
@@ -54,7 +54,7 @@ The imported email HTML remains the source of truth. LMSGEN does not rebuild the
 
 Text editing uses a visual content-editable iframe so the original structure and inline email styling remain intact.
 
-Image editing is intentionally limited to replacement or removal. Replacement images are uploaded to the user template’s own object-storage area and the HTML is updated to the new stored image URL.
+Image editing is intentionally limited to replacement or removal. Replacement images are uploaded to the user template’s own object-storage area and the HTML is updated to the new stored image URL. Existing text edits are saved before an image replacement and superseded user-owned image objects are cleaned up automatically.
 
 This keeps the original layout protected while still allowing practical customisation.
 
@@ -86,8 +86,7 @@ Supported image formats are JPEG, PNG, WebP and GIF. Individual images are limit
 - ZIP size: maximum 35 MB.
 - Template HTML: maximum 750 KB each.
 - Maximum 50 HTML templates per ZIP.
-- Relative image references are resolved from the HTML file location.
-- Local image paths are uploaded to object storage.
+- Relative image references are resolved from the HTML file location.\n- Local `<img src>`, HTML `background` attributes and CSS `url(...)` image references are recognised and uploaded to object storage.
 - Unsafe archive paths are rejected.
 - Script, iframe, object, embed and form markup is removed from saved email HTML.
 
@@ -129,6 +128,6 @@ Existing platform configuration is reused:
 Awareness-gallery configuration:
 
 - `AWARENESS_ASSET_BASE_URL=https://api.lmsgen.in`
-- `AWARENESS_SEED_REFERENCE_TEMPLATES=true`
+- `AWARENESS_SEED_REFERENCE_TEMPLATES=true`\n- Optional `AWARENESS_REFERENCE_ZIP_PATH` to override the bundled seed archive
 
 No OpenAI key is required for the Awareness Email Template Gallery.
