@@ -46,6 +46,8 @@ router.use((req, res, next) => {
 
 router.use('/otp', require('./mailOtp'));
 router.use('/mail', require('./mailAdmin'));
+router.use('/awareness-assets', require('./awarenessAssets'));
+router.use('/awareness-templates', require('./awarenessTemplates'));
 router.use('/staff-auth', require('./staffAuthPublic'));
 router.use('/flipbook-tenants', require('./flipbookTenants'));
 router.use('/ai-health', require('./aiHealth'));
