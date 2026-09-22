@@ -212,6 +212,8 @@ function generationSchema() {
             ctaLabel: { type: 'string', maxLength: 60 },
             footerNote: { type: 'string', maxLength: 280 },
             heroAltText: { type: 'string', maxLength: 220 },
+            heroVisualHeadline: { type: 'string', maxLength: 70 },
+            bannerVisualHeadline: { type: 'string', maxLength: 80 },
             imagePrompt: { type: 'string', maxLength: 900 },
             layoutId: { type: 'string', enum: LAYOUT_CATALOG.map((item) => item.id) }
         },
@@ -226,6 +228,8 @@ function generationSchema() {
             'ctaLabel',
             'footerNote',
             'heroAltText',
+            'heroVisualHeadline',
+            'bannerVisualHeadline',
             'imagePrompt',
             'layoutId'
         ]
@@ -236,16 +240,29 @@ function generationInstructions() {
     const layouts = LAYOUT_CATALOG.map((layout) => `${layout.id}: ${layout.name} — ${layout.description}`).join('\n');
     return `You create professional employee-awareness email copy for a learning platform.
 
-Return concise educational content only. The email must teach a useful behaviour or concept, not imitate a real person or brand, not request passwords, codes or credentials, and not create a deceptive phishing lure. Avoid fearmongering and unsupported claims. Use clear international English. The user will edit only text after generation, so each field must be complete and ready to publish.
+Return educational content only. Do not imitate a real person or brand, request passwords, codes or credentials, or create a deceptive phishing lure. Avoid fearmongering and unsupported claims. Use clear international English.
 
-Choose the layout that best matches the topic unless the input explicitly requests one of the layout IDs below.
+The eight layouts below deliberately mirror eight supplied awareness-email references. Choose the layout that best matches the topic unless the input requests one explicitly.
 ${layouts}
 
-Write three to five practical key points. For attack or threat topics, make the points distinct scenarios, stages, tactics or red flags. For best-practice topics, make them distinct habits or actions.
+CONTENT SHAPE MUST MATCH THE SELECTED REFERENCE FAMILY:
+- editorial-hero / Data Privacy Newsletter: first two key points are practical daily behaviours suitable for two feature cards. Remaining points are supporting privacy practices. Body copy explains why privacy is everyone's responsibility.
+- split-feature / Mobile App Threat Brief: use four distinct mobile threats or warning signs. The field-test section should help the reader spot a suspicious app or mobile prompt. Body copy is a short lock-it-down action list.
+- checklist-focus / Internet Security Best Practices: use four distinct everyday habits suitable for a 2×2 illustrated grid. Body copy includes a memorable golden rule and make-it-stick actions.
+- signal-card / Social Media Threat Brief: first three key points explain how exposure or social-media scams get in. Remaining points are before-you-post checks. Body copy supports a case-file style explanation.
+- story-spotlight / Ransomware Attack Story: first three key points are sequential attack stages. Each stage must describe what happens and what the employee should do. Remaining points are closing rules.
+- myth-fact / Social Engineering Playbook: first three key points are distinct social-engineering tactics. Remaining points are red flags. Body copy supplies a short quote/callout and a three-second verification rule.
+- action-brief / Modern Threats Dossier: first three key points are distinct modern phishing scenarios or disguises. Remaining points are response rules. Keep scenario headings short and punchy.
+- minimal-note / AI Scams & Deepfakes: first three key points are distinct AI-enabled scam scenarios such as cloned voice, live deepfake or synthetic message. Remaining points are verification rules.
 
-The imagePrompt must describe a premium, topic-specific editorial illustration or realistic conceptual scene. It must contain no written words, letters, numbers, logos, watermarks, UI screenshots or trademarked branding. Do not put important explanatory text inside the image.
+Write three to five practical key points. Make them visually and conceptually different from one another.
 
-Keep the subject useful rather than clickbait. Make key points practical and non-repetitive. The CTA label should describe a safe learning action such as Learn more, Review the guidance or Read the policy. Do not invent a URL.`;
+Also return:
+- heroVisualHeadline: a punchy 2–6 word phrase for a reference-style hero graphic. Do not copy a supplied reference phrase verbatim.
+- bannerVisualHeadline: a punchy 3–7 word phrase for a secondary reference-style banner. Do not copy a supplied reference phrase verbatim.
+- imagePrompt: a concrete topic-specific visual idea for the main image.
+
+The CTA label should describe a safe learning action such as Learn more, Review the guidance or Read the policy. Do not invent a URL.`;
 }
 
 async function generateCopy(input) {
@@ -280,44 +297,52 @@ async function generateCopy(input) {
 
 const LAYOUT_VISUAL_DIRECTIONS = Object.freeze({
     'editorial-hero': [
-        'Warm editorial lifestyle photography with tactile real-world materials, natural daylight and a premium magazine feel.',
-        'Use warm neutral environments, wood, paper, glass, fabric and real workplace objects where relevant.',
-        'Keep the scene sophisticated and human, not futuristic. Avoid neon cybersecurity aesthetics.'
+        'REFERENCE VISUAL DNA: warm brown/sepia monochrome editorial photography, like a premium corporate magazine photographed in natural indoor light.',
+        'Hero: a real workplace group or privacy-related work scene with one large bold condensed uppercase headline integrated into the left or lower-left of the graphic.',
+        'Supporting card art: documentary close-ups of a person or hands carrying out a privacy behaviour, with rich brown shadows and almost no bright colour.',
+        'Avoid futuristic cyber graphics, neon blue, floating UI and generic lock/shield stock art.'
     ],
     'split-feature': [
-        'High-contrast documentary field-briefing photography with dark charcoal surroundings and restrained acid-lime accents.',
-        'Use believable mobile-device, commute, desk or public-space situations with physical detail and directional light.',
-        'Make it feel like a security field report, not a glossy cyberpunk poster.'
+        'REFERENCE VISUAL DNA: matte black, white and acid-lime field-briefing graphic design with bold condensed typography and simple device/app visuals.',
+        'Use hard contrast, flat or lightly 3D infographic objects, black panels, lime highlights and sparse white space.',
+        'The field-test visual should resemble a clean lineup/comparison graphic using generic app icons or mobile cues, never copied brand logos.',
+        'Avoid photorealistic office photography and avoid neon cyberpunk lighting.'
     ],
     'checklist-focus': [
-        'Bright practical lifestyle photography with soft daylight, cream neutrals and subtle green accents.',
-        'Show simple everyday security habits through clear objects and actions that feel achievable.',
-        'Prefer natural spaces and useful detail over dramatic threat imagery.'
+        'REFERENCE VISUAL DNA: cream/off-white studio background with clean 3D clay-like icons in dark charcoal and muted forest green.',
+        'Hero: a simple protective object floating above a minimal laptop/device surface with soft bokeh and soft natural shadows.',
+        'Supporting habit art: one isolated centred object per card, oversized and easy to read at a glance, such as router waves, lock/key, circular update arrows or pointer/button.',
+        'No people, no text, no busy environment and no glossy neon effects.'
     ],
     'signal-card': [
-        'Investigative editorial photography with black, off-white and controlled red accents.',
-        'Use candid angles, evidence-like objects, social-media context or real-world exposure cues where relevant.',
-        'The look should feel like a field dossier or magazine investigation, not a generic technology illustration.'
+        'REFERENCE VISUAL DNA: black, off-white and red editorial field-report style mixing bold typography with ink-like line art, profile cards and annotation graphics.',
+        'Hero should feel like a printed investigative poster: strong black type block plus an energetic red/black collage of social/profile elements.',
+        'Case-file art should be a dark schematic profile-card investigation with red callout lines and visual warning markers. Keep any tiny labels minimal.',
+        'Use a screenprint/halftone editorial feel rather than glossy 3D rendering.'
     ],
     'story-spotlight': [
-        'Cinematic incident-story photography with realistic environments, strong narrative lighting and believable consequences.',
-        'Each image should feel like a different frame from an incident sequence, with changed location, angle and scale.',
-        'Prefer concrete attack stages and response actions over abstract security symbols.'
+        'REFERENCE VISUAL DNA: deep navy cybersecurity illustration with luminous red/orange accents, clean vector/3D hybrid icons and subtle dotted tech texture.',
+        'Hero and closing banner use dark navy backgrounds with angular red/blue ribbons, bold white condensed uppercase typography and one simple lock/security motif.',
+        'Attack-stage art uses a single central illustrated object or system per image, with red neon edges and dark blue negative space.',
+        'Do not use photorealistic people; keep it stylised, graphic and campaign-like.'
     ],
     'myth-fact': [
-        'Human-behaviour editorial imagery with rich violet, warm neutral and restrained gold accents.',
-        'Show social interaction, trust, persuasion, access or physical-world cues in a polished magazine style.',
-        'Keep people and environments believable. Avoid anonymous hacker imagery and sci-fi interfaces.'
+        'REFERENCE VISUAL DNA: deep purple/indigo campaign graphics with mustard orange, red and cream accents, diagonal stripe texture and target/radar motifs.',
+        'Hero and closing banner use bold condensed uppercase typography in capsule/ribbon shapes over a dark purple field.',
+        'Tactic-card art uses clean editorial vector illustration: silhouetted or simplified people, phishing-hook objects, doors/access scenes and targeted identity motifs.',
+        'Keep it human and illustrative, not photorealistic and not futuristic.'
     ],
     'action-brief': [
-        'Contemporary threat-intelligence editorial photography with deep navy, neutral daylight and restrained red accents.',
-        'Show modern work processes, devices, documents, access moments or suspicious workflows as real scenes.',
-        'The aesthetic should be precise and documentary, never a floating HUD or generic digital-network graphic.'
+        'REFERENCE VISUAL DNA: retro editorial threat banners on cream paper with dark navy, bright red and medium blue angular ribbons, halftone dots and hand-drawn accent lines.',
+        'Each visual is primarily a typographic poster/banner with one small supporting flat icon on the side.',
+        'Use very bold condensed uppercase white lettering and skewed geometric colour blocks. Preserve generous cream negative space.',
+        'Do not use photorealistic scenes, glossy 3D security objects or generic network imagery.'
     ],
     'minimal-note': [
-        'Surreal-but-believable editorial photo-collage for AI and identity risks, combining real photography with subtle visual contradiction.',
-        'Use reflections, doubles, mismatched shadows, altered perspective or split-identity cues when relevant.',
-        'Avoid robots, glowing AI brains, neon faces and repetitive holographic portraits.'
+        'REFERENCE VISUAL DNA: the same retro campaign-poster language as the AI/deepfake references: cream paper, dark navy base, bright red/blue ribbons, halftone texture, doodle arrows and a small identity/voice/phone icon.',
+        'Hero and supporting banners are bold typographic graphics with short readable slogans and intentionally varied ribbon composition from panel to panel.',
+        'Use flat editorial illustration and collage details rather than photorealistic faces, robots, holograms or glowing AI brains.',
+        'Every panel in the same email should vary the direction, scale and placement of its coloured ribbons and icon.'
     ]
 });
 
@@ -389,9 +414,45 @@ function slotDirection(slot) {
     ]).join(' ');
 }
 
+function trimVisualPhrase(value, fallback = '') {
+    const words = cleanText(value || fallback, 100).replace(/\s+/g, ' ').split(' ').filter(Boolean);
+    return words.slice(0, 8).join(' ');
+}
+
+function visualTextForSlot({ slot, layoutId, ai, content, input }) {
+    if (layoutId === 'action-brief' || layoutId === 'minimal-note') {
+        const pointMatch = String(slot).match(/^point-(\d+)$/);
+        if (pointMatch) {
+            const point = content.keyPoints[Math.max(0, Number(pointMatch[1]) - 1)];
+            return trimVisualPhrase(point?.title, input.topic);
+        }
+        return slot === 'banner'
+            ? trimVisualPhrase(ai.bannerVisualHeadline, content.footerNote || input.topic)
+            : trimVisualPhrase(ai.heroVisualHeadline, content.headline || input.topic);
+    }
+    if (['editorial-hero', 'split-feature', 'signal-card', 'story-spotlight', 'myth-fact'].includes(layoutId)) {
+        if (slot === 'hero') return trimVisualPhrase(ai.heroVisualHeadline, content.headline || input.topic);
+        if (slot === 'banner') return trimVisualPhrase(ai.bannerVisualHeadline, content.footerNote || input.topic);
+    }
+    return '';
+}
+
+function visualSizeForSlot(layoutId, slot) {
+    if (
+        /^point-\d+$/.test(String(slot)) &&
+        ['editorial-hero', 'checklist-focus', 'story-spotlight', 'myth-fact'].includes(layoutId)
+    ) return '1024x1024';
+    return '1536x864';
+}
+
 function imagePromptForSlot({ slot, ai, input, content, layoutId }) {
     const requestedSlots = layoutVisualSlots(layoutId);
     const slotIndex = Math.max(0, requestedSlots.indexOf(slot));
+    const visualText = visualTextForSlot({ slot, layoutId, ai, content, input });
+    const textInstruction = visualText
+        ? `TYPOGRAPHY IS PART OF THE REFERENCE LOOK. Render this exact short phrase clearly and legibly as the dominant campaign headline: "${visualText}". Do not add any other readable wording.`
+        : 'Do not render readable wording in this supporting illustration.';
+
     return [
         `IMAGE ROLE ${slotIndex + 1} OF ${requestedSlots.length}: ${String(slot).toUpperCase()}.`,
         visualSubjectForSlot(slot, content, ai),
@@ -399,12 +460,13 @@ function imagePromptForSlot({ slot, ai, input, content, layoutId }) {
         `Audience: ${cleanText(input.audience || 'employees', 160)}.`,
         layoutDirection(layoutId),
         slotDirection(slot),
-        'VARIETY REQUIREMENT: this image must be obviously different from the other images in the same email at thumbnail size. Change viewpoint, subject scale, environment, object mix and visual rhythm.',
-        'Use the email palette only as a restrained accent. Preserve believable skin tones, materials, lighting and natural object colours instead of tinting the whole image the same colour.',
-        'Show the idea through concrete objects, environments, actions and visual relationships. Do not rely on generic symbols when a real-world scene can communicate the lesson.',
-        'AVOID REPETITION AND CLICHES: no repeated office worker, no repeated laptop-on-desk composition, no hooded hacker, no generic glowing padlock or shield, no floating code, no blue neon network, no holographic dashboard, no glowing AI brain and no centred smartphone unless the learning point specifically requires that object.',
-        'No written words, letters, numbers, logos, watermarks, readable interfaces, brand marks or trademarked characters.',
-        'Email-safe landscape artwork, clean edges and no important detail touching the crop boundary.'
+        textInstruction,
+        'MATCH THE REFERENCE CAMPAIGN FAMILY, not a generic cybersecurity stock image. Follow its palette, illustration/photo treatment, graphic density, typography hierarchy and composition language.',
+        'VARIETY REQUIREMENT: this image must be obviously different from the other images in the same email at thumbnail size. Change viewpoint, object scale, arrangement, icon subject and ribbon/layout direction.',
+        'Use concrete topic-specific objects and scenarios. Avoid defaulting to a laptop, shield, padlock or anonymous office worker unless the reference family and exact learning point call for it.',
+        'Never use a hooded hacker, blue neon network, holographic dashboard, glowing AI brain, random binary code or generic futuristic cyber background.',
+        'No logos, watermarks, trademarked brand marks or copyrighted characters.',
+        'Keep critical art inside the safe crop area for email.'
     ].filter(Boolean).join(' ');
 }
 
@@ -431,7 +493,7 @@ async function generateVisualAssets({ storage, hostId, templateId, layoutId, ai,
             const image = await generateImage({
                 prompt: imagePromptForSlot({ slot, ai, input, content, layoutId }),
                 quality: 'low',
-                size: '1536x864',
+                size: visualSizeForSlot(layoutId, slot),
                 timeoutMs: 85000
             });
             const contentType = image.contentType || 'image/jpeg';
@@ -553,6 +615,8 @@ async function createTemplate({ hostId, createdByUserId = null, input = {} }) {
                 textModel: response.model || null,
                 imageModel: visuals.imageModel,
                 textResponseId: response.responseId || null,
+                heroVisualHeadline: cleanText(ai.heroVisualHeadline, 70),
+                bannerVisualHeadline: cleanText(ai.bannerVisualHeadline, 80),
                 estimatedCostUsd: Number(response.estimatedCostUsd || 0) + visuals.imageCostUsd,
                 imageStatus: visuals.imageStatus,
                 imageWarnings: visuals.warnings,
@@ -828,5 +892,7 @@ module.exports = {
     cidForSlot,
     visualAssetRecords,
     imagePromptForSlot,
+    visualSizeForSlot,
+    visualTextForSlot,
     maxAiImages
 };
