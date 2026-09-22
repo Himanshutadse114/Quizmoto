@@ -89,6 +89,7 @@ export default function AwarenessTemplates(){
   const [recipients,setRecipients]=useState('');
   const [roster,setRoster]=useState([]);
   const [rosterLoading,setRosterLoading]=useState(false);
+  const [mailDiagnostic,setMailDiagnostic]=useState(null);
   const [uploading,setUploading]=useState(false);
   const frameRef=useRef(null);
   const seedRepairAttempted=useRef(false);
@@ -347,6 +348,7 @@ export default function AwarenessTemplates(){
     if(!item)return;
     setSendTarget(item);
     setRecipients('');
+    setMailDiagnostic(null);
     setSendOpen(true);
     loadRoster();
   };
@@ -354,6 +356,38 @@ export default function AwarenessTemplates(){
     const list=recipients.split(/[\s,;]+/).map(x=>x.trim().toLowerCase()).filter(Boolean);
     setRecipients([...new Set([...list,String(email||'').toLowerCase()])].slice(0,status.maxRecipientsPerSend||50).join(', '));
   };
+  const verifyMailProvider=async()=>{
+    setBusy('mail-verify');setMailDiagnostic(null);
+    try{
+      const res=await axios.post(apiUrl(API+'/mail/verify'),{},{headers});
+      const result=res.data?.result||{};
+      setMailDiagnostic({
+        type:'success',
+        text:(result.provider?String(result.provider).toUpperCase():'Mail provider')+' connection verified successfully.'
+      });
+    }catch(error){
+      setMailDiagnostic({type:'error',text:apiError(error,'Mail provider verification failed.')});
+    }finally{setBusy('')}
+  };
+
+  const sendPlainTest=async()=>{
+    const valid=validRecipients(recipients);
+    if(!valid.length)return;
+    setBusy('mail-test');setMailDiagnostic(null);
+    try{
+      const res=await axios.post(apiUrl(API+'/mail/test'),{to:valid[0]},{headers});
+      const result=res.data?.result||{};
+      setMailDiagnostic({
+        type:'success',
+        text:(result.provider==='brevo'?'Brevo queued':'SMTP accepted')+' the plain test email for '+valid[0]+
+          (result.messageId?' · ID '+result.messageId:'')+
+          '. Check Inbox and Spam. This confirms provider acceptance, not final inbox delivery.'
+      });
+    }catch(error){
+      setMailDiagnostic({type:'error',text:apiError(error,'Plain test email was not accepted by the mail provider.')});
+    }finally{setBusy('')}
+  };
+
   const sendMail=async()=>{
     const target=sendTarget||editor;
     const valid=validRecipients(recipients);
@@ -367,7 +401,19 @@ export default function AwarenessTemplates(){
       if(editor?.id===target.id)await persistEditor();
       const res=await axios.post(apiUrl(API+'/mine/'+target.id+'/send'),{recipients:valid},{headers});
       const d=res.data?.delivery||{};
-      setNotice({type:d.failed?'error':'success',text:d.failed?(d.sent+' sent, '+d.failed+' failed.'):(d.sent+' email'+(d.sent===1?'':'s')+' sent successfully.')});
+      const first=d.results?.find?.(x=>x.sent);
+      const provider=String(d.provider||first?.provider||status.mail?.provider||'mail').toUpperCase();
+      const acceptedText=d.failed
+        ? (d.sent+' accepted, '+d.failed+' failed.')
+        : (provider==='BREVO'
+            ? d.sent+' email'+(d.sent===1?'':'s')+' queued by Brevo for delivery.'
+            : d.sent+' email'+(d.sent===1?'':'s')+' accepted by the SMTP server for delivery.');
+      setNotice({
+        type:d.failed?'error':'success',
+        text:acceptedText+
+          (first?.messageId?' Message ID: '+first.messageId+'.':'')+
+          (!d.failed?' Provider acceptance does not guarantee Inbox placement; check Spam/Junk if it does not appear.':'')
+      });
       if(!d.failed){
         setMine(current=>current.map(x=>x.id===target.id?{...x,lastSentAt:new Date().toISOString()}:x));
         setSendOpen(false);setSendTarget(null);setRecipients('');
@@ -466,11 +512,20 @@ export default function AwarenessTemplates(){
         <div className="aw-send-modal-body">
           <div className={'aw-mail-status '+(status.mail?.configured?'is-ready':'is-missing')}>
             <strong>{status.mail?.configured?'Mail ready':'Mail setup required'}</strong>
-            <span>{status.mail?.configured?'Using '+String(status.mail?.provider||'mail').toUpperCase()+'. Each recipient is sent separately for privacy.':'SMTP or Brevo is not configured. You can enter recipients now, but delivery requires the platform mail settings.'}</span>
+            <span>{status.mail?.configured
+              ? 'Using '+String(status.mail?.provider||'mail').toUpperCase()+
+                (status.mail?.fromAddress?' from '+status.mail.fromAddress:'')+
+                '. Each recipient is submitted separately for privacy.'
+              : 'SMTP or Brevo is not configured. You can enter recipients now, but delivery requires the platform mail settings.'}</span>
           </div>
           <label className="aw-send-field"><span>Recipients</span><textarea value={recipients} onChange={e=>setRecipients(e.target.value)} placeholder="alex@example.com, sam@example.com"/></label>
           <label className="aw-send-field"><span>Add from learner roster</span><select value="" onChange={e=>addRoster(e.target.value)} disabled={!roster.length}><option value="">{rosterLoading?'Loading roster…':roster.length?'Choose a learner…':'No roster learners loaded'}</option>{roster.map(x=><option key={x.id||x.email} value={x.email}>{x.learnerName?x.learnerName+' — '+x.email:x.email}</option>)}</select></label>
           <div className="aw-send-summary"><span>{recipientCount} valid recipient{recipientCount===1?'':'s'}</span><span>Maximum {status.maxRecipientsPerSend||50}</span></div>
+          <div className="aw-mail-diagnostic-actions">
+            <button type="button" className="aw-btn-secondary" onClick={verifyMailProvider} disabled={!status.mail?.configured||busy==='mail-verify'}><RefreshCw size={13}/>{busy==='mail-verify'?'Verifying…':'Verify provider'}</button>
+            <button type="button" className="aw-btn-secondary" onClick={sendPlainTest} disabled={!status.mail?.configured||!recipientCount||busy==='mail-test'}><Mail size={13}/>{busy==='mail-test'?'Submitting test…':'Send plain test'}</button>
+          </div>
+          {mailDiagnostic&&<div className={'aw-mail-diagnostic '+(mailDiagnostic.type==='error'?'is-error':'is-success')}>{mailDiagnostic.text}</div>}
         </div>
         <div className="aw-preview-footer">
           <button className="aw-btn-secondary" onClick={()=>{setSendOpen(false);setSendTarget(null)}}>Cancel</button>
