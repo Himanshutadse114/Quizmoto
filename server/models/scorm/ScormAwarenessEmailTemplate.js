@@ -66,8 +66,7 @@ const ScormAwarenessEmailTemplate = sequelize.define('ScormAwarenessEmailTemplat
     },
     publicAssetToken: {
         type: DataTypes.STRING(96),
-        allowNull: true,
-        unique: true
+        allowNull: true
     },
     aiMetadataJson: {
         type: DataTypes.TEXT,
