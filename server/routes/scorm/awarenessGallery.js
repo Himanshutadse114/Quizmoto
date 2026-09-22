@@ -42,6 +42,14 @@ router.get('/central/:id',auth,editor,async(req,res)=>{
         res.json({ok:true,template:await Gallery.getCentral(req.params.id,includeInactive)});
     }catch(e){fail(res,e,'Unable to load this central template.')}
 });
+router.post('/central/seed',auth,superAdmin,async(req,res)=>{
+    try{
+        const result=await Gallery.seedReferenceTemplates();
+        const templates=await Gallery.listCentral(true);
+        res.json({ok:true,...result,templates});
+    }catch(e){fail(res,e,'Unable to restore the bundled reference templates.')}
+});
+
 router.post('/central/upload',auth,superAdmin,async(req,res)=>{
     try{
         const result=await Gallery.importCentralZip({
