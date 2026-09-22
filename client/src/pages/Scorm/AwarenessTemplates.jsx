@@ -1,599 +1,357 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import {
+  Archive,
+  CheckCircle2,
   Download,
   Eye,
-  FileText,
   Image as ImageIcon,
+  Library,
   Mail,
+  Pencil,
   Plus,
   RefreshCw,
   Save,
+  Search,
   Send,
-  Sparkles,
   Trash2,
-  WandSparkles,
+  Upload,
   X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import './awarenessTemplates.css';
 
-const EMPTY_GENERATOR = {
-  topic: '',
-  audience: 'All employees',
-  goal: '',
-  tone: 'clear',
-  layoutId: 'auto',
-  ctaUrl: '',
-  organisationContext: '',
-  language: 'English'
-};
+const API='/api/scorm/awareness-gallery';
 
-function apiError(error, fallback) {
-  return error?.response?.data?.message || error?.message || fallback;
+function apiError(error,fallback){
+  return error?.response?.data?.message||error?.message||fallback;
 }
-
-function templateDraft(template) {
-  if (!template) return null;
-  return {
-    title: template.title || '',
-    subject: template.subject || '',
-    preheader: template.preheader || '',
-    heroAltText: template.heroAltText || '',
-    content: {
-      headline: template.content?.headline || '',
-      intro: template.content?.intro || '',
-      bodyParagraphs: Array.isArray(template.content?.bodyParagraphs) ? [...template.content.bodyParagraphs] : [],
-      keyPoints: Array.isArray(template.content?.keyPoints)
-        ? template.content.keyPoints.map((item) => ({ title: item.title || '', body: item.body || '' }))
-        : [],
-      ctaLabel: template.content?.ctaLabel || '',
-      ctaUrl: template.content?.ctaUrl || '',
-      footerNote: template.content?.footerNote || ''
-    }
-  };
+function Notice({notice,onClose}){
+  if(!notice)return null;
+  return <div className={'aw-gallery-notice '+(notice.type==='error'?'is-error':'is-success')}>
+    <span>{notice.text}</span><button type="button" onClick={onClose}><X size={14}/></button>
+  </div>;
 }
-
-function Notice({ notice, dismiss }) {
-  if (!notice) return null;
-  return (
-    <div className={`awareness-notice ${notice.type === 'success' ? 'is-success' : 'is-error'}`}>
-      <span>{notice.text}</span>
-      <button type="button" onClick={dismiss} aria-label="Dismiss"><X size={14} /></button>
-    </div>
-  );
-}
-
-function Field({ label, value, onChange, maxLength = 500, textarea = false, rows = 3, placeholder = '' }) {
-  return (
-    <label className="awareness-field">
-      <span>{label}</span>
-      {textarea
-        ? <textarea rows={rows} maxLength={maxLength} value={value || ''} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
-        : <input maxLength={maxLength} value={value || ''} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />}
-    </label>
-  );
-}
-
-function LayoutCard({ layout, active, onClick }) {
-  return (
-    <button type="button" onClick={onClick} className={`awareness-layout-card ${active ? 'is-active' : ''}`}>
-      <span className="awareness-layout-swatch" style={{ background: `linear-gradient(135deg, ${layout.accentSoft}, ${layout.background})` }}>
-        <i style={{ background: layout.accent }} />
-        <b style={{ background: layout.accent }} />
-      </span>
-      <span><strong>{layout.name}</strong><small>{layout.description}</small></span>
+function Card({template,central,onPreview,onImport,onEdit,onDelete,onArchive,imported}){
+  return <article className={'aw-template-card '+(!template.isActive&&central?'is-inactive':'')}>
+    <button type="button" className="aw-card-preview" onClick={()=>onPreview?.(template)}>
+      {template.coverUrl?<img src={template.coverUrl} alt=""/>:<div className="aw-card-placeholder"><Mail size={28}/></div>}
+      {central&&<span className="aw-card-category">{template.category||'Awareness'}</span>}
+      {central&&!template.isActive&&<span className="aw-card-hidden">Hidden</span>}
     </button>
-  );
-}
-
-export default function AwarenessTemplates() {
-  const { token } = useAuth();
-  const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
-  const [layouts, setLayouts] = useState([]);
-  const [templates, setTemplates] = useState([]);
-  const [selectedId, setSelectedId] = useState('');
-  const [draft, setDraft] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const [generator, setGenerator] = useState(EMPTY_GENERATOR);
-  const [creating, setCreating] = useState(false);
-  const [sendOpen, setSendOpen] = useState(false);
-  const [recipients, setRecipients] = useState('');
-  const [roster, setRoster] = useState([]);
-  const [rosterLoading, setRosterLoading] = useState(false);
-  const [mail, setMail] = useState({ configured: false, provider: null });
-  const [maxRecipients, setMaxRecipients] = useState(50);
-  const [busy, setBusy] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [notice, setNotice] = useState(null);
-
-  const selected = useMemo(
-    () => templates.find((item) => item.id === selectedId) || null,
-    [templates, selectedId]
-  );
-
-  const activeLayout = useMemo(
-    () => layouts.find((item) => item.id === selected?.layoutId) || null,
-    [layouts, selected]
-  );
-
-  const loadPreview = async (id) => {
-    if (!id) return;
-    const response = await axios.get(apiUrl(`/api/scorm/awareness-templates/${id}/preview`), { headers });
-    setPreview(response.data?.preview || null);
-  };
-
-  const openTemplate = async (template) => {
-    setSelectedId(template?.id || '');
-    setDraft(templateDraft(template));
-    setPreview(null);
-    setCreating(false);
-    setSendOpen(false);
-    setRecipients('');
-    if (template?.id) {
-      try {
-        await loadPreview(template.id);
-      } catch (error) {
-        setNotice({ type: 'error', text: apiError(error, 'Unable to load the email preview.') });
-      }
-    }
-  };
-
-  const loadWorkspace = async (keepSelection = true) => {
-    setLoading(true);
-    try {
-      const [catalogueResponse, listResponse] = await Promise.all([
-        axios.get(apiUrl('/api/scorm/awareness-templates/catalog'), { headers }),
-        axios.get(apiUrl('/api/scorm/awareness-templates'), { headers })
-      ]);
-      const nextLayouts = catalogueResponse.data?.layouts || [];
-      const nextTemplates = listResponse.data?.templates || [];
-      setLayouts(nextLayouts);
-      setTemplates(nextTemplates);
-      setMail(catalogueResponse.data?.mail || { configured: false, provider: null });
-      setMaxRecipients(catalogueResponse.data?.maxRecipientsPerSend || 50);
-      const next = keepSelection
-        ? nextTemplates.find((item) => item.id === selectedId) || nextTemplates[0]
-        : nextTemplates[0];
-      if (next) await openTemplate(next);
-      else {
-        setSelectedId('');
-        setDraft(null);
-        setPreview(null);
-        setCreating(true);
-      }
-    } catch (error) {
-      setNotice({ type: 'error', text: apiError(error, 'Unable to load Awareness Email Studio.') });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (token) loadWorkspace(false);
-  }, [token]);
-
-  const generateTemplate = async () => {
-    if (!generator.topic.trim()) {
-      setNotice({ type: 'error', text: 'Enter an awareness topic before generating.' });
-      return;
-    }
-    setBusy('generate');
-    setNotice(null);
-    try {
-      const response = await axios.post(apiUrl('/api/scorm/awareness-templates/generate'), generator, { headers });
-      const created = response.data?.template;
-      if (!created) throw new Error('The generated template was not returned.');
-      setTemplates((current) => [created, ...current.filter((item) => item.id !== created.id)]);
-      setGenerator(EMPTY_GENERATOR);
-      await openTemplate(created);
-      setNotice({
-        type: 'success',
-        text: created.imageAvailable
-          ? 'Awareness email created with AI copy and visual.'
-          : 'Awareness email text created. The image service was unavailable, so the email uses a text-first fallback.'
-      });
-    } catch (error) {
-      setNotice({ type: 'error', text: apiError(error, 'Unable to generate the awareness email.') });
-    } finally {
-      setBusy('');
-    }
-  };
-
-  const persistDraft = async () => {
-    if (!selected || !draft) return null;
-    const response = await axios.put(
-      apiUrl(`/api/scorm/awareness-templates/${selected.id}`),
-      draft,
-      { headers }
-    );
-    const saved = response.data?.template;
-    if (saved) {
-      setTemplates((current) => current.map((item) => item.id === saved.id ? saved : item));
-      setDraft(templateDraft(saved));
-    }
-    return saved;
-  };
-
-  const saveAndPreview = async () => {
-    setBusy('save');
-    setNotice(null);
-    try {
-      const saved = await persistDraft();
-      if (saved) await loadPreview(saved.id);
-      setNotice({ type: 'success', text: 'Template text saved and preview updated.' });
-    } catch (error) {
-      setNotice({ type: 'error', text: apiError(error, 'Unable to save the template.') });
-    } finally {
-      setBusy('');
-    }
-  };
-
-  const exportEml = async () => {
-    if (!selected) return;
-    setBusy('export');
-    setNotice(null);
-    try {
-      await persistDraft();
-      const response = await axios.post(
-        apiUrl(`/api/scorm/awareness-templates/${selected.id}/export-eml`),
-        {},
-        { headers, responseType: 'blob' }
-      );
-      const disposition = response.headers?.['content-disposition'] || '';
-      const match = disposition.match(/filename="?([^";]+)"?/i);
-      const filename = match?.[1] || 'awareness-email.eml';
-      const url = URL.createObjectURL(new Blob([response.data], { type: 'message/rfc822' }));
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
-      setNotice({ type: 'success', text: 'EML exported with the design and generated image embedded.' });
-    } catch (error) {
-      setNotice({ type: 'error', text: apiError(error, 'Unable to export the EML file.') });
-    } finally {
-      setBusy('');
-    }
-  };
-
-  const loadRoster = async () => {
-    if (rosterLoading || roster.length) return;
-    setRosterLoading(true);
-    try {
-      const response = await axios.get(apiUrl('/api/scorm/roster'), { headers });
-      setRoster(Array.isArray(response.data?.roster) ? response.data.roster : []);
-    } catch (error) {
-      if (error?.response?.status !== 403) {
-        setNotice({ type: 'error', text: apiError(error, 'Unable to load the learner roster.') });
-      }
-    } finally {
-      setRosterLoading(false);
-    }
-  };
-
-  const addRosterRecipient = (email) => {
-    const nextEmail = String(email || '').trim().toLowerCase();
-    if (!nextEmail) return;
-    const current = recipients.split(/[\s,;]+/g).map((item) => item.trim().toLowerCase()).filter(Boolean);
-    const unique = [...new Set([...current, nextEmail])].slice(0, maxRecipients);
-    setRecipients(unique.join(', '));
-  };
-
-  const toggleSendPanel = () => {
-    const next = !sendOpen;
-    setSendOpen(next);
-    if (next) loadRoster();
-  };
-
-  const sendTemplate = async () => {
-    if (!recipients.trim()) {
-      setNotice({ type: 'error', text: 'Add at least one recipient email address.' });
-      return;
-    }
-    setBusy('send');
-    setNotice(null);
-    try {
-      await persistDraft();
-      const response = await axios.post(
-        apiUrl(`/api/scorm/awareness-templates/${selected.id}/send`),
-        { recipients },
-        { headers }
-      );
-      const delivery = response.data?.delivery || {};
-      setNotice({
-        type: delivery.failed ? 'error' : 'success',
-        text: delivery.failed
-          ? `${delivery.sent || 0} sent and ${delivery.failed || 0} failed.`
-          : `${delivery.sent || 0} awareness email${delivery.sent === 1 ? '' : 's'} sent successfully.`
-      });
-      if (!delivery.failed) {
-        setSendOpen(false);
-        setRecipients('');
-      }
-    } catch (error) {
-      setNotice({ type: 'error', text: apiError(error, 'Unable to send the awareness email.') });
-    } finally {
-      setBusy('');
-    }
-  };
-
-  const deleteTemplate = async () => {
-    if (!selected || !window.confirm(`Delete “${selected.title}”? This cannot be undone.`)) return;
-    setBusy('delete');
-    try {
-      await axios.delete(apiUrl(`/api/scorm/awareness-templates/${selected.id}`), { headers });
-      const remaining = templates.filter((item) => item.id !== selected.id);
-      setTemplates(remaining);
-      if (remaining[0]) await openTemplate(remaining[0]);
-      else {
-        setSelectedId('');
-        setDraft(null);
-        setPreview(null);
-        setCreating(true);
-      }
-      setNotice({ type: 'success', text: 'Awareness email deleted.' });
-    } catch (error) {
-      setNotice({ type: 'error', text: apiError(error, 'Unable to delete the awareness email.') });
-    } finally {
-      setBusy('');
-    }
-  };
-
-  const setContent = (key, value) => {
-    setDraft((current) => ({
-      ...current,
-      content: { ...current.content, [key]: value }
-    }));
-  };
-
-  const updateParagraph = (index, value) => {
-    setDraft((current) => {
-      const list = [...current.content.bodyParagraphs];
-      list[index] = value;
-      return { ...current, content: { ...current.content, bodyParagraphs: list } };
-    });
-  };
-
-  const updatePoint = (index, key, value) => {
-    setDraft((current) => {
-      const list = current.content.keyPoints.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, [key]: value } : item
-      );
-      return { ...current, content: { ...current.content, keyPoints: list } };
-    });
-  };
-
-  if (loading && !layouts.length) {
-    return (
-      <div className="awareness-loading">
-        <RefreshCw size={20} className="animate-spin" />
-        Loading Awareness Email Studio…
+    <div className="aw-card-body">
+      <h3>{template.title}</h3>
+      <p>{central?(template.description||'Curated awareness email template'):'Imported template ready to edit, send or export.'}</p>
+      <div className="aw-card-meta">
+        {central?<span>{template.assetCount||0} stored image{template.assetCount===1?'':'s'}</span>:<span>{template.lastSentAt?'Previously sent':'Not sent yet'}</span>}
       </div>
-    );
-  }
-
-  return (
-    <div className="awareness-page">
-      <header className="awareness-topbar">
-        <div>
-          <div className="awareness-kicker"><Mail size={15} /> Awareness Email Studio</div>
-          <h1>AI awareness email templates</h1>
-          <p>Create an educational email, edit only its text, export an EML or send it through the platform.</p>
-        </div>
-        <div className="awareness-actions">
-          <button type="button" className="scorm-button-secondary" onClick={() => loadWorkspace()} disabled={Boolean(busy)}>
-            <RefreshCw size={14} /> Refresh
-          </button>
-          <button type="button" className="scorm-button-primary" onClick={() => setCreating(true)} disabled={Boolean(busy)}>
-            <Plus size={14} /> New template
-          </button>
-        </div>
-      </header>
-
-      <Notice notice={notice} dismiss={() => setNotice(null)} />
-
-      <div className="awareness-workspace">
-        <aside className="awareness-library">
-          <div className="awareness-library-title">
-            <span>Saved templates</span><strong>{templates.length}</strong>
-          </div>
-          <div className="awareness-library-list">
-            {templates.map((template) => {
-              const layout = layouts.find((item) => item.id === template.layoutId);
-              return (
-                <button
-                  key={template.id}
-                  type="button"
-                  onClick={() => openTemplate(template)}
-                  className={`awareness-template-row ${template.id === selectedId && !creating ? 'is-active' : ''}`}
-                >
-                  <span className="awareness-thumb" style={{ background: layout?.background || '#eef2f4' }}>
-                    {template.imageUrl ? <img src={template.imageUrl} alt="" /> : <ImageIcon size={17} />}
-                  </span>
-                  <span>
-                    <strong>{template.title}</strong>
-                    <small>{layout?.name || template.layoutId}</small>
-                  </span>
-                </button>
-              );
-            })}
-            {!templates.length && <div className="awareness-empty-small">No templates yet.</div>}
-          </div>
-        </aside>
-
-        <main className="awareness-main">
-          {creating ? (
-            <section className="awareness-generator">
-              <div className="awareness-section-head">
-                <div>
-                  <div className="awareness-kicker"><WandSparkles size={14} /> AI generator</div>
-                  <h2>What should the email teach?</h2>
-                  <p>AI writes structured copy and creates layout-aware topic visuals. LMSGEN controls the email HTML and layout.</p>
-                </div>
-                {selected && <button type="button" className="awareness-close" onClick={() => setCreating(false)}><X size={16} /></button>}
-              </div>
-
-              <div className="awareness-generator-grid">
-                <div className="awareness-form-stack">
-                  <Field label="Topic *" value={generator.topic} maxLength={220} placeholder="QR code phishing, fire evacuation, data privacy…" onChange={(value) => setGenerator((current) => ({ ...current, topic: value }))} />
-                  <div className="awareness-two">
-                    <Field label="Audience" value={generator.audience} maxLength={160} onChange={(value) => setGenerator((current) => ({ ...current, audience: value }))} />
-                    <label className="awareness-field">
-                      <span>Tone</span>
-                      <select value={generator.tone} onChange={(event) => setGenerator((current) => ({ ...current, tone: event.target.value }))}>
-                        <option value="clear">Clear & practical</option>
-                        <option value="friendly">Friendly</option>
-                        <option value="calm">Calm</option>
-                        <option value="executive">Executive</option>
-                        <option value="urgent">High attention</option>
-                      </select>
-                    </label>
-                  </div>
-                  <Field textarea rows={3} label="Learning goal" value={generator.goal} maxLength={360} placeholder="What should readers understand or do?" onChange={(value) => setGenerator((current) => ({ ...current, goal: value }))} />
-                  <Field textarea rows={3} label="Organisation context" value={generator.organisationContext} maxLength={500} placeholder="Optional policy or campaign context" onChange={(value) => setGenerator((current) => ({ ...current, organisationContext: value }))} />
-                  <Field label="CTA URL (optional)" value={generator.ctaUrl} maxLength={1200} placeholder="https://…" onChange={(value) => setGenerator((current) => ({ ...current, ctaUrl: value }))} />
-                </div>
-
-                <div>
-                  <div className="awareness-picker-title">
-                    <strong>Choose a style</strong>
-                    <small>The design stays locked after generation. Only text remains editable.</small>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setGenerator((current) => ({ ...current, layoutId: 'auto' }))}
-                    className={`awareness-layout-card awareness-auto ${generator.layoutId === 'auto' ? 'is-active' : ''}`}
-                  >
-                    <span className="awareness-layout-swatch"><Sparkles size={18} /></span>
-                    <span><strong>AI choose</strong><small>Match the design to the topic.</small></span>
-                  </button>
-                  <div className="awareness-layout-grid">
-                    {layouts.map((layout) => (
-                      <LayoutCard
-                        key={layout.id}
-                        layout={layout}
-                        active={generator.layoutId === layout.id}
-                        onClick={() => setGenerator((current) => ({ ...current, layoutId: layout.id }))}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="awareness-generate-footer">
-                <span><Sparkles size={14} /> Structured copy + layout-aware AI visuals + protected email layout</span>
-                <button type="button" className="scorm-button-primary" onClick={generateTemplate} disabled={busy === 'generate'}>
-                  {busy === 'generate' ? <RefreshCw size={14} className="animate-spin" /> : <WandSparkles size={14} />}
-                  {busy === 'generate' ? 'Generating…' : 'Generate email'}
-                </button>
-              </div>
-            </section>
-          ) : selected && draft ? (
-            <section className="awareness-editor">
-              <div className="awareness-editor-head">
-                <div>
-                  <div className="awareness-kicker"><FileText size={14} /> Text-only editor</div>
-                  <h2>{selected.title}</h2>
-                  <div className="awareness-meta">
-                    <span>{activeLayout?.name || selected.layoutId}</span>
-                    <span>{selected.visualCount ? `${selected.visualCount} AI visual${selected.visualCount === 1 ? '' : 's'}` : 'Text-first fallback'}</span>
-                    <span>{mail.configured ? `${String(mail.provider || '').toUpperCase()} connected` : 'Mail not configured'}</span>
-                  </div>
-                </div>
-                <div className="awareness-actions">
-                  <button type="button" className="scorm-button-secondary" onClick={deleteTemplate} disabled={Boolean(busy)}><Trash2 size={14} /> Delete</button>
-                  <button type="button" className="scorm-button-secondary" onClick={exportEml} disabled={Boolean(busy)}><Download size={14} /> Export EML</button>
-                  <button type="button" className="scorm-button-secondary" onClick={toggleSendPanel} disabled={Boolean(busy)}><Send size={14} /> Send</button>
-                  <button type="button" className="scorm-button-primary" onClick={saveAndPreview} disabled={Boolean(busy)}><Save size={14} /> Save & preview</button>
-                </div>
-              </div>
-
-              {sendOpen && (
-                <div className="awareness-send-panel">
-                  <div>
-                    <strong>Send from LMSGEN</strong>
-                    <small>{mail.configured ? `Using ${String(mail.provider || '').toUpperCase()}. Recipients are delivered individually for privacy.` : 'Configure SMTP or Brevo before sending.'}</small>
-                  </div>
-                  <div className="awareness-recipient-tools">
-                    <Field textarea rows={3} label={`Recipients (up to ${maxRecipients})`} value={recipients} placeholder="alex@example.com, sam@example.com" onChange={setRecipients} />
-                    <label className="awareness-field">
-                      <span>Add from learner roster</span>
-                      <select value="" onChange={(event) => addRosterRecipient(event.target.value)} disabled={rosterLoading || !roster.length}>
-                        <option value="">{rosterLoading ? 'Loading learner roster…' : roster.length ? 'Choose a learner…' : 'No roster learners available'}</option>
-                        {roster.slice(0, 500).map((learner) => (
-                          <option key={learner.id || learner.email} value={learner.email}>
-                            {learner.learnerName ? `${learner.learnerName} — ${learner.email}` : learner.email}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  <button type="button" className="scorm-button-primary" onClick={sendTemplate} disabled={!mail.configured || busy === 'send'}>
-                    <Send size={14} /> {busy === 'send' ? 'Sending…' : 'Send email'}
-                  </button>
-                </div>
-              )}
-
-              <div className="awareness-editor-grid">
-                <div className="awareness-copy">
-                  <div className="awareness-lock-note"><FileText size={14} /> Layout and generated visuals are protected. Only the content below can be edited.</div>
-                  <Field label="Template name" value={draft.title} maxLength={180} onChange={(value) => setDraft((current) => ({ ...current, title: value }))} />
-                  <Field label="Email subject" value={draft.subject} maxLength={240} onChange={(value) => setDraft((current) => ({ ...current, subject: value }))} />
-                  <Field label="Preheader" value={draft.preheader} maxLength={240} onChange={(value) => setDraft((current) => ({ ...current, preheader: value }))} />
-                  <Field label="Headline" value={draft.content.headline} maxLength={220} onChange={(value) => setContent('headline', value)} />
-                  <Field textarea rows={4} label="Introduction" value={draft.content.intro} maxLength={900} onChange={(value) => setContent('intro', value)} />
-
-                  <div className="awareness-repeat">
-                    <strong>Body copy</strong>
-                    {draft.content.bodyParagraphs.map((item, index) => (
-                      <Field key={`paragraph-${index}`} textarea rows={4} label={`Paragraph ${index + 1}`} value={item} maxLength={1200} onChange={(value) => updateParagraph(index, value)} />
-                    ))}
-                  </div>
-
-                  <div className="awareness-repeat">
-                    <strong>Key learning points</strong>
-                    {draft.content.keyPoints.map((point, index) => (
-                      <div className="awareness-point" key={`point-${index}`}>
-                        <Field label={`Point ${index + 1} heading`} value={point.title} maxLength={120} onChange={(value) => updatePoint(index, 'title', value)} />
-                        <Field textarea rows={3} label="Explanation" value={point.body} maxLength={520} onChange={(value) => updatePoint(index, 'body', value)} />
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="awareness-two">
-                    <Field label="CTA label" value={draft.content.ctaLabel} maxLength={80} onChange={(value) => setContent('ctaLabel', value)} />
-                    <Field label="CTA URL" value={draft.content.ctaUrl} maxLength={1200} onChange={(value) => setContent('ctaUrl', value)} />
-                  </div>
-                  <Field textarea rows={3} label="Footer note" value={draft.content.footerNote} maxLength={500} onChange={(value) => setContent('footerNote', value)} />
-                  <Field label="Image alt text" value={draft.heroAltText} maxLength={320} onChange={(value) => setDraft((current) => ({ ...current, heroAltText: value }))} />
-                </div>
-
-                <div className="awareness-preview">
-                  <div className="awareness-preview-title"><span><Eye size={14} /> Email preview</span><small>{preview?.subject || 'Save to refresh'}</small></div>
-                  <div className="awareness-preview-frame">
-                    {preview?.html
-                      ? <iframe title="Awareness email preview" sandbox="allow-same-origin" srcDoc={preview.html} />
-                      : <div><Eye size={24} /> Preview will appear here.</div>}
-                  </div>
-                  {selected.imageAvailable && (
-                    <div className="awareness-lock-note"><ImageIcon size={13} /> Generated visuals are locked. Hero alt text remains editable for accessibility.</div>
-                  )}
-                </div>
-              </div>
-            </section>
-          ) : (
-            <div className="awareness-empty">
-              <Sparkles size={30} />
-              <h2>Create your first awareness email</h2>
-              <button type="button" className="scorm-button-primary" onClick={() => setCreating(true)}><Plus size={14} /> New template</button>
-            </div>
-          )}
-        </main>
+      <div className="aw-card-actions">
+        <button type="button" className="aw-btn-secondary" onClick={()=>onPreview?.(template)}><Eye size={14}/> Preview</button>
+        {central?<>
+          {template.isActive&&<button type="button" className="aw-btn-primary" onClick={()=>onImport(template)}><Plus size={14}/> {imported?'Add another copy':'Add to My Library'}</button>}
+          {onArchive&&<button type="button" className="aw-icon-btn" title={template.isActive?'Hide from users':'Restore to gallery'} onClick={()=>onArchive(template)}><Archive size={14}/></button>}
+        </>:<>
+          <button type="button" className="aw-btn-primary" onClick={()=>onEdit(template)}><Pencil size={14}/> Edit</button>
+          <button type="button" className="aw-icon-btn is-danger" title="Delete" onClick={()=>onDelete(template)}><Trash2 size={14}/></button>
+        </>}
       </div>
     </div>
-  );
+  </article>;
+}
+
+export default function AwarenessTemplates(){
+  const {token,user}=useAuth();
+  const headers=useMemo(()=>({Authorization:'Bearer '+token}),[token]);
+  const isSuperAdmin=Boolean(user?.isSuperAdmin||user?.role==='super_admin');
+
+  const [tab,setTab]=useState('gallery');
+  const [central,setCentral]=useState([]);
+  const [mine,setMine]=useState([]);
+  const [status,setStatus]=useState({mail:{configured:false,provider:null},maxRecipientsPerSend:50});
+  const [loading,setLoading]=useState(true);
+  const [busy,setBusy]=useState('');
+  const [notice,setNotice]=useState(null);
+  const [search,setSearch]=useState('');
+  const [preview,setPreview]=useState(null);
+  const [editor,setEditor]=useState(null);
+  const [title,setTitle]=useState('');
+  const [subject,setSubject]=useState('');
+  const [selectedImage,setSelectedImage]=useState(null);
+  const [sendOpen,setSendOpen]=useState(false);
+  const [recipients,setRecipients]=useState('');
+  const [roster,setRoster]=useState([]);
+  const [rosterLoading,setRosterLoading]=useState(false);
+  const [uploading,setUploading]=useState(false);
+  const frameRef=useRef(null);
+
+  const load=useCallback(async()=>{
+    if(!token)return;
+    setLoading(true);
+    try{
+      const centralUrl=API+'/central'+(isSuperAdmin?'?includeInactive=1':'');
+      const [s,c,m]=await Promise.all([
+        axios.get(apiUrl(API+'/status'),{headers}),
+        axios.get(apiUrl(centralUrl),{headers}),
+        axios.get(apiUrl(API+'/mine'),{headers})
+      ]);
+      setStatus(s.data||{});
+      setCentral(c.data?.templates||[]);
+      setMine(m.data?.templates||[]);
+    }catch(error){
+      setNotice({type:'error',text:apiError(error,'Unable to load awareness templates.')});
+    }finally{setLoading(false)}
+  },[token,headers,isSuperAdmin]);
+
+  useEffect(()=>{load()},[load]);
+
+  const filteredCentral=useMemo(()=>{
+    const q=search.trim().toLowerCase();
+    if(!q)return central;
+    return central.filter(item=>[item.title,item.category,item.description].join(' ').toLowerCase().includes(q));
+  },[central,search]);
+
+  const previewCentral=async(item)=>{
+    setBusy('preview');
+    try{
+      const res=await axios.get(apiUrl(API+'/central/'+item.id),{headers});
+      setPreview({kind:'central',...res.data.template});
+    }catch(error){setNotice({type:'error',text:apiError(error,'Unable to preview the template.')})}
+    finally{setBusy('')}
+  };
+
+  const previewMine=async(item)=>{
+    setBusy('preview');
+    try{
+      const res=await axios.get(apiUrl(API+'/mine/'+item.id),{headers});
+      setPreview({kind:'mine',...res.data.template});
+    }catch(error){setNotice({type:'error',text:apiError(error,'Unable to preview the template.')})}
+    finally{setBusy('')}
+  };
+
+  const importTemplate=async(item)=>{
+    setBusy('import:'+item.id);setNotice(null);
+    try{
+      const res=await axios.post(apiUrl(API+'/central/'+item.id+'/import'),{},{headers});
+      const imported=res.data?.template;
+      if(imported)setMine(current=>[imported,...current]);
+      setNotice({type:'success',text:'Template added to My Library. You can now edit, send or export your copy.'});
+      setTab('mine');
+      if(imported)openEditor(imported);
+    }catch(error){setNotice({type:'error',text:apiError(error,'Unable to add this template to My Library.')})}
+    finally{setBusy('')}
+  };
+
+  const openEditor=async(item)=>{
+    setBusy('edit');
+    try{
+      const res=item?.html?{data:{template:item}}:await axios.get(apiUrl(API+'/mine/'+item.id),{headers});
+      const next=res.data?.template;
+      setEditor(next);
+      setTitle(next?.title||'');
+      setSubject(next?.subject||'');
+      setSelectedImage(null);
+      setSendOpen(false);
+      setRecipients('');
+      setPreview(null);
+    }catch(error){setNotice({type:'error',text:apiError(error,'Unable to open this template.')})}
+    finally{setBusy('')}
+  };
+
+  const decorateEditor=(doc)=>{
+    if(!doc?.body)return;
+    doc.body.setAttribute('contenteditable','true');
+    let style=doc.getElementById('awareness-editor-helper');
+    if(!style){
+      style=doc.createElement('style');
+      style.id='awareness-editor-helper';
+      style.textContent='body{cursor:text} img{cursor:pointer} img[data-awareness-selected="1"]{outline:4px solid #14b8a6!important;outline-offset:3px!important} a{cursor:text!important}';
+      doc.head?.appendChild(style);
+    }
+    doc.querySelectorAll('a').forEach(a=>{a.onclick=(event)=>event.preventDefault()});
+    doc.onclick=(event)=>{
+      const target=event.target;
+      doc.querySelectorAll('[data-awareness-selected]').forEach(el=>el.removeAttribute('data-awareness-selected'));
+      if(target?.tagName==='IMG'){
+        event.preventDefault();
+        target.setAttribute('data-awareness-selected','1');
+        setSelectedImage({src:target.getAttribute('src')||'',alt:target.getAttribute('alt')||''});
+      }else{
+        setSelectedImage(null);
+      }
+    };
+  };
+
+  const serializeEditor=()=>{
+    const doc=frameRef.current?.contentDocument;
+    if(!doc)return editor?.html||'';
+    doc.getElementById('awareness-editor-helper')?.remove();
+    doc.querySelectorAll('[data-awareness-selected]').forEach(el=>el.removeAttribute('data-awareness-selected'));
+    doc.body?.removeAttribute('contenteditable');
+    const html='<!doctype html>\n'+doc.documentElement.outerHTML;
+    decorateEditor(doc);
+    return html;
+  };
+
+  const saveEditor=async()=>{
+    if(!editor)return;
+    setBusy('save');setNotice(null);
+    try{
+      const res=await axios.put(apiUrl(API+'/mine/'+editor.id),{
+        title,subject,html:serializeEditor()
+      },{headers});
+      const saved=res.data?.template;
+      setEditor(saved);
+      setTitle(saved?.title||'');
+      setSubject(saved?.subject||'');
+      setMine(current=>current.map(item=>item.id===saved.id?{...item,...saved}:item));
+      setNotice({type:'success',text:'Your template copy has been saved.'});
+    }catch(error){setNotice({type:'error',text:apiError(error,'Unable to save the template.')})}
+    finally{setBusy('')}
+  };
+
+  const replaceImage=async(file)=>{
+    if(!editor||!selectedImage?.src||!file)return;
+    if(file.size>8*1024*1024){setNotice({type:'error',text:'Choose an image smaller than 8 MB.'});return}
+    setBusy('image');setNotice(null);
+    try{
+      const dataUrl=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)});
+      const res=await axios.post(apiUrl(API+'/mine/'+editor.id+'/image'),{oldSrc:selectedImage.src,dataUrl},{headers});
+      const next=res.data?.template;
+      setEditor(next);
+      setMine(current=>current.map(item=>item.id===next.id?{...item,...next}:item));
+      setSelectedImage(null);
+      setNotice({type:'success',text:'Image replaced and stored in your template library.'});
+    }catch(error){setNotice({type:'error',text:apiError(error,'Unable to replace the image.')})}
+    finally{setBusy('')}
+  };
+
+  const removeSelectedImage=()=>{
+    const doc=frameRef.current?.contentDocument;
+    const img=doc?.querySelector('img[data-awareness-selected="1"]');
+    if(img){img.remove();setSelectedImage(null);setNotice({type:'success',text:'Image removed. Save the template to keep this change.'})}
+  };
+
+  const deleteMine=async(item)=>{
+    if(!window.confirm('Delete “'+item.title+'” from My Library?'))return;
+    try{
+      await axios.delete(apiUrl(API+'/mine/'+item.id),{headers});
+      setMine(current=>current.filter(x=>x.id!==item.id));
+      if(editor?.id===item.id)setEditor(null);
+      setNotice({type:'success',text:'Template removed from My Library.'});
+    }catch(error){setNotice({type:'error',text:apiError(error,'Unable to delete the template.')})}
+  };
+
+  const archiveCentral=async(item)=>{
+    setBusy('archive:'+item.id);
+    try{
+      const res=await axios.patch(apiUrl(API+'/central/'+item.id),{isActive:!item.isActive},{headers});
+      setCentral(current=>current.map(x=>x.id===item.id?res.data.template:x));
+    }catch(error){setNotice({type:'error',text:apiError(error,'Unable to update the gallery item.')})}
+    finally{setBusy('')}
+  };
+
+  const exportMine=async(item=editor)=>{
+    if(!item)return;
+    setBusy('export');
+    try{
+      if(editor?.id===item.id)await saveEditor();
+      const res=await axios.post(apiUrl(API+'/mine/'+item.id+'/export-eml'),{},{headers,responseType:'blob'});
+      const disposition=res.headers?.['content-disposition']||'';
+      const match=disposition.match(/filename="?([^";]+)"?/i);
+      const url=URL.createObjectURL(new Blob([res.data],{type:'message/rfc822'}));
+      const a=document.createElement('a');a.href=url;a.download=match?.[1]||'awareness-template.eml';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+      setNotice({type:'success',text:'EML exported with the template images embedded.'});
+    }catch(error){setNotice({type:'error',text:apiError(error,'Unable to export the template.')})}
+    finally{setBusy('')}
+  };
+
+  const loadRoster=async()=>{
+    if(rosterLoading||roster.length)return;
+    setRosterLoading(true);
+    try{const res=await axios.get(apiUrl('/api/scorm/roster'),{headers});setRoster(res.data?.roster||[])}
+    catch(_){setRoster([])}
+    finally{setRosterLoading(false)}
+  };
+  const openSend=()=>{setSendOpen(true);loadRoster()};
+  const addRoster=email=>{
+    const list=recipients.split(/[\s,;]+/).map(x=>x.trim().toLowerCase()).filter(Boolean);
+    setRecipients([...new Set([...list,String(email||'').toLowerCase()])].slice(0,status.maxRecipientsPerSend||50).join(', '));
+  };
+  const sendMail=async()=>{
+    if(!editor||!recipients.trim())return;
+    setBusy('send');setNotice(null);
+    try{
+      await saveEditor();
+      const res=await axios.post(apiUrl(API+'/mine/'+editor.id+'/send'),{recipients},{headers});
+      const d=res.data?.delivery||{};
+      setNotice({type:d.failed?'error':'success',text:d.failed?(d.sent+' sent, '+d.failed+' failed.'):(d.sent+' email'+(d.sent===1?'':'s')+' sent successfully.')});
+      if(!d.failed){setSendOpen(false);setRecipients('')}
+    }catch(error){setNotice({type:'error',text:apiError(error,'Unable to send the template.')})}
+    finally{setBusy('')}
+  };
+
+  const uploadZip=async(file)=>{
+    if(!file)return;
+    if(!/\.zip$/i.test(file.name)){setNotice({type:'error',text:'Choose a ZIP file containing the HTML template and images folder.'});return}
+    if(file.size>35*1024*1024){setNotice({type:'error',text:'ZIP files must be 35 MB or smaller.'});return}
+    setUploading(true);setNotice(null);
+    try{
+      const dataUrl=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)});
+      const zipBase64=String(dataUrl).split(',')[1]||'';
+      const res=await axios.post(apiUrl(API+'/central/upload'),{zipBase64,fileName:file.name},{headers});
+      const count=res.data?.imported?.length||0;
+      setNotice({type:'success',text:count+' template'+(count===1?'':'s')+' added to the Central Library.'+(res.data?.warnings?.length?' Some assets produced warnings.':'')});
+      await load();
+    }catch(error){setNotice({type:'error',text:apiError(error,'Unable to import the ZIP.')})}
+    finally{setUploading(false)}
+  };
+
+  if(loading)return <div className="aw-loading"><RefreshCw className="animate-spin" size={20}/> Loading awareness template library…</div>;
+
+  return <div className="aw-gallery-page">
+    <header className="aw-gallery-header">
+      <div><div className="aw-kicker"><Mail size={15}/> Awareness Emails</div><h1>Curated awareness template library</h1><p>Use professionally designed email templates without regenerating the design. Add a template to My Library before editing, sending or exporting it.</p></div>
+      <button type="button" className="aw-btn-secondary" onClick={load}><RefreshCw size={14}/> Refresh</button>
+    </header>
+    <Notice notice={notice} onClose={()=>setNotice(null)}/>
+
+    <div className="aw-tabs">
+      <button className={tab==='gallery'?'is-active':''} onClick={()=>{setTab('gallery');setEditor(null)}}><Library size={15}/> Template Gallery <span>{central.filter(x=>x.isActive).length}</span></button>
+      <button className={tab==='mine'?'is-active':''} onClick={()=>{setTab('mine');setEditor(null)}}><CheckCircle2 size={15}/> My Library <span>{mine.length}</span></button>
+    </div>
+
+    {tab==='gallery'&&<section>
+      {isSuperAdmin&&<div className="aw-admin-upload">
+        <div><strong>Central Library Manager</strong><span>Upload a ZIP containing one or more HTML email templates and their local image folders. Images are stored in the configured R2/Cloudflare object storage automatically.</span></div>
+        <label className={'aw-btn-primary '+(uploading?'is-disabled':'')}><Upload size={15}/>{uploading?'Importing ZIP…':'Add Template ZIP'}<input type="file" accept=".zip,application/zip" disabled={uploading} onChange={e=>{uploadZip(e.target.files?.[0]);e.target.value=''}}/></label>
+      </div>}
+      <div className="aw-gallery-tools"><div className="aw-search"><Search size={14}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search templates or categories"/></div><span>{filteredCentral.length} template{filteredCentral.length===1?'':'s'}</span></div>
+      <div className="aw-template-grid">
+        {filteredCentral.map(item=><Card key={item.id} template={item} central onPreview={previewCentral} onImport={importTemplate} onArchive={isSuperAdmin?archiveCentral:null} imported={mine.some(x=>x.centralTemplateId===item.id)}/>)}
+      </div>
+      {!filteredCentral.length&&<div className="aw-empty"><Library size={30}/><h2>No matching templates</h2></div>}
+    </section>}
+
+    {tab==='mine'&&!editor&&<section>
+      <div className="aw-section-copy"><h2>My Library</h2><p>These are your editable copies. Sending and EML export are available only here.</p></div>
+      {mine.length?<div className="aw-template-grid">{mine.map(item=><Card key={item.id} template={item} onPreview={previewMine} onEdit={openEditor} onDelete={deleteMine}/>)}</div>:<div className="aw-empty"><Library size={30}/><h2>Your library is empty</h2><p>Choose a template from the gallery and add it here first.</p><button className="aw-btn-primary" onClick={()=>setTab('gallery')}><Plus size={14}/> Browse Template Gallery</button></div>}
+    </section>}
+
+    {tab==='mine'&&editor&&<section className="aw-editor">
+      <div className="aw-editor-head">
+        <div><button className="aw-back" onClick={()=>{setEditor(null);setSelectedImage(null)}}>← My Library</button><h2>{title||editor.title}</h2><p>Edit the email directly. Click any text and type. Click an image to replace or remove it.</p></div>
+        <div className="aw-editor-actions"><button className="aw-btn-secondary" onClick={()=>exportMine()} disabled={!!busy}><Download size={14}/> Export EML</button><button className="aw-btn-secondary" onClick={openSend} disabled={!!busy}><Send size={14}/> Send</button><button className="aw-btn-primary" onClick={saveEditor} disabled={!!busy}><Save size={14}/> {busy==='save'?'Saving…':'Save'}</button></div>
+      </div>
+      <div className="aw-editor-fields"><label><span>Template name</span><input value={title} onChange={e=>setTitle(e.target.value)} maxLength={180}/></label><label><span>Email subject</span><input value={subject} onChange={e=>setSubject(e.target.value)} maxLength={240}/></label></div>
+      {selectedImage&&<div className="aw-image-toolbar"><ImageIcon size={15}/><div><strong>Image selected</strong><span>{selectedImage.alt||'Template image'}</span></div><label className="aw-btn-primary"><ImageIcon size={14}/> Replace image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={e=>{replaceImage(e.target.files?.[0]);e.target.value=''}}/></label><button className="aw-btn-secondary" onClick={removeSelectedImage}><Trash2 size={14}/> Remove</button></div>}
+      {sendOpen&&<div className="aw-send-panel"><div><strong>Send this template</strong><span>{status.mail?.configured?'Using '+String(status.mail?.provider||'mail').toUpperCase()+'. Each recipient is sent separately.':'Mail is not configured on the platform.'}</span></div><textarea value={recipients} onChange={e=>setRecipients(e.target.value)} placeholder="alex@example.com, sam@example.com"/><select value="" onChange={e=>addRoster(e.target.value)} disabled={!roster.length}><option value="">{rosterLoading?'Loading roster…':roster.length?'Add from learner roster…':'No roster learners loaded'}</option>{roster.map(x=><option key={x.id||x.email} value={x.email}>{x.learnerName?x.learnerName+' — '+x.email:x.email}</option>)}</select><button className="aw-btn-primary" onClick={sendMail} disabled={!status.mail?.configured||busy==='send'}><Send size={14}/> {busy==='send'?'Sending…':'Send email'}</button><button className="aw-icon-btn" onClick={()=>setSendOpen(false)}><X size={14}/></button></div>}
+      <div className="aw-editor-note"><Pencil size={14}/> Visual editing is intentionally limited to text and image replacement so the original email design stays intact.</div>
+      <div className="aw-editor-frame"><iframe ref={frameRef} title="Editable awareness email" srcDoc={editor.html} onLoad={e=>decorateEditor(e.currentTarget.contentDocument)}/></div>
+    </section>}
+
+    {preview&&<div className="aw-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setPreview(null)}}>
+      <div className="aw-preview-modal"><div className="aw-preview-head"><div><span>{preview.kind==='central'?'Template Gallery':'My Library'}</span><h2>{preview.title}</h2></div><button onClick={()=>setPreview(null)}><X size={18}/></button></div><iframe title={preview.title} sandbox="allow-same-origin" srcDoc={preview.html}/>{preview.kind==='central'&&preview.isActive&&<div className="aw-preview-footer"><button className="aw-btn-primary" onClick={()=>{const p=preview;setPreview(null);importTemplate(p)}}><Plus size={14}/> Add to My Library</button></div>}</div>
+    </div>}
+  </div>;
 }
