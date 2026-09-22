@@ -1,4 +1,4 @@
-name: Awareness template reference audit
+name: Awareness Email Studio quality gate
 
 on:
   push:
@@ -10,38 +10,34 @@ permissions:
   contents: read
 
 jobs:
-  inspect-reference-templates:
+  awareness-quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect educational email template archive
-        shell: bash
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install server dependencies
+        run: npm install --prefix server
+
+      - name: Install client dependencies
+        run: npm install --prefix client
+
+      - name: Run awareness unit tests
         run: |
-          set -euo pipefail
-          ZIP="Educational-email-Templete.zip"
-          OUT="/tmp/awareness-reference"
-          rm -rf "$OUT"
-          mkdir -p "$OUT"
+          cd server
+          npx mocha tests/AwarenessEmailRenderer.test.js tests/AwarenessMailDeliveryService.test.js --exit
 
-          echo "===== ARCHIVE LIST ====="
-          unzip -l "$ZIP"
+      - name: Build client
+        run: npm run build --prefix client
 
-          unzip -q "$ZIP" -d "$OUT"
-
-          echo "===== EXTRACTED TREE ====="
-          find "$OUT" -maxdepth 5 -type f -printf '%P\n' | sort
-
-          echo "===== IMAGE METADATA ====="
-          find "$OUT" -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.gif' -o -iname '*.svg' \) -print0 |
-          while IFS= read -r -d '' f; do
-            echo "--- ${f#$OUT/} ---"
-            file "$f" || true
-          done
-
-          echo "===== TEXT SOURCES ====="
-          find "$OUT" -type f \( -iname '*.html' -o -iname '*.htm' -o -iname '*.css' -o -iname '*.json' -o -iname '*.txt' -o -iname '*.md' \) -print0 |
-          while IFS= read -r -d '' f; do
-            echo
-            echo "===== FILE: ${f#$OUT/} ====="
-            sed -n '1,500p' "$f"
-          done
+      - name: Syntax-check awareness backend modules
+        run: |
+          node --check server/services/awareness/AwarenessEmailRenderer.js
+          node --check server/services/awareness/AwarenessTemplateService.js
+          node --check server/services/awareness/AwarenessMailDeliveryService.js
+          node --check server/routes/scorm/awarenessTemplates.js
+          node --check server/routes/scorm/awarenessAssets.js
