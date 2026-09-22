@@ -46,8 +46,9 @@ router.use((req, res, next) => {
 
 router.use('/otp', require('./mailOtp'));
 router.use('/mail', require('./mailAdmin'));
-router.use('/awareness-assets', require('./awarenessAssets'));
-router.use('/awareness-templates', require('./awarenessTemplates'));
+router.use('/awareness-assets', require('./awarenessAssets')); // legacy generated-template image URLs
+router.use('/awareness-template-assets', require('./awarenessTemplateAssets'));
+router.use('/awareness-gallery', require('./awarenessGallery'));
 router.use('/staff-auth', require('./staffAuthPublic'));
 router.use('/flipbook-tenants', require('./flipbookTenants'));
 router.use('/ai-health', require('./aiHealth'));
