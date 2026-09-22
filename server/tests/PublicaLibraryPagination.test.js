@@ -16,7 +16,8 @@ describe('Publica shared library pagination', () => {
     it('uses a three-column desktop grid for two rows of publications', () => {
         expect(styles).to.include('grid-template-columns: repeat(3, minmax(0, 1fr));');
         expect(styles).to.include('align-items: start;');
-        expect(styles).to.include('height: 250px;');
+        expect(styles).to.include('height: 220px;');
+        expect(styles).to.include('object-fit: cover !important;');
         expect(styles).to.include('.public-flip-library-pagination');
     });
 });
