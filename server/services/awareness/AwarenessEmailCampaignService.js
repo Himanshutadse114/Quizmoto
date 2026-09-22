@@ -64,20 +64,34 @@ function campaignSummary(row) {
     };
 }
 
+async function liveSummary(row) {
+    const summary = campaignSummary(row);
+    const [sentCount, failedCount, pendingCount] = await Promise.all([
+        Recipient.count({ where: { campaignId: row.id, status: 'sent' } }),
+        Recipient.count({ where: { campaignId: row.id, status: 'failed' } }),
+        Recipient.count({ where: { campaignId: row.id, status: 'pending' } })
+    ]);
+    summary.sentCount = sentCount;
+    summary.failedCount = failedCount;
+    summary.pendingCount = pendingCount;
+    summary.recipientCount = sentCount + failedCount + pendingCount;
+    return summary;
+}
+
 async function listCampaigns(hostId) {
     await ensureSchema();
     const rows = await Campaign.findAll({
         where: { hostId },
         order: [['createdAt', 'DESC']]
     });
-    return rows.map(campaignSummary);
+    return Promise.all(rows.map(liveSummary));
 }
 
 async function getCampaign(id, hostId, { includeRecipients = false } = {}) {
     await ensureSchema();
     const row = await Campaign.findOne({ where: { id, hostId } });
     if (!row) throw fail('Email campaign not found.', 'AWARENESS_EMAIL_CAMPAIGN_NOT_FOUND', 404);
-    const result = campaignSummary(row);
+    const result = await liveSummary(row);
     if (includeRecipients) {
         const recipients = await Recipient.findAll({
             where: { campaignId: row.id },
@@ -328,7 +342,7 @@ async function startCampaign(id, hostId) {
         () => deliverCampaign(campaign.id),
         { module: 'awareness-email-campaign', campaignId: campaign.id }
     );
-    return campaignSummary(campaign);
+    return liveSummary(campaign);
 }
 
 async function stopCampaign(id, hostId) {
@@ -341,7 +355,7 @@ async function stopCampaign(id, hostId) {
     campaign.status = 'stopped';
     campaign.endedAt = new Date();
     await campaign.save();
-    return campaignSummary(campaign);
+    return liveSummary(campaign);
 }
 
 async function deleteCampaign(id, hostId) {
@@ -381,5 +395,6 @@ module.exports = {
     deleteCampaign,
     deliverCampaign,
     activeCampaignCountForTemplate,
-    campaignSummary
+    campaignSummary,
+    liveSummary
 };
