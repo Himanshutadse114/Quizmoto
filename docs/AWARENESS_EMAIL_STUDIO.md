@@ -18,8 +18,8 @@ The library therefore acts as both a software feature and a managed design servi
 
 1. Browse the Central Template Gallery.
 2. Preview any available template.
-3. Select **Add to My Library**.
-4. Open the imported copy in the visual editor.
+3. Select **Add to My Library**. The template is added to the My Library card grid and does not automatically open.
+4. From My Library, choose **Preview**, **Edit**, **Send** or **Export**.
 5. Edit text directly inside the email.
 6. Click any image to replace or remove it.
 7. Save the customised copy.
@@ -66,14 +66,14 @@ This keeps the original layout protected while still allowing practical customis
 
 ## Delivery and export
 
-Only templates inside My Library can be sent or exported.
+Only templates inside My Library can be sent or exported. My Library keeps the same gallery-card presentation as the Central Library but adds usage actions for the tenant.
 
 - SMTP delivery embeds stored template images by CID.
 - EML export embeds stored template images by CID.
 - Brevo delivery uses the stable public asset URLs.
 - Each recipient is sent separately to prevent address disclosure.
 - Maximum 50 unique recipients per send request.
-- Existing learner-roster recipients can be selected from the editor.
+- Existing learner-roster recipients can be selected from the Send dialog.\n- The Send action becomes available once at least one valid recipient is entered. If SMTP/Brevo is not configured, the dialog shows a clear mail-setup warning instead of silently looking disabled.
 
 ## Storage layout
 
@@ -86,6 +86,30 @@ User replacement assets:
 `awareness/user/<host-id>/<user-template-id>/<asset-id>.<ext>`
 
 Supported image formats are JPEG, PNG, WebP and GIF. Individual images are limited to 8 MB.
+
+## Recommended ZIP format
+
+For the cleanest import, use one folder per template:
+
+```text
+Template Name/
+├── email.html
+├── thumbnail.jpg
+└── images/
+    ├── hero.png
+    ├── card-1.png
+    ├── card-2.png
+    └── ...
+```
+
+Thumbnail guidance:
+- Recommended file name: `thumbnail.jpg`
+- Recommended size: **1200 × 675 px** (16:9)
+- Also recognised: `thumbnail.png`, `thumbnail.webp`, `cover.*`, `preview.*` and `images/thumbnail.*`
+- If no thumbnail is supplied, LMSGEN automatically creates a 16:9 thumbnail from the first template image
+- Super Admin can replace the thumbnail later from the Central Gallery card
+
+The HTML can be named `email.html`, `template.html` or any other `.html`/ `.htm` file. Relative image paths are resolved from that HTML file.
 
 ## ZIP rules
 
