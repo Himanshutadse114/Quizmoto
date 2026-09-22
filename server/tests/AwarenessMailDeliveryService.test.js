@@ -1,4 +1,5 @@
 const { expect } = require('chai');
+const proxyquire = require('proxyquire').noCallThru();
 const {
     createEml,
     normaliseEmailList
@@ -41,4 +42,92 @@ describe('AwarenessMailDeliveryService', () => {
         expect(source).to.include('Content-ID: <awareness-point-1@lmsgen>');
         expect(source).to.include('multipart/related');
     });
+    it('reports SMTP acceptance only when the relay accepts the recipient', async () => {
+        const service = proxyquire('../services/awareness/AwarenessMailDeliveryService', {
+            nodemailer: {
+                createTransport: () => ({
+                    sendMail: async () => ({
+                        accepted: ['learner@example.com'],
+                        rejected: [],
+                        pending: [],
+                        response: '250 2.0.0 Message accepted for delivery',
+                        messageId: '<accepted@example.com>',
+                        envelope: { from: 'training@example.com', to: ['learner@example.com'] }
+                    })
+                })
+            },
+            '../mail/MailService': {
+                isConfigured: () => true,
+                providerConfig: () => ({
+                    provider: 'smtp',
+                    host: 'smtp.example.com',
+                    port: 465,
+                    secure: true,
+                    user: 'training@example.com',
+                    pass: 'secret',
+                    fromName: 'LMSGEN',
+                    fromAddress: 'training@example.com'
+                }),
+                verifyConnection: async () => ({ ok: true, configured: true, provider: 'smtp' })
+            }
+        });
+
+        const result = await service.sendContent({
+            to: 'learner@example.com',
+            subject: 'Test',
+            html: '<p>Test</p>',
+            text: 'Test'
+        });
+
+        expect(result.sent).to.equal(true);
+        expect(result.state).to.equal('accepted');
+        expect(result.accepted).to.deep.equal(['learner@example.com']);
+        expect(result.providerResponse).to.include('250 2.0.0');
+    });
+
+    it('fails instead of claiming success when SMTP does not accept the recipient', async () => {
+        const service = proxyquire('../services/awareness/AwarenessMailDeliveryService', {
+            nodemailer: {
+                createTransport: () => ({
+                    sendMail: async () => ({
+                        accepted: [],
+                        rejected: ['learner@example.com'],
+                        pending: [],
+                        response: '550 5.1.1 Recipient rejected',
+                        messageId: '<rejected@example.com>'
+                    })
+                })
+            },
+            '../mail/MailService': {
+                isConfigured: () => true,
+                providerConfig: () => ({
+                    provider: 'smtp',
+                    host: 'smtp.example.com',
+                    port: 465,
+                    secure: true,
+                    user: 'training@example.com',
+                    pass: 'secret',
+                    fromName: 'LMSGEN',
+                    fromAddress: 'training@example.com'
+                }),
+                verifyConnection: async () => ({ ok: true, configured: true, provider: 'smtp' })
+            }
+        });
+
+        let error;
+        try {
+            await service.sendContent({
+                to: 'learner@example.com',
+                subject: 'Test',
+                html: '<p>Test</p>',
+                text: 'Test'
+            });
+        } catch (caught) {
+            error = caught;
+        }
+        expect(error).to.exist;
+        expect(error.code).to.equal('SMTP_RECIPIENT_NOT_ACCEPTED');
+        expect(error.providerResponse).to.include('550');
+    });
+
 });

@@ -73,6 +73,8 @@ services:
         value: "https://api.lmsgen.in"
       - key: AWARENESS_SEED_REFERENCE_TEMPLATES
         value: "true"
+      - key: AWARENESS_SMTP_EMBED_IMAGES
+        value: "false"
       - key: STORAGE_DRIVER
         value: "s3"
       - key: S3_BUCKET

@@ -235,3 +235,8 @@
 .aw-send-field select{height:38px;padding:0 9px}
 .aw-send-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:8px;color:var(--scorm-muted)}
 .aw-preview-footer{gap:8px}
+
+.aw-mail-diagnostic-actions{display:flex;gap:8px;flex-wrap:wrap}
+.aw-mail-diagnostic{padding:9px 10px;border-radius:9px;border:1px solid;font-size:8px;line-height:1.5}
+.aw-mail-diagnostic.is-success{border-color:rgba(74,222,128,.28);background:rgba(74,222,128,.06);color:#86efac}
+.aw-mail-diagnostic.is-error{border-color:rgba(251,113,133,.28);background:rgba(251,113,133,.06);color:#fda4af}

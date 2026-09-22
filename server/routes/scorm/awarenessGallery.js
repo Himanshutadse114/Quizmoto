@@ -25,7 +25,33 @@ function fail(res,error,fallback){
 
 router.get('/status',auth,editor,(req,res)=>{
     res.setHeader('Cache-Control','no-store');
-    res.json({ok:true,mail:{configured:MailService.isConfigured(),provider:MailService.mailProvider()},maxRecipientsPerSend:Gallery.MAX_RECIPIENTS_PER_SEND,isSuperAdmin:String(req.scormRole||'').toLowerCase()==='super_admin'});
+    const diagnostics=MailService.diagnostics();
+    res.json({
+        ok:true,
+        mail:{
+            configured:MailService.isConfigured(),
+            provider:MailService.mailProvider(),
+            fromAddress:diagnostics.fromAddress||null,
+            fromName:diagnostics.fromName||null,
+            host:diagnostics.host||diagnostics.apiHost||null,
+            port:diagnostics.port||null
+        },
+        maxRecipientsPerSend:Gallery.MAX_RECIPIENTS_PER_SEND,
+        isSuperAdmin:String(req.scormRole||'').toLowerCase()==='super_admin'
+    });
+});
+
+router.post('/mail/verify',auth,editor,async(req,res)=>{
+    try{
+        const result=await require('../../services/awareness/AwarenessMailDeliveryService').verifyConnection();
+        res.json({ok:!!result?.ok,result});
+    }catch(e){fail(res,e,'Mail provider verification failed.')}
+});
+router.post('/mail/test',auth,editor,async(req,res)=>{
+    try{
+        const result=await require('../../services/awareness/AwarenessMailDeliveryService').sendTestEmail(req.body?.to);
+        res.json({ok:!!result?.sent,result});
+    }catch(e){fail(res,e,'Unable to submit the mail delivery test.')}
 });
 
 router.get('/central',auth,editor,async(req,res)=>{

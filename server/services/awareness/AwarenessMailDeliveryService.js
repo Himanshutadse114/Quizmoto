@@ -76,7 +76,15 @@ async function sendBrevo(cfg, recipients, message, headers = {}) {
         error.status = 503;
         throw error;
     }
-    return { sent: true, provider: 'brevo', messageId: payload.messageId || null };
+    return {
+        sent: true,
+        state: 'queued',
+        provider: 'brevo',
+        messageId: payload.messageId || null,
+        accepted: [...recipients],
+        rejected: [],
+        providerResponse: payload.messageId ? 'Queued by Brevo' : 'Brevo accepted the request'
+    };
 }
 
 async function sendSmtp(cfg, recipients, message, attachments = [], headers = {}) {
@@ -93,7 +101,41 @@ async function sendSmtp(cfg, recipients, message, attachments = [], headers = {}
             ...headers
         }
     });
-    return { sent: true, provider: 'smtp', messageId: info.messageId || null };
+
+    const accepted = (Array.isArray(info.accepted) ? info.accepted : [])
+        .map((value) => clean(value).toLowerCase()).filter(Boolean);
+    const rejected = (Array.isArray(info.rejected) ? info.rejected : [])
+        .map((value) => clean(value).toLowerCase()).filter(Boolean);
+    const pending = (Array.isArray(info.pending) ? info.pending : [])
+        .map((value) => clean(value).toLowerCase()).filter(Boolean);
+    const response = clean(info.response).slice(0, 500);
+
+    if (!accepted.length || rejected.length) {
+        const error = new Error(
+            rejected.length
+                ? `SMTP rejected recipient: ${rejected.join(', ')}`
+                : 'SMTP server did not accept the recipient for delivery.'
+        );
+        error.code = 'SMTP_RECIPIENT_NOT_ACCEPTED';
+        error.status = 502;
+        error.provider = 'smtp';
+        error.providerResponse = response || null;
+        error.accepted = accepted;
+        error.rejected = rejected;
+        throw error;
+    }
+
+    return {
+        sent: true,
+        state: pending.length ? 'pending' : 'accepted',
+        provider: 'smtp',
+        messageId: info.messageId || null,
+        accepted,
+        rejected,
+        pending,
+        providerResponse: response || null,
+        envelope: info.envelope || null
+    };
 }
 
 async function sendContent({ to, subject, html, text = '', attachments = [], headers = {} }) {
@@ -115,6 +157,28 @@ async function sendContent({ to, subject, html, text = '', attachments = [], hea
     return cfg.provider === 'brevo'
         ? sendBrevo(cfg, recipients, message, headers)
         : sendSmtp(cfg, recipients, message, attachments, headers);
+}
+
+async function verifyConnection() {
+    return MailService.verifyConnection();
+}
+
+async function sendTestEmail(to) {
+    const recipients = normaliseEmailList(to);
+    if (!recipients.length) {
+        const error = new Error('A valid test recipient email is required.');
+        error.code = 'MAIL_RECIPIENT_INVALID';
+        error.status = 400;
+        throw error;
+    }
+    const now = new Date().toISOString();
+    return sendContent({
+        to: recipients[0],
+        subject: 'LMSGEN mail delivery test',
+        text: `This is an LMSGEN mail delivery test sent at ${now}.`,
+        html: `<!doctype html><html><body style="font-family:Arial,sans-serif"><h2>LMSGEN mail delivery test</h2><p>This confirms the platform submitted a test message to the configured mail provider.</p><p>Sent at: ${now}</p></body></html>`,
+        headers: { 'X-LMSGEN-Mail-Test': '1' }
+    });
 }
 
 async function createEml({ to = [], subject, html, text = '', attachments = [], headers = {} }) {
@@ -148,5 +212,7 @@ async function createEml({ to = [], subject, html, text = '', attachments = [], 
 module.exports = {
     normaliseEmailList,
     sendContent,
+    verifyConnection,
+    sendTestEmail,
     createEml
 };
