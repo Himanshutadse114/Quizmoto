@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import AwarenessEmailCampaigns from './AwarenessEmailCampaigns';
 import './awarenessTemplates.css';
 
 const API='/api/scorm/awareness-gallery';
@@ -472,6 +473,7 @@ export default function AwarenessTemplates(){
     <div className="aw-tabs">
       <button className={tab==='gallery'?'is-active':''} onClick={()=>{setTab('gallery');setEditor(null)}}><Library size={15}/> Template Gallery <span>{central.filter(x=>x.isActive).length}</span></button>
       <button className={tab==='mine'?'is-active':''} onClick={()=>{setTab('mine');setEditor(null)}}><CheckCircle2 size={15}/> My Library <span>{mine.length}</span></button>
+      <button className={tab==='campaigns'?'is-active':''} onClick={()=>{setTab('campaigns');setEditor(null)}}><Send size={15}/> Email Campaigns</button>
     </div>
 
     {tab==='gallery'&&<section>
@@ -487,6 +489,10 @@ export default function AwarenessTemplates(){
         {filteredCentral.map(item=><Card key={item.id} template={item} central onPreview={previewCentral} onImport={importTemplate} onThumbnail={isSuperAdmin?uploadThumbnail:null} onArchive={isSuperAdmin?archiveCentral:null} imported={mine.some(x=>x.centralTemplateId===item.id)}/>)}
       </div>
       {!filteredCentral.length&&<div className="aw-empty"><Library size={26}/><h2>{search?'No matching templates':'No templates in the Central Gallery'}</h2><p>{search?'Try another search term.':'Restore the 8 bundled reference templates or upload a template ZIP.'}</p>{isSuperAdmin&&!search&&<button className="aw-btn-primary" onClick={restoreReferenceTemplates} disabled={busy==='seed'}><RefreshCw size={14}/> Restore 8 Reference Templates</button>}</div>}
+    </section>}
+
+    {tab==='campaigns'&&<section>
+      <AwarenessEmailCampaigns templates={mine} mail={status.mail||{}} onNotice={setNotice}/>
     </section>}
 
     {tab==='mine'&&!editor&&<section>

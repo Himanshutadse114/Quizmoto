@@ -3,6 +3,7 @@ const crypto=require('crypto'),fs=require('fs'),path=require('path'),JSZip=requi
 const logger=require('../../utils/logger');
 const Central=require('../../models/scorm/ScormAwarenessLibraryTemplate');
 const UserTemplate=require('../../models/scorm/ScormAwarenessUserTemplate');
+const EmailCampaign=require('../../models/scorm/ScormAwarenessEmailCampaign');
 const {Op}=require('sequelize');
 const {getObjectStorage}=require('../../storage/ObjectStorage');
 const MailService=require('../mail/MailService');
@@ -215,7 +216,15 @@ async function replaceCentralThumbnail({id,dataUrl}){
  if(old)await storage.deleteObject(old.storageKey).catch(()=>{});
  return central(r);
 }
-async function deleteMine(id,hostId){const r=await owned(id,hostId),storage=getObjectStorage();for(const a of uManifest(r))await storage.deleteObject(a.storageKey).catch(()=>{});await r.destroy();return true}
+async function deleteMine(id,hostId){
+ const r=await owned(id,hostId),storage=getObjectStorage();
+ await EmailCampaign.sync();
+ const linked=await EmailCampaign.count({where:{hostId,userTemplateId:id,status:{[Op.in]:['draft','sending']}}});
+ if(linked)throw Object.assign(new Error('This template is used by a draft or sending email campaign. Delete or stop that campaign first.'),{status:409,code:'AWARENESS_TEMPLATE_CAMPAIGN_IN_USE'});
+ for(const a of uManifest(r))await storage.deleteObject(a.storageKey).catch(()=>{});
+ await r.destroy();
+ return true;
+}
 async function getAsset(scope,t,id){await ensureReady();if(!/^[a-f0-9]{64}$/i.test(String(t||''))||!ASSET_ID_RE.test(String(id||'')))throw Object.assign(new Error('Image not found.'),{status:404});let r,man;if(scope==='central'){r=await Central.findOne({where:{publicAssetToken:t}});man=cManifest(r)}else if(scope==='user'){r=await UserTemplate.findOne({where:{publicAssetToken:t}});man=uManifest(r)}else throw Object.assign(new Error('Image not found.'),{status:404});const a=man.find(x=>x.id===id);if(!r||!a)throw Object.assign(new Error('Image not found.'),{status:404});return{body:await getObjectStorage().getObjectBuffer(a.storageKey),contentType:a.contentType||'image/jpeg'}}
 function parseAssetUrl(src){try{const u=new URL(String(src||''),base()),m=/^\/api\/scorm\/awareness-template-assets\/(central|user)\/([a-f0-9]{64})\/([a-z0-9-]{8,80})$/i.exec(u.pathname);return m?{scope:m[1],token:m[2],id:m[3]}:null}catch(_){return null}}
 async function inlineAssets(html){let h=String(html||''),atts=[],seen=new Map(),i=0;for(const src of assetRefs(h)){const p=parseAssetUrl(src);if(!p||seen.has(src))continue;const a=await getAsset(p.scope,p.token,p.id),cid='awareness-template-'+(++i)+'@lmsgen';atts.push({filename:'awareness-'+i+'.'+ext(a.contentType),content:a.body,contentType:a.contentType,cid,contentDisposition:'inline'});seen.set(src,'cid:'+cid)}for(const[s,c]of seen)h=h.split(s).join(c);return{html:h,attachments:atts}}

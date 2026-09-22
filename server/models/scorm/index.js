@@ -25,6 +25,8 @@ const MailTemplateOverride = require('../MailTemplateOverride');
 const ScormAwarenessEmailTemplate = require('./ScormAwarenessEmailTemplate');
 const ScormAwarenessLibraryTemplate = require('./ScormAwarenessLibraryTemplate');
 const ScormAwarenessUserTemplate = require('./ScormAwarenessUserTemplate');
+const ScormAwarenessEmailCampaign = require('./ScormAwarenessEmailCampaign');
+const ScormAwarenessEmailCampaignRecipient = require('./ScormAwarenessEmailCampaignRecipient');
 
 ScormPackage.hasMany(ScormCourse, { foreignKey: 'packageId', as: 'courses' });
 ScormCourse.belongsTo(ScormPackage, { foreignKey: 'packageId', as: 'package' });
@@ -112,7 +114,9 @@ const models = {
     MailTemplateOverride,
     ScormAwarenessEmailTemplate,
     ScormAwarenessLibraryTemplate,
-    ScormAwarenessUserTemplate
+    ScormAwarenessUserTemplate,
+    ScormAwarenessEmailCampaign,
+    ScormAwarenessEmailCampaignRecipient
 };
 
 module.exports = models;

@@ -64,6 +64,42 @@ Image editing is intentionally limited to replacement or removal. Replacement im
 
 This keeps the original layout protected while still allowing practical customisation.
 
+## Email Campaigns
+
+Awareness Emails includes a dedicated **Email Campaigns** tab alongside Template Gallery and My Library.
+
+The workflow deliberately follows the platform's course-campaign pattern:
+
+1. Create an email campaign as a draft.
+2. Give the campaign a name.
+3. Add recipients using the same CSV format used by course campaigns or add recipients manually.
+4. Select one template from **My Library**. Central Gallery templates cannot be used directly.
+5. Choose controlled delivery batches and the delay between batches.
+6. Create the draft campaign.
+7. Start the campaign when ready.
+8. Delivery runs in the background and the campaign list shows live Accepted, Failed and Pending progress.
+9. A sending campaign can be stopped. Draft or stopped campaigns can be deleted.
+
+Starting a campaign snapshots the current subject and HTML from the selected My Library template. The campaign therefore sends the version that existed when Start was clicked.
+
+Campaign statuses:
+- Draft
+- Sending
+- Completed
+- Partial
+- Failed
+- Stopped
+
+The campaign recipient CSV uses:
+
+```csv
+Email,Name
+learner1@company.com,Learner One
+learner2@company.com,Learner Two
+```
+
+Delivery uses the configured SMTP or Brevo provider and the same provider-acceptance checks used by direct template sending.
+
 ## Delivery and export
 
 Only templates inside My Library can be sent or exported. My Library keeps the same gallery-card presentation as the Central Library but adds usage actions for the tenant.
@@ -139,6 +175,16 @@ My Library:
 - `DELETE /api/scorm/awareness-gallery/mine/:id`
 - `POST /api/scorm/awareness-gallery/mine/:id/send`
 - `POST /api/scorm/awareness-gallery/mine/:id/export-eml`
+
+Email Campaigns:
+
+- `GET /api/scorm/awareness-gallery/email-campaigns`
+- `POST /api/scorm/awareness-gallery/email-campaigns/preview-csv`
+- `POST /api/scorm/awareness-gallery/email-campaigns`
+- `GET /api/scorm/awareness-gallery/email-campaigns/:id`
+- `POST /api/scorm/awareness-gallery/email-campaigns/:id/start`
+- `POST /api/scorm/awareness-gallery/email-campaigns/:id/stop`
+- `DELETE /api/scorm/awareness-gallery/email-campaigns/:id`
 
 Public image delivery:
 
