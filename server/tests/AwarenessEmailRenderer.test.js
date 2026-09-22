@@ -2,6 +2,7 @@ const { expect } = require('chai');
 const {
     LAYOUT_CATALOG,
     cleanText,
+    layoutVisualSlots,
     normaliseContent,
     renderAwarenessEmail,
     safeHttpUrl
@@ -23,6 +24,8 @@ const sample = {
         keyPoints: [
             { title: 'Check the source', body: 'Only scan codes from a trusted and expected source.' },
             { title: 'Review the address', body: 'Check the destination before entering information.' },
+            { title: 'Verify the request', body: 'Confirm unusual requests through a known contact route.' },
+            { title: 'Avoid unexpected sign-ins', body: 'Do not enter credentials after an unexpected QR-code prompt.' },
             { title: 'Report concerns', body: 'Report unusual QR prompts through your normal support channel.' }
         ],
         ctaLabel: 'Review the guidance',
@@ -31,25 +34,70 @@ const sample = {
     }
 };
 
+function imageSources(layoutId) {
+    return Object.fromEntries(
+        layoutVisualSlots(layoutId).map((slot) => [slot, `cid:awareness-${slot}@lmsgen`])
+    );
+}
+
 describe('AwarenessEmailRenderer', () => {
-    it('provides eight distinct awareness email layouts', () => {
+    it('provides eight distinct reference-derived awareness email layouts', () => {
         expect(LAYOUT_CATALOG).to.have.length(8);
         expect(new Set(LAYOUT_CATALOG.map((item) => item.id)).size).to.equal(8);
+        expect(LAYOUT_CATALOG.map((item) => item.name)).to.deep.equal([
+            'Editorial Newsletter',
+            'High-Risk Brief',
+            'Best Practices Guide',
+            'Exposure Field Brief',
+            'Attack Storyboard',
+            'Human Risk Playbook',
+            'Modern Threat Dossier',
+            'AI Threat Signal'
+        ]);
     });
 
-    it('renders every layout as compact email-safe HTML', () => {
+    it('defines the intended 2–5 visual slots for each layout', () => {
+        expect(LAYOUT_CATALOG.map((item) => layoutVisualSlots(item.id).length))
+            .to.deep.equal([3, 2, 5, 2, 5, 5, 5, 5]);
+        expect(layoutVisualSlots('story-spotlight')).to.deep.equal([
+            'hero', 'point-1', 'point-2', 'point-3', 'banner'
+        ]);
+    });
+
+    it('renders every layout as compact email-safe HTML with its layout-aware visuals', () => {
         for (const layout of LAYOUT_CATALOG) {
+            const sources = imageSources(layout.id);
             const rendered = renderAwarenessEmail(
                 { ...sample, layoutId: layout.id },
-                { heroSrc: 'cid:awareness-hero@lmsgen' }
+                { imageSources: sources }
             );
             expect(rendered.html).to.include('<table');
-            expect(rendered.html).to.include('cid:awareness-hero@lmsgen');
             expect(rendered.html).to.not.match(/<script\b/i);
             expect(rendered.html).to.not.match(/<iframe\b/i);
-            expect(Buffer.byteLength(rendered.html, 'utf8')).to.be.lessThan(50 * 1024);
+            expect(Buffer.byteLength(rendered.html, 'utf8')).to.be.lessThan(70 * 1024);
             expect(rendered.text).to.include('Scan with care');
+            for (const slot of layoutVisualSlots(layout.id)) {
+                expect(rendered.html).to.include(sources[slot]);
+            }
         }
+    });
+
+    it('keeps every layout readable when images are unavailable or blocked', () => {
+        for (const layout of LAYOUT_CATALOG) {
+            const rendered = renderAwarenessEmail({ ...sample, layoutId: layout.id });
+            expect(rendered.html).to.include('Scan with care');
+            expect(rendered.html).to.include('Check the source');
+            expect(rendered.html).to.not.include('undefined');
+            expect(rendered.text).to.include('Report concerns');
+        }
+    });
+
+    it('keeps the legacy single hero source compatible', () => {
+        const rendered = renderAwarenessEmail(
+            { ...sample, layoutId: 'editorial-hero' },
+            { heroSrc: 'cid:awareness-hero@lmsgen' }
+        );
+        expect(rendered.html).to.include('cid:awareness-hero@lmsgen');
     });
 
     it('escapes user text instead of treating it as HTML', () => {
