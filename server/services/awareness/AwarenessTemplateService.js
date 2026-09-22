@@ -278,10 +278,92 @@ async function generateCopy(input) {
     return { parsed, response };
 }
 
+const LAYOUT_VISUAL_DIRECTIONS = Object.freeze({
+    'editorial-hero': [
+        'Warm editorial lifestyle photography with tactile real-world materials, natural daylight and a premium magazine feel.',
+        'Use warm neutral environments, wood, paper, glass, fabric and real workplace objects where relevant.',
+        'Keep the scene sophisticated and human, not futuristic. Avoid neon cybersecurity aesthetics.'
+    ],
+    'split-feature': [
+        'High-contrast documentary field-briefing photography with dark charcoal surroundings and restrained acid-lime accents.',
+        'Use believable mobile-device, commute, desk or public-space situations with physical detail and directional light.',
+        'Make it feel like a security field report, not a glossy cyberpunk poster.'
+    ],
+    'checklist-focus': [
+        'Bright practical lifestyle photography with soft daylight, cream neutrals and subtle green accents.',
+        'Show simple everyday security habits through clear objects and actions that feel achievable.',
+        'Prefer natural spaces and useful detail over dramatic threat imagery.'
+    ],
+    'signal-card': [
+        'Investigative editorial photography with black, off-white and controlled red accents.',
+        'Use candid angles, evidence-like objects, social-media context or real-world exposure cues where relevant.',
+        'The look should feel like a field dossier or magazine investigation, not a generic technology illustration.'
+    ],
+    'story-spotlight': [
+        'Cinematic incident-story photography with realistic environments, strong narrative lighting and believable consequences.',
+        'Each image should feel like a different frame from an incident sequence, with changed location, angle and scale.',
+        'Prefer concrete attack stages and response actions over abstract security symbols.'
+    ],
+    'myth-fact': [
+        'Human-behaviour editorial imagery with rich violet, warm neutral and restrained gold accents.',
+        'Show social interaction, trust, persuasion, access or physical-world cues in a polished magazine style.',
+        'Keep people and environments believable. Avoid anonymous hacker imagery and sci-fi interfaces.'
+    ],
+    'action-brief': [
+        'Contemporary threat-intelligence editorial photography with deep navy, neutral daylight and restrained red accents.',
+        'Show modern work processes, devices, documents, access moments or suspicious workflows as real scenes.',
+        'The aesthetic should be precise and documentary, never a floating HUD or generic digital-network graphic.'
+    ],
+    'minimal-note': [
+        'Surreal-but-believable editorial photo-collage for AI and identity risks, combining real photography with subtle visual contradiction.',
+        'Use reflections, doubles, mismatched shadows, altered perspective or split-identity cues when relevant.',
+        'Avoid robots, glowing AI brains, neon faces and repetitive holographic portraits.'
+    ]
+});
+
+const SLOT_VISUAL_DIRECTIONS = Object.freeze({
+    hero: [
+        'WIDE ESTABLISHING IMAGE: show the overall situation or theme, not a close-up.',
+        'Use an asymmetrical 28–35mm environmental composition with layered foreground, midground and background.',
+        'Keep the main subject off-centre and leave clean negative space for the email layout.'
+    ],
+    'point-1': [
+        'DETAIL IMAGE: use a close or macro viewpoint focused on one concrete object, hand action or warning cue.',
+        'Use a 50–85mm perspective, shallow depth of field and tight crop.',
+        'Do not repeat the hero composition, location or subject scale.'
+    ],
+    'point-2': [
+        'ACTION IMAGE: show a medium-distance real-world action from a side, over-shoulder or three-quarter viewpoint.',
+        'Use a 35–50mm perspective with a visibly different background and spatial arrangement from the other images.',
+        'Capture a moment of decision or behaviour rather than a posed portrait.'
+    ],
+    'point-3': [
+        'TOP-DOWN / GRAPHIC IMAGE: use an overhead, bird’s-eye or carefully arranged still-life composition.',
+        'Build the idea from relevant physical objects, contrasting items or spatial relationships.',
+        'Prefer no visible face so this image is clearly different from people-led scenes.'
+    ],
+    'point-4': [
+        'CONCEPTUAL DETAIL IMAGE: use a clean studio, architectural or environmental metaphor grounded in real objects.',
+        'Use a low angle, long-lens compression or unusual crop that has not appeared in the previous slots.',
+        'Avoid repeating the same device, person, desk or room.'
+    ],
+    'case-study': [
+        'CASE-FILE IMAGE: create a forensic evidence tableau or investigative scene containing several distinct visual clues.',
+        'Use a top-down or oblique documentary composition with multiple relevant objects and no written annotations.',
+        'It should invite visual inspection and feel different from a normal hero image.'
+    ],
+    banner: [
+        'PANORAMIC BANNER IMAGE: make a minimal, wide visual transition or closing metaphor.',
+        'Use strong horizontal rhythm, generous negative space and fewer objects than the other images.',
+        'Do not reuse the hero subject; create a new visual metaphor for the final lesson.'
+    ]
+});
+
 function layoutDirection(layoutId) {
     const layout = LAYOUT_CATALOG.find((item) => item.id === layoutId);
-    if (!layout) return '';
-    return `Design language: ${layout.name}. ${layout.description}`;
+    const rules = LAYOUT_VISUAL_DIRECTIONS[layoutId] || [];
+    if (!layout) return rules.join(' ');
+    return [`Design language: ${layout.name}. ${layout.description}`, ...rules].join(' ');
 }
 
 function visualSubjectForSlot(slot, content, ai) {
@@ -289,36 +371,40 @@ function visualSubjectForSlot(slot, content, ai) {
     const pointMatch = String(slot).match(/^point-(\d+)$/);
     if (pointMatch) {
         const point = content.keyPoints[Math.max(0, Number(pointMatch[1]) - 1)];
-        if (point) return `Illustrate this exact learning point: ${point.title}. ${point.body}`;
+        if (point) return `Illustrate this exact learning point with a concrete scene: ${point.title}. ${point.body}`;
     }
     if (slot === 'case-study') {
         const focus = content.keyPoints.slice(0, 3).map((point) => `${point.title}: ${point.body}`).join(' ');
-        return `Create one concrete visual case-study scene showing the warning signs in this awareness topic. Focus on: ${focus}`;
+        return `Build a visual case study around the warning signs in this topic. Use these ideas as distinct visual clues: ${focus}`;
     }
     if (slot === 'banner') {
-        return `Create a strong supporting banner scene that reinforces the final safety lesson: ${content.footerNote || content.headline}.`;
+        return `Create a closing visual metaphor for this safety lesson: ${content.footerNote || content.headline}.`;
     }
-    return `Create a supporting editorial awareness illustration for: ${content.headline}.`;
+    return `Create a supporting editorial awareness image for: ${content.headline}.`;
+}
+
+function slotDirection(slot) {
+    return (SLOT_VISUAL_DIRECTIONS[slot] || [
+        'Use a clearly different composition, subject scale and viewpoint from every other image in the email.'
+    ]).join(' ');
 }
 
 function imagePromptForSlot({ slot, ai, input, content, layoutId }) {
-    const slotRole = slot === 'hero'
-        ? 'This is the main opening hero visual.'
-        : slot === 'banner'
-            ? 'This is a wide supporting transition or closing visual.'
-            : slot === 'case-study'
-                ? 'This is a concrete visual case study.'
-                : 'This is a supporting learning-section illustration.';
+    const requestedSlots = layoutVisualSlots(layoutId);
+    const slotIndex = Math.max(0, requestedSlots.indexOf(slot));
     return [
+        `IMAGE ROLE ${slotIndex + 1} OF ${requestedSlots.length}: ${String(slot).toUpperCase()}.`,
         visualSubjectForSlot(slot, content, ai),
         `Employee awareness topic: ${cleanText(input.topic, 220)}.`,
         `Audience: ${cleanText(input.audience || 'employees', 160)}.`,
         layoutDirection(layoutId),
-        slotRole,
-        'Premium editorial email artwork with a strong focal point and a professional workplace-learning aesthetic.',
-        'Show the concept through objects, environments, actions and visual relationships rather than written labels.',
-        'No written words, letters, numbers, logos, watermarks, readable user interfaces, brand marks or trademarked characters.',
-        'Landscape composition, clean edges, email-friendly crop and enough negative space around the focal subject.'
+        slotDirection(slot),
+        'VARIETY REQUIREMENT: this image must be obviously different from the other images in the same email at thumbnail size. Change viewpoint, subject scale, environment, object mix and visual rhythm.',
+        'Use the email palette only as a restrained accent. Preserve believable skin tones, materials, lighting and natural object colours instead of tinting the whole image the same colour.',
+        'Show the idea through concrete objects, environments, actions and visual relationships. Do not rely on generic symbols when a real-world scene can communicate the lesson.',
+        'AVOID REPETITION AND CLICHES: no repeated office worker, no repeated laptop-on-desk composition, no hooded hacker, no generic glowing padlock or shield, no floating code, no blue neon network, no holographic dashboard, no glowing AI brain and no centred smartphone unless the learning point specifically requires that object.',
+        'No written words, letters, numbers, logos, watermarks, readable interfaces, brand marks or trademarked characters.',
+        'Email-safe landscape artwork, clean edges and no important detail touching the crop boundary.'
     ].filter(Boolean).join(' ');
 }
 
