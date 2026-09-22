@@ -212,6 +212,7 @@ function capabilityForRequest(req) {
     const path = String(req.originalUrl || '').split('?')[0];
     const method = String(req.method || 'GET').toUpperCase();
     if (path.startsWith('/api/scorm/author')) return 'courseAuthoring';
+    if (path.startsWith('/api/scorm/awareness-templates')) return 'courseAuthoring';
     if (path.startsWith('/api/scorm/video-courses')) return 'courseAuthoring';
     if (path.startsWith('/api/scorm/content')) return 'contentEditor';
     if (path.startsWith('/api/scorm/roster')) return 'learnerRoster';
