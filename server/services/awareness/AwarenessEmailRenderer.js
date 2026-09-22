@@ -3,8 +3,8 @@
 const LAYOUT_CATALOG = Object.freeze([
     {
         id: 'editorial-hero',
-        name: 'Editorial Newsletter',
-        description: 'Warm magazine-style newsletter with a hero, feature cards and a strong closing band.',
+        name: 'Data Privacy Newsletter',
+        description: 'Reference-style data privacy newsletter with hero storytelling, two practice cards and a dark responsibility band.',
         accent: '#A85A3D',
         accentSoft: '#F3D3AE',
         background: '#F5EFE8',
@@ -15,8 +15,8 @@ const LAYOUT_CATALOG = Object.freeze([
     },
     {
         id: 'split-feature',
-        name: 'High-Risk Brief',
-        description: 'Dark field briefing with an attention badge, numbered threat notes and a bright action band.',
+        name: 'Mobile App Threat Brief',
+        description: 'Reference-style mobile threat field briefing with numbered risks, a field-test visual and bright lock-it-down band.',
         accent: '#D4F542',
         accentSoft: '#EFFFC0',
         background: '#ECECE8',
@@ -27,8 +27,8 @@ const LAYOUT_CATALOG = Object.freeze([
     },
     {
         id: 'checklist-focus',
-        name: 'Best Practices Guide',
-        description: 'Calm best-practice guide with a hero, illustrated habit cards and an action checklist.',
+        name: 'Internet Security Best Practices',
+        description: 'Reference-style internet security guide with a hero, 2×2 habit cards, golden rule and make-it-stick actions.',
         accent: '#2E7D4F',
         accentSoft: '#DDEEDD',
         background: '#FAF6EF',
@@ -39,8 +39,8 @@ const LAYOUT_CATALOG = Object.freeze([
     },
     {
         id: 'signal-card',
-        name: 'Exposure Field Brief',
-        description: 'Black-and-red field brief with numbered risks, a visual case file and practical pre-action checks.',
+        name: 'Social Media Threat Brief',
+        description: 'Reference-style social media field brief with numbered exposure risks, dark case file and before-you-post checklist.',
         accent: '#E63946',
         accentSoft: '#FADADD',
         background: '#E4E1DC',
@@ -51,8 +51,8 @@ const LAYOUT_CATALOG = Object.freeze([
     },
     {
         id: 'story-spotlight',
-        name: 'Attack Storyboard',
-        description: 'Image-led incident story with alternating attack stages, response guidance and a final rule set.',
+        name: 'Ransomware Attack Story',
+        description: 'Reference-style ransomware story with three alternating attack stages, response moves, mid banner and closing rules.',
         accent: '#DB2922',
         accentSoft: '#F7D6D2',
         background: '#F0F1F5',
@@ -63,8 +63,8 @@ const LAYOUT_CATALOG = Object.freeze([
     },
     {
         id: 'myth-fact',
-        name: 'Human Risk Playbook',
-        description: 'Purple-and-gold people-risk playbook with tactic cards, red flags and a memorable decision rule.',
+        name: 'Social Engineering Playbook',
+        description: 'Reference-style social engineering playbook with three tactic cards, red flags, quote callout and three-second rule.',
         accent: '#F2A93B',
         accentSoft: '#F8E7BE',
         background: '#F1ECE0',
@@ -75,8 +75,8 @@ const LAYOUT_CATALOG = Object.freeze([
     },
     {
         id: 'action-brief',
-        name: 'Modern Threat Dossier',
-        description: 'Bold navy-and-red threat dossier with visual evidence panels, numbered scenarios and clear moves.',
+        name: 'Modern Threats Dossier',
+        description: 'Reference-style modern phishing dossier with banner-led sections, numbered scenarios, reality check and response rules.',
         accent: '#DB2922',
         accentSoft: '#F4D2CE',
         background: '#E7E4D5',
@@ -87,8 +87,8 @@ const LAYOUT_CATALOG = Object.freeze([
     },
     {
         id: 'minimal-note',
-        name: 'AI Threat Signal',
-        description: 'Cinematic AI-risk briefing with visual signals, scenario callouts and verification-first guidance.',
+        name: 'AI Scams & Deepfakes',
+        description: 'Reference-style AI scams and deepfakes briefing with cinematic banners, familiar-voice scenarios and verification-first rules.',
         accent: '#DB2922',
         accentSoft: '#DCE8F1',
         background: '#E7E4D5',
@@ -255,23 +255,23 @@ function renderBody({ layout, title, content, images, heroAlt }) {
         const cards = twoColumnCards(content.keyPoints, images, layout, title, content, heroAlt);
         const remaining = content.keyPoints.slice(2);
         return `
-<tr><td style="padding:16px 30px;background:#fff"><div style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:800;color:${layout.accent}">Awareness newsletter</div></td></tr>
+<tr><td style="padding:16px 30px;background:#fff"><div style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:800;color:${layout.accent}">DATA PRIVACY · SECURITY NEWSLETTER</div></td></tr>
 ${hero ? `<tr><td style="padding:0">${hero}</td></tr>` : ''}
 <tr><td class="pad" style="padding:28px 32px 14px"><h1 style="margin:0 0 10px;font-size:27px;line-height:33px;color:${layout.ink}">${escapeHtml(content.headline)}</h1><p style="margin:0;font-size:14px;line-height:22px;color:${layout.muted}">${escapeHtml(content.intro)}</p></td></tr>
-<tr><td class="pad" style="padding:10px 32px 18px">${cards}</td></tr>
+<tr><td class="pad" style="padding:8px 32px 9px"><div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:${layout.accent};font-weight:900">PRIVACY IN PRACTICE</div><div style="padding-top:9px;font-size:12px;line-height:18px;color:${layout.muted}">Small habits that turn policy into everyday practice.</div></td></tr>\n<tr><td class="pad" style="padding:8px 32px 18px">${cards}</td></tr>
 ${remaining.length ? `<tr><td class="pad" style="padding:4px 32px 20px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${checkRows(remaining, layout.accent, layout.ink, layout.muted)}</table></td></tr>` : ''}
-<tr><td style="padding:22px 32px;background:${layout.ink};color:#fff"><div style="font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:${layout.accentSoft};font-weight:800">Why this matters</div><div style="padding-top:8px;font-size:13px;line-height:21px;color:#fff">${paragraphs || escapeHtml(content.footerNote)}</div>${cta}</td></tr>`;
+<tr><td style="padding:22px 32px;background:${layout.ink};color:#fff"><div style="font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:${layout.accentSoft};font-weight:800">PRIVACY IS EVERYONE'S JOB</div><div style="padding-top:8px;font-size:13px;line-height:21px;color:#fff">${paragraphs || escapeHtml(content.footerNote)}</div>${cta}</td></tr>`;
     }
 
     if (layout.mode === 'high-risk') {
         const caseImage = visual(images, 'case-study', title, content, heroAlt, 540, 8);
         return `
-<tr><td style="padding:14px 26px;background:${layout.ink};color:#fff"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td><div style="font-size:10px;letter-spacing:.15em;text-transform:uppercase;font-weight:800">Field briefing</div></td><td align="right"><span style="display:inline-block;padding:5px 8px;background:${layout.accent};color:#0E0E0E;font-size:9px;font-weight:900">HIGH ATTENTION</span></td></tr></table></td></tr>
+<tr><td style="padding:14px 26px;background:${layout.ink};color:#fff"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td><div style="font-size:10px;letter-spacing:.15em;text-transform:uppercase;font-weight:800">MOBILE APP THREATS · FIELD BRIEFING</div></td><td align="right"><span style="display:inline-block;padding:5px 8px;background:${layout.accent};color:#0E0E0E;font-size:9px;font-weight:900">THREAT LEVEL: HIGH</span></td></tr></table></td></tr>
 ${hero ? `<tr><td style="padding:0;background:${layout.ink}">${hero}</td></tr>` : ''}
 <tr><td class="pad" style="padding:27px 30px 15px;background:#fff"><h1 style="margin:0 0 9px;font-size:28px;line-height:34px;color:${layout.ink}">${escapeHtml(content.headline)}</h1><p style="margin:0;font-size:14px;line-height:22px;color:${layout.muted}">${escapeHtml(content.intro)}</p></td></tr>
 <tr><td class="pad" style="padding:9px 30px 10px;background:#fff"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${numberedRows(content.keyPoints.slice(0, 4), layout, { prefix: '' })}</table></td></tr>
-${caseImage ? `<tr><td class="pad" style="padding:8px 30px 22px;background:#fff"><div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:${layout.accent === '#D4F542' ? '#556B11' : layout.accent}">Field test</div><div style="padding-top:9px">${caseImage}</div></td></tr>` : ''}
-<tr><td class="pad" style="padding:21px 30px;background:${layout.accent};color:#0E0E0E"><div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:900">Lock it down</div><div style="padding-top:8px;font-size:13px;line-height:20px">${paragraphs || 'Slow down, verify the request and use trusted channels before taking action.'}</div>${cta}</td></tr>`;
+${caseImage ? `<tr><td class="pad" style="padding:8px 30px 22px;background:#fff"><div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:${layout.accent === '#D4F542' ? '#556B11' : layout.accent}">02 · FIELD TEST</div><div style="padding-top:9px">${caseImage}</div></td></tr>` : ''}
+<tr><td class="pad" style="padding:21px 30px;background:${layout.accent};color:#0E0E0E"><div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:900">03 · LOCK IT DOWN</div><div style="padding-top:8px;font-size:13px;line-height:20px">${paragraphs || 'Slow down, verify the request and use trusted channels before taking action.'}</div>${cta}</td></tr>`;
     }
 
     if (layout.mode === 'habits') {
@@ -279,32 +279,32 @@ ${caseImage ? `<tr><td class="pad" style="padding:8px 30px 22px;background:#fff"
         const remaining = content.keyPoints.slice(4);
         return `
 ${hero ? `<tr><td style="padding:0">${hero}</td></tr>` : ''}
-<tr><td class="pad" style="padding:28px 32px 12px"><div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:${layout.accent};font-weight:800">Best practices guide</div><h1 style="margin:9px 0 8px;font-size:28px;line-height:34px;color:${layout.ink}">${escapeHtml(content.headline)}</h1><p style="margin:0;font-size:14px;line-height:22px;color:${layout.muted}">${escapeHtml(content.intro)}</p></td></tr>
-<tr><td class="pad" style="padding:10px 32px 15px">${grid}</td></tr>
+<tr><td class="pad" style="padding:28px 32px 12px"><div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:${layout.accent};font-weight:800">DOC. ISP · BEST PRACTICES GUIDE</div><h1 style="margin:9px 0 8px;font-size:28px;line-height:34px;color:${layout.ink}">${escapeHtml(content.headline)}</h1><p style="margin:0;font-size:14px;line-height:22px;color:${layout.muted}">${escapeHtml(content.intro)}</p></td></tr>
+<tr><td class="pad" style="padding:8px 32px 8px"><div style="font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:${layout.ink};font-weight:900">FOUR HABITS, ZERO DRAMA</div></td></tr>\n<tr><td class="pad" style="padding:8px 32px 15px">${grid}</td></tr>
 <tr><td class="pad" style="padding:8px 32px 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:2px solid ${layout.ink};background:#fff"><tr><td style="padding:16px 18px"><div style="font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:${layout.accent};font-weight:800">The golden rule</div><div style="padding-top:6px;font-size:16px;line-height:23px;color:${layout.ink};font-weight:800">${escapeHtml(content.bodyParagraphs[0] || content.footerNote || 'Small habits, repeated consistently, create strong protection.')}</div></td></tr></table></td></tr>
 ${remaining.length ? `<tr><td class="pad" style="padding:0 32px 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${checkRows(remaining, layout.accent, layout.ink, layout.muted)}</table></td></tr>` : ''}
-<tr><td class="pad" style="padding:4px 32px 24px">${bodyParagraphs(content.bodyParagraphs.slice(1), layout.muted)}${cta}</td></tr>`;
+<tr><td class="pad" style="padding:4px 32px 24px"><div style="padding-bottom:8px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:${layout.accent};font-weight:900">MAKE IT STICK</div>${bodyParagraphs(content.bodyParagraphs.slice(1), layout.muted)}${cta}</td></tr>`;
     }
 
     if (layout.mode === 'field') {
         const caseImage = visual(images, 'case-study', title, content, heroAlt, 540, 8);
         return `
-<tr><td style="padding:12px 28px;background:${layout.ink};color:#fff"><div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:800">${escapeHtml(title)}</div></td></tr>
+<tr><td style="padding:12px 28px;background:${layout.ink};color:#fff"><div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:800">FIELD BRIEFING · SOCIAL MEDIA THREATS</div></td></tr>
 ${hero ? `<tr><td style="padding:0">${hero}</td></tr>` : ''}
 <tr><td class="pad" style="padding:27px 30px 12px;background:#fff"><h1 style="margin:0 0 8px;font-size:28px;line-height:34px;color:${layout.ink}">${escapeHtml(content.headline)}</h1><p style="margin:0;font-size:14px;line-height:22px;color:${layout.muted}">${escapeHtml(content.intro)}</p></td></tr>
-<tr><td class="pad" style="padding:8px 30px 8px;background:#fff"><div style="font-size:11px;letter-spacing:.14em;color:${layout.accent};font-weight:900">HOW IT GETS IN</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="padding-top:12px">${numberedRows(content.keyPoints.slice(0, 3), layout, { prefix: '' })}</table></td></tr>
-${caseImage ? `<tr><td class="pad" style="padding:18px 30px;background:${layout.ink};color:#fff"><div style="font-size:10px;letter-spacing:.15em;color:${layout.accent};font-weight:900">CASE FILE</div><div style="padding-top:9px">${caseImage}</div></td></tr>` : ''}
-<tr><td class="pad" style="padding:22px 30px;background:#fff"><div style="font-size:11px;letter-spacing:.14em;color:${layout.accent};font-weight:900">BEFORE YOU ACT</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="padding-top:8px">${checkRows(content.keyPoints.slice(3).length ? content.keyPoints.slice(3) : content.keyPoints.slice(0, 3), layout.accent, layout.ink, layout.muted)}</table>${paragraphs}${cta}</td></tr>`;
+<tr><td class="pad" style="padding:8px 30px 8px;background:#fff"><div style="font-size:11px;letter-spacing:.14em;color:${layout.accent};font-weight:900">HOW THEY GET IN</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="padding-top:12px">${numberedRows(content.keyPoints.slice(0, 3), layout, { prefix: '' })}</table></td></tr>
+${caseImage ? `<tr><td class="pad" style="padding:18px 30px;background:${layout.ink};color:#fff"><div style="font-size:10px;letter-spacing:.15em;color:${layout.accent};font-weight:900">CASE FILE · ANATOMY OF THE THREAT</div><div style="padding-top:9px">${caseImage}</div></td></tr>` : ''}
+<tr><td class="pad" style="padding:22px 30px;background:#fff"><div style="font-size:11px;letter-spacing:.14em;color:${layout.accent};font-weight:900">BEFORE YOU POST</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="padding-top:8px">${checkRows(content.keyPoints.slice(3).length ? content.keyPoints.slice(3) : content.keyPoints.slice(0, 3), layout.accent, layout.ink, layout.muted)}</table>${paragraphs}${cta}</td></tr>`;
     }
 
     if (layout.mode === 'storyboard') {
         const banner = visual(images, 'banner', title, content, heroAlt, 600, 0);
         return `
 ${hero ? `<tr><td style="padding:0">${hero}</td></tr>` : ''}
-<tr><td class="pad" style="padding:28px 32px 18px;background:#fff"><div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:${layout.accent};font-weight:900">Anatomy of an attack</div><h1 style="margin:9px 0 8px;font-size:28px;line-height:34px;color:${layout.ink}">${escapeHtml(content.headline)}</h1><p style="margin:0;font-size:14px;line-height:22px;color:${layout.muted}">${escapeHtml(content.intro)}</p></td></tr>
+<tr><td class="pad" style="padding:28px 32px 18px;background:#fff"><div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:${layout.accent};font-weight:900">ANATOMY OF AN ATTACK</div><h1 style="margin:9px 0 8px;font-size:28px;line-height:34px;color:${layout.ink}">${escapeHtml(content.headline)}</h1><p style="margin:0;font-size:14px;line-height:22px;color:${layout.muted}">${escapeHtml(content.intro)}</p></td></tr>
 <tr><td style="padding:0;background:#fff"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${storyboardRows(content.keyPoints, images, layout, title, content, heroAlt)}</table></td></tr>
 ${banner ? `<tr><td style="padding:0">${banner}</td></tr>` : ''}
-<tr><td class="pad" style="padding:23px 32px 25px;background:#fff"><div style="font-size:11px;letter-spacing:.14em;color:${layout.accent};font-weight:900">THE RULES THAT OUTLAST THE ATTACK</div><div style="padding-top:10px">${paragraphs}</div>${content.keyPoints.slice(3).length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${checkRows(content.keyPoints.slice(3), layout.accent, layout.ink, layout.muted)}</table>` : ''}${cta}</td></tr>`;
+<tr><td class="pad" style="padding:23px 32px 25px;background:#fff"><div style="font-size:11px;letter-spacing:.14em;color:${layout.accent};font-weight:900">THE RULES THAT OUTLAST RANSOMWARE</div><div style="padding-top:10px">${paragraphs}</div>${content.keyPoints.slice(3).length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${checkRows(content.keyPoints.slice(3), layout.accent, layout.ink, layout.muted)}</table>` : ''}${cta}</td></tr>`;
     }
 
     if (layout.mode === 'playbook') {
@@ -312,17 +312,17 @@ ${banner ? `<tr><td style="padding:0">${banner}</td></tr>` : ''}
         const banner = visual(images, 'banner', title, content, heroAlt, 600, 0);
         const redFlags = content.keyPoints.slice(3);
         return `
-<tr><td style="padding:13px 28px;background:${layout.ink};color:#fff"><div style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:800">Security awareness · human risk</div></td></tr>
+<tr><td style="padding:13px 28px;background:${layout.ink};color:#fff"><div style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:800">SECURITY AWARENESS · SOCIAL ENGINEERING</div></td></tr>
 ${hero ? `<tr><td style="padding:0">${hero}</td></tr>` : ''}
 <tr><td class="pad" style="padding:27px 30px 12px;background:#fff"><h1 style="margin:0 0 8px;font-size:28px;line-height:34px;color:${layout.ink}">${escapeHtml(content.headline)}</h1><p style="margin:0;font-size:14px;line-height:22px;color:${layout.muted}">${escapeHtml(content.intro)}</p></td></tr>
 <tr><td class="pad" style="padding:12px 30px 22px;background:#fff"><div style="padding-bottom:10px;font-size:10px;letter-spacing:.14em;color:${layout.accent};font-weight:900">THREE TRICKS IN THE PLAYBOOK</div>${cards}</td></tr>
 ${banner ? `<tr><td style="padding:0">${banner}</td></tr>` : ''}
 <tr><td class="pad" style="padding:20px 30px;background:${layout.ink};color:#fff"><div style="font-size:10px;letter-spacing:.14em;color:${layout.accent};font-weight:900">SPOT THE RED FLAGS</div>${redFlags.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="padding-top:8px">${checkRows(redFlags, layout.accent, '#FFFFFF', '#E7E1F4')}</table>` : `<div style="padding-top:9px;font-size:13px;line-height:20px">${escapeHtml(content.bodyParagraphs[0] || 'Urgency, authority, secrecy and unusual requests deserve a second check.')}</div>`}</td></tr>
-<tr><td class="pad" style="padding:22px 30px 26px;background:#fff"><div style="font-size:10px;letter-spacing:.14em;color:${layout.accent};font-weight:900">THE 3-SECOND RULE</div><div style="padding-top:8px">${paragraphs}</div>${cta}</td></tr>`;
+<tr><td class="pad" align="center" style="padding:18px 30px;background:${layout.accentSoft}"><div style="font-size:16px;line-height:23px;font-style:italic;font-weight:800;color:${layout.ink}">${escapeHtml(content.bodyParagraphs[0] || 'Helpful does not mean verified.')}</div></td></tr>\n<tr><td class="pad" style="padding:22px 30px 26px;background:#fff"><div style="font-size:10px;letter-spacing:.14em;color:${layout.accent};font-weight:900">THE 3-SECOND RULE</div><div style="padding-top:8px">${bodyParagraphs(content.bodyParagraphs.slice(1), layout.muted)}</div>${cta}</td></tr>`;
     }
 
     if (layout.mode === 'dossier' || layout.mode === 'ai-signal') {
-        const label = layout.mode === 'ai-signal' ? 'AI threat signal' : 'The new con';
+        const label = layout.mode === 'ai-signal' ? 'THE NEW CON · AI SCAMS & DEEPFAKES' : 'THE NEW CON · MODERN THREATS';
         const banner = visual(images, 'banner', title, content, heroAlt, 600, 0);
         const scenarioRows = content.keyPoints.slice(0, 3).map((point, index) => {
             const art = visual(images, `point-${index + 1}`, title, content, heroAlt, 600, 0);
