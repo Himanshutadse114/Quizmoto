@@ -45,12 +45,48 @@ describe('AwarenessTemplateGalleryService',function(){
         for(const row of rows){
             const manifest=JSON.parse(row.assetManifestJson||'[]');
             expect(manifest.length).to.be.greaterThan(0);
+            const thumb=manifest.find(asset=>asset.id===row.coverAssetId);
+            expect(thumb).to.exist;
+            expect(thumb.role).to.equal('thumbnail');
+            expect(thumb.width).to.equal(1200);
+            expect(thumb.height).to.equal(675);
             expect(row.htmlTemplate).to.include('/api/scorm/awareness-template-assets/central/');
             expect(row.htmlTemplate).to.not.match(/src=["']\.?\/?images\//i);
             for(const asset of manifest){
                 expect(await getObjectStorage().exists(asset.storageKey)).to.equal(true);
             }
         }
+    });
+
+    it('recognises a dedicated thumbnail file next to the HTML template',async()=>{
+        const zip=new JSZip();
+        zip.file('Example/email.html','<html><body><img src="./images/hero.png"></body></html>');
+        zip.file('Example/thumbnail.jpg',Buffer.from('thumbnail-placeholder'));
+        zip.file('Example/images/hero.png',Buffer.from('hero-placeholder'));
+        const found=await Gallery.thumbnailEntry(zip,'Example/email.html');
+        expect(found).to.exist;
+        expect(found.path).to.equal('Example/thumbnail.jpg');
+    });
+
+    it('allows Super Admin thumbnail replacement and removes the old generated thumbnail',async()=>{
+        const row=await Central.findOne({where:{seedKey:'reference:data-privacy'}});
+        const before=JSON.parse(row.assetManifestJson||'[]');
+        const oldThumb=before.find(asset=>asset.id===row.coverAssetId);
+        expect(oldThumb?.role).to.equal('thumbnail');
+        const sourceAsset=before.find(asset=>asset.role!=='thumbnail');
+        const source=await getObjectStorage().getObjectBuffer(sourceAsset.storageKey);
+        const result=await Gallery.replaceCentralThumbnail({
+            id:row.id,
+            dataUrl:'data:'+sourceAsset.contentType+';base64,'+source.toString('base64')
+        });
+        expect(result.thumbnailUrl).to.include('/awareness-template-assets/central/');
+        const updated=await Central.findByPk(row.id);
+        const after=JSON.parse(updated.assetManifestJson||'[]');
+        const nextThumb=after.find(asset=>asset.id===updated.coverAssetId);
+        expect(nextThumb.role).to.equal('thumbnail');
+        expect(nextThumb.id).to.not.equal(oldThumb.id);
+        expect(await getObjectStorage().exists(oldThumb.storageKey)).to.equal(false);
+        expect(await getObjectStorage().exists(nextThumb.storageKey)).to.equal(true);
     });
 
     it('does not duplicate seeded templates on a second seed pass',async()=>{
@@ -74,6 +110,9 @@ describe('AwarenessTemplateGalleryService',function(){
         const central=await Central.findOne({where:{seedKey:'reference:ransomware'}});
         const mine=await Gallery.importMine({centralTemplateId:central.id,hostId:42,createdByUserId:42});
         expect(mine.centralTemplateId).to.equal(central.id);
+        expect(mine.thumbnailUrl).to.equal(Gallery.assetUrl('central',central.publicAssetToken,central.coverAssetId));
+        expect(mine.category).to.equal(central.category);
+        expect(mine.description).to.equal(central.description);
         expect(await UserTemplate.count({where:{hostId:42}})).to.equal(1);
         const exported=await Gallery.exportMine(mine.id,42);
         const source=exported.message.toString('utf8');

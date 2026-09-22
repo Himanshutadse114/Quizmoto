@@ -60,6 +60,15 @@ router.post('/central/upload',auth,superAdmin,async(req,res)=>{
         res.status(201).json({ok:true,...result});
     }catch(e){fail(res,e,'Unable to import the template ZIP.')}
 });
+router.post('/central/:id/thumbnail',auth,superAdmin,async(req,res)=>{
+    try{
+        const template=await Gallery.replaceCentralThumbnail({
+            id:req.params.id,
+            dataUrl:req.body?.dataUrl
+        });
+        res.json({ok:true,template});
+    }catch(e){fail(res,e,'Unable to update the template thumbnail.')}
+});
 router.patch('/central/:id',auth,superAdmin,async(req,res)=>{
     try{res.json({ok:true,template:await Gallery.updateCentral(req.params.id,req.body||{})})}
     catch(e){fail(res,e,'Unable to update this central template.')}
