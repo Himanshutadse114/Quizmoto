@@ -29,9 +29,11 @@ function createObjectStorage(options = {}) {
     if (driver === 's3') {
         const S3ObjectStorage = require('./S3ObjectStorage');
         return new S3ObjectStorage({
-            bucket: options.bucket || process.env.S3_BUCKET,
-            region: options.region || process.env.S3_REGION || 'us-east-1',
-            endpoint: options.endpoint || process.env.S3_ENDPOINT || null,
+            bucket: options.bucket || process.env.S3_BUCKET || process.env.R2_BUCKET,
+            region: options.region || process.env.S3_REGION || process.env.R2_REGION || 'auto',
+            endpoint: options.endpoint || process.env.S3_ENDPOINT || process.env.R2_ENDPOINT || null,
+            accessKeyId: options.accessKeyId || process.env.AWS_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID || null,
+            secretAccessKey: options.secretAccessKey || process.env.AWS_SECRET_ACCESS_KEY || process.env.R2_SECRET_ACCESS_KEY || null,
             forcePathStyle:
                 options.forcePathStyle != null
                     ? options.forcePathStyle

@@ -84,6 +84,7 @@ export default function AwarenessTemplates(){
   const [rosterLoading,setRosterLoading]=useState(false);
   const [uploading,setUploading]=useState(false);
   const frameRef=useRef(null);
+  const seedRepairAttempted=useRef(false);
 
   const load=useCallback(async()=>{
     if(!token)return;
@@ -95,8 +96,21 @@ export default function AwarenessTemplates(){
         axios.get(apiUrl(centralUrl),{headers}),
         axios.get(apiUrl(API+'/mine'),{headers})
       ]);
+      let centralTemplates=c.data?.templates||[];
+      if(isSuperAdmin&&!centralTemplates.length&&!seedRepairAttempted.current){
+        seedRepairAttempted.current=true;
+        try{
+          const seeded=await axios.post(apiUrl(API+'/central/seed'),{},{headers});
+          centralTemplates=seeded.data?.templates||centralTemplates;
+          if(centralTemplates.length){
+            setNotice({type:'success',text:'The 8 bundled reference templates were restored to the Central Gallery.'});
+          }
+        }catch(seedError){
+          setNotice({type:'error',text:apiError(seedError,'The bundled reference templates could not be restored automatically.')});
+        }
+      }
       setStatus(s.data||{});
-      setCentral(c.data?.templates||[]);
+      setCentral(centralTemplates);
       setMine(m.data?.templates||[]);
     }catch(error){
       setNotice({type:'error',text:apiError(error,'Unable to load awareness templates.')});
@@ -325,6 +339,26 @@ export default function AwarenessTemplates(){
     finally{setBusy('')}
   };
 
+  const restoreReferenceTemplates=async()=>{
+    if(!isSuperAdmin)return;
+    setBusy('seed');setNotice(null);
+    try{
+      const res=await axios.post(apiUrl(API+'/central/seed'),{},{headers});
+      const templates=res.data?.templates||[];
+      setCentral(templates);
+      seedRepairAttempted.current=true;
+      const seeded=Number(res.data?.seeded||0);
+      setNotice({
+        type:'success',
+        text:seeded
+          ? seeded+' reference template'+(seeded===1?'':'s')+' restored to the Central Gallery.'
+          : templates.length+' reference template'+(templates.length===1?' is':'s are')+' available in the Central Gallery.'
+      });
+    }catch(error){
+      setNotice({type:'error',text:apiError(error,'Unable to restore the 8 bundled reference templates.')});
+    }finally{setBusy('')}
+  };
+
   const uploadZip=async(file)=>{
     if(!file)return;
     if(!/\.zip$/i.test(file.name)){setNotice({type:'error',text:'Choose a ZIP file containing the HTML template and images folder.'});return}
@@ -357,14 +391,17 @@ export default function AwarenessTemplates(){
 
     {tab==='gallery'&&<section>
       {isSuperAdmin&&<div className="aw-admin-upload">
-        <div><strong>Central Library Manager</strong><span>Upload a ZIP containing one or more HTML email templates and their local image folders. Images are stored in the configured R2/Cloudflare object storage automatically.</span></div>
-        <label className={'aw-btn-primary '+(uploading?'is-disabled':'')}><Upload size={15}/>{uploading?'Importing ZIP…':'Add Template ZIP'}<input type="file" accept=".zip,application/zip" disabled={uploading} onChange={e=>{uploadZip(e.target.files?.[0]);e.target.value=''}}/></label>
+        <div><strong>Central Library Manager</strong><span>Upload HTML email templates with their image folders. The 8 bundled reference templates are kept as the starter gallery.</span></div>
+        <div className="aw-admin-actions">
+          <button type="button" className="aw-btn-secondary" onClick={restoreReferenceTemplates} disabled={busy==='seed'}><RefreshCw size={14}/>{busy==='seed'?'Restoring…':'Restore 8 References'}</button>
+          <label className={'aw-btn-primary '+(uploading?'is-disabled':'')}><Upload size={15}/>{uploading?'Importing ZIP…':'Add Template ZIP'}<input type="file" accept=".zip,application/zip" disabled={uploading} onChange={e=>{uploadZip(e.target.files?.[0]);e.target.value=''}}/></label>
+        </div>
       </div>}
       <div className="aw-gallery-tools"><div className="aw-search"><Search size={14}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search templates or categories"/></div><span>{filteredCentral.length} template{filteredCentral.length===1?'':'s'}</span></div>
       <div className="aw-template-grid">
         {filteredCentral.map(item=><Card key={item.id} template={item} central onPreview={previewCentral} onImport={importTemplate} onArchive={isSuperAdmin?archiveCentral:null} imported={mine.some(x=>x.centralTemplateId===item.id)}/>)}
       </div>
-      {!filteredCentral.length&&<div className="aw-empty"><Library size={30}/><h2>No matching templates</h2></div>}
+      {!filteredCentral.length&&<div className="aw-empty"><Library size={26}/><h2>{search?'No matching templates':'No templates in the Central Gallery'}</h2><p>{search?'Try another search term.':'Restore the 8 bundled reference templates or upload a template ZIP.'}</p>{isSuperAdmin&&!search&&<button className="aw-btn-primary" onClick={restoreReferenceTemplates} disabled={busy==='seed'}><RefreshCw size={14}/> Restore 8 Reference Templates</button>}</div>}
     </section>}
 
     {tab==='mine'&&!editor&&<section>

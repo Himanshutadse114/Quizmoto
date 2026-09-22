@@ -59,6 +59,17 @@ describe('AwarenessTemplateGalleryService',function(){
         expect(await Central.count()).to.equal(8);
     });
 
+    it('restores a missing seeded reference without duplicating the others',async()=>{
+        const missing=await Central.findOne({where:{seedKey:'reference:modern-threats'}});
+        expect(missing).to.exist;
+        await missing.destroy();
+        expect(await Central.count()).to.equal(7);
+        const result=await Gallery.seedReferenceTemplates();
+        expect(result.seeded).to.equal(1);
+        expect(await Central.count()).to.equal(8);
+        expect(await Central.count({where:{seedKey:'reference:modern-threats'}})).to.equal(1);
+    });
+
     it('imports a central template into My Library before export is available',async()=>{
         const central=await Central.findOne({where:{seedKey:'reference:ransomware'}});
         const mine=await Gallery.importMine({centralTemplateId:central.id,hostId:42,createdByUserId:42});

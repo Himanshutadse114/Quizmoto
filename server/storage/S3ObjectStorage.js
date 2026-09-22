@@ -8,7 +8,7 @@ class S3ObjectStorage {
     constructor(options = {}) {
         this.bucket = options.bucket;
         if (!this.bucket) {
-            throw new Error('S3_BUCKET is required when STORAGE_DRIVER=s3');
+            throw new Error('S3_BUCKET or R2_BUCKET is required when STORAGE_DRIVER=s3');
         }
 
         let S3Client;
@@ -43,8 +43,14 @@ class S3ObjectStorage {
         }
 
         const clientConfig = {
-            region: options.region || 'us-east-1'
+            region: options.region || 'auto'
         };
+        if (options.accessKeyId && options.secretAccessKey) {
+            clientConfig.credentials = {
+                accessKeyId: options.accessKeyId,
+                secretAccessKey: options.secretAccessKey
+            };
+        }
         if (options.endpoint) {
             clientConfig.endpoint = options.endpoint;
             clientConfig.forcePathStyle = options.forcePathStyle !== false;
