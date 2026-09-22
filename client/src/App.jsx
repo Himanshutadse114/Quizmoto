@@ -65,6 +65,7 @@ const ScormCourseDetail = lazy(() => import('./pages/Scorm/CourseDetail'));
 const ScormLearnLanding = lazy(() => import('./pages/Scorm/LearnLanding'));
 const ScormPlayerShell = lazy(() => import('./pages/Scorm/PlayerShell'));
 const ScormAuthor = lazy(() => import('./pages/Scorm/CourseGenerator'));
+const ScormAwarenessTemplates = lazy(() => import('./pages/Scorm/AwarenessTemplates'));
 const ScormPresentationEditor = lazy(() => import('./pages/Scorm/PresentationEditor'));
 const ScormReports = lazy(() => import('./pages/Scorm/Reports'));
 const ScormVisualStudio = lazy(() => import('./pages/Scorm/VisualStudio'));
@@ -242,6 +243,7 @@ function AppRoutes() {
           <Route path="tracking" element={<ScormFeatureGate featureId="tracking" analyticsAllowed><ScormTracking /></ScormFeatureGate>} />
           <Route path="library" element={<ScormFeatureGate featureId="library"><ScormLibrary /></ScormFeatureGate>} />
           <Route path="author" element={<ScormFeatureGate featureId="author"><ScormAuthor /></ScormFeatureGate>} />
+          <Route path="awareness-templates" element={<ScormFeatureGate featureId="author"><ScormAwarenessTemplates /></ScormFeatureGate>} />
           <Route path="presentation/edit/:packageId" element={<ScormFeatureGate featureId="author"><ScormPresentationEditor /></ScormFeatureGate>} />
           <Route path="visual-studio" element={<ScormFeatureGate featureId="visualStudio"><ScormVisualStudio /></ScormFeatureGate>} />
           <Route path="reports" element={<ScormFeatureGate featureId="reports" analyticsAllowed><ScormReports /></ScormFeatureGate>} />
