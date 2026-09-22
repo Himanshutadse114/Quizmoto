@@ -99,7 +99,7 @@ Important learning content remains real HTML text. AI images are supporting visu
 
 ## Awareness-specific optional configuration
 
-- `AWARENESS_MAX_AI_IMAGES` — maximum visuals generated per email, clamped to 1–5 and defaulting to 5.
+- `AWARENESS_ASSET_BASE_URL` — public backend/API origin used by Brevo-hosted email images. Render is configured to `https://api.lmsgen.in`.\n- `AWARENESS_MAX_AI_IMAGES` — maximum visuals generated per email, clamped to 1–5 and defaulting to 5.
 - `AWARENESS_IMAGE_CONCURRENCY` — concurrent image requests, clamped to 1–3 and defaulting to 2.
 - `AI_AWARENESS_HOURLY_LIMIT` — authenticated generation requests per user per hour, defaulting to 12.
 
