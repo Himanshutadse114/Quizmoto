@@ -49,9 +49,18 @@ function imageConcurrency() {
     return clampInt(process.env.AWARENESS_IMAGE_CONCURRENCY, 2, 1, 3);
 }
 
+function awarenessAssetBaseUrl() {
+    return String(
+        process.env.AWARENESS_ASSET_BASE_URL ||
+        process.env.PUBLIC_API_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        MailService.appBaseUrl()
+    ).trim().replace(/\/$/, '');
+}
+
 function publicAssetUrl(token, slot = 'hero') {
     if (!token) return '';
-    const root = `${MailService.appBaseUrl()}/api/scorm/awareness-assets/${encodeURIComponent(token)}`;
+    const root = `${awarenessAssetBaseUrl()}/api/scorm/awareness-assets/${encodeURIComponent(token)}`;
     return slot === 'hero' ? root : `${root}/${encodeURIComponent(slot)}`;
 }
 
@@ -728,6 +737,7 @@ module.exports = {
     getPublicAsset,
     normaliseRecipients,
     chooseFallbackLayout,
+    awarenessAssetBaseUrl,
     publicAssetUrl,
     cidForSlot,
     visualAssetRecords,
