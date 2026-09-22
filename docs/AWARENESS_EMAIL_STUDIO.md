@@ -48,7 +48,7 @@ Important learning content remains real HTML text. AI images are supporting visu
 - All available generated visuals are embedded by CID in EML and SMTP delivery.
 - Brevo delivery uses tokenised persistent image URLs for every available visual.
 - Existing platform SMTP/Brevo settings are reused.
-- Each recipient is delivered separately to avoid recipient-address disclosure.
+- Recipients can be pasted directly or selected from the tenant learner roster when roster access is available.\n- Each recipient is delivered separately to avoid recipient-address disclosure.
 - Maximum 50 unique recipients per send request.
 
 ### Phase 4 — Hardening
