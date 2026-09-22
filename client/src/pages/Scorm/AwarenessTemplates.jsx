@@ -401,7 +401,7 @@ export default function AwarenessTemplates() {
                 <div>
                   <div className="awareness-kicker"><WandSparkles size={14} /> AI generator</div>
                   <h2>What should the email teach?</h2>
-                  <p>AI writes structured copy and creates a topic-specific image. LMSGEN controls the email HTML and layout.</p>
+                  <p>AI writes structured copy and creates layout-aware topic visuals. LMSGEN controls the email HTML and layout.</p>
                 </div>
                 {selected && <button type="button" className="awareness-close" onClick={() => setCreating(false)}><X size={16} /></button>}
               </div>
@@ -454,7 +454,7 @@ export default function AwarenessTemplates() {
               </div>
 
               <div className="awareness-generate-footer">
-                <span><Sparkles size={14} /> Structured copy + one AI hero image + protected email layout</span>
+                <span><Sparkles size={14} /> Structured copy + layout-aware AI visuals + protected email layout</span>
                 <button type="button" className="scorm-button-primary" onClick={generateTemplate} disabled={busy === 'generate'}>
                   {busy === 'generate' ? <RefreshCw size={14} className="animate-spin" /> : <WandSparkles size={14} />}
                   {busy === 'generate' ? 'Generating…' : 'Generate email'}
@@ -469,7 +469,7 @@ export default function AwarenessTemplates() {
                   <h2>{selected.title}</h2>
                   <div className="awareness-meta">
                     <span>{activeLayout?.name || selected.layoutId}</span>
-                    <span>{selected.imageAvailable ? 'AI visual ready' : 'Text-first fallback'}</span>
+                    <span>{selected.visualCount ? `${selected.visualCount} AI visual${selected.visualCount === 1 ? '' : 's'}` : 'Text-first fallback'}</span>
                     <span>{mail.configured ? `${String(mail.provider || '').toUpperCase()} connected` : 'Mail not configured'}</span>
                   </div>
                 </div>
@@ -496,7 +496,7 @@ export default function AwarenessTemplates() {
 
               <div className="awareness-editor-grid">
                 <div className="awareness-copy">
-                  <div className="awareness-lock-note"><FileText size={14} /> Layout and image are protected. Only the content below can be edited.</div>
+                  <div className="awareness-lock-note"><FileText size={14} /> Layout and generated visuals are protected. Only the content below can be edited.</div>
                   <Field label="Template name" value={draft.title} maxLength={180} onChange={(value) => setDraft((current) => ({ ...current, title: value }))} />
                   <Field label="Email subject" value={draft.subject} maxLength={240} onChange={(value) => setDraft((current) => ({ ...current, subject: value }))} />
                   <Field label="Preheader" value={draft.preheader} maxLength={240} onChange={(value) => setDraft((current) => ({ ...current, preheader: value }))} />
@@ -536,7 +536,7 @@ export default function AwarenessTemplates() {
                       : <div><Eye size={24} /> Preview will appear here.</div>}
                   </div>
                   {selected.imageAvailable && (
-                    <div className="awareness-lock-note"><ImageIcon size={13} /> Generated image is locked. Alt text remains editable for accessibility.</div>
+                    <div className="awareness-lock-note"><ImageIcon size={13} /> Generated visuals are locked. Hero alt text remains editable for accessibility.</div>
                   )}
                 </div>
               </div>
