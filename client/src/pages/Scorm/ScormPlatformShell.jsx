@@ -24,6 +24,7 @@ import {
   UserCheck,
   Users,
   Megaphone,
+  Mail,
   Settings
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -53,6 +54,7 @@ const OPERATIONAL_NAV_GROUPS = [
     label: 'LMSGEN',
     items: [
       { to: '/scorm/author', label: 'AI Course Author', icon: Sparkles, requiresScorm: true },
+      { to: '/scorm/awareness-templates', label: 'Awareness Emails', icon: Mail, requiresScorm: true },
       { to: '/scorm/courses', label: 'My Courses', icon: BookOpen, requiresScorm: true },
       { to: '/scorm/roster', label: 'Learner Roster', icon: UserCheck, requiresScorm: true },
       { to: '/scorm/assignments', label: 'Campaigns', icon: Megaphone, requiresScorm: true },
