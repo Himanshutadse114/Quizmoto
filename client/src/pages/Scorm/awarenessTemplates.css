@@ -208,3 +208,30 @@
   .aw-modal-backdrop{padding:6px}
   .aw-preview-modal{width:100%;height:95vh}
 }
+
+.aw-file-icon{position:relative}
+.aw-file-icon input{display:none}
+.aw-send-modal{
+  width:min(620px,92vw);
+  max-height:88vh;
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr) auto;
+  background:var(--scorm-surface);
+  border:1px solid var(--scorm-line);
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow:0 25px 70px rgba(0,0,0,.35)
+}
+.aw-send-modal-body{padding:16px;display:flex;flex-direction:column;gap:12px;overflow:auto}
+.aw-mail-status{padding:10px 12px;border-radius:10px;border:1px solid var(--scorm-line);background:var(--scorm-surface-soft)}
+.aw-mail-status strong{display:block;font-size:10px}
+.aw-mail-status span{display:block;margin-top:4px;font-size:8px;line-height:1.5;color:var(--scorm-muted)}
+.aw-mail-status.is-ready{border-color:rgba(74,222,128,.28);background:rgba(74,222,128,.06)}
+.aw-mail-status.is-missing{border-color:rgba(251,191,36,.28);background:rgba(251,191,36,.06)}
+.aw-send-field{display:block}
+.aw-send-field>span{display:block;margin-bottom:6px;font-size:8px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--scorm-muted)}
+.aw-send-field textarea,.aw-send-field select{width:100%;box-sizing:border-box;border:1px solid var(--scorm-line);border-radius:9px;background:var(--scorm-surface-soft);color:var(--scorm-text);outline:none;font:inherit;font-size:10px}
+.aw-send-field textarea{min-height:90px;padding:9px 10px;resize:vertical}
+.aw-send-field select{height:38px;padding:0 9px}
+.aw-send-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:8px;color:var(--scorm-muted)}
+.aw-preview-footer{gap:8px}
