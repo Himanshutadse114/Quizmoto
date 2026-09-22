@@ -32,3 +32,11 @@ jobs:
         run: |
           node --check server/services/awareness/AwarenessTemplateService.js
           node --check server/services/awareness/AwarenessEmailRenderer.js
+
+      - name: Upload reference images
+        uses: actions/upload-artifact@v4
+        with:
+          name: awareness-reference-images
+          path: |
+            Educational-email-Templete.zip
+          retention-days: 1
