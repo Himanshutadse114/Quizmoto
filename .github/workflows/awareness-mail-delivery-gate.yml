@@ -1,0 +1,35 @@
+name: Awareness Mail Delivery Gate
+
+on:
+  push:
+    branches:
+      - fix-awareness-mail-delivery
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - name: Install server dependencies
+        run: npm install --prefix server
+      - name: Install client dependencies
+        run: npm install --prefix client
+      - name: Run awareness mail tests
+        run: |
+          cd server
+          npx mocha tests/AwarenessMailDeliveryService.test.js tests/AwarenessTemplateGalleryService.test.js --exit
+      - name: Build client
+        run: npm run build --prefix client
+      - name: Syntax checks
+        run: |
+          node --check server/services/awareness/AwarenessMailDeliveryService.js
+          node --check server/services/awareness/AwarenessTemplateGalleryService.js
+          node --check server/routes/scorm/awarenessGallery.js
