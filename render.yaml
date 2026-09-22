@@ -69,14 +69,10 @@ services:
         value: "20"
       - key: AI_ANALYSIS_HOURLY_LIMIT
         value: "10"
-      - key: AI_AWARENESS_HOURLY_LIMIT
-        value: "12"
-      - key: AWARENESS_MAX_AI_IMAGES
-        value: "5"
-      - key: AWARENESS_IMAGE_CONCURRENCY
-        value: "2"
       - key: AWARENESS_ASSET_BASE_URL
         value: "https://api.lmsgen.in"
+      - key: AWARENESS_SEED_REFERENCE_TEMPLATES
+        value: "true"
       - key: LMSGEN_AUTH_TOKEN_TTL
         value: "24h"
       - key: QUIZMOTO_AUTH_TOKEN_TTL

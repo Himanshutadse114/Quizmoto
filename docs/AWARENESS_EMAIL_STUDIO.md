@@ -1,108 +1,134 @@
-# Awareness Email Studio
+# Awareness Email Template Gallery
 
-## Purpose
+## Product direction
 
-Awareness Email Studio lets an LMSGEN tenant create polished educational email communications with AI, edit only the copy, export the result as an EML file or send it through the platform's existing mail configuration.
+Awareness Emails is a curated template-library product, not an AI template generator.
 
-The AI never writes arbitrary email HTML. It returns structured copy and visual direction. LMSGEN owns the eight email-safe layouts, chooses the layout-aware image slots and renders the final HTML. This keeps the design stable, prevents accidental markup edits and gives consistent preview, export and delivery behaviour.
+The Super Admin owns the **Central Template Library**. Professionally designed HTML email templates can be uploaded as ZIP files together with their local image folders. LMSGEN recognises the HTML and referenced images, stores the images in the configured Cloudflare R2/S3-compatible object storage and rewrites the email HTML to stable public asset URLs.
 
-## Reference research
+Users browse the Central Template Gallery and must add a template to **My Library** before they can edit, send or export it.
 
-The eight layout families were derived from the supplied `Educational-email-Templete.zip`. The archive contains eight distinct editorial approaches rather than simple colour variations:
+## User flow
 
-1. Data Privacy — warm newsletter, hero, feature cards and dark closing band.
-2. Mobile App Threats — dark high-risk field briefing, numbered threats, visual field test and bright action band.
-3. Internet Security — calm best-practice guide, hero, 2×2 illustrated habit cards and a golden-rule panel.
-4. Social Media — black-and-red exposure brief, numbered risks, case-file visual and practical checklist.
-5. Ransomware — image-led attack storyboard with alternating attack stages and response guidance.
-6. Social Engineering — purple-and-gold human-risk playbook with tactic cards and red-flag guidance.
-7. Modern Threats — navy-and-red dossier with visual evidence panels and numbered scenarios.
-8. AI Scams & Deepfakes — cinematic threat signal with scenario visuals and verification-first guidance.
+1. Browse the Central Template Gallery.
+2. Preview any available template.
+3. Select **Add to My Library**.
+4. Open the imported copy in the visual editor.
+5. Edit text directly inside the email.
+6. Click any image to replace or remove it.
+7. Save the customised copy.
+8. Send it through the platform or export it as an EML file.
 
-Important learning content remains real HTML text. AI images are supporting visuals only, so an unavailable image service does not remove the learning content.
+Central Gallery items cannot be sent or exported directly.
 
-## Completed phases
+## Super Admin flow
 
-### Phase 1 — Research and foundation
-- Reviewed the Quizmoto/LMSGEN architecture and reused the existing OpenAI, mail, object-storage, authentication and tenant-entitlement services.
-- Unpacked and audited all eight supplied reference template families.
-- Added tenant-scoped persistent awareness templates.
-- Added eight protected, reference-derived email layouts.
-- Added HTML escaping and HTTP/HTTPS-only CTA links.
-- Added 256-bit public asset tokens for email-client image loading.
+1. Open Awareness Emails.
+2. Use **Add Template ZIP**.
+3. Upload a ZIP containing one or more HTML templates and their local image folders.
+4. LMSGEN detects every HTML file in the archive.
+5. Each local image referenced by an HTML template is validated and stored in object storage.
+6. The HTML is rewritten to the stored image URLs and saved in the Central Library.
+7. The Super Admin can hide or restore a Central Library item without breaking previously imported user copies.
 
-### Phase 2 — AI generation and authoring
-- Structured OpenAI copy generation.
-- AI-selected style or manual selection from eight layout families.
-- Layout-aware image generation with 2–5 visual slots depending on the selected design.
-- Visual generation runs with bounded concurrency and gracefully supports partial image success.
-- Existing local/S3-compatible object storage is reused.
-- New **Awareness Emails** LMSGEN navigation item.
-- Topic, audience, learning goal, tone, CTA URL and organisation context inputs.
-- Saved-template library and protected preview.
-- Text-only editing for subject, preheader, headline, body, learning points, CTA, footer and hero alt text.
-- Layout and generated visuals cannot be edited through the authoring UI.
+A single ZIP can contain multiple template folders.
 
-### Phase 3 — Export and send
-- MIME/RFC 5322 EML export.
-- All available generated visuals are embedded by CID in EML and SMTP delivery.
-- Brevo delivery uses tokenised persistent image URLs for every available visual.
-- Existing platform SMTP/Brevo settings are reused.
-- Recipients can be pasted directly or selected from the tenant learner roster when roster access is available.\n- Each recipient is delivered separately to avoid recipient-address disclosure.
+## Seeded templates
+
+The repository file `Educational-email-Templete.zip` is automatically seeded into the Central Library on first use. The eight seeded templates are:
+
+1. Data Privacy Newsletter
+2. Mobile App Threats
+3. Internet Security Best Practices
+4. Social Media Threats
+5. Ransomware: Don’t Hand Over the Keys
+6. Social Engineering: Trust Is the Target
+7. Modern Threats
+8. AI Scams & Deepfakes
+
+Seeding is idempotent using stable seed keys, so restarting the service does not create duplicates.
+
+## Editing model
+
+The imported email HTML remains the source of truth. LMSGEN does not rebuild the design into its own layout system.
+
+Text editing uses a visual content-editable iframe so the original structure and inline email styling remain intact.
+
+Image editing is intentionally limited to replacement or removal. Replacement images are uploaded to the user template’s own object-storage area and the HTML is updated to the new stored image URL.
+
+This keeps the original layout protected while still allowing practical customisation.
+
+## Delivery and export
+
+Only templates inside My Library can be sent or exported.
+
+- SMTP delivery embeds stored template images by CID.
+- EML export embeds stored template images by CID.
+- Brevo delivery uses the stable public asset URLs.
+- Each recipient is sent separately to prevent address disclosure.
 - Maximum 50 unique recipients per send request.
+- Existing learner-roster recipients can be selected from the editor.
 
-### Phase 4 — Hardening
-- Renderer coverage for all eight layouts.
-- Multiple-image and no-image rendering support.
-- User text is HTML-escaped.
-- No script or iframe markup is generated.
-- Authoring endpoints require super-admin, admin or co-admin roles.
-- Tenant ownership is checked for every saved template.
-- Private template APIs use no-store responses.
-- Public images use long random tokens and immutable caching.
-- Awareness generation has a per-user hourly rate limit.
-- AI instructions explicitly forbid credential requests, deceptive phishing lures and invented URLs.
-- Generated objects are cleaned up when template persistence fails or the template is deleted.
+## Storage layout
 
-## Layout catalogue
+Central Library assets:
 
-1. Editorial Newsletter
-2. High-Risk Brief
-3. Best Practices Guide
-4. Exposure Field Brief
-5. Attack Storyboard
-6. Human Risk Playbook
-7. Modern Threat Dossier
-8. AI Threat Signal
+`awareness/library/<central-template-id>/<asset-id>.<ext>`
+
+User replacement assets:
+
+`awareness/user/<host-id>/<user-template-id>/<asset-id>.<ext>`
+
+Supported image formats are JPEG, PNG, WebP and GIF. Individual images are limited to 8 MB.
+
+## ZIP rules
+
+- ZIP size: maximum 35 MB.
+- Template HTML: maximum 750 KB each.
+- Maximum 50 HTML templates per ZIP.
+- Relative image references are resolved from the HTML file location.
+- Local image paths are uploaded to object storage.
+- Unsafe archive paths are rejected.
+- Script, iframe, object, embed and form markup is removed from saved email HTML.
 
 ## Main API
 
-- `GET /api/scorm/awareness-templates/catalog`
-- `GET /api/scorm/awareness-templates`
-- `POST /api/scorm/awareness-templates/generate`
-- `GET /api/scorm/awareness-templates/:id`
-- `PUT /api/scorm/awareness-templates/:id`
-- `DELETE /api/scorm/awareness-templates/:id`
-- `GET /api/scorm/awareness-templates/:id/preview`
-- `POST /api/scorm/awareness-templates/:id/export-eml`
-- `POST /api/scorm/awareness-templates/:id/send`
-- `GET /api/scorm/awareness-assets/:token`
-- `GET /api/scorm/awareness-assets/:token/:slot`
+Central Library:
 
-## Existing configuration reused
+- `GET /api/scorm/awareness-gallery/central`
+- `GET /api/scorm/awareness-gallery/central/:id`
+- `POST /api/scorm/awareness-gallery/central/upload` — Super Admin
+- `PATCH /api/scorm/awareness-gallery/central/:id` — Super Admin
+- `POST /api/scorm/awareness-gallery/central/:id/import`
 
-- `OPENAI_API_KEY`
-- Optional `OPENAI_TEXT_MODEL` and `OPENAI_IMAGE_MODEL`
-- Existing SMTP environment variables or `BREVO_API_KEY` + `MAIL_FROM`
-- Existing `STORAGE_DRIVER` / `S3_*` variables
-- `APP_BASE_URL`, `PUBLIC_FRONTEND_URL` or `FRONTEND_URL` should point to the public LMSGEN origin for Brevo images
+My Library:
 
-## Awareness-specific optional configuration
+- `GET /api/scorm/awareness-gallery/mine`
+- `GET /api/scorm/awareness-gallery/mine/:id`
+- `PUT /api/scorm/awareness-gallery/mine/:id`
+- `POST /api/scorm/awareness-gallery/mine/:id/image`
+- `DELETE /api/scorm/awareness-gallery/mine/:id`
+- `POST /api/scorm/awareness-gallery/mine/:id/send`
+- `POST /api/scorm/awareness-gallery/mine/:id/export-eml`
 
-- `AWARENESS_ASSET_BASE_URL` — public backend/API origin used by Brevo-hosted email images. Render is configured to `https://api.lmsgen.in`.\n- `AWARENESS_MAX_AI_IMAGES` — maximum visuals generated per email, clamped to 1–5 and defaulting to 5.
-- `AWARENESS_IMAGE_CONCURRENCY` — concurrent image requests, clamped to 1–3 and defaulting to 2.
-- `AI_AWARENESS_HOURLY_LIMIT` — authenticated generation requests per user per hour, defaulting to 12.
+Public image delivery:
 
-## Email compatibility approach
+- `GET /api/scorm/awareness-template-assets/:scope/:token/:assetId`
 
-The renderer uses a fixed 600 px table-based structure, inline critical styles, a small responsive stacking media query, plain-text alternatives and conservative HTML. The layout remains understandable when images are blocked by an email client because headings, scenarios, actions and learning points are real text rather than text burned into images.
+## Configuration
+
+Existing platform configuration is reused:
+
+- `STORAGE_DRIVER=s3`
+- `S3_BUCKET`
+- `S3_REGION`
+- `S3_ENDPOINT`
+- AWS/R2 access key and secret
+- Existing SMTP variables or `BREVO_API_KEY` + `MAIL_FROM`
+
+Awareness-gallery configuration:
+
+- `AWARENESS_ASSET_BASE_URL=https://api.lmsgen.in`
+- `AWARENESS_SEED_REFERENCE_TEMPLATES=true`
+
+No OpenAI key is required for the Awareness Email Template Gallery.
