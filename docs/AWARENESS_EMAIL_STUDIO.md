@@ -8,6 +8,12 @@ The Super Admin owns the **Central Template Library**. Professionally designed H
 
 Users browse the Central Template Gallery and must add a template to **My Library** before they can edit, send or export it.
 
+## Managed template service
+
+The product is intentionally curated rather than AI-generated. LMSGEN/Innvikta can create client-specific templates outside the platform, package them as HTML + images and publish them into the Central Library. This supports security awareness, internal communication, HR campaigns, compliance communication and marketing-style employee campaigns while keeping the visual quality fully controlled.
+
+The library therefore acts as both a software feature and a managed design service: once a custom template is published, the client can reuse it, customise its wording and images, send it through the platform or export it without rebuilding the design.
+
 ## User flow
 
 1. Browse the Central Template Gallery.
