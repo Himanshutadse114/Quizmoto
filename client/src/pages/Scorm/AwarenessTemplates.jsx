@@ -100,6 +100,8 @@ export default function AwarenessTemplates() {
   const [creating, setCreating] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [recipients, setRecipients] = useState('');
+  const [roster, setRoster] = useState([]);
+  const [rosterLoading, setRosterLoading] = useState(false);
   const [mail, setMail] = useState({ configured: false, provider: null });
   const [maxRecipients, setMaxRecipients] = useState(50);
   const [busy, setBusy] = useState('');
@@ -256,6 +258,35 @@ export default function AwarenessTemplates() {
     } finally {
       setBusy('');
     }
+  };
+
+  const loadRoster = async () => {
+    if (rosterLoading || roster.length) return;
+    setRosterLoading(true);
+    try {
+      const response = await axios.get(apiUrl('/api/scorm/roster'), { headers });
+      setRoster(Array.isArray(response.data?.roster) ? response.data.roster : []);
+    } catch (error) {
+      if (error?.response?.status !== 403) {
+        setNotice({ type: 'error', text: apiError(error, 'Unable to load the learner roster.') });
+      }
+    } finally {
+      setRosterLoading(false);
+    }
+  };
+
+  const addRosterRecipient = (email) => {
+    const nextEmail = String(email || '').trim().toLowerCase();
+    if (!nextEmail) return;
+    const current = recipients.split(/[\s,;]+/g).map((item) => item.trim().toLowerCase()).filter(Boolean);
+    const unique = [...new Set([...current, nextEmail])].slice(0, maxRecipients);
+    setRecipients(unique.join(', '));
+  };
+
+  const toggleSendPanel = () => {
+    const next = !sendOpen;
+    setSendOpen(next);
+    if (next) loadRoster();
   };
 
   const sendTemplate = async () => {
@@ -476,7 +507,7 @@ export default function AwarenessTemplates() {
                 <div className="awareness-actions">
                   <button type="button" className="scorm-button-secondary" onClick={deleteTemplate} disabled={Boolean(busy)}><Trash2 size={14} /> Delete</button>
                   <button type="button" className="scorm-button-secondary" onClick={exportEml} disabled={Boolean(busy)}><Download size={14} /> Export EML</button>
-                  <button type="button" className="scorm-button-secondary" onClick={() => setSendOpen((value) => !value)} disabled={Boolean(busy)}><Send size={14} /> Send</button>
+                  <button type="button" className="scorm-button-secondary" onClick={toggleSendPanel} disabled={Boolean(busy)}><Send size={14} /> Send</button>
                   <button type="button" className="scorm-button-primary" onClick={saveAndPreview} disabled={Boolean(busy)}><Save size={14} /> Save & preview</button>
                 </div>
               </div>
@@ -487,7 +518,20 @@ export default function AwarenessTemplates() {
                     <strong>Send from LMSGEN</strong>
                     <small>{mail.configured ? `Using ${String(mail.provider || '').toUpperCase()}. Recipients are delivered individually for privacy.` : 'Configure SMTP or Brevo before sending.'}</small>
                   </div>
-                  <Field textarea rows={3} label={`Recipients (up to ${maxRecipients})`} value={recipients} placeholder="alex@example.com, sam@example.com" onChange={setRecipients} />
+                  <div className="awareness-recipient-tools">
+                    <Field textarea rows={3} label={`Recipients (up to ${maxRecipients})`} value={recipients} placeholder="alex@example.com, sam@example.com" onChange={setRecipients} />
+                    <label className="awareness-field">
+                      <span>Add from learner roster</span>
+                      <select value="" onChange={(event) => addRosterRecipient(event.target.value)} disabled={rosterLoading || !roster.length}>
+                        <option value="">{rosterLoading ? 'Loading learner roster…' : roster.length ? 'Choose a learner…' : 'No roster learners available'}</option>
+                        {roster.slice(0, 500).map((learner) => (
+                          <option key={learner.id || learner.email} value={learner.email}>
+                            {learner.learnerName ? `${learner.learnerName} — ${learner.email}` : learner.email}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
                   <button type="button" className="scorm-button-primary" onClick={sendTemplate} disabled={!mail.configured || busy === 'send'}>
                     <Send size={14} /> {busy === 'send' ? 'Sending…' : 'Send email'}
                   </button>
