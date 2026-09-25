@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { BookOpenCheck, Camera, CheckCircle2, Cloud, Database, ImageOff, RefreshCw, Save, UserRound } from 'lucide-react';
+import { BookOpenCheck, Camera, CheckCircle2, Cloud, Copy, Database, ImageOff, RefreshCw, Save, Smartphone, Trash2, UserRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import { peekScormData, setScormData } from '../../services/scormDataCache';
@@ -80,6 +80,174 @@ function InfrastructureStatus({ icon, label, value, loading }) {
         {statusLabel}
       </span>
     </div>
+  );
+}
+
+function AndroidAppAccessPanel({ headers }) {
+  const [codes, setCodes] = useState([]);
+  const [label, setLabel] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState(false);
+  const [panelError, setPanelError] = useState('');
+  const [oneTimeCode, setOneTimeCode] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const loadCodes = useCallback(async () => {
+    setLoading(true);
+    setPanelError('');
+    try {
+      const response = await axios.get(apiUrl('/api/mobile-access/codes'), { headers });
+      setCodes(response.data?.codes || []);
+    } catch (err) {
+      setPanelError(err.response?.data?.message || 'Could not load access codes.');
+    } finally {
+      setLoading(false);
+    }
+  }, [headers]);
+
+  useEffect(() => { loadCodes(); }, [loadCodes]);
+
+  const generate = async () => {
+    setWorking(true);
+    setPanelError('');
+    setCopied(false);
+    try {
+      const response = await axios.post(apiUrl('/api/mobile-access/codes'), { label }, { headers });
+      setOneTimeCode(response.data?.code || '');
+      setLabel('');
+      await loadCodes();
+    } catch (err) {
+      setPanelError(err.response?.data?.message || 'Could not generate an access code.');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const regenerate = async (id) => {
+    setWorking(true);
+    setPanelError('');
+    setCopied(false);
+    try {
+      const response = await axios.post(apiUrl(`/api/mobile-access/codes/${id}/regenerate`), {}, { headers });
+      setOneTimeCode(response.data?.code || '');
+      await loadCodes();
+    } catch (err) {
+      setPanelError(err.response?.data?.message || 'Could not regenerate the access code.');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const revoke = async (id) => {
+    setWorking(true);
+    setPanelError('');
+    try {
+      await axios.delete(apiUrl(`/api/mobile-access/codes/${id}`), { headers });
+      await loadCodes();
+    } catch (err) {
+      setPanelError(err.response?.data?.message || 'Could not revoke the access code.');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(oneTimeCode);
+      setCopied(true);
+    } catch (err) {
+      setPanelError('Could not copy the code. Select it and copy it manually.');
+    }
+  };
+
+  return (
+    <section className="scorm-panel rounded-2xl border overflow-hidden">
+      <div className="px-5 py-4 border-b flex items-center gap-2">
+        <Smartphone size={16} className="text-[#4FC9BF]" />
+        <div>
+          <h2 className="text-sm font-semibold">Android App Access</h2>
+          <p className="mt-0.5 text-[10px] opacity-55">Sign in to the LMSGEN Android app without typing your password.</p>
+        </div>
+      </div>
+      <div className="p-5 space-y-4">
+        <p className="text-[10px] leading-relaxed opacity-55">
+          Generate a code on this page, then enter it in the LMSGEN Android app to sign in — no password needed.
+          Codes work like app passwords: anyone with a code can access your account, so keep them private.
+        </p>
+
+        {panelError && (
+          <div className="rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-xs text-rose-500">{panelError}</div>
+        )}
+
+        {oneTimeCode && (
+          <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3">
+            <div className="text-[9px] uppercase tracking-[.08em] opacity-55">Your new access code — shown only once</div>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <code className="text-lg font-mono font-semibold tracking-[.15em]">{oneTimeCode}</code>
+              <button type="button" onClick={copyCode} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2">
+                <Copy size={13} /> {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <p className="mt-2 text-[10px] leading-relaxed opacity-65">This code will not be shown again. Enter it in the Android app now, or generate a new one later.</p>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={label}
+            onChange={(event) => setLabel(event.target.value)}
+            maxLength={120}
+            placeholder="Label (optional, e.g. My phone)"
+            className="flex-1 h-11 rounded-xl border bg-transparent px-3.5 text-sm outline-none focus:border-[#4FC9BF]"
+          />
+          <button
+            type="button"
+            onClick={generate}
+            disabled={working}
+            className="scorm-button-primary min-h-11 px-5 text-xs font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {working ? <RefreshCw size={14} className="animate-spin" /> : null} Generate code
+          </button>
+        </div>
+
+        <div>
+          <div className="text-[9px] uppercase tracking-[.08em] opacity-55 mb-2">Active codes</div>
+          {loading ? (
+            <div className="text-xs opacity-55 flex items-center gap-2"><RefreshCw size={13} className="animate-spin" /> Loading…</div>
+          ) : codes.length === 0 ? (
+            <p className="text-xs opacity-55">No access codes yet. Generate one to sign in on the Android app.</p>
+          ) : (
+            <div className="space-y-2">
+              {codes.map((code) => (
+                <div key={code.id} className="rounded-xl border px-4 py-3 flex flex-wrap items-center gap-3" style={{ background: 'var(--scorm-surface-soft)' }}>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-semibold truncate">{code.label || 'Access code'}</div>
+                    <div className="mt-1 text-[10px] opacity-55">
+                      Created {code.createdAt ? new Date(code.createdAt).toLocaleDateString() : '—'}
+                      {' · '}Last used {code.lastUsedAt ? new Date(code.lastUsedAt).toLocaleString() : 'never'}
+                      {code.revoked ? ' · Revoked' : ''}
+                    </div>
+                  </div>
+                  {!code.revoked && (
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => regenerate(code.id)} disabled={working} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2 disabled:opacity-50">
+                        <RefreshCw size={13} /> Regenerate
+                      </button>
+                      <button type="button" onClick={() => revoke(code.id)} disabled={working} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center gap-2 disabled:opacity-50">
+                        <Trash2 size={13} /> Revoke
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="mt-2 text-[10px] leading-relaxed opacity-55">
+            Revoking a code signs out every mobile session created with your codes immediately.
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -222,6 +390,8 @@ export default function AccountSettings() {
             <p className="mt-2 text-[10px] leading-relaxed opacity-55">Your secure library link is generated automatically and remains unique to your account.</p>
           </div>
         </section>
+
+        <AndroidAppAccessPanel headers={headers} />
 
         {isSuperAdmin && (
           <section className="scorm-panel rounded-2xl border overflow-hidden">

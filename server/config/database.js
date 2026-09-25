@@ -62,6 +62,9 @@ const connectDB = async () => {
         // SCORM World models (additive — no coupling to GameSession)
         require('../models/scorm');
 
+        // Android app access codes (one-time sign-in codes for the mobile app)
+        require('../models/MobileAccessCode');
+
         // Centralized Associations
         Quiz.hasMany(Question, { as: 'questions', foreignKey: 'quizId', onDelete: 'CASCADE' });
         Question.belongsTo(Quiz, { foreignKey: 'quizId' });
