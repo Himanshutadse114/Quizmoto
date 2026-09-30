@@ -1,7 +1,10 @@
-const CACHE_NAME = 'lmsgen-app-v1';
+const CACHE_NAME = 'lmsgen-app-v2';
 const BRAND_ASSETS = [
   '/branding/lmsgen-bimi.svg',
   '/branding/lmsgen-favicon.png',
+  '/branding/lmsgen-app-192.png',
+  '/branding/lmsgen-app-512.png',
+  '/branding/lmsgen-app-maskable-512.png',
   '/branding/lmsgen-logo-dark.png',
   '/branding/lmsgen-logo-light.png'
 ];

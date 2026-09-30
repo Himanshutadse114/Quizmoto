@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ArrowRight, BookOpenCheck, Gamepad2, KeyRound, Loader2, LockKeyhole, Mail } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ArrowRight, BookOpenCheck, CheckCircle2, Download, Gamepad2, KeyRound, Loader2, LockKeyhole, Mail } from 'lucide-react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './mobileAppLogin.css';
@@ -15,8 +15,27 @@ export default function MobileAppLogin() {
   const [code, setCode] = useState('');
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
+  const [installReady, setInstallReady] = useState(Boolean(window.__lmsgenInstallPrompt));
+  const [installed, setInstalled] = useState(
+    window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true
+  );
+  const [installHelp, setInstallHelp] = useState('');
 
-  if (!loading && token && platformAccess) return <Navigate to="/scorm" replace />;
+  useEffect(() => {
+    const ready = () => setInstallReady(true);
+    const complete = () => { setInstalled(true); setInstallReady(false); setInstallHelp('LMSGEN has been installed successfully.'); };
+    window.addEventListener('lmsgen-install-ready', ready);
+    window.addEventListener('lmsgen-app-installed', complete);
+    return () => {
+      window.removeEventListener('lmsgen-install-ready', ready);
+      window.removeEventListener('lmsgen-app-installed', complete);
+    };
+  }, []);
+
+  // Keep the browser install page visible to signed-in users. Once the app is
+  // launched in standalone mode, take an existing session straight into the
+  // workspace instead of showing the access-code form again.
+  if (!loading && token && platformAccess && installed) return <Navigate to="/scorm" replace />;
 
   const submit = async (event) => {
     event.preventDefault();
@@ -31,6 +50,23 @@ export default function MobileAppLogin() {
     } finally {
       setWorking(false);
     }
+  };
+
+  const installApp = async () => {
+    setInstallHelp('');
+    const prompt = window.__lmsgenInstallPrompt;
+    if (prompt) {
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+      window.__lmsgenInstallPrompt = null;
+      setInstallReady(false);
+      if (choice?.outcome !== 'accepted') setInstallHelp('Installation was cancelled. You can try again whenever you are ready.');
+      return;
+    }
+    const isAppleMobile = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    setInstallHelp(isAppleMobile
+      ? 'In Safari, tap Share and then “Add to Home Screen”.'
+      : 'Open your browser menu and select “Install app” or “Add to Home screen”.');
   };
 
   return (
@@ -51,6 +87,14 @@ export default function MobileAppLogin() {
           <span><BookOpenCheck size={14} /> Courses</span>
           <span><Gamepad2 size={14} /> Quizmoto</span>
           <span><Mail size={14} /> Awareness</span>
+        </div>
+
+        <div className="lmsgen-app-install">
+          <button type="button" onClick={installApp} disabled={installed} className={installReady ? 'is-ready' : ''}>
+            {installed ? <CheckCircle2 size={17} /> : <Download size={17} />}
+            {installed ? 'LMSGEN app installed' : 'Download LMSGEN app'}
+          </button>
+          {installHelp && <p role="status">{installHelp}</p>}
         </div>
 
         <form onSubmit={submit} className="lmsgen-app-form">

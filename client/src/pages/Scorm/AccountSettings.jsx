@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { BookOpenCheck, Camera, CheckCircle2, Cloud, Copy, Database, ImageOff, RefreshCw, Save, Smartphone, Trash2, UserRound } from 'lucide-react';
+import { BookOpenCheck, Camera, CheckCircle2, Cloud, Copy, Database, Download, ImageOff, RefreshCw, Save, Smartphone, Trash2, UserRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import { peekScormData, setScormData } from '../../services/scormDataCache';
@@ -83,7 +83,7 @@ function InfrastructureStatus({ icon, label, value, loading }) {
   );
 }
 
-function AndroidAppAccessPanel({ headers }) {
+function AppAccessPanel({ headers }) {
   const [codes, setCodes] = useState([]);
   const [label, setLabel] = useState('');
   const [loading, setLoading] = useState(true);
@@ -165,13 +165,23 @@ function AndroidAppAccessPanel({ headers }) {
       <div className="px-5 py-4 border-b flex items-center gap-2">
         <Smartphone size={16} className="text-[#4FC9BF]" />
         <div>
-          <h2 className="text-sm font-semibold">Android App Access</h2>
-          <p className="mt-0.5 text-[10px] opacity-55">Sign in to the LMSGEN Android app without typing your password.</p>
+          <h2 className="text-sm font-semibold">LMSGEN App Access</h2>
+          <p className="mt-0.5 text-[10px] opacity-55">Install LMSGEN on your phone or computer and sign in without typing your password.</p>
         </div>
       </div>
       <div className="p-5 space-y-4">
+        <div className="rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center gap-3" style={{ background: 'var(--scorm-surface-soft)' }}>
+          <div className="min-w-0 flex-1">
+            <div className="text-xs font-semibold">Install the LMSGEN app</div>
+            <p className="mt-1 text-[10px] leading-relaxed opacity-60">Works on Android, iPhone, Windows, macOS, Chrome, Edge and Safari without an app-store download.</p>
+          </div>
+          <a href="/app" className="scorm-button-primary min-h-10 px-4 text-[10px] font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap">
+            <Download size={14} /> Open install page
+          </a>
+        </div>
+
         <p className="text-[10px] leading-relaxed opacity-55">
-          Generate a code on this page, then enter it in the LMSGEN Android app to sign in — no password needed.
+          Generate a code here, then enter it in the installed LMSGEN app — no password needed.
           Codes work like app passwords: anyone with a code can access your account, so keep them private.
         </p>
 
@@ -188,7 +198,7 @@ function AndroidAppAccessPanel({ headers }) {
                 <Copy size={13} /> {copied ? 'Copied' : 'Copy'}
               </button>
             </div>
-            <p className="mt-2 text-[10px] leading-relaxed opacity-65">This code will not be shown again. Enter it in the Android app now, or generate a new one later.</p>
+            <p className="mt-2 text-[10px] leading-relaxed opacity-65">This code will not be shown again. Enter it in the installed app now, or generate a new one later.</p>
           </div>
         )}
 
@@ -215,7 +225,7 @@ function AndroidAppAccessPanel({ headers }) {
           {loading ? (
             <div className="text-xs opacity-55 flex items-center gap-2"><RefreshCw size={13} className="animate-spin" /> Loading…</div>
           ) : codes.length === 0 ? (
-            <p className="text-xs opacity-55">No access codes yet. Generate one to sign in on the Android app.</p>
+            <p className="text-xs opacity-55">No access codes yet. Generate one to sign in on the installed app.</p>
           ) : (
             <div className="space-y-2">
               {codes.map((code) => (
@@ -391,7 +401,7 @@ export default function AccountSettings() {
           </div>
         </section>
 
-        <AndroidAppAccessPanel headers={headers} />
+        <AppAccessPanel headers={headers} />
 
         {isSuperAdmin && (
           <section className="scorm-panel rounded-2xl border overflow-hidden">

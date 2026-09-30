@@ -610,7 +610,7 @@ function prepareHome(html) {
 function prepareSolutions(html) {
   html = html.replace(
     /<h1><span class="text-color-lemon">[\s\S]*?<\/span><\/h1>/,
-    '<h1><span class="text-color-lemon">One LMS for course creation, SCORM delivery, campaigns and learning analytics</span></h1>',
+    '<h1><span class="text-color-lemon">One LMS for course creation, trackable delivery, campaigns and learning analytics</span></h1>',
   );
   html = html.replace(
     /<div class="nsl-hero-title-w">([\s\S]*?)<p class="paragraph-l">[\s\S]*?<\/p>/,

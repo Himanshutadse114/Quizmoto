@@ -3,6 +3,17 @@ import { createRoot } from 'react-dom/client'
 
 const root = createRoot(document.getElementById('root'))
 
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault()
+  window.__lmsgenInstallPrompt = event
+  window.dispatchEvent(new Event('lmsgen-install-ready'))
+})
+
+window.addEventListener('appinstalled', () => {
+  window.__lmsgenInstallPrompt = null
+  window.dispatchEvent(new Event('lmsgen-app-installed'))
+})
+
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/service-worker.js').catch(() => {

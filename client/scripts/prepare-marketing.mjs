@@ -180,12 +180,12 @@ const SOLUTIONS_TEXT = [
   ],
   [
     'Run fast, competitive live quizzes that make training more memorable.',
-    'Quizmoto is a separate feature in your LMSGEN workspace. Conduct live quizzes where participants join with a code and play in realtime \u2014 it is not the SCORM course player.',
+    'Quizmoto is a separate feature in your LMSGEN workspace. Conduct live quizzes where participants join with a code and play together in realtime.',
   ],
   ['Quizmoto, Live', 'Quizmoto \u2014 a separate live-quiz feature'],
   [
     'Package and deliver standards-ready SCORM courses through any LMS in minutes.',
-    'LMSGEN has its own LMS \u2014 publish a course and start tracking learners right away. You can also export the course as SCORM and add it to your own LMS.',
+    'Publish a course in LMSGEN and start tracking learners right away. You can also download a portable package for another compatible learning platform.',
   ],
   [
     'From first draft to final report, Atelora keeps course creation and delivery fast and consistent.',

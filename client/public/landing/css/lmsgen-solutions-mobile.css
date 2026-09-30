@@ -1,0 +1,212 @@
+/* LMSGEN Solutions mobile composition.
+   Loaded after the shared marketing shell so the phone layout can use the
+   brighter homepage palette without changing the desktop product canvas. */
+@media (max-width: 767px) {
+  body.lmsgen-page-solutions,
+  body.lmsgen-page-solutions main {
+    background: #f4faf8 !important;
+    color: #003f3a !important;
+  }
+
+  body.lmsgen-page-solutions .sl-hero-s {
+    padding: 4.6rem 0 4.8rem !important;
+    background: #0b4f49 !important;
+  }
+
+  body.lmsgen-page-solutions .sl-hero-c {
+    gap: 2.8rem !important;
+    margin-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  body.lmsgen-page-solutions .nsl-hero-title-w {
+    padding: 0 0.4rem !important;
+  }
+
+  body.lmsgen-page-solutions .sl-hero-s h1,
+  body.lmsgen-page-solutions .sl-hero-s h1 span {
+    color: #ffffff !important;
+    font-size: clamp(3.2rem, 9vw, 4.2rem) !important;
+    line-height: 1.08 !important;
+    letter-spacing: -0.04em !important;
+  }
+
+  body.lmsgen-page-solutions .sl-hero-s .paragraph-l {
+    max-width: 33rem !important;
+    margin: 1.6rem auto 0 !important;
+    color: #d9eeeb !important;
+    font-size: 1.55rem !important;
+    line-height: 1.58 !important;
+  }
+
+  body.lmsgen-page-solutions .sl-hero-img-w,
+  body.lmsgen-page-solutions .sl-hero-img-c {
+    width: 100% !important;
+    margin-top: 0 !important;
+  }
+
+  body.lmsgen-page-solutions .atelora-product-shell {
+    border-color: rgba(255, 255, 255, 0.18) !important;
+    box-shadow: 0 1.8rem 4rem rgba(0, 24, 22, 0.28) !important;
+  }
+
+  body.lmsgen-page-solutions .sl-hero-features-c {
+    gap: 1.2rem !important;
+  }
+
+  body.lmsgen-page-solutions .sl-hero-feature-w {
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: 4.2rem minmax(0, 1fr) !important;
+    gap: 1.4rem !important;
+    align-items: start !important;
+    padding: 1.8rem !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 1.6rem !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    text-align: left !important;
+  }
+
+  body.lmsgen-page-solutions .sl-hero-ft-icon,
+  body.lmsgen-page-solutions .sl-hero-ft-icon svg {
+    width: 4.2rem !important;
+    height: 4.2rem !important;
+  }
+
+  body.lmsgen-page-solutions .sl-hero-ft-content {
+    gap: 0.6rem !important;
+    align-items: flex-start !important;
+  }
+
+  body.lmsgen-page-solutions .sl-hero-feature-w .h4 {
+    color: #ffffff !important;
+    font-size: 1.8rem !important;
+    line-height: 1.2 !important;
+    text-transform: none !important;
+  }
+
+  body.lmsgen-page-solutions .sl-hero-feature-w p {
+    color: #d9eeeb !important;
+    font-size: 1.4rem !important;
+    line-height: 1.5 !important;
+  }
+
+  body.lmsgen-page-solutions .sl-feat-main-s,
+  body.lmsgen-page-solutions .sl-feat-common-s,
+  body.lmsgen-page-solutions .sl-feat-templ-s,
+  body.lmsgen-page-solutions .nsol-manage-s {
+    padding: 5.6rem 0 !important;
+    background: #f4faf8 !important;
+    color: #003f3a !important;
+  }
+
+  body.lmsgen-page-solutions .sl-feat-common-c,
+  body.lmsgen-page-solutions .sl-feat-common-content-c {
+    gap: 4.8rem !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  body.lmsgen-page-solutions .sl-feat-common-content-w,
+  body.lmsgen-page-solutions .sl-feat-common-content-w.nsl {
+    gap: 2rem !important;
+    padding: 2rem !important;
+    border: 1px solid rgba(0, 63, 58, 0.12) !important;
+    border-radius: 2rem !important;
+    background: #ffffff !important;
+    box-shadow: 0 1.2rem 3rem rgba(0, 63, 58, 0.08) !important;
+  }
+
+  body.lmsgen-page-solutions .sl-feat-common-img-w,
+  body.lmsgen-page-solutions .sl-feat-common-img-w.n-solutions {
+    width: 100% !important;
+    border-radius: 1.4rem !important;
+  }
+
+  body.lmsgen-page-solutions .sl-feat-common-text-w,
+  body.lmsgen-page-solutions .sl-feat-common-text-w.swap,
+  body.lmsgen-page-solutions .sl-feat-common-text-w.swap.no-padding {
+    width: 100% !important;
+    padding: 0.4rem 0.2rem 0.2rem !important;
+    align-items: flex-start !important;
+  }
+
+  body.lmsgen-page-solutions .sl-feat-main-s h2,
+  body.lmsgen-page-solutions .sl-feat-common-s h2,
+  body.lmsgen-page-solutions .sl-feat-common-s h3,
+  body.lmsgen-page-solutions .sl-feat-templ-s h2,
+  body.lmsgen-page-solutions .sl-feat-templ-s h3,
+  body.lmsgen-page-solutions .nsol-manage-s h2,
+  body.lmsgen-page-solutions .nsol-manage-s h3,
+  body.lmsgen-page-solutions .sl-features-key-card-content h3 {
+    color: #003f3a !important;
+  }
+
+  body.lmsgen-page-solutions .sl-feat-main-s p,
+  body.lmsgen-page-solutions .sl-feat-common-s p,
+  body.lmsgen-page-solutions .sl-feat-templ-s p,
+  body.lmsgen-page-solutions .nsol-manage-s p,
+  body.lmsgen-page-solutions .nsol-manage-s li,
+  body.lmsgen-page-solutions .nsol-manage-s .sl-feat-common-list-item div,
+  body.lmsgen-page-solutions .sl-features-key-card-content p {
+    color: #496763 !important;
+  }
+
+  body.lmsgen-page-solutions .sl-feat-common-s .caption,
+  body.lmsgen-page-solutions .sl-feat-templ-s .caption,
+  body.lmsgen-page-solutions .nsol-manage-s .caption {
+    color: #087d73 !important;
+  }
+
+  body.lmsgen-page-solutions .sl-features-key-card-w {
+    gap: 1.8rem !important;
+    padding: 1.6rem !important;
+    border: 1px solid rgba(0, 63, 58, 0.12) !important;
+    border-radius: 2rem !important;
+    background: #ffffff !important;
+    box-shadow: 0 1.2rem 3rem rgba(0, 63, 58, 0.07) !important;
+  }
+
+  body.lmsgen-page-solutions .sl-featkey-card-img,
+  body.lmsgen-page-solutions .sl-featkey-card-img img {
+    border-radius: 1.4rem !important;
+  }
+
+  body.lmsgen-page-solutions .global-separator {
+    border-color: rgba(0, 63, 58, 0.1) !important;
+    background: #f4faf8 !important;
+  }
+
+  body.lmsgen-page-solutions .nsol-manage-s .sl-feat-common-content-w.nsl {
+    gap: 2rem !important;
+  }
+
+  body.lmsgen-page-solutions .fs-cc-banner_component {
+    padding: 0 1.2rem 1.2rem !important;
+  }
+
+  body.lmsgen-page-solutions .fs-cc-banner_modal {
+    padding: 1.8rem !important;
+    border-radius: 1.8rem !important;
+  }
+
+  body.lmsgen-page-solutions .fs-cc-modal_title {
+    font-size: 2.2rem !important;
+  }
+
+  body.lmsgen-page-solutions .fs-cc-modal_description {
+    font-size: 1.35rem !important;
+    line-height: 1.45 !important;
+  }
+
+  body.lmsgen-page-solutions .fs-cc-modal_buttons,
+  body.lmsgen-page-solutions .fs-cc-button_actions {
+    gap: 0.8rem !important;
+  }
+
+  body.lmsgen-page-solutions .fs-cc-button {
+    min-height: 4.4rem !important;
+    padding: 1rem 1.2rem !important;
+    font-size: 1.3rem !important;
+  }
+}
