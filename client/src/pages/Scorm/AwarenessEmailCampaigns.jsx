@@ -61,6 +61,7 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
     try{
       const res=await axios.get(apiUrl(API),{headers});
       setCampaigns(res.data?.campaigns||[]);
+      setError('');
     }catch(err){
       setError(err.response?.data?.message||'Unable to load email campaigns.');
     }finally{if(showLoader)setLoading(false)}
@@ -103,7 +104,7 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
 
   const downloadCsv=()=>{
     const blob=new Blob(['Email,Name\nlearner1@company.com,Learner One\nlearner2@company.com,Learner Two\n'],{type:'text/csv;charset=utf-8'});
-    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='email-campaign-recipients.csv';a.click();URL.revokeObjectURL(url);
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='email-campaign-recipients.csv';document.body.appendChild(a);a.click();a.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);
   };
 
   const resetCreate=()=>{
@@ -181,7 +182,7 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
           <button type="button" className="aw-btn-primary" disabled={busy==='create'||!name.trim()||!learnerCount||!selectedTemplateId} onClick={createCampaign}><CheckCircle2 size={14}/>{busy==='create'?'Creating…':'Create draft campaign'}</button>
         </div>
       </div>
-      {error&&<div className="aw-campaign-error">{error}</div>}
+      {error&&<div className="aw-campaign-error" role="alert">{error}</div>}
       <div className="aw-campaign-create-grid">
         <section className="aw-campaign-panel">
           <div className="aw-panel-title"><span>Campaign basics</span><h3>Who should receive this email?</h3></div>
@@ -193,7 +194,7 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
           {entryMode==='csv'?<div>
             <div className="aw-inline-between"><span>{learnerCount} recipient{learnerCount===1?'':'s'} ready</span><button type="button" className="aw-link-button" onClick={downloadCsv}><Download size={12}/> Download CSV template</button></div>
             <button type="button" className="aw-csv-zone" onClick={()=>fileRef.current?.click()}><Upload size={17}/><span><strong>{csvName||'Choose recipient CSV'}</strong><small>Required: Email · Optional: Name</small></span></button>
-            <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={e=>readCsv(e.target.files?.[0])}/>
+            <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={e=>{readCsv(e.target.files?.[0]);e.target.value=''}}/>
             {csvPreview&&<div className="aw-csv-result">{csvPreview.validLearners} valid · {csvPreview.invalidRows?.length||0} invalid</div>}
           </div>:<div className="aw-manual-box">
             <form onSubmit={addManual} className="aw-manual-form">
@@ -215,7 +216,7 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
           {templates.length?<div className="aw-campaign-template-list">{templates.map(item=>{
             const selected=item.id===selectedTemplateId;
             return <button type="button" key={item.id} onClick={()=>setSelectedTemplateId(item.id)} className={selected?'is-selected':''}>
-              <img src={item.thumbnailUrl||item.coverUrl||''} alt=""/>
+              <img src={item.thumbnailUrl||item.coverUrl||''} alt="" loading="lazy"/>
               <span><strong>{item.title}</strong><small>{item.category||'Awareness'} · {item.subject}</small></span>
               <i>{selected?'Selected':'Select'}</i>
             </button>;
@@ -243,11 +244,12 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
         <button type="button" className="aw-btn-primary" onClick={()=>setCreating(true)} disabled={!templates.length}><Plus size={14}/> Create email campaign</button>
       </div>
     </div>
-    {error&&<div className="aw-campaign-error">{error}</div>}
-    {!mail?.configured&&<div className="aw-campaign-warning">Outbound mail is not configured. Draft campaigns can be prepared but cannot be started until SMTP or Brevo is ready.</div>}
-    {loading?<div className="aw-campaign-loading">Loading email campaigns…</div>:campaigns.length?<div className="aw-campaign-list">{campaigns.map(campaign=>{
+    {error&&<div className="aw-campaign-error" role="alert">{error}</div>}
+    {!mail?.configured&&<div className="aw-campaign-warning" role="status">Outbound mail is not configured. Draft campaigns can be prepared but cannot be started until SMTP or Brevo is ready.</div>}
+    {loading?<div className="aw-campaign-loading" role="status"><RefreshCw size={15} className="animate-spin"/> Loading email campaigns…</div>:campaigns.length?<div className="aw-campaign-list">{campaigns.map(campaign=>{
       const actionBusy=busy.endsWith(':'+campaign.id);
-      const progress=campaign.recipientCount?Math.round((campaign.sentCount/campaign.recipientCount)*100):0;
+      const processed=Number(campaign.sentCount||0)+Number(campaign.failedCount||0);
+      const progress=campaign.recipientCount?Math.min(100,Math.round((processed/campaign.recipientCount)*100)):0;
       return <article key={campaign.id}>
         <div className="aw-campaign-main">
           <div className="aw-campaign-name"><strong>{campaign.name}</strong><span className={'aw-campaign-status is-'+campaign.status}>{statusLabel(campaign.status)}</span><small>{campaign.templateTitle}</small></div>

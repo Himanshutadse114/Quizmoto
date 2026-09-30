@@ -12,11 +12,13 @@ import {
   Save,
   Share2,
   Sparkles,
+  Trash2,
   UploadCloud
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import { copyText } from '../../utils/clipboard';
+import { invalidateScormData } from '../../services/scormDataCache';
 import './flipbooks.css';
 
 const API = '/api/scorm/flipbooks';
@@ -24,6 +26,8 @@ const PDF_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.m
 const PDF_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 const MAX_PAGES = 100;
 const MAX_RENDER_WIDTH = 1400;
+const THUMBNAIL_WIDTH = 1200;
+const THUMBNAIL_HEIGHT = 675;
 
 function loadPdfJs() {
   if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
@@ -83,6 +87,43 @@ async function imageFileToPage(file) {
   } finally { URL.revokeObjectURL(url); }
 }
 
+async function imageFileToThumbnail(file) {
+  if (!/^image\/(jpeg|png|webp)$/i.test(file?.type || '')) throw new Error('Choose a JPEG, PNG or WebP thumbnail.');
+  const url = URL.createObjectURL(file);
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error(`Could not read ${file.name}.`));
+      element.src = url;
+    });
+    const sourceRatio = image.naturalWidth / image.naturalHeight;
+    const targetRatio = THUMBNAIL_WIDTH / THUMBNAIL_HEIGHT;
+    let sourceWidth = image.naturalWidth;
+    let sourceHeight = image.naturalHeight;
+    let sourceX = 0;
+    let sourceY = 0;
+    if (sourceRatio > targetRatio) {
+      sourceWidth = Math.round(image.naturalHeight * targetRatio);
+      sourceX = Math.round((image.naturalWidth - sourceWidth) / 2);
+    } else {
+      sourceHeight = Math.round(image.naturalWidth / targetRatio);
+      sourceY = Math.round((image.naturalHeight - sourceHeight) / 2);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = THUMBNAIL_WIDTH;
+    canvas.height = THUMBNAIL_HEIGHT;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvasToJpeg(canvas, 0.86);
+    const blob = dataUrlToBlob(dataUrl);
+    if (blob.size > 2 * 1024 * 1024) throw new Error('The optimized thumbnail is larger than 2 MB. Choose a simpler image.');
+    return { dataUrl, width: canvas.width, height: canvas.height };
+  } finally { URL.revokeObjectURL(url); }
+}
+
 async function pdfToPages(file, onProgress) {
   const pdfjs = await loadPdfJs();
   const data = await file.arrayBuffer();
@@ -132,6 +173,7 @@ export default function FlipbookEditor() {
   const navigate = useNavigate();
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
   const fileInput = useRef(null);
+  const thumbnailInput = useRef(null);
   const [book, setBook] = useState(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -139,6 +181,9 @@ export default function FlipbookEditor() {
   const [files, setFiles] = useState([]);
   const [fileSummary, setFileSummary] = useState('');
   const [replacePages, setReplacePages] = useState(false);
+  const [thumbnail, setThumbnail] = useState(null);
+  const [storedThumbnailPreview, setStoredThumbnailPreview] = useState('');
+  const [removeThumbnail, setRemoveThumbnail] = useState(false);
   const [loading, setLoading] = useState(editing);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(null);
@@ -156,6 +201,21 @@ export default function FlipbookEditor() {
     return () => { live = false; };
   }, [editing, id, headers]);
 
+  useEffect(() => {
+    if (!book?.thumbnailPreviewPath || thumbnail || removeThumbnail) {
+      setStoredThumbnailPreview('');
+      return undefined;
+    }
+    let live = true;
+    let objectUrl = '';
+    axios.get(apiUrl(book.thumbnailPreviewPath), { headers, responseType: 'blob' }).then((res) => {
+      if (!live) return;
+      objectUrl = URL.createObjectURL(res.data);
+      setStoredThumbnailPreview(objectUrl);
+    }).catch(() => { if (live) setStoredThumbnailPreview(''); });
+    return () => { live = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [book?.thumbnailPreviewPath, headers, thumbnail, removeThumbnail]);
+
   const chooseFiles = (selected) => {
     const list = Array.from(selected || []);
     setFiles(list);
@@ -163,6 +223,18 @@ export default function FlipbookEditor() {
     if (!list.length) return setFileSummary('');
     if (list.length === 1) setFileSummary(list[0].name);
     else setFileSummary(`${list.length} image pages selected`);
+  };
+
+  const chooseThumbnail = async (file) => {
+    if (!file) return;
+    setError('');
+    try {
+      const prepared = await imageFileToThumbnail(file);
+      setThumbnail(prepared);
+      setRemoveThumbnail(false);
+    } catch (err) {
+      setError(err.message || 'Could not prepare this thumbnail.');
+    }
   };
 
   const save = async (status) => {
@@ -218,6 +290,37 @@ export default function FlipbookEditor() {
         activeBook = { ...activeBook, pageCount: pages.length };
       }
 
+      if (thumbnail) {
+        setProgress({ stage: 'thumbnail', current: 1, total: 1 });
+        const blob = dataUrlToBlob(thumbnail.dataUrl);
+        const ticket = await axios.post(apiUrl(`${API}/${activeBook.id}/thumbnail/upload-ticket`), {
+          contentType: blob.type,
+          byteSize: blob.size,
+          width: thumbnail.width,
+          height: thumbnail.height
+        }, { headers });
+        let uploaded;
+        if (ticket.data?.direct && ticket.data?.uploadUrl) {
+          await axios.put(ticket.data.uploadUrl, blob, {
+            headers: ticket.data.headers || { 'Content-Type': blob.type },
+            timeout: 120000
+          });
+          uploaded = await axios.post(apiUrl(`${API}/${activeBook.id}/thumbnail/upload-complete`), {
+            sourceKey: ticket.data.sourceKey,
+            contentType: blob.type,
+            byteSize: blob.size,
+            width: thumbnail.width,
+            height: thumbnail.height
+          }, { headers });
+        } else {
+          uploaded = await axios.post(apiUrl(`${API}/${activeBook.id}/thumbnail`), thumbnail, { headers });
+        }
+        activeBook = uploaded.data?.flipbook || activeBook;
+      } else if (removeThumbnail && activeBook.hasCustomThumbnail) {
+        const removed = await axios.delete(apiUrl(`${API}/${activeBook.id}/thumbnail`), { headers });
+        activeBook = removed.data?.flipbook || { ...activeBook, hasCustomThumbnail: false, thumbnailPath: null, thumbnailPreviewPath: null };
+      }
+
       const pageCount = files.length ? activeBook.pageCount : Number(activeBook.pageCount || 0);
       if (status === 'published' && pageCount < 1) throw new Error('Upload a PDF or image pages before publishing.');
       const updated = await axios.patch(apiUrl(`${API}/${activeBook.id}`), {
@@ -229,7 +332,9 @@ export default function FlipbookEditor() {
       }, { headers });
       activeBook = updated.data.flipbook;
       setBook(activeBook);
-      setFiles([]); setFileSummary(''); setReplacePages(false); setProgress(null);
+      setFiles([]); setFileSummary(''); setReplacePages(false); setThumbnail(null); setRemoveThumbnail(false); setProgress(null);
+      invalidateScormData('flipbooks', token);
+      invalidateScormData('flipbook-library', token);
       if (status === 'published') {
         setSuccess('Published. The public link is ready to share.');
       } else {
@@ -251,7 +356,7 @@ export default function FlipbookEditor() {
   if (loading) return <div className="flip-loading"><Loader2 size={20} className="animate-spin" /> Loading editor…</div>;
 
   const published = book?.status === 'published' && book?.sharePath;
-  const progressText = progress ? `${progress.stage === 'uploading' ? 'Uploading' : 'Converting'} page ${progress.current} of ${progress.total}` : '';
+  const progressText = progress ? (progress.stage === 'thumbnail' ? 'Uploading custom thumbnail' : `${progress.stage === 'uploading' ? 'Uploading' : 'Converting'} page ${progress.current} of ${progress.total}`) : '';
   const progressPercent = progress ? Math.round((progress.current / progress.total) * 100) : 0;
 
   return (
@@ -277,6 +382,12 @@ export default function FlipbookEditor() {
           </div>
 
           {files.length > 0 && <div className="flip-file-note"><FileText size={14} /><span>{replacePages ? 'These files will replace the current pages when you save.' : 'These files will become the publication pages.'}</span></div>}
+
+          <div className="flip-thumbnail-section">
+            <div className="flip-thumbnail-heading"><div><strong>Library thumbnail</strong><span>Optional · shown on Publica cards only</span></div><button type="button" className="flip-button-secondary" onClick={() => thumbnailInput.current?.click()} disabled={busy}><FileImage size={14} /> {thumbnail || book?.hasCustomThumbnail ? 'Replace' : 'Choose image'}</button></div>
+            <input ref={thumbnailInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => { chooseThumbnail(e.target.files?.[0]); e.target.value = ''; }} />
+            {thumbnail?.dataUrl || storedThumbnailPreview ? <div className="flip-thumbnail-preview"><img src={thumbnail?.dataUrl || storedThumbnailPreview} alt="Custom library thumbnail preview" /><button type="button" onClick={() => { setThumbnail(null); setStoredThumbnailPreview(''); setRemoveThumbnail(Boolean(book?.hasCustomThumbnail)); }} disabled={busy}><Trash2 size={14} /> Remove</button></div> : <div className="flip-thumbnail-empty"><FileImage size={20} /><span>The first page remains the fallback until you add a custom 16:9 thumbnail.</span></div>}
+          </div>
 
           {progress && <div className="flip-progress"><div className="flip-progress-row"><span>{progressText}</span><strong>{progressPercent}%</strong></div><div className="flip-progress-track"><span style={{ width: `${progressPercent}%` }} /></div></div>}
           {error && <div className="flip-error">{error}</div>}

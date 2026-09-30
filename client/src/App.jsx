@@ -32,6 +32,7 @@ const PlayerLogin = lazy(() => import('./pages/Player/PlayerLogin'));
 const PlayerDashboard = lazy(() => import('./pages/Player/PlayerDashboard'));
 
 const ScormAuth = lazy(() => import('./pages/Scorm/ScormAuth'));
+const MobileAppLogin = lazy(() => import('./pages/Scorm/MobileAppLogin'));
 const MicrosoftDiscovery = lazy(() => import('./pages/Scorm/MicrosoftDiscovery'));
 const ScormPlatformShell = lazy(() => import('./pages/Scorm/ScormPlatformShell'));
 const ScormAccountSettings = lazy(() => import('./pages/Scorm/AccountSettings'));
@@ -196,6 +197,7 @@ function AppRoutes() {
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/contact" element={<MarketingSite src="/landing/contact/index.html" title="Contact LMSGEN" tabTitle="Contact LMSGEN | Learning Platform" />} />
         <Route path="/login" element={<PlatformEntry />} />
+        <Route path="/app" element={<MobileAppLogin />} />
         <Route path="/login/microsoft" element={<MicrosoftDiscovery />} />
         <Route path="/auth/microsoft/callback" element={<ScormMicrosoftUniversalCallback />} />
         <Route path="/login/workspace/:workspaceId/microsoft/callback" element={<ScormMicrosoftStaffCallback />} />

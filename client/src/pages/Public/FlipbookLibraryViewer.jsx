@@ -67,7 +67,7 @@ export default function FlipbookLibraryViewer() {
         {visibleBooks.map((book) => (
           <article className="public-flip-library-card" key={book.id}>
             <a href={book.shareUrl} className="public-flip-library-cover" aria-label={`Open ${book.title}`}>
-              {book.coverPath ? <img src={apiUrl(book.coverPath)} alt="" draggable="false" /> : <div className="public-flip-library-placeholder"><BookOpenCheck size={34} /></div>}
+              {book.thumbnailPath || book.coverPath ? <img src={apiUrl(book.thumbnailPath || book.coverPath)} alt="" draggable="false" loading="lazy" /> : <div className="public-flip-library-placeholder"><BookOpenCheck size={34} /></div>}
             </a>
             <div className="public-flip-library-body"><h2>{book.title}</h2><p>{book.description || 'Trackable digital publication'}</p><div className="public-flip-library-meta"><span>{book.pageCount} pages</span><span>{book.viewCount} reader opens</span></div><a href={book.shareUrl} className="public-flip-library-open">Open publication <ExternalLink size={13} /></a></div>
           </article>

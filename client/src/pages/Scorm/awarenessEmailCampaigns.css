@@ -55,3 +55,46 @@
 .aw-back{display:inline-flex!important;align-items:center;gap:5px}
 @media(max-width:950px){.aw-campaign-create-grid{grid-template-columns:1fr}.aw-campaign-main{grid-template-columns:1fr 1fr 1fr}.aw-campaign-name,.aw-campaign-progress{grid-column:1/-1}}
 @media(max-width:640px){.aw-campaign-page-head{align-items:stretch;flex-direction:column}.aw-campaign-head-actions{justify-content:flex-start}.aw-manual-form,.aw-batch-grid{grid-template-columns:1fr}.aw-campaign-template-list button{grid-template-columns:70px minmax(0,1fr)}.aw-campaign-template-list button i{display:none}.aw-campaign-main{grid-template-columns:1fr 1fr}.aw-campaign-review{grid-template-columns:1fr}.aw-campaign-row-foot{align-items:flex-start;flex-direction:column}}
+
+/* Keep campaign creation and delivery readable on desktop, tablet and phone. */
+.aw-campaigns{gap:18px}
+.aw-campaign-page-head{padding-bottom:16px}
+.aw-campaign-page-head h2{font-size:24px!important}
+.aw-campaign-page-head p{font-size:13px;line-height:1.6}
+.aw-campaign-error,.aw-campaign-warning{padding:12px 14px;font-size:12px;line-height:1.55}
+.aw-campaign-create-grid{gap:16px}
+.aw-campaign-panel{padding:18px;gap:18px}
+.aw-panel-title span,.aw-campaign-field>span{font-size:10px}
+.aw-panel-title h3{font-size:17px!important}
+.aw-campaign-field input{height:42px;padding:0 12px;font-size:13px}
+.aw-entry-tabs button{height:40px;font-size:12px}
+.aw-inline-between,.aw-link-button{font-size:11px}
+.aw-csv-zone{min-height:88px;padding:15px}
+.aw-csv-zone strong{font-size:13px}.aw-csv-zone small{font-size:11px}
+.aw-csv-result,.aw-muted-copy,.aw-batch-summary{font-size:11px}
+.aw-recipient-list strong{font-size:12px}.aw-recipient-list small{font-size:10px}
+.aw-campaign-template-list button{grid-template-columns:110px minmax(0,1fr) auto;padding:10px}
+.aw-campaign-template-list img{width:110px;height:62px}
+.aw-campaign-template-list strong{font-size:12px}.aw-campaign-template-list small,.aw-campaign-template-list i{font-size:10px}
+.aw-selected-template img{width:110px;height:62px}.aw-selected-template small,.aw-selected-template em{font-size:10px}.aw-selected-template strong{font-size:13px}
+.aw-campaign-review span{font-size:10px}.aw-campaign-review strong{font-size:15px}
+.aw-campaign-main{grid-template-columns:minmax(240px,1.35fr) 100px 90px 90px minmax(150px,.75fr);padding:16px}
+.aw-campaign-main>div:not(.aw-campaign-name) span,.aw-campaign-progress>span{font-size:10px}
+.aw-campaign-main>div:not(.aw-campaign-name)>strong{font-size:13px}
+.aw-campaign-name>strong{font-size:14px}.aw-campaign-name>small{font-size:11px}
+.aw-campaign-status{font-size:9px}
+.aw-campaign-progress small,.aw-campaign-row-foot{font-size:10px}
+.aw-campaign-row-foot{padding:11px 16px}
+.aw-campaign-loading{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px}
+.aw-campaign-field input:focus,.aw-entry-tabs button:focus-visible,.aw-link-button:focus-visible,.aw-csv-zone:focus-visible,.aw-campaign-template-list button:focus-visible,.aw-recipient-list button:focus-visible{outline:2px solid var(--scorm-accent,#4fc9bf);outline-offset:2px}
+.scorm-theme-light .aw-campaign-error{color:#9f1239}
+.scorm-theme-light .aw-campaign-warning{color:#92400e}
+
+@media(max-width:640px){
+  .aw-campaign-head-actions{display:grid;grid-template-columns:1fr 1fr}
+  .aw-campaign-head-actions .aw-btn-primary,.aw-campaign-head-actions .aw-btn-secondary{width:100%}
+  .aw-campaign-template-list button{grid-template-columns:86px minmax(0,1fr)}
+  .aw-campaign-template-list img{width:86px;height:52px}
+  .aw-campaign-main{grid-template-columns:1fr 1fr;padding:14px}
+  .aw-campaign-row-foot>div{width:100%;flex-wrap:wrap}
+}

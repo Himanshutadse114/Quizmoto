@@ -49,7 +49,7 @@ function QuotaCard({ quota }) {
 
 function FlipbookCard({ book, onDelete, onCopied }) {
   const published = book.status === 'published' && book.shareEnabled;
-  const cover = book.coverPath ? apiUrl(book.coverPath) : '';
+  const cover = book.thumbnailPath ? apiUrl(book.thumbnailPath) : book.coverPath ? apiUrl(book.coverPath) : '';
   const copy = async () => {
     if (!published) return;
     const url = shareUrl(book);

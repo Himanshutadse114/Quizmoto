@@ -254,3 +254,58 @@
   .aw-gallery-page .aw-gallery-header h1{font-size:21px!important}
   .aw-gallery-page .aw-section-copy h2{font-size:17px!important}
 }
+
+/* Readability and interaction pass: awareness screens follow the platform's
+   standard control scale instead of using presentation-sized microcopy. */
+.aw-gallery-page{gap:18px;padding:4px 10px 36px}
+.aw-gallery-header p,.aw-section-copy p,.aw-editor-head p,.aw-empty p{font-size:13px;line-height:1.6}
+.aw-kicker{font-size:11px}
+.aw-btn-primary,.aw-btn-secondary{min-height:40px;padding:0 14px;font-size:12px}
+.aw-icon-btn{width:40px;height:40px}
+.aw-gallery-notice{padding:12px 14px;font-size:13px;line-height:1.5}
+.aw-tabs{gap:7px;padding:5px;overflow-x:auto}
+.aw-tabs button{min-height:40px;padding:0 14px;font-size:12px}
+.aw-tabs button span{font-size:10px}
+.aw-admin-upload{padding:16px}
+.aw-admin-upload strong{font-size:14px}
+.aw-admin-upload span,.aw-gallery-tools>span{font-size:12px;line-height:1.55}
+.aw-search{height:42px}
+.aw-search input{font-size:13px}
+.aw-template-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.aw-card-preview{height:190px}
+.aw-card-category,.aw-card-hidden{font-size:10px}
+.aw-card-body{padding:15px}
+.aw-gallery-page .aw-card-body h3{font-size:15px!important}
+.aw-card-body p{min-height:40px;font-size:12px;line-height:1.55}
+.aw-card-meta{font-size:11px}
+.aw-card-actions{gap:8px;margin-top:12px}
+.aw-card-actions .aw-btn-primary,.aw-card-actions .aw-btn-secondary{min-height:36px;padding:0 10px}
+.aw-loading{font-size:13px}
+.aw-back{font-size:12px}
+.aw-editor-fields span,.aw-send-field>span{font-size:10px}
+.aw-editor-fields input,.aw-send-panel textarea,.aw-send-panel select,.aw-send-field textarea,.aw-send-field select{font-size:13px}
+.aw-editor-fields input{height:42px}
+.aw-image-toolbar{padding:12px 14px}
+.aw-image-toolbar strong,.aw-send-panel strong,.aw-mail-status strong{font-size:13px}
+.aw-image-toolbar span,.aw-send-panel span,.aw-editor-note,.aw-mail-status span,.aw-send-summary,.aw-mail-diagnostic{font-size:11px}
+.aw-editor-frame{height:min(720px,72vh)}
+.aw-preview-head span{font-size:10px}
+.aw-preview-head h2{font-size:18px}
+.aw-preview-head button{width:38px;height:38px}
+.aw-send-modal-body{gap:16px;padding:18px}
+.aw-mail-status,.aw-mail-diagnostic{padding:12px 14px}
+.aw-send-field select{height:42px}
+.aw-btn-primary:focus-visible,.aw-btn-secondary:focus-visible,.aw-icon-btn:focus-visible,.aw-back:focus-visible,.aw-tabs button:focus-visible,.aw-card-preview:focus-visible,.aw-search:focus-within,.aw-editor-fields input:focus,.aw-send-field textarea:focus,.aw-send-field select:focus{outline:2px solid var(--scorm-accent,#4fc9bf);outline-offset:2px}
+.scorm-theme-light .aw-gallery-notice.is-success,.scorm-theme-light .aw-mail-diagnostic.is-success{color:#166534}
+.scorm-theme-light .aw-gallery-notice.is-error,.scorm-theme-light .aw-mail-diagnostic.is-error{color:#9f1239}
+
+@media(max-width:900px){
+  .aw-template-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:640px){
+  .aw-gallery-page{padding:0 4px 28px}
+  .aw-template-grid{grid-template-columns:1fr}
+  .aw-card-preview{height:210px}
+  .aw-tabs button{flex:0 0 auto}
+  .aw-editor-frame{height:62vh;min-height:420px}
+}

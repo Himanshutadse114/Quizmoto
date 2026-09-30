@@ -26,24 +26,27 @@ const COURSE_THEMES = [
 
 function progressId() {
   let value = '';
-  try { value = globalThis.crypto?.randomUUID?.() || ''; } catch (_) {}
+  try { value = globalThis.crypto?.randomUUID?.() || ''; } catch { value = ''; }
   if (!value) value = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   return `scorm-theme-${value}`.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 96);
 }
 
-const Metric = ({ label, value, icon: Icon }) => (
-  <div className="scorm-course-metric rounded-xl border p-4 md:p-5">
-    <div className="flex items-start justify-between gap-3">
-      <div>
-        <div className="scorm-display text-2xl md:text-[30px] leading-none">{value}</div>
-        <div className="scorm-micro mt-2 text-[9px] uppercase font-bold">{label}</div>
-      </div>
-      <div className="scorm-course-metric-icon w-9 h-9 rounded-lg border grid place-items-center">
-        <Icon size={16} />
+const Metric = ({ label, value, icon }) => {
+  const MetricIcon = icon;
+  return (
+    <div className="scorm-course-metric rounded-xl border p-4 md:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="scorm-display text-2xl md:text-[30px] leading-none">{value}</div>
+          <div className="scorm-micro mt-2 text-[9px] uppercase font-bold">{label}</div>
+        </div>
+        <div className="scorm-course-metric-icon w-9 h-9 rounded-lg border grid place-items-center">
+          <MetricIcon size={16} />
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 function ThemeCard({ theme, selected, disabled, onSelect }) {
   return (
@@ -168,10 +171,6 @@ export default function VisualStudio() {
       .finally(() => setBusy(false));
   }, [token, headers, navigate, packageId]);
 
-  if (packageId) {
-    return <Navigate to={`/scorm/author?edit=${encodeURIComponent(packageId)}`} replace />;
-  }
-
   const editablePackages = useMemo(
     () => packages.filter((item) => ['ai_author', 'presentation_import'].includes(item.source) && item.status !== 'deleted'),
     [packages]
@@ -188,6 +187,10 @@ export default function VisualStudio() {
 
   const readyCount = editablePackages.filter((item) => item.status === 'ready').length;
   const otherCount = editablePackages.length - readyCount;
+
+  if (packageId) {
+    return <Navigate to={`/scorm/author?edit=${encodeURIComponent(packageId)}`} replace />;
+  }
 
   const openTheme = async (item) => {
     setThemeCourse(item);

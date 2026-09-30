@@ -110,6 +110,7 @@ function libraryPayload(library, books = []) {
             viewCount: Number(book.viewCount || 0),
             publishedAt: book.publishedAt || null,
             shareUrl: bookShareUrl(book, 'library'),
+            thumbnailPath: book.thumbnail?.key ? `/api/scorm/flipbooks/public/${shareIdentifier(book)}/thumbnail` : null,
             coverPath: Number(book.pageCount || 0) ? `/api/scorm/flipbooks/public/${shareIdentifier(book)}/pages/0` : null
         }))
     };

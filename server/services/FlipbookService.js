@@ -17,6 +17,7 @@ const {
 const DEFAULT_FREE_FLIPBOOKS = 2;
 const MAX_PAGES = 100;
 const MAX_PAGE_BYTES = 4 * 1024 * 1024;
+const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
 const ALLOWED_PAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 let schemaPromise = null;
 
@@ -26,6 +27,9 @@ async function ensureBrandingColumns() {
     const columns = await qi.describeTable(table);
     if (!columns.shareSlug) {
         await qi.addColumn(table, 'shareSlug', { type: require('sequelize').DataTypes.STRING(64), allowNull: true });
+    }
+    if (!columns.thumbnail) {
+        await qi.addColumn(table, 'thumbnail', { type: require('sequelize').DataTypes.JSON, allowNull: true });
     }
     const indexes = await qi.showIndex(table);
     if (!indexes.some((index) => index.unique && index.fields?.some((field) => field.attribute === 'shareSlug' || field.name === 'shareSlug'))) {
@@ -228,6 +232,77 @@ function createPageStorageKey(flipbook, contentType) {
     return `flipbooks/${flipbook.ownerUserId}/${flipbook.id}/direct-${crypto.randomBytes(16).toString('hex')}.${extension}`;
 }
 
+function validateStoredThumbnail({ flipbook, key, contentType, byteSize }) {
+    const type = String(contentType || '').toLowerCase();
+    const size = Number(byteSize || 0);
+    const safeKey = String(key || '');
+    const prefix = `flipbooks/${flipbook.ownerUserId}/${flipbook.id}/thumbnail-`;
+    if (!ALLOWED_PAGE_TYPES.has(type)) {
+        const err = new Error('Thumbnail must be a JPEG, PNG or WebP image.');
+        err.status = 415;
+        throw err;
+    }
+    if (!Number.isSafeInteger(size) || size <= 0 || size > MAX_THUMBNAIL_BYTES) {
+        const err = new Error(`The custom thumbnail must be smaller than ${Math.floor(MAX_THUMBNAIL_BYTES / (1024 * 1024))} MB.`);
+        err.status = 413;
+        throw err;
+    }
+    if (!safeKey.startsWith(prefix) || !/^[a-zA-Z0-9/_\-.]+$/.test(safeKey)) {
+        const err = new Error('Invalid publication thumbnail upload reference.');
+        err.status = 400;
+        throw err;
+    }
+    return { key: safeKey, contentType: type, byteSize: size };
+}
+
+function createThumbnailStorageKey(flipbook, contentType) {
+    const extension = extensionFor(String(contentType || '').toLowerCase());
+    return `flipbooks/${flipbook.ownerUserId}/${flipbook.id}/thumbnail-${crypto.randomBytes(16).toString('hex')}.${extension}`;
+}
+
+function dimensions(width, height) {
+    return {
+        width: Number.isFinite(Number(width)) ? Math.max(1, Math.floor(Number(width))) : null,
+        height: Number.isFinite(Number(height)) ? Math.max(1, Math.floor(Number(height))) : null
+    };
+}
+
+async function replaceStoredThumbnail({ flipbook, key, contentType, byteSize, width, height }) {
+    const valid = validateStoredThumbnail({ flipbook, key, contentType, byteSize });
+    const previousKey = flipbook.thumbnail?.key;
+    const thumbnail = { ...valid, ...dimensions(width, height) };
+    flipbook.thumbnail = thumbnail;
+    await flipbook.save();
+    if (previousKey && previousKey !== valid.key) {
+        await getObjectStorage().deleteObject(previousKey).catch(() => null);
+    }
+    return thumbnail;
+}
+
+async function replaceThumbnail({ flipbook, dataUrl, width, height }) {
+    const { body, contentType } = parsePageData(dataUrl);
+    if (body.length > MAX_THUMBNAIL_BYTES) {
+        const err = new Error(`The custom thumbnail must be smaller than ${Math.floor(MAX_THUMBNAIL_BYTES / (1024 * 1024))} MB.`);
+        err.status = 413;
+        throw err;
+    }
+    const key = createThumbnailStorageKey(flipbook, contentType);
+    await getObjectStorage().putObject({ key, body, contentType });
+    try {
+        return await replaceStoredThumbnail({ flipbook, key, contentType, byteSize: body.length, width, height });
+    } catch (err) {
+        await getObjectStorage().deleteObject(key).catch(() => null);
+        throw err;
+    }
+}
+
+async function clearThumbnail(flipbook) {
+    const key = flipbook.thumbnail?.key;
+    flipbook.thumbnail = null;
+    await flipbook.save();
+    if (key) await getObjectStorage().deleteObject(key).catch(() => null);
+}
+
 async function appendStoredPage({ flipbook, key, contentType, byteSize, width, height }) {
     const pages = Array.isArray(flipbook.pages) ? [...flipbook.pages] : [];
     if (pages.length >= MAX_PAGES) {
@@ -291,6 +366,7 @@ async function clearPages(flipbook) {
 
 async function deleteFlipbook(flipbook) {
     await clearPages(flipbook);
+    await clearThumbnail(flipbook);
     await FlipbookTenantLink.destroy({ where: { flipbookId: flipbook.id } }).catch(() => null);
     await flipbook.destroy();
 }
@@ -321,6 +397,7 @@ module.exports = {
     DEFAULT_FREE_FLIPBOOKS,
     MAX_PAGES,
     MAX_PAGE_BYTES,
+    MAX_THUMBNAIL_BYTES,
     ensureFlipbookSchema,
     isSuperAdmin,
     getQuota,
@@ -329,10 +406,15 @@ module.exports = {
     setUserLimit,
     createShareToken,
     createPageStorageKey,
+    createThumbnailStorageKey,
     validateStoredPage,
+    validateStoredThumbnail,
     appendStoredPage,
     appendPage,
+    replaceStoredThumbnail,
+    replaceThumbnail,
     clearPages,
+    clearThumbnail,
     deleteFlipbook,
     listAdminUsers
 };

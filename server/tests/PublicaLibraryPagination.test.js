@@ -10,6 +10,7 @@ describe('Publica shared library pagination', () => {
         expect(viewer).to.include('const BOOKS_PER_PAGE = 6;');
         expect(viewer).to.include('const visibleBooks = books.slice');
         expect(viewer).to.include('visibleBooks.map((book)');
+        expect(viewer).to.include('book.thumbnailPath || book.coverPath');
         expect(viewer).to.include('Page {currentPage} of {pageCount}');
     });
 

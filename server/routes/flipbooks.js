@@ -19,14 +19,18 @@ const {
     setUserLimit,
     createShareToken,
     createPageStorageKey,
+    createThumbnailStorageKey,
     validateStoredPage,
+    validateStoredThumbnail,
     appendStoredPage,
     appendPage,
+    replaceStoredThumbnail,
+    replaceThumbnail,
     clearPages,
+    clearThumbnail,
     deleteFlipbook,
     listAdminUsers,
-    MAX_PAGES,
-    MAX_PAGE_BYTES
+    MAX_PAGES
 } = require('../services/FlipbookService');
 const {
     cleanShareSlug,
@@ -93,6 +97,8 @@ function renderPublicReader(book) {
 function ownerPayload(book) {
     const pageCount = Number(book.pageCount || 0);
     const published = book.status === 'published' && book.shareEnabled;
+    const hasCustomThumbnail = Boolean(book.thumbnail?.key);
+    const identifier = shareIdentifier(book);
     return {
         id: book.id,
         title: book.title,
@@ -103,7 +109,10 @@ function ownerPayload(book) {
         shareSlug: book.shareSlug || '',
         shareIdentifier: shareIdentifier(book),
         sharePath: published ? publicFlipbookUrl(book) : null,
-        coverPath: published && pageCount ? `/api/scorm/flipbooks/public/${shareIdentifier(book)}/pages/0` : null,
+        coverPath: published && pageCount ? `/api/scorm/flipbooks/public/${identifier}/pages/0` : null,
+        hasCustomThumbnail,
+        thumbnailPath: published && hasCustomThumbnail ? `/api/scorm/flipbooks/public/${identifier}/thumbnail` : null,
+        thumbnailPreviewPath: hasCustomThumbnail ? `/api/scorm/flipbooks/${book.id}/thumbnail` : null,
         pageCount,
         viewCount: Number(book.viewCount || 0),
         lastViewedAt: book.lastViewedAt || null,
@@ -125,11 +134,32 @@ function publicPayload(book) {
         publishedAt: book.publishedAt || null,
         theme: book.theme || {},
         shareUrl: publicFlipbookUrl(book),
+        thumbnailPath: book.thumbnail?.key ? `/api/scorm/flipbooks/public/${shareIdentifier(book)}/thumbnail` : null,
         pages: Array.from({ length: pageCount }, (_, index) => ({
             index,
             src: `/api/scorm/flipbooks/public/${book.shareToken}/pages/${index}`
         }))
     };
+}
+
+async function sendStoredImage(res, next, image, cacheControl = 'private, no-store, max-age=0') {
+    try {
+        const storage = getObjectStorage();
+        if (await redirectToSignedObject(res, storage, image.key, {
+            expiresIn: 60 * 60,
+            contentType: image.contentType || 'image/jpeg'
+        })) return;
+        const object = await storage.getObjectStream(image.key);
+        res.setHeader('Content-Type', object.contentType || image.contentType || 'image/jpeg');
+        res.setHeader('Cache-Control', cacheControl);
+        res.setHeader('Content-Disposition', 'inline');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        if (object.contentLength) res.setHeader('Content-Length', object.contentLength);
+        object.stream.on('error', next);
+        object.stream.pipe(res);
+    } catch (err) {
+        next(err);
+    }
 }
 
 async function genericPlatformAuth(req, res, next) {
@@ -221,6 +251,17 @@ router.get('/public/:shareToken/pages/:index', async (req, res, next) => {
         if (object.contentLength) res.setHeader('Content-Length', object.contentLength);
         object.stream.on('error', next);
         object.stream.pipe(res);
+    } catch (err) {
+        next(err);
+    }
+});
+
+router.get('/public/:shareToken/thumbnail', async (req, res, next) => {
+    try {
+        await ensureFlipbookSchema();
+        const book = await findPublicBook(req.params.shareToken);
+        if (!book?.thumbnail?.key) return res.status(404).end();
+        await sendStoredImage(res, next, book.thumbnail);
     } catch (err) {
         next(err);
     }
@@ -329,6 +370,91 @@ router.post('/', async (req, res, next) => {
 
 router.get('/:id', findOwnedBook, async (req, res) => {
     res.json({ flipbook: ownerPayload(req.flipbook), quota: await getQuota(req.flipbookUser), maxPages: MAX_PAGES });
+});
+
+router.get('/:id/thumbnail', findOwnedBook, async (req, res, next) => {
+    if (!req.flipbook.thumbnail?.key) return res.status(404).end();
+    await sendStoredImage(res, next, req.flipbook.thumbnail);
+});
+
+router.post('/:id/thumbnail/upload-ticket', findOwnedBook, async (req, res, next) => {
+    try {
+        const storage = getObjectStorage();
+        if (!(await prepareDirectUpload(storage))) return res.json({ direct: false });
+        const contentType = String(req.body?.contentType || '').toLowerCase();
+        const byteSize = Number(req.body?.byteSize || 0);
+        const key = createThumbnailStorageKey(req.flipbook, contentType);
+        validateStoredThumbnail({ flipbook: req.flipbook, key, contentType, byteSize });
+        const uploadUrl = await storage.createSignedPutUrl(key, { expiresIn: 10 * 60, contentType });
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.json({
+            direct: true,
+            uploadUrl,
+            sourceKey: key,
+            contentType,
+            byteSize,
+            headers: { 'Content-Type': contentType },
+            expiresIn: 10 * 60
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
+router.post('/:id/thumbnail/upload-complete', findOwnedBook, async (req, res, next) => {
+    const storage = getObjectStorage();
+    const key = String(req.body?.sourceKey || '');
+    try {
+        if (!isDirectUploadEnabled(storage)) return res.status(409).json({ message: 'Direct thumbnail upload is unavailable.' });
+        const expected = validateStoredThumbnail({
+            flipbook: req.flipbook,
+            key,
+            contentType: req.body?.contentType,
+            byteSize: req.body?.byteSize
+        });
+        const head = await storage.headObject(expected.key);
+        if (Number(head.contentLength) !== expected.byteSize || String(head.contentType || '').toLowerCase() !== expected.contentType) {
+            await storage.deleteObject(expected.key).catch(() => {});
+            return res.status(400).json({ message: 'The thumbnail upload was incomplete. Please retry.' });
+        }
+        const thumbnail = await replaceStoredThumbnail({
+            flipbook: req.flipbook,
+            ...expected,
+            width: req.body?.width,
+            height: req.body?.height
+        });
+        res.status(201).json({ ok: true, thumbnail, flipbook: ownerPayload(req.flipbook) });
+    } catch (err) {
+        const alreadyAttached = req.flipbook.thumbnail?.key === key;
+        if (key && !alreadyAttached) await storage.deleteObject(key).catch(() => {});
+        next(err);
+    }
+});
+
+router.post('/:id/thumbnail', findOwnedBook, async (req, res, next) => {
+    try {
+        if (isDirectUploadEnabled(getObjectStorage())) {
+            return res.status(409).json({ message: 'Use the secure direct upload flow for publication thumbnails.', code: 'DIRECT_UPLOAD_REQUIRED' });
+        }
+        const thumbnail = await replaceThumbnail({
+            flipbook: req.flipbook,
+            dataUrl: req.body?.dataUrl,
+            width: req.body?.width,
+            height: req.body?.height
+        });
+        res.status(201).json({ ok: true, thumbnail, flipbook: ownerPayload(req.flipbook) });
+    } catch (err) {
+        next(err);
+    }
+});
+
+router.delete('/:id/thumbnail', findOwnedBook, async (req, res, next) => {
+    try {
+        await clearThumbnail(req.flipbook);
+        res.json({ ok: true, flipbook: ownerPayload(req.flipbook) });
+    } catch (err) {
+        next(err);
+    }
 });
 
 router.post('/:id/pages/upload-ticket', findOwnedBook, async (req, res, next) => {

@@ -20,6 +20,19 @@ function aiRateLimit({ name, envName, limit, windowMs = 60 * 60 * 1000 }) {
     });
 }
 
+const awarenessMailActionLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: envLimit('AWARENESS_MAIL_ACTION_HOURLY_LIMIT', 30),
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => process.env.NODE_ENV === 'test',
+    keyGenerator: (req) => `awareness-mail:user:${req.authenticatedUserId || req.userId || 'unauthenticated'}`,
+    handler: (_req, res) => res.status(429).json({
+        message: 'Too many email delivery actions. Please wait before trying again.',
+        code: 'AWARENESS_MAIL_RATE_LIMITED'
+    })
+});
+
 const aiCourseLimiter = aiRateLimit({ name: 'course', envName: 'AI_COURSE_HOURLY_LIMIT', limit: 6 });
 const aiQuizLimiter = aiRateLimit({ name: 'quiz', envName: 'AI_QUIZ_HOURLY_LIMIT', limit: 20 });
 const aiAnalysisLimiter = aiRateLimit({ name: 'analysis', envName: 'AI_ANALYSIS_HOURLY_LIMIT', limit: 10 });
@@ -33,5 +46,6 @@ module.exports = {
     aiAnalysisLimiter,
     aiUploadLimiter,
     aiHealthLimiter,
-    aiAwarenessLimiter
+    aiAwarenessLimiter,
+    awarenessMailActionLimiter
 };

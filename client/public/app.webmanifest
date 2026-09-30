@@ -1,0 +1,39 @@
+{
+  "id": "/app",
+  "name": "LMSGEN Learning Platform",
+  "short_name": "LMSGEN",
+  "description": "Create, deliver and track learning with LMSGEN.",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#061311",
+  "theme_color": "#17978d",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/branding/lmsgen-bimi.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "My Courses",
+      "short_name": "Courses",
+      "url": "/scorm/courses",
+      "icons": [{ "src": "/branding/lmsgen-bimi.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Awareness Emails",
+      "short_name": "Awareness",
+      "url": "/scorm/awareness-templates",
+      "icons": [{ "src": "/branding/lmsgen-bimi.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Publica",
+      "url": "/scorm/publica",
+      "icons": [{ "src": "/branding/lmsgen-bimi.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}

@@ -3,6 +3,14 @@ import { createRoot } from 'react-dom/client'
 
 const root = createRoot(document.getElementById('root'))
 
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').catch(() => {
+      // The platform remains fully usable when installation is unavailable.
+    })
+  })
+}
+
 const BLOG_POST_TITLES = {
   'why-scorm-courses-go-unfinished': 'Why Most Online Courses Go Unfinished (And How to Fix It)',
   'live-quizzes-vs-static-assessments': 'Live Quizzes vs. Static Assessments: What Actually Improves Retention',

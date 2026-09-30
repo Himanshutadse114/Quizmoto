@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import React, { createContext, useState, useContext } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import axios from 'axios';
 import { apiUrl } from '../config';
@@ -30,36 +31,31 @@ function normalizeStoredUser(value) {
     return { ...value, role: normalizeScormRole(value.role, approved) };
 }
 
+function readStoredUser() {
+    try {
+        if (!localStorage.getItem('token')) {
+            localStorage.removeItem('user');
+            return null;
+        }
+        const storedUser = localStorage.getItem('user');
+        if (!storedUser || storedUser === 'undefined') return null;
+        const parsed = normalizeStoredUser(JSON.parse(storedUser));
+        localStorage.setItem('user', JSON.stringify(parsed));
+        return parsed;
+    } catch {
+        localStorage.removeItem('user');
+        return null;
+    }
+}
+
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState(readStoredUser);
     const [token, setToken] = useState(localStorage.getItem('token'));
     const [scormAccess, setScormAccess] = useState(localStorage.getItem(SCORM_ACCESS_KEY) === '1');
     const [platformAccess, setPlatformAccess] = useState(
         localStorage.getItem(PLATFORM_ACCESS_KEY) === '1' || localStorage.getItem(SCORM_ACCESS_KEY) === '1'
     );
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        if (token) {
-            localStorage.setItem('token', token);
-            try {
-                const storedUser = localStorage.getItem('user');
-                if (storedUser && storedUser !== 'undefined') {
-                    const parsed = normalizeStoredUser(JSON.parse(storedUser));
-                    setUser(parsed);
-                    localStorage.setItem('user', JSON.stringify(parsed));
-                }
-            } catch (e) {
-                console.error('Failed to parse user from localStorage:', e);
-                localStorage.removeItem('user');
-            }
-        } else {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            setUser(null);
-        }
-        setLoading(false);
-    }, [token]);
+    const loading = false;
 
     const persistSession = (nextToken, nextUser) => {
         const normalizedUser = normalizeStoredUser(nextUser || null);
@@ -165,6 +161,21 @@ export const AuthProvider = ({ children }) => {
         return resolveFreshPlatformLogin(res.data);
     };
 
+    const loginWithMobileCode = async (code) => {
+        const exchange = await axios.post(apiUrl('/api/mobile-access/exchange'), { code });
+        const mobileToken = exchange.data?.token;
+        if (!mobileToken) throw new Error('The app access code did not return a valid session.');
+        const status = await axios.get(`${API_URL}/scorm/status`, {
+            headers: { Authorization: `Bearer ${mobileToken}` }
+        });
+        return resolveFreshPlatformLogin({
+            ...exchange.data,
+            ...status.data,
+            token: status.data?.token || mobileToken,
+            authMethod: 'mobile-code'
+        });
+    };
+
     const loginScormWithGoogle = async (credential) => {
         const res = await axios.post(`${API_URL}/google`, { credential });
         return resolveFreshPlatformLogin(res.data);
@@ -259,6 +270,7 @@ export const AuthProvider = ({ children }) => {
             token,
             loginWithGoogle,
             loginScorm,
+            loginWithMobileCode,
             loginScormWithGoogle,
             loginQuizmotoOnlyWithGoogle,
             loginScormWorkspaceWithGoogle,

@@ -49,6 +49,11 @@ const Flipbook = sequelize.define('Flipbook', {
         allowNull: false,
         defaultValue: []
     },
+    thumbnail: {
+        type: DataTypes.JSON,
+        allowNull: true,
+        defaultValue: null
+    },
     pageCount: {
         type: DataTypes.INTEGER,
         allowNull: false,

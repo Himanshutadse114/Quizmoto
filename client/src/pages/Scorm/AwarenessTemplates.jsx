@@ -33,14 +33,14 @@ function validRecipients(value){
 }
 function Notice({notice,onClose}){
   if(!notice)return null;
-  return <div className={'aw-gallery-notice '+(notice.type==='error'?'is-error':'is-success')}>
-    <span>{notice.text}</span><button type="button" onClick={onClose}><X size={14}/></button>
+  return <div className={'aw-gallery-notice '+(notice.type==='error'?'is-error':'is-success')} role={notice.type==='error'?'alert':'status'}>
+    <span>{notice.text}</span><button type="button" onClick={onClose} aria-label="Dismiss notification"><X size={14}/></button>
   </div>;
 }
 function Card({template,central,onPreview,onImport,onEdit,onDelete,onArchive,onThumbnail,onSend,onExport,imported}){
   return <article className={'aw-template-card '+(!template.isActive&&central?'is-inactive':'')}>
     <button type="button" className="aw-card-preview" onClick={()=>onPreview?.(template)}>
-      {template.thumbnailUrl||template.coverUrl?<img src={template.thumbnailUrl||template.coverUrl} alt={template.title+' thumbnail'}/>:<div className="aw-card-placeholder"><Mail size={28}/></div>}
+      {template.thumbnailUrl||template.coverUrl?<img src={template.thumbnailUrl||template.coverUrl} alt={template.title+' thumbnail'} loading="lazy"/>:<div className="aw-card-placeholder"><Mail size={28}/></div>}
       <span className="aw-card-category">{template.category||'Awareness'}</span>
       {central&&!template.isActive&&<span className="aw-card-hidden">Hidden</span>}
     </button>
@@ -342,7 +342,7 @@ export default function AwarenessTemplates(){
     if(rosterLoading||roster.length)return;
     setRosterLoading(true);
     try{const res=await axios.get(apiUrl('/api/scorm/roster'),{headers});setRoster(res.data?.roster||[])}
-    catch(_){setRoster([])}
+    catch{setRoster([])}
     finally{setRosterLoading(false)}
   };
   const openSend=(item=editor)=>{
@@ -470,10 +470,10 @@ export default function AwarenessTemplates(){
     </header>
     <Notice notice={notice} onClose={()=>setNotice(null)}/>
 
-    <div className="aw-tabs">
-      <button className={tab==='gallery'?'is-active':''} onClick={()=>{setTab('gallery');setEditor(null)}}><Library size={15}/> Template Gallery <span>{central.filter(x=>x.isActive).length}</span></button>
-      <button className={tab==='mine'?'is-active':''} onClick={()=>{setTab('mine');setEditor(null)}}><CheckCircle2 size={15}/> My Library <span>{mine.length}</span></button>
-      <button className={tab==='campaigns'?'is-active':''} onClick={()=>{setTab('campaigns');setEditor(null)}}><Send size={15}/> Email Campaigns</button>
+    <div className="aw-tabs" role="tablist" aria-label="Awareness email sections">
+      <button type="button" role="tab" aria-selected={tab==='gallery'} className={tab==='gallery'?'is-active':''} onClick={()=>{setTab('gallery');setEditor(null)}}><Library size={15}/> Template Gallery <span>{central.filter(x=>x.isActive).length}</span></button>
+      <button type="button" role="tab" aria-selected={tab==='mine'} className={tab==='mine'?'is-active':''} onClick={()=>{setTab('mine');setEditor(null)}}><CheckCircle2 size={15}/> My Library <span>{mine.length}</span></button>
+      <button type="button" role="tab" aria-selected={tab==='campaigns'} className={tab==='campaigns'?'is-active':''} onClick={()=>{setTab('campaigns');setEditor(null)}}><Send size={15}/> Email Campaigns</button>
     </div>
 
     {tab==='gallery'&&<section>

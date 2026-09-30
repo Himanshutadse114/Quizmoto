@@ -155,7 +155,7 @@ function AndroidAppAccessPanel({ headers }) {
     try {
       await navigator.clipboard.writeText(oneTimeCode);
       setCopied(true);
-    } catch (err) {
+    } catch {
       setPanelError('Could not copy the code. Select it and copy it manually.');
     }
   };

@@ -6,6 +6,7 @@ const auth=require('../middleware');
 const Gallery=require('../../services/awareness/AwarenessTemplateGalleryService');
 const EmailCampaigns=require('../../services/awareness/AwarenessEmailCampaignService');
 const MailService=require('../../services/mail/MailService');
+const { awarenessMailActionLimiter }=require('../../middleware/AiAbuseProtection');
 
 function editor(req,res,next){
     const role=String(req.scormRole||'').toLowerCase();
@@ -42,13 +43,13 @@ router.get('/status',auth,editor,(req,res)=>{
     });
 });
 
-router.post('/mail/verify',auth,editor,async(req,res)=>{
+router.post('/mail/verify',auth,editor,awarenessMailActionLimiter,async(req,res)=>{
     try{
         const result=await require('../../services/awareness/AwarenessMailDeliveryService').verifyConnection();
         res.json({ok:!!result?.ok,result});
     }catch(e){fail(res,e,'Mail provider verification failed.')}
 });
-router.post('/mail/test',auth,editor,async(req,res)=>{
+router.post('/mail/test',auth,editor,awarenessMailActionLimiter,async(req,res)=>{
     try{
         const result=await require('../../services/awareness/AwarenessMailDeliveryService').sendTestEmail(req.body?.to);
         res.json({ok:!!result?.sent,result});
@@ -141,7 +142,7 @@ router.get('/email-campaigns/:id',auth,editor,async(req,res)=>{
         res.json({ok:true,campaign:await EmailCampaigns.getCampaign(req.params.id,req.userId,{includeRecipients:true})});
     }catch(e){fail(res,e,'Unable to load the email campaign.')}
 });
-router.post('/email-campaigns/:id/start',auth,editor,async(req,res)=>{
+router.post('/email-campaigns/:id/start',auth,editor,awarenessMailActionLimiter,async(req,res)=>{
     try{res.json({ok:true,campaign:await EmailCampaigns.startCampaign(req.params.id,req.userId)})}
     catch(e){fail(res,e,'Unable to start the email campaign.')}
 });
@@ -185,7 +186,7 @@ router.delete('/mine/:id',auth,editor,async(req,res)=>{
     try{await Gallery.deleteMine(req.params.id,req.userId);res.json({ok:true})}
     catch(e){fail(res,e,'Unable to delete the template from My Library.')}
 });
-router.post('/mine/:id/send',auth,editor,async(req,res)=>{
+router.post('/mine/:id/send',auth,editor,awarenessMailActionLimiter,async(req,res)=>{
     try{
         const delivery=await Gallery.sendMine(req.params.id,req.userId,req.body?.recipients||req.body?.to||[]);
         res.status(delivery.failed&&!delivery.sent?502:200).json({ok:delivery.failed===0,delivery});
