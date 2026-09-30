@@ -15,6 +15,13 @@
     return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
   }
 
+  // Marketing pages are browser-only. If an older home-screen shortcut opens
+  // one inside standalone mode, immediately return to the platform entry.
+  if (isInstalledApp()) {
+    window.location.replace("/app");
+    return;
+  }
+
   function showInstallMessage(message) {
     let notice = document.getElementById("lmsgen-install-notice");
     if (!notice) {
@@ -67,11 +74,11 @@
     }
 
     if (/iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
-      showInstallMessage('In Safari, tap Share, then choose “Add to Home Screen”.');
+      window.location.assign("/app?install=ios");
       return;
     }
 
-    showInstallMessage('Open your browser menu and choose “Install LMSGEN” or “Add to Home screen”.');
+    window.location.assign("/app?install=manual");
   }
 
   function ensureInstallMenuAction() {

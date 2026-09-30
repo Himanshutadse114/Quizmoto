@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowRight, BookOpenCheck, Gamepad2, KeyRound, Loader2, LockKeyhole, Mail } from 'lucide-react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -16,6 +16,12 @@ export default function MobileAppLogin() {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
   const installed = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const installMode = new URLSearchParams(window.location.search).get('install');
+
+  useEffect(() => {
+    if (!installMode) return;
+    window.history.replaceState(null, '', '/app');
+  }, [installMode]);
 
   // Keep the browser install page visible to signed-in users. Once the app is
   // launched in standalone mode, take an existing session straight into the
@@ -41,8 +47,7 @@ export default function MobileAppLogin() {
     <main className="lmsgen-app-login">
       <section className="lmsgen-app-card" aria-labelledby="lmsgen-app-title">
         <div className="lmsgen-app-brand" aria-label="LMSGEN">
-          <img src="/branding/lmsgen-bimi.svg" alt="" />
-          <div><strong>LMSGEN</strong><span>Learning platform</span></div>
+          <img src="/branding/lmsgen-logo-dark.png" alt="LMSGEN" />
         </div>
 
         <div className="lmsgen-app-copy">
@@ -56,6 +61,14 @@ export default function MobileAppLogin() {
           <span><Gamepad2 size={14} /> Quizmoto</span>
           <span><Mail size={14} /> Awareness</span>
         </div>
+
+        {installMode && (
+          <div className="lmsgen-app-install-guidance" role="status">
+            {installMode === 'ios'
+              ? 'To install LMSGEN, tap Safari’s Share button and choose “Add to Home Screen”.'
+              : 'To install LMSGEN, open your browser menu and choose “Install app” or “Add to Home screen”.'}
+          </div>
+        )}
 
         <form onSubmit={submit} className="lmsgen-app-form">
           <label htmlFor="lmsgen-access-code">App access code</label>

@@ -9,6 +9,10 @@
   "background_color": "#061311",
   "theme_color": "#17978d",
   "orientation": "any",
+  "prefer_related_applications": false,
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
   "icons": [
     {
       "src": "/branding/lmsgen-app-192.png",
