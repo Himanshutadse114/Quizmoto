@@ -42,7 +42,26 @@
   body.lmsgen-page-solutions .sl-hero-img-w,
   body.lmsgen-page-solutions .sl-hero-img-c {
     width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
     margin-top: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body.lmsgen-page-solutions .sl-hero-img,
+  body.lmsgen-page-solutions .sl-feat-common-img-w img,
+  body.lmsgen-page-solutions .sl-featkey-card-img img,
+  body.lmsgen-page-solutions .sl-features-key-banner-img-w img,
+  body.lmsgen-page-solutions .nsl-local-graph-card-img-c img {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    object-fit: contain !important;
+    object-position: center !important;
   }
 
   body.lmsgen-page-solutions .atelora-product-shell {
@@ -120,7 +139,11 @@
   body.lmsgen-page-solutions .sl-feat-common-img-w,
   body.lmsgen-page-solutions .sl-feat-common-img-w.n-solutions {
     width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
     border-radius: 1.4rem !important;
+    overflow: hidden !important;
   }
 
   body.lmsgen-page-solutions .sl-feat-common-text-w,
@@ -168,7 +191,13 @@
   }
 
   body.lmsgen-page-solutions .sl-featkey-card-img,
-  body.lmsgen-page-solutions .sl-featkey-card-img img {
+  body.lmsgen-page-solutions .sl-features-key-banner-img-w,
+  body.lmsgen-page-solutions .nsl-local-graph-card-img-c {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    overflow: hidden !important;
     border-radius: 1.4rem !important;
   }
 

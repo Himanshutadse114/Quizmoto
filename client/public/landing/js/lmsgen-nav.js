@@ -9,6 +9,100 @@
   const onHome = document.body.classList.contains("lmsgen-page-home");
   const mobileQuery = window.matchMedia("(max-width: 991px)");
   let mobileMenuOpen = false;
+  let installPrompt = null;
+
+  function isInstalledApp() {
+    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  }
+
+  function showInstallMessage(message) {
+    let notice = document.getElementById("lmsgen-install-notice");
+    if (!notice) {
+      notice = document.createElement("div");
+      notice.id = "lmsgen-install-notice";
+      notice.setAttribute("role", "status");
+      Object.assign(notice.style, {
+        position: "fixed",
+        left: "50%",
+        bottom: "24px",
+        zIndex: "2147483647",
+        width: "min(420px, calc(100vw - 32px))",
+        padding: "14px 18px",
+        borderRadius: "14px",
+        background: "#003f3a",
+        color: "#ffffff",
+        boxShadow: "0 16px 40px rgba(0, 38, 35, .28)",
+        fontFamily: '"Montserrat", Arial, sans-serif',
+        fontSize: "14px",
+        fontWeight: "600",
+        lineHeight: "1.45",
+        textAlign: "center",
+        transform: "translateX(-50%)",
+      });
+      document.body.appendChild(notice);
+    }
+    notice.textContent = message;
+    window.clearTimeout(showInstallMessage.timeoutId);
+    showInstallMessage.timeoutId = window.setTimeout(() => notice.remove(), 6500);
+  }
+
+  async function installLmsgenApp(event) {
+    if (event) event.preventDefault();
+    setMobileMenuOpen(false);
+
+    if (isInstalledApp()) {
+      window.location.assign("/app");
+      return;
+    }
+
+    if (installPrompt) {
+      const prompt = installPrompt;
+      installPrompt = null;
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+      if (choice?.outcome !== "accepted") {
+        showInstallMessage("Installation was cancelled. Tap Download app whenever you are ready.");
+      }
+      return;
+    }
+
+    if (/iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
+      showInstallMessage('In Safari, tap Share, then choose “Add to Home Screen”.');
+      return;
+    }
+
+    showInstallMessage('Open your browser menu and choose “Install LMSGEN” or “Add to Home screen”.');
+  }
+
+  function ensureInstallMenuAction() {
+    if (!desktopMenu) return;
+    let action = desktopMenu.querySelector(".lmsgen-install-nav-link");
+    if (!action) {
+      action = document.createElement("a");
+      action.href = "/app";
+      action.className = "global-nav-link w-nav-link lmsgen-install-nav-link";
+      action.textContent = "Download app";
+      const signIn = Array.from(desktopMenu.querySelectorAll("a[href]")).find((link) => link.getAttribute("href") === "/login");
+      desktopMenu.insertBefore(action, signIn || desktopMenu.firstChild);
+    }
+    action.addEventListener("click", installLmsgenApp);
+  }
+
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    installPrompt = event;
+  });
+
+  window.addEventListener("appinstalled", () => {
+    installPrompt = null;
+    showInstallMessage("LMSGEN has been installed successfully.");
+  });
+
+  if ("serviceWorker" in navigator && window.isSecureContext) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/service-worker.js").catch(() => {});
+    });
+  }
 
   function setLogo() {
     if (!logo) return;
@@ -132,6 +226,7 @@
       const label = (sourceLink.textContent || "").replace(/\s+/g, " ").trim();
       if (!href || !label || seen.has(href)) return;
       if (sourceLink.closest(".mobile-btn-c")) return;
+      if (sourceLink.classList.contains("lmsgen-install-nav-link")) return;
       seen.add(href);
 
       const link = document.createElement("a");
@@ -151,8 +246,9 @@
 
     const cta = document.createElement("a");
     cta.className = "lmsgen-mobile-nav-cta";
-    cta.href = "/login";
-    cta.textContent = "Explore LMSGEN";
+    cta.href = "/app";
+    cta.textContent = "Download app";
+    cta.addEventListener("click", installLmsgenApp);
     dropdown.appendChild(cta);
 
     document.body.appendChild(dropdown);
@@ -241,6 +337,7 @@
     });
   }
 
+  ensureInstallMenuAction();
   initialiseMobileNavigation();
 
   window.addEventListener("scroll", () => {

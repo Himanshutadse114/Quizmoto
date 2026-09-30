@@ -79,14 +79,20 @@ function ensureSolutionsMobileCss(html, type) {
   html = stripStylesheet(html, 'lmsgen-solutions-mobile.css');
   if (type !== 'solutions') return html;
 
-  const tag = '<link id="lmsgen-solutions-mobile" rel="stylesheet" href="/landing/css/lmsgen-solutions-mobile.css?v=20260930a" />';
+  const tag = '<link id="lmsgen-solutions-mobile" rel="stylesheet" href="/landing/css/lmsgen-solutions-mobile.css?v=20260930b" />';
+  return html.replace(/<\/head>/i, `    ${tag}\n</head>`);
+}
+
+function ensureAppManifest(html) {
+  html = stripStylesheet(html, 'app.webmanifest');
+  const tag = '<link rel="manifest" href="/app.webmanifest" />';
   return html.replace(/<\/head>/i, `    ${tag}\n</head>`);
 }
 
 function ensureUnifiedNav(html) {
   html = stripScript(html, 'nav-menu.js');
   html = stripScript(html, 'lmsgen-nav.js');
-  const tag = '<script src="/landing/js/lmsgen-nav.js?v=20260908-live2" defer></script>';
+  const tag = '<script src="/landing/js/lmsgen-nav.js?v=20260930-install" defer></script>';
   return html.replace(/<\/body>/i, `    ${tag}\n  </body>`);
 }
 
@@ -130,6 +136,7 @@ for (const page of pages) {
   html = ensureHomeTypographyCss(html, page.type);
   html = ensureContactRefreshCss(html, page.type);
   html = ensureSolutionsMobileCss(html, page.type);
+  html = ensureAppManifest(html);
   html = ensureUnifiedNav(html);
 
   await fs.writeFile(filePath, html, 'utf8');

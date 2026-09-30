@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { BookOpenCheck, Camera, CheckCircle2, Cloud, Copy, Database, Download, ImageOff, RefreshCw, Save, Smartphone, Trash2, UserRound } from 'lucide-react';
+import { BookOpenCheck, Camera, CheckCircle2, Cloud, Copy, Database, ImageOff, RefreshCw, Save, Smartphone, Trash2, UserRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import { peekScormData, setScormData } from '../../services/scormDataCache';
@@ -170,16 +170,6 @@ function AppAccessPanel({ headers }) {
         </div>
       </div>
       <div className="p-5 space-y-4">
-        <div className="rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center gap-3" style={{ background: 'var(--scorm-surface-soft)' }}>
-          <div className="min-w-0 flex-1">
-            <div className="text-xs font-semibold">Install the LMSGEN app</div>
-            <p className="mt-1 text-[10px] leading-relaxed opacity-60">Works on Android, iPhone, Windows, macOS, Chrome, Edge and Safari without an app-store download.</p>
-          </div>
-          <a href="/app" className="scorm-button-primary min-h-10 px-4 text-[10px] font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap">
-            <Download size={14} /> Open install page
-          </a>
-        </div>
-
         <p className="text-[10px] leading-relaxed opacity-55">
           Generate a code here, then enter it in the installed LMSGEN app — no password needed.
           Codes work like app passwords: anyone with a code can access your account, so keep them private.
