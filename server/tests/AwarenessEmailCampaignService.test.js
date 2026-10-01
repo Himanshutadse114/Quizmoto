@@ -114,7 +114,7 @@ describe('AwarenessEmailCampaignService', function () {
         expect(recipient.openCount).to.equal(0);
     });
 
-    it('ignores tracking pixels fetched immediately after delivery', async () => {
+    it('records a valid tracking-pixel download immediately after delivery', async () => {
         const created = await RealService.createCampaign({
             hostId: 42,
             createdByUserId: 42,
@@ -131,10 +131,11 @@ describe('AwarenessEmailCampaignService', function () {
             headers: { 'user-agent': 'Mozilla/5.0' }
         });
 
-        expect(recorded).to.equal(false);
+        expect(recorded).to.equal(true);
         await recipient.reload();
-        expect(recipient.openedAt).to.equal(null);
-        expect(recipient.openCount).to.equal(0);
+        expect(recipient.openedAt).to.be.instanceOf(Date);
+        expect(recipient.openCount).to.equal(1);
+        expect(recipient.openTrackingVersion).to.equal(2);
     });
 
     it('does not expose historical opens recorded before scanner filtering', async () => {

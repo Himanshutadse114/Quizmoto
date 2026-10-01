@@ -14,7 +14,6 @@ const Delivery = require('./AwarenessMailDeliveryService');
 const Gallery = require('./AwarenessTemplateGalleryService');
 
 const MAX_RECIPIENTS = 5000;
-const DEFAULT_OPEN_TRACKING_GRACE_MS = 60 * 1000;
 let schemaPromise = null;
 
 function fail(message, code, status = 400) {
@@ -170,13 +169,6 @@ function withOpenTracking(html, recipientId) {
     return /<\/body>/i.test(source) ? source.replace(/<\/body>/i, `${pixel}</body>`) : `${source}${pixel}`;
 }
 
-function openTrackingGraceMs() {
-    const configured = Number(process.env.AWARENESS_OPEN_TRACKING_GRACE_MS);
-    return Number.isFinite(configured) && configured >= 0
-        ? configured
-        : DEFAULT_OPEN_TRACKING_GRACE_MS;
-}
-
 function isAutomatedOpenRequest(request = {}) {
     const method = String(request.method || 'GET').toUpperCase();
     if (method !== 'GET') return true;
@@ -201,10 +193,6 @@ async function recordRecipientOpen(recipientId, request = {}) {
     const recipient = await Recipient.findByPk(id);
     if (!recipient) return false;
     if (isAutomatedOpenRequest(request)) return false;
-    if (recipient.sentAt) {
-        const elapsed = Date.now() - new Date(recipient.sentAt).getTime();
-        if (Number.isFinite(elapsed) && elapsed >= 0 && elapsed < openTrackingGraceMs()) return false;
-    }
     const firstOpen = Number(recipient.openTrackingVersion || 0) < 2 || !recipient.openedAt;
     const now = new Date();
     recipient.openedAt = firstOpen ? now : recipient.openedAt;
