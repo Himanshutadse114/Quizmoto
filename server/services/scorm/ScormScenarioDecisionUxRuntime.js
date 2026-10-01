@@ -90,9 +90,9 @@ async function applyScenarioDecisionUxRuntimeToZip(zipBuffer, analysis = {}) {
     }
 
     result = await applyMobileResponsiveRuntimeToZip(result);
-    // This pass is intentionally separate from v3. It is always refreshed and
-    // reinserted after the template stack so rebuilds cannot preserve a desktop
-    // interaction rule that wins over the mobile layout.
+    // This pass is intentionally separate from the legacy package finalizer. It
+    // is always refreshed after the template stack so every generated and
+    // rebuilt course keeps the same scaled desktop canvas on small viewports.
     result = await applyMobileHardeningRuntimeToZip(result);
     return result;
 }

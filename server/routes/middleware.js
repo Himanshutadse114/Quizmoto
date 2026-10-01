@@ -94,6 +94,16 @@ module.exports = async (req, res, next) => {
         const isScormAdminRequest = url.startsWith('/api/scorm/');
         const isSessionStatusRequest = url.startsWith('/api/auth/session-status');
 
+        // App-specific access-code authentication has been retired. Installed
+        // web apps use the same password and SSO flows as the browser platform,
+        // and any previously issued mobile-code session is no longer accepted.
+        if (String(decoded.authMethod || '').toLowerCase() === 'mobile-code') {
+            return res.status(401).json({
+                message: 'App access-code sign-in has been retired. Please sign in normally.',
+                code: 'AUTH_SESSION_REVOKED'
+            });
+        }
+
         req.userId = decoded.userId;
         req.authenticatedUserId = decoded.userId;
         req.authScope = decoded.scope || null;

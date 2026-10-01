@@ -280,8 +280,8 @@ async function buildScormPackageZip(rawAnalysis, opts = {}) {
                 resumeTracking: 'lesson_location_and_quiz_results_restore',
                 navigationPersistence: 'post_paint_debounced_commit',
                 mobileOptimized: true,
-                mobileLayoutVersion: 2,
-                mobilePresentation: 'dynamic_viewport_safe_area_touch_pan'
+                mobileLayoutVersion: 3,
+                mobilePresentation: 'scaled_desktop_canvas_1280x720'
             }, null, 2));
         } catch (_) {
             // Keep the original content.json if an older package has malformed metadata.

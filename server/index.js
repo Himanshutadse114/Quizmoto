@@ -255,8 +255,6 @@ const startServer = async () => {
         app.use('/api/sessions', require('./routes/sessions'));
         app.use('/api/jobs', require('./routes/jobs'));
         app.use('/api/metrics', require('./routes/metrics'));
-        app.use('/api/mobile-access', require('./routes/mobileAccessCodes'));
-
         // Public learner identity/dashboard API is intentionally separate from
         // the SCORM administrator middleware. Every learner operation has its own
         // assignment-bound JWT checks in ScormLearnerAuthService.

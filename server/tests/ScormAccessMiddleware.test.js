@@ -243,6 +243,24 @@ describe('SCORM access middleware', () => {
         expect(res.body.code).to.equal('AUTH_SESSION_REVOKED');
     });
 
+    it('rejects legacy app access-code sessions now that app codes are retired', async () => {
+        process.env.NODE_ENV = 'production';
+        const middleware = buildMiddleware({
+            decoded: { userId: 20, scope: 'scorm', authMethod: 'mobile-code', authVersion: 0 },
+            user: { id: 20, email: 'legacy-app@example.com', authVersion: 0 },
+            role: 'admin'
+        });
+        const req = { header: () => 'Bearer legacy-mobile-token', originalUrl: '/api/scorm/courses' };
+        const res = makeResponse();
+        let nextCalled = false;
+
+        await middleware(req, res, () => { nextCalled = true; });
+
+        expect(nextCalled).to.equal(false);
+        expect(res.statusCode).to.equal(401);
+        expect(res.body.code).to.equal('AUTH_SESSION_REVOKED');
+    });
+
     it('rejects a pending platform token from every protected SCORM AI API', async () => {
         process.env.NODE_ENV = 'production';
         const middleware = buildMiddleware({

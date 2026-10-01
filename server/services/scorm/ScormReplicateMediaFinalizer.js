@@ -383,8 +383,8 @@ async function buildScormPackageZip(analysis, opts = {}) {
     }
 
     // This common finalizer is used by both first-time generation and course
-    // rebuilds. Inject once here so every Quizmoto-authored format receives the
-    // same responsive baseline without template-by-template mobile patches.
+    // rebuilds. Inject once here so every LMSGEN-authored format preserves the
+    // desktop composition and scales it uniformly on smaller viewports.
     return applyMobileResponsiveRuntimeToZip(packageBuffer);
 }
 

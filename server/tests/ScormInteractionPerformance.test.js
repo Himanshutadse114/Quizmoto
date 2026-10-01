@@ -41,7 +41,7 @@ describe('SCORM authored interaction responsiveness', () => {
         expect(patched).to.include("target.matches('.quiz-option')");
         expect(patched).to.include("doLMSSetValue('cmi.core.score.raw',String(provisional))");
         expect(patched).to.include('quizmoto-mobile-course-css');
-        expect(patched).to.include('quizmoto-mobile-course-responsive-v7');
+        expect(patched).to.include('quizmoto-scaled-desktop-course-runtime-v8');
         expect(patched).to.not.include('quizmoto-mobile-course-runtime-v3');
     });
 

@@ -19,6 +19,13 @@ describe('LMSGEN account settings structure', () => {
         expect(settings).to.include('Upload');
     });
 
+    it('uses the normal password and SSO entry for the installed web app', () => {
+        expect(app).to.include('<Route path="/app" element={<PlatformEntry />} />');
+        expect(app).to.not.include('MobileAppLogin');
+        expect(settings).to.not.include('/api/mobile-access');
+        expect(settings).to.not.include('LMSGEN App Access');
+    });
+
     it('shows live infrastructure checks only to the Super Admin', () => {
         expect(settings).to.include("user?.role === 'super_admin'");
         expect(settings).to.include('/api/scorm/access/infrastructure-health');

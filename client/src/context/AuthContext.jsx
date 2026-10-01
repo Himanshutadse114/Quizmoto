@@ -161,21 +161,6 @@ export const AuthProvider = ({ children }) => {
         return resolveFreshPlatformLogin(res.data);
     };
 
-    const loginWithMobileCode = async (code) => {
-        const exchange = await axios.post(apiUrl('/api/mobile-access/exchange'), { code });
-        const mobileToken = exchange.data?.token;
-        if (!mobileToken) throw new Error('The app access code did not return a valid session.');
-        const status = await axios.get(`${API_URL}/scorm/status`, {
-            headers: { Authorization: `Bearer ${mobileToken}` }
-        });
-        return resolveFreshPlatformLogin({
-            ...exchange.data,
-            ...status.data,
-            token: status.data?.token || mobileToken,
-            authMethod: 'mobile-code'
-        });
-    };
-
     const loginScormWithGoogle = async (credential) => {
         const res = await axios.post(`${API_URL}/google`, { credential });
         return resolveFreshPlatformLogin(res.data);
@@ -312,7 +297,6 @@ export const AuthProvider = ({ children }) => {
             token,
             loginWithGoogle,
             loginScorm,
-            loginWithMobileCode,
             loginScormWithGoogle,
             loginQuizmotoOnlyWithGoogle,
             loginScormWorkspaceWithGoogle,

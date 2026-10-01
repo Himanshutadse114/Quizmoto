@@ -346,10 +346,7 @@ function patchAuthoredHtml(source) {
     }
 
     // Stored AI-authored packages are patched when served, so older courses gain
-    // the same responsive runtime as newly generated/rebuilt courses immediately.
-    // V7 is the final mobile owner. Re-injecting the older v3 runtime while
-    // serving a generated package could override the fixed normal-flow mobile
-    // layout that was added during packaging.
+    // the same fixed desktop-canvas scaling as newly generated/rebuilt courses.
     return injectMobileHardeningRuntime(patchMobileCourse(patched));
 }
 
