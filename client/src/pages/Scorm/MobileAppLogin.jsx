@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, BookOpenCheck, Gamepad2, KeyRound, Loader2, LockKeyhole, Mail } from 'lucide-react';
+import { ArrowRight, BookOpenCheck, Download, Gamepad2, KeyRound, Loader2, LockKeyhole, Mail } from 'lucide-react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './mobileAppLogin.css';
@@ -15,6 +15,9 @@ export default function MobileAppLogin() {
   const [code, setCode] = useState('');
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
+  const [installReady, setInstallReady] = useState(() => Boolean(window.__lmsgenInstallPrompt));
+  const [installWorking, setInstallWorking] = useState(false);
+  const [installFeedback, setInstallFeedback] = useState('');
   const installed = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
   const installMode = new URLSearchParams(window.location.search).get('install');
 
@@ -22,6 +25,21 @@ export default function MobileAppLogin() {
     if (!installMode) return;
     window.history.replaceState(null, '', '/app');
   }, [installMode]);
+
+  useEffect(() => {
+    const markReady = () => setInstallReady(Boolean(window.__lmsgenInstallPrompt));
+    const markInstalled = () => {
+      setInstallReady(false);
+      setInstallFeedback('LMSGEN has been installed successfully.');
+    };
+    window.addEventListener('lmsgen-install-ready', markReady);
+    window.addEventListener('lmsgen-app-installed', markInstalled);
+    markReady();
+    return () => {
+      window.removeEventListener('lmsgen-install-ready', markReady);
+      window.removeEventListener('lmsgen-app-installed', markInstalled);
+    };
+  }, []);
 
   // Keep the browser install page visible to signed-in users. Once the app is
   // launched in standalone mode, take an existing session straight into the
@@ -40,6 +58,26 @@ export default function MobileAppLogin() {
       setError(err.response?.data?.message || err.message || 'Could not sign in with this access code.');
     } finally {
       setWorking(false);
+    }
+  };
+
+  const installApp = async () => {
+    const prompt = window.__lmsgenInstallPrompt;
+    if (!prompt || installWorking) return;
+    setInstallWorking(true);
+    setInstallFeedback('');
+    window.__lmsgenInstallPrompt = null;
+    setInstallReady(false);
+    try {
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+      if (choice?.outcome !== 'accepted') {
+        setInstallFeedback('Installation was cancelled. You can try again from your browser’s install option.');
+      }
+    } catch {
+      setInstallFeedback('The installer could not open. Use your browser’s Install app option.');
+    } finally {
+      setInstallWorking(false);
     }
   };
 
@@ -62,11 +100,19 @@ export default function MobileAppLogin() {
           <span><Mail size={14} /> Awareness</span>
         </div>
 
-        {installMode && (
+        {(installMode || installReady || installFeedback) && (
           <div className="lmsgen-app-install-guidance" role="status">
-            {installMode === 'ios'
+            {installFeedback || (installMode === 'ios'
               ? 'To install LMSGEN, tap Safari’s Share button and choose “Add to Home Screen”.'
-              : 'To install LMSGEN, open your browser menu and choose “Install app” or “Add to Home screen”.'}
+              : installReady
+                ? 'LMSGEN is ready to install on this device.'
+                : 'To install LMSGEN, use your browser’s “Install app” or “Add to Home screen” option.')}
+            {installReady && !installFeedback ? (
+              <button type="button" onClick={installApp} disabled={installWorking}>
+                {installWorking ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                {installWorking ? 'Opening installer…' : 'Install LMSGEN'}
+              </button>
+            ) : null}
           </div>
         )}
 

@@ -3,7 +3,7 @@
   "name": "LMSGEN Learning Platform",
   "short_name": "LMSGEN",
   "description": "Create, deliver and track learning with LMSGEN.",
-  "start_url": "/app",
+  "start_url": "/app.html?__lmsgen_route=%2Fapp",
   "scope": "/",
   "display": "standalone",
   "background_color": "#061311",

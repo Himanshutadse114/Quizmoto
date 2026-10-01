@@ -10,6 +10,7 @@
   const mobileQuery = window.matchMedia("(max-width: 991px)");
   let mobileMenuOpen = false;
   let installPrompt = null;
+  let pendingInstallRequest = null;
 
   function isInstalledApp() {
     return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
@@ -17,8 +18,8 @@
 
   // Marketing pages are browser-only. If an older home-screen shortcut opens
   // one inside standalone mode, immediately return to the platform entry.
-  if (isInstalledApp()) {
-    window.location.replace("/app");
+  if (isInstalledApp() && window.location.pathname !== "/app.html") {
+    window.location.replace("/app.html?__lmsgen_route=%2Fapp");
     return;
   }
 
@@ -53,6 +54,32 @@
     showInstallMessage.timeoutId = window.setTimeout(() => notice.remove(), 6500);
   }
 
+  function waitForInstallPrompt(timeout = 2200) {
+    if (installPrompt) return Promise.resolve(installPrompt);
+
+    return new Promise((resolve) => {
+      const request = {
+        resolve,
+        timeoutId: window.setTimeout(() => {
+          if (pendingInstallRequest === request) pendingInstallRequest = null;
+          resolve(null);
+        }, timeout),
+      };
+      pendingInstallRequest = request;
+    });
+  }
+
+  async function openInstallPrompt(promptEvent) {
+    installPrompt = null;
+    const notice = document.getElementById("lmsgen-install-notice");
+    if (notice) notice.remove();
+    await promptEvent.prompt();
+    const choice = await promptEvent.userChoice;
+    if (choice?.outcome !== "accepted") {
+      showInstallMessage("Installation was cancelled. Tap Download app whenever you are ready.");
+    }
+  }
+
   async function installLmsgenApp(event) {
     if (event) event.preventDefault();
     setMobileMenuOpen(false);
@@ -63,18 +90,19 @@
     }
 
     if (installPrompt) {
-      const prompt = installPrompt;
-      installPrompt = null;
-      await prompt.prompt();
-      const choice = await prompt.userChoice;
-      if (choice?.outcome !== "accepted") {
-        showInstallMessage("Installation was cancelled. Tap Download app whenever you are ready.");
-      }
+      await openInstallPrompt(installPrompt);
       return;
     }
 
     if (/iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
       window.location.assign("/app?install=ios");
+      return;
+    }
+
+    showInstallMessage("Preparing the secure LMSGEN app installer…");
+    const delayedPrompt = await waitForInstallPrompt();
+    if (delayedPrompt) {
+      await openInstallPrompt(delayedPrompt);
       return;
     }
 
@@ -98,10 +126,21 @@
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     installPrompt = event;
+    if (pendingInstallRequest) {
+      const request = pendingInstallRequest;
+      pendingInstallRequest = null;
+      window.clearTimeout(request.timeoutId);
+      request.resolve(event);
+    }
   });
 
   window.addEventListener("appinstalled", () => {
     installPrompt = null;
+    if (pendingInstallRequest) {
+      window.clearTimeout(pendingInstallRequest.timeoutId);
+      pendingInstallRequest.resolve(null);
+      pendingInstallRequest = null;
+    }
     showInstallMessage("LMSGEN has been installed successfully.");
   });
 

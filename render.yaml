@@ -175,6 +175,12 @@ services:
         destination: /landing/blog/designing-knowledge-checks-that-dont-feel-like-a-test.html
 
       # Sign-in alias and authenticated LMS routes use the preserved React shell.
+      - type: rewrite
+        source: /app
+        destination: /app.html
+      - type: rewrite
+        source: /app/*
+        destination: /app.html
       - type: redirect
         source: /signin
         destination: /login

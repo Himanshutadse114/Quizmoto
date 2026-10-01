@@ -144,6 +144,13 @@ check(unifiedCss.includes('.global-header-c'), 'Unified UI CSS is missing shared
 const stableNav = await read(path.join(landingRoot, 'js', 'lmsgen-nav.js'));
 check(!stableNav.includes('lmsgen-advantage-assets.css'), 'Stable nav script must never load page CSS dynamically.');
 check(!stableNav.includes('aboutCarousel.remove'), 'Stable nav script must never delete About content.');
+check(stableNav.includes('/app.html?__lmsgen_route=%2Fapp'), 'Installed-app recovery must target the physical React app shell.');
+
+const appManifest = JSON.parse(await read(path.join(distRoot, 'app.webmanifest')));
+check(appManifest.start_url === '/app.html?__lmsgen_route=%2Fapp', 'Installed app start URL must bypass marketing-route fallbacks.');
+
+const rootEntry = await read(path.join(distRoot, 'index.html'));
+check(rootEntry.includes('(?:app(?:\\/|$)|signin'), 'Static app handoff must recover the /app route before marketing scripts run.');
 
 if (failures.length) {
   throw new Error(`Marketing UI audit failed:\n- ${failures.join('\n- ')}`);

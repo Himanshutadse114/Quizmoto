@@ -39,6 +39,8 @@ RUN printf 'server {\n\
     \n\
     location = /signin { return 302 /login; }\n\
     location = /signin/ { return 302 /login; }\n\
+    location = /app { try_files /app.html =404; }\n\
+    location ^~ /app/ { try_files /app.html =404; }\n\
     location = /login { try_files /app.html =404; }\n\
     location ^~ /login/ { try_files /app.html =404; }\n\
     location ^~ /auth/ { try_files /app.html =404; }\n\
