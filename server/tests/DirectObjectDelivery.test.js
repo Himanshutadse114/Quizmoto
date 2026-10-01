@@ -3,6 +3,7 @@ const {
     browserOrigins,
     isDirectDeliveryEnabled,
     isDirectUploadEnabled,
+    isStoragePolicyPermissionError,
     prepareDirectUpload,
     safeDownloadName,
     signedReadUrl
@@ -12,7 +13,7 @@ describe('DirectObjectDelivery', function () {
     const previous = {};
 
     beforeEach(() => {
-        for (const key of ['NODE_ENV', 'FRONTEND_URL', 'CLIENT_URL', 'CORS_ORIGIN', 'DIRECT_OBJECT_DELIVERY', 'DIRECT_OBJECT_UPLOADS']) {
+        for (const key of ['NODE_ENV', 'FRONTEND_URL', 'CLIENT_URL', 'CORS_ORIGIN', 'DIRECT_OBJECT_DELIVERY', 'DIRECT_OBJECT_UPLOADS', 'DIRECT_OBJECT_MANAGE_CORS']) {
             previous[key] = process.env[key];
             delete process.env[key];
         }
@@ -47,6 +48,42 @@ describe('DirectObjectDelivery', function () {
         expect(await prepareDirectUpload(storage)).to.equal(true);
         expect(await prepareDirectUpload(storage)).to.equal(true);
         expect(calls).to.equal(1);
+    });
+
+    it('continues signed uploads when an object token cannot manage bucket CORS', async () => {
+        let calls = 0;
+        const denied = Object.assign(new Error('Access Denied'), {
+            name: 'AccessDenied',
+            $metadata: { httpStatusCode: 403 }
+        });
+        const storage = {
+            driver: 's3',
+            createSignedPutUrl() {},
+            headObject() {},
+            async ensureBrowserCors() {
+                calls += 1;
+                throw denied;
+            }
+        };
+
+        expect(isStoragePolicyPermissionError(denied)).to.equal(true);
+        expect(await prepareDirectUpload(storage)).to.equal(true);
+        expect(await prepareDirectUpload(storage)).to.equal(true);
+        expect(calls).to.equal(1);
+    });
+
+    it('allows deployments to skip automatic CORS management', async () => {
+        process.env.DIRECT_OBJECT_MANAGE_CORS = '0';
+        let calls = 0;
+        const storage = {
+            driver: 's3',
+            createSignedPutUrl() {},
+            headObject() {},
+            async ensureBrowserCors() { calls += 1; }
+        };
+
+        expect(await prepareDirectUpload(storage)).to.equal(true);
+        expect(calls).to.equal(0);
     });
 
     it('includes configured production origins and sanitizes download names', () => {

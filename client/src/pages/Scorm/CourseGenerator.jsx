@@ -232,7 +232,7 @@ export default function CourseGenerator() {
           try {
             await axios.put(ticketResponse.data.uploadUrl, file, {
               headers: ticketResponse.data.headers || { 'Content-Type': videoMimeType(file) },
-              timeout: 15 * 60 * 1000,
+              timeout: 60 * 60 * 1000,
               maxBodyLength: Infinity,
               maxContentLength: Infinity,
               onUploadProgress: (event) => setUploadProgress(event.total ? Math.round((event.loaded / event.total) * 100) : 0)
@@ -249,7 +249,7 @@ export default function CourseGenerator() {
             byteSize: file.size,
             metadata,
             replacePackageId: replaceVideoId || ''
-          }, { headers: { Authorization: `Bearer ${token}` }, timeout: 15 * 60 * 1000 });
+          }, { headers: { Authorization: `Bearer ${token}` }, timeout: 60 * 60 * 1000 });
         } else {
           response = await axios({
             method: replaceVideoId ? 'put' : 'post',
@@ -260,7 +260,7 @@ export default function CourseGenerator() {
               'Content-Type': videoMimeType(file),
               'X-Video-Course-Metadata': encodeVideoMetadata(metadata)
             },
-            timeout: 15 * 60 * 1000,
+            timeout: 60 * 60 * 1000,
             maxBodyLength: Infinity,
             maxContentLength: Infinity,
             onUploadProgress: (event) => setUploadProgress(event.total ? Math.round((event.loaded / event.total) * 100) : 0)

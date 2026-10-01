@@ -12,6 +12,7 @@ const { ScormPackage } = require('../../models/scorm');
 const { assertActiveCourseCapacity } = require('../../services/scorm/ScormAiUsageService');
 const { getObjectStorage } = require('../../storage/ObjectStorage');
 const { isDirectUploadEnabled, prepareDirectUpload } = require('../../storage/DirectObjectDelivery');
+const logger = require('../../utils/logger');
 const {
     acceptedVideoType,
     videoExtension,
@@ -92,7 +93,8 @@ router.post('/upload-ticket', auth, async (req, res) => {
         const storage = getObjectStorage();
         if (!(await prepareDirectUpload(storage))) return res.json({ direct: false });
         const sourceKey = `${directVideoPrefix(req.userId)}${crypto.randomUUID()}.${videoExtension(mimeType)}`;
-        const uploadUrl = await storage.createSignedPutUrl(sourceKey, { expiresIn: 15 * 60, contentType: mimeType });
+        const expiresIn = byteSize >= 100 * 1024 * 1024 ? 60 * 60 : 30 * 60;
+        const uploadUrl = await storage.createSignedPutUrl(sourceKey, { expiresIn, contentType: mimeType });
         res.setHeader('Cache-Control', 'private, no-store');
         res.json({
             direct: true,
@@ -102,10 +104,24 @@ router.post('/upload-ticket', auth, async (req, res) => {
             byteSize,
             metadata: cleanMetadata(req.body?.metadata),
             headers: { 'Content-Type': mimeType },
-            expiresIn: 15 * 60
+            expiresIn
         });
     } catch (error) {
-        res.status(Number(error.status) || 500).json({ message: error.message || 'Unable to prepare video upload.', code: error.code });
+        const status = Number(error.status) || 0;
+        logger.error('video_course_upload_ticket_failed', {
+            module: 'scorm',
+            userId: req.userId,
+            status: status || Number(error?.$metadata?.httpStatusCode || 0) || null,
+            code: error.code || error.name || null,
+            error: error.message
+        });
+        if (status >= 400 && status < 500) {
+            return res.status(status).json({ message: error.message || 'Unable to prepare video upload.', code: error.code });
+        }
+        return res.status(503).json({
+            message: 'The secure video upload could not be prepared. Please retry in a moment.',
+            code: 'VIDEO_UPLOAD_PREPARATION_FAILED'
+        });
     }
 });
 

@@ -1,6 +1,15 @@
 const path = require('path');
+const logger = require('../utils/logger');
 
 const browserCorsReadiness = new WeakMap();
+
+function isStoragePolicyPermissionError(error) {
+    const status = Number(error?.$metadata?.httpStatusCode || error?.statusCode || error?.status || 0);
+    const code = String(error?.code || error?.name || '').toLowerCase();
+    return status === 401
+        || status === 403
+        || ['accessdenied', 'forbidden', 'unauthorized', 'unauthorizedoperation'].includes(code);
+}
 
 function clampSeconds(value, fallback, max = 86400) {
     const parsed = Number(value);
@@ -32,10 +41,23 @@ function browserOrigins() {
 
 async function prepareDirectUpload(storage) {
     if (!isDirectUploadEnabled(storage)) return false;
-    if (typeof storage.ensureBrowserCors === 'function') {
+    if (typeof storage.ensureBrowserCors === 'function' && process.env.DIRECT_OBJECT_MANAGE_CORS !== '0') {
         if (!browserCorsReadiness.has(storage)) {
-            const readiness = Promise.resolve(storage.ensureBrowserCors(browserOrigins()))
+            const readiness = Promise.resolve()
+                .then(() => storage.ensureBrowserCors(browserOrigins()))
                 .catch((error) => {
+                    // Object read/write tokens commonly cannot manage bucket-level
+                    // CORS. The browser policy may already be configured, so do not
+                    // prevent a signed upload merely because that optional check is
+                    // forbidden.
+                    if (isStoragePolicyPermissionError(error)) {
+                        logger.warn('direct_upload_cors_management_unavailable', {
+                            module: 'storage',
+                            status: Number(error?.$metadata?.httpStatusCode || error?.statusCode || error?.status || 0) || null,
+                            code: String(error?.code || error?.name || 'ACCESS_DENIED')
+                        });
+                        return false;
+                    }
                     browserCorsReadiness.delete(storage);
                     throw error;
                 });
@@ -81,6 +103,7 @@ module.exports = {
     clampSeconds,
     isDirectDeliveryEnabled,
     isDirectUploadEnabled,
+    isStoragePolicyPermissionError,
     prepareDirectUpload,
     browserOrigins,
     safeDownloadName,
