@@ -63,7 +63,10 @@ async function sendBrevo(cfg, recipients, message, headers = {}) {
             headers: {
                 'X-LMSGEN-Notification': 'awareness-template',
                 ...headers
-            }
+            },
+            tags: headers['X-LMSGEN-Campaign-ID']
+                ? [`lmsgen-awareness-${String(headers['X-LMSGEN-Campaign-ID']).replace(/[^a-z0-9-]/gi, '').slice(0, 80)}`]
+                : undefined
         }),
         signal: AbortSignal.timeout(Number(process.env.MAIL_API_TIMEOUT_MS || 15000))
     });
@@ -85,6 +88,26 @@ async function sendBrevo(cfg, recipients, message, headers = {}) {
         rejected: [],
         providerResponse: payload.messageId ? 'Queued by Brevo' : 'Brevo accepted the request'
     };
+}
+
+async function getBrevoEvents() {
+    const cfg = MailService.providerConfig();
+    if (cfg.provider !== 'brevo' || !cfg.apiKey) return [];
+    const response = await fetch(`https://${cfg.apiHost || 'api.brevo.com'}/v3/smtp/statistics/events?limit=5000&days=30&sort=desc`, {
+        method: 'GET',
+        headers: { accept: 'application/json', 'api-key': cfg.apiKey },
+        signal: AbortSignal.timeout(Number(process.env.MAIL_API_TIMEOUT_MS || 15000))
+    });
+    const raw = await response.text();
+    let payload = {};
+    try { payload = raw ? JSON.parse(raw) : {}; } catch (_) { payload = { message: raw }; }
+    if (!response.ok) {
+        const error = new Error(payload.message || `Brevo event request failed with HTTP ${response.status}.`);
+        error.code = payload.code || `BREVO_EVENTS_HTTP_${response.status}`;
+        error.status = 503;
+        throw error;
+    }
+    return Array.isArray(payload.events) ? payload.events : [];
 }
 
 async function sendSmtp(cfg, recipients, message, attachments = [], headers = {}) {
@@ -212,6 +235,7 @@ async function createEml({ to = [], subject, html, text = '', attachments = [], 
 module.exports = {
     normaliseEmailList,
     sendContent,
+    getBrevoEvents,
     verifyConnection,
     sendTestEmail,
     createEml

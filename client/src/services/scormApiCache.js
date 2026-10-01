@@ -502,7 +502,26 @@ export function installScormApiCache() {
       if (invalidatesPlatformCache(method, url) && success) notifyInvalidated();
       return response;
     },
-    (error) => Promise.reject(error)
+    (error) => {
+      const code = String(error?.response?.data?.code || '');
+      const config = error?.config || {};
+      const sessionEnded = new Set([
+        'PLATFORM_ACCOUNT_BLOCKED',
+        'PLATFORM_ACCOUNT_REMOVED',
+        'PLATFORM_AUTH_REQUIRED',
+        'AUTH_SESSION_REVOKED'
+      ]);
+      if (typeof window !== 'undefined' && authHeader(config) && sessionEnded.has(code)) {
+        invalidateScormApiCache({ notify: false });
+        window.dispatchEvent(new CustomEvent('lmsgen-auth-session-ended', {
+          detail: {
+            code,
+            message: error?.response?.data?.message || 'Your session has ended. Please sign in again.'
+          }
+        }));
+      }
+      return Promise.reject(error);
+    }
   );
 
   // Background course generation changes course/library data without a mutation

@@ -338,6 +338,7 @@ async function setPlatformUserStatus({ userId, action }) {
 
     const now = new Date();
     user.accountStatus = normalizedAction === 'block' ? 'blocked' : 'removed';
+    user.authVersion = Number(user.authVersion || 0) + 1;
     user.removedAt = now;
     user.blockedAt = normalizedAction === 'block' ? now : null;
     await user.save();

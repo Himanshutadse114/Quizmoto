@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import axios from 'axios';
 import { apiUrl } from '../config';
@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }) => {
     );
     const loading = false;
 
-    const persistSession = (nextToken, nextUser) => {
+    const persistSession = useCallback((nextToken, nextUser) => {
         const normalizedUser = normalizeStoredUser(nextUser || null);
         setToken(nextToken || null);
         setUser(normalizedUser);
@@ -65,16 +65,16 @@ export const AuthProvider = ({ children }) => {
         else localStorage.removeItem('token');
         if (normalizedUser) localStorage.setItem('user', JSON.stringify(normalizedUser));
         else localStorage.removeItem('user');
-    };
+    }, []);
 
-    const setAccessFlags = ({ platform = false, scorm = false } = {}) => {
+    const setAccessFlags = useCallback(({ platform = false, scorm = false } = {}) => {
         setPlatformAccess(platform);
         setScormAccess(scorm);
         if (platform) localStorage.setItem(PLATFORM_ACCESS_KEY, '1');
         else localStorage.removeItem(PLATFORM_ACCESS_KEY);
         if (scorm) localStorage.setItem(SCORM_ACCESS_KEY, '1');
         else localStorage.removeItem(SCORM_ACCESS_KEY);
-    };
+    }, []);
 
     const prepareScormLogin = () => {
         if (!platformAccess && token && !localStorage.getItem(HOST_TOKEN_BACKUP)) {
@@ -247,13 +247,55 @@ export const AuthProvider = ({ children }) => {
         return false;
     };
 
-    const logout = () => {
+    const logout = useCallback(() => {
         clearPlatformPreparationState();
         setAccessFlags({ platform: false, scorm: false });
         localStorage.removeItem(HOST_TOKEN_BACKUP);
         localStorage.removeItem(HOST_USER_BACKUP);
         persistSession(null, null);
-    };
+    }, [persistSession, setAccessFlags]);
+
+    useEffect(() => {
+        if (!token || !platformAccess) return undefined;
+        let checking = false;
+        const validateSession = async () => {
+            if (checking || document.visibilityState === 'hidden') return;
+            checking = true;
+            try {
+                await axios.get(`${API_URL}/session-status`, {
+                    headers: { Authorization: `Bearer ${token}`, 'X-LMSGEN-No-Cache': '1' },
+                    timeout: 10000,
+                    __lmsgenForceRefresh: true
+                });
+            } catch {
+                // Recognised account revocations are handled by the global
+                // response interceptor. Connectivity failures do not sign out.
+            } finally {
+                checking = false;
+            }
+        };
+        const onSessionEnded = (event) => {
+            sessionStorage.setItem(
+                'lmsgenSessionEndNotice',
+                event?.detail?.message || 'Your session has ended. Please sign in again.'
+            );
+            logout();
+            window.location.replace('/login?session=ended');
+        };
+        const onVisible = () => {
+            if (document.visibilityState === 'visible') validateSession();
+        };
+        const interval = window.setInterval(validateSession, 60000);
+        window.addEventListener('focus', validateSession);
+        document.addEventListener('visibilitychange', onVisible);
+        window.addEventListener('lmsgen-auth-session-ended', onSessionEnded);
+        return () => {
+            window.clearInterval(interval);
+            window.removeEventListener('focus', validateSession);
+            document.removeEventListener('visibilitychange', onVisible);
+            window.removeEventListener('lmsgen-auth-session-ended', onSessionEnded);
+        };
+    }, [logout, platformAccess, token]);
 
     const updateCurrentUser = (updates = {}) => {
         setUser((current) => {

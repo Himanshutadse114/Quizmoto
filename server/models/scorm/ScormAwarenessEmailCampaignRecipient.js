@@ -43,6 +43,19 @@ const ScormAwarenessEmailCampaignRecipient = sequelize.define('ScormAwarenessEma
     sentAt: {
         type: DataTypes.DATE,
         allowNull: true
+    },
+    openedAt: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    lastOpenedAt: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    openCount: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
     }
 }, {
     tableName: 'scorm_awareness_email_campaign_recipients',

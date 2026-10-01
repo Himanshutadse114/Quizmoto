@@ -31,7 +31,28 @@ function manualToCsv(items){
   return [['Email','Name'].map(csvCell).join(','),...items.map(item=>[item.email,item.learnerName||''].map(csvCell).join(','))].join('\n');
 }
 function statusLabel(value){
-  return {draft:'Draft',sending:'Sending',completed:'Completed',partial:'Partial',failed:'Failed',stopped:'Stopped'}[value]||value||'Draft';
+  return {draft:'Draft',sending:'Sending',completed:'Submitted',partial:'Submitted with errors',failed:'Failed',stopped:'Stopped'}[value]||value||'Draft';
+}
+function recipientStatus(item){
+  if(item?.openedAt)return 'Opened';
+  if(item?.status==='delivered')return 'Delivered';
+  if(item?.status==='sent')return 'Provider queued';
+  if(item?.status==='failed')return 'Failed';
+  return 'Pending';
+}
+function formatDuration(seconds){
+  const value=Math.max(0,Number(seconds)||0);
+  if(value<60)return `${value} second${value===1?'':'s'}`;
+  const minutes=Math.round(value/60);
+  return `${minutes} minute${minutes===1?'':'s'}`;
+}
+function formatEstimate(seconds){
+  const value=Math.max(0,Number(seconds)||0);
+  if(!value)return 'starts immediately';
+  if(value<3600)return `about ${Math.ceil(value/60)} min`;
+  const hours=Math.floor(value/3600);
+  const minutes=Math.ceil((value%3600)/60);
+  return `about ${hours} hr${hours===1?'':'s'}${minutes?` ${minutes} min`:''}`;
 }
 
 export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice}){
@@ -52,8 +73,10 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
   const [manualLearners,setManualLearners]=useState([]);
   const [manualName,setManualName]=useState('');
   const [manualEmail,setManualEmail]=useState('');
-  const [batchCount,setBatchCount]=useState(5);
-  const [batchDelay,setBatchDelay]=useState(60);
+  const [batchSize,setBatchSize]=useState(10);
+  const [batchDelay,setBatchDelay]=useState(300);
+  const [expandedCampaignId,setExpandedCampaignId]=useState('');
+  const [campaignRecipients,setCampaignRecipients]=useState({});
 
   const load=useCallback(async({showLoader=true}={})=>{
     if(!token)return;
@@ -75,8 +98,9 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
   },[campaigns,load]);
 
   const learnerCount=entryMode==='manual'?manualLearners.length:Number(csvPreview?.validLearners||0);
-  const effectiveBatchCount=learnerCount?Math.min(Number(batchCount)||1,learnerCount):Number(batchCount)||1;
-  const estimatedBatchSize=learnerCount?Math.ceil(learnerCount/effectiveBatchCount):0;
+  const effectiveBatchSize=Math.min(250,Math.max(1,Number(batchSize)||10));
+  const effectiveBatchCount=learnerCount?Math.ceil(learnerCount/effectiveBatchSize):0;
+  const estimatedDuration=Math.max(0,effectiveBatchCount-1)*(Number(batchDelay)||300);
   const selectedTemplate=templates.find(item=>item.id===selectedTemplateId)||null;
 
   const readCsv=async(file)=>{
@@ -108,7 +132,7 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
   };
 
   const resetCreate=()=>{
-    setCreating(false);setName('');setSelectedTemplateId('');setEntryMode('csv');setCsvText('');setCsvName('');setCsvPreview(null);setManualLearners([]);setManualName('');setManualEmail('');setBatchCount(5);setBatchDelay(60);setError('');
+    setCreating(false);setName('');setSelectedTemplateId('');setEntryMode('csv');setCsvText('');setCsvName('');setCsvPreview(null);setManualLearners([]);setManualName('');setManualEmail('');setBatchSize(10);setBatchDelay(300);setError('');
   };
 
   const createCampaign=async()=>{
@@ -123,8 +147,8 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
         name:name.trim(),
         userTemplateId:selectedTemplateId,
         csvText:recipientsCsv,
-        mailBatchCount:Number(batchCount)||5,
-        mailBatchDelaySeconds:Number(batchDelay)||60
+        mailBatchSize:effectiveBatchSize,
+        mailBatchDelaySeconds:Number(batchDelay)||300
       },{headers});
       const campaign=res.data?.campaign;
       setCampaigns(current=>[campaign,...current]);
@@ -168,6 +192,19 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
     finally{setBusy('')}
   };
 
+  const toggleRecipients=async(campaign)=>{
+    if(expandedCampaignId===campaign.id){setExpandedCampaignId('');return}
+    setExpandedCampaignId(campaign.id);
+    setBusy('recipients:'+campaign.id);setError('');
+    try{
+      const res=await axios.get(apiUrl(API+'/'+campaign.id),{headers});
+      const detail=res.data?.campaign||{};
+      setCampaignRecipients(current=>({...current,[campaign.id]:detail.recipients||[]}));
+      setCampaigns(current=>current.map(item=>item.id===campaign.id?{...item,openedCount:detail.openedCount??item.openedCount}:item));
+    }catch(err){setError(err.response?.data?.message||'Unable to load recipient activity.')}
+    finally{setBusy('')}
+  };
+
   if(creating){
     return <div className="aw-campaigns">
       <div className="aw-campaign-page-head">
@@ -204,11 +241,15 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
             </form>
             {manualLearners.length?<div className="aw-recipient-list">{manualLearners.map(item=><div key={item.email}><span><strong>{item.learnerName}</strong><small>{item.email}</small></span><button type="button" onClick={()=>setManualLearners(current=>current.filter(x=>x.email!==item.email))}><Trash2 size={12}/></button></div>)}</div>:<div className="aw-muted-copy">Add recipients one at a time.</div>}
           </div>}
-          <div className="aw-batch-grid">
-            <label className="aw-campaign-field"><span>Email batches</span><input type="number" min="1" max="50" value={batchCount} onChange={e=>setBatchCount(e.target.value)}/></label>
-            <label className="aw-campaign-field"><span>Delay between batches · seconds</span><input type="number" min="15" max="3600" value={batchDelay} onChange={e=>setBatchDelay(e.target.value)}/></label>
+          <div className="aw-delivery-control">
+            <div className="aw-delivery-control-head"><span><Clock3 size={14}/><strong>Delivery pacing</strong></span><small>Reduce sudden sending spikes</small></div>
+            <div className="aw-batch-grid">
+              <label className="aw-campaign-field"><span>Maximum emails per batch</span><input type="number" min="1" max="250" value={batchSize} onChange={e=>setBatchSize(e.target.value)}/></label>
+              <label className="aw-campaign-field"><span>Pause between batches</span><select value={batchDelay} onChange={e=>setBatchDelay(Number(e.target.value))}><option value="60">1 minute</option><option value="120">2 minutes</option><option value="300">5 minutes</option><option value="600">10 minutes</option><option value="900">15 minutes</option><option value="1800">30 minutes</option><option value="3600">1 hour</option></select></label>
+            </div>
+            <div className="aw-batch-summary"><Clock3 size={14}/><span>{learnerCount?`${effectiveBatchSize} emails every ${formatDuration(batchDelay)} · ${effectiveBatchCount} batch${effectiveBatchCount===1?'':'es'} · ${formatEstimate(estimatedDuration)}`:'Add recipients to see the delivery estimate.'}</span></div>
+            <p className="aw-delivery-note">Pacing reduces sudden sending spikes. Sender authentication and reputation still affect inbox placement.</p>
           </div>
-          <div className="aw-batch-summary"><Clock3 size={14}/><span>{learnerCount?effectiveBatchCount:batchCount} batch{Number(effectiveBatchCount||batchCount)===1?'':'es'} · about {estimatedBatchSize||0} recipient{estimatedBatchSize===1?'':'s'} per batch</span></div>
         </section>
 
         <section className="aw-campaign-panel">
@@ -254,18 +295,25 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
         <div className="aw-campaign-main">
           <div className="aw-campaign-name"><strong>{campaign.name}</strong><span className={'aw-campaign-status is-'+campaign.status}>{statusLabel(campaign.status)}</span><small>{campaign.templateTitle}</small></div>
           <div><span>Recipients</span><strong><Users size={12}/>{campaign.recipientCount}</strong></div>
-          <div><span>Accepted</span><strong>{campaign.sentCount}</strong></div>
+          <div><span>Provider queued</span><strong>{campaign.sentCount}</strong></div>
+          <div><span>Delivered</span><strong>{campaign.deliveredCount||0}</strong></div>
+          <div><span>Opened</span><strong>{campaign.openedCount||0}</strong></div>
           <div><span>Failed</span><strong>{campaign.failedCount}</strong></div>
           <div className="aw-campaign-progress"><span>Delivery</span><div><i style={{width:progress+'%'}}/></div><small>{progress}%</small></div>
         </div>
         <div className="aw-campaign-row-foot">
-          <span>{campaign.delivery?.batchCount||1} batch{Number(campaign.delivery?.batchCount||1)===1?'':'es'} · {campaign.delivery?.delaySeconds||0}s delay</span>
+          <span>Up to {campaign.delivery?.batchSize||1} emails per batch · {formatDuration(campaign.delivery?.delaySeconds||0)} pause · provider acceptance is not inbox delivery</span>
           <div>
+            <button type="button" className="aw-btn-secondary" disabled={busy==='recipients:'+campaign.id} onClick={()=>toggleRecipients(campaign)}><Users size={12}/>{busy==='recipients:'+campaign.id?'Loading…':expandedCampaignId===campaign.id?'Hide activity':'Recipient activity'}</button>
             {campaign.status==='draft'&&<button type="button" className="aw-btn-primary" disabled={actionBusy||!mail?.configured} onClick={()=>startCampaign(campaign)}><Play size={12}/>{actionBusy?'Starting…':'Start'}</button>}
             {campaign.status==='sending'&&<button type="button" className="aw-btn-secondary" disabled={actionBusy} onClick={()=>stopCampaign(campaign)}><Square size={11}/>{actionBusy?'Stopping…':'Stop'}</button>}
             {['draft','stopped'].includes(campaign.status)&&<button type="button" className="aw-btn-secondary aw-danger" disabled={actionBusy} onClick={()=>deleteCampaign(campaign)}><Trash2 size={12}/> Delete</button>}
           </div>
         </div>
+        {expandedCampaignId===campaign.id&&<div className="aw-recipient-activity">
+          <div className="aw-recipient-activity-head"><strong>Recipient activity</strong><span>Open tracking is an estimate because some mail apps block or proxy images.</span></div>
+          {(campaignRecipients[campaign.id]||[]).length?<div className="aw-recipient-table"><div className="aw-recipient-table-row is-head"><span>Recipient</span><span>Status</span><span>Opens</span><span>Last activity</span></div>{campaignRecipients[campaign.id].map(item=><div className="aw-recipient-table-row" key={item.id}><span><strong>{item.learnerName||'Recipient'}</strong><small>{item.email}</small></span><span data-status={recipientStatus(item).toLowerCase().replace(/\s+/g,'-')} title={item.errorCode||''}>{recipientStatus(item)}</span><span>{item.openCount||0}</span><span>{item.lastOpenedAt?new Date(item.lastOpenedAt).toLocaleString():item.sentAt?`Queued ${new Date(item.sentAt).toLocaleString()}`:'—'}</span></div>)}</div>:<div className="aw-muted-copy">No recipient activity is available yet.</div>}
+        </div>}
       </article>;
     })}</div>:<div className="aw-empty aw-campaign-empty"><Send size={26}/><h3>No email campaigns yet</h3><p>Create a campaign using a template from My Library and a CSV or manually entered recipient list.</p>{templates.length?<button type="button" className="aw-btn-primary" onClick={()=>setCreating(true)}><Plus size={13}/> Create email campaign</button>:null}</div>}
   </div>;

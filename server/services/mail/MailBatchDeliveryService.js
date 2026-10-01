@@ -5,6 +5,7 @@ const DEFAULT_DELAY_SECONDS = 60;
 const MIN_DELAY_SECONDS = 15;
 const MAX_DELAY_SECONDS = 3600;
 const MAX_BATCH_COUNT = 50;
+const MAX_BATCH_SIZE = 250;
 
 function integerInRange(value, fallback, minimum, maximum) {
     const parsed = Number.parseInt(value, 10);
@@ -14,20 +15,29 @@ function integerInRange(value, fallback, minimum, maximum) {
 
 function deliveryPlan(recipientCount, input = {}) {
     const recipients = Math.max(0, Number.parseInt(recipientCount, 10) || 0);
+    const rawBatchSize = input.batchSize ?? input.mailBatchSize;
+    const hasRequestedBatchSize = rawBatchSize !== undefined && rawBatchSize !== null && rawBatchSize !== '';
+    const requestedBatchSize = hasRequestedBatchSize
+        ? integerInRange(rawBatchSize, 10, 1, MAX_BATCH_SIZE)
+        : null;
     const requestedBatchCount = integerInRange(
         input.batchCount ?? input.mailBatchCount,
         DEFAULT_BATCH_COUNT,
         1,
         MAX_BATCH_COUNT
     );
-    const batchCount = recipients > 0 ? Math.min(requestedBatchCount, recipients) : requestedBatchCount;
+    const batchCount = requestedBatchSize
+        ? (recipients > 0 ? Math.ceil(recipients / requestedBatchSize) : 1)
+        : (recipients > 0 ? Math.min(requestedBatchCount, recipients) : requestedBatchCount);
     const delaySeconds = integerInRange(
         input.delaySeconds ?? input.mailBatchDelaySeconds,
         DEFAULT_DELAY_SECONDS,
         MIN_DELAY_SECONDS,
         MAX_DELAY_SECONDS
     );
-    const batchSize = recipients > 0 ? Math.ceil(recipients / batchCount) : 0;
+    const batchSize = recipients > 0
+        ? Math.min(recipients, requestedBatchSize || Math.ceil(recipients / batchCount))
+        : 0;
 
     return {
         recipientCount: recipients,
@@ -116,6 +126,7 @@ module.exports = {
     MIN_DELAY_SECONDS,
     MAX_DELAY_SECONDS,
     MAX_BATCH_COUNT,
+    MAX_BATCH_SIZE,
     deliveryPlan,
     sendInBatches,
     runInBackground

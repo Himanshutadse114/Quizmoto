@@ -92,6 +92,7 @@ module.exports = async (req, res, next) => {
         const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         const url = String(req.originalUrl || req.baseUrl || '');
         const isScormAdminRequest = url.startsWith('/api/scorm/');
+        const isSessionStatusRequest = url.startsWith('/api/auth/session-status');
 
         req.userId = decoded.userId;
         req.authenticatedUserId = decoded.userId;
@@ -123,7 +124,7 @@ module.exports = async (req, res, next) => {
         // every product module, not only URLs under /api/scorm. Otherwise an
         // old token could continue using Quizmoto or Publica after the tenant
         // was disabled, or bypass Staff SSO through a non-course endpoint.
-        if (decoded.scope === 'scorm' && process.env.NODE_ENV !== 'test') {
+        if (decoded.scope === 'scorm' && process.env.NODE_ENV !== 'test' && !isSessionStatusRequest) {
             const mutatingRequest = !SAFE_METHODS.has(String(req.method || 'GET').toUpperCase());
             if (mutatingRequest) invalidateContext({ userId: decoded.userId });
             const context = await resolveRequestContext(decoded.userId, { bypassCache: mutatingRequest });

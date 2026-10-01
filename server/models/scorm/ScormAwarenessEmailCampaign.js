@@ -45,6 +45,10 @@ const ScormAwarenessEmailCampaign = sequelize.define('ScormAwarenessEmailCampaig
         allowNull: false,
         defaultValue: 5
     },
+    mailBatchSize: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
     mailBatchDelaySeconds: {
         type: DataTypes.INTEGER,
         allowNull: false,
@@ -61,6 +65,11 @@ const ScormAwarenessEmailCampaign = sequelize.define('ScormAwarenessEmailCampaig
         defaultValue: 0
     },
     failedCount: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+    },
+    openedCount: {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 0

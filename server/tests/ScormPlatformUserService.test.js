@@ -8,6 +8,7 @@ function loadService() {
         email: 'admin@example.com',
         username: 'Admin',
         accountStatus: 'active',
+        authVersion: 0,
         save: sinon.stub().resolves()
     };
     const membership = {
@@ -99,6 +100,7 @@ describe('ScormPlatformUserService account lifecycle', () => {
         expect(ctx.workspace.save.calledOnce).to.equal(true);
         expect(result.tenantTransition.action).to.equal('tenant_disabled');
         expect(ctx.user.accountStatus).to.equal('blocked');
+        expect(ctx.user.authVersion).to.equal(1);
     });
 
     it('rejects assigning a customer user into the protected Super Admin tenant', async () => {

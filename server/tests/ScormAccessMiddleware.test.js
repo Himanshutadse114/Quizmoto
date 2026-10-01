@@ -207,6 +207,24 @@ describe('SCORM access middleware', () => {
         expect(res.body.code).to.equal('SCORM_AUTH_REQUIRED');
     });
 
+    it('rejects a blocked account before any protected platform work runs', async () => {
+        process.env.NODE_ENV = 'production';
+        const middleware = buildMiddleware({
+            decoded: { userId: 21, scope: 'scorm', authVersion: 0 },
+            user: { id: 21, email: 'blocked@example.com', accountStatus: 'blocked', authVersion: 0 },
+            role: 'admin'
+        });
+        const req = { header: () => 'Bearer blocked-token', originalUrl: '/api/scorm/courses' };
+        const res = makeResponse();
+        let nextCalled = false;
+
+        await middleware(req, res, () => { nextCalled = true; });
+
+        expect(nextCalled).to.equal(false);
+        expect(res.statusCode).to.equal(403);
+        expect(res.body.code).to.equal('PLATFORM_ACCOUNT_BLOCKED');
+    });
+
     it('rejects an otherwise valid token after the account session version changes', async () => {
         process.env.NODE_ENV = 'production';
         const middleware = buildMiddleware({

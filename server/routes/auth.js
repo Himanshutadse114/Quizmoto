@@ -190,6 +190,11 @@ async function platformGoogleResponse(user) {
     return scormAuthResponse(user, role, { authMethod: 'google' });
 }
 
+router.get('/session-status', auth, (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json({ ok: true, active: true });
+});
+
 router.get('/scorm/status', auth, async (req, res) => {
     try {
         const user = await User.findByPk(req.userId);

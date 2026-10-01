@@ -41,6 +41,16 @@ describe('MailBatchDeliveryService', function () {
         });
     });
 
+    it('lets a campaign choose the maximum emails sent in each batch', function () {
+        expect(deliveryPlan(23, { batchSize: 10, delaySeconds: 300 })).to.deep.include({
+            recipientCount: 23,
+            batchCount: 3,
+            batchSize: 10,
+            delaySeconds: 300,
+            estimatedDurationSeconds: 600
+        });
+    });
+
     it('checks whether delivery should continue before every recipient', async function () {
         const sent = [];
         let checks = 0;

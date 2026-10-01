@@ -75,7 +75,7 @@ describe('AwarenessEmailCampaignService', function () {
             name: 'September Awareness',
             userTemplateId: '11111111-1111-4111-8111-111111111111',
             csvText: 'Email,Name\none@example.com,One\ntwo@example.com,Two\n',
-            mailBatchCount: 2,
+            mailBatchSize: 1,
             mailBatchDelaySeconds: 15
         });
 
@@ -83,7 +83,14 @@ describe('AwarenessEmailCampaignService', function () {
         expect(result.campaign.templateTitle).to.equal('Security Update');
         expect(result.campaign.recipientCount).to.equal(2);
         expect(result.campaign.delivery.batchCount).to.equal(2);
+        expect(result.campaign.delivery.batchSize).to.equal(1);
         expect(await Recipient.count({ where: { campaignId: result.campaign.id } })).to.equal(2);
+
+        const recipient = await Recipient.findOne({ where: { campaignId: result.campaign.id } });
+        await RealService.recordRecipientOpen(recipient.id);
+        const opened = await RealService.getCampaign(result.campaign.id, 42, { includeRecipients: true });
+        expect(opened.openedCount).to.equal(1);
+        expect(opened.recipients.find((item) => item.id === recipient.id).openCount).to.equal(1);
     });
 
     it('refuses templates that do not belong to the tenant My Library', async () => {

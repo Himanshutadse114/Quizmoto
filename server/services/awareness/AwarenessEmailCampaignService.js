@@ -1,6 +1,6 @@
 'use strict';
 
-const { Op } = require('sequelize');
+const { DataTypes, Op } = require('sequelize');
 const { sequelize } = require('../../config/database');
 const logger = require('../../utils/logger');
 const Campaign = require('../../models/scorm/ScormAwarenessEmailCampaign');
@@ -29,7 +29,28 @@ function clean(value, max = 1000) {
 
 async function ensureSchema() {
     if (!schemaPromise) {
-        schemaPromise = Promise.all([Campaign.sync(), Recipient.sync()]).catch((error) => {
+        schemaPromise = Promise.all([Campaign.sync(), Recipient.sync()]).then(async () => {
+            const queryInterface = sequelize.getQueryInterface();
+            const campaignTable = Campaign.getTableName();
+            const campaignDescription = await queryInterface.describeTable(campaignTable);
+            const campaignColumns = {
+                mailBatchSize: { type: DataTypes.INTEGER, allowNull: true },
+                openedCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 }
+            };
+            for (const [column, definition] of Object.entries(campaignColumns)) {
+                if (!campaignDescription[column]) await queryInterface.addColumn(campaignTable, column, definition);
+            }
+            const recipientTable = Recipient.getTableName();
+            const recipientDescription = await queryInterface.describeTable(recipientTable);
+            const recipientColumns = {
+                openedAt: { type: DataTypes.DATE, allowNull: true },
+                lastOpenedAt: { type: DataTypes.DATE, allowNull: true },
+                openCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 }
+            };
+            for (const [column, definition] of Object.entries(recipientColumns)) {
+                if (!recipientDescription[column]) await queryInterface.addColumn(recipientTable, column, definition);
+            }
+        }).catch((error) => {
             schemaPromise = null;
             throw error;
         });
@@ -50,9 +71,12 @@ function campaignSummary(row) {
         templateTitle: row.templateTitle,
         recipientCount,
         sentCount,
+        deliveredCount: 0,
         failedCount,
+        openedCount: Number(row.openedCount || 0),
         pendingCount,
         delivery: deliveryPlan(recipientCount, {
+            batchSize: row.mailBatchSize,
             batchCount: row.mailBatchCount,
             delaySeconds: row.mailBatchDelaySeconds
         }),
@@ -66,12 +90,19 @@ function campaignSummary(row) {
 
 async function liveSummary(row) {
     const summary = campaignSummary(row);
-    const [sentCount, failedCount, pendingCount] = await Promise.all([
-        Recipient.count({ where: { campaignId: row.id, status: 'sent' } }),
-        Recipient.count({ where: { campaignId: row.id, status: 'failed' } }),
-        Recipient.count({ where: { campaignId: row.id, status: 'pending' } })
-    ]);
+    const grouped = await Recipient.findAll({
+        attributes: ['status', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
+        where: { campaignId: row.id },
+        group: ['status'],
+        raw: true
+    });
+    const counts = Object.fromEntries(grouped.map((item) => [item.status, Number(item.count || 0)]));
+    const deliveredCount = Number(counts.delivered || 0);
+    const sentCount = Number(counts.sent || 0) + deliveredCount;
+    const failedCount = Number(counts.failed || 0);
+    const pendingCount = Number(counts.pending || 0);
     summary.sentCount = sentCount;
+    summary.deliveredCount = deliveredCount;
     summary.failedCount = failedCount;
     summary.pendingCount = pendingCount;
     summary.recipientCount = sentCount + failedCount + pendingCount;
@@ -89,8 +120,12 @@ async function listCampaigns(hostId) {
 
 async function getCampaign(id, hostId, { includeRecipients = false } = {}) {
     await ensureSchema();
-    const row = await Campaign.findOne({ where: { id, hostId } });
+    let row = await Campaign.findOne({ where: { id, hostId } });
     if (!row) throw fail('Email campaign not found.', 'AWARENESS_EMAIL_CAMPAIGN_NOT_FOUND', 404);
+    if (includeRecipients) {
+        await refreshBrevoDelivery(row.id);
+        row = await Campaign.findByPk(row.id);
+    }
     const result = await liveSummary(row);
     if (includeRecipients) {
         const recipients = await Recipient.findAll({
@@ -105,10 +140,103 @@ async function getCampaign(id, hostId, { includeRecipients = false } = {}) {
             provider: item.provider || null,
             messageId: item.messageId || null,
             errorCode: item.errorCode || null,
-            sentAt: item.sentAt || null
+            sentAt: item.sentAt || null,
+            openedAt: item.openedAt || null,
+            lastOpenedAt: item.lastOpenedAt || null,
+            openCount: Number(item.openCount || 0)
         }));
     }
     return result;
+}
+
+function publicApiBase() {
+    return String(
+        process.env.AWARENESS_ASSET_BASE_URL ||
+        process.env.PUBLIC_API_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        'https://api.lmsgen.in'
+    ).trim().replace(/\/$/, '');
+}
+
+function withOpenTracking(html, recipientId) {
+    const pixel = `<img src="${publicApiBase()}/api/scorm/awareness-gallery/email-campaigns/track/open/${encodeURIComponent(recipientId)}.gif" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;overflow:hidden" />`;
+    const source = String(html || '');
+    return /<\/body>/i.test(source) ? source.replace(/<\/body>/i, `${pixel}</body>`) : `${source}${pixel}`;
+}
+
+async function recordRecipientOpen(recipientId) {
+    await ensureSchema();
+    const id = clean(String(recipientId || '').replace(/\.gif$/i, ''), 80);
+    if (!/^[0-9a-f-]{36}$/i.test(id)) return false;
+    const recipient = await Recipient.findByPk(id);
+    if (!recipient) return false;
+    const firstOpen = !recipient.openedAt;
+    const now = new Date();
+    recipient.openedAt = recipient.openedAt || now;
+    recipient.lastOpenedAt = now;
+    recipient.openCount = Number(recipient.openCount || 0) + 1;
+    await recipient.save();
+    if (firstOpen) await Campaign.increment('openedCount', { by: 1, where: { id: recipient.campaignId } });
+    return true;
+}
+
+function normalizedMessageId(value) {
+    return String(value || '').trim().replace(/^<|>$/g, '').toLowerCase();
+}
+
+function normalizedBrevoEvent(value) {
+    return String(value || '').trim().toLowerCase().replace(/[^a-z]/g, '');
+}
+
+async function refreshBrevoDelivery(campaignId) {
+    if (MailService.mailProvider() !== 'brevo' || typeof Delivery.getBrevoEvents !== 'function') return;
+    const recipients = await Recipient.findAll({
+        where: { campaignId, provider: 'brevo', messageId: { [Op.ne]: null } }
+    });
+    if (!recipients.length) return;
+    try {
+        const events = await Delivery.getBrevoEvents();
+        const byMessage = new Map();
+        for (const event of events) {
+            const key = normalizedMessageId(event.messageId || event['message-id']);
+            if (!key) continue;
+            if (!byMessage.has(key)) byMessage.set(key, []);
+            byMessage.get(key).push(event);
+        }
+        const failedEvents = new Set(['hardbounce', 'softbounce', 'blocked', 'invalid', 'error', 'spam']);
+        for (const recipient of recipients) {
+            const matching = byMessage.get(normalizedMessageId(recipient.messageId)) || [];
+            if (!matching.length) continue;
+            const delivered = matching.find((event) => normalizedBrevoEvent(event.event) === 'delivered');
+            const failed = matching.find((event) => failedEvents.has(normalizedBrevoEvent(event.event)));
+            const opened = matching.find((event) => ['opened', 'uniqueopened'].includes(normalizedBrevoEvent(event.event)));
+            if (delivered) {
+                recipient.status = 'delivered';
+                recipient.errorCode = null;
+                recipient.providerResponse = 'Delivered by Brevo';
+            } else if (failed) {
+                const eventName = normalizedBrevoEvent(failed.event) || 'failed';
+                recipient.status = 'failed';
+                recipient.errorCode = `BREVO_${eventName.toUpperCase()}`;
+                recipient.providerResponse = clean(failed.reason || eventName, 1000);
+            }
+            if (opened && !recipient.openedAt) {
+                const eventDate = new Date(opened.date || Date.now());
+                recipient.openedAt = Number.isNaN(eventDate.getTime()) ? new Date() : eventDate;
+                recipient.lastOpenedAt = recipient.openedAt;
+                recipient.openCount = Math.max(1, Number(recipient.openCount || 0));
+                await Campaign.increment('openedCount', { by: 1, where: { id: campaignId } });
+            }
+            await recipient.save();
+        }
+    } catch (error) {
+        logger.warn('awareness_brevo_event_refresh_failed', {
+            module: 'awareness-email-campaign',
+            campaignId,
+            code: error.code || null,
+            error: error.message
+        });
+    }
 }
 
 function previewCsv(csvText) {
@@ -127,6 +255,7 @@ async function createCampaign({
     name,
     userTemplateId,
     csvText,
+    mailBatchSize,
     mailBatchCount,
     mailBatchDelaySeconds
 }) {
@@ -141,6 +270,7 @@ async function createCampaign({
         throw fail(`An email campaign can contain up to ${MAX_RECIPIENTS} recipients.`, 'AWARENESS_EMAIL_CAMPAIGN_TOO_LARGE', 413);
     }
     const plan = deliveryPlan(parsed.learners.length, {
+        batchSize: mailBatchSize,
         batchCount: mailBatchCount,
         delaySeconds: mailBatchDelaySeconds
     });
@@ -155,6 +285,7 @@ async function createCampaign({
             templateTitle: template.title,
             status: 'draft',
             mailBatchCount: plan.batchCount,
+            mailBatchSize: plan.batchSize,
             mailBatchDelaySeconds: plan.delaySeconds,
             recipientCount: parsed.learners.length,
             sentCount: 0,
@@ -222,7 +353,7 @@ async function deliverCampaign(campaignId) {
                     const result = await Delivery.sendContent({
                         to: recipient.email,
                         subject: campaign.subjectSnapshot,
-                        html: prepared.html,
+                        html: withOpenTracking(prepared.html, recipient.id),
                         text,
                         attachments: prepared.attachments,
                         headers: {
@@ -255,6 +386,7 @@ async function deliverCampaign(campaignId) {
                 }
             },
             {
+                batchSize: campaign.mailBatchSize,
                 batchCount: campaign.mailBatchCount,
                 delaySeconds: campaign.mailBatchDelaySeconds
             },
@@ -396,5 +528,6 @@ module.exports = {
     deliverCampaign,
     activeCampaignCountForTemplate,
     campaignSummary,
-    liveSummary
+    liveSummary,
+    recordRecipientOpen
 };

@@ -85,7 +85,14 @@ export default function ScormAuth() {
   const [theme, setTheme] = useState(readScormPlatformTheme);
   const [googleWidth, setGoogleWidth] = useState(360);
 
-  useEffect(() => { prepareScormLogin(); }, []);
+  useEffect(() => {
+    prepareScormLogin();
+    const sessionMessage = sessionStorage.getItem('lmsgenSessionEndNotice');
+    if (sessionMessage) {
+      sessionStorage.removeItem('lmsgenSessionEndNotice');
+      setError(sessionMessage);
+    }
+  }, []);
   useEffect(() => { saveScormPlatformTheme(theme); }, [theme]);
 
   useEffect(() => {
