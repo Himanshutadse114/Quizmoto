@@ -9,7 +9,6 @@ const EmailCampaigns=require('../../services/awareness/AwarenessEmailCampaignSer
 const EmailCampaignReports=require('../../services/awareness/AwarenessEmailCampaignReportService');
 const MailService=require('../../services/mail/MailService');
 const { awarenessMailActionLimiter }=require('../../middleware/AiAbuseProtection');
-const TRACKING_PIXEL=Buffer.from('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==','base64');
 
 function editor(req,res,next){
     const role=String(req.scormRole||'').toLowerCase();
@@ -27,21 +26,6 @@ function superAdmin(req,res,next){
 function fail(res,error,fallback){
     res.status(error.status||500).json({ok:false,message:error.message||fallback,code:error.code||'AWARENESS_GALLERY_ERROR',warnings:error.warnings||undefined});
 }
-
-router.get('/email-campaigns/track/open/:recipientId.gif',async(req,res)=>{
-    res.setHeader('Content-Type','image/gif');
-    res.setHeader('Content-Length',String(TRACKING_PIXEL.length));
-    res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, private');
-    res.setHeader('Pragma','no-cache');
-    try{
-        await EmailCampaigns.recordRecipientOpen(req.params.recipientId,{
-            method:req.method,
-            headers:req.headers,
-            userAgent:req.get('user-agent')||''
-        });
-    }catch(_){/* Tracking must never break the email image response. */}
-    res.status(200).end(TRACKING_PIXEL);
-});
 
 router.get('/status',auth,editor,(req,res)=>{
     res.setHeader('Cache-Control','no-store');

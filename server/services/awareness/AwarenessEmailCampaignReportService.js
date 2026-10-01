@@ -22,7 +22,6 @@ function timestamp(value) {
 }
 
 function recipientStatus(recipient) {
-    if (recipient.openedAt) return 'Tracked open';
     if (recipient.status === 'delivered') return 'Delivered';
     if (recipient.status === 'sent') return 'Provider queued';
     if (recipient.status === 'failed') return 'Failed';
@@ -31,31 +30,23 @@ function recipientStatus(recipient) {
 
 function buildAwarenessCampaignReport(campaign) {
     const recipients = Array.isArray(campaign?.recipients) ? campaign.recipients : [];
-    const recipientTrackedOpens = recipients.filter((recipient) => recipient.openedAt).length;
-    const trackedOpens = Number.isFinite(Number(campaign?.openedCount))
-        ? Number(campaign.openedCount)
-        : recipientTrackedOpens;
     return {
         schemaVersion: 'lmsgen-report-v2',
         reportType: 'awareness-email-campaign',
         generatedAt: new Date().toISOString(),
         tenant: { name: 'LMSGEN Awareness Emails' },
         title: `${campaign?.name || 'Awareness campaign'} — Campaign Report`,
-        subtitle: `Delivery and recipient activity for ${campaign?.templateTitle || 'awareness email'}. Open tracking is an estimate because mail apps may block or proxy images.`,
+        subtitle: `Delivery and recipient status for ${campaign?.templateTitle || 'awareness email'}.`,
         summary: [
             { label: 'Recipients', value: Number(campaign?.recipientCount || recipients.length) },
             { label: 'Provider queued', value: Number(campaign?.sentCount || 0) },
             { label: 'Delivered', value: Number(campaign?.deliveredCount || 0) },
-            { label: 'Tracked opens', value: trackedOpens },
             { label: 'Failed', value: Number(campaign?.failedCount || 0) }
         ],
         columns: [
             { key: 'recipient', label: 'Recipient' },
             { key: 'email', label: 'Email' },
             { key: 'status', label: 'Status' },
-            { key: 'opens', label: 'Tracked opens' },
-            { key: 'firstOpen', label: 'First tracked open' },
-            { key: 'lastOpen', label: 'Last tracked open' },
             { key: 'queuedAt', label: 'Queued at' },
             { key: 'error', label: 'Delivery error' }
         ],
@@ -63,9 +54,6 @@ function buildAwarenessCampaignReport(campaign) {
             recipient: recipient.learnerName || 'Recipient',
             email: recipient.email || '',
             status: recipientStatus(recipient),
-            opens: Number(recipient.openCount || 0),
-            firstOpen: timestamp(recipient.openedAt),
-            lastOpen: timestamp(recipient.lastOpenedAt),
             queuedAt: timestamp(recipient.sentAt),
             error: recipient.errorCode || ''
         })),

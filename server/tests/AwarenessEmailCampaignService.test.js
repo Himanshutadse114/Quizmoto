@@ -9,6 +9,7 @@ const Campaign = require('../models/scorm/ScormAwarenessEmailCampaign');
 const Recipient = require('../models/scorm/ScormAwarenessEmailCampaignRecipient');
 const realBatch = require('../services/mail/MailBatchDeliveryService');
 const RealService = require('../services/awareness/AwarenessEmailCampaignService');
+let deliveredHtml = [];
 
 function immediateBatch(items, sender, input = {}, options = {}) {
     return (async () => {
@@ -33,14 +34,17 @@ const DeliveryService = proxyquire('../services/awareness/AwarenessEmailCampaign
         mailProvider: () => 'smtp'
     },
     './AwarenessMailDeliveryService': {
-        sendContent: async ({ to }) => ({
-            sent: true,
-            state: 'accepted',
-            provider: 'smtp',
-            messageId: '<' + to + '>',
-            accepted: [to],
-            rejected: []
-        })
+        sendContent: async ({ to, html }) => {
+            deliveredHtml.push(html);
+            return {
+                sent: true,
+                state: 'accepted',
+                provider: 'smtp',
+                messageId: '<' + to + '>',
+                accepted: [to],
+                rejected: []
+            };
+        }
     },
     './AwarenessTemplateGalleryService': {
         smtpEmbedImages: () => false,
@@ -68,6 +72,10 @@ describe('AwarenessEmailCampaignService', function () {
         });
     });
 
+    beforeEach(() => {
+        deliveredHtml = [];
+    });
+
     it('creates a draft campaign from a My Library template and CSV recipients', async () => {
         const result = await RealService.createCampaign({
             hostId: 42,
@@ -85,79 +93,6 @@ describe('AwarenessEmailCampaignService', function () {
         expect(result.campaign.delivery.batchCount).to.equal(2);
         expect(result.campaign.delivery.batchSize).to.equal(1);
         expect(await Recipient.count({ where: { campaignId: result.campaign.id } })).to.equal(2);
-
-        const recipient = await Recipient.findOne({ where: { campaignId: result.campaign.id } });
-        await RealService.recordRecipientOpen(recipient.id);
-        const opened = await RealService.getCampaign(result.campaign.id, 42, { includeRecipients: true });
-        expect(opened.openedCount).to.equal(1);
-        expect(opened.recipients.find((item) => item.id === recipient.id).openCount).to.equal(1);
-    });
-
-    it('does not count automated image scans as recipient opens', async () => {
-        const created = await RealService.createCampaign({
-            hostId: 42,
-            createdByUserId: 42,
-            name: 'Scanner Filtering',
-            userTemplateId: '11111111-1111-4111-8111-111111111111',
-            csvText: 'Email,Name\nscanner@example.com,Scanner\n'
-        });
-        const recipient = await Recipient.findOne({ where: { campaignId: created.campaign.id } });
-
-        const recorded = await RealService.recordRecipientOpen(recipient.id, {
-            method: 'GET',
-            headers: { 'user-agent': 'SecurityScannerBot/1.0' }
-        });
-
-        expect(recorded).to.equal(false);
-        await recipient.reload();
-        expect(recipient.openedAt).to.equal(null);
-        expect(recipient.openCount).to.equal(0);
-    });
-
-    it('records a valid tracking-pixel download immediately after delivery', async () => {
-        const created = await RealService.createCampaign({
-            hostId: 42,
-            createdByUserId: 42,
-            name: 'Immediate Prefetch Filtering',
-            userTemplateId: '11111111-1111-4111-8111-111111111111',
-            csvText: 'Email,Name\nprefetch@example.com,Prefetch\n'
-        });
-        const recipient = await Recipient.findOne({ where: { campaignId: created.campaign.id } });
-        recipient.sentAt = new Date();
-        await recipient.save();
-
-        const recorded = await RealService.recordRecipientOpen(recipient.id, {
-            method: 'GET',
-            headers: { 'user-agent': 'Mozilla/5.0' }
-        });
-
-        expect(recorded).to.equal(true);
-        await recipient.reload();
-        expect(recipient.openedAt).to.be.instanceOf(Date);
-        expect(recipient.openCount).to.equal(1);
-        expect(recipient.openTrackingVersion).to.equal(2);
-    });
-
-    it('does not expose historical opens recorded before scanner filtering', async () => {
-        const created = await RealService.createCampaign({
-            hostId: 42,
-            createdByUserId: 42,
-            name: 'Legacy Open Filtering',
-            userTemplateId: '11111111-1111-4111-8111-111111111111',
-            csvText: 'Email,Name\nlegacy@example.com,Legacy\n'
-        });
-        const recipient = await Recipient.findOne({ where: { campaignId: created.campaign.id } });
-        recipient.openedAt = new Date();
-        recipient.lastOpenedAt = recipient.openedAt;
-        recipient.openCount = 1;
-        recipient.openTrackingVersion = 0;
-        await recipient.save();
-        await Campaign.update({ openedCount: 1 }, { where: { id: created.campaign.id } });
-
-        const campaign = await RealService.getCampaign(created.campaign.id, 42, { includeRecipients: true });
-        expect(campaign.openedCount).to.equal(0);
-        expect(campaign.recipients[0].openedAt).to.equal(null);
-        expect(campaign.recipients[0].openCount).to.equal(0);
     });
 
     it('refuses templates that do not belong to the tenant My Library', async () => {
@@ -224,6 +159,10 @@ describe('AwarenessEmailCampaignService', function () {
         expect(completed.sentCount).to.equal(2);
         expect(completed.failedCount).to.equal(0);
         expect(completed.recipients.every((item) => item.status === 'sent')).to.equal(true);
+        expect(completed).not.to.have.property('openedCount');
+        expect(completed.recipients.every((item) => !Object.hasOwn(item, 'openCount'))).to.equal(true);
+        expect(deliveredHtml).to.have.length(2);
+        expect(deliveredHtml.every((html) => !String(html).includes('/track/open/'))).to.equal(true);
     });
 
     it('allows a sending campaign to be stopped and then deleted', async () => {

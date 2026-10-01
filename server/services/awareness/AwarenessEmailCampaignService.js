@@ -34,23 +34,10 @@ async function ensureSchema() {
             const campaignTable = Campaign.getTableName();
             const campaignDescription = await queryInterface.describeTable(campaignTable);
             const campaignColumns = {
-                mailBatchSize: { type: DataTypes.INTEGER, allowNull: true },
-                openedCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
-                verifiedOpenedCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 }
+                mailBatchSize: { type: DataTypes.INTEGER, allowNull: true }
             };
             for (const [column, definition] of Object.entries(campaignColumns)) {
                 if (!campaignDescription[column]) await queryInterface.addColumn(campaignTable, column, definition);
-            }
-            const recipientTable = Recipient.getTableName();
-            const recipientDescription = await queryInterface.describeTable(recipientTable);
-            const recipientColumns = {
-                openedAt: { type: DataTypes.DATE, allowNull: true },
-                lastOpenedAt: { type: DataTypes.DATE, allowNull: true },
-                openCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
-                openTrackingVersion: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 }
-            };
-            for (const [column, definition] of Object.entries(recipientColumns)) {
-                if (!recipientDescription[column]) await queryInterface.addColumn(recipientTable, column, definition);
             }
         }).catch((error) => {
             schemaPromise = null;
@@ -75,7 +62,6 @@ function campaignSummary(row) {
         sentCount,
         deliveredCount: 0,
         failedCount,
-        openedCount: Number(row.verifiedOpenedCount || 0),
         pendingCount,
         delivery: deliveryPlan(recipientCount, {
             batchSize: row.mailBatchSize,
@@ -134,9 +120,7 @@ async function getCampaign(id, hostId, { includeRecipients = false } = {}) {
             where: { campaignId: row.id },
             order: [['learnerName', 'ASC'], ['email', 'ASC']]
         });
-        result.recipients = recipients.map((item) => {
-            const verifiedOpen = Number(item.openTrackingVersion || 0) >= 2;
-            return {
+        result.recipients = recipients.map((item) => ({
             id: item.id,
             email: item.email,
             learnerName: item.learnerName || null,
@@ -144,64 +128,10 @@ async function getCampaign(id, hostId, { includeRecipients = false } = {}) {
             provider: item.provider || null,
             messageId: item.messageId || null,
             errorCode: item.errorCode || null,
-            sentAt: item.sentAt || null,
-            openedAt: verifiedOpen ? item.openedAt || null : null,
-            lastOpenedAt: verifiedOpen ? item.lastOpenedAt || null : null,
-            openCount: verifiedOpen ? Number(item.openCount || 0) : 0
-        };
-        });
+            sentAt: item.sentAt || null
+        }));
     }
     return result;
-}
-
-function publicApiBase() {
-    return String(
-        process.env.AWARENESS_ASSET_BASE_URL ||
-        process.env.PUBLIC_API_URL ||
-        process.env.RENDER_EXTERNAL_URL ||
-        'https://api.lmsgen.in'
-    ).trim().replace(/\/$/, '');
-}
-
-function withOpenTracking(html, recipientId) {
-    const pixel = `<img src="${publicApiBase()}/api/scorm/awareness-gallery/email-campaigns/track/open/${encodeURIComponent(recipientId)}.gif" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;overflow:hidden" />`;
-    const source = String(html || '');
-    return /<\/body>/i.test(source) ? source.replace(/<\/body>/i, `${pixel}</body>`) : `${source}${pixel}`;
-}
-
-function isAutomatedOpenRequest(request = {}) {
-    const method = String(request.method || 'GET').toUpperCase();
-    if (method !== 'GET') return true;
-
-    const headers = request.headers && typeof request.headers === 'object' ? request.headers : {};
-    const userAgent = String(request.userAgent || headers['user-agent'] || '').toLowerCase();
-    const purpose = [
-        headers.purpose,
-        headers['sec-purpose'],
-        headers['x-purpose'],
-        headers['x-moz']
-    ].filter(Boolean).join(' ').toLowerCase();
-
-    if (/\b(prefetch|preview|prerender)\b/.test(purpose)) return true;
-    return /(bot|crawler|spider|scanner|safelink|proofpoint|mimecast|barracuda|sophos|symantec|trendmicro|curl|wget|headless|phantomjs)/.test(userAgent);
-}
-
-async function recordRecipientOpen(recipientId, request = {}) {
-    await ensureSchema();
-    const id = clean(String(recipientId || '').replace(/\.gif$/i, ''), 80);
-    if (!/^[0-9a-f-]{36}$/i.test(id)) return false;
-    const recipient = await Recipient.findByPk(id);
-    if (!recipient) return false;
-    if (isAutomatedOpenRequest(request)) return false;
-    const firstOpen = Number(recipient.openTrackingVersion || 0) < 2 || !recipient.openedAt;
-    const now = new Date();
-    recipient.openedAt = firstOpen ? now : recipient.openedAt;
-    recipient.lastOpenedAt = now;
-    recipient.openCount = firstOpen ? 1 : Number(recipient.openCount || 0) + 1;
-    recipient.openTrackingVersion = 2;
-    await recipient.save();
-    if (firstOpen) await Campaign.increment('verifiedOpenedCount', { by: 1, where: { id: recipient.campaignId } });
-    return true;
 }
 
 function normalizedMessageId(value) {
@@ -386,7 +316,7 @@ async function deliverCampaign(campaignId) {
                     const result = await Delivery.sendContent({
                         to: recipient.email,
                         subject: campaign.subjectSnapshot,
-                        html: withOpenTracking(prepared.html, recipient.id),
+                        html: prepared.html,
                         text,
                         attachments: prepared.attachments,
                         headers: {
@@ -561,7 +491,5 @@ module.exports = {
     deliverCampaign,
     activeCampaignCountForTemplate,
     campaignSummary,
-    liveSummary,
-    recordRecipientOpen,
-    isAutomatedOpenRequest
+    liveSummary
 };

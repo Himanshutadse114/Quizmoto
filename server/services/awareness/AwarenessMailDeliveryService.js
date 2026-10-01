@@ -55,7 +55,10 @@ async function sendBrevo(cfg, recipients, message, headers = {}) {
         },
         body: JSON.stringify({
             sender: { name: cfg.fromName, email: cfg.fromAddress },
-            to: recipients.map((email) => ({ email })),
+            to: recipients.map((email) => ({
+                email,
+                contactPixelTrackingConsent: false
+            })),
             subject: message.subject,
             htmlContent: message.html,
             textContent: message.text || undefined,

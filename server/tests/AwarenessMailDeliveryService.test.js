@@ -130,4 +130,46 @@ describe('AwarenessMailDeliveryService', () => {
         expect(error.providerResponse).to.include('550');
     });
 
+    it('declines identifiable Brevo pixel tracking for awareness recipients', async () => {
+        const originalFetch = global.fetch;
+        let requestBody = null;
+        global.fetch = async (_url, options) => {
+            requestBody = JSON.parse(options.body);
+            return {
+                ok: true,
+                status: 201,
+                text: async () => JSON.stringify({ messageId: '<brevo@example.com>' })
+            };
+        };
+        const service = proxyquire('../services/awareness/AwarenessMailDeliveryService', {
+            '../mail/MailService': {
+                isConfigured: () => true,
+                providerConfig: () => ({
+                    provider: 'brevo',
+                    apiKey: 'test-key',
+                    apiHost: 'api.brevo.com',
+                    apiPath: '/v3/smtp/email',
+                    fromName: 'LMSGEN',
+                    fromAddress: 'training@example.com'
+                })
+            }
+        });
+
+        try {
+            await service.sendContent({
+                to: 'learner@example.com',
+                subject: 'Awareness test',
+                html: '<p>Test</p>',
+                text: 'Test'
+            });
+        } finally {
+            global.fetch = originalFetch;
+        }
+
+        expect(requestBody.to).to.deep.equal([{
+            email: 'learner@example.com',
+            contactPixelTrackingConsent: false
+        }]);
+    });
+
 });

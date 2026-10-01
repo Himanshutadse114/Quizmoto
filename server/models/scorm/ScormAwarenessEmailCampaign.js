@@ -69,16 +69,6 @@ const ScormAwarenessEmailCampaign = sequelize.define('ScormAwarenessEmailCampaig
         allowNull: false,
         defaultValue: 0
     },
-    openedCount: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 0
-    },
-    verifiedOpenedCount: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 0
-    },
     startedAt: {
         type: DataTypes.DATE,
         allowNull: true

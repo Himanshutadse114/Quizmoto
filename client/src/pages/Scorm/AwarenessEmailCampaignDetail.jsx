@@ -14,7 +14,6 @@ function statusLabel(value){
 }
 
 function recipientStatus(item){
-  if(item?.openedAt)return 'Tracked open';
   if(item?.status==='delivered')return 'Delivered';
   if(item?.status==='sent')return 'Provider queued';
   if(item?.status==='failed')return 'Failed';
@@ -153,7 +152,6 @@ export default function AwarenessEmailCampaignDetail(){
         <Metric label="Recipients" value={campaign.recipientCount||0} icon={Users}/>
         <Metric label="Provider queued" value={campaign.sentCount||0}/>
         <Metric label="Delivered" value={campaign.deliveredCount||0}/>
-        <Metric label="Tracked opens" value={campaign.openedCount||0}/>
         <Metric label="Failed" value={campaign.failedCount||0}/>
       </div>
       <div className="aw-campaign-detail-progress">
@@ -164,8 +162,8 @@ export default function AwarenessEmailCampaignDetail(){
     </section>
 
     <section className="aw-recipient-activity aw-recipient-activity-page">
-      <div className="aw-recipient-activity-head"><strong>Recipient activity</strong><span>Open tracking is an estimate because some mail apps block or proxy images.</span></div>
-      {recipients.length?<div className="aw-recipient-table"><div className="aw-recipient-table-row is-head"><span>Recipient</span><span>Status</span><span>Tracked opens</span><span>Last activity</span></div>{recipients.map(item=><div className="aw-recipient-table-row" key={item.id}><span><strong>{item.learnerName||'Recipient'}</strong><small>{item.email}</small></span><span data-status={recipientStatus(item).toLowerCase().replace(/\s+/g,'-')} title={item.errorCode||''}>{recipientStatus(item)}</span><span>{item.openCount||0}</span><span>{item.lastOpenedAt?new Date(item.lastOpenedAt).toLocaleString():item.sentAt?`Queued ${new Date(item.sentAt).toLocaleString()}`:'—'}</span></div>)}</div>:<div className="aw-muted-copy">No recipient activity is available yet.</div>}
+      <div className="aw-recipient-activity-head"><strong>Recipient delivery</strong><span>Delivery status is reported by the configured email provider.</span></div>
+      {recipients.length?<div className="aw-recipient-table"><div className="aw-recipient-table-row is-head"><span>Recipient</span><span>Status</span><span>Queued at</span></div>{recipients.map(item=><div className="aw-recipient-table-row" key={item.id}><span><strong>{item.learnerName||'Recipient'}</strong><small>{item.email}</small></span><span data-status={recipientStatus(item).toLowerCase().replace(/\s+/g,'-')} title={item.errorCode||''}>{recipientStatus(item)}</span><span>{item.sentAt?new Date(item.sentAt).toLocaleString():'—'}</span></div>)}</div>:<div className="aw-muted-copy">No recipient delivery information is available yet.</div>}
     </section>
   </div>;
 }
