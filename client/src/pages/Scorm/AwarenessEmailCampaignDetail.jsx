@@ -138,7 +138,7 @@ export default function AwarenessEmailCampaignDetail(){
         <button type="button" className="aw-btn-secondary" onClick={()=>load()} disabled={loading||!!busy}><RefreshCw size={13}/> Refresh</button>
         {campaign.status==='draft'&&<button type="button" className="aw-btn-primary" disabled={!!busy} onClick={()=>runAction('start')}><Play size={12}/>{busy==='start'?'Starting…':'Start campaign'}</button>}
         {campaign.status==='sending'&&<button type="button" className="aw-btn-secondary" disabled={!!busy} onClick={()=>runAction('stop')}><Square size={11}/>{busy==='stop'?'Stopping…':'Stop campaign'}</button>}
-        {['draft','stopped'].includes(campaign.status)&&<button type="button" className="aw-btn-secondary aw-danger" disabled={!!busy} onClick={()=>runAction('delete')}><Trash2 size={12}/>{busy==='delete'?'Deleting…':'Delete'}</button>}
+        {campaign.status!=='sending'&&<button type="button" className="aw-btn-secondary aw-danger" disabled={!!busy} onClick={()=>runAction('delete')}><Trash2 size={12}/>{busy==='delete'?'Deleting…':'Delete campaign'}</button>}
       </div>
     </div>
 

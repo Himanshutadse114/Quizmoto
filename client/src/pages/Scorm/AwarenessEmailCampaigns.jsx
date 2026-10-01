@@ -131,14 +131,18 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
 
   const createCampaign=async()=>{
     setError('');
-    if(name.trim().length<2)return setError('Enter a campaign name.');
+    const campaignName=name.trim();
+    if(campaignName.length<2)return setError('Enter a campaign name.');
+    if(campaigns.some(item=>String(item.name||'').trim().toLowerCase()===campaignName.toLowerCase())){
+      return setError('A campaign with this name already exists. Choose a unique campaign name.');
+    }
     if(!selectedTemplateId)return setError('Select a template from My Library.');
     if(!learnerCount)return setError(entryMode==='manual'?'Add at least one recipient.':'Upload a recipient CSV first.');
     setBusy('create');
     try{
       const recipientsCsv=entryMode==='manual'?manualToCsv(manualLearners):csvText;
       const res=await axios.post(apiUrl(API),{
-        name:name.trim(),
+        name:campaignName,
         userTemplateId:selectedTemplateId,
         csvText:recipientsCsv,
         mailBatchSize:effectiveBatchSize,
@@ -147,7 +151,7 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
       const campaign=res.data?.campaign;
       setCampaigns(current=>[campaign,...current]);
       resetCreate();
-      onNotice?.({type:'success',text:`Email campaign “${campaign?.name||name.trim()}” created as a draft.`});
+      onNotice?.({type:'success',text:`Email campaign “${campaign?.name||campaignName}” created as a draft.`});
     }catch(err){setError(err.response?.data?.message||'Unable to create the email campaign.')}
     finally{setBusy('')}
   };
@@ -287,7 +291,7 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
           <div>
             {campaign.status==='draft'&&<button type="button" className="aw-btn-primary" disabled={actionBusy||!mail?.configured} onClick={()=>startCampaign(campaign)}><Play size={12}/>{actionBusy?'Starting…':'Start'}</button>}
             {campaign.status==='sending'&&<button type="button" className="aw-btn-secondary" disabled={actionBusy} onClick={()=>stopCampaign(campaign)}><Square size={11}/>{actionBusy?'Stopping…':'Stop'}</button>}
-            {['draft','stopped'].includes(campaign.status)&&<button type="button" className="aw-btn-secondary aw-danger" disabled={actionBusy} onClick={()=>deleteCampaign(campaign)}><Trash2 size={12}/> Delete</button>}
+            {campaign.status!=='sending'&&<button type="button" className="aw-btn-secondary aw-danger" disabled={actionBusy} onClick={()=>deleteCampaign(campaign)}><Trash2 size={12}/>{busy==='delete:'+campaign.id?'Deleting…':'Delete'}</button>}
           </div>
         </div>
       </article>;

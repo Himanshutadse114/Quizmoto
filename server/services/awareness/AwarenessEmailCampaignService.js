@@ -278,6 +278,23 @@ async function createCampaign({
     await ensureSchema();
     const campaignName = clean(name, 180);
     if (campaignName.length < 2) throw fail('Enter a campaign name.', 'AWARENESS_EMAIL_CAMPAIGN_NAME_REQUIRED');
+    const duplicateName = await Campaign.findOne({
+        where: {
+            hostId,
+            [Op.and]: sequelize.where(
+                sequelize.fn('LOWER', sequelize.fn('TRIM', sequelize.col('name'))),
+                campaignName.toLowerCase()
+            )
+        },
+        attributes: ['id']
+    });
+    if (duplicateName) {
+        throw fail(
+            'A campaign with this name already exists. Choose a unique campaign name.',
+            'AWARENESS_EMAIL_CAMPAIGN_NAME_EXISTS',
+            409
+        );
+    }
     const template = await UserTemplate.findOne({ where: { id: userTemplateId, hostId } });
     if (!template) throw fail('Choose a template from My Library.', 'AWARENESS_EMAIL_CAMPAIGN_TEMPLATE_REQUIRED', 404);
 
@@ -510,8 +527,8 @@ async function deleteCampaign(id, hostId) {
     await ensureSchema();
     const campaign = await Campaign.findOne({ where: { id, hostId } });
     if (!campaign) throw fail('Email campaign not found.', 'AWARENESS_EMAIL_CAMPAIGN_NOT_FOUND', 404);
-    if (!['draft', 'stopped'].includes(campaign.status)) {
-        throw fail('Only draft or stopped email campaigns can be deleted.', 'AWARENESS_EMAIL_CAMPAIGN_DELETE_FORBIDDEN', 409);
+    if (campaign.status === 'sending') {
+        throw fail('Stop the email campaign before deleting it.', 'AWARENESS_EMAIL_CAMPAIGN_DELETE_FORBIDDEN', 409);
     }
     await sequelize.transaction(async (transaction) => {
         await Recipient.destroy({ where: { campaignId: campaign.id }, transaction });

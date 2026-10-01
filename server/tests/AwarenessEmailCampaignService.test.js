@@ -176,6 +176,33 @@ describe('AwarenessEmailCampaignService', function () {
         expect(error.code).to.equal('AWARENESS_EMAIL_CAMPAIGN_TEMPLATE_REQUIRED');
     });
 
+    it('requires a unique campaign name within the same workspace', async () => {
+        await RealService.createCampaign({
+            hostId: 42,
+            createdByUserId: 42,
+            name: 'Unique Campaign Name',
+            userTemplateId: '11111111-1111-4111-8111-111111111111',
+            csvText: 'Email,Name\nfirst@example.com,First\n'
+        });
+
+        let error;
+        try {
+            await RealService.createCampaign({
+                hostId: 42,
+                createdByUserId: 42,
+                name: '  unique campaign name  ',
+                userTemplateId: '11111111-1111-4111-8111-111111111111',
+                csvText: 'Email,Name\nsecond@example.com,Second\n'
+            });
+        } catch (caught) {
+            error = caught;
+        }
+
+        expect(error).to.exist;
+        expect(error.code).to.equal('AWARENESS_EMAIL_CAMPAIGN_NAME_EXISTS');
+        expect(error.status).to.equal(409);
+    });
+
     it('starts a draft and records accepted recipients as completed delivery', async () => {
         const created = await RealService.createCampaign({
             hostId: 42,
@@ -211,6 +238,25 @@ describe('AwarenessEmailCampaignService', function () {
         await DeliveryService.startCampaign(created.campaign.id, 42);
         const stopped = await RealService.stopCampaign(created.campaign.id, 42);
         expect(stopped.status).to.equal('stopped');
+
+        const removed = await RealService.deleteCampaign(created.campaign.id, 42);
+        expect(removed.removed).to.equal(true);
+        expect(await Campaign.count({ where: { id: created.campaign.id } })).to.equal(0);
+    });
+
+    it('allows a completed campaign to be deleted', async () => {
+        const created = await DeliveryService.createCampaign({
+            hostId: 42,
+            createdByUserId: 42,
+            name: 'Completed Campaign Delete',
+            userTemplateId: '11111111-1111-4111-8111-111111111111',
+            csvText: 'Email,Name\ncomplete@example.com,Complete\n'
+        });
+
+        await DeliveryService.startCampaign(created.campaign.id, 42);
+        await DeliveryService.deliverCampaign(created.campaign.id);
+        const completed = await Campaign.findByPk(created.campaign.id);
+        expect(completed.status).to.equal('completed');
 
         const removed = await RealService.deleteCampaign(created.campaign.id, 42);
         expect(removed.removed).to.equal(true);
