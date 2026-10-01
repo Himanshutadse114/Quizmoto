@@ -376,7 +376,7 @@ export default function ScormReports() {
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 reports-muted" />
               <input
                 id="learner-report-search"
-                type="text"
+                type="search"
                 value={learnerQuery}
                 onFocus={() => setShowSuggestions(true)}
                 onChange={(event) => {
@@ -386,7 +386,7 @@ export default function ScormReports() {
                 }}
                 placeholder="Search learner@company.com"
                 autoComplete="off"
-                className="w-full min-h-[42px] pl-9 pr-9 text-xs"
+                className="scorm-search-input has-clear-action w-full min-h-[42px] text-xs"
               />
               {learnerQuery && <button type="button" onClick={() => { setLearnerQuery(''); setSelectedLearner(null); setShowSuggestions(true); }} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 grid place-items-center"><X size={13} /></button>}
             </div>

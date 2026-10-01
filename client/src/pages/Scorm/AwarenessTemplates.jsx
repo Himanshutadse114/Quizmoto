@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
+import { useSearchParams } from 'react-router-dom';
 import {
   Archive,
   CheckCircle2,
@@ -69,10 +70,12 @@ function Card({template,central,onPreview,onImport,onEdit,onDelete,onArchive,onT
 
 export default function AwarenessTemplates(){
   const {token,user}=useAuth();
+  const [searchParams,setSearchParams]=useSearchParams();
   const headers=useMemo(()=>({Authorization:'Bearer '+token}),[token]);
   const isSuperAdmin=Boolean(user?.isSuperAdmin||user?.role==='super_admin');
 
-  const [tab,setTab]=useState('gallery');
+  const requestedTab=searchParams.get('tab');
+  const [tab,setTab]=useState(['gallery','mine','campaigns'].includes(requestedTab)?requestedTab:'gallery');
   const [central,setCentral]=useState([]);
   const [mine,setMine]=useState([]);
   const [status,setStatus]=useState({mail:{configured:false,provider:null},maxRecipientsPerSend:50});
@@ -127,6 +130,15 @@ export default function AwarenessTemplates(){
   },[token,headers,isSuperAdmin]);
 
   useEffect(()=>{load()},[load]);
+  useEffect(()=>{
+    if(['gallery','mine','campaigns'].includes(requestedTab)&&requestedTab!==tab)setTab(requestedTab);
+  },[requestedTab,tab]);
+
+  const selectTab=useCallback((nextTab)=>{
+    setTab(nextTab);
+    setEditor(null);
+    setSearchParams(nextTab==='gallery'?{}:{tab:nextTab},{replace:true});
+  },[setSearchParams]);
 
   const filteredCentral=useMemo(()=>{
     const q=search.trim().toLowerCase();
@@ -160,7 +172,7 @@ export default function AwarenessTemplates(){
       if(imported)setMine(current=>[imported,...current]);
       setNotice({type:'success',text:'Template added to My Library. You can now preview, edit, send or export it.'});
       setEditor(null);
-      setTab('mine');
+      selectTab('mine');
     }catch(error){setNotice({type:'error',text:apiError(error,'Unable to add this template to My Library.')})}
     finally{setBusy('')}
   };
@@ -471,9 +483,9 @@ export default function AwarenessTemplates(){
     <Notice notice={notice} onClose={()=>setNotice(null)}/>
 
     <div className="aw-tabs" role="tablist" aria-label="Awareness email sections">
-      <button type="button" role="tab" aria-selected={tab==='gallery'} className={tab==='gallery'?'is-active':''} onClick={()=>{setTab('gallery');setEditor(null)}}><Library size={15}/> Template Gallery <span>{central.filter(x=>x.isActive).length}</span></button>
-      <button type="button" role="tab" aria-selected={tab==='mine'} className={tab==='mine'?'is-active':''} onClick={()=>{setTab('mine');setEditor(null)}}><CheckCircle2 size={15}/> My Library <span>{mine.length}</span></button>
-      <button type="button" role="tab" aria-selected={tab==='campaigns'} className={tab==='campaigns'?'is-active':''} onClick={()=>{setTab('campaigns');setEditor(null)}}><Send size={15}/> Email Campaigns</button>
+      <button type="button" role="tab" aria-selected={tab==='gallery'} className={tab==='gallery'?'is-active':''} onClick={()=>selectTab('gallery')}><Library size={15}/> Template Gallery <span>{central.filter(x=>x.isActive).length}</span></button>
+      <button type="button" role="tab" aria-selected={tab==='mine'} className={tab==='mine'?'is-active':''} onClick={()=>selectTab('mine')}><CheckCircle2 size={15}/> My Library <span>{mine.length}</span></button>
+      <button type="button" role="tab" aria-selected={tab==='campaigns'} className={tab==='campaigns'?'is-active':''} onClick={()=>selectTab('campaigns')}><Send size={15}/> Email Campaigns</button>
     </div>
 
     {tab==='gallery'&&<section>
@@ -484,7 +496,7 @@ export default function AwarenessTemplates(){
           <label className={'aw-btn-primary '+(uploading?'is-disabled':'')}><Upload size={15}/>{uploading?'Importing ZIP…':'Add Template ZIP'}<input type="file" accept=".zip,application/zip" disabled={uploading} onChange={e=>{uploadZip(e.target.files?.[0]);e.target.value=''}}/></label>
         </div>
       </div>}
-      <div className="aw-gallery-tools"><div className="aw-search"><Search size={14}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search templates or categories"/></div><span>{filteredCentral.length} template{filteredCentral.length===1?'':'s'}</span></div>
+      <div className="aw-gallery-tools"><div className="aw-search scorm-search-shell"><Search size={14}/><input type="search" className="scorm-search-shell-input" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search templates or categories"/></div><span>{filteredCentral.length} template{filteredCentral.length===1?'':'s'}</span></div>
       <div className="aw-template-grid">
         {filteredCentral.map(item=><Card key={item.id} template={item} central onPreview={previewCentral} onImport={importTemplate} onThumbnail={isSuperAdmin?uploadThumbnail:null} onArchive={isSuperAdmin?archiveCentral:null} imported={mine.some(x=>x.centralTemplateId===item.id)}/>)}
       </div>
@@ -497,7 +509,7 @@ export default function AwarenessTemplates(){
 
     {tab==='mine'&&!editor&&<section>
       <div className="aw-section-copy"><h2>My Library</h2><p>These are your editable copies. Sending and EML export are available only here.</p></div>
-      {mine.length?<div className="aw-template-grid">{mine.map(item=><Card key={item.id} template={item} onPreview={previewMine} onEdit={openEditor} onSend={openSend} onExport={exportMine} onDelete={deleteMine}/>)}</div>:<div className="aw-empty"><Library size={30}/><h2>Your library is empty</h2><p>Choose a template from the gallery and add it here first.</p><button className="aw-btn-primary" onClick={()=>setTab('gallery')}><Plus size={14}/> Browse Template Gallery</button></div>}
+      {mine.length?<div className="aw-template-grid">{mine.map(item=><Card key={item.id} template={item} onPreview={previewMine} onEdit={openEditor} onSend={openSend} onExport={exportMine} onDelete={deleteMine}/>)}</div>:<div className="aw-empty"><Library size={30}/><h2>Your library is empty</h2><p>Choose a template from the gallery and add it here first.</p><button className="aw-btn-primary" onClick={()=>selectTab('gallery')}><Plus size={14}/> Browse Template Gallery</button></div>}
     </section>}
 
     {tab==='mine'&&editor&&<section className="aw-editor">

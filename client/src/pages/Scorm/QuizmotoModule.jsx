@@ -154,7 +154,7 @@ export default function QuizmotoModule() {
         <div className="scorm-panel-header flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div><div className="scorm-eyebrow">Quiz management</div><h2 className="text-[18px] mt-1">Quiz library</h2></div>
           <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
-            <label className="rounded-xl border border-[var(--scorm-line)] bg-[var(--scorm-surface-soft)] px-3 flex items-center gap-2 min-w-[260px] focus-within:border-[var(--scorm-accent)]"><Search size={14} className="text-[var(--scorm-muted)]" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search quizzes" className="w-full bg-transparent border-0 p-2 text-xs outline-none" /></label>
+            <label className="scorm-search-shell rounded-xl border border-[var(--scorm-line)] bg-[var(--scorm-surface-soft)] px-3 min-w-[260px] focus-within:border-[var(--scorm-accent)]"><Search size={14} className="text-[var(--scorm-muted)]" /><input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search quizzes" className="scorm-search-shell-input text-xs" /></label>
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="rounded-xl border border-[var(--scorm-line)] bg-[var(--scorm-surface-soft)] px-3 py-2.5 text-xs"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="az">A–Z title</option></select>
           </div>
         </div>

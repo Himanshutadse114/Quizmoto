@@ -194,7 +194,7 @@ export default function ScormTracking() {
         <div className="p-4 md:p-5 border-b grid grid-cols-1 xl:grid-cols-[1fr_auto_auto] gap-3" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--scorm-muted)' }} />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search learner, course or last location" className="w-full pl-9 pr-3 py-2.5 text-xs" />
+            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search learner, course or last location" className="scorm-search-input w-full py-2.5 text-xs" />
           </div>
           <select value={courseId} onChange={(e) => setCourseId(e.target.value)} className="px-3 py-2.5 text-xs font-medium min-w-[180px]">
             <option value="all">All direct courses</option>

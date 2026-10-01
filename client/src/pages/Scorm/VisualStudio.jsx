@@ -279,10 +279,11 @@ export default function VisualStudio() {
             <div className="relative flex-1">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8295ae]" />
               <input
+                type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search courses"
-                className="scorm-course-search w-full pl-9 pr-3 py-2.5 text-sm"
+                className="scorm-course-search scorm-search-input w-full py-2.5 text-sm"
               />
             </div>
             <select

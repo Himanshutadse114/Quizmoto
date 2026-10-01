@@ -40,6 +40,7 @@ import './scormLightTheme.css';
 import './scormLightContrastGuard.css';
 import './scormLightRoutePolish.css';
 import './courseGeneratorThemeFix.css';
+import './scormSearchControls.css';
 
 const OPERATIONAL_NAV_GROUPS = [
   {

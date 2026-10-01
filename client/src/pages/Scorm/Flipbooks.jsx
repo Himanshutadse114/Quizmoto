@@ -133,7 +133,7 @@ function AdminLimits({ token }) {
     <section className="flip-admin-panel">
       <div className="flip-section-heading">
         <div><div className="flip-kicker"><ShieldCheck size={13} /> Super Admin</div><h2>User Publica limits</h2><p>Set how many publications each account can keep and share. Leave blank for unlimited.</p></div>
-        <div className="flip-search"><Search size={14} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search user or email" /></div>
+        <div className="flip-search scorm-search-shell"><Search size={14} /><input type="search" className="scorm-search-shell-input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search user or email" /></div>
       </div>
       {error && <div className="flip-error">{error}</div>}
       {loading ? <div className="flip-admin-loading"><RefreshCw size={16} className="animate-spin" /> Loading users…</div> : (

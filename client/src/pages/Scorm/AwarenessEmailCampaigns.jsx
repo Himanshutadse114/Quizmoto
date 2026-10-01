@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
+  ArrowRight,
   CheckCircle2,
   Clock3,
   Download,
@@ -33,13 +35,6 @@ function manualToCsv(items){
 function statusLabel(value){
   return {draft:'Draft',sending:'Sending',completed:'Submitted',partial:'Submitted with errors',failed:'Failed',stopped:'Stopped'}[value]||value||'Draft';
 }
-function recipientStatus(item){
-  if(item?.openedAt)return 'Opened';
-  if(item?.status==='delivered')return 'Delivered';
-  if(item?.status==='sent')return 'Provider queued';
-  if(item?.status==='failed')return 'Failed';
-  return 'Pending';
-}
 function formatDuration(seconds){
   const value=Math.max(0,Number(seconds)||0);
   if(value<60)return `${value} second${value===1?'':'s'}`;
@@ -57,6 +52,7 @@ function formatEstimate(seconds){
 
 export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice}){
   const {token}=useAuth();
+  const navigate=useNavigate();
   const headers=useMemo(()=>({Authorization:`Bearer ${token}`}),[token]);
   const fileRef=useRef(null);
   const [campaigns,setCampaigns]=useState([]);
@@ -75,8 +71,6 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
   const [manualEmail,setManualEmail]=useState('');
   const [batchSize,setBatchSize]=useState(10);
   const [batchDelay,setBatchDelay]=useState(300);
-  const [expandedCampaignId,setExpandedCampaignId]=useState('');
-  const [campaignRecipients,setCampaignRecipients]=useState({});
 
   const load=useCallback(async({showLoader=true}={})=>{
     if(!token)return;
@@ -192,19 +186,6 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
     finally{setBusy('')}
   };
 
-  const toggleRecipients=async(campaign)=>{
-    if(expandedCampaignId===campaign.id){setExpandedCampaignId('');return}
-    setExpandedCampaignId(campaign.id);
-    setBusy('recipients:'+campaign.id);setError('');
-    try{
-      const res=await axios.get(apiUrl(API+'/'+campaign.id),{headers});
-      const detail=res.data?.campaign||{};
-      setCampaignRecipients(current=>({...current,[campaign.id]:detail.recipients||[]}));
-      setCampaigns(current=>current.map(item=>item.id===campaign.id?{...item,openedCount:detail.openedCount??item.openedCount}:item));
-    }catch(err){setError(err.response?.data?.message||'Unable to load recipient activity.')}
-    finally{setBusy('')}
-  };
-
   if(creating){
     return <div className="aw-campaigns">
       <div className="aw-campaign-page-head">
@@ -292,28 +273,23 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
       const processed=Number(campaign.sentCount||0)+Number(campaign.failedCount||0);
       const progress=campaign.recipientCount?Math.min(100,Math.round((processed/campaign.recipientCount)*100)):0;
       return <article key={campaign.id}>
-        <div className="aw-campaign-main">
+        <div className="aw-campaign-list-row">
           <div className="aw-campaign-name"><strong>{campaign.name}</strong><span className={'aw-campaign-status is-'+campaign.status}>{statusLabel(campaign.status)}</span><small>{campaign.templateTitle}</small></div>
-          <div><span>Recipients</span><strong><Users size={12}/>{campaign.recipientCount}</strong></div>
-          <div><span>Provider queued</span><strong>{campaign.sentCount}</strong></div>
-          <div><span>Delivered</span><strong>{campaign.deliveredCount||0}</strong></div>
-          <div><span>Opened</span><strong>{campaign.openedCount||0}</strong></div>
-          <div><span>Failed</span><strong>{campaign.failedCount}</strong></div>
-          <div className="aw-campaign-progress"><span>Delivery</span><div><i style={{width:progress+'%'}}/></div><small>{progress}%</small></div>
+          <div className="aw-campaign-list-stat"><span>Recipients</span><strong><Users size={13}/>{campaign.recipientCount}</strong></div>
+          <div className="aw-campaign-list-stat"><span>Processed</span><strong>{processed} of {campaign.recipientCount}</strong></div>
+          <div className="aw-campaign-list-progress" aria-label={`Campaign ${progress}% processed`}><span style={{width:progress+'%'}}/></div>
+          <button type="button" className="aw-btn-secondary aw-statistics-link" onClick={()=>navigate('/scorm/awareness-templates/campaigns/'+campaign.id)}>
+            View statistics <ArrowRight size={13}/>
+          </button>
         </div>
         <div className="aw-campaign-row-foot">
           <span>Up to {campaign.delivery?.batchSize||1} emails per batch · {formatDuration(campaign.delivery?.delaySeconds||0)} pause · provider acceptance is not inbox delivery</span>
           <div>
-            <button type="button" className="aw-btn-secondary" disabled={busy==='recipients:'+campaign.id} onClick={()=>toggleRecipients(campaign)}><Users size={12}/>{busy==='recipients:'+campaign.id?'Loading…':expandedCampaignId===campaign.id?'Hide activity':'Recipient activity'}</button>
             {campaign.status==='draft'&&<button type="button" className="aw-btn-primary" disabled={actionBusy||!mail?.configured} onClick={()=>startCampaign(campaign)}><Play size={12}/>{actionBusy?'Starting…':'Start'}</button>}
             {campaign.status==='sending'&&<button type="button" className="aw-btn-secondary" disabled={actionBusy} onClick={()=>stopCampaign(campaign)}><Square size={11}/>{actionBusy?'Stopping…':'Stop'}</button>}
             {['draft','stopped'].includes(campaign.status)&&<button type="button" className="aw-btn-secondary aw-danger" disabled={actionBusy} onClick={()=>deleteCampaign(campaign)}><Trash2 size={12}/> Delete</button>}
           </div>
         </div>
-        {expandedCampaignId===campaign.id&&<div className="aw-recipient-activity">
-          <div className="aw-recipient-activity-head"><strong>Recipient activity</strong><span>Open tracking is an estimate because some mail apps block or proxy images.</span></div>
-          {(campaignRecipients[campaign.id]||[]).length?<div className="aw-recipient-table"><div className="aw-recipient-table-row is-head"><span>Recipient</span><span>Status</span><span>Opens</span><span>Last activity</span></div>{campaignRecipients[campaign.id].map(item=><div className="aw-recipient-table-row" key={item.id}><span><strong>{item.learnerName||'Recipient'}</strong><small>{item.email}</small></span><span data-status={recipientStatus(item).toLowerCase().replace(/\s+/g,'-')} title={item.errorCode||''}>{recipientStatus(item)}</span><span>{item.openCount||0}</span><span>{item.lastOpenedAt?new Date(item.lastOpenedAt).toLocaleString():item.sentAt?`Queued ${new Date(item.sentAt).toLocaleString()}`:'—'}</span></div>)}</div>:<div className="aw-muted-copy">No recipient activity is available yet.</div>}
-        </div>}
       </article>;
     })}</div>:<div className="aw-empty aw-campaign-empty"><Send size={26}/><h3>No email campaigns yet</h3><p>Create a campaign using a template from My Library and a CSV or manually entered recipient list.</p>{templates.length?<button type="button" className="aw-btn-primary" onClick={()=>setCreating(true)}><Plus size={13}/> Create email campaign</button>:null}</div>}
   </div>;

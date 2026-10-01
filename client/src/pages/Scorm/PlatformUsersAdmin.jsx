@@ -254,7 +254,7 @@ export default function PlatformUsersAdmin() {
 
       <section className="scorm-panel rounded-2xl border overflow-hidden">
         <div className="p-3.5 md:p-4 border-b flex flex-col md:flex-row md:items-center gap-3">
-          <div className="flex-1 h-10 rounded-xl border px-3 flex items-center gap-2"><Search size={14} className="opacity-45" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, email, tenant or sign-in method" className="w-full bg-transparent outline-none text-xs" /></div>
+          <div className="scorm-search-shell flex-1 h-10 rounded-xl border px-3"><Search size={14} className="opacity-45" /><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, email, tenant or sign-in method" className="scorm-search-shell-input text-xs" /></div>
           <div className="inline-flex rounded-xl border p-1 self-start md:self-auto">
             {[['all', 'All'], ['unassigned', 'Unassigned'], ['assigned', 'Assigned']].map(([value, label]) => <button key={value} type="button" onClick={() => setScope(value)} className="h-8 px-3 rounded-lg text-[10px] font-semibold" style={{ background: scope === value ? 'rgba(79,201,191,.12)' : 'transparent', color: scope === value ? '#4FC9BF' : 'var(--scorm-muted)' }}>{label}</button>)}
           </div>

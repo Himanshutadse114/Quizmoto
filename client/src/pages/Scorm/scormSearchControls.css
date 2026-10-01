@@ -1,0 +1,48 @@
+/* Search fields may live inside a styled shell or use an absolutely positioned
+ * icon. Keep both patterns insulated from the broad platform input skin. */
+.scorm-editorial .scorm-search-shell {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  overflow: hidden;
+}
+
+.scorm-editorial .scorm-search-shell > svg {
+  flex: 0 0 auto;
+  pointer-events: none;
+}
+
+.scorm-editorial .scorm-search-shell > .scorm-search-shell-input,
+.scorm-editorial .scorm-search-shell > .scorm-search-shell-input:hover,
+.scorm-editorial .scorm-search-shell > .scorm-search-shell-input:focus {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  outline: 0 !important;
+  appearance: none;
+}
+
+.scorm-editorial .scorm-search-shell > .scorm-search-shell-input::-webkit-search-cancel-button {
+  opacity: .65;
+  cursor: pointer;
+}
+
+.scorm-editorial .scorm-search-input {
+  box-sizing: border-box;
+  min-height: 42px;
+  padding-left: 2.35rem !important;
+  padding-right: .85rem !important;
+}
+
+.scorm-editorial .scorm-search-input.has-clear-action {
+  padding-right: 2.5rem !important;
+}
