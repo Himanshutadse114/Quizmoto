@@ -31,7 +31,10 @@ function recipientStatus(recipient) {
 
 function buildAwarenessCampaignReport(campaign) {
     const recipients = Array.isArray(campaign?.recipients) ? campaign.recipients : [];
-    const trackedOpens = recipients.filter((recipient) => recipient.openedAt).length;
+    const recipientTrackedOpens = recipients.filter((recipient) => recipient.openedAt).length;
+    const trackedOpens = Number.isFinite(Number(campaign?.openedCount))
+        ? Number(campaign.openedCount)
+        : recipientTrackedOpens;
     return {
         schemaVersion: 'lmsgen-report-v2',
         reportType: 'awareness-email-campaign',

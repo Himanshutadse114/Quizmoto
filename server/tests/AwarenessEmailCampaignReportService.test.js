@@ -10,6 +10,7 @@ describe('AwarenessEmailCampaignReportService', () => {
             sentCount: 2,
             deliveredCount: 1,
             failedCount: 1,
+            openedCount: 1,
             recipients: [
                 {
                     learnerName: 'Asha',
@@ -30,5 +31,16 @@ describe('AwarenessEmailCampaignReportService', () => {
         expect(report.rows).to.have.length(2);
         expect(report.rows[0]).to.include({ recipient: 'Asha', status: 'Tracked open', opens: 2 });
         expect(report.rows[1]).to.include({ recipient: 'Ravi', status: 'Failed', error: 'BOUNCED' });
+    });
+
+    it('uses the same authoritative tracked-open total shown by the campaign dashboard', () => {
+        const report = buildAwarenessCampaignReport({
+            name: 'Dashboard parity',
+            recipientCount: 3,
+            openedCount: 2,
+            recipients: []
+        });
+
+        expect(report.summary.find((item) => item.label === 'Tracked opens').value).to.equal(2);
     });
 });
