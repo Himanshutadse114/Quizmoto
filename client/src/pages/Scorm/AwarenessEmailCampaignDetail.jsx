@@ -124,9 +124,11 @@ export default function AwarenessEmailCampaignDetail(){
 
   return <div className="aw-campaigns aw-campaign-detail-page">
     <div className="aw-campaign-page-head">
-      <div>
-        <button type="button" className="aw-back" onClick={()=>navigate('/scorm/awareness-templates?tab=campaigns')}><ArrowLeft size={13}/> Email campaigns</button>
-        <div className="aw-kicker"><Mail size={13}/> Campaign statistics</div>
+      <div className="aw-campaign-heading-main">
+        <div className="aw-campaign-context-row">
+          <button type="button" className="aw-back" onClick={()=>navigate('/scorm/awareness-templates?tab=campaigns')}><ArrowLeft size={13}/> Email campaigns</button>
+          <div className="aw-kicker"><Mail size={13}/> Campaign statistics</div>
+        </div>
         <h2>{campaign.name}</h2>
         <p>{campaign.templateTitle||'Awareness email campaign'}</p>
       </div>

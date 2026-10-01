@@ -186,3 +186,53 @@
 body .scorm-editorial main .aw-campaigns{font-family:var(--sai-font,"Inter",system-ui,sans-serif)!important}
 body .scorm-editorial main .aw-campaign-page-head h2{margin:5px 0 0!important;font-family:inherit!important;font-size:clamp(26px,2.25vw,34px)!important;line-height:1.12!important;font-weight:750!important;letter-spacing:-.035em!important}
 body .scorm-editorial main .aw-gallery-page .aw-panel-title h3{font-family:inherit!important;font-size:18px!important;line-height:1.3!important;font-weight:750!important;letter-spacing:-.018em!important}
+
+/* Campaign detail hero: keep navigation, context and actions in one aligned surface. */
+body .scorm-editorial main .aw-campaign-detail-page .aw-campaign-page-head{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:28px;
+  padding:22px 24px;
+  border:1px solid var(--scorm-line);
+  border-radius:16px;
+  background:linear-gradient(135deg,var(--scorm-surface) 0%,var(--scorm-surface-soft) 100%);
+  box-shadow:0 10px 30px rgba(0,0,0,.08);
+}
+.aw-campaign-heading-main{min-width:0}
+.aw-campaign-context-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+body .scorm-editorial main .aw-campaign-detail-page .aw-kicker{margin:0;min-height:36px;box-sizing:border-box;padding:0 11px}
+body .scorm-editorial main .aw-campaign-detail-page .aw-campaign-page-head h2{
+  margin:16px 0 0!important;
+  font-size:clamp(30px,2.4vw,40px)!important;
+  line-height:1.05!important;
+}
+body .scorm-editorial main .aw-campaign-detail-page .aw-campaign-page-head p{margin:8px 0 0;font-size:13px;line-height:1.45}
+body .scorm-editorial main .aw-campaign-detail-page .aw-campaign-head-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  max-width:520px;
+}
+body .scorm-editorial main .aw-campaign-detail-page .aw-campaign-head-actions .aw-btn-primary,
+body .scorm-editorial main .aw-campaign-detail-page .aw-campaign-head-actions .aw-btn-secondary{
+  min-height:40px;
+  padding:0 13px;
+  white-space:nowrap;
+}
+
+@media(max-width:1050px){
+  body .scorm-editorial main .aw-campaign-detail-page .aw-campaign-page-head{grid-template-columns:1fr;gap:20px}
+  body .scorm-editorial main .aw-campaign-detail-page .aw-campaign-head-actions{justify-content:flex-start;max-width:none}
+}
+
+@media(max-width:640px){
+  body .scorm-editorial main .aw-campaign-detail-page{padding:16px 12px 36px}
+  body .scorm-editorial main .aw-campaign-detail-page .aw-campaign-page-head{padding:17px;border-radius:13px;gap:16px}
+  .aw-campaign-context-row{align-items:stretch;flex-direction:column}
+  body .scorm-editorial main .aw-campaign-detail-page .aw-back,
+  body .scorm-editorial main .aw-campaign-detail-page .aw-kicker{width:100%;justify-content:center}
+  body .scorm-editorial main .aw-campaign-detail-page .aw-campaign-page-head h2{margin-top:18px!important;font-size:30px!important}
+  body .scorm-editorial main .aw-campaign-detail-page .aw-campaign-head-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}
+}
