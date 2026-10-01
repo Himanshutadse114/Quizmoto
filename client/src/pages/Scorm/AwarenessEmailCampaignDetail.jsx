@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { ArrowLeft, Mail, Play, RefreshCw, Square, Trash2, Users } from 'lucide-react';
+import { ArrowLeft, Download, FileSpreadsheet, Mail, Play, RefreshCw, Square, Trash2, Users } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
@@ -14,11 +14,24 @@ function statusLabel(value){
 }
 
 function recipientStatus(item){
-  if(item?.openedAt)return 'Opened';
+  if(item?.openedAt)return 'Tracked open';
   if(item?.status==='delivered')return 'Delivered';
   if(item?.status==='sent')return 'Provider queued';
   if(item?.status==='failed')return 'Failed';
   return 'Pending';
+}
+
+async function blobErrorMessage(blob,fallback){
+  try{return JSON.parse(await blob.text()).message||fallback}catch{return fallback}
+}
+
+function safeFilePart(value){return String(value||'Campaign').replace(/[^a-zA-Z0-9._-]+/g,'_').slice(0,70)}
+
+function downloadBlob(blob,fileName){
+  const url=window.URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=url;link.download=fileName;document.body.appendChild(link);link.click();link.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 function formatDuration(seconds){
@@ -82,6 +95,22 @@ export default function AwarenessEmailCampaignDetail(){
     finally{setBusy('')}
   };
 
+  const downloadReport=async(format)=>{
+    if(!campaign||busy)return;
+    setBusy(`report-${format}`);setError('');
+    try{
+      const response=await axios.get(apiUrl(`${API}/${campaign.id}/report?format=${format}`),{
+        headers,responseType:'blob',validateStatus:()=>true
+      });
+      if(response.status!==200){
+        setError(await blobErrorMessage(response.data,'Unable to generate the campaign report.'));
+        return;
+      }
+      downloadBlob(response.data,`LMSGEN_Awareness_${safeFilePart(campaign.name)}.${format==='pdf'?'pdf':'xlsx'}`);
+    }catch(err){setError(err.message||'Campaign report download failed.')}
+    finally{setBusy('')}
+  };
+
   if(loading)return <div className="aw-campaign-loading" role="status"><RefreshCw size={17} className="animate-spin"/> Loading campaign statistics…</div>;
 
   if(!campaign)return <div className="aw-campaigns">
@@ -102,6 +131,8 @@ export default function AwarenessEmailCampaignDetail(){
         <p>{campaign.templateTitle||'Awareness email campaign'}</p>
       </div>
       <div className="aw-campaign-head-actions">
+        <button type="button" className="aw-btn-secondary" onClick={()=>downloadReport('pdf')} disabled={!!busy}><Download size={13}/>{busy==='report-pdf'?'Preparing…':'PDF report'}</button>
+        <button type="button" className="aw-btn-secondary" onClick={()=>downloadReport('excel')} disabled={!!busy}><FileSpreadsheet size={13}/>{busy==='report-excel'?'Preparing…':'Excel report'}</button>
         <button type="button" className="aw-btn-secondary" onClick={()=>load()} disabled={loading||!!busy}><RefreshCw size={13}/> Refresh</button>
         {campaign.status==='draft'&&<button type="button" className="aw-btn-primary" disabled={!!busy} onClick={()=>runAction('start')}><Play size={12}/>{busy==='start'?'Starting…':'Start campaign'}</button>}
         {campaign.status==='sending'&&<button type="button" className="aw-btn-secondary" disabled={!!busy} onClick={()=>runAction('stop')}><Square size={11}/>{busy==='stop'?'Stopping…':'Stop campaign'}</button>}
@@ -120,7 +151,7 @@ export default function AwarenessEmailCampaignDetail(){
         <Metric label="Recipients" value={campaign.recipientCount||0} icon={Users}/>
         <Metric label="Provider queued" value={campaign.sentCount||0}/>
         <Metric label="Delivered" value={campaign.deliveredCount||0}/>
-        <Metric label="Opened" value={campaign.openedCount||0}/>
+        <Metric label="Tracked opens" value={campaign.openedCount||0}/>
         <Metric label="Failed" value={campaign.failedCount||0}/>
       </div>
       <div className="aw-campaign-detail-progress">
@@ -132,7 +163,7 @@ export default function AwarenessEmailCampaignDetail(){
 
     <section className="aw-recipient-activity aw-recipient-activity-page">
       <div className="aw-recipient-activity-head"><strong>Recipient activity</strong><span>Open tracking is an estimate because some mail apps block or proxy images.</span></div>
-      {recipients.length?<div className="aw-recipient-table"><div className="aw-recipient-table-row is-head"><span>Recipient</span><span>Status</span><span>Opens</span><span>Last activity</span></div>{recipients.map(item=><div className="aw-recipient-table-row" key={item.id}><span><strong>{item.learnerName||'Recipient'}</strong><small>{item.email}</small></span><span data-status={recipientStatus(item).toLowerCase().replace(/\s+/g,'-')} title={item.errorCode||''}>{recipientStatus(item)}</span><span>{item.openCount||0}</span><span>{item.lastOpenedAt?new Date(item.lastOpenedAt).toLocaleString():item.sentAt?`Queued ${new Date(item.sentAt).toLocaleString()}`:'—'}</span></div>)}</div>:<div className="aw-muted-copy">No recipient activity is available yet.</div>}
+      {recipients.length?<div className="aw-recipient-table"><div className="aw-recipient-table-row is-head"><span>Recipient</span><span>Status</span><span>Tracked opens</span><span>Last activity</span></div>{recipients.map(item=><div className="aw-recipient-table-row" key={item.id}><span><strong>{item.learnerName||'Recipient'}</strong><small>{item.email}</small></span><span data-status={recipientStatus(item).toLowerCase().replace(/\s+/g,'-')} title={item.errorCode||''}>{recipientStatus(item)}</span><span>{item.openCount||0}</span><span>{item.lastOpenedAt?new Date(item.lastOpenedAt).toLocaleString():item.sentAt?`Queued ${new Date(item.sentAt).toLocaleString()}`:'—'}</span></div>)}</div>:<div className="aw-muted-copy">No recipient activity is available yet.</div>}
     </section>
   </div>;
 }

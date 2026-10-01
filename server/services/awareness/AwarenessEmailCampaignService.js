@@ -14,6 +14,7 @@ const Delivery = require('./AwarenessMailDeliveryService');
 const Gallery = require('./AwarenessTemplateGalleryService');
 
 const MAX_RECIPIENTS = 5000;
+const DEFAULT_OPEN_TRACKING_GRACE_MS = 60 * 1000;
 let schemaPromise = null;
 
 function fail(message, code, status = 400) {
@@ -35,7 +36,8 @@ async function ensureSchema() {
             const campaignDescription = await queryInterface.describeTable(campaignTable);
             const campaignColumns = {
                 mailBatchSize: { type: DataTypes.INTEGER, allowNull: true },
-                openedCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 }
+                openedCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+                verifiedOpenedCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 }
             };
             for (const [column, definition] of Object.entries(campaignColumns)) {
                 if (!campaignDescription[column]) await queryInterface.addColumn(campaignTable, column, definition);
@@ -45,7 +47,8 @@ async function ensureSchema() {
             const recipientColumns = {
                 openedAt: { type: DataTypes.DATE, allowNull: true },
                 lastOpenedAt: { type: DataTypes.DATE, allowNull: true },
-                openCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 }
+                openCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+                openTrackingVersion: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 }
             };
             for (const [column, definition] of Object.entries(recipientColumns)) {
                 if (!recipientDescription[column]) await queryInterface.addColumn(recipientTable, column, definition);
@@ -73,7 +76,7 @@ function campaignSummary(row) {
         sentCount,
         deliveredCount: 0,
         failedCount,
-        openedCount: Number(row.openedCount || 0),
+        openedCount: Number(row.verifiedOpenedCount || 0),
         pendingCount,
         delivery: deliveryPlan(recipientCount, {
             batchSize: row.mailBatchSize,
@@ -132,7 +135,9 @@ async function getCampaign(id, hostId, { includeRecipients = false } = {}) {
             where: { campaignId: row.id },
             order: [['learnerName', 'ASC'], ['email', 'ASC']]
         });
-        result.recipients = recipients.map((item) => ({
+        result.recipients = recipients.map((item) => {
+            const verifiedOpen = Number(item.openTrackingVersion || 0) >= 2;
+            return {
             id: item.id,
             email: item.email,
             learnerName: item.learnerName || null,
@@ -141,10 +146,11 @@ async function getCampaign(id, hostId, { includeRecipients = false } = {}) {
             messageId: item.messageId || null,
             errorCode: item.errorCode || null,
             sentAt: item.sentAt || null,
-            openedAt: item.openedAt || null,
-            lastOpenedAt: item.lastOpenedAt || null,
-            openCount: Number(item.openCount || 0)
-        }));
+            openedAt: verifiedOpen ? item.openedAt || null : null,
+            lastOpenedAt: verifiedOpen ? item.lastOpenedAt || null : null,
+            openCount: verifiedOpen ? Number(item.openCount || 0) : 0
+        };
+        });
     }
     return result;
 }
@@ -164,19 +170,49 @@ function withOpenTracking(html, recipientId) {
     return /<\/body>/i.test(source) ? source.replace(/<\/body>/i, `${pixel}</body>`) : `${source}${pixel}`;
 }
 
-async function recordRecipientOpen(recipientId) {
+function openTrackingGraceMs() {
+    const configured = Number(process.env.AWARENESS_OPEN_TRACKING_GRACE_MS);
+    return Number.isFinite(configured) && configured >= 0
+        ? configured
+        : DEFAULT_OPEN_TRACKING_GRACE_MS;
+}
+
+function isAutomatedOpenRequest(request = {}) {
+    const method = String(request.method || 'GET').toUpperCase();
+    if (method !== 'GET') return true;
+
+    const headers = request.headers && typeof request.headers === 'object' ? request.headers : {};
+    const userAgent = String(request.userAgent || headers['user-agent'] || '').toLowerCase();
+    const purpose = [
+        headers.purpose,
+        headers['sec-purpose'],
+        headers['x-purpose'],
+        headers['x-moz']
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    if (/\b(prefetch|preview|prerender)\b/.test(purpose)) return true;
+    return /(bot|crawler|spider|scanner|safelink|proofpoint|mimecast|barracuda|sophos|symantec|trendmicro|curl|wget|headless|phantomjs)/.test(userAgent);
+}
+
+async function recordRecipientOpen(recipientId, request = {}) {
     await ensureSchema();
     const id = clean(String(recipientId || '').replace(/\.gif$/i, ''), 80);
     if (!/^[0-9a-f-]{36}$/i.test(id)) return false;
     const recipient = await Recipient.findByPk(id);
     if (!recipient) return false;
-    const firstOpen = !recipient.openedAt;
+    if (isAutomatedOpenRequest(request)) return false;
+    if (recipient.sentAt) {
+        const elapsed = Date.now() - new Date(recipient.sentAt).getTime();
+        if (Number.isFinite(elapsed) && elapsed >= 0 && elapsed < openTrackingGraceMs()) return false;
+    }
+    const firstOpen = Number(recipient.openTrackingVersion || 0) < 2 || !recipient.openedAt;
     const now = new Date();
-    recipient.openedAt = recipient.openedAt || now;
+    recipient.openedAt = firstOpen ? now : recipient.openedAt;
     recipient.lastOpenedAt = now;
-    recipient.openCount = Number(recipient.openCount || 0) + 1;
+    recipient.openCount = firstOpen ? 1 : Number(recipient.openCount || 0) + 1;
+    recipient.openTrackingVersion = 2;
     await recipient.save();
-    if (firstOpen) await Campaign.increment('openedCount', { by: 1, where: { id: recipient.campaignId } });
+    if (firstOpen) await Campaign.increment('verifiedOpenedCount', { by: 1, where: { id: recipient.campaignId } });
     return true;
 }
 
@@ -209,7 +245,6 @@ async function refreshBrevoDelivery(campaignId) {
             if (!matching.length) continue;
             const delivered = matching.find((event) => normalizedBrevoEvent(event.event) === 'delivered');
             const failed = matching.find((event) => failedEvents.has(normalizedBrevoEvent(event.event)));
-            const opened = matching.find((event) => ['opened', 'uniqueopened'].includes(normalizedBrevoEvent(event.event)));
             if (delivered) {
                 recipient.status = 'delivered';
                 recipient.errorCode = null;
@@ -219,13 +254,6 @@ async function refreshBrevoDelivery(campaignId) {
                 recipient.status = 'failed';
                 recipient.errorCode = `BREVO_${eventName.toUpperCase()}`;
                 recipient.providerResponse = clean(failed.reason || eventName, 1000);
-            }
-            if (opened && !recipient.openedAt) {
-                const eventDate = new Date(opened.date || Date.now());
-                recipient.openedAt = Number.isNaN(eventDate.getTime()) ? new Date() : eventDate;
-                recipient.lastOpenedAt = recipient.openedAt;
-                recipient.openCount = Math.max(1, Number(recipient.openCount || 0));
-                await Campaign.increment('openedCount', { by: 1, where: { id: campaignId } });
             }
             await recipient.save();
         }
@@ -529,5 +557,6 @@ module.exports = {
     activeCampaignCountForTemplate,
     campaignSummary,
     liveSummary,
-    recordRecipientOpen
+    recordRecipientOpen,
+    isAutomatedOpenRequest
 };

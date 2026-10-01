@@ -56,6 +56,11 @@ const ScormAwarenessEmailCampaignRecipient = sequelize.define('ScormAwarenessEma
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 0
+    },
+    openTrackingVersion: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
     }
 }, {
     tableName: 'scorm_awareness_email_campaign_recipients',

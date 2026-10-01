@@ -93,6 +93,72 @@ describe('AwarenessEmailCampaignService', function () {
         expect(opened.recipients.find((item) => item.id === recipient.id).openCount).to.equal(1);
     });
 
+    it('does not count automated image scans as recipient opens', async () => {
+        const created = await RealService.createCampaign({
+            hostId: 42,
+            createdByUserId: 42,
+            name: 'Scanner Filtering',
+            userTemplateId: '11111111-1111-4111-8111-111111111111',
+            csvText: 'Email,Name\nscanner@example.com,Scanner\n'
+        });
+        const recipient = await Recipient.findOne({ where: { campaignId: created.campaign.id } });
+
+        const recorded = await RealService.recordRecipientOpen(recipient.id, {
+            method: 'GET',
+            headers: { 'user-agent': 'SecurityScannerBot/1.0' }
+        });
+
+        expect(recorded).to.equal(false);
+        await recipient.reload();
+        expect(recipient.openedAt).to.equal(null);
+        expect(recipient.openCount).to.equal(0);
+    });
+
+    it('ignores tracking pixels fetched immediately after delivery', async () => {
+        const created = await RealService.createCampaign({
+            hostId: 42,
+            createdByUserId: 42,
+            name: 'Immediate Prefetch Filtering',
+            userTemplateId: '11111111-1111-4111-8111-111111111111',
+            csvText: 'Email,Name\nprefetch@example.com,Prefetch\n'
+        });
+        const recipient = await Recipient.findOne({ where: { campaignId: created.campaign.id } });
+        recipient.sentAt = new Date();
+        await recipient.save();
+
+        const recorded = await RealService.recordRecipientOpen(recipient.id, {
+            method: 'GET',
+            headers: { 'user-agent': 'Mozilla/5.0' }
+        });
+
+        expect(recorded).to.equal(false);
+        await recipient.reload();
+        expect(recipient.openedAt).to.equal(null);
+        expect(recipient.openCount).to.equal(0);
+    });
+
+    it('does not expose historical opens recorded before scanner filtering', async () => {
+        const created = await RealService.createCampaign({
+            hostId: 42,
+            createdByUserId: 42,
+            name: 'Legacy Open Filtering',
+            userTemplateId: '11111111-1111-4111-8111-111111111111',
+            csvText: 'Email,Name\nlegacy@example.com,Legacy\n'
+        });
+        const recipient = await Recipient.findOne({ where: { campaignId: created.campaign.id } });
+        recipient.openedAt = new Date();
+        recipient.lastOpenedAt = recipient.openedAt;
+        recipient.openCount = 1;
+        recipient.openTrackingVersion = 0;
+        await recipient.save();
+        await Campaign.update({ openedCount: 1 }, { where: { id: created.campaign.id } });
+
+        const campaign = await RealService.getCampaign(created.campaign.id, 42, { includeRecipients: true });
+        expect(campaign.openedCount).to.equal(0);
+        expect(campaign.recipients[0].openedAt).to.equal(null);
+        expect(campaign.recipients[0].openCount).to.equal(0);
+    });
+
     it('refuses templates that do not belong to the tenant My Library', async () => {
         let error;
         try {

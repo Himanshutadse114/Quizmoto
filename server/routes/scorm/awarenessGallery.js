@@ -1,10 +1,12 @@
 'use strict';
 
 const express=require('express');
+const fs=require('fs');
 const router=express.Router();
 const auth=require('../middleware');
 const Gallery=require('../../services/awareness/AwarenessTemplateGalleryService');
 const EmailCampaigns=require('../../services/awareness/AwarenessEmailCampaignService');
+const EmailCampaignReports=require('../../services/awareness/AwarenessEmailCampaignReportService');
 const MailService=require('../../services/mail/MailService');
 const { awarenessMailActionLimiter }=require('../../middleware/AiAbuseProtection');
 const TRACKING_PIXEL=Buffer.from('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==','base64');
@@ -31,7 +33,13 @@ router.get('/email-campaigns/track/open/:recipientId.gif',async(req,res)=>{
     res.setHeader('Content-Length',String(TRACKING_PIXEL.length));
     res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, private');
     res.setHeader('Pragma','no-cache');
-    try{await EmailCampaigns.recordRecipientOpen(req.params.recipientId)}catch(_){/* Tracking must never break the email image response. */}
+    try{
+        await EmailCampaigns.recordRecipientOpen(req.params.recipientId,{
+            method:req.method,
+            headers:req.headers,
+            userAgent:req.get('user-agent')||''
+        });
+    }catch(_){/* Tracking must never break the email image response. */}
     res.status(200).end(TRACKING_PIXEL);
 });
 
@@ -152,6 +160,23 @@ router.get('/email-campaigns/:id',auth,editor,async(req,res)=>{
         res.setHeader('Cache-Control','no-store');
         res.json({ok:true,campaign:await EmailCampaigns.getCampaign(req.params.id,req.userId,{includeRecipients:true})});
     }catch(e){fail(res,e,'Unable to load the email campaign.')}
+});
+router.get('/email-campaigns/:id/report',auth,editor,async(req,res)=>{
+    let generated=null;
+    try{
+        generated=await EmailCampaignReports.generateCampaignReportFile({
+            campaignId:req.params.id,
+            hostId:req.userId,
+            format:req.query?.format
+        });
+        res.download(generated.outputPath,generated.downloadName,(error)=>{
+            try{if(generated?.outputPath&&fs.existsSync(generated.outputPath))fs.unlinkSync(generated.outputPath)}catch(_){}
+            if(error&&!res.headersSent)fail(res,error,'Campaign report download failed.');
+        });
+    }catch(error){
+        try{if(generated?.outputPath&&fs.existsSync(generated.outputPath))fs.unlinkSync(generated.outputPath)}catch(_){}
+        fail(res,error,'Unable to generate the awareness campaign report.');
+    }
 });
 router.post('/email-campaigns/:id/start',auth,editor,awarenessMailActionLimiter,async(req,res)=>{
     try{res.json({ok:true,campaign:await EmailCampaigns.startCampaign(req.params.id,req.userId)})}
