@@ -4,6 +4,7 @@ import { ArrowLeft, Mail, Play, RefreshCw, Square, Trash2, Users } from 'lucide-
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
+import './awarenessTemplates.css';
 import './awarenessEmailCampaigns.css';
 
 const API='/api/scorm/awareness-gallery/email-campaigns';
