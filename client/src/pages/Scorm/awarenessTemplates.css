@@ -111,9 +111,9 @@
   color:var(--scorm-muted);
 }
 .aw-search input{flex:1;min-width:0;border:0;background:transparent;color:var(--scorm-text);outline:none;font:inherit;font-size:10px}
-body .scorm-editorial.scorm-workbench main .aw-search input[type="search"],
-body .scorm-editorial.scorm-workbench main .aw-search input[type="search"]:hover,
-body .scorm-editorial.scorm-workbench main .aw-search input[type="search"]:focus{
+body .scorm-editorial main .aw-search input[type="search"],
+body .scorm-editorial main .aw-search input[type="search"]:hover,
+body .scorm-editorial main .aw-search input[type="search"]:focus{
   width:100%;
   height:100%;
   margin:0;
