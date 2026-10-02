@@ -12,8 +12,14 @@ const { resolveCourseOrPackageId } = require('../../services/scorm/ScormCourseWo
 const ScormReportService = require('../../services/ScormReportService');
 const ScormIndividualLearnerReportService = require('../../services/scorm/ScormIndividualLearnerReportService');
 const { assertActiveCourseCapacity } = require('../../services/scorm/ScormAiUsageService');
+const {
+    syncAvailableCourses,
+    provisionMapForHost,
+    assertProvisionedCourse
+} = require('../../services/scorm/ScormCourseCatalogService');
 
 router.get('/', auth, async (req, res) => {
+    await syncAvailableCourses({ targetHostId: req.userId, targetWorkspaceId: req.scormWorkspaceId || null });
     const courses = await ScormCourse.findAll({
         where: { hostId: req.userId },
         attributes: [
@@ -35,10 +41,20 @@ router.get('/', auth, async (req, res) => {
         }],
         order: [['createdAt', 'DESC']]
     });
+    const provisions = await provisionMapForHost(req.userId);
     res.json(
         courses.filter(
             (c) => c.status !== 'archived' && c.package && c.package.status !== 'deleted'
-        )
+        ).filter((course) => !req.scormTrial || provisions.has(String(course.id))).map((course) => {
+            const payload = course.toJSON();
+            const provision = provisions.get(String(course.id));
+            return {
+                ...payload,
+                catalogManaged: Boolean(provision),
+                catalogSourceCourseId: provision?.sourceCourseId || null,
+                readOnly: Boolean(provision)
+            };
+        })
     );
 });
 
@@ -164,17 +180,32 @@ router.get('/:id/report', auth, async (req, res) => {
 });
 
 router.get('/:id', auth, async (req, res) => {
+    if (req.scormTrial) await assertProvisionedCourse(req.userId, req.params.id);
     await resolveCourseOrPackageId({ id: req.params.id, hostId: req.userId });
     const course = await ScormCourse.findOne({
         where: { id: req.params.id, hostId: req.userId },
         include: [{ model: ScormPackage, as: 'package' }]
     });
     if (!course || course.status === 'archived') return res.status(404).json({ message: 'Not found' });
-    res.json(course);
+    const provisions = await provisionMapForHost(req.userId);
+    const provision = provisions.get(String(course.id));
+    res.json({
+        ...course.toJSON(),
+        catalogManaged: Boolean(provision),
+        catalogSourceCourseId: provision?.sourceCourseId || null,
+        readOnly: Boolean(provision)
+    });
 });
 
 router.patch('/:id', auth, async (req, res) => {
     try {
+        const provisions = await provisionMapForHost(req.userId);
+        if (provisions.has(String(req.params.id))) {
+            return res.status(403).json({
+                message: 'Courses supplied by the Super Admin are view-only. Assign them to learners without editing the source course.',
+                code: 'SCORM_CATALOG_COURSE_READ_ONLY'
+            });
+        }
         await resolveCourseOrPackageId({ id: req.params.id, hostId: req.userId });
         const course = await ScormCourse.findOne({ where: { id: req.params.id, hostId: req.userId } });
         if (!course) return res.status(404).json({ message: 'Not found' });
@@ -207,6 +238,7 @@ router.patch('/:id', auth, async (req, res) => {
 });
 
 router.get('/:id/registrations', auth, async (req, res) => {
+    if (req.scormTrial) await assertProvisionedCourse(req.userId, req.params.id);
     await resolveCourseOrPackageId({ id: req.params.id, hostId: req.userId });
     const course = await ScormCourse.findOne({ where: { id: req.params.id, hostId: req.userId } });
     if (!course) return res.status(404).json({ message: 'Not found' });
@@ -219,6 +251,7 @@ router.get('/:id/registrations', auth, async (req, res) => {
 
 router.post('/:id/preview', auth, async (req, res) => {
     try {
+        if (req.scormTrial) await assertProvisionedCourse(req.userId, req.params.id);
         await resolveCourseOrPackageId({ id: req.params.id, hostId: req.userId });
         const course = await ScormCourse.findOne({
             where: { id: req.params.id, hostId: req.userId },

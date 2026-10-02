@@ -59,6 +59,7 @@ router.use('/flipbooks', require('../flipbookLibrary'));
 router.use('/flipbooks', require('../flipbooks'));
 
 router.use('/reports', require('./reportsV2'));
+router.use('/course-catalog', require('./courseCatalog'));
 router.use('/packages', require('./packages'));
 router.use('/video-courses', require('./videoCourses'));
 // Preserve the existing /courses/:id/report URL used by the current Reports UI,

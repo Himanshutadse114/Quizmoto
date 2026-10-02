@@ -126,8 +126,34 @@ module.exports = async (req, res, next) => {
         }
         req.authenticatedUser = authenticatedUser || null;
 
-        if (isScormAdminRequest && process.env.NODE_ENV !== 'test' && decoded.scope !== 'scorm') {
+        if (decoded.scope === 'trial' && /^\/api\/(quizzes|sessions|jobs)(?:\/|$)/.test(url)) {
+            return res.status(403).json({
+                message: 'Quizmoto is not included in free course access.',
+                code: 'TRIAL_QUIZMOTO_DISABLED'
+            });
+        }
+
+        if (isScormAdminRequest && process.env.NODE_ENV !== 'test' && !['scorm', 'trial'].includes(decoded.scope)) {
             return res.status(401).json({ message: 'LMSGEN login required', code: 'SCORM_AUTH_REQUIRED' });
+        }
+
+        if (decoded.scope === 'trial' && isScormAdminRequest && !isSessionStatusRequest) {
+            req.scormRole = 'trial';
+            req.scormTrial = true;
+            req.scormEmail = authenticatedUser.email || null;
+            req.scormHostId = authenticatedUser.id;
+            req.scormWorkspace = null;
+            req.scormWorkspaceId = null;
+            req.scormWorkspaceMember = null;
+            req.userId = authenticatedUser.id;
+            req.scormEntitlementEmail = authenticatedUser.email || null;
+
+            assertScormRouteAllowed({ role: 'trial', method: req.method, url });
+            await enforceRequestEntitlement(req, {
+                userId: authenticatedUser.id,
+                email: authenticatedUser.email,
+                role: 'trial'
+            });
         }
 
         // A tenant session carries the tenant's status and SSO policy across

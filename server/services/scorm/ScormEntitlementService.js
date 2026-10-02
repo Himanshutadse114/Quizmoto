@@ -7,7 +7,8 @@ const {
     ScormRegistration,
     ScormCampaign,
     ScormWorkspace,
-    ScormWorkspaceMember
+    ScormWorkspaceMember,
+    ScormCourseProvision
 } = require('../../models/scorm');
 const {
     countAiGenerations,
@@ -18,6 +19,7 @@ const INACTIVE_ASSIGNMENT_STATUSES = ['revoked', 'superseded'];
 const DEFAULT_COURSE_CREATION_LIMIT = 0;
 const DEFAULT_ACTIVE_COURSE_LIMIT = 0;
 const DEFAULT_QUIZMOTO_PLAYERS_PER_SESSION = 10;
+const TRIAL_LEARNER_LIMIT = 10;
 
 const DEFAULT_PERMISSIONS = Object.freeze({
     courseAuthoring: true,
@@ -78,6 +80,35 @@ function serializeEntitlement(row, role = 'user') {
             protected: true
         };
     }
+    if (role === 'trial') {
+        return {
+            maxCourses: 0,
+            maxActiveCourses: 0,
+            maxLearners: TRIAL_LEARNER_LIMIT,
+            maxStaff: 0,
+            maxCampaigns: 0,
+            maxAssignments: null,
+            maxQuizPlayers: 0,
+            permissions: {
+                courseAuthoring: false,
+                coursePublishing: false,
+                coursePreview: true,
+                learnerRoster: true,
+                learnerTracking: false,
+                assignments: true,
+                campaigns: false,
+                reports: false,
+                library: false,
+                contentEditor: false,
+                teamManagement: false,
+                ssoManagement: false,
+                geometryPhysicsFullAccess: false
+            },
+            unlimited: false,
+            protected: true,
+            trial: true
+        };
+    }
     return {
         // Course access is deny-by-default. Only the Super Admin can grant a
         // finite creation allowance through Tenant Management.
@@ -111,6 +142,7 @@ function entitlementDefaults(email) {
 async function getEntitlement(email, role = 'user') {
     const normalized = normalizeEmail(email);
     if (role === 'super_admin') return serializeEntitlement(null, role);
+    if (role === 'trial') return serializeEntitlement(null, role);
     if (!normalized) return serializeEntitlement(null, role);
     const [row] = await ScormUserEntitlement.findOrCreate({ where: { email: normalized }, defaults: entitlementDefaults(normalized) });
     const normalizedPermissions = normalizePermissions(row.permissions);
@@ -179,10 +211,15 @@ async function getUsageForHost(hostId, workspaceId = null) {
         const workspace = await ScormWorkspace.findOne({ where: { ownerUserId: hostId }, attributes: ['id'], raw: true });
         resolvedWorkspaceId = workspace?.id || null;
     }
+    const managedRows = ScormCourseProvision?.findAll
+        ? await ScormCourseProvision.findAll({ where: { targetHostId: hostId }, attributes: ['courseId'], raw: true })
+        : [];
+    const managedIds = managedRows.map((row) => row.courseId);
+    const ownedCourseWhere = managedIds.length ? { hostId, id: { [Op.notIn]: managedIds } } : { hostId };
     const [aiCourseGenerations, courseCreations, activeCourses, learners, rosterLearners, staff, campaigns, assignments, quizPlayers] = await Promise.all([
         countAiGenerations(hostId),
-        ScormCourse.count({ where: { hostId } }),
-        ScormCourse.count({ where: { hostId, status: { [Op.ne]: 'archived' } } }),
+        ScormCourse.count({ where: ownedCourseWhere }),
+        ScormCourse.count({ where: { ...ownedCourseWhere, status: { [Op.ne]: 'archived' } } }),
         enrolledLearnerCount(hostId),
         ScormLearnerRoster.count({ where: { hostId } }),
         resolvedWorkspaceId ? ScormWorkspaceMember.count({ where: { workspaceId: resolvedWorkspaceId } }) : 0,
@@ -290,7 +327,8 @@ async function assertEnrollmentAllowed(hostId, learnerEmail) {
     if (!hostId || !email) return;
     const host = await User.findByPk(hostId);
     if (!host) return;
-    const entitlement = await getEntitlement(host.email, 'admin');
+    const workspace = await ScormWorkspace.findOne({ where: { ownerUserId: hostId }, attributes: ['id'], raw: true });
+    const entitlement = await getEntitlement(host.email, workspace ? 'admin' : 'trial');
     const max = normalizeLimit(entitlement.maxLearners);
     if (max === null) return;
     const courseIds = await courseIdsForHost(hostId);
@@ -388,6 +426,7 @@ module.exports = {
     DEFAULT_COURSE_CREATION_LIMIT,
     DEFAULT_ACTIVE_COURSE_LIMIT,
     DEFAULT_QUIZMOTO_PLAYERS_PER_SESSION,
+    TRIAL_LEARNER_LIMIT,
     normalizeLimit,
     normalizeQuizPlayerLimit,
     normalizePermissions,

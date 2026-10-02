@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { BookOpenCheck, Building2, Mail, UsersRound } from 'lucide-react';
+import { BookOpen, BookOpenCheck, Building2, Mail, UsersRound } from 'lucide-react';
 import TenantAdmin from './TenantAdmin';
 import PlatformUsersAdmin from './PlatformUsersAdmin';
 import FlipbookTenantAdmin from './FlipbookTenantAdmin';
 import SuperAdminMailPanel from './SuperAdminMailPanel';
 import EmailTemplatesPanel from './EmailTemplatesPanel';
+import CourseCatalogAdmin from './CourseCatalogAdmin';
 import './accessAdminCompact.css';
 
 export default function AccessAdmin() {
@@ -13,6 +14,7 @@ export default function AccessAdmin() {
   const tabs = [
     ['tenants', 'Tenant Management', Building2],
     ['users', 'Platform Users', UsersRound],
+    ['courses', 'Course Distribution', BookOpen],
     ['flipbooks', 'Publica Controls', BookOpenCheck],
     ['email', 'Email Templates', Mail]
   ];
@@ -26,7 +28,7 @@ export default function AccessAdmin() {
             <div className="mt-1 text-[10px]" style={{ color: 'var(--scorm-muted)' }}>Platform-wide administration</div>
           </div>
           <div className="inline-flex flex-wrap rounded-xl border p-1 self-start lg:self-auto" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
-            {tabs.map(([value, label, Icon]) => (
+            {tabs.map(([value, label, icon]) => (
               <button
                 key={value}
                 type="button"
@@ -37,7 +39,7 @@ export default function AccessAdmin() {
                   color: tab === value ? '#4FC9BF' : 'var(--scorm-muted)'
                 }}
               >
-                <Icon size={13} /> {label}
+                {React.createElement(icon, { size: 13 })} {label}
               </button>
             ))}
           </div>
@@ -50,6 +52,8 @@ export default function AccessAdmin() {
         <PlatformUsersAdmin />
       ) : tab === 'flipbooks' ? (
         <FlipbookTenantAdmin />
+      ) : tab === 'courses' ? (
+        <CourseCatalogAdmin />
       ) : (
         <div className="px-4 py-6 md:px-8 md:py-8 max-w-[1280px] mx-auto space-y-4">
           <div className="mb-5">

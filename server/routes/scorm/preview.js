@@ -11,9 +11,11 @@ const {
 const { resolveCourseOrPackageId } = require('../../services/scorm/ScormCourseWorkspaceService');
 const { serializePreviewStats } = require('../../services/scorm/ScormPreviewStatsService');
 const LearningState = require('../../services/scorm/ScormLearningStateService');
+const { assertProvisionedCourse } = require('../../services/scorm/ScormCourseCatalogService');
 
 router.get('/course/:courseId', auth, async (req, res) => {
     try {
+        if (req.scormTrial) await assertProvisionedCourse(req.userId, req.params.courseId);
         await resolveCourseOrPackageId({ id: req.params.courseId, hostId: req.userId });
         const course = await ScormCourse.findOne({
             where: { id: req.params.courseId, hostId: req.userId },

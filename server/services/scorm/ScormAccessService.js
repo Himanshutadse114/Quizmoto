@@ -18,6 +18,7 @@ function normalizeEmail(value) {
 
 function normalizeScormRole(value) {
     const role = String(value || '').trim().toLowerCase();
+    if (role === 'trial') return 'trial';
     // Backward compatibility: every historically-approved `user` was the sole
     // administrator of their own SCORM workspace.
     if (!role || role === 'user') return 'admin';

@@ -1,4 +1,5 @@
 const express = require('express');
+const { Op } = require('sequelize');
 const router = express.Router();
 const auth = require('../middleware');
 const { ScormPackage, ScormCourse } = require('../../models/scorm');
@@ -15,6 +16,7 @@ const JobQueueService = require('../../jobs/JobQueueService');
 const { JOB_TYPES } = require('../../jobs/jobTypes');
 const { unpackPackage } = require('../../services/scorm/ScormUnpackService');
 const { deletePackageFromStorage } = require('../../services/scorm/ScormPackageCleanup');
+const { retireCatalogSourcesForPackage } = require('../../services/scorm/ScormCourseCatalogService');
 const logger = require('../../utils/logger');
 
 const backgroundUnpackQueue = [];
@@ -340,6 +342,8 @@ router.post('/upload-json', auth, async (req, res) => {
 
 router.post('/:id/reprocess', auth, async (req, res) => {
     try {
+        const managed = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId, source: 'catalog' } });
+        if (managed) return res.status(403).json({ message: 'Super Admin catalogue packages are view-only.', code: 'SCORM_CATALOG_PACKAGE_READ_ONLY' });
         const pkg = await ScormPackage.findOne({
             where: { id: req.params.id, hostId: req.userId }
         });
@@ -380,7 +384,7 @@ router.post('/:id/reprocess', auth, async (req, res) => {
 
 router.get('/', auth, async (req, res) => {
     const list = await ScormPackage.findAll({
-        where: { hostId: req.userId },
+        where: { hostId: req.userId, source: { [Op.ne]: 'catalog' } },
         // Inventory views only need compact package metadata. analysisJson can
         // contain the complete authored course (including every slide, quiz and
         // visual reference), so selecting it here sends the same large payload
@@ -553,9 +557,12 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 router.delete('/:id', auth, async (req, res) => {
+    const managed = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId, source: 'catalog' } });
+    if (managed) return res.status(403).json({ message: 'Super Admin catalogue packages cannot be deleted by a tenant.', code: 'SCORM_CATALOG_PACKAGE_READ_ONLY' });
     const pkg = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId } });
     if (!pkg) return res.status(404).json({ message: 'Not found' });
 
+    await retireCatalogSourcesForPackage({ packageId: pkg.id, sourceHostId: req.userId });
     pkg.status = 'deleted';
     await pkg.save();
 

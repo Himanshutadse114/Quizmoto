@@ -294,6 +294,55 @@ async function ensureEntitlementSchema() {
     return changes;
 }
 
+function courseCatalogGrantColumns() {
+    return {
+        id: { type: DataTypes.UUID, allowNull: false, primaryKey: true },
+        grantKey: { type: DataTypes.STRING(255), allowNull: false, unique: true },
+        sourceCourseId: { type: DataTypes.UUID, allowNull: false },
+        workspaceId: { type: DataTypes.UUID, allowNull: true },
+        scope: { type: DataTypes.STRING(24), allowNull: false, defaultValue: 'default' },
+        createdByUserId: { type: DataTypes.INTEGER, allowNull: true },
+        ...timestampColumns()
+    };
+}
+
+function courseProvisionColumns() {
+    return {
+        id: { type: DataTypes.UUID, allowNull: false, primaryKey: true },
+        sourceCourseId: { type: DataTypes.UUID, allowNull: false },
+        targetHostId: { type: DataTypes.INTEGER, allowNull: false },
+        targetWorkspaceId: { type: DataTypes.UUID, allowNull: true },
+        packageId: { type: DataTypes.UUID, allowNull: false },
+        courseId: { type: DataTypes.UUID, allowNull: false, unique: true },
+        active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+        ...timestampColumns()
+    };
+}
+
+async function ensureCourseCatalogSchema() {
+    const changes = [];
+    const tables = [
+        ['scorm_course_catalog_grants', courseCatalogGrantColumns()],
+        ['scorm_course_provisions', courseProvisionColumns()]
+    ];
+    for (const [tableName, columns] of tables) {
+        if (await ensureTable(tableName, columns)) changes.push(tableName);
+        else changes.push(...await ensureColumns(tableName, columns));
+    }
+    const indexes = [
+        ['scorm_course_catalog_grants', ['grantKey'], { name: 'scorm_course_catalog_grants_key_uq', unique: true }],
+        ['scorm_course_catalog_grants', ['sourceCourseId'], { name: 'scorm_course_catalog_grants_source_idx' }],
+        ['scorm_course_catalog_grants', ['workspaceId'], { name: 'scorm_course_catalog_grants_workspace_idx' }],
+        ['scorm_course_provisions', ['sourceCourseId', 'targetHostId'], { name: 'scorm_course_provisions_source_host_uq', unique: true }],
+        ['scorm_course_provisions', ['courseId'], { name: 'scorm_course_provisions_course_uq', unique: true }],
+        ['scorm_course_provisions', ['targetWorkspaceId'], { name: 'scorm_course_provisions_workspace_idx' }]
+    ];
+    for (const [tableName, fields, options] of indexes) {
+        if (await ensureIndex(tableName, fields, options)) changes.push(options.name);
+    }
+    return changes;
+}
+
 async function ensureAiUsageSchema() {
     const changes = [];
     const columns = aiUsageEventColumns();
@@ -454,6 +503,7 @@ async function ensurePlatformSchema() {
     changes.push(...await ensureEntitlementSchema());
     changes.push(...await ensureAiUsageSchema());
     changes.push(...await ensureCampaignSchema());
+    changes.push(...await ensureCourseCatalogSchema());
 
     const registrationColumns = [
         ['assignedAt', { type: DataTypes.DATE, allowNull: true }],

@@ -23,6 +23,7 @@ import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import { copyText } from '../../utils/clipboard';
 import './scormCampaignReporting.css';
+import TrialAssignments from './TrialAssignments';
 
 const PAGE_SIZE = 6;
 
@@ -59,7 +60,7 @@ function csvCell(value) {
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-export default function Assignments() {
+function CampaignAssignments() {
   const { token } = useAuth();
   const location = useLocation();
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
@@ -170,7 +171,7 @@ export default function Assignments() {
     try {
       await copyText(`${window.location.origin}${campaign.portalPath}`, { successMessage: 'Campaign learner link copied.' });
       setMessage('Campaign learner link copied.');
-    } catch (_) {
+    } catch {
       setError('Could not copy the campaign portal link.');
     }
   };
@@ -297,4 +298,9 @@ export default function Assignments() {
       </section>
     </div>
   );
+}
+
+export default function Assignments() {
+  const { user } = useAuth();
+  return user?.trialAccess || user?.role === 'trial' ? <TrialAssignments /> : <CampaignAssignments />;
 }

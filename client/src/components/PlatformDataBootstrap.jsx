@@ -18,6 +18,7 @@ function readSession() {
     token: window.localStorage.getItem('token') || '',
     user,
     scormAccess: window.localStorage.getItem('scormAccessGranted') === '1' || Boolean(user?.scormAccess),
+    trialAccess: Boolean(user?.trialAccess || user?.role === 'trial'),
     quizmotoOnly: Boolean(user?.quizmotoOnly)
   };
 }
@@ -44,7 +45,7 @@ export default function PlatformDataBootstrap() {
     const runBackgroundWarm = async ({ force = false, essentialOnly = false } = {}) => {
       if (disposed || !platformRoute() || isPlatformPreparationPending()) return null;
 
-      const { token, user, scormAccess, quizmotoOnly } = readSession();
+      const { token, user, scormAccess, trialAccess, quizmotoOnly } = readSession();
       if (!token) return null;
 
       // Keep one warm-up in flight. Focus, visibility and cache invalidation can
@@ -57,6 +58,7 @@ export default function PlatformDataBootstrap() {
         essentialOnly,
         role: user?.role || '',
         scormAccess,
+        trialAccess,
         quizmotoOnly
       })
         .catch(() => null)

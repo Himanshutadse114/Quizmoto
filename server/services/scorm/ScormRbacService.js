@@ -19,8 +19,30 @@ function isAnalyticsReadRoute(url) {
     return false;
 }
 
+function isTrialRoute(method, url) {
+    const verb = String(method || 'GET').toUpperCase();
+    const path = String(url || '').split('?')[0];
+    if (path === '/api/scorm/features') return verb === 'GET';
+    if (path.startsWith('/api/scorm/flipbooks')) return true;
+    if (path === '/api/scorm/courses') return verb === 'GET';
+    if (/^\/api\/scorm\/courses\/[^/]+$/.test(path)) return verb === 'GET';
+    if (/^\/api\/scorm\/courses\/[^/]+\/registrations$/.test(path)) return verb === 'GET';
+    if (/^\/api\/scorm\/courses\/[^/]+\/preview$/.test(path)) return verb === 'POST';
+    if (/^\/api\/scorm\/preview\/course\/[^/]+$/.test(path)) return verb === 'GET';
+    if (path === '/api/scorm/roster') return ['GET', 'POST', 'PUT', 'DELETE'].includes(verb);
+    if (/^\/api\/scorm\/roster\/[^/]+$/.test(path)) return verb === 'DELETE';
+    if (path === '/api/scorm/assignments') return verb === 'GET';
+    if (path === '/api/scorm/assignments/bulk') return verb === 'POST';
+    if (/^\/api\/scorm\/assignments\/[^/]+$/.test(path)) return ['PATCH', 'DELETE'].includes(verb);
+    return false;
+}
+
 function assertScormRouteAllowed({ role, method, url }) {
     const normalizedRole = normalizeScormRole(role);
+    if (normalizedRole === 'trial') {
+        if (isTrialRoute(method, url)) return true;
+        throw deny('This action is not included in free access. Contact sales to unlock the full LMS and AI course generation.');
+    }
     if (normalizedRole === 'super_admin' || normalizedRole === 'admin' || normalizedRole === 'co_admin') {
         return true;
     }
@@ -36,5 +58,6 @@ function assertScormRouteAllowed({ role, method, url }) {
 
 module.exports = {
     isAnalyticsReadRoute,
+    isTrialRoute,
     assertScormRouteAllowed
 };

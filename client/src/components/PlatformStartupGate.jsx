@@ -70,7 +70,8 @@ export default function PlatformStartupGate({ children }) {
       includeHeavy: false,
       role: user?.role || '',
       scormAccess,
-      quizmotoOnly: Boolean(user?.quizmotoOnly)
+      quizmotoOnly: Boolean(user?.quizmotoOnly),
+      trialAccess: Boolean(user?.trialAccess || user?.role === 'trial')
     }, (next) => {
       if (!active) return;
       setProgress((current) => ({
@@ -96,7 +97,7 @@ export default function PlatformStartupGate({ children }) {
       });
 
     return () => { active = false; };
-  }, [shouldPrepare, token, user?.role, user?.quizmotoOnly, scormAccess]);
+  }, [shouldPrepare, token, user?.role, user?.quizmotoOnly, user?.trialAccess, scormAccess]);
 
   if (!preparing) return children;
 
@@ -107,7 +108,7 @@ export default function PlatformStartupGate({ children }) {
         <img src={theme === 'light' ? '/branding/lmsgen-logo-light.png' : '/branding/lmsgen-logo-dark.png'} alt="LMSGEN" className="platform-startup-logo" />
         <div className="platform-startup-kicker"><ShieldCheck size={13} /> Secure workspace preparation</div>
         <h1>Getting everything ready</h1>
-        <p>Preparing your courses, Publica library, Quizmoto and learning insights so the platform is ready when it opens.</p>
+        <p>Preparing your courses, learner workspace and Publica library so the platform is ready when it opens.</p>
 
         <div className="platform-startup-progress-heading">
           <span>{progress.label}</span>

@@ -3,7 +3,8 @@ const { sequelize } = require('../../config/database');
 const ScormUserEntitlement = require('../../models/scorm/ScormUserEntitlement');
 const {
     ScormAiUsageEvent,
-    ScormCourse
+    ScormCourse,
+    ScormCourseProvision
 } = require('../../models/scorm');
 
 const COUNTED_AI_STATUSES = ['reserved', 'completed', 'failed', 'cancelled'];
@@ -76,9 +77,20 @@ async function countPendingActiveReservations(hostId, transaction = null) {
 }
 
 async function activeCourseUsage(hostId, transaction = null) {
+    const provisions = ScormCourseProvision?.findAll ? await ScormCourseProvision.findAll({
+        where: { targetHostId: hostId, active: true },
+        attributes: ['courseId'],
+        raw: true,
+        transaction
+    }) : [];
+    const managedIds = provisions.map((row) => row.courseId);
     const [courses, reservations] = await Promise.all([
         ScormCourse.count({
-            where: { hostId, status: { [Op.ne]: 'archived' } },
+            where: {
+                hostId,
+                status: { [Op.ne]: 'archived' },
+                ...(managedIds.length ? { id: { [Op.notIn]: managedIds } } : {})
+            },
             transaction
         }),
         countPendingActiveReservations(hostId, transaction)

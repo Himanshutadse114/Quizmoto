@@ -62,4 +62,29 @@ describe('SCORM workspace RBAC', () => {
             })).not.to.throw();
         }
     });
+
+    it('limits trial accounts to catalogue viewing, roster, assignments and Publica', () => {
+        const allowed = [
+            ['GET', '/api/scorm/courses'],
+            ['GET', '/api/scorm/courses/course-1'],
+            ['POST', '/api/scorm/courses/course-1/preview'],
+            ['POST', '/api/scorm/roster'],
+            ['POST', '/api/scorm/assignments/bulk'],
+            ['GET', '/api/scorm/flipbooks']
+        ];
+        for (const [method, url] of allowed) {
+            expect(() => assertScormRouteAllowed({ role: 'trial', method, url }), `${method} ${url}`).not.to.throw();
+        }
+
+        const blocked = [
+            ['POST', '/api/scorm/author/generate'],
+            ['POST', '/api/scorm/packages/upload'],
+            ['PATCH', '/api/scorm/courses/course-1'],
+            ['GET', '/api/scorm/tracking/summary'],
+            ['GET', '/api/scorm/course-catalog']
+        ];
+        for (const [method, url] of blocked) {
+            expect(() => assertScormRouteAllowed({ role: 'trial', method, url }), `${method} ${url}`).to.throw(/not included in free access/);
+        }
+    });
 });

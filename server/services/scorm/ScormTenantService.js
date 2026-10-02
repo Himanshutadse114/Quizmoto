@@ -8,7 +8,8 @@ const {
     ScormCourse,
     ScormCampaign,
     ScormLearnerRoster,
-    ScormAiUsageEvent
+    ScormAiUsageEvent,
+    ScormCourseProvision
 } = require('../../models/scorm');
 const {
     normalizeEmail,
@@ -168,13 +169,20 @@ async function assertEmailAvailableForTenant(email, workspaceId = null) {
 // admin keeps their login and sees an empty, "untracked" workspace.
 async function migrateExistingHostData(fromUserId, toUserId) {
     if (!fromUserId || !toUserId || fromUserId === toUserId) return;
-    await Promise.all([
+    const migrations = [
         ScormPackage.update({ hostId: toUserId }, { where: { hostId: fromUserId } }),
         ScormCourse.update({ hostId: toUserId }, { where: { hostId: fromUserId } }),
         ScormCampaign.update({ hostId: toUserId }, { where: { hostId: fromUserId } }),
         ScormLearnerRoster.update({ hostId: toUserId }, { where: { hostId: fromUserId } }),
         ScormAiUsageEvent.update({ hostId: toUserId }, { where: { hostId: fromUserId } })
-    ]);
+    ];
+    if (ScormCourseProvision?.update) {
+        migrations.push(ScormCourseProvision.update(
+            { targetHostId: toUserId },
+            { where: { targetHostId: fromUserId } }
+        ));
+    }
+    await Promise.all(migrations);
 }
 
 async function createTenant({

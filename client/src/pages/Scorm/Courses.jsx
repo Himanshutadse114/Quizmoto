@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { BookOpen, Search, Users, CheckCircle2, Clock3, ChevronRight, Plus } from 'lucide-react';
+import { BookOpen, Search, Users, CheckCircle2, Clock3, ChevronRight, Plus, LockKeyhole } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import BackgroundCourseJobs from '../../components/BackgroundCourseJobs';
@@ -20,7 +20,7 @@ const Metric = ({ label, value, icon: Icon, loading = false }) => (
         <div className="scorm-micro mt-2 text-[9px] uppercase font-bold">{label}</div>
       </div>
       <div className="scorm-course-metric-icon w-9 h-9 rounded-lg border grid place-items-center">
-        <Icon size={16} />
+        {React.createElement(Icon, { size: 16 })}
       </div>
     </div>
   </div>
@@ -40,7 +40,8 @@ const CourseRowSkeleton = () => (
 );
 
 export default function ScormCourses() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const trialAccess = Boolean(user?.trialAccess || user?.role === 'trial');
   const navigate = useNavigate();
   const jobs = useCourseGenerationJobs(token, { poll: false });
   const [courses, setCourses] = useState([]);
@@ -82,7 +83,7 @@ export default function ScormCourses() {
       })
       .finally(() => setCoursesLoading(false));
 
-    const trackingRequest = fetchScormData(
+    const trackingRequest = trialAccess ? Promise.resolve(setTrackingLoading(false)) : fetchScormData(
       'tracking-summary',
       token,
       () => axios.get(apiUrl('/api/scorm/tracking/summary'), { headers }).then((res) => res.data || { courses: [] })
@@ -92,11 +93,12 @@ export default function ScormCourses() {
       .finally(() => setTrackingLoading(false));
 
     await Promise.allSettled([courseRequest, trackingRequest]);
-  }, [token]);
+  }, [token, trialAccess]);
 
   useEffect(() => {
     if (!token) return navigate('/login');
-    loadCourses({ initial: true });
+    const timer = window.setTimeout(() => loadCourses({ initial: true }), 0);
+    return () => window.clearTimeout(timer);
   }, [token, navigate, loadCourses]);
 
   const readySignature = useMemo(
@@ -105,7 +107,9 @@ export default function ScormCourses() {
   );
 
   useEffect(() => {
-    if (readySignature) loadCourses();
+    if (!readySignature) return undefined;
+    const timer = window.setTimeout(() => loadCourses(), 0);
+    return () => window.clearTimeout(timer);
   }, [readySignature, loadCourses]);
 
   const trackingById = useMemo(
@@ -128,24 +132,24 @@ export default function ScormCourses() {
     <div className="p-4 md:p-7 lg:p-9 max-w-7xl mx-auto">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7 pb-7 border-b border-white/10">
         <div className="max-w-3xl">
-          <div className="scorm-micro text-[10px] uppercase font-semibold text-slate-500">Course management</div>
-          <h2 className="scorm-display text-[42px] md:text-[56px] mt-2">Courses</h2>
-          <p className="text-sm mt-3 leading-relaxed max-w-2xl">Publish and manage learning content. Learner figures on this screen represent direct published-link or direct-assignment activity; campaign performance stays in Campaign Analytics.</p>
+          <div className="scorm-micro text-[10px] uppercase font-semibold text-slate-500">{trialAccess ? 'Free course catalogue' : 'Course management'}</div>
+          <h2 className="scorm-display text-[42px] md:text-[56px] mt-2">{trialAccess ? 'Included courses' : 'Courses'}</h2>
+          <p className="text-sm mt-3 leading-relaxed max-w-2xl">{trialAccess ? 'View courses selected by LMSGEN and assign them to up to 10 learners. Course creation, uploads and editing unlock with full platform access.' : 'Publish and manage learning content. Learner figures on this screen represent direct published-link or direct-assignment activity; campaign performance stays in Campaign Analytics.'}</p>
         </div>
-        <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold">
+        {!trialAccess && <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold">
           <Plus size={15} /> Create course
-        </Link>
+        </Link>}
       </div>
 
       {error && <div className="mb-5 p-4 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-200 text-sm">{error}</div>}
 
-      <BackgroundCourseJobs />
+      {!trialAccess && <BackgroundCourseJobs />}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Metric label="Total courses" value={courses.length} icon={BookOpen} loading={coursesLoading} />
         <Metric label="Published" value={courses.filter((c) => c.status === 'published').length} icon={CheckCircle2} loading={coursesLoading} />
         <Metric label="Draft" value={courses.filter((c) => c.status === 'draft').length} icon={Clock3} loading={coursesLoading} />
-        <Metric label="Direct learners" value={learnerCount} icon={Users} loading={trackingLoading} />
+        <Metric label={trialAccess ? 'Learner limit' : 'Direct learners'} value={trialAccess ? '10' : learnerCount} icon={Users} loading={!trialAccess && trackingLoading} />
       </div>
 
       <div className="scorm-course-list-shell rounded-xl overflow-hidden border">
@@ -193,7 +197,8 @@ export default function ScormCourses() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
                     <h3 className="font-semibold text-[14px] truncate text-[#f1f5f9]">{course.title}</h3>
-                    <span className={`scorm-course-status scorm-micro shrink-0 px-2 py-1 rounded-md text-[8px] uppercase font-semibold border ${course.status === 'published' ? 'is-published' : 'is-draft'}`}>{course.status}</span>
+                    <span className={`scorm-course-status scorm-micro shrink-0 px-2 py-1 rounded-md text-[8px] uppercase font-semibold border ${course.status === 'published' ? 'is-published' : 'is-draft'}`}>{trialAccess ? 'Included' : course.status}</span>
+                    {course.readOnly && <span className="inline-flex items-center gap-1 text-[8px] uppercase font-semibold text-[#8295ae]"><LockKeyhole size={10} /> View only</span>}
                   </div>
                   <div className="scorm-micro text-[9px] text-[#8295ae] mt-1">{course.inviteCode || 'No invite code'} · Trackable course</div>
                 </div>

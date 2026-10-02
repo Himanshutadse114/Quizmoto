@@ -157,36 +157,25 @@ async function scormAuthResponse(user, role, { authMethod = 'password', staffSso
 }
 
 function pendingResponse(user, captured = true) {
-    const token = user ? issueToken(user, 'platform', { scormRole: 'pending' }) : null;
+    const token = user ? issueToken(user, 'trial', { scormRole: 'trial' }) : null;
     return {
         ...pendingApprovalPayload({ captured }),
         token,
         email: user?.email || null,
         username: user?.displayName || user?.username || null,
-        role: 'pending',
+        role: 'trial',
         isSuperAdmin: false,
         product: 'scorm-ai',
         platformAccess: Boolean(token),
-        scormAccess: false
-    };
-}
-
-function quizmotoOnlyResponse(user) {
-    return publicUser(user, issueToken(user, 'quizmoto', { authMethod: 'google' }), {
-        role: 'quizmoto',
-        isSuperAdmin: false,
-        product: 'quizmoto',
-        platformAccess: true,
         scormAccess: false,
-        pendingApproval: false,
-        quizmotoOnly: true,
-        authMethod: 'google'
-    });
+        trialAccess: Boolean(token),
+        quizmotoOnly: false
+    };
 }
 
 async function platformGoogleResponse(user) {
     const role = await getAccessRole(user.email);
-    if (!role) return quizmotoOnlyResponse(user);
+    if (!role) return pendingResponse(user, false);
     return scormAuthResponse(user, role, { authMethod: 'google' });
 }
 

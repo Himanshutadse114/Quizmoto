@@ -76,6 +76,14 @@ const SCORM_DATASETS = [
   { path: '/api/scorm/features', dataKey: 'features', label: 'Checking workspace features', priority: 2 }
 ];
 
+const TRIAL_DATASETS = [
+  { path: '/api/scorm/courses', dataKey: 'courses', label: 'Loading included courses', priority: 1 },
+  { path: '/api/scorm/roster', label: 'Preparing learner roster', priority: 1 },
+  { path: '/api/scorm/assignments', label: 'Preparing course assignments', priority: 2 },
+  { path: '/api/scorm/flipbooks', dataKey: 'flipbooks', label: 'Preparing Publica', priority: 2 },
+  { path: '/api/scorm/features', dataKey: 'features', label: 'Checking workspace features', priority: 2 }
+];
+
 const ANALYTICS_DATASETS = [
   { path: '/api/scorm/tracking/summary', dataKey: 'tracking-summary', label: 'Preparing learner tracking', priority: 1 },
   { path: '/api/scorm/campaigns', label: 'Loading campaigns', priority: 2 },
@@ -383,12 +391,13 @@ export async function warmScormPlatformData(token, options = {}) {
     role = '',
     scormAccess = true,
     quizmotoOnly = false,
+    trialAccess = false,
     onProgress = null
   } = options;
 
   const normalizedRole = String(role || '').toLowerCase();
   const analyticsOnly = normalizedRole === 'analytics_viewer';
-  let datasets = [...FREE_TOOL_DATASETS];
+  let datasets = trialAccess ? [...TRIAL_DATASETS] : [...FREE_TOOL_DATASETS];
 
   if (scormAccess && !quizmotoOnly) {
     datasets.push(...(analyticsOnly ? ANALYTICS_DATASETS : SCORM_DATASETS));

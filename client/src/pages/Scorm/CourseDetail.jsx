@@ -124,7 +124,8 @@ const PreviewStat = ({ label, value, icon, detail }) => (
 
 export default function ScormCourseDetail() {
   const { id } = useParams();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const trialAccess = Boolean(user?.trialAccess || user?.role === 'trial');
   const navigate = useNavigate();
   const [course, setCourse] = useState(null);
   const [regs, setRegs] = useState([]);
@@ -140,7 +141,7 @@ export default function ScormCourseDetail() {
   const socket = useSocket();
   const [live, setLive] = useState(false);
 
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers = React.useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
 
   const loadCourse = useCallback(() => {
     return axios.get(apiUrl(`/api/scorm/courses/${id}`), { headers }).then((r) => {
@@ -149,14 +150,20 @@ export default function ScormCourseDetail() {
       const base = import.meta.env.VITE_APP_BASENAME || '';
       setInviteUrl(`${origin}${base}/scorm/learn/${r.data.inviteCode}`);
     });
-  }, [id, token]);
+  }, [id, headers]);
 
   const loadRoster = useCallback(() => {
+    if (trialAccess) {
+      return axios.get(apiUrl('/api/scorm/assignments'), { headers }).then((r) => {
+        setRegs((r.data?.assignments || []).filter((row) => String(row.courseId) === String(id)));
+        setTrackingSummary(null);
+      });
+    }
     return axios.get(apiUrl(`/api/scorm/tracking/course/${id}`), { headers }).then((r) => {
       setRegs(r.data?.registrations || []);
       setTrackingSummary(r.data?.course || null);
     });
-  }, [id, token]);
+  }, [id, headers, trialAccess]);
 
   const loadPreviewStats = useCallback(async ({ silent = true } = {}) => {
     const requestId = ++previewRequestRef.current;
@@ -179,7 +186,7 @@ export default function ScormCourseDetail() {
     } finally {
       if (!silent) setPreviewStatsLoading(false);
     }
-  }, [id, token]);
+  }, [id, headers]);
 
   useEffect(() => {
     if (!token) return navigate('/login');
@@ -276,6 +283,8 @@ export default function ScormCourseDetail() {
 
   if (!course) return <div className="p-8 text-[#667085]">{msg || 'Loading course…'}</div>;
 
+  const readOnly = Boolean(trialAccess || course.readOnly);
+
   const completed = trackingSummary?.completed ?? regs.filter((r) => r.progressAvailable && r.progressPercent >= 100).length;
   const active = trackingSummary?.active ?? regs.filter((r) => (r.progressAvailable && r.progressPercent > 0 && r.progressPercent < 100) || (!r.progressAvailable && r.status === 'active')).length;
   const avgProgress = Number(trackingSummary?.averageProgress || 0);
@@ -286,12 +295,12 @@ export default function ScormCourseDetail() {
     <div className="p-4 md:p-7 lg:p-9 max-w-[1500px] mx-auto">
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 mb-6 pb-7 border-b border-black">
         <div className="min-w-0 max-w-4xl">
-          <div className="scorm-micro text-[10px] uppercase font-semibold text-[#667085]">Course workspace</div>
+          <div className="scorm-micro text-[10px] uppercase font-semibold text-[#667085]">{readOnly ? 'Included course · View only' : 'Course workspace'}</div>
           <h2 className="scorm-display text-[36px] md:text-[48px] mt-2 break-words">{course.title}</h2>
           <p className="text-sm mt-3 leading-relaxed max-w-3xl">{course.description || 'Manage publishing, learner access and progress for this course.'}</p>
           <div className="mt-4 flex flex-wrap gap-2 items-center">
             <span className={`scorm-micro text-[8px] uppercase font-semibold px-2.5 py-1 rounded-full border ${course.status === 'published' ? 'bg-[#ECFDF3] text-[#027A48] border-[#ABEFC6]' : 'bg-[#F2F4F7] text-[#344054] border-[#D0D5DD]'}`}>{course.status}</span>
-            <span className="scorm-micro text-[9px] text-[#667085]">Invite {course.inviteCode}</span>
+            {!readOnly && <span className="scorm-micro text-[9px] text-[#667085]">Invite {course.inviteCode}</span>}
             <span className="scorm-micro text-[9px] text-[#667085]">Trackable course</span>
             {previewStats && (
               <span className="scorm-micro text-[8px] uppercase font-semibold px-2.5 py-1 rounded-full border bg-[#EEF4FF] text-[#3538CD] border-[#C7D7FE]">
@@ -301,17 +310,17 @@ export default function ScormCourseDetail() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {course.package?.source === 'presentation_import' && (
+          {!readOnly && course.package?.source === 'presentation_import' && (
             <button type="button" onClick={() => navigate(`/scorm/presentation/edit/${course.package.id}`)} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center gap-2"><Pencil size={14} /> Edit presentation</button>
           )}
-          {course.package?.source === 'video_course' && (
+          {!readOnly && course.package?.source === 'video_course' && (
             <button type="button" onClick={() => navigate(`/scorm/author?mode=video&replaceVideo=${encodeURIComponent(course.package.id)}`)} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center gap-2"><Pencil size={14} /> Replace video</button>
           )}
-          {course.status !== 'published' ? (
+          {!readOnly && (course.status !== 'published' ? (
             <button onClick={publish} className="scorm-button-primary px-4 py-2.5 text-xs font-semibold">Publish</button>
           ) : (
             <button onClick={unpublish} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold">Unpublish</button>
-          )}
+          ))}
           <button disabled={previewing} onClick={preview} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait">
             <Eye size={14} /> {previewing ? 'Opening preview…' : 'Preview course'}
           </button>
@@ -454,7 +463,7 @@ export default function ScormCourseDetail() {
         )}
       </section>
 
-      {course.status === 'published' && (
+      {!readOnly && course.status === 'published' && (
         <div className="scorm-invite-panel rounded-[18px] bg-[#101828] border border-[#344054] p-4 md:p-5 mb-6 text-white">
           <div className="scorm-micro text-[9px] uppercase font-semibold text-[#A5B4FC] mb-2">Learner invite link</div>
           <div className="flex flex-col sm:flex-row gap-2">

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, BookOpen, Gamepad2, LockKeyhole, ShieldCheck, Sparkles } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { ArrowUpRight, BookOpen, LockKeyhole, ShieldCheck, Users } from 'lucide-react';
 import { SCORM_FEATURE_ORDER, getScormFeature } from './scormFeatureCatalog';
 
 const FEATURE_ROUTES = {
@@ -14,8 +13,6 @@ const FEATURE_ROUTES = {
 };
 
 export default function PendingScormHome() {
-  const { user } = useAuth();
-
   return (
     <div className="scorm-light-adapted p-4 md:p-7 lg:p-8 max-w-[1440px] mx-auto">
       <section className="scorm-page-hero mb-6 md:mb-7">
@@ -23,16 +20,16 @@ export default function PendingScormHome() {
           <div className="max-w-3xl">
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <span className="scorm-eyebrow">LMSGEN Learning Platform</span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#315a8b] bg-[#08182b] px-2.5 py-1 text-[9px] font-semibold text-[#93c5fd]"><LockKeyhole size={11} /> Approval pending</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#315a8b] bg-[#08182b] px-2.5 py-1 text-[9px] font-semibold text-[#93c5fd]"><BookOpen size={11} /> Free access</span>
             </div>
             <h1 className="scorm-display"><span>Welcome to</span> <span className="text-blue-400">LMSGEN</span></h1>
             <p className="mt-3 text-sm md:text-[15px] max-w-2xl">
-              Your starter account includes Quizmoto for up to 10 players per live session and 2 Publica uploads. Trackable course creation and every expanded allowance require Super Admin approval.
+              Explore the courses selected by LMSGEN, add up to 10 learners, and assign those courses from your free workspace. AI generation and adding your own courses unlock after Super Admin approval.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link to="/scorm/quizmoto" className="scorm-button-primary inline-flex items-center justify-center gap-2 px-5 py-3 text-xs font-semibold">
-              <Gamepad2 size={16} /> Open Quizmoto
+            <Link to="/scorm/courses" className="scorm-button-primary inline-flex items-center justify-center gap-2 px-5 py-3 text-xs font-semibold">
+              <BookOpen size={16} /> View included courses
             </Link>
             <Link to="/scorm/publica" className="scorm-button-secondary inline-flex items-center justify-center gap-2 px-5 py-3 text-xs font-semibold">
               <BookOpen size={16} /> Open Publica
@@ -44,13 +41,13 @@ export default function PendingScormHome() {
       <div className="grid lg:grid-cols-[1.15fr_.85fr] gap-5 mb-6">
         <section className="scorm-light-feature-hero rounded-3xl border border-[#315a8b] bg-[radial-gradient(circle_at_85%_15%,rgba(59,130,246,.18),transparent_35%),linear-gradient(145deg,#0b213c,#071426)] p-6 md:p-7 min-h-[260px] flex flex-col justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[.12em] font-semibold text-[#93c5fd]"><Gamepad2 size={14} /> Unlocked now</div>
-            <h2 className="text-3xl md:text-4xl font-semibold tracking-[-.045em] text-[#f8fafc] mt-3">Quizmoto + LMSGEN Publica</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#b8c7da]">Host Quizmoto sessions for up to 10 players at a time and publish up to 2 trackable Publica items while course-authoring approval is pending.</p>
+            <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[.12em] font-semibold text-[#93c5fd]"><BookOpen size={14} /> Available now</div>
+            <h2 className="text-3xl md:text-4xl font-semibold tracking-[-.045em] text-[#f8fafc] mt-3">A working LMS trial, not an empty dashboard</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#b8c7da]">Open the default course catalogue, build a learner roster of up to 10 people, assign courses, and continue using your current Publica allowance.</p>
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
-            <Link to="/scorm/quizmoto" className="scorm-button-primary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">Launch workspace <ArrowUpRight size={14} /></Link>
-            <Link to="/scorm/quizmoto/create" className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">Create quiz <Sparkles size={14} /></Link>
+            <Link to="/scorm/courses" className="scorm-button-primary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">Browse courses <ArrowUpRight size={14} /></Link>
+            <Link to="/scorm/roster" className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">Add learners <Users size={14} /></Link>
             <Link to="/scorm/publica" className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">Open Publica <BookOpen size={14} /></Link>
           </div>
         </section>
@@ -58,8 +55,8 @@ export default function PendingScormHome() {
         <section className="scorm-panel p-5 md:p-6">
           <div className="w-11 h-11 rounded-xl grid place-items-center bg-[#0a1d33] border border-[#315a8b] text-[#93c5fd]"><ShieldCheck size={19} /></div>
           <div className="scorm-eyebrow mt-5">Approval status</div>
-          <h3 className="text-xl mt-1">Course-authoring features are protected</h3>
-          <p className="mt-3 text-xs leading-relaxed text-[#9fb0c5]">You can explore every capability below. Opening a locked module shows what it provides instead of blocking you at the login page.</p>
+          <h3 className="text-xl mt-1">Creation stays protected</h3>
+          <p className="mt-3 text-xs leading-relaxed text-[#9fb0c5]">Included courses are view-only. AI generation, uploads, course editing and Quizmoto remain unavailable until a Super Admin approves and configures your tenant.</p>
           <div className="mt-4 rounded-xl border border-[#29405f] bg-[#07111f] px-3.5 py-3">
             <div className="text-[10px] uppercase tracking-[.12em] font-semibold text-[#8295ae]">Approval administrator</div>
             <div className="mt-1 text-xs text-[#dce7f5]">Contact your platform administrator for access.</div>

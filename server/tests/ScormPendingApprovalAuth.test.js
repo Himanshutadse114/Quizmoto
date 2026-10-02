@@ -142,7 +142,7 @@ describe('LMSGEN authentication and tenant assignment', () => {
         expect(captured).to.have.length(1);
     });
 
-    it('keeps an unassigned Google identity in Quizmoto instead of creating LMSGEN tenant access', async () => {
+    it('gives an unassigned Google identity free course access without Quizmoto', async () => {
         const googlePayload = {
             sub: 'google-user-1',
             email: 'google.pending@example.com',
@@ -153,9 +153,10 @@ describe('LMSGEN authentication and tenant assignment', () => {
         const { app, captured, created } = buildApp({ role: null, googlePayload });
         const res = await request(app).post('/scorm/google').send({ credential: 'google-credential' });
         expect(res.status).to.equal(200);
-        expect(res.body.quizmotoOnly).to.equal(true);
+        expect(res.body.quizmotoOnly).to.equal(false);
+        expect(res.body.trialAccess).to.equal(true);
         expect(res.body.scormAccess).to.equal(false);
-        expect(res.body.role).to.equal('quizmoto');
+        expect(res.body.role).to.equal('trial');
         expect(created).to.have.length(1);
         expect(captured).to.have.length(0);
     });

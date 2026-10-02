@@ -20,13 +20,13 @@ const HOST_USER_BACKUP = 'quizmotoHostUser';
 function normalizeScormRole(role, approved = false) {
     const value = String(role || '').trim().toLowerCase();
     if (value === 'user') return 'admin';
-    if (['super_admin', 'admin', 'co_admin', 'analytics_viewer', 'pending', 'quizmoto'].includes(value)) return value;
+    if (['super_admin', 'admin', 'co_admin', 'analytics_viewer', 'pending', 'quizmoto', 'trial'].includes(value)) return value;
     return approved ? 'admin' : 'pending';
 }
 
 function normalizeStoredUser(value) {
     if (!value || typeof value !== 'object') return value;
-    if (!value.product && !value.scormAccess && !value.pendingApproval && !value.quizmotoOnly) return value;
+    if (!value.product && !value.scormAccess && !value.pendingApproval && !value.quizmotoOnly && !value.trialAccess) return value;
     const approved = Boolean(value.scormAccess && !value.pendingApproval);
     return { ...value, role: normalizeScormRole(value.role, approved) };
 }
@@ -107,7 +107,8 @@ export const AuthProvider = ({ children }) => {
             tenantName: workspaceName,
             authMethod: data.authMethod || null,
             staffSso: Boolean(data.staffSso),
-            quizmotoOnly: false
+            quizmotoOnly: false,
+            trialAccess: Boolean(data.trialAccess || role === 'trial')
         };
         setAccessFlags({ platform: true, scorm: approved });
         persistSession(data.token, scormUser);

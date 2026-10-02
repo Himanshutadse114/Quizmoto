@@ -27,6 +27,8 @@ const ScormAwarenessLibraryTemplate = require('./ScormAwarenessLibraryTemplate')
 const ScormAwarenessUserTemplate = require('./ScormAwarenessUserTemplate');
 const ScormAwarenessEmailCampaign = require('./ScormAwarenessEmailCampaign');
 const ScormAwarenessEmailCampaignRecipient = require('./ScormAwarenessEmailCampaignRecipient');
+const ScormCourseCatalogGrant = require('./ScormCourseCatalogGrant');
+const ScormCourseProvision = require('./ScormCourseProvision');
 
 ScormPackage.hasMany(ScormCourse, { foreignKey: 'packageId', as: 'courses' });
 ScormCourse.belongsTo(ScormPackage, { foreignKey: 'packageId', as: 'package' });
@@ -77,6 +79,13 @@ ScormCampaignCourse.belongsTo(ScormCampaign, { foreignKey: 'campaignId', as: 'ca
 ScormCampaignCourse.belongsTo(ScormCourse, { foreignKey: 'courseId', as: 'course' });
 ScormCourse.hasMany(ScormCampaignCourse, { foreignKey: 'courseId', as: 'campaignLinks' });
 
+ScormCourse.hasMany(ScormCourseCatalogGrant, { foreignKey: 'sourceCourseId', as: 'catalogGrants' });
+ScormCourseCatalogGrant.belongsTo(ScormCourse, { foreignKey: 'sourceCourseId', as: 'sourceCourse' });
+ScormWorkspace.hasMany(ScormCourseCatalogGrant, { foreignKey: 'workspaceId', as: 'courseCatalogGrants' });
+ScormCourseCatalogGrant.belongsTo(ScormWorkspace, { foreignKey: 'workspaceId', as: 'workspace' });
+ScormCourse.hasMany(ScormCourseProvision, { foreignKey: 'sourceCourseId', as: 'catalogProvisions' });
+ScormCourseProvision.belongsTo(ScormCourse, { foreignKey: 'sourceCourseId', as: 'sourceCourse' });
+
 ScormCampaign.hasMany(ScormCampaignVideo, { foreignKey: 'campaignId', as: 'campaignVideos', onDelete: 'CASCADE' });
 ScormCampaignVideo.belongsTo(ScormCampaign, { foreignKey: 'campaignId', as: 'campaign' });
 ScormCampaignVideo.belongsTo(ScormVideo, { foreignKey: 'videoId', as: 'video' });
@@ -116,7 +125,9 @@ const models = {
     ScormAwarenessLibraryTemplate,
     ScormAwarenessUserTemplate,
     ScormAwarenessEmailCampaign,
-    ScormAwarenessEmailCampaignRecipient
+    ScormAwarenessEmailCampaignRecipient,
+    ScormCourseCatalogGrant,
+    ScormCourseProvision
 };
 
 module.exports = models;

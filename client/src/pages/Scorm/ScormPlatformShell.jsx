@@ -103,8 +103,22 @@ const QUIZMOTO_ONLY_GROUPS = [
   }
 ];
 
-function displayRole(role, isSuperAdmin, quizmotoOnly) {
+const TRIAL_NAV_GROUPS = [
+  {
+    label: 'Free learning workspace',
+    items: [
+      { to: '/scorm', end: true, label: 'Overview', icon: LayoutDashboard },
+      { to: '/scorm/courses', label: 'Included Courses', icon: BookOpen },
+      { to: '/scorm/roster', label: 'Learner Roster', icon: UserCheck },
+      { to: '/scorm/assignments', label: 'Assign Courses', icon: UserCheck },
+      { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck }
+    ]
+  }
+];
+
+function displayRole(role, isSuperAdmin, quizmotoOnly, trialAccess) {
   if (quizmotoOnly) return 'Free platform user';
+  if (trialAccess) return 'Free course access';
   if (isSuperAdmin || role === 'super_admin') return 'Super Admin';
   if (role === 'admin') return 'Tenant Admin';
   if (role === 'co_admin') return 'Co-admin';
@@ -112,9 +126,9 @@ function displayRole(role, isSuperAdmin, quizmotoOnly) {
   return 'LMSGEN member';
 }
 
-function Navigation({ onNavigate, isSuperAdmin, scormAccess, role, quizmotoOnly }) {
+function Navigation({ onNavigate, isSuperAdmin, scormAccess, role, quizmotoOnly, trialAccess }) {
   const analyticsOnly = scormAccess && role === 'analytics_viewer';
-  let groups = quizmotoOnly ? QUIZMOTO_ONLY_GROUPS : analyticsOnly ? ANALYTICS_NAV_GROUPS : OPERATIONAL_NAV_GROUPS;
+  let groups = trialAccess ? TRIAL_NAV_GROUPS : quizmotoOnly ? QUIZMOTO_ONLY_GROUPS : analyticsOnly ? ANALYTICS_NAV_GROUPS : OPERATIONAL_NAV_GROUPS;
 
   if (!quizmotoOnly && scormAccess && (role === 'admin' || isSuperAdmin)) {
     groups = [
@@ -202,9 +216,16 @@ function ThemeToggle({ theme, onToggle, auth = false }) {
   );
 }
 
-function MobileTabBar({ scormAccess, role, quizmotoOnly }) {
+function MobileTabBar({ scormAccess, role, quizmotoOnly, trialAccess }) {
   const analyticsOnly = scormAccess && role === 'analytics_viewer';
-  const items = quizmotoOnly
+  const items = trialAccess
+    ? [
+        { to: '/scorm/courses', label: 'Courses', icon: BookOpen },
+        { to: '/scorm/roster', label: 'Learners', icon: UserCheck },
+        { to: '/scorm/assignments', label: 'Assign', icon: Users },
+        { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck }
+      ]
+    : quizmotoOnly
     ? [
         { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2 },
         { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck }
@@ -258,19 +279,20 @@ export default function ScormPlatformShell() {
 
   const toggleTheme = () => setTheme((current) => current === 'light' ? 'dark' : 'light');
   const quizmotoOnly = Boolean(user?.quizmotoOnly);
-  const role = user?.role || (scormAccess ? 'admin' : quizmotoOnly ? 'quizmoto' : 'pending');
+  const trialAccess = Boolean(user?.trialAccess || user?.role === 'trial');
+  const role = user?.role || (scormAccess ? 'admin' : trialAccess ? 'trial' : quizmotoOnly ? 'quizmoto' : 'pending');
   const isSuperAdmin = Boolean(scormAccess && (user?.isSuperAdmin || role === 'super_admin'));
   const isWorkspaceAdmin = Boolean(scormAccess && (role === 'admin' || isSuperAdmin));
   const analyticsOnly = Boolean(scormAccess && role === 'analytics_viewer');
-  const roleName = displayRole(role, isSuperAdmin, quizmotoOnly);
+  const roleName = displayRole(role, isSuperAdmin, quizmotoOnly, trialAccess);
 
   return (
     <div className={`scorm-editorial scorm-theme-${theme} min-h-screen relative z-20`}>
       <aside className="scorm-sidebar fixed inset-y-0 left-0 z-40 hidden lg:flex w-[268px] flex-col border-r">
         <div className="scorm-brand-wrap h-[76px] px-5 flex items-center border-b"><Brand theme={theme} /></div>
-        <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} quizmotoOnly={quizmotoOnly} />
+        <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} quizmotoOnly={quizmotoOnly} trialAccess={trialAccess} />
         <div className="scorm-sidebar-footer p-3 border-t space-y-2.5">
-          {(scormAccess || quizmotoOnly) && (
+          {(scormAccess || quizmotoOnly || trialAccess) && (
             <Link to="/scorm/settings" className="scorm-sidebar-profile rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321] block">
               <div className="flex items-center gap-2">
                 {user?.avatar ? <img src={user.avatar} alt="" className="w-8 h-8 rounded-lg object-cover" /> : <div className="w-8 h-8 rounded-lg grid place-items-center bg-[#4FC9BF]/15 text-[#4FC9BF] text-[10px] font-bold">{String(user?.username || 'U').trim().slice(0, 1).toUpperCase()}</div>}
@@ -281,7 +303,7 @@ export default function ScormPlatformShell() {
             </Link>
           )}
 
-          {quizmotoOnly ? (
+          {(quizmotoOnly || trialAccess) ? (
             <FreeAccessCard />
           ) : !scormAccess ? (
             <div className="scorm-sidebar-profile rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
@@ -302,9 +324,9 @@ export default function ScormPlatformShell() {
               <Brand theme={theme} />
               <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="scorm-drawer-close w-9 h-9 grid place-items-center"><X size={17} /></button>
             </div>
-            <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} quizmotoOnly={quizmotoOnly} onNavigate={() => setMobileOpen(false)} />
+            <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} quizmotoOnly={quizmotoOnly} trialAccess={trialAccess} onNavigate={() => setMobileOpen(false)} />
             <div className="p-3 border-t space-y-2.5">
-              {quizmotoOnly && <FreeAccessCard />}
+              {(quizmotoOnly || trialAccess) && <FreeAccessCard />}
               <button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><LogOut size={14} /> Sign out</span><ChevronRight size={13} /></button>
             </div>
           </div>
@@ -314,12 +336,18 @@ export default function ScormPlatformShell() {
       <div className="lg:pl-[268px] min-h-screen">
         <header className="scorm-topbar sticky top-0 z-30 min-h-[64px] border-b px-4 md:px-7 py-2.5 flex items-center gap-3 md:gap-4">
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open LMSGEN navigation" className="scorm-topbar-icon lg:hidden w-10 h-10 grid place-items-center shrink-0"><Menu size={18} /></button>
-          {!scormAccess && !quizmotoOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> LMSGEN approval / tenant assignment pending · Free tools available</div>}
+          {trialAccess && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><BookOpen size={12} /> Free access · Included courses for up to 10 learners</div>}
+          {!trialAccess && !scormAccess && !quizmotoOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> LMSGEN approval / tenant assignment pending · Free tools available</div>}
           {quizmotoOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><BookOpenCheck size={12} /> Free tools · Quizmoto and Publica</div>}
           {analyticsOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><BarChart3 size={12} /> Read-only analytics access</div>}
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
-            {quizmotoOnly ? (
+            {trialAccess ? (
+              <>
+                <Link to="/scorm/publica" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Publica</span></Link>
+                <Link to="/scorm/courses" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold"><BookOpen size={14} /><span>Included courses</span></Link>
+              </>
+            ) : quizmotoOnly ? (
               <>
                 <Link to="/scorm/publica" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Publica</span></Link>
                 <Link to="/scorm/quizmoto" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
@@ -344,8 +372,8 @@ export default function ScormPlatformShell() {
         </header>
         <main className="scorm-main min-h-[calc(100vh-64px)] pb-24 lg:pb-0"><Outlet /></main>
       </div>
-      {!analyticsOnly && !quizmotoOnly && <ScormGenerationNotifier />}
-      <MobileTabBar scormAccess={scormAccess} role={role} quizmotoOnly={quizmotoOnly} />
+      {!analyticsOnly && !quizmotoOnly && !trialAccess && <ScormGenerationNotifier />}
+      <MobileTabBar scormAccess={scormAccess} role={role} quizmotoOnly={quizmotoOnly} trialAccess={trialAccess} />
     </div>
   );
 }

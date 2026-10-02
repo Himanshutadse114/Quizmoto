@@ -13,6 +13,7 @@ const { getAccessRole } = require('../../services/scorm/ScormAccessService');
 const { getEntitlement } = require('../../services/scorm/ScormEntitlementService');
 const MailService = require('../../services/mail/MailService');
 const { deliveryPlan, runInBackground, sendInBatches } = require('../../services/mail/MailBatchDeliveryService');
+const { provisionMapForHost, syncAvailableCourses } = require('../../services/scorm/ScormCourseCatalogService');
 
 const MAX_ASSIGNMENT_COMBINATIONS = 5000;
 const INACTIVE_ASSIGNMENT_STATUSES = ['revoked', 'superseded'];
@@ -59,11 +60,11 @@ function serializeAssignment(reg) {
     };
 }
 
-async function assertBulkLearnerLimit(hostId, learnerEmails) {
+async function assertBulkLearnerLimit(hostId, learnerEmails, entitlementOverride = null) {
     const host = await User.findByPk(hostId);
     if (!host?.email) return;
     const role = await getAccessRole(host.email);
-    const entitlement = await getEntitlement(host.email, role || 'admin');
+    const entitlement = entitlementOverride || await getEntitlement(host.email, role || 'admin');
     const maxLearners = entitlement?.maxLearners;
     if (maxLearners === null || maxLearners === undefined) return;
 
@@ -102,13 +103,23 @@ async function assertBulkLearnerLimit(hostId, learnerEmails) {
 
 router.get('/', auth, async (req, res) => {
     try {
+        if (req.scormTrial) {
+            await syncAvailableCourses({ targetHostId: req.userId });
+        }
+        const provisions = req.scormTrial ? await provisionMapForHost(req.userId) : null;
+        const allowedCourseIds = provisions ? [...provisions.keys()] : null;
+        const courseWhere = {
+            hostId: req.userId,
+            status: { [Op.ne]: 'archived' },
+            ...(allowedCourseIds ? { id: { [Op.in]: allowedCourseIds } } : {})
+        };
         const [learners, courses, registrations] = await Promise.all([
             ScormLearnerRoster.findAll({
                 where: { hostId: req.userId },
                 order: [['learnerName', 'ASC'], ['email', 'ASC']]
             }),
             ScormCourse.findAll({
-                where: { hostId: req.userId, status: { [Op.ne]: 'archived' } },
+                where: courseWhere,
                 order: [['createdAt', 'DESC']]
             }),
             ScormRegistration.findAll({
@@ -122,7 +133,7 @@ router.get('/', auth, async (req, res) => {
                     model: ScormCourse,
                     as: 'course',
                     required: true,
-                    where: { hostId: req.userId }
+                    where: courseWhere
                 }],
                 order: [['assignedAt', 'DESC'], ['createdAt', 'DESC']]
             })
@@ -167,6 +178,10 @@ router.post('/bulk', auth, async (req, res) => {
             return res.status(413).json({ message: `A maximum of ${MAX_ASSIGNMENT_COMBINATIONS} learner-course assignments can be created at once.` });
         }
 
+        const provisions = req.scormTrial ? await provisionMapForHost(req.userId) : null;
+        if (provisions && courseIds.some((courseId) => !provisions.has(String(courseId)))) {
+            return res.status(403).json({ message: 'One or more selected courses are not included in your free catalogue.', code: 'SCORM_TRIAL_COURSE_NOT_AVAILABLE' });
+        }
         const [learners, courses] = await Promise.all([
             ScormLearnerRoster.findAll({ where: { id: { [Op.in]: learnerIds }, hostId: req.userId } }),
             ScormCourse.findAll({ where: { id: { [Op.in]: courseIds }, hostId: req.userId } })
@@ -182,7 +197,7 @@ router.post('/bulk', auth, async (req, res) => {
             });
         }
 
-        await assertBulkLearnerLimit(req.userId, learners.map((learner) => learner.email));
+        await assertBulkLearnerLimit(req.userId, learners.map((learner) => learner.email), req.scormEntitlement);
 
         let created = 0;
         let updated = 0;
