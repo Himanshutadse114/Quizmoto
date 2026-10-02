@@ -54,8 +54,40 @@
     showInstallMessage.timeoutId = window.setTimeout(() => notice.remove(), 6500);
   }
 
+  // The marketing pages run inside an iframe, and browsers fire
+  // beforeinstallprompt on the top-level window only. main.jsx captures it
+  // there, so read it back from the parent when the frame never received it.
+  function getParentWindow() {
+    try {
+      return window.parent && window.parent !== window ? window.parent : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function getAvailableInstallPrompt() {
+    if (installPrompt) return installPrompt;
+    const parentWindow = getParentWindow();
+    try {
+      return (parentWindow && parentWindow.__lmsgenInstallPrompt) || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function clearInstallPrompt() {
+    installPrompt = null;
+    const parentWindow = getParentWindow();
+    try {
+      if (parentWindow) parentWindow.__lmsgenInstallPrompt = null;
+    } catch (error) {
+      // Cross-origin parent: nothing to clear.
+    }
+  }
+
   function waitForInstallPrompt(timeout = 2200) {
-    if (installPrompt) return Promise.resolve(installPrompt);
+    const available = getAvailableInstallPrompt();
+    if (available) return Promise.resolve(available);
 
     return new Promise((resolve) => {
       const request = {
@@ -70,7 +102,7 @@
   }
 
   async function openInstallPrompt(promptEvent) {
-    installPrompt = null;
+    clearInstallPrompt();
     const notice = document.getElementById("lmsgen-install-notice");
     if (notice) notice.remove();
     await promptEvent.prompt();
@@ -89,13 +121,16 @@
       return;
     }
 
-    if (installPrompt) {
-      await openInstallPrompt(installPrompt);
+    const readyPrompt = getAvailableInstallPrompt();
+    if (readyPrompt) {
+      await openInstallPrompt(readyPrompt);
       return;
     }
 
+    // Never navigate to /app?install=...: signed-out visitors are redirected
+    // to the login page and nothing gets installed.
     if (/iphone|ipad|ipod/i.test(window.navigator.userAgent)) {
-      window.location.assign("/app?install=ios");
+      showInstallMessage("To install LMSGEN, tap the Share button in Safari and choose 'Add to Home Screen'.");
       return;
     }
 
@@ -106,7 +141,7 @@
       return;
     }
 
-    window.location.assign("/app?install=manual");
+    showInstallMessage("Your browser doesn't offer direct install here. Use the browser menu and choose 'Install app' or 'Add to Home screen'.");
   }
 
   function ensureInstallMenuAction() {
@@ -133,6 +168,24 @@
       request.resolve(event);
     }
   });
+
+  const parentForEvents = getParentWindow();
+  if (parentForEvents) {
+    try {
+      parentForEvents.addEventListener("lmsgen-install-ready", () => {
+        if (pendingInstallRequest) {
+          const prompt = getAvailableInstallPrompt();
+          if (!prompt) return;
+          const request = pendingInstallRequest;
+          pendingInstallRequest = null;
+          window.clearTimeout(request.timeoutId);
+          request.resolve(prompt);
+        }
+      });
+    } catch (error) {
+      // Cross-origin parent: fall back to the frame's own listener.
+    }
+  }
 
   window.addEventListener("appinstalled", () => {
     installPrompt = null;
