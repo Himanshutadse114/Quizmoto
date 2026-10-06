@@ -150,6 +150,9 @@ services:
         source: /contact
         destination: /landing/contact/index.html
       - type: rewrite
+        source: /checklist
+        destination: /checklist/index.html
+      - type: rewrite
         source: /blog/why-scorm-courses-go-unfinished
         destination: /landing/blog/why-scorm-courses-go-unfinished.html
       - type: rewrite
