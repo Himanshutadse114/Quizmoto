@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { BookOpen, BookOpenCheck, Building2, Mail, UsersRound } from 'lucide-react';
+import { BookOpen, BookOpenCheck, Building2, Mail, ShieldAlert, UsersRound } from 'lucide-react';
 import TenantAdmin from './TenantAdmin';
 import PlatformUsersAdmin from './PlatformUsersAdmin';
 import FlipbookTenantAdmin from './FlipbookTenantAdmin';
 import SuperAdminMailPanel from './SuperAdminMailPanel';
 import EmailTemplatesPanel from './EmailTemplatesPanel';
 import CourseCatalogAdmin from './CourseCatalogAdmin';
+import PlatformDataPurgePanel from './PlatformDataPurgePanel';
 import './accessAdminCompact.css';
 
 export default function AccessAdmin() {
@@ -16,7 +17,8 @@ export default function AccessAdmin() {
     ['users', 'Platform Users', UsersRound],
     ['courses', 'Course Distribution', BookOpen],
     ['flipbooks', 'Publica Controls', BookOpenCheck],
-    ['email', 'Email Templates', Mail]
+    ['email', 'Email Templates', Mail],
+    ['danger', 'Danger Zone', ShieldAlert]
   ];
 
   return (
@@ -35,8 +37,8 @@ export default function AccessAdmin() {
                 onClick={() => setTab(value)}
                 className="h-9 px-3.5 rounded-lg text-[10px] font-semibold inline-flex items-center gap-2 transition"
                 style={{
-                  background: tab === value ? 'rgba(79,201,191,.12)' : 'transparent',
-                  color: tab === value ? '#4FC9BF' : 'var(--scorm-muted)'
+                  background: tab === value ? (value === 'danger' ? 'rgba(244,63,94,.12)' : 'rgba(79,201,191,.12)') : 'transparent',
+                  color: tab === value ? (value === 'danger' ? '#fb7185' : '#4FC9BF') : 'var(--scorm-muted)'
                 }}
               >
                 {React.createElement(icon, { size: 13 })} {label}
@@ -54,6 +56,8 @@ export default function AccessAdmin() {
         <FlipbookTenantAdmin />
       ) : tab === 'courses' ? (
         <CourseCatalogAdmin />
+      ) : tab === 'danger' ? (
+        <PlatformDataPurgePanel />
       ) : (
         <div className="px-4 py-6 md:px-8 md:py-8 max-w-[1280px] mx-auto space-y-4">
           <div className="mb-5">

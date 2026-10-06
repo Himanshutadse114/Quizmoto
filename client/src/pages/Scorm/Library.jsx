@@ -73,6 +73,7 @@ export default function ScormLibrary() {
     const uploadedPackage = packages.find((item) => String(item.id) === String(uploadActivity.packageId));
     if (!uploadedPackage) return;
     if (uploadedPackage.status === 'ready') {
+      setUploading(false);
       setUploadActivity((current) => current ? {
         ...current,
         phase: 'ready',
@@ -81,6 +82,7 @@ export default function ScormLibrary() {
         detail: 'Validation is complete. The module is ready to use.'
       } : current);
     } else if (uploadedPackage.status === 'failed' || uploadedPackage.status === 'error' || uploadedPackage.errorMessage) {
+      setUploading(false);
       setUploadActivity((current) => current ? {
         ...current,
         phase: 'error',
@@ -97,6 +99,68 @@ export default function ScormLibrary() {
       } : current);
     }
   }, [packages, uploadActivity?.packageId, uploadActivity?.phase]);
+
+  useEffect(() => {
+    const packageId = uploadActivity?.packageId;
+    if (!packageId || !['processing', 'uploaded'].includes(uploadActivity?.phase)) return undefined;
+    let cancelled = false;
+    let terminal = false;
+
+    const checkUploadedPackage = async () => {
+      try {
+        const response = await axios.get(apiUrl(`/api/scorm/packages/${encodeURIComponent(packageId)}`), {
+          headers,
+          params: { statusCheck: Date.now() },
+          timeout: 10000
+        });
+        if (cancelled) return;
+        const uploadedPackage = response.data || {};
+        if (uploadedPackage.status === 'ready') {
+          terminal = true;
+          setUploading(false);
+          setUploadActivity((current) => current ? {
+            ...current,
+            phase: 'ready',
+            percent: 100,
+            stage: 'Module ready',
+            detail: 'Validation is complete. The module is ready to use.'
+          } : current);
+          await load().catch(() => {});
+        } else if (['failed', 'error'].includes(uploadedPackage.status) || uploadedPackage.errorMessage) {
+          terminal = true;
+          setUploading(false);
+          setUploadActivity((current) => current ? {
+            ...current,
+            phase: 'error',
+            stage: 'Processing failed',
+            detail: uploadedPackage.errorMessage || 'The uploaded module could not be processed.'
+          } : current);
+          setMsg(uploadedPackage.errorMessage || 'The uploaded module could not be processed.');
+          await load().catch(() => {});
+        } else {
+          setUploadActivity((current) => current ? {
+            ...current,
+            phase: 'processing',
+            percent: Math.max(92, Number(current.percent) || 0),
+            stage: 'Processing module',
+            detail: 'Validating the package, extracting files and locating the course launch page.'
+          } : current);
+        }
+      } catch {
+        // Keep the current progress visible during a transient status failure.
+        // The next poll can still observe the completed background unpack.
+      }
+    };
+
+    checkUploadedPackage();
+    const timer = window.setInterval(() => {
+      if (!terminal) checkUploadedPackage();
+    }, 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [headers, load, uploadActivity?.packageId, uploadActivity?.phase]);
 
   // The inventory endpoint deliberately returns metadata only. Full authored
   // course JSON is fetched solely by the editor's /analysis request.
@@ -132,11 +196,14 @@ export default function ScormLibrary() {
       stage: 'Preparing secure upload',
       detail: 'Creating a secure upload for this module.'
     });
+    let pendingPackageId = null;
+    let uploadedToStorage = false;
     try {
       const packageTitle = title || file.name.replace(/\.zip$/i, '');
       const ticket = await axios.post(apiUrl('/api/scorm/packages/upload-ticket'), {
         title: packageTitle, byteSize: file.size
       }, { headers });
+      pendingPackageId = ticket.data?.packageId || null;
       setUploadActivity((current) => ({
         ...current,
         phase: 'uploading',
@@ -167,6 +234,7 @@ export default function ScormLibrary() {
             maxContentLength: Infinity,
             onUploadProgress: updateUploadProgress
           });
+          uploadedToStorage = true;
         } catch (uploadError) {
           const error = new Error('The secure package upload could not start. Please retry or contact support.');
           error.cause = uploadError;
@@ -191,7 +259,7 @@ export default function ScormLibrary() {
       }
       const packageId = res.data?.id || res.data?.packageId || ticket.data?.packageId || null;
       const processing = res.data.status === 'processing';
-      setUploadActivity((current) => ({
+      setUploadActivity((current) => current?.phase === 'ready' ? current : ({
         ...current,
         packageId,
         phase: processing ? 'processing' : (res.data.status === 'ready' ? 'ready' : 'uploaded'),
@@ -206,6 +274,23 @@ export default function ScormLibrary() {
       setSelectedFile(null);
       await load();
     } catch (err) {
+      if (uploadedToStorage && pendingPackageId) {
+        // The completion acknowledgement can time out even though the backend
+        // accepted the upload and is already unpacking it. Keep polling the
+        // package row instead of freezing at 90% or showing a false failure.
+        setMsg(null);
+        setUploadActivity((current) => current?.phase === 'ready' ? current : ({
+          ...(current || { fileName: file.name }),
+          packageId: pendingPackageId,
+          phase: 'processing',
+          percent: Math.max(92, Number(current?.percent) || 0),
+          stage: 'Processing module',
+          detail: 'Upload received. Checking background validation status.'
+        }));
+        setTitle('');
+        setSelectedFile(null);
+        return;
+      }
       const message = err.response?.data?.message || err.message || 'Module upload failed.';
       setMsg(message);
       setUploadActivity((current) => ({

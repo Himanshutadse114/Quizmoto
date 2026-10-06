@@ -58,7 +58,15 @@ describe('one-time platform startup preparation', () => {
         expect(inventoryRoute).to.include("attributes: [");
         expect(inventoryRoute).not.to.include("'analysisJson'");
         expect(courseLibrary).not.to.include("p?.analysisJson");
-        expect(courseLibrary).to.include("p?.source === 'ai_author'");
+        expect(courseLibrary).to.include("item?.source === 'ai_author'");
+    });
+
+    it('polls the uploaded package directly until background processing reaches a terminal state', () => {
+        expect(courseLibrary).to.include("/api/scorm/packages/${encodeURIComponent(packageId)}");
+        expect(courseLibrary).to.include("params: { statusCheck: Date.now() }");
+        expect(courseLibrary).to.include("phase: 'ready'");
+        expect(courseLibrary).to.include('percent: 100');
+        expect(packagesRoute).to.include("res.setHeader('Cache-Control', 'private, no-store')");
     });
 
     it('does not re-query administrative tracking on every route change', () => {

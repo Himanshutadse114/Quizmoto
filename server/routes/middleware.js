@@ -9,6 +9,7 @@ const { resolveWorkspaceContext } = require('../services/scorm/ScormWorkspaceSer
 const { getStaffPolicyForEmail } = require('../services/scorm/ScormStaffAuthService');
 const { assertScormRouteAllowed } = require('../services/scorm/ScormRbacService');
 const { assertActiveAccount } = require('../services/AccountProfileService');
+const { isPlatformContentPurgeActive } = require('../services/scorm/PlatformContentPurgeService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -93,6 +94,15 @@ module.exports = async (req, res, next) => {
         const url = String(req.originalUrl || req.baseUrl || '');
         const isScormAdminRequest = url.startsWith('/api/scorm/');
         const isSessionStatusRequest = url.startsWith('/api/auth/session-status');
+        const mutatingScormRequest = isScormAdminRequest && !SAFE_METHODS.has(String(req.method || 'GET').toUpperCase());
+        if (mutatingScormRequest
+            && url !== '/api/scorm/access/purge-learning-content'
+            && isPlatformContentPurgeActive()) {
+            return res.status(503).json({
+                message: 'Platform learning content is being deleted. Try again after the purge finishes.',
+                code: 'PLATFORM_PURGE_IN_PROGRESS'
+            });
+        }
 
         // App-specific access-code authentication has been retired. Installed
         // web apps use the same password and SSO flows as the browser platform,

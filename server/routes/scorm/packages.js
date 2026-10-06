@@ -383,6 +383,7 @@ router.post('/:id/reprocess', auth, async (req, res) => {
 });
 
 router.get('/', auth, async (req, res) => {
+    res.setHeader('Cache-Control', 'private, no-store');
     const list = await ScormPackage.findAll({
         where: { hostId: req.userId, source: { [Op.ne]: 'catalog' } },
         // Inventory views only need compact package metadata. analysisJson can
@@ -553,6 +554,7 @@ router.get('/:id/analysis', auth, async (req, res) => {
 router.get('/:id', auth, async (req, res) => {
     const pkg = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId } });
     if (!pkg || pkg.status === 'deleted') return res.status(404).json({ message: 'Not found' });
+    res.setHeader('Cache-Control', 'private, no-store');
     res.json(pkg);
 });
 

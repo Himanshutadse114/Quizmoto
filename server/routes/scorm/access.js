@@ -24,6 +24,10 @@ const {
     getUsageForEmail
 } = require('../../services/scorm/ScormEntitlementService');
 const { getInfrastructureHealth } = require('../../services/scorm/InfrastructureHealthService');
+const {
+    PURGE_CONFIRMATION,
+    purgeAllLearningContent
+} = require('../../services/scorm/PlatformContentPurgeService');
 
 function requireSuperAdmin(req, res, next) {
     if (req.scormRole !== 'super_admin') {
@@ -98,6 +102,29 @@ router.get('/infrastructure-health', auth, requireSuperAdmin, async (req, res) =
             code: err?.code || err?.name || 'UNKNOWN'
         });
         res.status(503).json({ message: 'Could not verify platform infrastructure right now.' });
+    }
+});
+
+router.post('/purge-learning-content', auth, requireSuperAdmin, async (req, res) => {
+    res.set('Cache-Control', 'private, no-store');
+    if (req.body?.confirmation !== PURGE_CONFIRMATION || req.body?.acknowledgeIrreversible !== true) {
+        return res.status(400).json({
+            message: `Type ${PURGE_CONFIRMATION} and acknowledge that the purge is irreversible.`,
+            code: 'PLATFORM_PURGE_CONFIRMATION_REQUIRED'
+        });
+    }
+    try {
+        res.json(await purgeAllLearningContent({ actorEmail: req.scormEmail || null }));
+    } catch (err) {
+        console.error('[scorm-access] platform content purge failed', {
+            code: err.code || err.name || 'UNKNOWN',
+            message: err.message
+        });
+        res.status(err.status || 500).json({
+            message: err.message || 'Could not purge platform learning content.',
+            code: err.code,
+            result: err.result
+        });
     }
 });
 

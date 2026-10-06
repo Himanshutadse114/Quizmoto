@@ -74,7 +74,9 @@ export default function ScormLearnLanding() {
       };
       try {
         sessionStorage.setItem(`scorm_reg_${registrationId}`, JSON.stringify(launch));
-      } catch (_) {}
+      } catch {
+        // Private browsing can disable session storage; launch still works.
+      }
 
       const q = new URLSearchParams({ token: registrationToken });
       if (entryHref) q.set('entryHref', entryHref);
@@ -101,49 +103,49 @@ export default function ScormLearnLanding() {
   }
 
   return (
-    <div className="scorm-editorial min-h-screen flex items-center justify-center p-4 md:p-8 relative z-20">
-      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] scorm-soft-card overflow-hidden">
-        <section className="min-w-0 scorm-tint-sage p-7 sm:p-9 md:p-11 lg:p-12 border-b lg:border-b-0 lg:border-r border-[#223a59] flex flex-col justify-between min-h-[330px]">
+    <div className="scorm-editorial min-h-screen flex items-center justify-center p-3 sm:p-4 md:p-8 relative z-20">
+      <div className="w-full max-w-md lg:max-w-5xl grid grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] scorm-soft-card overflow-hidden">
+        <section className="min-w-0 scorm-tint-sage p-5 sm:p-8 md:p-10 lg:p-12 border-b lg:border-b-0 lg:border-r border-[#223a59] flex flex-col justify-between min-h-0 lg:min-h-[330px] text-center lg:text-left">
           <div className="min-w-0">
-            <div className="w-11 h-11 rounded-xl bg-[#0e2039] grid place-items-center text-[#bfdbfe] border border-[#2a4b74] mb-7">
-              <BookOpen size={20} />
+            <div className="w-10 h-10 sm:w-11 sm:h-11 mx-auto lg:mx-0 rounded-xl bg-[#0e2039] grid place-items-center text-[#bfdbfe] border border-[#2a4b74] mb-3 sm:mb-5 lg:mb-7">
+              <BookOpen size={18} />
             </div>
-            <div className="text-[11px] font-semibold text-[#93a4bb]">LMSGEN Learning</div>
+            <div className="text-[10px] sm:text-[11px] font-semibold text-[#93a4bb]">LMSGEN Learning</div>
             <h1
-              className="max-w-full text-3xl sm:text-4xl md:text-[44px] font-semibold tracking-[-0.045em] leading-[1.02] text-[#f8fafc]"
+              className="max-w-full text-[28px] sm:text-4xl md:text-[44px] font-semibold tracking-[-0.045em] leading-[1.02] text-[#f8fafc]"
               style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
             >
               {course?.title || 'Loading course…'}
             </h1>
-            <p className="mt-4 text-sm md:text-[15px] leading-relaxed max-w-xl text-[#cbd5e1]">
+            <p className="mt-2 sm:mt-3 lg:mt-4 text-xs sm:text-sm md:text-[15px] leading-relaxed max-w-xl mx-auto lg:mx-0 text-[#cbd5e1]">
               {course?.description || 'Enter your details to begin this learning experience.'}
             </p>
           </div>
-          <div className="mt-8 flex flex-wrap items-center gap-2 text-[10px] text-[#93a4bb] min-w-0">
+          <div className="mt-3 sm:mt-5 lg:mt-8 flex flex-wrap items-center justify-center lg:justify-start gap-2 text-[10px] text-[#93a4bb] min-w-0">
             <span className="font-semibold">Invite code</span>
             <span className="max-w-full break-all font-mono bg-[#0e2039] border border-[#2a4b74] rounded-lg px-2 py-1 text-[#bfdbfe]">{inviteCode}</span>
           </div>
         </section>
 
-        <section className="min-w-0 bg-[#08111e] p-7 sm:p-9 md:p-10 lg:p-11 flex flex-col justify-center">
-          <div className="text-[11px] font-semibold text-[#93a4bb]">Learner details</div>
-          <h2 className="text-2xl md:text-[30px] font-semibold tracking-[-0.035em] mt-1 mb-2">Ready when you are</h2>
-          <p className="text-xs leading-relaxed mb-6">Your progress will be saved automatically while you learn.</p>
+        <section className="min-w-0 bg-[#08111e] p-5 sm:p-8 md:p-10 lg:p-11 flex flex-col justify-center">
+          <div className="text-center lg:text-left text-[10px] sm:text-[11px] font-semibold text-[#93a4bb]">Learner details</div>
+          <h2 className="text-center lg:text-left text-xl sm:text-2xl md:text-[30px] font-semibold tracking-[-0.035em] mt-0.5 sm:mt-1 mb-3 sm:mb-2">Ready when you are</h2>
+          <p className="hidden sm:block text-center lg:text-left text-xs leading-relaxed mb-5 lg:mb-6">Your progress will be saved automatically while you learn.</p>
 
-          <form onSubmit={start} className="space-y-4 min-w-0">
+          <form onSubmit={start} className="space-y-3 sm:space-y-4 min-w-0">
             <div className="min-w-0">
-              <label className="block text-[11px] font-semibold text-[#cbd5e1] mb-1.5">Your name</label>
+              <label className="block text-[10px] sm:text-[11px] font-semibold text-[#cbd5e1] mb-1">Your name</label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
                 autoComplete="name"
-                className="w-full min-w-0 py-3 px-3.5 text-sm font-medium"
+                className="w-full min-w-0 py-2.5 sm:py-3 px-3.5 text-sm font-medium"
                 placeholder="Enter your name"
               />
             </div>
             <div className="min-w-0">
-              <label className="block text-[11px] font-semibold text-[#cbd5e1] mb-1.5">Email <span className="text-[#fda4af]">*</span></label>
+              <label className="block text-[10px] sm:text-[11px] font-semibold text-[#cbd5e1] mb-1">Email <span className="text-[#fda4af]">*</span></label>
               <input
                 type="email"
                 value={email}
@@ -151,16 +153,16 @@ export default function ScormLearnLanding() {
                 required
                 autoComplete="email"
                 inputMode="email"
-                className="w-full min-w-0 py-3 px-3.5 text-sm font-medium"
+                className="w-full min-w-0 py-2.5 sm:py-3 px-3.5 text-sm font-medium"
                 placeholder="you@example.com"
               />
-              <div className="mt-1.5 text-[10px] text-[#71839c]">Required to identify your learner record and save course progress.</div>
+              <div className="hidden sm:block mt-1.5 text-[10px] text-[#71839c]">Required to identify your learner record and save course progress.</div>
             </div>
             {error && <div className="rounded-xl border border-[#7f2739] bg-[#35131d] p-3 text-xs text-[#fecdd3]">{error}</div>}
             <button
               type="submit"
               disabled={loading || !course}
-              className="scorm-button-primary w-full py-3.5 px-5 font-semibold text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50"
+              className="scorm-button-primary w-full py-3 sm:py-3.5 px-5 font-semibold text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? 'Starting…' : 'Start course'}
               {!loading && <ArrowRight size={16} />}
