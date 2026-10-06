@@ -358,10 +358,10 @@ function injectUniversalProgressBridge(source) {
 }
 
 async function patchHtmlIfNeeded(packageId, rel, buf) {
-    if (!/\.html?$/i.test(String(rel || ''))) return { buffer: buf, patched: false };
+    if (!/\.html?$/i.test(String(rel || ''))) return { buffer: buf, patched: false, packageSource: null };
 
     const pkg = await ScormPackage.findByPk(packageId, { attributes: ['id', 'source'] });
-    if (!pkg) return { buffer: buf, patched: false };
+    if (!pkg) return { buffer: buf, patched: false, packageSource: null };
 
     const source = buf.toString('utf8');
     let patched = source;
@@ -377,8 +377,8 @@ async function patchHtmlIfNeeded(packageId, rel, buf) {
         patched = injectUniversalProgressBridge(patched);
     }
 
-    if (patched === source) return { buffer: buf, patched: false };
-    return { buffer: Buffer.from(patched, 'utf8'), patched: true };
+    if (patched === source) return { buffer: buf, patched: false, packageSource: pkg.source };
+    return { buffer: Buffer.from(patched, 'utf8'), patched: true, packageSource: pkg.source };
 }
 
 function requestedByteRange(value) {
@@ -440,6 +440,10 @@ async function sendContent(req, res, packageId, rel, { allowPreviewEmbed = false
     })) return;
     const buf = await storage.getObjectBuffer(key);
     const served = await patchHtmlIfNeeded(packageId, rel, buf);
+    // The parent response middleware must use trusted package metadata when it
+    // decides whether LMSGEN-only presentation code may be injected. Uploaded
+    // SCORM can contain coincidentally similar IDs and must retain its own DOM.
+    res.locals.scormPackageSource = served.packageSource;
 
     res.setHeader('Content-Type', guessContentType(rel));
     res.setHeader('Cache-Control', served.patched ? 'private, no-store' : 'private, max-age=300');

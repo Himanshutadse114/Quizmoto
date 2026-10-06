@@ -21,7 +21,8 @@ function repairServedScormHtml(req, res, next) {
                     // Only LMSGEN-authored players should receive our structural
                     // mobile CSS. Imported Storyline/Rise packages own their DOM
                     // and responsive runtime; rewriting their layout can break it.
-                    if (/__quizmotoData|quizmoto-authored-runtime|data-qmx-course-template|qmx-learning-shell/i.test(source)) {
+                    if (res.locals.scormPackageSource !== 'upload'
+                        && /__quizmotoData|quizmoto-authored-runtime|data-qmx-course-template|qmx-learning-shell/i.test(source)) {
                         patched = injectMobileHardeningRuntime(patched);
                     }
                     if (patched !== source) {
