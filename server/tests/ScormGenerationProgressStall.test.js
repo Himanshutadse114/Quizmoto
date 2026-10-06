@@ -43,6 +43,17 @@ describe('SCORM generation progress reliability', () => {
         expect(source).to.include('MISSING_PROGRESS_LIMIT');
         expect(source).to.include('STALE_PROGRESS_MS');
         expect(source).to.include("stage: 'Generation interrupted'");
+        expect(source).to.include('onUploadProgress: reportProgress');
+        expect(source).to.include('transferActive: true');
+        expect(source).to.include('Keep this browser tab open until processing starts.');
+    });
+
+    it('shows real upload and processing progress for uploaded SCORM modules', () => {
+        const library = read('../../client/src/pages/Scorm/Library.jsx');
+        expect(library).to.include('onUploadProgress: updateUploadProgress');
+        expect(library).to.include("stage: 'Processing module'");
+        expect(library).to.include('Module upload and processing progress');
+        expect(library).to.include('aria-busy');
     });
 
     it('never renders raw generation stages or details in the background course panel', () => {

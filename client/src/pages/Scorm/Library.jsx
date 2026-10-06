@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -20,15 +20,19 @@ import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 
 const MAX_SCORM_UPLOAD_MB = 100;
+const isPresentation = (item) => item?.source === 'presentation_import';
+const isVideoCourse = (item) => item?.source === 'video_course';
+const isQuizmotoAi = (item) => item?.source === 'ai_author' || isPresentation(item);
+const isGenerated = (item) => isQuizmotoAi(item) || isVideoCourse(item);
 
-const Metric = ({ label, value, icon: Icon }) => (
+const Metric = ({ label, value, icon }) => (
   <div className="scorm-course-metric rounded-xl border p-4 md:p-5">
     <div className="flex items-start justify-between gap-3">
       <div>
         <div className="scorm-display text-2xl md:text-[30px] leading-none">{value}</div>
         <div className="scorm-micro mt-2 text-[9px] uppercase font-bold">{label}</div>
       </div>
-      <div className="scorm-course-metric-icon w-9 h-9 rounded-lg border grid place-items-center"><Icon size={16} /></div>
+      <div className="scorm-course-metric-icon w-9 h-9 rounded-lg border grid place-items-center">{React.createElement(icon, { size: 16 })}</div>
     </div>
   </div>
 );
@@ -39,6 +43,7 @@ export default function ScormLibrary() {
   const fileInputRef = useRef(null);
   const [packages, setPackages] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadActivity, setUploadActivity] = useState(null);
   const [msg, setMsg] = useState(null);
   const [title, setTitle] = useState('');
   const [query, setQuery] = useState('');
@@ -46,27 +51,55 @@ export default function ScormLibrary() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
-  const headers = { Authorization: `Bearer ${token}` };
-  const load = () => axios.get(apiUrl('/api/scorm/packages'), { headers }).then((r) => setPackages(r.data || []));
+  const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
+  const load = useCallback(
+    () => axios.get(apiUrl('/api/scorm/packages'), { headers }).then((response) => setPackages(response.data || [])),
+    [headers]
+  );
 
   useEffect(() => {
     if (!token) return navigate('/login');
     load().catch((e) => setMsg(e.response?.data?.message || e.message));
-  }, [token]);
+  }, [token, navigate, load]);
 
   useEffect(() => {
     if (!token || !packages.some((p) => p.status === 'processing')) return undefined;
     const timer = window.setInterval(() => { load().catch(() => {}); }, 2000);
     return () => window.clearInterval(timer);
-  }, [token, packages]);
+  }, [token, packages, load]);
 
-  const isPresentation = (p) => p?.source === 'presentation_import';
-  const isVideoCourse = (p) => p?.source === 'video_course';
+  useEffect(() => {
+    if (!uploadActivity?.packageId || !['processing', 'uploaded'].includes(uploadActivity.phase)) return;
+    const uploadedPackage = packages.find((item) => String(item.id) === String(uploadActivity.packageId));
+    if (!uploadedPackage) return;
+    if (uploadedPackage.status === 'ready') {
+      setUploadActivity((current) => current ? {
+        ...current,
+        phase: 'ready',
+        percent: 100,
+        stage: 'Module ready',
+        detail: 'Validation is complete. The module is ready to use.'
+      } : current);
+    } else if (uploadedPackage.status === 'failed' || uploadedPackage.status === 'error' || uploadedPackage.errorMessage) {
+      setUploadActivity((current) => current ? {
+        ...current,
+        phase: 'error',
+        stage: 'Processing failed',
+        detail: uploadedPackage.errorMessage || 'The uploaded module could not be processed.'
+      } : current);
+    } else if (uploadedPackage.status === 'processing') {
+      setUploadActivity((current) => current ? {
+        ...current,
+        phase: 'processing',
+        percent: Math.max(92, Number(current.percent) || 0),
+        stage: 'Processing module',
+        detail: 'Validating the package, extracting files and locating the course launch page.'
+      } : current);
+    }
+  }, [packages, uploadActivity?.packageId, uploadActivity?.phase]);
+
   // The inventory endpoint deliberately returns metadata only. Full authored
   // course JSON is fetched solely by the editor's /analysis request.
-  const isQuizmotoAi = (p) => p?.source === 'ai_author' || isPresentation(p);
-  const isGenerated = (p) => isQuizmotoAi(p) || isVideoCourse(p);
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return packages.filter((pkg) => {
@@ -90,12 +123,40 @@ export default function ScormLibrary() {
     }
 
     setUploading(true);
-    setMsg('Uploading trackable package…');
+    setMsg(null);
+    setUploadActivity({
+      phase: 'preparing',
+      percent: 1,
+      fileName: file.name,
+      packageId: null,
+      stage: 'Preparing secure upload',
+      detail: 'Creating a secure upload for this module.'
+    });
     try {
       const packageTitle = title || file.name.replace(/\.zip$/i, '');
       const ticket = await axios.post(apiUrl('/api/scorm/packages/upload-ticket'), {
         title: packageTitle, byteSize: file.size
       }, { headers });
+      setUploadActivity((current) => ({
+        ...current,
+        phase: 'uploading',
+        percent: 3,
+        packageId: ticket.data?.packageId || null,
+        stage: 'Uploading module',
+        detail: '0% uploaded. Keep this page open until processing starts.'
+      }));
+      const updateUploadProgress = (event) => {
+        const total = Number(event.total || file.size || 0);
+        const transferred = total > 0 ? Math.round((Number(event.loaded || 0) / total) * 100) : 0;
+        const safePercent = Math.max(0, Math.min(100, transferred));
+        setUploadActivity((current) => current ? {
+          ...current,
+          phase: 'uploading',
+          percent: Math.max(3, Math.min(88, 3 + Math.round(safePercent * 0.85))),
+          stage: 'Uploading module',
+          detail: `${safePercent}% uploaded. Keep this page open until processing starts.`
+        } : current);
+      };
       let res;
       if (ticket.data?.direct && ticket.data?.uploadUrl) {
         try {
@@ -103,28 +164,56 @@ export default function ScormLibrary() {
             headers: ticket.data.headers || { 'Content-Type': 'application/zip' },
             timeout: 300000,
             maxBodyLength: Infinity,
-            maxContentLength: Infinity
+            maxContentLength: Infinity,
+            onUploadProgress: updateUploadProgress
           });
         } catch (uploadError) {
           const error = new Error('The secure package upload could not start. Please retry or contact support.');
           error.cause = uploadError;
           throw error;
         }
+        setUploadActivity((current) => current ? {
+          ...current,
+          phase: 'processing',
+          percent: 90,
+          stage: 'Processing module',
+          detail: 'Upload complete. Validating and extracting the course package.'
+        } : current);
         res = await axios.post(apiUrl(`/api/scorm/packages/${encodeURIComponent(ticket.data.packageId)}/upload-complete`), {}, { headers, timeout: 300000 });
       } else {
         res = await axios.post(apiUrl('/api/scorm/packages/upload'), file, {
           headers: { ...headers, 'Content-Type': 'application/zip', 'X-SCORM-Title': packageTitle },
           timeout: 300000,
           maxBodyLength: Infinity,
-          maxContentLength: Infinity
+          maxContentLength: Infinity,
+          onUploadProgress: updateUploadProgress
         });
       }
-      setMsg(res.data.status === 'processing' ? 'Upload complete. The package is being validated in the background.' : `Package ${res.data.status}${res.data.errorMessage ? ` · ${res.data.errorMessage}` : ''}`);
+      const packageId = res.data?.id || res.data?.packageId || ticket.data?.packageId || null;
+      const processing = res.data.status === 'processing';
+      setUploadActivity((current) => ({
+        ...current,
+        packageId,
+        phase: processing ? 'processing' : (res.data.status === 'ready' ? 'ready' : 'uploaded'),
+        percent: res.data.status === 'ready' ? 100 : 92,
+        stage: res.data.status === 'ready' ? 'Module ready' : 'Processing module',
+        detail: res.data.status === 'ready'
+          ? 'The module was validated and is ready to use.'
+          : 'Validating the package, extracting files and locating the course launch page.'
+      }));
+      setMsg(res.data.errorMessage || null);
       setTitle('');
       setSelectedFile(null);
       await load();
     } catch (err) {
-      setMsg(err.response?.data?.message || err.message);
+      const message = err.response?.data?.message || err.message || 'Module upload failed.';
+      setMsg(message);
+      setUploadActivity((current) => ({
+        ...(current || { fileName: file.name, percent: 0 }),
+        phase: 'error',
+        stage: 'Upload failed',
+        detail: message
+      }));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -252,6 +341,22 @@ export default function ScormLibrary() {
           <label className="block"><span className="scorm-micro text-[9px] uppercase">Trackable course ZIP</span><div className="mt-1.5 min-h-[42px] rounded-lg border px-3 flex items-center gap-3" style={surface}><FileArchive size={16} className="shrink-0" style={{ color: 'var(--scorm-accent)' }} /><span className="text-xs truncate flex-1" style={{ color: 'var(--scorm-ink-soft)' }}>{selectedFile ? selectedFile.name : 'Choose a .zip file'}</span><label className="scorm-button-secondary cursor-pointer px-3 py-2 text-[10px] font-semibold shrink-0">Browse<input ref={fileInputRef} type="file" accept=".zip,application/zip" disabled={uploading} onChange={onFile} className="sr-only" /></label></div></label>
           <button type="button" disabled={!selectedFile || uploading} onClick={() => uploadFile(selectedFile)} className="scorm-button-primary min-h-[42px] px-4 text-xs font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"><FileUp size={15} /> {uploading ? 'Uploading…' : 'Upload ZIP'}</button>
         </div>
+        {uploadActivity && (
+          <div className="mx-4 md:mx-5 mb-4 md:mb-5 rounded-xl border p-4" style={softSurface} role="status" aria-live="polite" aria-busy={['preparing', 'uploading', 'processing', 'uploaded'].includes(uploadActivity.phase)}>
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg border grid place-items-center shrink-0" style={{ color: uploadActivity.phase === 'error' ? 'var(--scorm-red)' : 'var(--scorm-accent)' }}>
+                {['preparing', 'uploading', 'processing', 'uploaded'].includes(uploadActivity.phase) ? <LoaderCircle size={17} className="animate-spin" /> : uploadActivity.phase === 'ready' ? <CheckCircle2 size={17} /> : <FileArchive size={17} />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-3"><div className="text-xs font-semibold" style={ink}>{uploadActivity.stage}</div><div className="text-[10px] tabular-nums font-semibold" style={muted}>{Math.round(Number(uploadActivity.percent) || 0)}%</div></div>
+                <div className="text-[10px] mt-1 truncate" style={muted}>{uploadActivity.fileName}</div>
+                <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ background: 'color-mix(in srgb, var(--scorm-ink) 8%, transparent)' }} role="progressbar" aria-label="Module upload and processing progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(Number(uploadActivity.percent) || 0)}><div className="h-full rounded-full transition-[width] duration-300" style={{ width: `${Math.max(1, Number(uploadActivity.percent) || 0)}%`, background: uploadActivity.phase === 'error' ? 'var(--scorm-red)' : 'var(--scorm-accent)' }} /></div>
+                <div className="text-[11px] mt-2" style={muted}>{uploadActivity.detail}</div>
+              </div>
+              {!uploading && ['ready', 'error'].includes(uploadActivity.phase) && <button type="button" onClick={() => setUploadActivity(null)} className="text-[10px] font-semibold shrink-0" style={muted}>Dismiss</button>}
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="scorm-course-list-shell rounded-xl overflow-hidden border">

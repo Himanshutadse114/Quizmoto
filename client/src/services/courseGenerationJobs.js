@@ -56,8 +56,15 @@ function fileToBase64(file) {
   });
 }
 
-async function uploadSourceFile({ token, id, file, signal, visual = false }) {
+async function uploadSourceFile({ token, id, file, signal, visual = false, onProgress = null }) {
   const suffix = visual ? '/visual-pdf' : '';
+  const reportProgress = (event) => {
+    if (typeof onProgress !== 'function') return;
+    const total = Number(event?.total || file.size || 0);
+    const loaded = Math.min(total || Number(event?.loaded || 0), Number(event?.loaded || 0));
+    const percent = total > 0 ? Math.max(0, Math.min(100, Math.round((loaded / total) * 100))) : 0;
+    onProgress({ loaded, total, percent });
+  };
   let ticket = null;
   try {
     const ticketResponse = await axios.post(
@@ -75,7 +82,8 @@ async function uploadSourceFile({ token, id, file, signal, visual = false }) {
       await axios.put(ticket.uploadUrl, file, {
         headers: ticket.headers || { 'Content-Type': visual ? 'application/pdf' : (file.type || 'application/octet-stream') },
         timeout: 120000,
-        signal
+        signal,
+        onUploadProgress: reportProgress
       });
     } catch (err) {
       const directError = new Error('The secure source upload could not start. Please retry or contact support.');
@@ -101,13 +109,14 @@ async function uploadSourceFile({ token, id, file, signal, visual = false }) {
         'X-Source-Mime': file.type || 'application/octet-stream'
       },
       timeout: 120000,
-      signal
+      signal,
+      onUploadProgress: reportProgress
     }
   );
   return upload.data || {};
 }
 
-async function prepareGenerationPayload({ token, id, payload, file, visualPdfFile, signal }) {
+async function prepareGenerationPayload({ token, id, payload, file, visualPdfFile, signal, onUploadProgress = null }) {
   let prepared = {
     ...payload,
     fileBase64: String(payload.fileBase64 || ''),
@@ -117,7 +126,13 @@ async function prepareGenerationPayload({ token, id, payload, file, visualPdfFil
 
   if (file) {
     try {
-      const upload = await uploadSourceFile({ token, id, file, signal });
+      const upload = await uploadSourceFile({
+        token,
+        id,
+        file,
+        signal,
+        onProgress: (progress) => onUploadProgress?.({ ...progress, kind: 'source', file })
+      });
       prepared = {
         ...prepared,
         fileBase64: '',
@@ -142,7 +157,14 @@ async function prepareGenerationPayload({ token, id, payload, file, visualPdfFil
 
   if (visualPdfFile) {
     try {
-      const upload = await uploadSourceFile({ token, id, file: visualPdfFile, signal, visual: true });
+      const upload = await uploadSourceFile({
+        token,
+        id,
+        file: visualPdfFile,
+        signal,
+        visual: true,
+        onProgress: (progress) => onUploadProgress?.({ ...progress, kind: 'visual', file: visualPdfFile })
+      });
       prepared = {
         ...prepared,
         visualSourceKey: upload.sourceKey || '',
@@ -306,6 +328,15 @@ function progressPhase(progress = {}, percent = 1) {
 export function publicCourseGenerationProgress(progress = {}, floorPercent = 1) {
   const reported = Math.max(1, Math.min(100, Math.round(Number(progress.percent) || 1)));
   const percent = Math.max(Math.max(1, Number(floorPercent) || 1), reported);
+  if (progress.transferActive) {
+    const transferPercent = Math.max(0, Math.min(100, Math.round(Number(progress.transferPercent) || 0)));
+    const label = String(progress.transferLabel || 'source file').trim();
+    return {
+      percent,
+      stage: `Uploading ${label}`,
+      detail: `${transferPercent}% uploaded. Keep this browser tab open until processing starts.`
+    };
+  }
   const phase = progressPhase(progress, percent);
   return { percent, ...FRIENDLY_PROGRESS[phase] };
 }
@@ -318,6 +349,7 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
   if (previousController) previousController.abort();
   const controller = new AbortController();
   requestControllers.set(id, controller);
+  let generationRequestStarted = false;
   const now = Date.now();
 
   upsertCourseGenerationJob(id, {
@@ -334,7 +366,10 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
     notifiedAt: 0,
     progressUpdatedAt: now,
     missingProgressCount: 0,
-    serverStatus: 'running'
+    serverStatus: 'running',
+    transferActive: Boolean(file || visualPdfFile),
+    transferPercent: 0,
+    transferLabel: payload.courseMode === 'presentation' ? 'presentation' : 'source file'
   }, token);
 
   // The page can navigate immediately. Source files are uploaded as raw binary
@@ -349,9 +384,39 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
         payload,
         file,
         visualPdfFile,
-        signal: controller.signal
+        signal: controller.signal,
+        onUploadProgress: ({ percent, kind }) => {
+          if (cancelledJobs.has(id)) return;
+          const hasSecondUpload = Boolean(file && visualPdfFile);
+          const isVisual = kind === 'visual';
+          const rangeStart = isVisual ? 13 : 2;
+          const rangeSize = hasSecondUpload ? (isVisual ? 9 : 11) : 20;
+          const overallPercent = Math.min(22, rangeStart + Math.round((Number(percent) || 0) * rangeSize / 100));
+          upsertCourseGenerationJob(id, {
+            status: 'running',
+            percent: overallPercent,
+            stage: isVisual ? 'Uploading presentation visuals' : 'Uploading source material',
+            detail: `${Math.round(Number(percent) || 0)}% uploaded.`,
+            transferActive: true,
+            transferPercent: Math.round(Number(percent) || 0),
+            transferLabel: isVisual ? 'presentation visuals' : (payload.courseMode === 'presentation' ? 'presentation' : 'source file'),
+            progressUpdatedAt: Date.now()
+          }, token);
+        }
       });
       if (cancelledJobs.has(id)) return null;
+      upsertCourseGenerationJob(id, {
+        status: 'running',
+        percent: Math.max(22, Number(readCourseGenerationJobs(token).find((job) => job.id === id)?.percent || 1)),
+        stage: 'Upload complete',
+        detail: payload.courseMode === 'presentation'
+          ? 'Rendering slides and preparing the tracked module.'
+          : 'The source is uploaded and course processing is starting.',
+        transferActive: false,
+        transferPercent: 100,
+        progressUpdatedAt: Date.now()
+      }, token);
+      generationRequestStarted = true;
       return axios.post(apiUrl('/api/scorm/author/generate'), requestPayload, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 60000,
@@ -369,7 +434,8 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
           stage: data.status === 'queued' ? 'Queued for generation' : 'Starting generation',
           detail: 'Course generation is running in the background. You can continue using the platform.',
           missingProgressCount: 0,
-          serverStatus: data.status || 'queued'
+          serverStatus: data.status || 'queued',
+          transferActive: false
         }, token);
         return;
       }
@@ -390,7 +456,8 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
         error: '',
         progressUpdatedAt: Date.now(),
         missingProgressCount: 0,
-        serverStatus: 'complete'
+        serverStatus: 'complete',
+        transferActive: false
       }, token);
     })
     .catch((err) => {
@@ -401,7 +468,30 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
           stage: 'Generation failed',
           error: 'The selected source file could not be read. Please choose the file again and retry.',
           progressUpdatedAt: Date.now(),
-          serverStatus: 'error'
+          serverStatus: 'error',
+          transferActive: false
+        }, token);
+        return;
+      }
+      if (err?.code === 'DIRECT_STORAGE_UPLOAD_FAILED') {
+        upsertCourseGenerationJob(id, {
+          status: 'failed',
+          stage: 'Upload failed',
+          error: 'The secure source upload could not start. Please retry.',
+          progressUpdatedAt: Date.now(),
+          serverStatus: 'error',
+          transferActive: false
+        }, token);
+        return;
+      }
+      if (!err.response && !generationRequestStarted) {
+        upsertCourseGenerationJob(id, {
+          status: 'failed',
+          stage: 'Upload failed',
+          error: 'The source file could not be uploaded. Check your connection and try again.',
+          progressUpdatedAt: Date.now(),
+          serverStatus: 'error',
+          transferActive: false
         }, token);
         return;
       }
@@ -417,7 +507,8 @@ export function startBackgroundCourseGeneration({ token, payload, title, file = 
         stage: 'Generation failed',
         error: publicGenerationError(err.response?.data?.message || err.message),
         progressUpdatedAt: Date.now(),
-        serverStatus: 'error'
+        serverStatus: 'error',
+        transferActive: false
       }, token);
     })
     .finally(() => {

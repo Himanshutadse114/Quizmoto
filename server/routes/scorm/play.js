@@ -195,6 +195,10 @@ function applyPresentationLayoutGuard(){
   if(!BOOT.presentationLight)return;
   try{
     var frame=document.getElementById("frame"),doc=frame&&frame.contentDocument;if(!doc)return;
+    // Current presentation packages own their complete reference-style shell
+    // and slide-only fullscreen mode. Keep this guard only for legacy packages
+    // that predate that self-contained layout.
+    if(doc.documentElement&&doc.documentElement.getAttribute("data-lmsgen-presentation-player")==="reference-shell-v2")return;
     var style=doc.getElementById("lmsgen-exact-slide-fit-guard");
     if(!style){
       var fonts=BOOT.presentationInterFonts||{},fontCss="";

@@ -96,6 +96,8 @@ describe('SCORM player local-first persistence', () => {
         expect(source).to.include('grid-template-areas:"stage" "controls"!important');
         expect(source).to.include('presentationInterFonts');
         expect(source).to.include('frame.addEventListener("load",applyPresentationLayoutGuard)');
+        expect(source).to.include('data-lmsgen-presentation-player');
+        expect(source).to.include('reference-shell-v2');
     });
 
     it('autosaves without rendering floating save or exit controls', () => {
