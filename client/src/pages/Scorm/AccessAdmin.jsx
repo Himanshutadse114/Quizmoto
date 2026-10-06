@@ -9,8 +9,8 @@ import CourseCatalogAdmin from './CourseCatalogAdmin';
 import PlatformDataPurgePanel from './PlatformDataPurgePanel';
 import './accessAdminCompact.css';
 
-export default function AccessAdmin() {
-  const [tab, setTab] = useState('tenants');
+export default function AccessAdmin({ initialTab = 'tenants' }) {
+  const [tab, setTab] = useState(initialTab);
 
   const tabs = [
     ['tenants', 'Tenant Management', Building2],

@@ -124,10 +124,10 @@ function ScormHomeGate() {
   return scormAccess ? <ScormHome /> : <PendingScormHome />;
 }
 
-function AccessAdminGate() {
+function AccessAdminGate({ initialTab = 'tenants' }) {
   const { scormAccess, user } = useAuth();
   const isSuperAdmin = Boolean(scormAccess && (user?.isSuperAdmin || user?.role === 'super_admin'));
-  return isSuperAdmin ? <ScormAccessAdmin /> : <Navigate to="/scorm" replace />;
+  return isSuperAdmin ? <ScormAccessAdmin key={initialTab} initialTab={initialTab} /> : <Navigate to="/scorm" replace />;
 }
 
 function WorkspaceAdminGate({ children }) {
@@ -255,6 +255,7 @@ function AppRoutes() {
           <Route path="team" element={<WorkspaceAdminGate><ScormTeamAccess /></WorkspaceAdminGate>} />
           <Route path="learner-access" element={<WorkspaceAdminGate><ScormLearnerAccessSettings /></WorkspaceAdminGate>} />
           <Route path="access" element={<AccessAdminGate />} />
+          <Route path="access/danger" element={<AccessAdminGate initialTab="danger" />} />
           <Route path="settings" element={<ScormAccountSettings />} />
         </Route>
 

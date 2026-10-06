@@ -15,6 +15,7 @@ import {
   Plus,
   Upload,
   ShieldCheck,
+  ShieldAlert,
   LockKeyhole,
   Gamepad2,
   LogOut,
@@ -148,7 +149,10 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess, role, quizmotoOnly,
       ...groups,
       {
         label: 'Platform Administration',
-        items: [{ to: '/scorm/access', label: 'Tenant Management', icon: ShieldCheck, requiresScorm: true }]
+        items: [
+          { to: '/scorm/access', end: true, label: 'Tenant Management', icon: ShieldCheck, requiresScorm: true },
+          { to: '/scorm/access/danger', end: true, label: 'Danger Zone', icon: ShieldAlert, requiresScorm: true }
+        ]
       }
     ];
   }
