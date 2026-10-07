@@ -142,7 +142,7 @@ describe('LMSGEN authentication and tenant assignment', () => {
         expect(captured).to.have.length(1);
     });
 
-    it('gives an unassigned Google identity free course access without Quizmoto', async () => {
+    it('gives an unassigned Google identity a locked product demo without Quizmoto', async () => {
         const googlePayload = {
             sub: 'google-user-1',
             email: 'google.pending@example.com',

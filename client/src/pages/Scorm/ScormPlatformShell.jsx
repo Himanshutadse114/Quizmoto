@@ -19,7 +19,6 @@ import {
   LockKeyhole,
   Gamepad2,
   LogOut,
-  RefreshCw,
   Sun,
   Moon,
   UserCheck,
@@ -48,7 +47,7 @@ const OPERATIONAL_NAV_GROUPS = [
     label: 'Platform',
     items: [
       { to: '/scorm', end: true, label: 'Overview', icon: LayoutDashboard },
-      { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2, unlocked: true },
+      { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2, requiresScorm: true },
       { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck, unlocked: true }
     ]
   },
@@ -87,39 +86,57 @@ const SALES_CONTACT_URL = 'https://www.lmsgen.in/contact';
 function FreeAccessCard() {
   return (
     <div className="scorm-status-card rounded-xl px-3.5 py-3">
-      <div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />You are on free access</div>
-      <div className="mt-1.5 text-[10px] leading-relaxed">For the full LMS and AI course generation experience, contact sales.</div>
-      <a href={SALES_CONTACT_URL} className="scorm-button-primary mt-3 w-full min-h-9 px-3 inline-flex items-center justify-center gap-1.5 text-[10px] font-semibold">Contact sales <ChevronRight size={12} /></a>
+      <div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />Interactive demo mode</div>
+      <div className="mt-1.5 text-[10px] leading-relaxed">Explore every LMSGEN module. Paid operations are locked until your tenant is activated.</div>
+      <a href={SALES_CONTACT_URL} className="scorm-button-primary mt-3 w-full min-h-9 px-3 inline-flex items-center justify-center gap-1.5 text-[10px] font-semibold">Activate LMSGEN <ChevronRight size={12} /></a>
     </div>
   );
 }
 
-const QUIZMOTO_ONLY_GROUPS = [
+const DEMO_NAV_GROUPS = [
   {
-    label: 'Free tools',
-    items: [
-      { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2, unlocked: true },
-      { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck, unlocked: true }
-    ]
-  }
-];
-
-const TRIAL_NAV_GROUPS = [
-  {
-    label: 'Free learning workspace',
+    label: 'Platform tour',
     items: [
       { to: '/scorm', end: true, label: 'Overview', icon: LayoutDashboard },
-      { to: '/scorm/courses', label: 'Included Courses', icon: BookOpen },
-      { to: '/scorm/roster', label: 'Learner Roster', icon: UserCheck },
-      { to: '/scorm/assignments', label: 'Assign Courses', icon: UserCheck },
-      { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck }
+      { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2, requiresScorm: true },
+      { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck, unlocked: true }
+    ]
+  },
+  {
+    label: 'Create',
+    items: [
+      { to: '/scorm/author', label: 'AI Course Author', icon: Sparkles, requiresScorm: true },
+      { to: '/scorm/awareness-templates', label: 'Awareness Emails', icon: Mail, requiresScorm: true },
+      { to: '/scorm/visual-studio', label: 'Content Editor', icon: Palette, requiresScorm: true },
+      { to: '/scorm/library', label: 'Course Library', icon: Library, requiresScorm: true }
+    ]
+  },
+  {
+    label: 'Deliver',
+    items: [
+      { to: '/scorm/courses', label: 'Course Management', icon: BookOpen, requiresScorm: true },
+      { to: '/scorm/roster', label: 'Learner Roster', icon: UserCheck, requiresScorm: true },
+      { to: '/scorm/assignments', label: 'Campaigns', icon: Megaphone, requiresScorm: true }
+    ]
+  },
+  {
+    label: 'Measure',
+    items: [
+      { to: '/scorm/tracking', label: 'Learner Tracking', icon: Activity, requiresScorm: true },
+      { to: '/scorm/reports', label: 'Reports & Insights', icon: BarChart3, requiresScorm: true }
+    ]
+  },
+  {
+    label: 'Administer',
+    items: [
+      { to: '/scorm/team', label: 'Team & Roles', icon: Users, requiresScorm: true },
+      { to: '/scorm/learner-access', label: 'Authentication & SSO', icon: LockKeyhole, requiresScorm: true }
     ]
   }
 ];
 
-function displayRole(role, isSuperAdmin, quizmotoOnly, trialAccess) {
-  if (quizmotoOnly) return 'Free platform user';
-  if (trialAccess) return 'Free course access';
+function displayRole(role, isSuperAdmin, scormAccess) {
+  if (!scormAccess) return 'Platform demo';
   if (isSuperAdmin || role === 'super_admin') return 'Super Admin';
   if (role === 'admin') return 'Tenant Admin';
   if (role === 'co_admin') return 'Co-admin';
@@ -127,11 +144,11 @@ function displayRole(role, isSuperAdmin, quizmotoOnly, trialAccess) {
   return 'LMSGEN member';
 }
 
-function Navigation({ onNavigate, isSuperAdmin, scormAccess, role, quizmotoOnly, trialAccess }) {
+function Navigation({ onNavigate, isSuperAdmin, scormAccess, role }) {
   const analyticsOnly = scormAccess && role === 'analytics_viewer';
-  let groups = trialAccess ? TRIAL_NAV_GROUPS : quizmotoOnly ? QUIZMOTO_ONLY_GROUPS : analyticsOnly ? ANALYTICS_NAV_GROUPS : OPERATIONAL_NAV_GROUPS;
+  let groups = !scormAccess ? DEMO_NAV_GROUPS : analyticsOnly ? ANALYTICS_NAV_GROUPS : OPERATIONAL_NAV_GROUPS;
 
-  if (!quizmotoOnly && scormAccess && (role === 'admin' || isSuperAdmin)) {
+  if (scormAccess && (role === 'admin' || isSuperAdmin)) {
     groups = [
       ...groups,
       {
@@ -144,7 +161,7 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess, role, quizmotoOnly,
     ];
   }
 
-  if (!quizmotoOnly && isSuperAdmin) {
+  if (isSuperAdmin) {
     groups = [
       ...groups,
       {
@@ -185,7 +202,7 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess, role, quizmotoOnly,
                     <>
                       <span className="scorm-nav-icon w-8 h-8 rounded-lg grid place-items-center shrink-0">{React.createElement(icon, { size: 16, strokeWidth: isActive ? 2.2 : 1.9 })}</span>
                       <span className="flex-1 truncate">{label}</span>
-                      {unlocked && !scormAccess && !quizmotoOnly && <span className="text-[8px] uppercase tracking-[.08em] font-bold text-[#60a5fa]">Open</span>}
+                      {unlocked && !scormAccess && <span className="text-[8px] uppercase tracking-[.08em] font-bold text-[#60a5fa]">Open</span>}
                       {locked ? <LockKeyhole size={12} className="text-[#71839c]" /> : isActive ? <ChevronRight size={14} className="scorm-nav-chevron" /> : null}
                     </>
                   )}
@@ -220,18 +237,13 @@ function ThemeToggle({ theme, onToggle, auth = false }) {
   );
 }
 
-function MobileTabBar({ scormAccess, role, quizmotoOnly, trialAccess }) {
+function MobileTabBar({ scormAccess, role }) {
   const analyticsOnly = scormAccess && role === 'analytics_viewer';
-  const items = trialAccess
+  const items = !scormAccess
     ? [
-        { to: '/scorm/courses', label: 'Courses', icon: BookOpen },
-        { to: '/scorm/roster', label: 'Learners', icon: UserCheck },
-        { to: '/scorm/assignments', label: 'Assign', icon: Users },
-        { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck }
-      ]
-    : quizmotoOnly
-    ? [
-        { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2 },
+        { to: '/scorm', end: true, label: 'Tour', icon: LayoutDashboard },
+        { to: '/scorm/author', label: 'Author', icon: LockKeyhole },
+        { to: '/scorm/quizmoto', label: 'Quizmoto', icon: LockKeyhole },
         { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck }
       ]
     : analyticsOnly
@@ -246,13 +258,12 @@ function MobileTabBar({ scormAccess, role, quizmotoOnly, trialAccess }) {
           { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck },
           { to: '/scorm/author', label: scormAccess ? 'Create' : 'Locked', icon: scormAccess ? Sparkles : LockKeyhole }
         ];
-  const gridClass = quizmotoOnly ? 'grid-cols-2' : analyticsOnly ? 'grid-cols-3' : 'grid-cols-4';
+  const gridClass = analyticsOnly ? 'grid-cols-3' : 'grid-cols-4';
   return <div className={`scorm-mobile-tabbar lg:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40 grid ${gridClass} p-1.5`}>{items.map(({ to, end, label, icon }) => <NavLink key={to} to={to} end={end} className={({ isActive }) => `scorm-mobile-tab ${isActive ? 'is-active' : ''} flex flex-col items-center justify-center gap-1 px-3 py-2`}>{React.createElement(icon, { size: 17, strokeWidth: 2 })}<span>{label}</span></NavLink>)}</div>;
 }
 
 export default function ScormPlatformShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [checkingAccess, setCheckingAccess] = useState(false);
   const [theme, setTheme] = useState(readScormPlatformTheme);
   const navigate = useNavigate();
   const { platformAccess, scormAccess, user, refreshScormAccess, logout } = useAuth();
@@ -271,11 +282,6 @@ export default function ScormPlatformShell() {
 
   if (!platformAccess) return <Navigate to="/login" replace />;
 
-  const refreshApproval = async () => {
-    setCheckingAccess(true);
-    try { await refreshScormAccess(); } finally { setCheckingAccess(false); }
-  };
-
   const signOut = () => {
     logout();
     navigate('/login', { replace: true });
@@ -288,15 +294,16 @@ export default function ScormPlatformShell() {
   const isSuperAdmin = Boolean(scormAccess && (user?.isSuperAdmin || role === 'super_admin'));
   const isWorkspaceAdmin = Boolean(scormAccess && (role === 'admin' || isSuperAdmin));
   const analyticsOnly = Boolean(scormAccess && role === 'analytics_viewer');
-  const roleName = displayRole(role, isSuperAdmin, quizmotoOnly, trialAccess);
+  const demoAccess = !scormAccess;
+  const roleName = displayRole(role, isSuperAdmin, scormAccess);
 
   return (
     <div className={`scorm-editorial scorm-theme-${theme} min-h-screen relative z-20`}>
       <aside className="scorm-sidebar fixed inset-y-0 left-0 z-40 hidden lg:flex w-[268px] flex-col border-r">
         <div className="scorm-brand-wrap h-[76px] px-5 flex items-center border-b"><Brand theme={theme} /></div>
-        <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} quizmotoOnly={quizmotoOnly} trialAccess={trialAccess} />
+        <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} />
         <div className="scorm-sidebar-footer p-3 border-t space-y-2.5">
-          {(scormAccess || quizmotoOnly || trialAccess) && (
+          {platformAccess && (
             <Link to="/scorm/settings" className="scorm-sidebar-profile rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321] block">
               <div className="flex items-center gap-2">
                 {user?.avatar ? <img src={user.avatar} alt="" className="w-8 h-8 rounded-lg object-cover" /> : <div className="w-8 h-8 rounded-lg grid place-items-center bg-[#4FC9BF]/15 text-[#4FC9BF] text-[10px] font-bold">{String(user?.username || 'U').trim().slice(0, 1).toUpperCase()}</div>}
@@ -307,15 +314,7 @@ export default function ScormPlatformShell() {
             </Link>
           )}
 
-          {(quizmotoOnly || trialAccess) ? (
-            <FreeAccessCard />
-          ) : !scormAccess ? (
-            <div className="scorm-sidebar-profile rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321]">
-              <div className="flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={13} /> Approval pending</div>
-              <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae]">Quizmoto and LMSGEN Publica are unlocked. LMSGEN features unlock after administrator approval and tenant assignment.</div>
-              <button type="button" onClick={refreshApproval} disabled={checkingAccess} className="mt-2 inline-flex items-center gap-1.5 text-[9px] font-semibold text-[#60a5fa] disabled:opacity-50"><RefreshCw size={11} className={checkingAccess ? 'animate-spin' : ''} /> Refresh access</button>
-            </div>
-          ) : null}
+          {demoAccess && <FreeAccessCard />}
           <button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><LogOut size={14} /> Sign out</span><ChevronRight size={13} /></button>
         </div>
       </aside>
@@ -328,9 +327,9 @@ export default function ScormPlatformShell() {
               <Brand theme={theme} />
               <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="scorm-drawer-close w-9 h-9 grid place-items-center"><X size={17} /></button>
             </div>
-            <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} quizmotoOnly={quizmotoOnly} trialAccess={trialAccess} onNavigate={() => setMobileOpen(false)} />
+            <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} onNavigate={() => setMobileOpen(false)} />
             <div className="p-3 border-t space-y-2.5">
-              {(quizmotoOnly || trialAccess) && <FreeAccessCard />}
+              {demoAccess && <FreeAccessCard />}
               <button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><LogOut size={14} /> Sign out</span><ChevronRight size={13} /></button>
             </div>
           </div>
@@ -340,21 +339,14 @@ export default function ScormPlatformShell() {
       <div className="lg:pl-[268px] min-h-screen">
         <header className="scorm-topbar sticky top-0 z-30 min-h-[64px] border-b px-4 md:px-7 py-2.5 flex items-center gap-3 md:gap-4">
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open LMSGEN navigation" className="scorm-topbar-icon lg:hidden w-10 h-10 grid place-items-center shrink-0"><Menu size={18} /></button>
-          {trialAccess && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><BookOpen size={12} /> Free access · Included courses for up to 10 learners</div>}
-          {!trialAccess && !scormAccess && !quizmotoOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> LMSGEN approval / tenant assignment pending · Free tools available</div>}
-          {quizmotoOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><BookOpenCheck size={12} /> Free tools · Quizmoto and Publica</div>}
+          {demoAccess && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> Interactive demo · Product operations are locked</div>}
           {analyticsOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><BarChart3 size={12} /> Read-only analytics access</div>}
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
-            {trialAccess ? (
+            {demoAccess ? (
               <>
                 <Link to="/scorm/publica" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Publica</span></Link>
-                <Link to="/scorm/courses" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold"><BookOpen size={14} /><span>Included courses</span></Link>
-              </>
-            ) : quizmotoOnly ? (
-              <>
-                <Link to="/scorm/publica" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Publica</span></Link>
-                <Link to="/scorm/quizmoto" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
+                <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold"><LockKeyhole size={14} /><span>Explore AI Author</span></Link>
               </>
             ) : analyticsOnly ? (
               <>
@@ -376,8 +368,8 @@ export default function ScormPlatformShell() {
         </header>
         <main className="scorm-main min-h-[calc(100vh-64px)] pb-24 lg:pb-0"><Outlet /></main>
       </div>
-      {!analyticsOnly && !quizmotoOnly && !trialAccess && <ScormGenerationNotifier />}
-      <MobileTabBar scormAccess={scormAccess} role={role} quizmotoOnly={quizmotoOnly} trialAccess={trialAccess} />
+      {scormAccess && !analyticsOnly && <ScormGenerationNotifier />}
+      <MobileTabBar scormAccess={scormAccess} role={role} />
     </div>
   );
 }

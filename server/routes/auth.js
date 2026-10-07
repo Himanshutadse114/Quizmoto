@@ -279,7 +279,7 @@ async function googleLogin(req, res) {
 }
 
 // Common Google sign-in: authorised tenant staff and the protected Super Admin
-// receive full LMSGEN access. Unassigned Google identities remain Quizmoto-only.
+// receive full LMSGEN access. Unassigned identities receive the locked product demo.
 router.post('/google', publicAuthIpLimiter, googleLogin);
 router.post('/scorm/google', googleLogin);
 

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LockKeyhole, Mail, UserRound, Sun, Moon, ShieldCheck, KeyRound } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { readScormPlatformTheme, saveScormPlatformTheme } from './platformTheme';
 import './scormAuthWorkbench.css';
@@ -111,7 +111,7 @@ export default function ScormAuth() {
       setError(result?.message || 'Sign in failed.');
       return;
     }
-    navigate(result.quizmotoOnly ? '/scorm/quizmoto' : '/scorm', { replace: true });
+    navigate('/scorm', { replace: true });
   };
 
   const switchMode = (nextMode) => {
@@ -273,7 +273,7 @@ export default function ScormAuth() {
             : 'Set new password';
 
   const description = isLogin
-    ? 'Use your account or sign in with the Google or Microsoft identity assigned to your LMSGEN tenant.'
+    ? 'Sign in to your tenant, or open the complete interactive LMSGEN product tour before activation.'
     : isRegister
       ? 'Create your account and verify your email before registration is completed.'
       : mode === 'register-otp'
@@ -302,7 +302,7 @@ export default function ScormAuth() {
           </button>
         </div>
 
-        <motion.main
+        <Motion.main
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22 }}
@@ -311,6 +311,12 @@ export default function ScormAuth() {
           <section className="sa-form-panel">
             <h2 className="sa-form-title">{title}</h2>
             <p className="mt-2 mb-5 text-xs opacity-70 leading-relaxed">{description}</p>
+
+            {isLogin && (
+              <div className="sa-product-preview" aria-label="LMSGEN platform capabilities">
+                <span>AI course authoring</span><span>SCORM library</span><span>Learner campaigns</span><span>Tracking & reports</span><span>Quizmoto</span><span>Publica</span>
+              </div>
+            )}
 
             {error && <div className="sa-error">{error}</div>}
             {notice && !error && (
@@ -461,7 +467,7 @@ export default function ScormAuth() {
                 </div>
 
                 <p className="mt-3 text-[10px] opacity-60 leading-relaxed text-center">
-                  Google and Microsoft identities open the tenant and role assigned to that exact email. Unassigned Google accounts can use Quizmoto only.
+                  Assigned identities open their tenant and role. Unassigned accounts open a safe product demo; Quizmoto and paid operations remain locked until activation.
                 </p>
               </>
             )}
@@ -484,7 +490,7 @@ export default function ScormAuth() {
               )}
             </div>
           </section>
-        </motion.main>
+        </Motion.main>
       </div>
     </div>
   );

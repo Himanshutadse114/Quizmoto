@@ -63,13 +63,9 @@ describe('SCORM workspace RBAC', () => {
         }
     });
 
-    it('limits trial accounts to catalogue viewing, roster, assignments and Publica', () => {
+    it('limits trial accounts to demo metadata and Publica', () => {
         const allowed = [
-            ['GET', '/api/scorm/courses'],
-            ['GET', '/api/scorm/courses/course-1'],
-            ['POST', '/api/scorm/courses/course-1/preview'],
-            ['POST', '/api/scorm/roster'],
-            ['POST', '/api/scorm/assignments/bulk'],
+            ['GET', '/api/scorm/features'],
             ['GET', '/api/scorm/flipbooks']
         ];
         for (const [method, url] of allowed) {
@@ -78,6 +74,9 @@ describe('SCORM workspace RBAC', () => {
 
         const blocked = [
             ['POST', '/api/scorm/author/generate'],
+            ['GET', '/api/scorm/courses'],
+            ['POST', '/api/scorm/roster'],
+            ['POST', '/api/scorm/assignments/bulk'],
             ['POST', '/api/scorm/packages/upload'],
             ['PATCH', '/api/scorm/courses/course-1'],
             ['GET', '/api/scorm/tracking/summary'],

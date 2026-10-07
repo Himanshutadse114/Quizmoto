@@ -204,7 +204,6 @@ export const AuthProvider = ({ children }) => {
 
     const refreshScormAccess = async () => {
         if (!token || !platformAccess) return null;
-        if (user?.quizmotoOnly) return user;
         const res = await axios.get(`${API_URL}/scorm/status`, {
             headers: { Authorization: `Bearer ${token}` }
         });

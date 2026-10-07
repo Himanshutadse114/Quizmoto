@@ -282,7 +282,7 @@ describe('SCORM access middleware', () => {
         expect(res.body.code).to.equal('SCORM_AUTH_REQUIRED');
     });
 
-    it('allows the same pending platform token to use non-SCORM APIs such as Quizmoto', async () => {
+    it('keeps Quizmoto locked for a pending platform token', async () => {
         process.env.NODE_ENV = 'production';
         const middleware = buildMiddleware({
             decoded: { userId: 15, scope: 'platform', scormRole: 'pending' },
@@ -298,8 +298,8 @@ describe('SCORM access middleware', () => {
 
         await middleware(req, res, () => { nextCalled = true; });
 
-        expect(nextCalled).to.equal(true);
-        expect(req.userId).to.equal(15);
-        expect(req.authScope).to.equal('platform');
+        expect(nextCalled).to.equal(false);
+        expect(res.statusCode).to.equal(403);
+        expect(res.body.code).to.equal('TRIAL_QUIZMOTO_DISABLED');
     });
 });

@@ -85,9 +85,9 @@ function RouteFallback() {
 }
 
 function PlatformEntry() {
-  const { token, platformAccess, loading, user } = useAuth();
+  const { token, platformAccess, loading } = useAuth();
   if (loading) return <RouteFallback />;
-  if (token && platformAccess) return <Navigate to={user?.quizmotoOnly ? '/scorm/quizmoto' : '/scorm'} replace />;
+  if (token && platformAccess) return <Navigate to="/scorm" replace />;
   return <ScormAuth />;
 }
 
@@ -102,10 +102,8 @@ function isAnalyticsViewer(user) {
   return user?.role === 'analytics_viewer';
 }
 
-function ScormFeatureGate({ featureId, analyticsAllowed = false, trialAllowed = false, children }) {
+function ScormFeatureGate({ featureId, analyticsAllowed = false, children }) {
   const { scormAccess, user } = useAuth();
-  if (user?.quizmotoOnly) return <Navigate to="/scorm/quizmoto" replace />;
-  if (user?.trialAccess && trialAllowed) return children;
   if (!scormAccess) return <ScormFeatureLocked featureId={featureId} />;
   if (isAnalyticsViewer(user) && !analyticsAllowed) return <Navigate to="/scorm/tracking" replace />;
   return children;
@@ -113,13 +111,11 @@ function ScormFeatureGate({ featureId, analyticsAllowed = false, trialAllowed = 
 
 function ScormOperationalGate({ children }) {
   const { user } = useAuth();
-  if (user?.trialAccess) return <Navigate to="/scorm/courses" replace />;
   return isAnalyticsViewer(user) ? <Navigate to="/scorm/tracking" replace /> : children;
 }
 
 function ScormHomeGate() {
   const { scormAccess, user } = useAuth();
-  if (user?.quizmotoOnly) return <Navigate to="/scorm/quizmoto" replace />;
   if (scormAccess && isAnalyticsViewer(user)) return <Navigate to="/scorm/tracking" replace />;
   return scormAccess ? <ScormHome /> : <PendingScormHome />;
 }
@@ -130,8 +126,9 @@ function AccessAdminGate({ initialTab = 'tenants' }) {
   return isSuperAdmin ? <ScormAccessAdmin key={initialTab} initialTab={initialTab} /> : <Navigate to="/scorm" replace />;
 }
 
-function WorkspaceAdminGate({ children }) {
+function WorkspaceAdminGate({ featureId, children }) {
   const { scormAccess, user } = useAuth();
+  if (!scormAccess) return <ScormFeatureLocked featureId={featureId} />;
   return scormAccess && (user?.role === 'admin' || user?.role === 'super_admin')
     ? children
     : <Navigate to={isAnalyticsViewer(user) ? '/scorm/tracking' : '/scorm'} replace />;
@@ -220,10 +217,10 @@ function AppRoutes() {
 
         <Route path="/scorm" element={<PlatformProtected><PlatformStartupGate><ScormPlatformShell /></PlatformStartupGate></PlatformProtected>}>
           <Route index element={<ScormHomeGate />} />
-          <Route path="quizmoto" element={<ScormOperationalGate><QuizmotoModule /></ScormOperationalGate>} />
-          <Route path="quizmoto/create" element={<ScormOperationalGate><CreateQuiz embedded /></ScormOperationalGate>} />
-          <Route path="quizmoto/edit/:id" element={<ScormOperationalGate><EditQuiz embedded /></ScormOperationalGate>} />
-          <Route path="quizmoto/reports" element={<ScormOperationalGate><Reports embedded /></ScormOperationalGate>} />
+          <Route path="quizmoto" element={<ScormFeatureGate featureId="quizmoto"><ScormOperationalGate><QuizmotoModule /></ScormOperationalGate></ScormFeatureGate>} />
+          <Route path="quizmoto/create" element={<ScormFeatureGate featureId="quizmoto"><ScormOperationalGate><CreateQuiz embedded /></ScormOperationalGate></ScormFeatureGate>} />
+          <Route path="quizmoto/edit/:id" element={<ScormFeatureGate featureId="quizmoto"><ScormOperationalGate><EditQuiz embedded /></ScormOperationalGate></ScormFeatureGate>} />
+          <Route path="quizmoto/reports" element={<ScormFeatureGate featureId="quizmoto"><ScormOperationalGate><Reports embedded /></ScormOperationalGate></ScormFeatureGate>} />
           <Route path="publica" element={<Flipbooks />} />
           <Route path="publica/analytics" element={<FlipbookAnalytics />} />
           <Route path="publica/new" element={<FlipbookEditor />} />
@@ -234,26 +231,26 @@ function AppRoutes() {
           <Route path="flipbooks/new" element={<LegacyPublicaWorkspaceRedirect destination="new" />} />
           <Route path="flipbooks/:id/edit" element={<LegacyPublicaWorkspaceRedirect destination="edit" />} />
           <Route path="flipbooks/:id/analytics" element={<LegacyPublicaWorkspaceRedirect destination="detail-analytics" />} />
-          <Route path="courses" element={<ScormFeatureGate featureId="courses" trialAllowed><ScormCourses /></ScormFeatureGate>} />
+          <Route path="courses" element={<ScormFeatureGate featureId="courses"><ScormCourses /></ScormFeatureGate>} />
           <Route path="videos" element={<Navigate to="/scorm/author?mode=video" replace />} />
-          <Route path="courses/:id" element={<ScormFeatureGate featureId="courses" trialAllowed><ScormCourseDetail /></ScormFeatureGate>} />
-          <Route path="roster" element={<ScormFeatureGate featureId="tracking" trialAllowed><ScormLearnerRoster /></ScormFeatureGate>} />
-          <Route path="assignments" element={<ScormFeatureGate featureId="tracking" trialAllowed><ScormAssignments /></ScormFeatureGate>} />
+          <Route path="courses/:id" element={<ScormFeatureGate featureId="courses"><ScormCourseDetail /></ScormFeatureGate>} />
+          <Route path="roster" element={<ScormFeatureGate featureId="roster"><ScormLearnerRoster /></ScormFeatureGate>} />
+          <Route path="assignments" element={<ScormFeatureGate featureId="campaigns"><ScormAssignments /></ScormFeatureGate>} />
           <Route path="campaigns" element={<Navigate to="/scorm/assignments" replace />} />
-          <Route path="campaigns/new" element={<ScormFeatureGate featureId="tracking"><ScormCampaignCreate /></ScormFeatureGate>} />
-          <Route path="campaigns/:campaignId" element={<ScormFeatureGate featureId="tracking"><ScormCampaignDetail /></ScormFeatureGate>} />
-          <Route path="campaigns/:campaignId/learners" element={<ScormFeatureGate featureId="tracking"><ScormCampaignLearners /></ScormFeatureGate>} />
+          <Route path="campaigns/new" element={<ScormFeatureGate featureId="campaigns"><ScormCampaignCreate /></ScormFeatureGate>} />
+          <Route path="campaigns/:campaignId" element={<ScormFeatureGate featureId="campaigns"><ScormCampaignDetail /></ScormFeatureGate>} />
+          <Route path="campaigns/:campaignId/learners" element={<ScormFeatureGate featureId="campaigns"><ScormCampaignLearners /></ScormFeatureGate>} />
           <Route path="campaigns/:campaignId/analytics" element={<ScormFeatureGate featureId="reports" analyticsAllowed><ScormCampaignAnalytics /></ScormFeatureGate>} />
           <Route path="tracking" element={<ScormFeatureGate featureId="tracking" analyticsAllowed><ScormTracking /></ScormFeatureGate>} />
           <Route path="library" element={<ScormFeatureGate featureId="library"><ScormLibrary /></ScormFeatureGate>} />
           <Route path="author" element={<ScormFeatureGate featureId="author"><ScormAuthor /></ScormFeatureGate>} />
-          <Route path="awareness-templates" element={<ScormFeatureGate featureId="author"><ScormAwarenessTemplates /></ScormFeatureGate>} />
-          <Route path="awareness-templates/campaigns/:campaignId" element={<ScormFeatureGate featureId="author"><ScormAwarenessEmailCampaignDetail /></ScormFeatureGate>} />
+          <Route path="awareness-templates" element={<ScormFeatureGate featureId="awareness"><ScormAwarenessTemplates /></ScormFeatureGate>} />
+          <Route path="awareness-templates/campaigns/:campaignId" element={<ScormFeatureGate featureId="awareness"><ScormAwarenessEmailCampaignDetail /></ScormFeatureGate>} />
           <Route path="presentation/edit/:packageId" element={<ScormFeatureGate featureId="author"><ScormPresentationEditor /></ScormFeatureGate>} />
           <Route path="visual-studio" element={<ScormFeatureGate featureId="visualStudio"><ScormVisualStudio /></ScormFeatureGate>} />
           <Route path="reports" element={<ScormFeatureGate featureId="reports" analyticsAllowed><ScormReports /></ScormFeatureGate>} />
-          <Route path="team" element={<WorkspaceAdminGate><ScormTeamAccess /></WorkspaceAdminGate>} />
-          <Route path="learner-access" element={<WorkspaceAdminGate><ScormLearnerAccessSettings /></WorkspaceAdminGate>} />
+          <Route path="team" element={<WorkspaceAdminGate featureId="team"><ScormTeamAccess /></WorkspaceAdminGate>} />
+          <Route path="learner-access" element={<WorkspaceAdminGate featureId="sso"><ScormLearnerAccessSettings /></WorkspaceAdminGate>} />
           <Route path="access" element={<AccessAdminGate />} />
           <Route path="access/danger" element={<AccessAdminGate initialTab="danger" />} />
           <Route path="settings" element={<ScormAccountSettings />} />

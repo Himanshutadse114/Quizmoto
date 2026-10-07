@@ -24,16 +24,6 @@ function isTrialRoute(method, url) {
     const path = String(url || '').split('?')[0];
     if (path === '/api/scorm/features') return verb === 'GET';
     if (path.startsWith('/api/scorm/flipbooks')) return true;
-    if (path === '/api/scorm/courses') return verb === 'GET';
-    if (/^\/api\/scorm\/courses\/[^/]+$/.test(path)) return verb === 'GET';
-    if (/^\/api\/scorm\/courses\/[^/]+\/registrations$/.test(path)) return verb === 'GET';
-    if (/^\/api\/scorm\/courses\/[^/]+\/preview$/.test(path)) return verb === 'POST';
-    if (/^\/api\/scorm\/preview\/course\/[^/]+$/.test(path)) return verb === 'GET';
-    if (path === '/api/scorm/roster') return ['GET', 'POST', 'PUT', 'DELETE'].includes(verb);
-    if (/^\/api\/scorm\/roster\/[^/]+$/.test(path)) return verb === 'DELETE';
-    if (path === '/api/scorm/assignments') return verb === 'GET';
-    if (path === '/api/scorm/assignments/bulk') return verb === 'POST';
-    if (/^\/api\/scorm\/assignments\/[^/]+$/.test(path)) return ['PATCH', 'DELETE'].includes(verb);
     return false;
 }
 

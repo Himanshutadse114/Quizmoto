@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, CheckCircle2, Gamepad2, LockKeyhole, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, CheckCircle2, LockKeyhole, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getScormFeature } from './scormFeatureCatalog';
+import './freeDemo.css';
+
+const SALES_CONTACT_URL = 'https://www.lmsgen.in/contact';
 
 export default function ScormFeatureLocked({ featureId }) {
   const feature = getScormFeature(featureId);
-  const { user, refreshScormAccess } = useAuth();
+  const { refreshScormAccess } = useAuth();
   const [checking, setChecking] = useState(false);
   const [notice, setNotice] = useState('');
 
@@ -15,81 +18,51 @@ export default function ScormFeatureLocked({ featureId }) {
     setNotice('');
     try {
       const result = await refreshScormAccess();
-      if (result?.scormAccess && !result?.pendingApproval) {
-        setNotice('Access approved. Opening the feature…');
-      } else {
-        setNotice('Approval is still pending. Your starter Quizmoto and Publica access remains available.');
-      }
+      setNotice(result?.scormAccess && !result?.pendingApproval
+        ? 'Access approved. Reloading your workspace…'
+        : 'This module is still in demo mode. Contact LMSGEN to activate a tenant.');
+      if (result?.scormAccess && !result?.pendingApproval) window.location.reload();
     } catch (err) {
-      setNotice(err.response?.data?.message || err.message || 'Could not refresh approval status.');
+      setNotice(err.response?.data?.message || err.message || 'Could not refresh access status.');
     } finally {
       setChecking(false);
     }
   };
 
   return (
-    <div className="scorm-light-adapted p-4 md:p-7 lg:p-8 max-w-[1180px] mx-auto">
+    <div className="lmsgen-feature-preview scorm-light-adapted p-4 md:p-6 lg:p-7 max-w-[1120px] mx-auto">
       <section className="scorm-page-hero mb-5">
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+        <Link to="/scorm" className="inline-flex items-center gap-1.5 text-[10px] font-semibold mb-4" style={{ color: 'var(--scorm-muted)' }}><ArrowLeft size={12} /> Back to platform tour</Link>
+        <div className="grid lg:grid-cols-[1fr_auto] gap-5 lg:items-end">
           <div className="max-w-3xl">
-            <div className="scorm-eyebrow inline-flex items-center gap-2"><LockKeyhole size={12} /> Approval required</div>
-            <h1 className="scorm-display mt-3"><span>{feature.label}</span></h1>
-            <p className="mt-3 text-sm md:text-[15px] max-w-2xl">{feature.description}</p>
+            <div className="flex flex-wrap items-center gap-2 mb-3"><span className="scorm-eyebrow">{feature.category} module</span><span className="demo-status-pill"><LockKeyhole size={11} /> Locked demo</span></div>
+            <h1 className="demo-title">{feature.label}</h1>
+            <p className="demo-lead">{feature.description}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link to="/scorm/quizmoto" className="scorm-button-primary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">
-              <Gamepad2 size={15} /> Open Quizmoto
-            </Link>
-            <Link to="/scorm/publica" className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">
-              <BookOpen size={15} /> Open Publica
-            </Link>
-            <button type="button" onClick={checkAccess} disabled={checking} className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold disabled:opacity-50">
-              <RefreshCw size={14} className={checking ? 'animate-spin' : ''} /> {checking ? 'Checking…' : 'Refresh approval'}
-            </button>
-          </div>
+          <a href={SALES_CONTACT_URL} className="scorm-button-primary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold">Unlock this module <ArrowUpRight size={14} /></a>
         </div>
       </section>
 
-      <div className="grid lg:grid-cols-[1.15fr_.85fr] gap-5 items-start">
+      <div className="grid lg:grid-cols-[1.35fr_.65fr] gap-5 items-start">
         <section className="scorm-panel overflow-hidden">
-          <div className="scorm-panel-header">
-            <div className="scorm-eyebrow">What unlocks</div>
-            <h2 className="text-[19px] mt-1">{feature.short}</h2>
-          </div>
-          <div className="p-5 md:p-6 space-y-3">
+          <div className="demo-group-heading"><div><div className="scorm-eyebrow">Included capability</div><h2>What your team can do here</h2></div><span>{feature.capabilities.length} capabilities</span></div>
+          <div className="p-4 md:p-5 grid sm:grid-cols-2 gap-3">
             {feature.capabilities.map((capability) => (
-              <div key={capability} className="rounded-2xl border border-[#29405f] bg-[#081321] px-4 py-4 flex items-start gap-3">
-                <span className="mt-0.5 w-7 h-7 rounded-lg grid place-items-center shrink-0 bg-[#0b1e34] border border-[#315a8b] text-[#93c5fd]"><CheckCircle2 size={15} /></span>
-                <div className="text-sm leading-relaxed text-[#d1dbea]">{capability}</div>
+              <div key={capability} className="rounded-xl border px-4 py-3.5 flex items-start gap-3" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
+                <span className="mt-0.5 w-7 h-7 rounded-lg grid place-items-center shrink-0 border" style={{ borderColor: 'var(--scorm-line)', color: 'var(--scorm-accent-strong)' }}><CheckCircle2 size={14} /></span>
+                <div className="text-xs leading-relaxed" style={{ color: 'var(--scorm-ink-soft)' }}>{capability}</div>
               </div>
             ))}
           </div>
         </section>
 
-        <aside className="space-y-4">
-          <section className="scorm-panel p-5 md:p-6">
-            <div className="w-11 h-11 rounded-xl grid place-items-center bg-[#0b1e34] border border-[#315a8b] text-[#93c5fd]"><ShieldCheck size={19} /></div>
-            <div className="scorm-eyebrow mt-5">Your access state</div>
-            <h3 className="text-lg mt-1">Course authoring approval pending</h3>
-            <p className="mt-3 text-xs leading-relaxed text-[#9fb0c5]">
-              Your platform account is active. Course authoring, operations, tracking and reporting remain locked until the administrator approves your account.
-            </p>
-            <div className="mt-4 rounded-xl border border-[#29405f] bg-[#07111f] px-3.5 py-3">
-              <div className="text-[10px] uppercase tracking-[.12em] font-semibold text-[#8295ae]">Administrator</div>
-              <div className="mt-1 text-xs text-[#dce7f5]">Contact your platform administrator for access.</div>
-            </div>
-            {notice && <div className="mt-3 text-xs leading-relaxed text-[#93c5fd]">{notice}</div>}
-          </section>
-
-          <section className="scorm-light-feature-hero rounded-2xl border border-[#315a8b] bg-[linear-gradient(145deg,#0b213c,#071426)] p-5">
-            <div className="flex items-center gap-2 text-[#93c5fd] text-xs font-semibold"><Sparkles size={15} /> Starter access available now</div>
-            <h3 className="text-lg mt-3 text-[#f8fafc]">Quizmoto + LMSGEN Publica</h3>
-            <p className="mt-2 text-xs leading-relaxed text-[#b8c7da]">Run a Quizmoto session with up to 10 players and upload up to 2 Publica items. The Super Admin can expand these allowances after approval.</p>
-            <div className="mt-4 flex flex-wrap gap-4">
-              <Link to="/scorm/quizmoto" className="inline-flex items-center gap-2 text-xs font-semibold text-[#60a5fa]">Open Quizmoto →</Link>
-              <Link to="/scorm/publica" className="inline-flex items-center gap-2 text-xs font-semibold text-[#60a5fa]">Open Publica →</Link>
-            </div>
-          </section>
+        <aside className="scorm-panel p-5">
+          <div className="w-10 h-10 rounded-xl grid place-items-center border" style={{ borderColor: 'var(--scorm-line)', color: 'var(--scorm-accent-strong)' }}><ShieldCheck size={18} /></div>
+          <div className="scorm-eyebrow mt-4">Safe product tour</div>
+          <h2 className="text-[17px] mt-1 font-semibold">Explore without changing data</h2>
+          <p className="mt-2 text-xs leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>The navigation and capability details stay visible, while creation, uploads, learner data and live sessions remain protected until your tenant is active.</p>
+          <button type="button" onClick={checkAccess} disabled={checking} className="scorm-button-secondary mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold disabled:opacity-50"><RefreshCw size={13} className={checking ? 'animate-spin' : ''} /> {checking ? 'Checking…' : 'Refresh access'}</button>
+          {notice && <div className="mt-3 text-[10px] leading-relaxed" style={{ color: 'var(--scorm-accent-strong)' }}>{notice}</div>}
         </aside>
       </div>
     </div>

@@ -134,8 +134,10 @@
   background: linear-gradient(180deg, #080e1b 0%, #050914 100%);
 }
 .sa-form-kicker { color: var(--sa-orange-strong); font: 600 9px/1 'Inter', system-ui, sans-serif; text-transform: uppercase; letter-spacing: .13em; }
-.sa-form-title { margin-top: 8px; color: var(--sa-cream); font: 800 32px/1 'Inter', system-ui, sans-serif; letter-spacing: -.035em; }
+.sa-form-title { margin-top: 8px; color: var(--sa-cream); font: 800 26px/1.05 'Inter', system-ui, sans-serif; letter-spacing: -.025em; }
 .sa-form-sub { margin-top: 9px; color: var(--sa-soft); font-size: 11.5px; line-height: 1.5; }
+.sa-product-preview { margin: -4px 0 4px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.sa-product-preview span { min-width: 0; padding: 6px 8px; border: 1px solid var(--sa-border); border-radius: 7px; background: var(--sa-panel-2); color: var(--sa-soft); font-size: 8.5px; line-height: 1.2; }
 
 .sa-tabs { margin-top: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1px solid var(--sa-border); border-radius: 9px; background: #020611; }
 .sa-tab { min-height: 38px; border: 1px solid transparent; border-radius: 7px; color: var(--sa-soft); background: transparent; font: 600 10px/1 'Inter', system-ui, sans-serif; }
@@ -183,7 +185,7 @@
   .sa-copy { margin-top: 11px; font-size: 12px; line-height: 1.45; }
   .sa-points { margin-top: 16px; gap: 6px; }
   .sa-form-panel { padding: 16px 26px; }
-  .sa-form-title { font-size: 27px; }
+  .sa-form-title { font-size: 24px; }
   .sa-form-sub { margin-top: 5px; }
   .sa-tabs { margin-top: 9px; }
   .sa-tab { min-height: 32px; }
@@ -213,7 +215,7 @@
   .sa-copy { margin-top: 11px; font-size: 12.5px; line-height: 1.5; }
   .sa-points { display: none; }
   .sa-form-panel { padding: 23px 21px 25px; }
-  .sa-form-title { font-size: 29px; }
+  .sa-form-title { font-size: 24px; }
   .sa-google-button { justify-content: center; }
 }
 
@@ -225,7 +227,7 @@
   .sa-title { font-size: 37px; }
   .sa-copy { display: none; }
   .sa-form-panel { padding: 19px 17px 22px; }
-  .sa-form-title { font-size: 27px; }
+  .sa-form-title { font-size: 23px; }
   .sa-tabs { margin-top: 12px; }
   .sa-form { gap: 9px; }
   .sa-google-button { justify-content: center; overflow: hidden; }

@@ -62,9 +62,7 @@ const PERSISTABLE_PATHS = [
 
 const FREE_TOOL_DATASETS = [
   { path: '/api/scorm/flipbooks', dataKey: 'flipbooks', label: 'Preparing Publica', priority: 1 },
-  { path: '/api/scorm/flipbooks/library', dataKey: 'flipbook-library', label: 'Preparing your Publica library', priority: 2 },
-  { path: '/api/quizzes', label: 'Preparing Quizmoto', priority: 1 },
-  { path: '/api/quizzes/active-sessions', label: 'Checking live sessions', priority: 2 }
+  { path: '/api/scorm/flipbooks/library', dataKey: 'flipbook-library', label: 'Preparing your Publica library', priority: 2 }
 ];
 
 const SCORM_DATASETS = [
@@ -73,14 +71,6 @@ const SCORM_DATASETS = [
   { path: '/api/scorm/tracking/summary', dataKey: 'tracking-summary', label: 'Preparing learner tracking', priority: 1 },
   { path: '/api/scorm/campaigns', label: 'Loading campaigns', priority: 2 },
   { path: '/api/scorm/roster', label: 'Loading learner roster', priority: 2 },
-  { path: '/api/scorm/features', dataKey: 'features', label: 'Checking workspace features', priority: 2 }
-];
-
-const TRIAL_DATASETS = [
-  { path: '/api/scorm/courses', dataKey: 'courses', label: 'Loading included courses', priority: 1 },
-  { path: '/api/scorm/roster', label: 'Preparing learner roster', priority: 1 },
-  { path: '/api/scorm/assignments', label: 'Preparing course assignments', priority: 2 },
-  { path: '/api/scorm/flipbooks', dataKey: 'flipbooks', label: 'Preparing Publica', priority: 2 },
   { path: '/api/scorm/features', dataKey: 'features', label: 'Checking workspace features', priority: 2 }
 ];
 
@@ -391,13 +381,12 @@ export async function warmScormPlatformData(token, options = {}) {
     role = '',
     scormAccess = true,
     quizmotoOnly = false,
-    trialAccess = false,
     onProgress = null
   } = options;
 
   const normalizedRole = String(role || '').toLowerCase();
   const analyticsOnly = normalizedRole === 'analytics_viewer';
-  let datasets = trialAccess ? [...TRIAL_DATASETS] : [...FREE_TOOL_DATASETS];
+  let datasets = [...FREE_TOOL_DATASETS];
 
   if (scormAccess && !quizmotoOnly) {
     datasets.push(...(analyticsOnly ? ANALYTICS_DATASETS : SCORM_DATASETS));

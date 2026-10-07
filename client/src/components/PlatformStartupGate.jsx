@@ -16,10 +16,9 @@ function wait(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-function preloadInitialWorkspace({ quizmotoOnly, scormAccess, role }) {
+function preloadInitialWorkspace({ scormAccess, role }) {
   let routeImport = import('../pages/Scorm/PendingHome');
-  if (quizmotoOnly) routeImport = import('../pages/Scorm/QuizmotoModule');
-  else if (scormAccess && role === 'analytics_viewer') routeImport = import('../pages/Scorm/Tracking');
+  if (scormAccess && role === 'analytics_viewer') routeImport = import('../pages/Scorm/Tracking');
   else if (scormAccess) routeImport = import('../pages/Scorm/Home');
 
   return Promise.all([
@@ -80,7 +79,6 @@ export default function PlatformStartupGate({ children }) {
       }));
     });
     const interfacePreparation = preloadInitialWorkspace({
-      quizmotoOnly: Boolean(user?.quizmotoOnly),
       scormAccess,
       role: user?.role || ''
     });

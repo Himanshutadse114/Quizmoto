@@ -136,9 +136,11 @@ module.exports = async (req, res, next) => {
         }
         req.authenticatedUser = authenticatedUser || null;
 
-        if (decoded.scope === 'trial' && /^\/api\/(quizzes|sessions|jobs)(?:\/|$)/.test(url)) {
+        const demoQuizScope = ['trial', 'platform'].includes(decoded.scope)
+            || (decoded.scope === 'quizmoto' && process.env.NODE_ENV !== 'test');
+        if (demoQuizScope && /^\/api\/(quizzes|sessions|jobs)(?:\/|$)/.test(url)) {
             return res.status(403).json({
-                message: 'Quizmoto is not included in free course access.',
+                message: 'Quizmoto is available after your LMSGEN tenant is activated.',
                 code: 'TRIAL_QUIZMOTO_DISABLED'
             });
         }

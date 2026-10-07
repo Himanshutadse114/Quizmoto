@@ -1,36 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { Search, Trash2, Upload, UserPlus, Users, RefreshCw } from 'lucide-react';
+import { Download, FileSpreadsheet, Search, Trash2, Upload, UserPlus, Users, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
-
-const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/ig;
-
-function normalizeEmail(value) {
-  return String(value || '').trim().toLowerCase();
-}
-
-function parseRosterText(text) {
-  const seen = new Set();
-  const learners = [];
-  const lines = String(text || '').split(/\r?\n/);
-
-  for (const line of lines) {
-    const matches = line.match(EMAIL_RE) || [];
-    for (const match of matches) {
-      const email = normalizeEmail(match);
-      if (!email || seen.has(email)) continue;
-      seen.add(email);
-      const beforeEmail = line.slice(0, line.toLowerCase().indexOf(match.toLowerCase()));
-      const name = beforeEmail.replace(/[",;\t|]+/g, ' ').trim().replace(/\s+/g, ' ');
-      learners.push({
-        email,
-        learnerName: /^(name|email|learner|employee)$/i.test(name) ? '' : name.slice(0, 255)
-      });
-    }
-  }
-  return learners;
-}
+import { parseRosterText, ROSTER_CSV_TEMPLATE } from './rosterCsv';
 
 export default function LearnerRoster() {
   const { token } = useAuth();
@@ -89,7 +62,7 @@ export default function LearnerRoster() {
     }
   };
 
-  const importRows = async (rows) => {
+  const importRows = async (rows, sourceLabel = '') => {
     if (!rows.length) return setError('No valid email addresses were found.');
     setSaving(true);
     setError('');
@@ -100,7 +73,7 @@ export default function LearnerRoster() {
         learners: rows
       }, { headers });
       const invalidCount = res.data?.invalid?.length || 0;
-      setMessage(`${res.data?.accepted || rows.length} learner email${(res.data?.accepted || rows.length) === 1 ? '' : 's'} processed. ${res.data?.total || 0} approved learner${(res.data?.total || 0) === 1 ? '' : 's'} are now in the roster.${invalidCount ? ` ${invalidCount} invalid value${invalidCount === 1 ? '' : 's'} skipped.` : ''}`);
+      setMessage(`${sourceLabel ? `${sourceLabel}: ` : ''}${res.data?.accepted || rows.length} learner email${(res.data?.accepted || rows.length) === 1 ? '' : 's'} processed. ${res.data?.total || 0} approved learner${(res.data?.total || 0) === 1 ? '' : 's'} are now in the roster.${invalidCount ? ` ${invalidCount} invalid value${invalidCount === 1 ? '' : 's'} skipped.` : ''}`);
       setPaste('');
       await load();
     } catch (err) {
@@ -118,10 +91,22 @@ export default function LearnerRoster() {
     if (!file) return;
     try {
       const text = await file.text();
-      await importRows(parseRosterText(text));
-    } catch (_) {
+      await importRows(parseRosterText(text), file.name);
+    } catch {
       setError('Unable to read that file. Upload a CSV or text file containing learner emails.');
     }
+  };
+
+  const downloadTemplate = () => {
+    const blob = new Blob([ROSTER_CSV_TEMPLATE], { type: 'text/csv;charset=utf-8' });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = 'lmsgen-learner-roster-template.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(href);
   };
 
   const remove = async (row) => {
@@ -140,7 +125,7 @@ export default function LearnerRoster() {
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-7 pb-7 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
         <div className="max-w-3xl">
           <div className="scorm-micro text-[10px] uppercase font-semibold">Learner access</div>
-          <h1 className="scorm-display text-[38px] md:text-[50px] mt-2">Approved learner roster</h1>
+          <h1 className="text-[28px] md:text-[34px] leading-tight tracking-[-.025em] font-semibold mt-2">Approved learner roster</h1>
           <p className="text-sm mt-3 leading-relaxed" style={{ color: 'var(--scorm-ink-soft)' }}>
             Only email addresses in this roster can start courses from your public invite links. No OTP is required.
           </p>
@@ -174,7 +159,7 @@ export default function LearnerRoster() {
 
         <section className="scorm-panel rounded-2xl border p-5 md:p-6">
           <div className="flex items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2"><Upload size={17} /><h2 className="font-semibold">Upload or sync roster</h2></div>
+            <div className="flex items-center gap-2"><FileSpreadsheet size={17} /><h2 className="font-semibold">Import learner CSV</h2></div>
             <div className="flex rounded-lg border p-1" style={{ borderColor: 'var(--scorm-line)' }}>
               {['append', 'replace'].map((value) => (
                 <button key={value} type="button" onClick={() => setMode(value)} className={`px-3 py-1.5 rounded-md text-[10px] font-semibold capitalize ${mode === value ? 'scorm-button-primary' : ''}`}>{value}</button>
@@ -182,15 +167,16 @@ export default function LearnerRoster() {
             </div>
           </div>
           <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--scorm-muted)' }}>
-            Upload a CSV/TXT file or paste a list. A standard “Name, Email” CSV is supported. Replace mode makes the uploaded file the new authoritative roster.
+            Upload CSV/TXT or paste a list. Name + Email, Email + Name, quoted fields, tab-separated exports and First Name + Last Name + Email are supported. Replace mode makes the import authoritative.
           </p>
           <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={6} className="w-full px-3 py-2.5 text-sm font-mono" placeholder={'Name,Email\nAsha,asha@company.com\nRahul,rahul@company.com'} />
           <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" disabled={saving || !paste.trim()} onClick={importPaste} className="scorm-button-primary px-4 py-2.5 text-xs font-semibold disabled:opacity-50">Import pasted list</button>
             <label className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold cursor-pointer inline-flex items-center gap-2">
-              <Upload size={13} /> Upload CSV/TXT
+              <Upload size={13} /> Import CSV/TXT
               <input type="file" accept=".csv,.txt,text/csv,text/plain" className="hidden" onChange={importFile} />
             </label>
+            <button type="button" onClick={downloadTemplate} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center gap-2"><Download size={13} /> Download template</button>
           </div>
         </section>
       </div>

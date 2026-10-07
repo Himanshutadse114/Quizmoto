@@ -10,30 +10,33 @@ describe('SCORM AI platform product structure', () => {
     const app = source('../client/src/App.jsx');
     const shell = source('../client/src/pages/Scorm/ScormPlatformShell.jsx');
     const auth = source('../client/src/pages/Scorm/ScormAuth.jsx');
+    const catalog = source('../client/src/pages/Scorm/scormFeatureCatalog.js');
     const author = source('../client/src/pages/Scorm/AuthorVisual.jsx');
     const quizEditor = source('../client/src/pages/Scorm/AuthorQuizEditor.jsx');
 
-    it('uses SCORM AI authentication as the root product entry', () => {
-        expect(app).to.include('<Route path="/" element={<PlatformEntry />} />');
+    it('uses LMSGEN authentication as the protected product entry', () => {
+        expect(app).to.include('<Route path="/login" element={<PlatformEntry />} />');
         expect(app).to.include('return <ScormAuth />');
-        expect(app).to.include('<Route path="/login" element={<Navigate to="/" replace />} />');
-        expect(auth).to.include('SCORM AI Platform · Quizmoto included');
+        expect(auth).to.include('open the complete interactive LMSGEN product tour');
     });
 
-    it('nests Quizmoto inside the SCORM AI platform while preserving classic live stages', () => {
-        expect(app).to.include('<Route path="quizmoto" element={<QuizmotoModule />} />');
-        expect(app).to.include('<Route path="quizmoto/create" element={<CreateQuiz embedded />} />');
+    it('gates Quizmoto inside LMSGEN while preserving approved live stages', () => {
+        expect(app).to.include('<ScormFeatureGate featureId="quizmoto"><ScormOperationalGate><QuizmotoModule />');
+        expect(app).to.include('<ScormFeatureGate featureId="quizmoto"><ScormOperationalGate><CreateQuiz embedded />');
         expect(app).to.include('<Route path="/host/lobby/:pin" element={<Lobby />} />');
         expect(app).to.include('<Route path="/host/game/:pin" element={<GameView />} />');
         expect(app).to.include('<Route path="/join" element={<Join />} />');
     });
 
-    it('keeps SCORM AI features visible but gates them independently of Quizmoto', () => {
+    it('keeps the complete platform visible while paid modules remain locked in demo mode', () => {
         expect(app).to.include('function ScormFeatureGate');
-        expect(app).to.include('return scormAccess ? children : <ScormFeatureLocked featureId={featureId} />');
-        expect(shell).to.include("{ to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2, unlocked: true }");
+        expect(app).to.include('if (!scormAccess) return <ScormFeatureLocked featureId={featureId} />');
+        expect(shell).to.include("{ to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2, requiresScorm: true }");
         expect(shell).to.include("{ to: '/scorm/author', label: 'AI Course Author', icon: Sparkles, requiresScorm: true }");
-        expect(shell).to.include('Quizmoto is unlocked. SCORM AI features unlock after administrator approval.');
+        expect(shell).to.include("{ to: '/scorm/roster', label: 'Learner Roster', icon: UserCheck, requiresScorm: true }");
+        expect(shell).to.include('Interactive demo mode');
+        expect(catalog).to.include("label: 'Authentication & SSO'");
+        expect(catalog).to.include('Import CSV or TXT files with Name and Email columns');
     });
 
     it('provides an editable knowledge-check authoring surface before generation', () => {
