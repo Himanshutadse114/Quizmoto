@@ -85,10 +85,10 @@ const SALES_CONTACT_URL = 'https://www.lmsgen.in/contact';
 
 function FreeAccessCard() {
   return (
-    <div className="scorm-status-card rounded-xl px-3.5 py-3">
-      <div className="flex items-center gap-2 text-[11px] font-semibold"><span className="scorm-status-dot" />Interactive demo mode</div>
-      <div className="mt-1.5 text-[10px] leading-relaxed">Explore every LMSGEN module. Paid operations are locked until your tenant is activated.</div>
-      <a href={SALES_CONTACT_URL} className="scorm-button-primary mt-3 w-full min-h-9 px-3 inline-flex items-center justify-center gap-1.5 text-[10px] font-semibold">Activate LMSGEN <ChevronRight size={12} /></a>
+    <div className="scorm-status-card rounded-lg px-2.5 py-2 flex items-center gap-2">
+      <span className="scorm-status-dot shrink-0" />
+      <span className="min-w-0 flex-1 truncate text-[10px] font-semibold">Demo mode</span>
+      <a href={SALES_CONTACT_URL} className="inline-flex shrink-0 items-center gap-0.5 text-[9px] font-semibold text-[#4FC9BF] hover:text-[#7de0d8]">Activate <ChevronRight size={10} /></a>
     </div>
   );
 }
@@ -183,11 +183,11 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess, role }) {
   ];
 
   return (
-    <nav className="scorm-nav flex-1 px-3 py-5 overflow-y-auto">
+    <nav className={`scorm-nav flex-1 px-3 overflow-y-auto ${scormAccess ? 'py-5' : 'py-3'}`}>
       {groups.map((group, groupIndex) => (
-        <div key={group.label} className={groupIndex ? 'mt-6' : ''}>
-          <div className="scorm-nav-section px-3 pb-2.5 text-[10px] uppercase font-semibold">{group.label}</div>
-          <div className="space-y-1">
+        <div key={group.label} className={groupIndex ? (scormAccess ? 'mt-6' : 'mt-3') : ''}>
+          <div className={`scorm-nav-section px-2.5 uppercase font-semibold ${scormAccess ? 'pb-2.5 text-[10px]' : 'pb-1 text-[8px]'}`}>{group.label}</div>
+          <div className={scormAccess ? 'space-y-1' : 'space-y-0.5'}>
             {group.items.map(({ to, end, label, icon, requiresScorm, unlocked }) => {
               const locked = Boolean(requiresScorm && !scormAccess);
               return (
@@ -196,11 +196,11 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess, role }) {
                   to={to}
                   end={end}
                   onClick={onNavigate}
-                  className={({ isActive }) => `scorm-nav-item ${isActive ? 'scorm-nav-active' : ''} ${locked ? 'is-locked' : ''} group flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium`}
+                  className={({ isActive }) => `scorm-nav-item ${isActive ? 'scorm-nav-active' : ''} ${locked ? 'is-locked' : ''} group flex items-center font-medium ${scormAccess ? 'gap-3 px-3 py-2.5 text-[13px]' : 'gap-2.5 px-2.5 py-1.5 text-[11px]'}`}
                 >
                   {({ isActive }) => (
                     <>
-                      <span className="scorm-nav-icon w-8 h-8 rounded-lg grid place-items-center shrink-0">{React.createElement(icon, { size: 16, strokeWidth: isActive ? 2.2 : 1.9 })}</span>
+                      <span className={`scorm-nav-icon rounded-lg grid place-items-center shrink-0 ${scormAccess ? 'w-8 h-8' : 'w-7 h-7'}`}>{React.createElement(icon, { size: scormAccess ? 16 : 14, strokeWidth: isActive ? 2.2 : 1.9 })}</span>
                       <span className="flex-1 truncate">{label}</span>
                       {unlocked && !scormAccess && <span className="text-[8px] uppercase tracking-[.08em] font-bold text-[#60a5fa]">Open</span>}
                       {locked ? <LockKeyhole size={12} className="text-[#71839c]" /> : isActive ? <ChevronRight size={14} className="scorm-nav-chevron" /> : null}
@@ -302,20 +302,19 @@ export default function ScormPlatformShell() {
       <aside className="scorm-sidebar fixed inset-y-0 left-0 z-40 hidden lg:flex w-[268px] flex-col border-r">
         <div className="scorm-brand-wrap h-[76px] px-5 flex items-center border-b"><Brand theme={theme} /></div>
         <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} />
-        <div className="scorm-sidebar-footer p-3 border-t space-y-2.5">
+        <div className="scorm-sidebar-footer p-2 border-t space-y-1.5">
           {platformAccess && (
-            <Link to="/scorm/settings" className="scorm-sidebar-profile rounded-xl px-3.5 py-3 border border-[#29405f] bg-[#081321] block">
+            <Link to="/scorm/settings" title={user?.email || 'Account settings'} className="scorm-sidebar-profile rounded-lg px-2.5 py-2 border border-[#29405f] bg-[#081321] block">
               <div className="flex items-center gap-2">
-                {user?.avatar ? <img src={user.avatar} alt="" className="w-8 h-8 rounded-lg object-cover" /> : <div className="w-8 h-8 rounded-lg grid place-items-center bg-[#4FC9BF]/15 text-[#4FC9BF] text-[10px] font-bold">{String(user?.username || 'U').trim().slice(0, 1).toUpperCase()}</div>}
-                <div className="min-w-0"><div className="text-[10px] font-semibold text-[#93c5fd] truncate">{user?.username || roleName}</div><div className="mt-0.5 text-[8px] text-[#8295ae] truncate">{roleName}</div></div>
+                {user?.avatar ? <img src={user.avatar} alt="" className="w-7 h-7 rounded-lg object-cover" /> : <div className="w-7 h-7 rounded-lg grid place-items-center bg-[#4FC9BF]/15 text-[#4FC9BF] text-[9px] font-bold">{String(user?.username || 'U').trim().slice(0, 1).toUpperCase()}</div>}
+                <div className="min-w-0"><div className="text-[9px] font-semibold text-[#93c5fd] truncate">{user?.username || roleName}</div><div className="text-[7px] text-[#8295ae] truncate">{roleName}</div></div>
                 <Settings size={12} className="ml-auto text-[#8295ae]" />
               </div>
-              <div className="mt-1.5 text-[9px] leading-relaxed text-[#8295ae] break-all">{user?.email}</div>
             </Link>
           )}
 
           {demoAccess && <FreeAccessCard />}
-          <button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><LogOut size={14} /> Sign out</span><ChevronRight size={13} /></button>
+          <button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-2.5 py-2 text-[10px] font-medium"><span className="flex items-center gap-2"><LogOut size={12} /> Sign out</span><ChevronRight size={11} /></button>
         </div>
       </aside>
 
@@ -328,9 +327,9 @@ export default function ScormPlatformShell() {
               <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="scorm-drawer-close w-9 h-9 grid place-items-center"><X size={17} /></button>
             </div>
             <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} onNavigate={() => setMobileOpen(false)} />
-            <div className="p-3 border-t space-y-2.5">
+            <div className="p-2 border-t space-y-1.5">
               {demoAccess && <FreeAccessCard />}
-              <button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium"><span className="flex items-center gap-2"><LogOut size={14} /> Sign out</span><ChevronRight size={13} /></button>
+              <button type="button" onClick={signOut} className="scorm-sidebar-switch w-full flex items-center justify-between gap-2 px-2.5 py-2 text-[10px] font-medium"><span className="flex items-center gap-2"><LogOut size={12} /> Sign out</span><ChevronRight size={11} /></button>
             </div>
           </div>
         </div>
