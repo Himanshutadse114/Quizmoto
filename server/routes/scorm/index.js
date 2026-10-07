@@ -61,6 +61,7 @@ router.use('/flipbooks', require('../flipbooks'));
 router.use('/reports', require('./reportsV2'));
 router.use('/packages', require('./packages'));
 router.use('/video-courses', require('./videoCourses'));
+router.use('/video-studio', require('./videoStudio'));
 // Preserve the existing /courses/:id/report URL used by the current Reports UI,
 // but intercept it before the legacy courses router so downloads always use the
 // LMSGEN v2 renderer and can never silently fall back to Quizmoto branding.

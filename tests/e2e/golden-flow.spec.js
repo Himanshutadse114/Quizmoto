@@ -29,7 +29,13 @@ test.describe('Golden Flow', () => {
         playerBPage = await playerBContext.newPage();
 
         const testRunId = process.env.TEST_RUN_ID || '';
-        const testSecret = process.env.TEST_SECRET || 'fallback_secret';
+        // TEST_SECRET is mandatory on the server now (/api/test-only fails
+        // closed without it). Playwright inherits env into webServer, so one
+        // export covers both this spec and the test server.
+        const testSecret = process.env.TEST_SECRET;
+        if (!testSecret) {
+            throw new Error('TEST_SECRET must be set to run the e2e golden flow (export TEST_SECRET=<random value>).');
+        }
 
         // Always re-seed so Mobile Chrome is not empty after Chromium cleanup
         const seedRes = await request.post('http://localhost:5002/api/test-only/seed', {

@@ -22,10 +22,10 @@ describe('Course Experience V5', () => {
         });
     });
 
-    it('splits dense source copy into initial context and progressive detail', () => {
+    it('keeps dense source copy fully visible instead of progressive detail', () => {
         const result = splitCopy('A suspicious email arrives from an unexpected sender. The message creates urgency and sends the learner to a sign-in page. The learner should verify the request through a trusted channel before entering credentials.');
-        expect(result.introText).to.equal('A suspicious email arrives from an unexpected sender.');
-        expect(result.revealText).to.include('The message creates urgency');
+        expect(result.introText).to.equal('A suspicious email arrives from an unexpected sender. The message creates urgency and sends the learner to a sign-in page. The learner should verify the request through a trusted channel before entering credentials.');
+        expect(result.revealText).to.equal('');
     });
 
     it('plans varied AI defaults without repeating the same inferred screen type consecutively', () => {
@@ -40,7 +40,7 @@ describe('Course Experience V5', () => {
             quiz: []
         });
         expect(result.experienceVersion).to.equal(5);
-        expect(result.experiencePlanner).to.equal('content-aware-v5');
+        expect(result.experiencePlanner).to.equal('balanced-visual-v8');
         for (let i = 1; i < result.slides.length; i += 1) {
             expect(result.slides[i].screenType).to.not.equal(result.slides[i - 1].screenType);
         }

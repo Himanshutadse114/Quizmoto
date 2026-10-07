@@ -1,9 +1,22 @@
 const ScormAccessGrant = require('../../models/ScormAccessGrant');
 const ScormAccessRequest = require('../../models/ScormAccessRequest');
 
+// The Super Admin identity must come from the environment. There is no
+// hardcoded fallback: when SCORM_SUPER_ADMIN_EMAIL is unset the platform runs
+// with "no super-admin configured" and every super-admin check denies.
 const SUPER_ADMIN_EMAIL = String(
-    process.env.SCORM_SUPER_ADMIN_EMAIL || 'tadsehimanshu@gmail.com'
+    process.env.SCORM_SUPER_ADMIN_EMAIL || ''
 ).trim().toLowerCase();
+
+const SUPER_ADMIN_CONFIGURED = SUPER_ADMIN_EMAIL.length > 0;
+
+if (!SUPER_ADMIN_CONFIGURED) {
+    console.warn(
+        '[security] SCORM_SUPER_ADMIN_EMAIL is not set. No Super Admin is configured: ' +
+        'super-admin access checks will deny and the bootstrap grant will not be created. ' +
+        'Set SCORM_SUPER_ADMIN_EMAIL to enable Super Admin access.'
+    );
+}
 
 const ADMIN_CONTACT_EMAIL = String(
     process.env.SCORM_ADMIN_CONTACT_EMAIL || SUPER_ADMIN_EMAIL
@@ -29,7 +42,9 @@ function isValidEmail(email) {
 }
 
 function isSuperAdminEmail(email) {
-    return normalizeEmail(email) === SUPER_ADMIN_EMAIL;
+    // Deny-by-default: with no super-admin configured, nothing matches.
+    // (Guards the degenerate case where both sides would be the empty string.)
+    return SUPER_ADMIN_CONFIGURED && normalizeEmail(email) === SUPER_ADMIN_EMAIL;
 }
 
 function validateAssignableRole(role) {
@@ -43,6 +58,10 @@ function validateAssignableRole(role) {
 }
 
 async function ensureSuperAdminGrant() {
+    if (!SUPER_ADMIN_CONFIGURED) {
+        console.warn('[security] ensureSuperAdminGrant skipped: SCORM_SUPER_ADMIN_EMAIL is not set.');
+        return null;
+    }
     const [grant] = await ScormAccessGrant.findOrCreate({
         where: { email: SUPER_ADMIN_EMAIL },
         defaults: {
@@ -272,6 +291,7 @@ async function removeGrantByEmail(email) {
 
 module.exports = {
     SUPER_ADMIN_EMAIL,
+    SUPER_ADMIN_CONFIGURED,
     ADMIN_CONTACT_EMAIL,
     SCORM_ADMIN_ROLES,
     SCORM_ACCESS_ROLES,

@@ -2,7 +2,7 @@ const { expect } = require('chai');
 const jwt = require('jsonwebtoken');
 const SessionTokenService = require('../services/SessionTokenService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const JWT_SECRET = require('../config/jwtSecret');
 
 describe('SessionTokenService', () => {
     it('should verify a valid host token and return hostId', () => {

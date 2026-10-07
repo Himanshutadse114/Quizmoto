@@ -304,7 +304,7 @@ export default function ScormReports() {
       {message && (
         <div className="mb-5 rounded-xl border px-4 py-3 text-sm flex items-start justify-between gap-3" style={{ borderColor: 'rgba(251,113,133,.30)', background: 'rgba(251,113,133,.08)', color: '#FDA4AF' }}>
           <span>{message}</span>
-          <button type="button" onClick={() => setMessage('')}><X size={14} /></button>
+          <button type="button" aria-label="Dismiss message" onClick={() => setMessage('')}><X size={14} /></button>
         </div>
       )}
 
@@ -388,7 +388,7 @@ export default function ScormReports() {
                 autoComplete="off"
                 className="w-full min-h-[42px] pl-9 pr-9 text-xs"
               />
-              {learnerQuery && <button type="button" onClick={() => { setLearnerQuery(''); setSelectedLearner(null); setShowSuggestions(true); }} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 grid place-items-center"><X size={13} /></button>}
+              {learnerQuery && <button type="button" aria-label="Clear search" onClick={() => { setLearnerQuery(''); setSelectedLearner(null); setShowSuggestions(true); }} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 grid place-items-center"><X size={13} /></button>}
             </div>
             {showSuggestions && (
               <div className="reports-section absolute left-0 right-0 top-full mt-2 rounded-xl border shadow-2xl overflow-hidden z-50 max-h-72 overflow-y-auto">

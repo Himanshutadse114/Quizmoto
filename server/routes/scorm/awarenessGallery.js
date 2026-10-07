@@ -1,11 +1,39 @@
 'use strict';
 
 const express=require('express');
+const rateLimit=require('express-rate-limit');
 const router=express.Router();
 const auth=require('../middleware');
 const Gallery=require('../../services/awareness/AwarenessTemplateGalleryService');
 const EmailCampaigns=require('../../services/awareness/AwarenessEmailCampaignService');
 const MailService=require('../../services/mail/MailService');
+
+function envLimit(name,fallback){
+    const parsed=Number(process.env[name]);
+    return Number.isFinite(parsed)?Math.max(1,Math.floor(parsed)):fallback;
+}
+
+// Dedicated per-user hourly caps on outbound mail actions. Same conventions
+// as server/middleware/AiAbuseProtection.js (per-user key, skipped in tests):
+// they bound the blast radius of a compromised account or a runaway client.
+const directSendLimiter=rateLimit({
+    windowMs:60*60*1000,
+    limit:envLimit('AWARENESS_DIRECT_SEND_HOURLY_LIMIT',20),
+    standardHeaders:true,
+    legacyHeaders:false,
+    skip:()=>process.env.NODE_ENV==='test',
+    keyGenerator:(req)=>`awareness-direct-send:user:${req.authenticatedUserId||req.userId||'unauthenticated'}`,
+    handler:(_req,res)=>res.status(429).json({ok:false,message:'Too many direct email sends. Please wait before sending again.',code:'AWARENESS_SEND_RATE_LIMITED'})
+});
+const campaignStartLimiter=rateLimit({
+    windowMs:60*60*1000,
+    limit:envLimit('AWARENESS_CAMPAIGN_START_HOURLY_LIMIT',10),
+    standardHeaders:true,
+    legacyHeaders:false,
+    skip:()=>process.env.NODE_ENV==='test',
+    keyGenerator:(req)=>`awareness-campaign-start:user:${req.authenticatedUserId||req.userId||'unauthenticated'}`,
+    handler:(_req,res)=>res.status(429).json({ok:false,message:'Too many campaign starts. Please wait before starting another campaign.',code:'AWARENESS_CAMPAIGN_START_RATE_LIMITED'})
+});
 
 function editor(req,res,next){
     const role=String(req.scormRole||'').toLowerCase();
@@ -141,7 +169,7 @@ router.get('/email-campaigns/:id',auth,editor,async(req,res)=>{
         res.json({ok:true,campaign:await EmailCampaigns.getCampaign(req.params.id,req.userId,{includeRecipients:true})});
     }catch(e){fail(res,e,'Unable to load the email campaign.')}
 });
-router.post('/email-campaigns/:id/start',auth,editor,async(req,res)=>{
+router.post('/email-campaigns/:id/start',auth,editor,campaignStartLimiter,async(req,res)=>{
     try{res.json({ok:true,campaign:await EmailCampaigns.startCampaign(req.params.id,req.userId)})}
     catch(e){fail(res,e,'Unable to start the email campaign.')}
 });
@@ -185,7 +213,7 @@ router.delete('/mine/:id',auth,editor,async(req,res)=>{
     try{await Gallery.deleteMine(req.params.id,req.userId);res.json({ok:true})}
     catch(e){fail(res,e,'Unable to delete the template from My Library.')}
 });
-router.post('/mine/:id/send',auth,editor,async(req,res)=>{
+router.post('/mine/:id/send',auth,editor,directSendLimiter,async(req,res)=>{
     try{
         const delivery=await Gallery.sendMine(req.params.id,req.userId,req.body?.recipients||req.body?.to||[]);
         res.status(delivery.failed&&!delivery.sent?502:200).json({ok:delivery.failed===0,delivery});

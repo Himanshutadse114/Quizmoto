@@ -41,14 +41,26 @@ function inferScene(slide = {}) {
     const layout = String(slide.layout || '').toLowerCase();
     const text = `${clean(slide.title, 180)} ${clean(slide.content, 500)} ${(slide.keyPoints || []).join(' ')}`.toLowerCase();
 
-    if (explicit === 'qr' || /\bqr\b|quick response/.test(text)) return 'qr-phishing';
-    if (explicit === 'ai-wave' || /deepfake|voice clone|synthetic voice|audio clone/.test(text)) return 'deepfake';
-    if (explicit === 'cloud' || /cloud|drive|sharepoint|storage|shared folder|saas|volume-based/.test(text)) return 'cloud-data';
-    if (explicit === 'lock' || /password|credential|mfa|multi-factor|passkey|authentication/.test(text)) return 'password-mfa';
-    if (explicit === 'file' || /ransom|encrypt(s|ed)? file|malware payload/.test(text)) return 'ransomware-file';
-    if (explicit === 'phone' || /sms|smish|whatsapp|callback|text message/.test(text)) return 'smartphone-scam';
-    if (explicit === 'browser' || /website|browser|https|url bar|sign-in page|fake login/.test(text)) return 'browser-phishing';
-    if (explicit === 'email' || (/\b(inbox|email client|sender address|suspicious message)\b/.test(text) && !/platform|provider|vendor|solution|template library|reporting|scalability|selection|comparison|matrix|certified/.test(text))) {
+    // An explicit author/AI visual metaphor always wins over text inference.
+    // (Previously a text rule such as /credential/ could hijack explicit 'email'.)
+    if (explicit === 'qr') return 'qr-phishing';
+    if (explicit === 'ai-wave') return 'deepfake';
+    if (explicit === 'cloud') return 'cloud-data';
+    if (explicit === 'lock') return 'password-mfa';
+    if (explicit === 'file') return 'ransomware-file';
+    if (explicit === 'phone') return 'smartphone-scam';
+    if (explicit === 'browser') return 'browser-phishing';
+    if (explicit === 'email') return 'email-threat';
+    if (explicit === 'identity') return 'identity-takeover';
+
+    if (/\bqr\b|quick response/.test(text)) return 'qr-phishing';
+    if (/deepfake|voice clone|synthetic voice|audio clone/.test(text)) return 'deepfake';
+    if (/cloud|drive|sharepoint|storage|shared folder|saas|volume-based/.test(text)) return 'cloud-data';
+    if (/password|credential|mfa|multi-factor|passkey|authentication/.test(text)) return 'password-mfa';
+    if (/ransom|encrypt(s|ed)? file|malware payload/.test(text)) return 'ransomware-file';
+    if (/sms|smish|whatsapp|callback|text message/.test(text)) return 'smartphone-scam';
+    if (/website|browser|https|url bar|sign-in page|fake login/.test(text)) return 'browser-phishing';
+    if ((/\b(inbox|email client|sender address|suspicious message)\b/.test(text) && !/platform|provider|vendor|solution|template library|reporting|scalability|selection|comparison|matrix|certified/.test(text))) {
         return 'email-threat';
     }
     if (/autonomous|ai agent|machine learning|\bml\b|deep learning|reinforcement learning|decision support|\bedss\b|predictive insight|forecasting|business intelligence|enterprise intelligence|data preprocessing|preprocessing stage/.test(text)) {
@@ -71,7 +83,6 @@ function inferScene(slide = {}) {
     if (/\bphish\b|inbox|email|attachment|message sender/.test(text)) return 'email-threat';
     if (/mobile|phone|sms|call/.test(text)) return 'smartphone-scam';
     if (/browser|website|url|domain/.test(text)) return 'browser-phishing';
-    if (explicit === 'identity') return 'identity-takeover';
     return 'abstract-security';
 }
 

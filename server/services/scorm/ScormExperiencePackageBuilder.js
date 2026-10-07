@@ -48,7 +48,8 @@ function inferScreenType(slide, layout, index) {
     const explicit = String(slide?.screenType || '').trim().toLowerCase();
     if (SCREEN_TYPES.includes(explicit)) return explicit;
     if (layout === 'comparison' || layout === 'matrix') return 'comparison';
-    if (layout === 'process' || layout === 'timeline' || layout === 'cycle') return 'process';
+    if (layout === 'timeline') return 'timeline';
+    if (layout === 'process' || layout === 'cycle') return 'process';
     if (layout === 'spotlight') return index % 3 === 0 ? 'scenario' : 'takeaway';
     if (layout === 'hub') return 'hotspot';
     if (layout === 'cards') return index % 3 === 1 ? 'reveal' : 'concept';
@@ -231,10 +232,23 @@ function experienceScript() {
         '  var frame=hero.querySelector(".qmx-native-cover-raster");if(!frame){frame=document.createElement("div");frame.className="qmx-native-cover-raster";var chips=hero.querySelector(".kp-row,.qmx-cover-meta");if(chips&&chips.parentNode===hero)hero.insertBefore(frame,chips);else hero.appendChild(frame)}',
         '  frame.innerHTML=picture(String(data.coverVisualAsset),data.title||"Course cover");frame.setAttribute("data-qmx-canonical-visual",String(data.coverVisualAsset));',
         '}',
+        'function activateHotspot(slideNode,s){',
+        '  var buttons=slideNode.querySelectorAll(".qmx-point");if(!buttons.length)return;',
+        '  var list=Array.isArray(s.keyPoints)?s.keyPoints:[];',
+        '  var revealText=slideNode.querySelector(".qmx-reveal-text");',
+        '  Array.prototype.forEach.call(buttons,function(btn,idx){',
+        '    btn.addEventListener("click",function(){',
+        '      var detail=list[idx]||s.revealText||s.content||\'\';',
+        '      if(revealText){revealText.textContent=String(detail);}',
+        '      Array.prototype.forEach.call(buttons,function(b){b.classList.remove("qmx-point-active")});',
+        '      btn.classList.add("qmx-point-active");',
+        '    });',
+        '  });',
+        '}',
         'function install(){',
         '  var data=window.__quizmotoData||null;if(!data||!Array.isArray(data.slides))return false;',
         '  var nodes=Array.prototype.slice.call(document.querySelectorAll(".slide"));if(!nodes.length)return false;',
-        '  installCover(nodes[0],data);data.slides.forEach(function(s,i){installSlide(nodes[i+1],s)});return true;',
+        '  installCover(nodes[0],data);data.slides.forEach(function(s,i){var node=nodes[i+1];installSlide(node,s);if(node)activateHotspot(node,s)});return true;',
         '}',
         'function run(){install();[80,250,600,1200].forEach(function(ms){setTimeout(install,ms)})}',
         "if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();",

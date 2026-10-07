@@ -34,7 +34,7 @@ function validRecipients(value){
 function Notice({notice,onClose}){
   if(!notice)return null;
   return <div className={'aw-gallery-notice '+(notice.type==='error'?'is-error':'is-success')}>
-    <span>{notice.text}</span><button type="button" onClick={onClose}><X size={14}/></button>
+    <span>{notice.text}</span><button type="button" aria-label="Dismiss notice" onClick={onClose}><X size={14}/></button>
   </div>;
 }
 function Card({template,central,onPreview,onImport,onEdit,onDelete,onArchive,onThumbnail,onSend,onExport,imported}){
@@ -127,6 +127,14 @@ export default function AwarenessTemplates(){
   },[token,headers,isSuperAdmin]);
 
   useEffect(()=>{load()},[load]);
+
+  // Escape closes the send / preview modals
+  useEffect(()=>{
+    if(!sendOpen&&!preview)return;
+    const onKey=(e)=>{if(e.key==='Escape'){setSendOpen(false);setSendTarget(null);setPreview(null);}};
+    window.addEventListener('keydown',onKey);
+    return()=>window.removeEventListener('keydown',onKey);
+  },[sendOpen,preview]);
 
   const filteredCentral=useMemo(()=>{
     const q=search.trim().toLowerCase();
@@ -471,9 +479,9 @@ export default function AwarenessTemplates(){
     <Notice notice={notice} onClose={()=>setNotice(null)}/>
 
     <div className="aw-tabs">
-      <button className={tab==='gallery'?'is-active':''} onClick={()=>{setTab('gallery');setEditor(null)}}><Library size={15}/> Template Gallery <span>{central.filter(x=>x.isActive).length}</span></button>
-      <button className={tab==='mine'?'is-active':''} onClick={()=>{setTab('mine');setEditor(null)}}><CheckCircle2 size={15}/> My Library <span>{mine.length}</span></button>
-      <button className={tab==='campaigns'?'is-active':''} onClick={()=>{setTab('campaigns');setEditor(null)}}><Send size={15}/> Email Campaigns</button>
+      <button type="button" className={tab==='gallery'?'is-active':''} onClick={()=>{setTab('gallery');setEditor(null)}}><Library size={15}/> Template Gallery <span>{central.filter(x=>x.isActive).length}</span></button>
+      <button type="button" className={tab==='mine'?'is-active':''} onClick={()=>{setTab('mine');setEditor(null)}}><CheckCircle2 size={15}/> My Library <span>{mine.length}</span></button>
+      <button type="button" className={tab==='campaigns'?'is-active':''} onClick={()=>{setTab('campaigns');setEditor(null)}}><Send size={15}/> Email Campaigns</button>
     </div>
 
     {tab==='gallery'&&<section>
@@ -484,11 +492,11 @@ export default function AwarenessTemplates(){
           <label className={'aw-btn-primary '+(uploading?'is-disabled':'')}><Upload size={15}/>{uploading?'Importing ZIP…':'Add Template ZIP'}<input type="file" accept=".zip,application/zip" disabled={uploading} onChange={e=>{uploadZip(e.target.files?.[0]);e.target.value=''}}/></label>
         </div>
       </div>}
-      <div className="aw-gallery-tools"><div className="aw-search"><Search size={14}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search templates or categories"/></div><span>{filteredCentral.length} template{filteredCentral.length===1?'':'s'}</span></div>
+      <div className="aw-gallery-tools"><div className="aw-search"><Search size={14}/><label className="sr-only" htmlFor="aw-template-search">Search templates or categories</label><input id="aw-template-search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search templates or categories"/></div><span>{filteredCentral.length} template{filteredCentral.length===1?'':'s'}</span></div>
       <div className="aw-template-grid">
         {filteredCentral.map(item=><Card key={item.id} template={item} central onPreview={previewCentral} onImport={importTemplate} onThumbnail={isSuperAdmin?uploadThumbnail:null} onArchive={isSuperAdmin?archiveCentral:null} imported={mine.some(x=>x.centralTemplateId===item.id)}/>)}
       </div>
-      {!filteredCentral.length&&<div className="aw-empty"><Library size={26}/><h2>{search?'No matching templates':'No templates in the Central Gallery'}</h2><p>{search?'Try another search term.':'Restore the 8 bundled reference templates or upload a template ZIP.'}</p>{isSuperAdmin&&!search&&<button className="aw-btn-primary" onClick={restoreReferenceTemplates} disabled={busy==='seed'}><RefreshCw size={14}/> Restore 8 Reference Templates</button>}</div>}
+      {!filteredCentral.length&&<div className="aw-empty"><Library size={26}/><h2>{search?'No matching templates':'No templates in the Central Gallery'}</h2><p>{search?'Try another search term.':'Restore the 8 bundled reference templates or upload a template ZIP.'}</p>{isSuperAdmin&&!search&&<button type="button" className="aw-btn-primary" onClick={restoreReferenceTemplates} disabled={busy==='seed'}><RefreshCw size={14}/> Restore 8 Reference Templates</button>}</div>}
     </section>}
 
     {tab==='campaigns'&&<section>
@@ -497,13 +505,13 @@ export default function AwarenessTemplates(){
 
     {tab==='mine'&&!editor&&<section>
       <div className="aw-section-copy"><h2>My Library</h2><p>These are your editable copies. Sending and EML export are available only here.</p></div>
-      {mine.length?<div className="aw-template-grid">{mine.map(item=><Card key={item.id} template={item} onPreview={previewMine} onEdit={openEditor} onSend={openSend} onExport={exportMine} onDelete={deleteMine}/>)}</div>:<div className="aw-empty"><Library size={30}/><h2>Your library is empty</h2><p>Choose a template from the gallery and add it here first.</p><button className="aw-btn-primary" onClick={()=>setTab('gallery')}><Plus size={14}/> Browse Template Gallery</button></div>}
+      {mine.length?<div className="aw-template-grid">{mine.map(item=><Card key={item.id} template={item} onPreview={previewMine} onEdit={openEditor} onSend={openSend} onExport={exportMine} onDelete={deleteMine}/>)}</div>:<div className="aw-empty"><Library size={30}/><h2>Your library is empty</h2><p>Choose a template from the gallery and add it here first.</p><button type="button" className="aw-btn-primary" onClick={()=>setTab('gallery')}><Plus size={14}/> Browse Template Gallery</button></div>}
     </section>}
 
     {tab==='mine'&&editor&&<section className="aw-editor">
       <div className="aw-editor-head">
-        <div><button className="aw-back" onClick={()=>{setEditor(null);setSelectedImage(null)}}>← My Library</button><h2>{title||editor.title}</h2><p>Edit the email directly. Click any text and type. Click an image to replace or remove it.</p></div>
-        <div className="aw-editor-actions"><button className="aw-btn-secondary" onClick={()=>exportMine()} disabled={!!busy}><Download size={14}/> Export EML</button><button className="aw-btn-secondary" onClick={()=>openSend(editor)} disabled={!!busy}><Send size={14}/> Send</button><button className="aw-btn-primary" onClick={saveEditor} disabled={!!busy}><Save size={14}/> {busy==='save'?'Saving…':'Save'}</button></div>
+        <div><button type="button" className="aw-back" onClick={()=>{setEditor(null);setSelectedImage(null)}}>← My Library</button><h2>{title||editor.title}</h2><p>Edit the email directly. Click any text and type. Click an image to replace or remove it.</p></div>
+        <div className="aw-editor-actions"><button type="button" className="aw-btn-secondary" onClick={()=>exportMine()} disabled={!!busy}><Download size={14}/> Export EML</button><button type="button" className="aw-btn-secondary" onClick={()=>openSend(editor)} disabled={!!busy}><Send size={14}/> Send</button><button type="button" className="aw-btn-primary" onClick={saveEditor} disabled={!!busy}><Save size={14}/> {busy==='save'?'Saving…':'Save'}</button></div>
       </div>
       <div className="aw-editor-fields"><label><span>Template name</span><input value={title} onChange={e=>setTitle(e.target.value)} maxLength={180}/></label><label><span>Email subject</span><input value={subject} onChange={e=>setSubject(e.target.value)} maxLength={240}/></label></div>
       {selectedImage&&<div className="aw-image-toolbar"><ImageIcon size={15}/><div><strong>Image selected</strong><span>{selectedImage.alt||'Template image'}</span></div><label className="aw-btn-primary"><ImageIcon size={14}/> Replace image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={e=>{replaceImage(e.target.files?.[0]);e.target.value=''}}/></label><button className="aw-btn-secondary" onClick={removeSelectedImage}><Trash2 size={14}/> Remove</button></div>}
@@ -513,8 +521,8 @@ export default function AwarenessTemplates(){
     </section>}
 
     {sendOpen&&sendTarget&&<div className="aw-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget){setSendOpen(false);setSendTarget(null)}}}>
-      <div className="aw-send-modal">
-        <div className="aw-preview-head"><div><span>My Library · Send</span><h2>{sendTarget.title}</h2></div><button onClick={()=>{setSendOpen(false);setSendTarget(null)}}><X size={18}/></button></div>
+      <div className="aw-send-modal" role="dialog" aria-modal="true" aria-label="Send template email">
+        <div className="aw-preview-head"><div><span>My Library · Send</span><h2>{sendTarget.title}</h2></div><button type="button" aria-label="Close send dialog" onClick={()=>{setSendOpen(false);setSendTarget(null)}}><X size={18}/></button></div>
         <div className="aw-send-modal-body">
           <div className={'aw-mail-status '+(status.mail?.configured?'is-ready':'is-missing')}>
             <strong>{status.mail?.configured?'Mail ready':'Mail setup required'}</strong>
@@ -534,14 +542,14 @@ export default function AwarenessTemplates(){
           {mailDiagnostic&&<div className={'aw-mail-diagnostic '+(mailDiagnostic.type==='error'?'is-error':'is-success')}>{mailDiagnostic.text}</div>}
         </div>
         <div className="aw-preview-footer">
-          <button className="aw-btn-secondary" onClick={()=>{setSendOpen(false);setSendTarget(null)}}>Cancel</button>
-          <button className="aw-btn-primary" onClick={sendMail} disabled={!recipientCount||busy==='send'}><Send size={14}/>{busy==='send'?'Sending…':'Send email'}</button>
+          <button type="button" className="aw-btn-secondary" onClick={()=>{setSendOpen(false);setSendTarget(null)}}>Cancel</button>
+          <button type="button" className="aw-btn-primary" onClick={sendMail} disabled={!recipientCount||busy==='send'}><Send size={14}/>{busy==='send'?'Sending…':'Send email'}</button>
         </div>
       </div>
     </div>}
 
     {preview&&<div className="aw-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setPreview(null)}}>
-      <div className="aw-preview-modal"><div className="aw-preview-head"><div><span>{preview.kind==='central'?'Template Gallery':'My Library'}</span><h2>{preview.title}</h2></div><button onClick={()=>setPreview(null)}><X size={18}/></button></div><iframe title={preview.title} sandbox="allow-same-origin" srcDoc={preview.html}/>{preview.kind==='central'&&preview.isActive&&<div className="aw-preview-footer"><button className="aw-btn-primary" onClick={()=>{const p=preview;setPreview(null);importTemplate(p)}}><Plus size={14}/> Add to My Library</button></div>}</div>
+      <div className="aw-preview-modal" role="dialog" aria-modal="true" aria-label="Template preview"><div className="aw-preview-head"><div><span>{preview.kind==='central'?'Template Gallery':'My Library'}</span><h2>{preview.title}</h2></div><button type="button" aria-label="Close preview" onClick={()=>setPreview(null)}><X size={18}/></button></div><iframe title={preview.title} sandbox="allow-same-origin" srcDoc={preview.html}/>{preview.kind==='central'&&preview.isActive&&<div className="aw-preview-footer"><button type="button" className="aw-btn-primary" onClick={()=>{const p=preview;setPreview(null);importTemplate(p)}}><Plus size={14}/> Add to My Library</button></div>}</div>
     </div>}
   </div>;
 }

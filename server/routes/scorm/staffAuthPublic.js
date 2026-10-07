@@ -9,7 +9,7 @@ const {
 } = require('../../services/scorm/ScormStaffAuthService');
 const { addGrant } = require('../../services/scorm/ScormAccessService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const JWT_SECRET = require('../../config/jwtSecret');
 
 const staffSsoLimiter = rateLimit({
     windowMs: 10 * 60 * 1000,

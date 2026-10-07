@@ -201,7 +201,7 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
               <label className="aw-campaign-field"><span>Email</span><input type="email" value={manualEmail} onChange={e=>setManualEmail(e.target.value)} placeholder="person@company.com"/></label>
               <button type="submit" className="aw-btn-secondary"><UserPlus size={13}/> Add</button>
             </form>
-            {manualLearners.length?<div className="aw-recipient-list">{manualLearners.map(item=><div key={item.email}><span><strong>{item.learnerName}</strong><small>{item.email}</small></span><button type="button" onClick={()=>setManualLearners(current=>current.filter(x=>x.email!==item.email))}><Trash2 size={12}/></button></div>)}</div>:<div className="aw-muted-copy">Add recipients one at a time.</div>}
+            {manualLearners.length?<div className="aw-recipient-list">{manualLearners.map(item=><div key={item.email}><span><strong>{item.learnerName}</strong><small>{item.email}</small></span><button type="button" aria-label="Remove recipient" onClick={()=>setManualLearners(current=>current.filter(x=>x.email!==item.email))}><Trash2 size={12}/></button></div>)}</div>:<div className="aw-muted-copy">Add recipients one at a time.</div>}
           </div>}
           <div className="aw-batch-grid">
             <label className="aw-campaign-field"><span>Email batches</span><input type="number" min="1" max="50" value={batchCount} onChange={e=>setBatchCount(e.target.value)}/></label>

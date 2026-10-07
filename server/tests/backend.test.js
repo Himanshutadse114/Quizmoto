@@ -36,18 +36,20 @@ describe('Backend Integration Tests', function() {
     });
 
     after((done) => {
+        let finished = false;
+        const finish = () => { if (!finished) { finished = true; done(); } };
         if (serverProcess && serverProcess.exitCode == null) {
             const timer = setTimeout(() => {
                 try { serverProcess.kill('SIGKILL'); } catch (_) {}
-                done();
+                finish();
             }, 3000);
             serverProcess.once('exit', () => {
                 clearTimeout(timer);
-                done();
+                finish();
             });
             serverProcess.kill();
         } else {
-            done();
+            finish();
         }
     });
 

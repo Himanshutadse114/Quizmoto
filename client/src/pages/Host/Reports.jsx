@@ -136,7 +136,7 @@ const Reports = () => {
     return (
         <div className="p-4 md:p-8 max-w-5xl mx-auto relative z-10">
             <header className="flex items-center gap-4 mb-8 pb-4 border-b border-white/10">
-                <button onClick={() => navigate('/host')} className="p-2 bg-white/8 hover:bg-white/15 rounded-lg transition-all">
+                <button type="button" aria-label="Back" onClick={() => navigate('/host')} className="p-2 bg-white/8 hover:bg-white/15 rounded-lg transition-all">
                     <ArrowLeft size={20} />
                 </button>
                 <div>

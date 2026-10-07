@@ -67,7 +67,7 @@ describe('ScormLearnerAuthService', () => {
     });
 
     it('rejects a normal application token as a learner session', () => {
-        const applicationToken = jwt.sign({ userId: 42, scope: 'scorm' }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '5m' });
+        const applicationToken = jwt.sign({ userId: 42, scope: 'scorm' }, require('../config/jwtSecret'), { expiresIn: '5m' });
         expect(() => verifyLearnerToken(applicationToken)).to.throw('Learner session expired');
     });
 });

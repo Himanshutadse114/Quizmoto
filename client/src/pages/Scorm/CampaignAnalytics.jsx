@@ -241,7 +241,7 @@ export default function CampaignAnalytics() {
               <div className="relative w-full md:w-[310px]">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--scorm-muted)' }} />
                 <input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full pl-9 pr-9 py-2.5 text-xs" placeholder="Search learner name or email" />
-                {query && <button type="button" onClick={() => setQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 grid place-items-center"><X size={13} /></button>}
+                {query && <button type="button" aria-label="Clear search" onClick={() => setQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 grid place-items-center"><X size={13} /></button>}
               </div>
             </div>
             <div className="overflow-x-auto">

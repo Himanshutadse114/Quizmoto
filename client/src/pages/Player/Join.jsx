@@ -219,7 +219,7 @@ const Join = () => {
                     </div>
 
                     {gameMode === 'team' && (
-                        <div className="mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="mb-6 duration-500">
                             <label className="block text-[8px] font-black uppercase tracking-[0.3em] text-gray-400 mb-4 text-center">Select Your Team</label>
                             <div className="grid grid-cols-2 gap-3">
                                 {teams.map(t => (
@@ -268,10 +268,12 @@ const Join = () => {
 
                 <form onSubmit={handleJoin} className="space-y-4">
                     <div className="relative group">
+                        <label className="sr-only" htmlFor="join-pin">Game PIN</label>
                         <input
+                            id="join-pin"
                             type="text"
                             placeholder="Game PIN"
-                            className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-center font-black text-2xl focus:border-quizmoto-purple outline-none transition-all uppercase placeholder:text-gray-400"
+                            className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-center font-black text-2xl focus:border-quizmoto-purple outline-none transition-all uppercase placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-quizmoto-lightPurple"
                             value={pin}
                             onChange={(e) => setPin(e.target.value)}
                             required
@@ -283,10 +285,12 @@ const Join = () => {
                                 LOGGED IN
                             </span>
                         )}
+                        <label className="sr-only" htmlFor="join-nickname">Nickname</label>
                         <input
+                            id="join-nickname"
                             type="text"
                             placeholder="Nickname"
-                            className={`w-full p-4 border-2 rounded-2xl text-center font-black text-xl outline-none transition-all placeholder:text-gray-400 ${
+                            className={`w-full p-4 border-2 rounded-2xl text-center font-black text-xl outline-none transition-all placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-quizmoto-lightPurple ${
                                 isLoggedIn
                                 ? 'bg-quizmoto-purple/10 border-quizmoto-purple/30 text-quizmoto-purple cursor-not-allowed'
                                 : 'bg-gray-50 border-gray-100 focus:border-quizmoto-purple text-gray-800'

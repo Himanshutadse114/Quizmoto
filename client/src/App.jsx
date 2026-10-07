@@ -41,6 +41,7 @@ const ScormFeatureLocked = lazy(() => import('./pages/Scorm/FeatureLocked'));
 const QuizmotoModule = lazy(() => import('./pages/Scorm/QuizmotoModule'));
 const Flipbooks = lazy(() => import('./pages/Scorm/Flipbooks'));
 const FlipbookEditor = lazy(() => import('./pages/Scorm/FlipbookEditor'));
+const VideoStudio = lazy(() => import('./pages/Scorm/VideoStudio'));
 const FlipbookAnalytics = lazy(() => import('./pages/Scorm/FlipbookAnalytics'));
 const FlipbookViewer = lazy(() => import('./pages/Public/FlipbookViewer'));
 const FlipbookLibraryViewer = lazy(() => import('./pages/Public/FlipbookLibraryViewer'));
@@ -225,6 +226,7 @@ function AppRoutes() {
           <Route path="publica/new" element={<FlipbookEditor />} />
           <Route path="publica/:id/edit" element={<FlipbookEditor />} />
           <Route path="publica/:id/analytics" element={<FlipbookAnalytics />} />
+          <Route path="video-studio" element={<VideoStudio />} />
           <Route path="flipbooks" element={<LegacyPublicaWorkspaceRedirect />} />
           <Route path="flipbooks/analytics" element={<LegacyPublicaWorkspaceRedirect destination="analytics" />} />
           <Route path="flipbooks/new" element={<LegacyPublicaWorkspaceRedirect destination="new" />} />

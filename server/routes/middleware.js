@@ -10,7 +10,7 @@ const { getStaffPolicyForEmail } = require('../services/scorm/ScormStaffAuthServ
 const { assertScormRouteAllowed } = require('../services/scorm/ScormRbacService');
 const { assertActiveAccount } = require('../services/AccountProfileService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const JWT_SECRET = require('../config/jwtSecret');
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const requestContextCache = new Map();
 

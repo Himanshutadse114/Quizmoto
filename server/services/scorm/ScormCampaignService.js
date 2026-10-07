@@ -28,7 +28,7 @@ const {
 } = require('./ScormCampaignAuthPolicy');
 const { deliveryPlan } = require('../mail/MailBatchDeliveryService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const JWT_SECRET = require('../../config/jwtSecret');
 const MAX_CAMPAIGN_COMBINATIONS = 5000;
 const ACTIVE_REGISTRATION_STATUSES = { [Op.notIn]: ['revoked', 'superseded'] };
 

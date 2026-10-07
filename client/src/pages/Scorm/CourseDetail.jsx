@@ -308,11 +308,11 @@ export default function ScormCourseDetail() {
             <button type="button" onClick={() => navigate(`/scorm/author?mode=video&replaceVideo=${encodeURIComponent(course.package.id)}`)} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center gap-2"><Pencil size={14} /> Replace video</button>
           )}
           {course.status !== 'published' ? (
-            <button onClick={publish} className="scorm-button-primary px-4 py-2.5 text-xs font-semibold">Publish</button>
+            <button type="button" onClick={publish} className="scorm-button-primary px-4 py-2.5 text-xs font-semibold">Publish</button>
           ) : (
-            <button onClick={unpublish} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold">Unpublish</button>
+            <button type="button" onClick={unpublish} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold">Unpublish</button>
           )}
-          <button disabled={previewing} onClick={preview} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait">
+          <button type="button" disabled={previewing} onClick={preview} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait">
             <Eye size={14} /> {previewing ? 'Opening preview…' : 'Preview course'}
           </button>
         </div>
@@ -459,7 +459,7 @@ export default function ScormCourseDetail() {
           <div className="scorm-micro text-[9px] uppercase font-semibold text-[#A5B4FC] mb-2">Learner invite link</div>
           <div className="flex flex-col sm:flex-row gap-2">
             <input readOnly value={inviteUrl} className="flex-1 px-3 py-2.5 text-xs font-mono" />
-            <button onClick={copyInvite} className="scorm-button-secondary px-4 py-2.5 font-semibold text-xs inline-flex items-center justify-center gap-2">
+            <button type="button" onClick={copyInvite} className="scorm-button-secondary px-4 py-2.5 font-semibold text-xs inline-flex items-center justify-center gap-2">
               <Copy size={13} /> Copy link
             </button>
           </div>

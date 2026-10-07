@@ -13,16 +13,16 @@ describe('SCORM AI platform product structure', () => {
     const author = source('../client/src/pages/Scorm/AuthorVisual.jsx');
     const quizEditor = source('../client/src/pages/Scorm/AuthorQuizEditor.jsx');
 
-    it('uses SCORM AI authentication as the root product entry', () => {
-        expect(app).to.include('<Route path="/" element={<PlatformEntry />} />');
-        expect(app).to.include('return <ScormAuth />');
-        expect(app).to.include('<Route path="/login" element={<Navigate to="/" replace />} />');
-        expect(auth).to.include('SCORM AI Platform · Quizmoto included');
+    it('routes the marketing site at root and guards the platform behind authentication', () => {
+        expect(app).to.include('<Route path="/" element={<MarketingSite');
+        expect(app).to.include('<Route path="/login" element={<PlatformEntry />} />');
+        expect(app).to.include('<Route path="/scorm" element={<PlatformProtected>');
+        expect(auth).to.include('alt="LMSGEN"');
     });
 
     it('nests Quizmoto inside the SCORM AI platform while preserving classic live stages', () => {
-        expect(app).to.include('<Route path="quizmoto" element={<QuizmotoModule />} />');
-        expect(app).to.include('<Route path="quizmoto/create" element={<CreateQuiz embedded />} />');
+        expect(app).to.include('<Route path="quizmoto" element={<ScormOperationalGate><QuizmotoModule /></ScormOperationalGate>} />');
+        expect(app).to.include('<Route path="quizmoto/create" element={<ScormOperationalGate><CreateQuiz embedded /></ScormOperationalGate>} />');
         expect(app).to.include('<Route path="/host/lobby/:pin" element={<Lobby />} />');
         expect(app).to.include('<Route path="/host/game/:pin" element={<GameView />} />');
         expect(app).to.include('<Route path="/join" element={<Join />} />');
@@ -30,10 +30,10 @@ describe('SCORM AI platform product structure', () => {
 
     it('keeps SCORM AI features visible but gates them independently of Quizmoto', () => {
         expect(app).to.include('function ScormFeatureGate');
-        expect(app).to.include('return scormAccess ? children : <ScormFeatureLocked featureId={featureId} />');
+        expect(app).to.include('if (!scormAccess) return <ScormFeatureLocked featureId={featureId} />;');
         expect(shell).to.include("{ to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2, unlocked: true }");
         expect(shell).to.include("{ to: '/scorm/author', label: 'AI Course Author', icon: Sparkles, requiresScorm: true }");
-        expect(shell).to.include('Quizmoto is unlocked. SCORM AI features unlock after administrator approval.');
+        expect(shell).to.include('Quizmoto and LMSGEN Publica are unlocked. LMSGEN features unlock after administrator approval and tenant assignment.');
     });
 
     it('provides an editable knowledge-check authoring surface before generation', () => {

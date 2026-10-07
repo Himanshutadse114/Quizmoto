@@ -63,7 +63,7 @@ describe('Security and Error Leakage', () => {
         for (const call of calls) {
             const args = call.args.map(a => (typeof a === 'string' ? a : JSON.stringify(a) || '')).join(' ');
             expect(args).to.not.include(fakeJwt);
-            expect(args).to.not.include(process.env.JWT_SECRET || 'fallback_secret');
+            expect(args).to.not.include(require('../config/jwtSecret'));
         }
     });
 });

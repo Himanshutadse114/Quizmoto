@@ -32,15 +32,17 @@ const quizSchema = Joi.object({
     questions: Joi.array()
         .items(
             Joi.object({
-                questionText: Joi.string().required(),
-                options: Joi.array().items(Joi.string()).min(2).max(4).required(),
+                questionText: Joi.string().required().max(5000),
+                options: Joi.array().items(Joi.string().max(1000)).min(2).max(4).required(),
                 correctIndex: Joi.number().integer().min(0).max(3).required(),
                 timer: Joi.number().integer().min(5).max(300).required(),
-                explanation: Joi.string().allow('', null).optional(),
-                image: Joi.string().allow('', null).optional()
+                explanation: Joi.string().allow('', null).max(5000).optional(),
+                // Client-resized JPEG data URL (<=800px wide, q0.8); 200k chars ≈ 150KB binary.
+                image: Joi.string().allow('', null).max(200000).optional()
             })
         )
         .min(1)
+        .max(200)
         .required()
 }).unknown(true);
 

@@ -50,6 +50,14 @@ const PlayerDashboard = () => {
         fetchProfile();
     }, [navigate]);
 
+    // Escape closes the avatar picker modal
+    useEffect(() => {
+        if (!showAvatarModal) return;
+        const onKey = (e) => { if (e.key === 'Escape') setShowAvatarModal(false); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [showAvatarModal]);
+
     const handleLogout = () => {
         localStorage.removeItem('playerToken');
         localStorage.removeItem('playerProfile');
@@ -135,7 +143,7 @@ const PlayerDashboard = () => {
                         <motion.div 
                             whileHover={{ scale: 1.02, translateY: -2 }}
                             whileTap={{ scale: 0.98 }}
-                            className="bg-gradient-to-br from-quizmoto-blue to-blue-600 rounded-2xl py-4 px-6 text-center cursor-pointer shadow-lg hover:shadow-xl text-white transition-all flex flex-col justify-center items-center"
+                            className="bg-gradient-to-br from-quizmoto-blue to-quizmoto-lightPurple rounded-2xl py-4 px-6 text-center cursor-pointer shadow-lg hover:shadow-xl text-white transition-all flex flex-col justify-center items-center"
                         >
                             <h3 className="text-lg font-black italic tracking-tight uppercase drop-shadow-md">Join Battle</h3>
                             <p className="opacity-80 mt-1 font-bold text-[10px] tracking-wide">Enter a PIN</p>
@@ -144,7 +152,7 @@ const PlayerDashboard = () => {
                 </div>
 
                 {/* Disconnect */}
-                <button 
+                <button type="button" 
                     onClick={handleLogout}
                     className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black uppercase text-xs tracking-widest py-4 rounded-xl transition-all border border-red-500/20 mt-auto"
                 >
@@ -186,7 +194,7 @@ const PlayerDashboard = () => {
                                     transition={{ duration: 1.2, ease: "easeOut", delay: 0.3 }}
                                     className="h-full rounded-full bg-gradient-to-r from-quizmoto-yellow to-orange-500 relative"
                                 >
-                                    <div className="absolute inset-0 bg-white/20 w-full h-full animate-[shimmer_2s_infinite]"></div>
+                                    <div className="absolute inset-0 bg-white/20 w-full h-full"></div>
                                 </motion.div>
                             </div>
                         </motion.div>
@@ -319,9 +327,12 @@ const PlayerDashboard = () => {
                         <motion.div 
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="Choose your avatar"
                             className="bg-white rounded-[32px] p-8 max-w-2xl w-full shadow-2xl relative"
                         >
-                            <button 
+                            <button type="button" 
                                 onClick={() => setShowAvatarModal(false)}
                                 className="absolute top-4 right-4 bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-800 w-8 h-8 rounded-full flex items-center justify-center font-bold transition-colors"
                             >

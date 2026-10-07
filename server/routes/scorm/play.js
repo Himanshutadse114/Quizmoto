@@ -35,6 +35,58 @@ function escapeHtml(s) {
         .replace(/'/g, '&#39;');
 }
 
+function safeOrigin(raw) {
+    try {
+        const value = String(raw || '').trim();
+        if (!value) return null;
+        const parsed = new URL(value);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+        return parsed.origin;
+    } catch (_) {
+        return null;
+    }
+}
+
+// Origins the browser frontend is expected to run on, mirroring the CORS
+// allowlist in server/index.js and the APP_BASE_URL precedence used for links.
+function configuredFrontendOrigins() {
+    const origins = [];
+    const push = (raw) => {
+        const origin = safeOrigin(raw);
+        if (origin && !origins.includes(origin)) origins.push(origin);
+    };
+    String(process.env.CORS_ORIGIN || '').split(',').forEach(push);
+    [
+        process.env.APP_BASE_URL,
+        process.env.PUBLIC_FRONTEND_URL,
+        process.env.FRONTEND_URL,
+        process.env.CLIENT_URL,
+        process.env.VITE_FRONTEND_URL
+    ].forEach(push);
+    return origins;
+}
+
+// Narrowest safe postMessage target for window.opener (the LMSGEN frontend
+// that opened this player popup). Prefer the configured APP_BASE_URL origin;
+// fall back to the request's own origin only when it matches the configured
+// frontend allowlist (or any origin in non-production dev, mirroring CORS).
+// Returns null when nothing trustworthy is available: the client then skips
+// the post instead of broadcasting to "*".
+function resolveOpenerOrigin(req) {
+    const configured = configuredFrontendOrigins();
+    const appBase = safeOrigin(process.env.APP_BASE_URL)
+        || safeOrigin(process.env.PUBLIC_FRONTEND_URL)
+        || safeOrigin(process.env.FRONTEND_URL);
+    if (appBase) return appBase;
+
+    const requestOrigin = safeOrigin(req.headers.origin) || safeOrigin(req.headers.referer);
+    if (!requestOrigin) return null;
+    if (configured.includes(requestOrigin)) return requestOrigin;
+    const isProduction = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+    if (!isProduction && (configured.length === 0 || configured.includes('*'))) return requestOrigin;
+    return null;
+}
+
 router.get('/:regId', async (req, res) => {
     try {
         const token = req.query.token || '';
@@ -73,6 +125,7 @@ router.get('/:regId', async (req, res) => {
         const sessionEndpoint = '/api/scorm/session/' + reg.id;
         const xapiEndpoint = '/api/scorm/xapi/statements';
         const learnerName = reg.learnerName || 'Learner';
+        const openerOrigin = resolveOpenerOrigin(req);
         const courseTitle = reg.course.title || 'Course Player';
         const presentationLight = pkg.source === 'presentation_import';
         // Every course autosaves through the parent runtime. Course-specific
@@ -96,9 +149,12 @@ router.get('/:regId', async (req, res) => {
             xapiEndpoint,
             learnerName,
             contentSrc,
+            openerOrigin,
             presentationLight,
             presentationInterFonts: presentationLight ? PRESENTATION_INTER_FONTS : null
-        });
+        // Escape `<` as \u003c so a learnerName containing `</script>` can
+        // never break out of this inline script block (stored XSS).
+        }).replace(/</g, '\\u003c');
 
         const html = `<!DOCTYPE html>
 <html lang="en">
@@ -122,7 +178,7 @@ var lastError={code:0};
 var ERRORS={0:"No error",101:"General exception",201:"Invalid argument error",301:"Not initialized",351:"Not implemented error",391:"Not initialized error",402:"Invalid set value",403:"Element is read only",404:"Element is write only",405:"Incorrect data type"};
 
 function setStatus(t){try{var el=document.getElementById("status");if(el)el.textContent=t;}catch(e){}}
-function notifyOpener(type,data){try{if(window.opener&&!window.opener.closed){window.opener.postMessage({type:type,registrationId:BOOT.registrationId,data:data||null},"*");}}catch(e){}}
+function notifyOpener(type,data){try{var target=BOOT.openerOrigin;if(!target)return;if(window.opener&&!window.opener.closed){window.opener.postMessage({type:type,registrationId:BOOT.registrationId,data:data||null},target);}}catch(e){}}
 function copyValues(input){var out=Object.create(null);if(!input||typeof input!=="object")return out;Object.keys(input).forEach(function(k){out[String(k)]=input[k]==null?"":String(input[k]);});return out;}
 function putDefault(key,value){if(!Object.prototype.hasOwnProperty.call(localValues,key)||localValues[key]==null||localValues[key]==="")localValues[key]=value;}
 function parseTimeSeconds(value){
@@ -279,7 +335,7 @@ function persistAndFinish(){
   try{window.API.LMSCommit("");}catch(e){}
   try{window.API.LMSFinish("");}catch(e){}
 }
-function notifyParentExit(){try{if(window.opener&&!window.opener.closed){window.opener.postMessage({type:"quizmoto-scorm-exit",registrationId:${JSON.stringify(String(reg.id))}},"*");}}catch(e){}}
+function notifyParentExit(){try{var target=BOOT.openerOrigin;if(!target)return;if(window.opener&&!window.opener.closed){window.opener.postMessage({type:"quizmoto-scorm-exit",registrationId:BOOT.registrationId},target);}}catch(e){}}
 function closePlayer(){
   try{notifyParentExit();}catch(e){}
   try{window.close();}catch(e){}
