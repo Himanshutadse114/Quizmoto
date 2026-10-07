@@ -72,7 +72,7 @@ function FlipbookCard({ book, onDelete, onCopied }) {
     <article className="flip-card">
       <div className="flip-cover-wrap">
         {cover ? <img src={cover} alt="" className="flip-cover" /> : <div className="flip-cover-placeholder"><BookOpenCheck size={34} /><span>{book.pageCount ? `${book.pageCount} pages` : 'Add pages'}</span></div>}
-        <span className={`flip-status ${published ? 'is-published' : 'is-draft'}`}>{published ? 'Published' : 'Draft'}</span>
+        <span className={`flip-status ${published ? 'is-published' : 'is-draft'}`}>{book.isPlatformDefault ? 'Included by LMSGEN' : published ? 'Published' : 'Draft'}</span>
       </div>
       <div className="flip-card-body">
         <div className="min-w-0">
@@ -81,12 +81,14 @@ function FlipbookCard({ book, onDelete, onCopied }) {
         </div>
         <div className="flip-card-meta"><span>{book.pageCount} pages</span><span><Eye size={12} /> {book.viewCount || 0} reader opens</span></div>
         <div className="flip-card-actions">
-          <Link to={`/scorm/publica/${book.id}/edit`} className="flip-button-secondary"><Pencil size={14} /> Edit</Link>
-          <Link to={`/scorm/publica/${book.id}/analytics`} className="flip-button-secondary"><BarChart3 size={14} /> Analytics</Link>
+          {book.readOnly ? <a href={shareUrl(book)} target="_blank" rel="noreferrer" className="flip-button-secondary"><ExternalLink size={14} /> Read publication</a> : <>
+            <Link to={`/scorm/publica/${book.id}/edit`} className="flip-button-secondary"><Pencil size={14} /> Edit</Link>
+            <Link to={`/scorm/publica/${book.id}/analytics`} className="flip-button-secondary"><BarChart3 size={14} /> Analytics</Link>
+          </>}
           {published && <button type="button" className="flip-icon-button" onClick={copy} title="Copy share link"><Copy size={14} /></button>}
           {published && <button type="button" className="flip-icon-button" onClick={nativeShare} title="Share"><Share2 size={14} /></button>}
           {published && <a href={shareUrl(book)} target="_blank" rel="noreferrer" className="flip-icon-button" title="Open published publication"><ExternalLink size={14} /></a>}
-          <button type="button" className="flip-icon-button is-danger" onClick={() => onDelete(book)} title="Delete"><Trash2 size={14} /></button>
+          {!book.readOnly && <button type="button" className="flip-icon-button is-danger" onClick={() => onDelete(book)} title="Delete"><Trash2 size={14} /></button>}
         </div>
       </div>
     </article>
@@ -218,6 +220,7 @@ export default function Flipbooks() {
       </div>
 
       <FlipbookLibraryShare />
+      {books.some((book) => book.readOnly && book.isPlatformDefault) && <div className="flip-limit-banner"><BookOpenCheck size={15} /><span>The publication marked “Included by LMSGEN” is available to every account, is read-only, and does not use your Publica allowance.</span></div>}
       {atLimit && <div className="flip-limit-banner"><Gauge size={15} /><span>You have reached your Publica allowance. Delete a publication or ask the Super Admin to increase the limit.</span></div>}
       {copied && <div className="flip-toast">Share link copied</div>}
       {error && <div className="flip-error">{error}</div>}

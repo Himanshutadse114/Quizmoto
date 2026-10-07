@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, BookOpenCheck, Check, Layers3, LockKeyhole, Sparkles } from 'lucide-react';
+import { ArrowUpRight, BookOpen, BookOpenCheck, Check, Layers3, LockKeyhole, Sparkles } from 'lucide-react';
 import { SCORM_FEATURE_GROUPS, getScormFeature } from './scormFeatureCatalog';
 import './freeDemo.css';
 
@@ -17,18 +17,19 @@ export default function PendingScormHome() {
               <span className="demo-status-pill"><LockKeyhole size={11} /> Demo mode</span>
             </div>
             <h1 className="demo-title">See the complete LMSGEN platform</h1>
-            <p className="demo-lead">Explore every module and understand the workflow before your tenant is activated. Paid operations are safely locked; Publica remains available with your starter allowance.</p>
+            <p className="demo-lead">Explore every module and understand the workflow before your tenant is activated. Open the Super Admin’s demo course as a learner, use your Publica starter allowance, and inspect locked-module capabilities safely.</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link to="/scorm/courses" className="scorm-button-primary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold"><BookOpen size={14} /> Try demo course</Link>
             <Link to="/scorm/publica" className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /> Open Publica</Link>
-            <a href={SALES_CONTACT_URL} className="scorm-button-primary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">Activate LMSGEN <ArrowUpRight size={14} /></a>
+            <a href={SALES_CONTACT_URL} className="scorm-button-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold">Activate LMSGEN <ArrowUpRight size={14} /></a>
           </div>
         </div>
       </section>
 
       <section className="demo-summary-grid mb-6" aria-label="Demo access summary">
         <div className="demo-summary-card"><Layers3 size={16} /><div><strong>{SCORM_FEATURE_GROUPS.reduce((total, group) => total + group.ids.length, 0)} modules</strong><span>Visible in this guided product tour</span></div></div>
-        <div className="demo-summary-card"><LockKeyhole size={16} /><div><strong>Protected demo</strong><span>No course, learner or campaign data can be changed</span></div></div>
+        <div className="demo-summary-card"><LockKeyhole size={16} /><div><strong>Protected demo</strong><span>No tenant course content, learner or campaign records can be changed</span></div></div>
         <div className="demo-summary-card"><Sparkles size={16} /><div><strong>One workspace</strong><span>Create, deliver, measure and administer learning</span></div></div>
       </section>
 
@@ -50,7 +51,7 @@ export default function PendingScormHome() {
                   <Link key={id} to={feature.route} className="demo-feature-card group">
                     <div className="flex items-start justify-between gap-3">
                       <span className={`demo-feature-icon ${isOpen ? 'is-open' : ''}`}>{isOpen ? <Check size={14} /> : <LockKeyhole size={14} />}</span>
-                      <span className={`demo-access-label ${isOpen ? 'is-open' : ''}`}>{isOpen ? 'Starter access' : 'Locked demo'}</span>
+                      <span className={`demo-access-label ${isOpen ? 'is-open' : ''}`}>{isOpen ? (feature.demoLabel || 'Starter access') : 'Locked demo'}</span>
                     </div>
                     <h3>{feature.label}</h3>
                     <p>{feature.short}</p>

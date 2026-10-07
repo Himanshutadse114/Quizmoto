@@ -63,10 +63,14 @@ describe('SCORM workspace RBAC', () => {
         }
     });
 
-    it('limits trial accounts to demo metadata and Publica', () => {
+    it('limits trial accounts to demo metadata, read-only demo courses and Publica', () => {
         const allowed = [
             ['GET', '/api/scorm/features'],
-            ['GET', '/api/scorm/flipbooks']
+            ['GET', '/api/scorm/flipbooks'],
+            ['GET', '/api/scorm/courses'],
+            ['GET', '/api/scorm/courses/course-1'],
+            ['POST', '/api/scorm/courses/course-1/preview'],
+            ['GET', '/api/scorm/preview/course/course-1']
         ];
         for (const [method, url] of allowed) {
             expect(() => assertScormRouteAllowed({ role: 'trial', method, url }), `${method} ${url}`).not.to.throw();
@@ -74,11 +78,11 @@ describe('SCORM workspace RBAC', () => {
 
         const blocked = [
             ['POST', '/api/scorm/author/generate'],
-            ['GET', '/api/scorm/courses'],
             ['POST', '/api/scorm/roster'],
             ['POST', '/api/scorm/assignments/bulk'],
             ['POST', '/api/scorm/packages/upload'],
             ['PATCH', '/api/scorm/courses/course-1'],
+            ['GET', '/api/scorm/courses/course-1/registrations'],
             ['GET', '/api/scorm/tracking/summary'],
             ['GET', '/api/scorm/course-catalog']
         ];

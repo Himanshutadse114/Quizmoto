@@ -256,7 +256,9 @@ export default function ScormCourseDetail() {
       const res = await axios.post(apiUrl(`/api/scorm/courses/${id}/preview`), {}, { headers });
       openPlayerPopup(res.data.registrationId, res.data.token, res.data.packageId, res.data.entryHref);
       await loadPreviewStats({ silent: true });
-      setMsg('QA preview opened. The private Admin Preview Results panel updates live with score, progress, status, time and location. This QA data stays outside learner tracking and reports.');
+      setMsg(trialAccess
+        ? 'Demo course opened. Your private demo progress appears here so you can see the tracking experience without creating a learner record.'
+        : 'QA preview opened. The private Admin Preview Results panel updates live with score, progress, status, time and location. This QA data stays outside learner tracking and reports.');
     } catch (err) {
       setMsg(err.response?.data?.message || err.message);
     } finally {
@@ -296,7 +298,7 @@ export default function ScormCourseDetail() {
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 mb-6 pb-7 border-b border-black">
         <div className="min-w-0 max-w-4xl">
           <div className="scorm-micro text-[10px] uppercase font-semibold text-[#667085]">{readOnly ? 'Included course · View only' : 'Course workspace'}</div>
-          <h2 className="scorm-display text-[36px] md:text-[48px] mt-2 break-words">{course.title}</h2>
+          <h2 className={`scorm-display mt-2 break-words ${trialAccess ? 'text-[28px] md:text-[38px]' : 'text-[36px] md:text-[48px]'}`}>{course.title}</h2>
           <p className="text-sm mt-3 leading-relaxed max-w-3xl">{course.description || 'Manage publishing, learner access and progress for this course.'}</p>
           <div className="mt-4 flex flex-wrap gap-2 items-center">
             <span className={`scorm-micro text-[8px] uppercase font-semibold px-2.5 py-1 rounded-full border ${course.status === 'published' ? 'bg-[#ECFDF3] text-[#027A48] border-[#ABEFC6]' : 'bg-[#F2F4F7] text-[#344054] border-[#D0D5DD]'}`}>{course.status}</span>
@@ -304,7 +306,7 @@ export default function ScormCourseDetail() {
             <span className="scorm-micro text-[9px] text-[#667085]">Trackable course</span>
             {previewStats && (
               <span className="scorm-micro text-[8px] uppercase font-semibold px-2.5 py-1 rounded-full border bg-[#EEF4FF] text-[#3538CD] border-[#C7D7FE]">
-                QA preview available
+                {trialAccess ? 'Demo activity saved' : 'QA preview available'}
               </span>
             )}
           </div>
@@ -322,7 +324,7 @@ export default function ScormCourseDetail() {
             <button onClick={unpublish} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold">Unpublish</button>
           ))}
           <button disabled={previewing} onClick={preview} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait">
-            <Eye size={14} /> {previewing ? 'Opening preview…' : 'Preview course'}
+            <Eye size={14} /> {previewing ? 'Opening course…' : trialAccess ? 'Start demo course' : 'Preview course'}
           </button>
         </div>
       </div>
@@ -333,11 +335,11 @@ export default function ScormCourseDetail() {
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-5">
           <div className="max-w-2xl">
             <div className="scorm-preview-kicker text-[9px] uppercase tracking-[0.12em] font-semibold flex items-center gap-2">
-              <ShieldCheck size={13} /> Private QA only
+              <ShieldCheck size={13} /> {trialAccess ? 'Private demo session' : 'Private QA only'}
             </div>
-            <h3 className="text-[22px] md:text-[25px] font-semibold mt-2">Admin Preview Results</h3>
+            <h3 className="text-[22px] md:text-[25px] font-semibold mt-2">{trialAccess ? 'Your demo learning activity' : 'Admin Preview Results'}</h3>
             <p className="scorm-preview-muted text-xs md:text-[13px] leading-relaxed mt-2">
-              Test the course exactly like a learner, then verify the captured result here. Preview data is intentionally excluded from learner counts, tracking and report exports.
+              {trialAccess ? 'Take the course exactly as a learner would and return here to see completion, score, time, interactions and resume position. This private demonstration does not create tenant learner records.' : 'Test the course exactly like a learner, then verify the captured result here. Preview data is intentionally excluded from learner counts, tracking and report exports.'}
             </p>
           </div>
           <div className="flex flex-wrap gap-2 shrink-0">
@@ -355,19 +357,19 @@ export default function ScormCourseDetail() {
               disabled={previewing}
               className="scorm-preview-refresh rounded-lg px-3 py-2 text-[11px] font-semibold inline-flex items-center gap-2 disabled:opacity-60"
             >
-              <Eye size={13} /> {previewing ? 'Opening…' : previewStats ? 'Run again' : 'Run preview'}
+              <Eye size={13} /> {previewing ? 'Opening…' : previewStats ? 'Run again' : trialAccess ? 'Start course' : 'Run preview'}
             </button>
           </div>
         </div>
 
         {!previewStatsLoaded ? (
-          <div className="scorm-preview-location rounded-xl p-5 scorm-preview-muted text-sm">Loading QA preview state…</div>
+          <div className="scorm-preview-location rounded-xl p-5 scorm-preview-muted text-sm">Loading {trialAccess ? 'demo activity' : 'QA preview state'}…</div>
         ) : !previewStats ? (
           <div className="scorm-preview-location rounded-xl p-5 md:p-6 flex flex-col md:flex-row md:items-center gap-4">
             <div className="scorm-preview-icon w-10 h-10 rounded-xl grid place-items-center shrink-0"><Eye size={18} /></div>
             <div className="flex-1">
-              <div className="font-semibold text-sm">No admin preview has been run yet.</div>
-              <div className="scorm-preview-muted text-xs mt-1.5">Open Preview course, complete a few screens or the full assessment, and the QA result will appear here automatically.</div>
+              <div className="font-semibold text-sm">{trialAccess ? 'You have not started the demo course yet.' : 'No admin preview has been run yet.'}</div>
+              <div className="scorm-preview-muted text-xs mt-1.5">{trialAccess ? 'Select Start demo course, complete a few screens or the assessment, and your private activity will appear here automatically.' : 'Open Preview course, complete a few screens or the full assessment, and the QA result will appear here automatically.'}</div>
             </div>
           </div>
         ) : (
@@ -395,13 +397,13 @@ export default function ScormCourseDetail() {
                 label="Current run"
                 value={previewStats.currentRunTime || previewStats.sessionTime || previewStats.totalTime || '—'}
                 icon={Timer}
-                detail="This QA session only"
+                detail={trialAccess ? 'This demo session only' : 'This QA session only'}
               />
               <PreviewStat
                 label="Interactions"
                 value={previewStats.interactionCount ?? 0}
                 icon={MousePointerClick}
-                detail="Captured in this QA run"
+                detail={trialAccess ? 'Captured in this demo run' : 'Captured in this QA run'}
               />
               <PreviewStat
                 label="Course state"
@@ -429,7 +431,7 @@ export default function ScormCourseDetail() {
                 <div className="scorm-preview-progress-track h-2.5 rounded-full overflow-hidden">
                   <div className="scorm-preview-progress-fill h-full rounded-full transition-[width] duration-500" style={{ width: `${previewProgress}%` }} />
                 </div>
-                <div className="scorm-preview-muted text-[10px] mt-2">This result belongs only to the reusable admin QA registration.</div>
+                <div className="scorm-preview-muted text-[10px] mt-2">{trialAccess ? 'This result is private to your demo session and is not a learner assignment.' : 'This result belongs only to the reusable admin QA registration.'}</div>
               </div>
             </div>
 
@@ -440,7 +442,7 @@ export default function ScormCourseDetail() {
                     <div className="flex items-center gap-2 scorm-preview-stat-label text-[9px] uppercase tracking-[0.08em] font-semibold">
                       <Clock3 size={13} /> Time spent per slide
                     </div>
-                    <div className="scorm-preview-muted text-[10px] mt-1">Live dwell time from this private QA run. Quick skips are clearly identified.</div>
+                    <div className="scorm-preview-muted text-[10px] mt-1">Live dwell time from this private {trialAccess ? 'demo' : 'QA'} run. Quick skips are clearly identified.</div>
                   </div>
                   <span className="scorm-preview-badge rounded-full px-2.5 py-1 text-[9px] uppercase tracking-[0.08em] font-semibold self-start sm:self-auto">
                     {previewStats.slideTimings.length} slides recorded

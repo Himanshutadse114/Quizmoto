@@ -24,6 +24,10 @@ function isTrialRoute(method, url) {
     const path = String(url || '').split('?')[0];
     if (path === '/api/scorm/features') return verb === 'GET';
     if (path.startsWith('/api/scorm/flipbooks')) return true;
+    if (path === '/api/scorm/courses') return verb === 'GET';
+    if (/^\/api\/scorm\/courses\/[^/]+$/.test(path)) return verb === 'GET';
+    if (/^\/api\/scorm\/courses\/[^/]+\/preview$/.test(path)) return verb === 'POST';
+    if (/^\/api\/scorm\/preview\/course\/[^/]+$/.test(path)) return verb === 'GET';
     return false;
 }
 

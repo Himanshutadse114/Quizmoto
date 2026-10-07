@@ -14,6 +14,7 @@ const {
     ScormWorkspaceMember
 } = require('../../models/scorm');
 const { linkFlipbookToTenant, ensureFlipbookTenantSchema } = require('../FlipbookTenantService');
+const { getPlatformDefaultFlipbook } = require('../FlipbookService');
 
 const PUBLIC_APP_URL = String(
     process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'https://www.lmsgen.in'
@@ -71,8 +72,14 @@ async function backfillWorkspaceFlipbookLinks(workspaceId, hostId) {
 
 async function listPublishedTenantFlipbooks({ workspaceId, hostId }) {
     await backfillWorkspaceFlipbookLinks(workspaceId, hostId);
-    const links = await FlipbookTenantLink.findAll({ where: { workspaceId }, attributes: ['flipbookId'], raw: true });
-    const ids = links.map((row) => row.flipbookId);
+    const [links, platformDefault] = await Promise.all([
+        FlipbookTenantLink.findAll({ where: { workspaceId }, attributes: ['flipbookId'], raw: true }),
+        getPlatformDefaultFlipbook()
+    ]);
+    const ids = [...new Set([
+        ...links.map((row) => String(row.flipbookId)),
+        ...(platformDefault ? [String(platformDefault.id)] : [])
+    ])];
     if (!ids.length) return [];
     const books = await Flipbook.findAll({
         where: { id: { [Op.in]: ids }, status: 'published', shareEnabled: true },
@@ -84,7 +91,8 @@ async function listPublishedTenantFlipbooks({ workspaceId, hostId }) {
         description: book.description || null,
         pageCount: Number(book.pageCount || 0),
         publishedAt: book.publishedAt || null,
-        viewCount: Number(book.viewCount || 0)
+        viewCount: Number(book.viewCount || 0),
+        isPlatformDefault: Boolean(book.isPlatformDefault)
     }));
 }
 

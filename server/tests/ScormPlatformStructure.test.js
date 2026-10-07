@@ -30,11 +30,13 @@ describe('SCORM AI platform product structure', () => {
 
     it('keeps the complete platform visible while paid modules remain locked in demo mode', () => {
         expect(app).to.include('function ScormFeatureGate');
-        expect(app).to.include('if (!scormAccess) return <ScormFeatureLocked featureId={featureId} />');
+        expect(app).to.include('if (!scormAccess) return demoAllowed ? children : <ScormFeatureLocked featureId={featureId} />');
+        expect(app).to.include('<ScormFeatureGate featureId="courses" demoAllowed><ScormCourses />');
         expect(shell).to.include("{ to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2, requiresScorm: true }");
         expect(shell).to.include("{ to: '/scorm/author', label: 'AI Course Author', icon: Sparkles, requiresScorm: true }");
         expect(shell).to.include("{ to: '/scorm/roster', label: 'Learner Roster', icon: UserCheck, requiresScorm: true }");
-        expect(shell).to.include('Interactive demo mode');
+        expect(shell).to.include("{ to: '/scorm/courses', label: 'Demo Course', icon: BookOpen, unlocked: true }");
+        expect(shell).to.include('Demo mode');
         expect(catalog).to.include("label: 'Authentication & SSO'");
         expect(catalog).to.include('Import CSV or TXT files with Name and Email columns');
     });

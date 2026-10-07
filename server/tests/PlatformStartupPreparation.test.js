@@ -39,6 +39,7 @@ describe('one-time platform startup preparation', () => {
     });
 
     it('hydrates Publica from the data prepared behind the login loader', () => {
+        expect(apiCache).to.include("dataKey: 'courses'");
         expect(apiCache).to.include("dataKey: 'flipbooks'");
         expect(apiCache).to.include("dataKey: 'flipbook-library'");
         expect(publica).to.include("peekScormData('flipbooks', token)");

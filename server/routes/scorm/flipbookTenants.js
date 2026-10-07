@@ -5,6 +5,12 @@ const {
     listTenantFlipbookManagement,
     setTenantEntitlement
 } = require('../../services/FlipbookTenantService');
+const {
+    getPlatformDefaultFlipbook,
+    listPlatformDefaultCandidates,
+    setPlatformDefaultFlipbook,
+    clearPlatformDefaultFlipbook
+} = require('../../services/FlipbookService');
 
 function requireSuperAdmin(req, res, next) {
     if (req.scormRole !== 'super_admin') {
@@ -19,10 +25,59 @@ function requireSuperAdmin(req, res, next) {
 router.get('/', auth, requireSuperAdmin, async (req, res) => {
     try {
         res.setHeader('Cache-Control', 'no-store');
-        res.json({ tenants: await listTenantFlipbookManagement(), defaultLimit: 3 });
+        const [tenants, selected, candidates] = await Promise.all([
+            listTenantFlipbookManagement(),
+            getPlatformDefaultFlipbook(),
+            listPlatformDefaultCandidates(req.userId)
+        ]);
+        res.json({
+            tenants,
+            defaultLimit: 3,
+            platformDefault: selected ? {
+                id: selected.id,
+                title: selected.title,
+                pageCount: Number(selected.pageCount || 0),
+                updatedAt: selected.updatedAt
+            } : null,
+            defaultCandidates: candidates.map((book) => ({
+                id: book.id,
+                title: book.title,
+                description: book.description || null,
+                pageCount: Number(book.pageCount || 0),
+                updatedAt: book.updatedAt
+            }))
+        });
     } catch (err) {
         console.error('[flipbook-tenants] list failed', err);
         res.status(err.status || 500).json({ message: err.message || 'Could not load tenant Publica controls.', code: err.code });
+    }
+});
+
+router.put('/default/:flipbookId', auth, requireSuperAdmin, async (req, res) => {
+    try {
+        const book = await setPlatformDefaultFlipbook({
+            flipbookId: req.params.flipbookId,
+            ownerUserId: req.userId
+        });
+        res.json({
+            platformDefault: {
+                id: book.id,
+                title: book.title,
+                pageCount: Number(book.pageCount || 0),
+                updatedAt: book.updatedAt
+            }
+        });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message || 'Could not set the default Publica item.', code: err.code });
+    }
+});
+
+router.delete('/default', auth, requireSuperAdmin, async (req, res) => {
+    try {
+        await clearPlatformDefaultFlipbook();
+        res.json({ removed: true });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message || 'Could not clear the default Publica item.', code: err.code });
     }
 });
 

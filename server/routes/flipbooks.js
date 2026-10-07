@@ -30,6 +30,7 @@ const {
     clearThumbnail,
     deleteFlipbook,
     listAdminUsers,
+    getPlatformDefaultFlipbook,
     MAX_PAGES
 } = require('../services/FlipbookService');
 const {
@@ -94,7 +95,7 @@ function renderPublicReader(book) {
         .replace('</body>', `${canonicalShareScript}</body>`);
 }
 
-function ownerPayload(book) {
+function ownerPayload(book, { readOnly = false, isPlatformDefault = Boolean(book.isPlatformDefault) } = {}) {
     const pageCount = Number(book.pageCount || 0);
     const published = book.status === 'published' && book.shareEnabled;
     const hasCustomThumbnail = Boolean(book.thumbnail?.key);
@@ -119,7 +120,9 @@ function ownerPayload(book) {
         publishedAt: book.publishedAt || null,
         theme: book.theme || {},
         createdAt: book.createdAt,
-        updatedAt: book.updatedAt
+        updatedAt: book.updatedAt,
+        readOnly: Boolean(readOnly),
+        isPlatformDefault: Boolean(isPlatformDefault)
     };
 }
 
@@ -324,15 +327,20 @@ router.get('/quota', async (req, res, next) => {
 router.get('/', async (req, res, next) => {
     try {
         await ensureFlipbookSchema();
-        const [books, quota] = await Promise.all([
+        const [books, quota, platformDefault] = await Promise.all([
             Flipbook.findAll({
                 where: { ownerUserId: req.flipbookUser.id },
                 order: [['updatedAt', 'DESC']]
             }),
-            getQuota(req.flipbookUser)
+            getQuota(req.flipbookUser),
+            getPlatformDefaultFlipbook()
         ]);
+        const flipbooks = books.map((book) => ownerPayload(book));
+        if (platformDefault && !books.some((book) => String(book.id) === String(platformDefault.id))) {
+            flipbooks.unshift(ownerPayload(platformDefault, { readOnly: true, isPlatformDefault: true }));
+        }
         res.json({
-            flipbooks: books.map(ownerPayload),
+            flipbooks,
             quota,
             maxPages: MAX_PAGES
         });
@@ -554,6 +562,7 @@ router.patch('/:id', findOwnedBook, async (req, res, next) => {
         }
         if (Object.prototype.hasOwnProperty.call(req.body || {}, 'shareEnabled')) {
             req.flipbook.shareEnabled = Boolean(req.body.shareEnabled);
+            if (!req.flipbook.shareEnabled) req.flipbook.isPlatformDefault = false;
         }
         if (Object.prototype.hasOwnProperty.call(req.body || {}, 'shareSlug')) {
             const nextSlug = cleanShareSlug(req.body.shareSlug);
@@ -572,6 +581,7 @@ router.patch('/:id', findOwnedBook, async (req, res, next) => {
                 return res.status(400).json({ message: 'Add at least one page before publishing.' });
             }
             req.flipbook.status = nextStatus;
+            if (nextStatus !== 'published') req.flipbook.isPlatformDefault = false;
             if (nextStatus === 'published' && !req.flipbook.publishedAt) req.flipbook.publishedAt = new Date();
         }
         await req.flipbook.save();

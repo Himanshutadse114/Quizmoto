@@ -102,9 +102,9 @@ function isAnalyticsViewer(user) {
   return user?.role === 'analytics_viewer';
 }
 
-function ScormFeatureGate({ featureId, analyticsAllowed = false, children }) {
+function ScormFeatureGate({ featureId, analyticsAllowed = false, demoAllowed = false, children }) {
   const { scormAccess, user } = useAuth();
-  if (!scormAccess) return <ScormFeatureLocked featureId={featureId} />;
+  if (!scormAccess) return demoAllowed ? children : <ScormFeatureLocked featureId={featureId} />;
   if (isAnalyticsViewer(user) && !analyticsAllowed) return <Navigate to="/scorm/tracking" replace />;
   return children;
 }
@@ -231,9 +231,9 @@ function AppRoutes() {
           <Route path="flipbooks/new" element={<LegacyPublicaWorkspaceRedirect destination="new" />} />
           <Route path="flipbooks/:id/edit" element={<LegacyPublicaWorkspaceRedirect destination="edit" />} />
           <Route path="flipbooks/:id/analytics" element={<LegacyPublicaWorkspaceRedirect destination="detail-analytics" />} />
-          <Route path="courses" element={<ScormFeatureGate featureId="courses"><ScormCourses /></ScormFeatureGate>} />
+          <Route path="courses" element={<ScormFeatureGate featureId="courses" demoAllowed><ScormCourses /></ScormFeatureGate>} />
           <Route path="videos" element={<Navigate to="/scorm/author?mode=video" replace />} />
-          <Route path="courses/:id" element={<ScormFeatureGate featureId="courses"><ScormCourseDetail /></ScormFeatureGate>} />
+          <Route path="courses/:id" element={<ScormFeatureGate featureId="courses" demoAllowed><ScormCourseDetail /></ScormFeatureGate>} />
           <Route path="roster" element={<ScormFeatureGate featureId="roster"><ScormLearnerRoster /></ScormFeatureGate>} />
           <Route path="assignments" element={<ScormFeatureGate featureId="campaigns"><ScormAssignments /></ScormFeatureGate>} />
           <Route path="campaigns" element={<Navigate to="/scorm/assignments" replace />} />

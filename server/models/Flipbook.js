@@ -44,6 +44,11 @@ const Flipbook = sequelize.define('Flipbook', {
         allowNull: false,
         defaultValue: true
     },
+    isPlatformDefault: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+    },
     pages: {
         type: DataTypes.JSON,
         allowNull: false,
@@ -83,7 +88,8 @@ const Flipbook = sequelize.define('Flipbook', {
         { fields: ['ownerUserId'] },
         { fields: ['ownerEmail'] },
         { unique: true, fields: ['shareToken'] },
-        { fields: ['status'] }
+        { fields: ['status'] },
+        { fields: ['isPlatformDefault'] }
     ]
 });
 

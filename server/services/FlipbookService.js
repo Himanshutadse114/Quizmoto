@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { Op } = require('sequelize');
 const User = require('../models/User');
 const Flipbook = require('../models/Flipbook');
 const FlipbookEntitlement = require('../models/FlipbookEntitlement');
@@ -31,9 +32,19 @@ async function ensureBrandingColumns() {
     if (!columns.thumbnail) {
         await qi.addColumn(table, 'thumbnail', { type: require('sequelize').DataTypes.JSON, allowNull: true });
     }
+    if (!columns.isPlatformDefault) {
+        await qi.addColumn(table, 'isPlatformDefault', {
+            type: require('sequelize').DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false
+        });
+    }
     const indexes = await qi.showIndex(table);
     if (!indexes.some((index) => index.unique && index.fields?.some((field) => field.attribute === 'shareSlug' || field.name === 'shareSlug'))) {
         await qi.addIndex(table, ['shareSlug'], { unique: true, name: 'flipbooks_share_slug_unique' });
+    }
+    if (!indexes.some((index) => index.fields?.some((field) => field.attribute === 'isPlatformDefault' || field.name === 'isPlatformDefault'))) {
+        await qi.addIndex(table, ['isPlatformDefault'], { name: 'flipbooks_platform_default_idx' });
     }
 }
 
@@ -361,6 +372,7 @@ async function clearPages(flipbook) {
     await Promise.all(pages.map((page) => storage.deleteObject(page.key).catch(() => null)));
     flipbook.pages = [];
     flipbook.pageCount = 0;
+    flipbook.isPlatformDefault = false;
     await flipbook.save();
 }
 
@@ -393,6 +405,63 @@ async function listAdminUsers(search = '') {
     }));
 }
 
+async function getPlatformDefaultFlipbook() {
+    await ensureFlipbookSchema();
+    return Flipbook.findOne({
+        where: {
+            isPlatformDefault: true,
+            status: 'published',
+            shareEnabled: true,
+            pageCount: { [Op.gt]: 0 }
+        },
+        order: [['updatedAt', 'DESC']]
+    });
+}
+
+async function listPlatformDefaultCandidates(ownerUserId) {
+    await ensureFlipbookSchema();
+    return Flipbook.findAll({
+        where: {
+            ownerUserId,
+            status: 'published',
+            shareEnabled: true,
+            pageCount: { [Op.gt]: 0 }
+        },
+        order: [['updatedAt', 'DESC']]
+    });
+}
+
+async function setPlatformDefaultFlipbook({ flipbookId, ownerUserId }) {
+    await ensureFlipbookSchema();
+    return Flipbook.sequelize.transaction(async (transaction) => {
+        const book = await Flipbook.findOne({
+            where: {
+                id: flipbookId,
+                ownerUserId,
+                status: 'published',
+                shareEnabled: true,
+                pageCount: { [Op.gt]: 0 }
+            },
+            transaction
+        });
+        if (!book) {
+            const err = new Error('Choose a published Publica item from the Super Admin library.');
+            err.status = 404;
+            err.code = 'FLIPBOOK_DEFAULT_SOURCE_INVALID';
+            throw err;
+        }
+        await Flipbook.update({ isPlatformDefault: false }, { where: { isPlatformDefault: true }, transaction });
+        book.isPlatformDefault = true;
+        await book.save({ transaction });
+        return book;
+    });
+}
+
+async function clearPlatformDefaultFlipbook() {
+    await ensureFlipbookSchema();
+    await Flipbook.update({ isPlatformDefault: false }, { where: { isPlatformDefault: true } });
+}
+
 module.exports = {
     DEFAULT_FREE_FLIPBOOKS,
     MAX_PAGES,
@@ -416,5 +485,9 @@ module.exports = {
     clearPages,
     clearThumbnail,
     deleteFlipbook,
-    listAdminUsers
+    listAdminUsers,
+    getPlatformDefaultFlipbook,
+    listPlatformDefaultCandidates,
+    setPlatformDefaultFlipbook,
+    clearPlatformDefaultFlipbook
 };

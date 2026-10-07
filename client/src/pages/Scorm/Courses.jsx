@@ -132,9 +132,9 @@ export default function ScormCourses() {
     <div className="p-4 md:p-7 lg:p-9 max-w-7xl mx-auto">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7 pb-7 border-b border-white/10">
         <div className="max-w-3xl">
-          <div className="scorm-micro text-[10px] uppercase font-semibold text-slate-500">{trialAccess ? 'Free course catalogue' : 'Course management'}</div>
-          <h2 className="scorm-display text-[42px] md:text-[56px] mt-2">{trialAccess ? 'Included courses' : 'Courses'}</h2>
-          <p className="text-sm mt-3 leading-relaxed max-w-2xl">{trialAccess ? 'View courses selected by LMSGEN and assign them to up to 10 learners. Course creation, uploads and editing unlock with full platform access.' : 'Publish and manage learning content. Learner figures on this screen represent direct published-link or direct-assignment activity; campaign performance stays in Campaign Analytics.'}</p>
+          <div className="scorm-micro text-[10px] uppercase font-semibold text-slate-500">{trialAccess ? 'Interactive course demo' : 'Course management'}</div>
+          <h2 className={`scorm-display mt-2 ${trialAccess ? 'text-[28px] md:text-[34px]' : 'text-[42px] md:text-[56px]'}`}>{trialAccess ? 'Experience a real LMSGEN course' : 'Courses'}</h2>
+          <p className="text-sm mt-3 leading-relaxed max-w-2xl">{trialAccess ? 'Open a course selected by the Super Admin and run it exactly as a learner would. The course is read-only: preview activity is private, and creation, editing, learner assignment and reporting unlock after tenant activation.' : 'Publish and manage learning content. Learner figures on this screen represent direct published-link or direct-assignment activity; campaign performance stays in Campaign Analytics.'}</p>
         </div>
         {!trialAccess && <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold">
           <Plus size={15} /> Create course
@@ -149,7 +149,7 @@ export default function ScormCourses() {
         <Metric label="Total courses" value={courses.length} icon={BookOpen} loading={coursesLoading} />
         <Metric label="Published" value={courses.filter((c) => c.status === 'published').length} icon={CheckCircle2} loading={coursesLoading} />
         <Metric label="Draft" value={courses.filter((c) => c.status === 'draft').length} icon={Clock3} loading={coursesLoading} />
-        <Metric label={trialAccess ? 'Learner limit' : 'Direct learners'} value={trialAccess ? '10' : learnerCount} icon={Users} loading={!trialAccess && trackingLoading} />
+        <Metric label={trialAccess ? 'Demo access' : 'Direct learners'} value={trialAccess ? 'View' : learnerCount} icon={Users} loading={!trialAccess && trackingLoading} />
       </div>
 
       <div className="scorm-course-list-shell rounded-xl overflow-hidden border">
@@ -160,7 +160,7 @@ export default function ScormCourses() {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search courses or invite code"
+              placeholder={trialAccess ? 'Search demo courses' : 'Search courses or invite code'}
               className="scorm-course-search scorm-search-input w-full py-2.5 text-sm"
             />
           </div>
@@ -200,20 +200,17 @@ export default function ScormCourses() {
                     <span className={`scorm-course-status scorm-micro shrink-0 px-2 py-1 rounded-md text-[8px] uppercase font-semibold border ${course.status === 'published' ? 'is-published' : 'is-draft'}`}>{trialAccess ? 'Included' : course.status}</span>
                     {course.readOnly && <span className="inline-flex items-center gap-1 text-[8px] uppercase font-semibold text-[#8295ae]"><LockKeyhole size={10} /> View only</span>}
                   </div>
-                  <div className="scorm-micro text-[9px] text-[#8295ae] mt-1">{course.inviteCode || 'No invite code'} · Trackable course</div>
+                  <div className="scorm-micro text-[9px] text-[#8295ae] mt-1">{trialAccess ? 'LMSGEN demo · Open to preview the learner experience' : `${course.inviteCode || 'No invite code'} · Trackable course`}</div>
                 </div>
-                <div>
-                  <div className="text-sm font-semibold text-[#f1f5f9]">{trackingLoading ? '…' : (stats.learners || 0)}</div>
-                  <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Direct learners</div>
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-emerald-300">{trackingLoading ? '…' : (stats.completed || 0)}</div>
-                  <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Completed</div>
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-[#f1f5f9]">{trackingLoading ? '…' : `${Number(stats.averageProgress || 0).toFixed(0)}%`}</div>
-                  <div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Direct progress</div>
-                </div>
+                {trialAccess ? <>
+                  <div><div className="text-sm font-semibold text-[#f1f5f9]">Available</div><div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Demo access</div></div>
+                  <div><div className="text-sm font-semibold text-emerald-300">Trackable</div><div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Learner runtime</div></div>
+                  <div><div className="text-sm font-semibold text-[#f1f5f9]">Read only</div><div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Safe preview</div></div>
+                </> : <>
+                  <div><div className="text-sm font-semibold text-[#f1f5f9]">{trackingLoading ? '…' : (stats.learners || 0)}</div><div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Direct learners</div></div>
+                  <div><div className="text-sm font-semibold text-emerald-300">{trackingLoading ? '…' : (stats.completed || 0)}</div><div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Completed</div></div>
+                  <div><div className="text-sm font-semibold text-[#f1f5f9]">{trackingLoading ? '…' : `${Number(stats.averageProgress || 0).toFixed(0)}%`}</div><div className="scorm-micro text-[8px] uppercase text-[#8295ae] mt-1">Direct progress</div></div>
+                </>}
                 <ChevronRight size={17} className="text-[#60a5fa]" />
               </Link>
             );

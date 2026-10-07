@@ -114,7 +114,7 @@ const DEMO_NAV_GROUPS = [
   {
     label: 'Deliver',
     items: [
-      { to: '/scorm/courses', label: 'Course Management', icon: BookOpen, requiresScorm: true },
+      { to: '/scorm/courses', label: 'Demo Course', icon: BookOpen, unlocked: true },
       { to: '/scorm/roster', label: 'Learner Roster', icon: UserCheck, requiresScorm: true },
       { to: '/scorm/assignments', label: 'Campaigns', icon: Megaphone, requiresScorm: true }
     ]
@@ -242,7 +242,7 @@ function MobileTabBar({ scormAccess, role }) {
   const items = !scormAccess
     ? [
         { to: '/scorm', end: true, label: 'Tour', icon: LayoutDashboard },
-        { to: '/scorm/author', label: 'Author', icon: LockKeyhole },
+        { to: '/scorm/courses', label: 'Course', icon: BookOpen },
         { to: '/scorm/quizmoto', label: 'Quizmoto', icon: LockKeyhole },
         { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck }
       ]
@@ -345,7 +345,7 @@ export default function ScormPlatformShell() {
             {demoAccess ? (
               <>
                 <Link to="/scorm/publica" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Publica</span></Link>
-                <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold"><LockKeyhole size={14} /><span>Explore AI Author</span></Link>
+                <Link to="/scorm/courses" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold"><BookOpen size={14} /><span>Open demo course</span></Link>
               </>
             ) : analyticsOnly ? (
               <>

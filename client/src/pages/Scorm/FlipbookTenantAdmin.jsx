@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { BookOpenCheck, Building2, RefreshCw, Save, ToggleLeft, ToggleRight } from 'lucide-react';
+import { BookOpenCheck, Building2, Globe2, RefreshCw, Save, ToggleLeft, ToggleRight, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 
@@ -9,8 +9,12 @@ export default function FlipbookTenantAdmin() {
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
   const [tenants, setTenants] = useState([]);
   const [drafts, setDrafts] = useState({});
+  const [defaultCandidates, setDefaultCandidates] = useState([]);
+  const [platformDefault, setPlatformDefault] = useState(null);
+  const [defaultId, setDefaultId] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState('');
+  const [savingDefault, setSavingDefault] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
@@ -20,6 +24,9 @@ export default function FlipbookTenantAdmin() {
       const res = await axios.get(apiUrl('/api/scorm/flipbook-tenants'), { headers });
       const rows = res.data?.tenants || [];
       setTenants(rows);
+      setDefaultCandidates(res.data?.defaultCandidates || []);
+      setPlatformDefault(res.data?.platformDefault || null);
+      setDefaultId(res.data?.platformDefault?.id || '');
       const next = {};
       rows.forEach((tenant) => {
         next[tenant.id] = {
@@ -50,6 +57,29 @@ export default function FlipbookTenantAdmin() {
     } finally { setSaving(''); }
   };
 
+  const savePlatformDefault = async () => {
+    if (!defaultId) return;
+    setSavingDefault(true); setError(''); setMessage('');
+    try {
+      const response = await axios.put(apiUrl(`/api/scorm/flipbook-tenants/default/${defaultId}`), {}, { headers });
+      setMessage(`“${response.data?.platformDefault?.title || 'Publication'}” is now included for every tenant and platform user.`);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not set the default Publica item.');
+    } finally { setSavingDefault(false); }
+  };
+
+  const clearPlatformDefault = async () => {
+    setSavingDefault(true); setError(''); setMessage('');
+    try {
+      await axios.delete(apiUrl('/api/scorm/flipbook-tenants/default'), { headers });
+      setMessage('The platform-default Publica item was removed.');
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not remove the default Publica item.');
+    } finally { setSavingDefault(false); }
+  };
+
   return (
     <div className="px-4 py-6 md:px-8 md:py-8 max-w-[1280px] mx-auto">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-5">
@@ -63,6 +93,28 @@ export default function FlipbookTenantAdmin() {
 
       {message && <div className="mb-4 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-500">{message}</div>}
       {error && <div className="mb-4 rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-xs text-rose-400">{error}</div>}
+
+      <section className="scorm-panel rounded-2xl border p-4 md:p-5 mb-5">
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,520px)] gap-4 lg:items-end">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl border grid place-items-center text-[#4FC9BF] shrink-0"><Globe2 size={17} /></div>
+            <div>
+              <div className="text-sm font-semibold">Default Publica for everyone</div>
+              <p className="mt-1.5 text-[10px] leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>Choose one published item from the Super Admin library. It appears read-only for every free user and tenant, does not consume their allowance, and can be included in tenant campaigns.</p>
+              <div className="mt-2 text-[9px] font-semibold text-[#4FC9BF]">{platformDefault ? `Current: ${platformDefault.title} · ${platformDefault.pageCount} pages` : 'No platform default selected'}</div>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select value={defaultId} onChange={(event) => setDefaultId(event.target.value)} className="scorm-search-input min-h-10 flex-1 px-3 text-xs">
+              <option value="">Choose a published Publica item</option>
+              {defaultCandidates.map((book) => <option key={book.id} value={book.id}>{book.title} · {book.pageCount} pages</option>)}
+            </select>
+            <button type="button" onClick={savePlatformDefault} disabled={!defaultId || savingDefault} className="scorm-button-primary min-h-10 px-3 text-[10px] font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50"><Save size={12} /> {savingDefault ? 'Saving…' : 'Set default'}</button>
+            {platformDefault && <button type="button" onClick={clearPlatformDefault} disabled={savingDefault} className="scorm-button-secondary min-h-10 px-3 text-[10px] font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50"><X size={12} /> Remove</button>}
+          </div>
+        </div>
+        {!defaultCandidates.length && !loading && <div className="mt-3 rounded-xl border px-3 py-2.5 text-[10px]" style={{ color: 'var(--scorm-muted)' }}>Publish a Publica item from the Super Admin account first; it will then appear in this selector.</div>}
+      </section>
 
       {loading && !tenants.length ? <div className="scorm-panel min-h-[180px] rounded-2xl border grid place-items-center"><RefreshCw size={19} className="animate-spin opacity-50" /></div> : (
         <div className="grid gap-3">

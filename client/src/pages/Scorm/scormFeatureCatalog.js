@@ -26,7 +26,7 @@ export const SCORM_FEATURES = {
     bestFor: ['Security teams', 'Internal communications', 'Awareness programmes']
   },
   courses: {
-    id: 'courses', label: 'Course Management', route: '/scorm/courses', category: 'Deliver',
+    id: 'courses', label: 'Course Management', route: '/scorm/courses', category: 'Deliver', demoAccess: 'open', demoLabel: 'Demo course',
     short: 'Publish, invite and manage learner-ready courses.',
     description: 'Manage generated and uploaded learning as operational course workspaces with publishing controls, invitations and reusable delivery links.',
     capabilities: ['Manage generated, uploaded and video-based courses', 'Publish courses or keep drafts private while they are reviewed', 'Generate direct learner links and registration access', 'Open course-level learner and assessment activity'],
