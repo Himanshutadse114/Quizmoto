@@ -22,6 +22,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import { copyText } from '../../utils/clipboard';
+import { formatScormDuration } from '../../utils/scormDuration';
 import { useSocket } from '../../context/SocketContext';
 import LearnerAuditDetail from './LearnerAuditDetail';
 
@@ -395,7 +396,7 @@ export default function ScormCourseDetail() {
               />
               <PreviewStat
                 label="Current run"
-                value={previewStats.currentRunTime || previewStats.sessionTime || previewStats.totalTime || '—'}
+                value={formatScormDuration(previewStats.currentRunTime || previewStats.sessionTime || previewStats.totalTime)}
                 icon={Timer}
                 detail={trialAccess ? 'This demo session only' : 'This QA session only'}
               />
