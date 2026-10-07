@@ -166,7 +166,7 @@ export default function ScormCourses() {
           </div>
           <div className="scorm-course-filters flex gap-1 rounded-lg p-1 border">
             {['all', 'published', 'draft'].map((item) => (
-              <button
+              <button type="button"
                 key={item}
                 onClick={() => setStatus(item)}
                 className={`scorm-course-filter px-3 py-2 rounded-md text-[11px] font-semibold capitalize border ${status === item ? 'is-active' : ''}`}

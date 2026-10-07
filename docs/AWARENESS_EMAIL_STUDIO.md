@@ -98,18 +98,34 @@ learner1@company.com,Learner One
 learner2@company.com,Learner Two
 ```
 
+### Campaign caps and limits
+
+- Maximum **5,000 recipients per campaign**. Creating a campaign with more learners is rejected with HTTP 413.
+- Delivery batches: batch count is clamped to **1–50** (default 5) and capped at the recipient count; the delay between batches is clamped to **15–3,600 seconds** (default 60). Out-of-range values are silently clamped into range, not rejected.
+- Between individual messages there is a **350 ms gap** (overridable with `MAIL_MESSAGE_GAP_MS`, clamped to 0–5,000 ms).
+- Direct template send: maximum **50 unique recipients per send request**.
+- The batch fields on the create-campaign request are `mailBatchCount` and `mailBatchDelaySeconds`.
+
 Delivery uses the configured SMTP or Brevo provider and the same provider-acceptance checks used by direct template sending.
 
 ## Delivery and export
 
 Only templates inside My Library can be sent or exported. My Library keeps the same gallery-card presentation as the Central Library but adds usage actions for the tenant.
 
-- SMTP delivery embeds stored template images by CID.
-- EML export embeds stored template images by CID.
-- Brevo delivery uses the stable public asset URLs.
+- SMTP delivery embeds stored template images by CID **only when `AWARENESS_SMTP_EMBED_IMAGES` is set to a truthy value** (`1`, `true`, `yes` or `on`). The default is off: without the variable, SMTP sends keep the stable public asset URLs in the HTML.
+- Campaign delivery follows the same rule: CID embedding applies only when the mail provider is SMTP **and** `AWARENESS_SMTP_EMBED_IMAGES` is truthy; otherwise campaigns use the public asset URLs.
+- EML export always embeds stored template images by CID.
+- Brevo delivery always uses the stable public asset URLs (never CID).
 - Each recipient is sent separately to prevent address disclosure.
 - Maximum 50 unique recipients per send request.
 - Existing learner-roster recipients can be selected from the Send dialog.\n- The Send action becomes available once at least one valid recipient is entered. If SMTP/Brevo is not configured, the dialog shows a clear mail-setup warning instead of silently looking disabled.
+
+## Known limitations / operational notes
+
+- **In-process delivery.** Campaign delivery runs inside the Node process: starting a campaign hands `deliverCampaign` to `setImmediate`, and batches are paced with `setTimeout` chains. There is no cron, job queue or worker pool.
+- **No auto-resume after a restart.** A server restart mid-campaign leaves the campaign stuck in `sending` with its remaining recipients still `pending`. It will not resume on its own; boot-time recovery marks such campaigns `stopped` with an explanatory error on `lastError` instead of auto-resuming, so the partial state is visible and deliberate.
+- **Re-create campaigns after an interruption.** Only `draft` campaigns can be started, and only `draft` or `stopped` campaigns can be deleted. A stopped campaign cannot be restarted, so after a crash or an intentional stop the flow is: delete the stopped campaign and create a fresh one to send the remainder.
+- **No open/click tracking.** Per-recipient state is limited to `status` (`pending` | `sent` | `failed`) plus provider `messageId`, `provider`, `providerResponse`, `errorCode` and `sentAt`. The live Accepted / Failed / Pending progress in the campaign list is derived from these counters.
 
 ## Storage layout
 
@@ -158,12 +174,20 @@ The HTML can be named `email.html`, `template.html` or any other `.html`/ `.htm`
 
 ## Main API
 
+Mail diagnostics:
+
+- `GET /api/scorm/awareness-gallery/status` — mail configuration diagnostics (configured, provider, from address, host, port), `maxRecipientsPerSend` and whether the caller is a Super Admin
+- `POST /api/scorm/awareness-gallery/mail/verify` — verify the configured mail provider connection
+- `POST /api/scorm/awareness-gallery/mail/test` — send a delivery test email to the supplied address
+
 Central Library:
 
 - `GET /api/scorm/awareness-gallery/central`
 - `GET /api/scorm/awareness-gallery/central/:id`
 - `POST /api/scorm/awareness-gallery/central/upload` — Super Admin
+- `POST /api/scorm/awareness-gallery/central/seed` — Super Admin, re-run idempotent reference-template seeding
 - `PATCH /api/scorm/awareness-gallery/central/:id` — Super Admin
+- `POST /api/scorm/awareness-gallery/central/:id/thumbnail` — Super Admin, replace the Central template thumbnail
 - `POST /api/scorm/awareness-gallery/central/:id/import`
 
 My Library:
@@ -205,5 +229,6 @@ Awareness-gallery configuration:
 
 - `AWARENESS_ASSET_BASE_URL=https://api.lmsgen.in`
 - `AWARENESS_SEED_REFERENCE_TEMPLATES=true`\n- Optional `AWARENESS_REFERENCE_ZIP_PATH` to override the bundled seed archive
+- Optional `AWARENESS_SMTP_EMBED_IMAGES` — set to `1`/`true`/`yes`/`on` to embed stored template images as CID attachments in SMTP sends (direct sends and campaigns). Default off; Brevo delivery never uses CID.
 
 No OpenAI key is required for the Awareness Email Template Gallery.

@@ -7,7 +7,7 @@ const MailService = require('./MailService');
 const ALLOWED_PURPOSES = new Set(['login', 'password_reset', 'email_verification']);
 const OTP_TTL_MINUTES = Math.max(3, Math.min(30, Number(process.env.MAIL_OTP_TTL_MINUTES || 10)));
 const MAX_ATTEMPTS = Math.max(3, Math.min(10, Number(process.env.MAIL_OTP_MAX_ATTEMPTS || 5)));
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const JWT_SECRET = require('../../config/jwtSecret');
 
 function fail(message, code, status = 400) {
     const error = new Error(message);

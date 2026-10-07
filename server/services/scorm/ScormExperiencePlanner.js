@@ -142,7 +142,7 @@ function chooseBalancedLayouts(slides) {
     });
 }
 
-function preferredType(slide, layout, index, interactiveUsed) {
+function preferredType(slide, layout, index, interactiveUsed, avoidType = '') {
     const text = `${slide.title || ''} ${slide.content || ''}`.toLowerCase();
     if (layout === 'comparison') return 'comparison';
     if (layout === 'timeline') return 'timeline';
@@ -154,6 +154,9 @@ function preferredType(slide, layout, index, interactiveUsed) {
     if (layout === 'hub' && interactiveUsed < 2) return 'hotspot';
     if (/scenario|imagine|suppose|you receive|you notice|you are|if you|when you|example|case study/.test(text) && index > 0) return 'scenario';
     if (/remember|critical|key takeaway|most important|always|never/.test(text)) return 'takeaway';
+    // Never place two generic concept screens back to back: vary the visual
+    // rhythm by promoting the repeat to a takeaway treatment instead.
+    if (avoidType === 'concept') return 'takeaway';
     return 'concept';
 }
 
@@ -215,13 +218,15 @@ function planExperienceV5(rawAnalysis) {
     const layouts = chooseBalancedLayouts(canonicalSlides);
     let previousBackground = '';
     let interactiveUsed = 0;
+    let previousInferredType = '';
 
     const planned = canonicalSlides.map((slide, index) => {
         const layout = layouts[index] || 'spotlight';
         const explicitType = clean(slide?.screenType).toLowerCase();
         const type = SCREEN_TYPES.includes(explicitType)
             ? explicitType
-            : preferredType(slide, layout, index, interactiveUsed);
+            : preferredType(slide, layout, index, interactiveUsed, previousInferredType);
+        if (!explicitType) previousInferredType = type;
         if (type === 'reveal' || type === 'hotspot') interactiveUsed += 1;
         const explicitBackground = clean(slide?.backgroundStyle).toLowerCase();
         const background = BACKGROUNDS.includes(explicitBackground)

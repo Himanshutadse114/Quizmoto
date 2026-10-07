@@ -126,6 +126,7 @@ class LearnerReport:
         self.elements.extend([
             drawing,
             Spacer(1, 0.85 * inch),
+            Paragraph('SCORM AI · INDIVIDUAL LEARNER REPORT', self.styles['LearnerSubtitle']),
             Paragraph('Individual Learner Report', self.styles['LearnerTitle']),
             Paragraph(base.ptxt(self.data.get('learnerName'), 'Learner'), self.styles['LearnerSubtitle']),
             Paragraph(base.ptxt(self.data.get('learnerEmail'), 'No learner email'), self.styles['BodyCustom']),

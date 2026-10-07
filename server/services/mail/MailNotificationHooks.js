@@ -37,7 +37,7 @@ function runLater(options, task) {
 
 function memberNotification(member) {
     const email = String(member.email || '').trim().toLowerCase();
-    const superAdminEmail = String(process.env.SCORM_SUPER_ADMIN_EMAIL || 'tadsehimanshu@gmail.com').trim().toLowerCase();
+    const superAdminEmail = String(process.env.SCORM_SUPER_ADMIN_EMAIL || '').trim().toLowerCase();
     if (!email || email === superAdminEmail || email.endsWith('@lmsgen.internal')) return null;
     const role = String(member.role || '').toLowerCase();
     return { email, role };

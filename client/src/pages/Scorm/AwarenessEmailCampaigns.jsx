@@ -224,7 +224,7 @@ export default function AwarenessEmailCampaigns({templates=[],mail={},onNotice})
               <label className="aw-campaign-field"><span>Email</span><input type="email" value={manualEmail} onChange={e=>setManualEmail(e.target.value)} placeholder="person@company.com"/></label>
               <button type="submit" className="aw-btn-secondary"><UserPlus size={13}/> Add</button>
             </form>
-            {manualLearners.length?<div className="aw-recipient-list">{manualLearners.map(item=><div key={item.email}><span><strong>{item.learnerName}</strong><small>{item.email}</small></span><button type="button" onClick={()=>setManualLearners(current=>current.filter(x=>x.email!==item.email))}><Trash2 size={12}/></button></div>)}</div>:<div className="aw-muted-copy">Add recipients one at a time.</div>}
+            {manualLearners.length?<div className="aw-recipient-list">{manualLearners.map(item=><div key={item.email}><span><strong>{item.learnerName}</strong><small>{item.email}</small></span><button type="button" aria-label="Remove recipient" onClick={()=>setManualLearners(current=>current.filter(x=>x.email!==item.email))}><Trash2 size={12}/></button></div>)}</div>:<div className="aw-muted-copy">Add recipients one at a time.</div>}
           </div>}
           <div className="aw-delivery-control">
             <div className="aw-delivery-control-head"><span><Clock3 size={14}/><strong>Delivery pacing</strong></span><small>Reduce sudden sending spikes</small></div>

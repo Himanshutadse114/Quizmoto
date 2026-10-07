@@ -12,7 +12,7 @@ const {
 } = require('../../services/scorm/ScormTrackingPackageFinalizer');
 const { inject: injectMobileHardeningRuntime } = require('../../services/scorm/ScormMobileHardeningRuntime');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const JWT_SECRET = require('../../config/jwtSecret');
 
 async function resolvePackageAccess(accessToken, packageIdHint) {
     if (!accessToken) return null;

@@ -9,10 +9,9 @@ describe('free access sales prompt', () => {
     );
 
     it('uses concise copy and links free users to the main sales contact page', () => {
-        expect(shell).to.include('You are on free access');
-        expect(shell).to.include('For the full LMS and AI course generation experience, contact sales.');
+        expect(shell).to.include('Demo mode');
         expect(shell).to.include("https://www.lmsgen.in/contact");
-        expect(shell).to.include('Contact sales');
+        expect(shell).to.include('Activate');
         expect(shell).not.to.include('LMSGEN tenant features unlock after the Super Admin assigns this email to a tenant.');
     });
 

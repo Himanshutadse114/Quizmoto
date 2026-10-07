@@ -362,7 +362,7 @@ const GameView = () => {
 
     const abortSession = () => {
         if (!socket) return;
-        const ok = window.confirm('Abort this session? All players will be disconnected.');
+        const ok = window.confirm('End this session? All players will be disconnected.');
         if (!ok) return;
         socket.emit('leave_session', { pin, role: 'host', token });
         navigate('/host');

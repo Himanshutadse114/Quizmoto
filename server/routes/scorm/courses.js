@@ -18,7 +18,14 @@ const {
     assertProvisionedCourse
 } = require('../../services/scorm/ScormCourseCatalogService');
 
-router.get('/', auth, async (req, res) => {
+// Local async wrapper: forwards promise rejections to Express' error-handling
+// middleware so a DB blip in an unguarded handler can never become an
+// unhandled rejection / process crash. Success-path behavior is unchanged.
+const asyncHandler = (fn) => (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+router.get('/', auth, asyncHandler(async (req, res) => {
     await syncAvailableCourses({ targetHostId: req.userId, targetWorkspaceId: req.scormWorkspaceId || null });
     const courses = await ScormCourse.findAll({
         where: { hostId: req.userId },
@@ -56,7 +63,7 @@ router.get('/', auth, async (req, res) => {
             };
         })
     );
-});
+}));
 
 router.get('/reports/all', auth, async (req, res) => {
     try {
@@ -131,7 +138,7 @@ router.post('/', auth, async (req, res) => {
     }
 });
 
-router.get('/code/:inviteCode', async (req, res) => {
+router.get('/code/:inviteCode', asyncHandler(async (req, res) => {
     const course = await ScormCourse.findOne({
         where: { inviteCode: req.params.inviteCode, status: 'published' },
         include: [{ model: ScormPackage, as: 'package' }],
@@ -147,7 +154,7 @@ router.get('/code/:inviteCode', async (req, res) => {
         inviteCode: course.inviteCode,
         status: course.status
     });
-});
+}));
 
 router.get('/:id/report', auth, async (req, res) => {
     try {
@@ -179,7 +186,7 @@ router.get('/:id/report', auth, async (req, res) => {
     }
 });
 
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', auth, asyncHandler(async (req, res) => {
     if (req.scormTrial) await assertProvisionedCourse(req.userId, req.params.id);
     await resolveCourseOrPackageId({ id: req.params.id, hostId: req.userId });
     const course = await ScormCourse.findOne({
@@ -195,7 +202,7 @@ router.get('/:id', auth, async (req, res) => {
         catalogSourceCourseId: provision?.sourceCourseId || null,
         readOnly: Boolean(provision)
     });
-});
+}));
 
 router.patch('/:id', auth, async (req, res) => {
     try {
@@ -237,7 +244,7 @@ router.patch('/:id', auth, async (req, res) => {
     }
 });
 
-router.get('/:id/registrations', auth, async (req, res) => {
+router.get('/:id/registrations', auth, asyncHandler(async (req, res) => {
     if (req.scormTrial) await assertProvisionedCourse(req.userId, req.params.id);
     await resolveCourseOrPackageId({ id: req.params.id, hostId: req.userId });
     const course = await ScormCourse.findOne({ where: { id: req.params.id, hostId: req.userId } });
@@ -247,7 +254,7 @@ router.get('/:id/registrations', auth, async (req, res) => {
         order: [['updatedAt', 'DESC']]
     });
     res.json(regs);
-});
+}));
 
 router.post('/:id/preview', auth, async (req, res) => {
     try {

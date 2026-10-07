@@ -325,7 +325,7 @@ export default function CampaignPortal() {
 
             {error && <div className="mt-5 rounded-xl border border-[#f5c4cc] bg-[#fff3f5] text-[#9f3345] px-4 py-3 text-sm">{error}</div>}
 
-            <div className="mt-7 flex items-center justify-between gap-3"><div><h2 className="text-xl font-semibold">Assigned courses</h2><p className="text-xs text-[#6c817e] mt-1">Signed in as {dashboard.learner?.email}</p></div><button type="button" onClick={() => loadDashboard()} className="w-10 h-10 rounded-xl border border-[#d4e2df] bg-white grid place-items-center"><RefreshCw size={15} /></button></div>
+            <div className="mt-7 flex items-center justify-between gap-3"><div><h2 className="text-xl font-semibold">Assigned courses</h2><p className="text-xs text-[#6c817e] mt-1">Signed in as {dashboard.learner?.email}</p></div><button type="button" aria-label="Refresh dashboard" onClick={() => loadDashboard()} className="w-10 h-10 rounded-xl border border-[#d4e2df] bg-white grid place-items-center"><RefreshCw size={15} /></button></div>
 
             <div className="mt-5 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {courses.map((course) => {

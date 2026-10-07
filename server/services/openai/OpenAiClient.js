@@ -9,6 +9,9 @@ const TEXT_OUTPUT_USD_PER_MILLION = 1.20;
 // Low-quality landscape output is approximately $0.006 with the configured
 // fast image model. Keep the estimate slightly conservative for budget gates.
 const LOW_IMAGE_ESTIMATE_USD = 0.0065;
+// tts-1 pricing: $15 per 1M characters.
+const TTS_USD_PER_MILLION_CHARS = 15;
+const TTS_MODEL = 'tts-1';
 
 function clean(value) {
     return String(value || '').trim();
@@ -211,6 +214,60 @@ async function generateImage({
     };
 }
 
+/**
+ * Text-to-speech via POST /v1/audio/speech. Returns { body: Buffer(mp3), chars, estimatedCostUsd }.
+ * Unlike request(), this endpoint returns binary audio, not JSON.
+ */
+async function synthesizeSpeech({ input, voice = 'onyx', model = TTS_MODEL, timeoutMs = 120000 }) {
+    const text = clean(input);
+    if (!text) {
+        const error = new Error('Nothing to speak: empty narration.');
+        error.code = 'OPENAI_TTS_EMPTY';
+        throw error;
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), clampInt(timeoutMs, 120000, 5000, 300000));
+    timeout.unref?.();
+    try {
+        const response = await fetch(`${API_ROOT}/audio/speech`, {
+            method: 'POST',
+            headers: requestHeaders(),
+            body: JSON.stringify({ model, voice, input: text, response_format: 'mp3' }),
+            signal: controller.signal
+        });
+        if (!response.ok) {
+            let payload = {};
+            try { payload = await response.json(); } catch (_) { /* binary error body */ }
+            throw friendlyError(response.status, payload, 'OPENAI_TTS_ERROR');
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        const body = Buffer.from(arrayBuffer);
+        if (body.length < 512) {
+            const error = new Error('OpenAI TTS returned incomplete audio.');
+            error.code = 'OPENAI_TTS_EMPTY';
+            throw error;
+        }
+        return {
+            body,
+            contentType: 'audio/mpeg',
+            chars: text.length,
+            estimatedCostUsd: (text.length / 1e6) * TTS_USD_PER_MILLION_CHARS
+        };
+    } catch (error) {
+        if (controller.signal.aborted || error?.name === 'AbortError') {
+            const timeoutError = new Error('Voice synthesis timed out. Please retry.');
+            timeoutError.code = 'OPENAI_TTS_TIMEOUT';
+            throw timeoutError;
+        }
+        if (error?.code) throw error;
+        const networkError = new Error(`OpenAI network error: ${error.message}`);
+        networkError.code = 'OPENAI_NETWORK';
+        throw networkError;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
 module.exports = {
     API_ROOT,
     DEFAULT_TEXT_MODEL,
@@ -218,6 +275,7 @@ module.exports = {
     TEXT_INPUT_USD_PER_MILLION,
     TEXT_OUTPUT_USD_PER_MILLION,
     LOW_IMAGE_ESTIMATE_USD,
+    TTS_USD_PER_MILLION_CHARS,
     getApiKey,
     textModel,
     imageModel,
@@ -229,5 +287,6 @@ module.exports = {
     usageCostUsd,
     createStructuredResponse,
     generateImage,
+    synthesizeSpeech,
     clampInt
 };

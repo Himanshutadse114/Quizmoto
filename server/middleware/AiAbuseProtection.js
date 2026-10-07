@@ -39,6 +39,8 @@ const aiAnalysisLimiter = aiRateLimit({ name: 'analysis', envName: 'AI_ANALYSIS_
 const aiUploadLimiter = aiRateLimit({ name: 'upload', envName: 'AI_UPLOAD_HOURLY_LIMIT', limit: 30 });
 const aiHealthLimiter = aiRateLimit({ name: 'health', envName: 'AI_HEALTH_HOURLY_LIMIT', limit: 6 });
 const aiAwarenessLimiter = aiRateLimit({ name: 'awareness', envName: 'AI_AWARENESS_HOURLY_LIMIT', limit: 12 });
+const aiVideoScriptLimiter = aiRateLimit({ name: 'video-script', envName: 'AI_VIDEO_SCRIPT_HOURLY_LIMIT', limit: 6 });
+const aiVideoBuildLimiter = aiRateLimit({ name: 'video-build', envName: 'AI_VIDEO_BUILD_HOURLY_LIMIT', limit: 3 });
 
 module.exports = {
     aiCourseLimiter,
@@ -47,5 +49,7 @@ module.exports = {
     aiUploadLimiter,
     aiHealthLimiter,
     aiAwarenessLimiter,
+    aiVideoScriptLimiter,
+    aiVideoBuildLimiter,
     awarenessMailActionLimiter
 };

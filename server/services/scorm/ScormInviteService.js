@@ -14,7 +14,7 @@ const {
 const { ensurePackageLaunchMetadata } = require('./ScormLaunchMetadataService');
 const { assertEnrollmentAllowed } = require('./ScormEntitlementService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const JWT_SECRET = require('../../config/jwtSecret');
 
 function randomCode(len = 10) {
     return crypto.randomBytes(16).toString('base64url').replace(/[^a-zA-Z0-9]/g, '').slice(0, len);
