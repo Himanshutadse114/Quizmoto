@@ -3,14 +3,12 @@ FROM node:22-alpine
 WORKDIR /app
 
 # System packages for Phase 3 Python reports (matplotlib charts + reportlab PDF)
-# and the LMSGEN Video Studio renderer (Pillow frames + ffmpeg assembly).
 RUN apk add --no-cache \
         python3 \
         py3-pip \
         py3-numpy \
         py3-matplotlib \
         py3-pillow \
-        ffmpeg \
         freetype \
         ttf-dejavu \
         font-liberation \
@@ -52,8 +50,9 @@ ENV REPORT_PYTHON_CMD=/usr/bin/python3
 
 EXPOSE 5001
 
-# Render dashboard values override Docker ENV at runtime. JWT_SECRET is never
-# derived here: server/config/jwtSecret.js fails fast at Node startup with a
-# clear message when it is missing or weak (ephemeral random secret in test).
-# Deriving the signing key from DB credentials was deliberately removed.
-CMD ["node", "index.js"]
+# Render dashboard values override Docker ENV at runtime. Normalize unsafe CORS
+# values before Node starts. JWT_SECRET remains the preferred explicit production
+# secret. If it is absent, derive a stable non-public signing key from the already
+# persistent Render Postgres credential so restarts do not rotate Live Quiz tokens.
+# If neither secure source exists, fail closed instead of using a known fallback.
+CMD ["sh", "-c", "if [ -z \"${JWT_SECRET:-}\" ]; then if [ -z \"${DB_PASS:-}\" ]; then echo '[productionGuards] JWT_SECRET is missing and no secure DB credential is available'; exit 1; fi; export JWT_SECRET=\"$(printf '%s' \"quizmoto-live-quiz:${DB_USER:-}:${DB_NAME:-}:${DB_PASS}\" | sha256sum | cut -d' ' -f1)\"; fi; if [ -z \"${CORS_ORIGIN:-}\" ] || [ \"${CORS_ORIGIN}\" = \"*\" ]; then export CORS_ORIGIN=\"https://lmsgen.in,https://www.lmsgen.in,https://quizmoto-frontend.onrender.com,https://kahoot-awareness-frontend.onrender.com\"; fi; exec node index.js"]

@@ -18,7 +18,7 @@ const {
 } = require('./ScormInviteService');
 const { ensurePackageLaunchMetadata } = require('./ScormLaunchMetadataService');
 
-const JWT_SECRET = require('../../config/jwtSecret');
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const GLOBAL_GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1001652255296-695gf3vjul0fjh1oden4k2n6tvvdvncn.apps.googleusercontent.com';
 const JOINING_MODES = Object.freeze(['assigned_email', 'sso_preferred', 'sso_only']);
 const microsoftKeyCache = new Map();

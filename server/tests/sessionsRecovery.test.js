@@ -9,7 +9,7 @@ const { Question } = require('../models/Quiz');
 const SessionTokenService = require('../services/SessionTokenService');
 const SessionRecoveryService = require('../services/SessionRecoveryService');
 
-const JWT_SECRET = require('../config/jwtSecret');
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
 describe('GET /api/sessions/:id/recovery (Phase 2)', function () {
     this.timeout(15000);

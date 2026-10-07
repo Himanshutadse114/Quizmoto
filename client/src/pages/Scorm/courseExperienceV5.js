@@ -1,9 +1,9 @@
 export const COURSE_THEMES = [
   {
     id: 1,
-    slug: 'gamma-editorial',
-    name: 'Gamma Editorial',
-    description: 'Neutral paper · charcoal · Gamma editorial',
+    slug: 'editorial',
+    name: 'Editorial',
+    description: 'Neutral paper · charcoal · editorial',
     primary: '#282824',
     dark: '#171715',
     accent: '#CBC5B8',

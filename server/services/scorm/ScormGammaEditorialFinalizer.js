@@ -56,8 +56,6 @@ header h1{
   scrollbar-color:var(--gamma-paper-3) var(--gamma-paper)!important
 }
 .stage,.qmx-stage{width:min(1180px,100%)!important;margin:auto!important}
-.gamma-learner-grid{display:grid!important;grid-template-columns:minmax(330px,1fr) minmax(420px,1fr)!important;gap:28px!important;align-items:start!important}
-@media(max-width:900px){.gamma-learner-grid{grid-template-columns:1fr!important}}
 
 .eyebrow,.qmx-kicker,.step-no,.hub-item b{
   color:var(--gamma-ink-soft)!important;

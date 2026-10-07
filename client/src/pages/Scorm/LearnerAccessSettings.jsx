@@ -232,7 +232,7 @@ export default function LearnerAccessSettings() {
             <div className="space-y-3">
               <label><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Application / client ID</span><input value={config?.staffMicrosoftClientId || ''} onChange={(e) => patch({ staffMicrosoftClientId: e.target.value })} className="w-full px-3 py-2.5 text-xs" /></label>
               <label><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Directory / tenant ID</span><input value={config?.staffMicrosoftTenantId || ''} onChange={(e) => patch({ staffMicrosoftTenantId: e.target.value })} className="w-full px-3 py-2.5 text-xs" /></label>
-              <div><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">SPA redirect URI</span><div className="flex gap-2"><input readOnly value={staffMicrosoftRedirectUri} className="min-w-0 flex-1 px-3 py-2.5 text-[10px]" /><button type="button" aria-label="Copy Staff Microsoft redirect URI" onClick={() => copy(staffMicrosoftRedirectUri, 'Staff Microsoft redirect URI')} className="scorm-button-secondary px-3 grid place-items-center"><Copy size={13} /></button></div></div>
+              <div><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">SPA redirect URI</span><div className="flex gap-2"><input readOnly value={staffMicrosoftRedirectUri} className="min-w-0 flex-1 px-3 py-2.5 text-[10px]" /><button type="button" onClick={() => copy(staffMicrosoftRedirectUri, 'Staff Microsoft redirect URI')} className="scorm-button-secondary px-3 grid place-items-center"><Copy size={13} /></button></div></div>
             </div>
           </div>
         </div>
@@ -267,7 +267,7 @@ export default function LearnerAccessSettings() {
             <div className="space-y-3">
               <label><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Application / client ID</span><input value={config?.microsoftClientId || ''} onChange={(e) => patch({ microsoftClientId: e.target.value })} className="w-full px-3 py-2.5 text-xs" /></label>
               <label><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Directory / tenant ID</span><input value={config?.microsoftTenantId || ''} onChange={(e) => patch({ microsoftTenantId: e.target.value })} className="w-full px-3 py-2.5 text-xs" /></label>
-              <div><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">SPA redirect URI</span><div className="flex gap-2"><input readOnly value={learnerMicrosoftRedirectUri} className="min-w-0 flex-1 px-3 py-2.5 text-[10px]" /><button type="button" aria-label="Copy Learner Microsoft redirect URI" onClick={() => copy(learnerMicrosoftRedirectUri, 'Learner Microsoft redirect URI')} className="scorm-button-secondary px-3 grid place-items-center"><Copy size={13} /></button></div></div>
+              <div><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">SPA redirect URI</span><div className="flex gap-2"><input readOnly value={learnerMicrosoftRedirectUri} className="min-w-0 flex-1 px-3 py-2.5 text-[10px]" /><button type="button" onClick={() => copy(learnerMicrosoftRedirectUri, 'Learner Microsoft redirect URI')} className="scorm-button-secondary px-3 grid place-items-center"><Copy size={13} /></button></div></div>
             </div>
           </div>
         </div>

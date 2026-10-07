@@ -14,7 +14,7 @@ const {
     publicIdentifierWhere
 } = require('../services/PublicaBrandingService');
 
-const JWT_SECRET = require('../config/jwtSecret');
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 let schemaPromise = null;
 
 async function ensureLibrarySchema() {

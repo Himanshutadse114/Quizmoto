@@ -47,7 +47,7 @@ describe('SCORM learner-visible content planning', () => {
         expect(planned.slides[0].content).to.include('detail110');
         expect(planned.slides[0].introText).to.equal(planned.slides[0].content);
         expect(planned.slides[0].revealText).to.equal('');
-        expect(planned.experiencePlanner).to.equal('balanced-visual-v8');
+        expect(planned.experiencePlanner).to.equal('content-visible-v6');
     });
 
     it('preserves deliberate Content Editor changes when visible copy differs from canonical content', () => {

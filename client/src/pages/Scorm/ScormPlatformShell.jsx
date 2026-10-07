@@ -25,7 +25,6 @@ import {
   Users,
   Megaphone,
   Mail,
-  Clapperboard,
   Settings
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -56,7 +55,6 @@ const OPERATIONAL_NAV_GROUPS = [
     label: 'LMSGEN',
     items: [
       { to: '/scorm/author', label: 'AI Course Author', icon: Sparkles, requiresScorm: true },
-      { to: '/scorm/video-studio', label: 'Video Studio', icon: Clapperboard, requiresScorm: true },
       { to: '/scorm/awareness-templates', label: 'Awareness Emails', icon: Mail, requiresScorm: true },
       { to: '/scorm/courses', label: 'My Courses', icon: BookOpen, requiresScorm: true },
       { to: '/scorm/roster', label: 'Learner Roster', icon: UserCheck, requiresScorm: true },
@@ -322,7 +320,7 @@ export default function ScormPlatformShell() {
 
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <button type="button" aria-label="Close navigation" className="absolute inset-0 bg-[#02050b]/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+          <button aria-label="Close navigation" className="absolute inset-0 bg-[#02050b]/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
           <div className="scorm-mobile-drawer absolute inset-y-0 left-0 w-[304px] max-w-[88vw] border-r flex flex-col">
             <div className="h-[72px] px-4 flex items-center justify-between border-b">
               <Brand theme={theme} />

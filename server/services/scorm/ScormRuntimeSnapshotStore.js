@@ -113,50 +113,10 @@ async function probeModel(model, attributes) {
  * rest of the application database is healthy. Tracking therefore has two
  * compatible persistence targets and only needs one of them to be usable.
  *
- * The canonical PostgreSQL runtime snapshot table is created explicitly with
- * raw SQL (never sequelize model sync) so the schema is identical on every
- * deployment, including partially migrated Supabase databases.
+ * We deliberately do not depend on a request-time raw CREATE TABLE statement.
+ * sequelize.sync() creates both models on normal boots; sync() below is only a
+ * repair attempt when a migrated Supabase database is missing one table.
  */
-const SNAPSHOT_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "scorm_runtime_snapshots" (
-    "registrationId" UUID PRIMARY KEY,
-    "payloadJson" TEXT NOT NULL DEFAULT '{}',
-    "stateVersion" INTEGER NOT NULL DEFAULT 0,
-    "initialized" BOOLEAN NOT NULL DEFAULT FALSE,
-    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);`;
-
-function isPostgres() {
-    try {
-        return require('../../config/database').sequelize.getDialect() === 'postgres';
-    } catch (_) {
-        return false;
-    }
-}
-
-async function ensureSnapshotTable() {
-    // Explicit DDL only on PostgreSQL; other dialects (sqlite in tests) keep
-    // using the Sequelize model definition via sequelize.sync().
-    if (!isPostgres()) return;
-    const { sequelize } = require('../../config/database');
-    await sequelize.query(SNAPSHOT_TABLE_DDL);
-}
-
-async function upsertSnapshotRow(registrationId, payloadJson, stateVersion, initialized) {
-    const { sequelize } = require('../../config/database');
-    await sequelize.query(
-        `INSERT INTO "scorm_runtime_snapshots"
-            ("registrationId", "payloadJson", "stateVersion", "initialized", "createdAt", "updatedAt")
-         VALUES (:registrationId, :payloadJson, :stateVersion, :initialized, NOW(), NOW())
-         ON CONFLICT ("registrationId") DO UPDATE SET
-            "payloadJson" = EXCLUDED."payloadJson",
-            "stateVersion" = EXCLUDED."stateVersion",
-            "initialized" = EXCLUDED."initialized",
-            "updatedAt" = NOW();`,
-        { replacements: { registrationId, payloadJson, stateVersion, initialized } }
-    );
-}
-
 async function ensureReady() {
     if (!readyPromise) {
         readyPromise = (async () => {
@@ -174,8 +134,8 @@ async function ensureReady() {
             }
             if (!snapshot) {
                 try {
-                    await ensureSnapshotTable();
-                    snapshot = await probeModel(ScormRuntimeSnapshot, ['registrationId']);
+                    await ScormRuntimeSnapshot.sync();
+                    snapshot = true;
                 } catch (err) {
                     errors.push(`snapshot:${err?.message || err}`);
                 }
@@ -261,14 +221,6 @@ async function writeSnapshot(registrationId, state, options = {}) {
     const normalized = normalizeState(state);
     const payloadJson = JSON.stringify(normalized);
     const transaction = options.transaction;
-
-    // Canonical PostgreSQL path: one explicit atomic upsert.
-    if (isPostgres() && !transaction) {
-        await ensureReady();
-        await upsertSnapshotRow(registrationId, payloadJson, normalized.stateVersion, normalized.initialized);
-        return normalized;
-    }
-
     let row = await ScormRuntimeSnapshot.findByPk(registrationId, { transaction });
 
     if (!row) {

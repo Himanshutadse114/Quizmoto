@@ -5,10 +5,10 @@ services:
     image: mariadb:10.11
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: CHANGE_ME_ROTATE
+      MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: kahoot_awareness
       MYSQL_USER: platform
-      MYSQL_PASSWORD: CHANGE_ME_ROTATE
+      MYSQL_PASSWORD: password
     volumes:
       - ./mysql_data_local:/var/lib/mysql
 
@@ -35,14 +35,14 @@ services:
       - "6001:5001"
     environment:
       - PORT=5001
-      - JWT_SECRET=CHANGE_ME_ROTATE
+      - JWT_SECRET=local_development_secret
       - NODE_ENV=development
       - CORS_ORIGIN=*
       - DB_DIALECT=mysql
       - DB_HOST=db
       - DB_NAME=kahoot_awareness
       - DB_USER=platform
-      - DB_PASS=CHANGE_ME_ROTATE
+      - DB_PASS=password
     depends_on:
       - db
     volumes:

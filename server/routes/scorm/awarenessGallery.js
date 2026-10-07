@@ -1,7 +1,6 @@
 'use strict';
 
 const express=require('express');
-const rateLimit=require('express-rate-limit');
 const fs=require('fs');
 const router=express.Router();
 const auth=require('../middleware');
@@ -10,22 +9,6 @@ const EmailCampaigns=require('../../services/awareness/AwarenessEmailCampaignSer
 const EmailCampaignReports=require('../../services/awareness/AwarenessEmailCampaignReportService');
 const MailService=require('../../services/mail/MailService');
 const { awarenessMailActionLimiter }=require('../../middleware/AiAbuseProtection');
-
-function envLimit(name,fallback){
-    const parsed=Number(process.env[name]);
-    return Number.isFinite(parsed)?Math.max(1,Math.floor(parsed)):fallback;
-}
-// Dedicated per-user hourly cap on campaign starts (Sept audit hardening).
-// Direct-send limiting moved to the shared awarenessMailActionLimiter.
-const campaignStartLimiter=rateLimit({
-    windowMs:60*60*1000,
-    limit:envLimit('AWARENESS_CAMPAIGN_START_HOURLY_LIMIT',10),
-    standardHeaders:true,
-    legacyHeaders:false,
-    skip:()=>process.env.NODE_ENV==='test',
-    keyGenerator:(req)=>`awareness-campaign-start:user:${req.authenticatedUserId||req.userId||'unauthenticated'}`,
-    handler:(_req,res)=>res.status(429).json({ok:false,message:'Too many campaign starts. Please wait before starting another campaign.',code:'AWARENESS_CAMPAIGN_START_RATE_LIMITED'})
-});
 
 function editor(req,res,next){
     const role=String(req.scormRole||'').toLowerCase();
@@ -163,7 +146,8 @@ router.get('/email-campaigns/:id',auth,editor,async(req,res)=>{
     }catch(e){fail(res,e,'Unable to load the email campaign.')}
 });
 router.get('/email-campaigns/:id/report',auth,editor,async(req,res)=>{
-    let generated=null;    try{
+    let generated=null;
+    try{
         generated=await EmailCampaignReports.generateCampaignReportFile({
             campaignId:req.params.id,
             hostId:req.userId,
@@ -179,10 +163,6 @@ router.get('/email-campaigns/:id/report',auth,editor,async(req,res)=>{
     }
 });
 router.post('/email-campaigns/:id/start',auth,editor,awarenessMailActionLimiter,async(req,res)=>{
-    try{res.json({ok:true,campaign:await EmailCampaigns.startCampaign(req.params.id,req.userId)})}
-    catch(e){fail(res,e,'Unable to start the email campaign.')}
-});
-router.post('/email-campaigns/:id/start',auth,editor,campaignStartLimiter,async(req,res)=>{
     try{res.json({ok:true,campaign:await EmailCampaigns.startCampaign(req.params.id,req.userId)})}
     catch(e){fail(res,e,'Unable to start the email campaign.')}
 });

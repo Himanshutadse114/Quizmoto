@@ -41,7 +41,7 @@ const {
     publicIdentifierWhere
 } = require('../services/PublicaBrandingService');
 
-const JWT_SECRET = require('../config/jwtSecret');
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 function sanitiseText(value, maxLength) {
     const text = String(value || '').trim();
     return text ? text.slice(0, maxLength) : '';

@@ -146,9 +146,9 @@ function courseUiPolishScript() {
   var resizeTimer=null;
 
   function isEffectivelyFullWindow(){
-    var screen=window.screen||{};
-    var availableWidth=Number(screen.availWidth||screen.width||0);
-    var availableHeight=Number(screen.availHeight||screen.height||0);
+    var screenInfo=window.screen||{};
+    var availableWidth=Number(screenInfo.availWidth||screenInfo.width||0);
+    var availableHeight=Number(screenInfo.availHeight||screenInfo.height||0);
     var outerWidth=Number(window.outerWidth||window.innerWidth||0);
     var outerHeight=Number(window.outerHeight||window.innerHeight||0);
     var viewportWide=Number(window.innerWidth||0)>=1100;

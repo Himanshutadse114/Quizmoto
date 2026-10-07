@@ -408,7 +408,7 @@ export default function FlipbookEditor() {
             </div>
           </div>
           <div className="flip-preview-copy"><strong>Responsive reader included</strong><p>Desktop readers see a book-style spread. Phones automatically switch to a single-page swipe view with the same share link.</p></div>
-          {published && <div className="flip-share-box"><div><div className="flip-kicker">Published link</div><div className="flip-share-url">{publishedUrl}</div></div><div className="flex gap-2"><button type="button" aria-label="Copy share link" onClick={copyShare} className="flip-icon-button"><Copy size={14} /></button><a href={publishedUrl} target="_blank" rel="noreferrer" className="flip-icon-button"><Share2 size={14} /></a></div></div>}
+          {published && <div className="flip-share-box"><div><div className="flip-kicker">Published link</div><div className="flip-share-url">{publishedUrl}</div></div><div className="flex gap-2"><button type="button" onClick={copyShare} className="flip-icon-button"><Copy size={14} /></button><a href={publishedUrl} target="_blank" rel="noreferrer" className="flip-icon-button"><Share2 size={14} /></a></div></div>}
         </aside>
       </div>
     </div>

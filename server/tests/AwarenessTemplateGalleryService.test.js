@@ -6,9 +6,6 @@ const JSZip=require('jszip');
 
 const tempRoot=fs.mkdtempSync(path.join(os.tmpdir(),'awareness-gallery-'));
 process.env.NODE_ENV='test';
-// Save/restore: this suite must not leak REPORT_ARTIFACTS_DIR into other
-// suites (it used to redirect every report export into this temp dir).
-const prevReportArtifactsDir=process.env.REPORT_ARTIFACTS_DIR;
 process.env.REPORT_ARTIFACTS_DIR=tempRoot;
 process.env.AWARENESS_ASSET_BASE_URL='https://api.example.com';
 process.env.AWARENESS_SEED_REFERENCE_TEMPLATES='true';
@@ -29,8 +26,6 @@ describe('AwarenessTemplateGalleryService',function(){
 
     after(()=>{
         fs.rmSync(tempRoot,{recursive:true,force:true});
-        if(prevReportArtifactsDir===undefined)delete process.env.REPORT_ARTIFACTS_DIR;
-        else process.env.REPORT_ARTIFACTS_DIR=prevReportArtifactsDir;
     });
 
     it('discovers the eight supplied reference HTML templates',async()=>{

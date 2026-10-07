@@ -42,8 +42,8 @@ describe('Reports API (/api/quizzes/reports)', function () {
 
         const host = await User.create({ username: 'reporthost', email: 'report@test.com', password: 'pass' });
         hostId = host.id;
-        hostToken = jwt.sign({ userId: hostId }, require('../config/jwtSecret'), { expiresIn: '1h' });
-        playerToken = jwt.sign({ userId: 9999 }, require('../config/jwtSecret'), { expiresIn: '1h' });
+        hostToken = jwt.sign({ userId: hostId }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '1h' });
+        playerToken = jwt.sign({ userId: 9999 }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '1h' });
 
         const quiz = await Quiz.create({ title: 'Report Quiz', hostId });
         quizId = quiz.id;

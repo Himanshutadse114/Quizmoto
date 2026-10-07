@@ -12,7 +12,6 @@ const { attachCanonicalState } = require('../../services/scorm/ScormCanonicalPro
 const { serializeRegistration } = require('../../services/scorm/ScormProgressService');
 const { extractInteractions, answerSummary } = require('../../services/scorm/ScormInteractionReportService');
 const { resolveCourseOrPackageId } = require('../../services/scorm/ScormCourseWorkspaceService');
-const LearningState = require('../../services/scorm/ScormLearningStateService');
 
 const FINISHED = new Set(['completed', 'passed', 'failed']);
 const INACTIVE = ['revoked', 'superseded'];
@@ -154,20 +153,6 @@ async function attachLearningState(courses) {
         Array.isArray(course.registrations) ? course.registrations : []
     ));
     await attachCanonicalState(registrations);
-    // Host tracking reads only the v2 attempt-state document per registration,
-    // never the legacy runtime tables.
-    try {
-        const ids = registrations.map((registration) => registration.id).filter(Boolean);
-        const states = await LearningState.listByRegistrationIds(ids);
-        for (const registration of registrations) {
-            const state = states.get(String(registration.id));
-            if (state) registration.learningState = state;
-        }
-    } catch (err) {
-        console.warn('[scorm-tracking-v4] v2 learning state unavailable', {
-            error: err?.message || String(err)
-        });
-    }
     return courses;
 }
 

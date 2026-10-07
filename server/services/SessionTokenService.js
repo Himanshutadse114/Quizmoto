@@ -1,8 +1,15 @@
 const jwt = require('jsonwebtoken');
 
-// JWT_SECRET is mandatory (config/jwtSecret): throws in production when
-// missing/weak, ephemeral random secret in test. No fallback defaults.
-const JWT_SECRET = require('../config/jwtSecret');
+const isProduction = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+if (isProduction && !process.env.JWT_SECRET) {
+    const err = new Error('JWT_SECRET is required for Live Quiz authentication in production');
+    err.code = 'PROD_JWT_SECRET_MISSING';
+    throw err;
+}
+
+// Tests and local development retain the historical fallback so fixtures do not
+// need production secrets. Production is forced to use an explicit secret above.
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
 /**
  * Pure, isolated authorization service to decouple JWT verification

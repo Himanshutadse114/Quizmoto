@@ -8,7 +8,7 @@ function escapeHtml(value) {
 }
 
 function safeJson(value) {
-    return JSON.stringify(value).replace(/</g, '\\u003c');
+    return JSON.stringify(value).replace(/</g, '\u003c');
 }
 
 function renderFlipbookReader(book) {

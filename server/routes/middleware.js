@@ -11,7 +11,7 @@ const { assertScormRouteAllowed } = require('../services/scorm/ScormRbacService'
 const { assertActiveAccount } = require('../services/AccountProfileService');
 const { isPlatformContentPurgeActive } = require('../services/scorm/PlatformContentPurgeService');
 
-const JWT_SECRET = require('../config/jwtSecret');
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const requestContextCache = new Map();
 

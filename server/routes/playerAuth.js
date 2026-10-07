@@ -7,7 +7,7 @@ const { Quiz, Question } = require('../models/Quiz');
 const { OAuth2Client } = require('google-auth-library');
 const rateLimit = require('express-rate-limit');
 
-const JWT_SECRET = require('../config/jwtSecret');
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1001652255296-695gf3vjul0fjh1oden4k2n6tvvdvncn.apps.googleusercontent.com';
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 const playerAuthLimiter = rateLimit({

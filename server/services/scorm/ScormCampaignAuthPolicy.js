@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 
-const JWT_SECRET = require('../../config/jwtSecret');
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const CAMPAIGN_AUTH_MODES = Object.freeze(['email_code', 'google', 'microsoft', 'sso_any']);
 const NEW_CAMPAIGN_AUTH_MODES = Object.freeze(['email_code', 'google', 'microsoft']);
 

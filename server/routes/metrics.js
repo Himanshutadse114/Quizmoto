@@ -1,9 +1,7 @@
 /**
  * P3-T09 — export in-process metrics.
  * GET /api/metrics
- * Protection: set METRICS_TOKEN and send ?token= or header x-metrics-token.
- * Without METRICS_TOKEN the endpoint 404s in production and is publicly
- * readable (with a startup warning) elsewhere.
+ * Optional protection: set METRICS_TOKEN and send header x-metrics-token
  *
  * Public website enquiries are also accepted at POST /api/metrics/inquiry.
  * They are delivered to the platform Super Admin. HTTPS mail delivery is
@@ -12,7 +10,6 @@
  */
 
 const express = require('express');
-const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const https = require('https');
 const nodemailer = require('nodemailer');
@@ -23,7 +20,7 @@ const { SUPER_ADMIN_EMAIL } = require('../services/scorm/ScormAccessService');
 
 const router = express.Router();
 const WEBSITE_INQUIRY_RECIPIENT = String(
-    process.env.WEBSITE_INQUIRY_TO || SUPER_ADMIN_EMAIL || ''
+    process.env.WEBSITE_INQUIRY_TO || SUPER_ADMIN_EMAIL || 'tadsehimanshu@gmail.com'
 ).trim().toLowerCase();
 
 function clean(value, max = 5000) {
@@ -170,28 +167,13 @@ const inquiryLimiter = rateLimit({
     message: { ok: false, message: 'Too many enquiries were submitted. Please try again later.' }
 });
 
-function metricsTokenMatches(provided, expected) {
-    if (!provided || !expected) return false;
-    const a = Buffer.from(String(provided));
-    const b = Buffer.from(String(expected));
-    return a.length === b.length && crypto.timingSafeEqual(a, b);
-}
-
 router.get('/', (req, res) => {
-    const token = String(process.env.METRICS_TOKEN || '');
-    const isProduction = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+    const token = process.env.METRICS_TOKEN;
     if (token) {
-        // Match the documented auth: ?token= query param or x-metrics-token header.
         const provided = req.headers['x-metrics-token'] || req.query.token;
-        if (!metricsTokenMatches(provided, token)) {
+        if (provided !== token) {
             return res.status(401).json({ message: 'Unauthorized' });
         }
-    } else if (isProduction) {
-        // Fail closed in production: an unprotected metrics endpoint would
-        // leak internal counters. Set METRICS_TOKEN to expose it.
-        return res.status(404).json({ message: 'Not found' });
-    } else {
-        console.warn('[metrics] METRICS_TOKEN is not set; /api/metrics is publicly readable in this non-production environment.');
     }
     res.json(Metrics.snapshot());
 });

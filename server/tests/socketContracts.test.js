@@ -32,7 +32,7 @@ describe('Socket Contracts API', () => {
 
         const host = await User.create({ username: 'contracthost', email: 'c@c.com', password: '123' });
         hostId = host.id;
-        hostToken = jwt.sign({ userId: hostId }, require('../config/jwtSecret'));
+        hostToken = jwt.sign({ userId: hostId }, process.env.JWT_SECRET || 'fallback_secret');
         
         const quiz = await Quiz.create({ title: 'Contract Quiz', hostId });
         quizId = quiz.id;

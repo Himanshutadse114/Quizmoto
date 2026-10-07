@@ -51,7 +51,7 @@ describe('Live Quiz session security hardening', function () {
         });
         hostToken = jwt.sign(
             { userId: host.id },
-            require('../config/jwtSecret')
+            process.env.JWT_SECRET || 'fallback_secret'
         );
 
         quiz = await Quiz.create({ title: 'Security Quiz', hostId: host.id });

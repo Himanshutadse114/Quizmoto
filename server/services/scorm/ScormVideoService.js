@@ -9,7 +9,7 @@ const {
     ScormVideoProgress
 } = require('../../models/scorm');
 
-const JWT_SECRET = require('../../config/jwtSecret');
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 let schemaPromise = null;
 
 function fail(message, code, status = 400) {

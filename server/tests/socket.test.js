@@ -38,23 +38,21 @@ describe('Socket.IO Integration Tests', function() {
     });
 
     after((done) => {
-        let finished = false;
-        const finish = () => { if (!finished) { finished = true; done(); } };
         for (const client of [hostSocket, p1Socket, p2Socket, badSocket]) {
             try { if (client) client.disconnect(); } catch (_) {}
         }
         if (serverProcess && serverProcess.exitCode == null) {
             const timer = setTimeout(() => {
                 try { serverProcess.kill('SIGKILL'); } catch (_) {}
-                finish();
+                done();
             }, 3000);
             serverProcess.once('exit', () => {
                 clearTimeout(timer);
-                finish();
+                done();
             });
             serverProcess.kill();
         } else {
-            finish();
+            done();
         }
     });
 

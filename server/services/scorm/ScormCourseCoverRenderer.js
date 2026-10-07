@@ -181,15 +181,9 @@ function renderCourseCoverSvg(spec = {}, analysis = {}, options = {}) {
           <stop offset="0" stop-color="${p.teal}" stop-opacity=".18"/>
           <stop offset="1" stop-color="${p.teal}" stop-opacity="0"/>
         </linearGradient>
-        <radialGradient id="coverDeepShadow" cx=".5" cy=".42" r=".75">
-          <stop offset="0" stop-color="${p.ink}" stop-opacity=".22"/>
-          <stop offset=".6" stop-color="${p.ink}" stop-opacity=".08"/>
-          <stop offset="1" stop-color="${p.ink}" stop-opacity="0"/>
-        </radialGradient>
       </defs>
 
       <rect width="${width}" height="${height}" fill="url(#qmxCoverPaper)"/>
-      <ellipse cx="${width / 2}" cy="${height * .62}" rx="${width * .42}" ry="${height * .30}" fill="url(#coverDeepShadow)"/>
       <circle cx="${mobile ? 62 : 70}" cy="${mobile ? 110 : 86}" r="${mobile ? 145 : 135}" fill="${p.teal}" opacity=".12"/>
       <circle cx="${mobile ? 842 : 1135}" cy="${mobile ? 150 : 100}" r="${mobile ? 150 : 130}" fill="${p.yellow}" opacity=".48"/>
       <path d="M${mobile ? 25 : 28} ${mobile ? 265 : 180} C${mobile ? 260 : 300} ${mobile ? 60 : 20} ${mobile ? 650 : 900} ${mobile ? 70 : 26} ${mobile ? 885 : 1172} ${mobile ? 300 : 205}" fill="none" stroke="${p.tealDark}" stroke-width="3" opacity=".10"/>

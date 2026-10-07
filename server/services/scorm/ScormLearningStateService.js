@@ -241,133 +241,6 @@ function emptyState(registrationId) {
 
 async function ensureReady() {
     await RuntimeStore.ensureReady();
-    await ensureV2Ready();
-}
-
-/**
- * Local-first v2 document store: one complete learner state document per
- * registration in `scorm_learning_state_v2`. Used on PostgreSQL; other
- * dialects keep the legacy runtime-snapshot path.
- */
-const V2_DDL = `CREATE TABLE IF NOT EXISTS scorm_learning_state_v2 (
-    registration_id UUID PRIMARY KEY,
-    state_json TEXT NOT NULL,
-    sequence INTEGER NOT NULL DEFAULT 0,
-    client_revision INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);`;
-
-let v2ReadyPromise = null;
-
-function isPostgres() {
-    try {
-        return require('../../config/database').sequelize.getDialect() === 'postgres';
-    } catch (_) {
-        return false;
-    }
-}
-
-async function ensureV2Ready() {
-    if (!isPostgres()) return;
-    if (!v2ReadyPromise) {
-        v2ReadyPromise = (async () => {
-            const { sequelize } = require('../../config/database');
-            await sequelize.query(V2_DDL);
-        })().catch((err) => {
-            v2ReadyPromise = null;
-            throw err;
-        });
-    }
-    return v2ReadyPromise;
-}
-
-async function loadV2Document(registrationId) {
-    const { sequelize } = require('../../config/database');
-    const [rows] = await sequelize.query(
-        'SELECT registration_id, state_json, sequence, client_revision, updated_at FROM scorm_learning_state_v2 WHERE registration_id = :registrationId',
-        { replacements: { registrationId: String(registrationId) } }
-    );
-    if (!rows.length) return null;
-    try {
-        const doc = JSON.parse(rows[0].state_json);
-        doc.sequence = Number(rows[0].sequence || 0);
-        doc.clientRevision = Number(rows[0].client_revision || 0);
-        doc.updatedAt = rows[0].updated_at || doc.updatedAt || null;
-        return doc;
-    } catch (_) {
-        return null;
-    }
-}
-
-async function persistV2Document(registrationId, payload = {}) {
-    await ensureV2Ready();
-    const { sequelize } = require('../../config/database');
-    const values = asPlainObject(payload.values);
-    const requestedRevision = Math.max(0, Math.floor(Number(payload.clientRevision) || 0));
-    const current = await loadV2Document(registrationId);
-    const currentRevision = Math.max(0, Number(current?.clientRevision || 0));
-
-    // A browser tab that is behind the server state may not overwrite a newer
-    // commit. It receives the current canonical document and will continue from it.
-    if (requestedRevision > 0 && requestedRevision < currentRevision) {
-        return current;
-    }
-
-    const derived = deriveState(values, current);
-    const sequence = Math.max((current?.sequence || 0) + 1, 1);
-    const clientRevision = Math.max(sequence, requestedRevision, currentRevision, 1);
-    const event = String(payload.event || 'commit').toLowerCase();
-    const finished = event === 'finish' || event === 'terminate' || event === 'exit';
-    const doc = {
-        registrationId: String(registrationId),
-        values,
-        lessonStatus: derived.lessonStatus,
-        scoreRaw: derived.scoreRaw,
-        scoreMin: finiteNumber(firstValue(values, ['cmi.core.score.min', 'cmi.score.min'])) ?? current?.scoreMin ?? null,
-        scoreMax: finiteNumber(firstValue(values, ['cmi.core.score.max', 'cmi.score.max'])) ?? current?.scoreMax ?? null,
-        lessonLocation: derived.lessonLocation,
-        suspendData: derived.suspendData,
-        totalTime: derived.totalTime,
-        progressPercent: derived.progressPercent,
-        sequence,
-        clientRevision,
-        initialized: finished ? false : true,
-        updatedAt: new Date().toISOString()
-    };
-
-    // Atomic upsert: exactly one row per registration, sequence always grows,
-    // and a stale client revision can never overwrite a newer document.
-    await sequelize.query(
-        `INSERT INTO scorm_learning_state_v2
-            (registration_id, state_json, sequence, client_revision, created_at, updated_at)
-         VALUES (:registrationId, :stateJson, :sequence, :clientRevision, NOW(), NOW())
-         ON CONFLICT (registration_id) DO UPDATE SET
-            state_json = EXCLUDED.state_json,
-            sequence = scorm_learning_state_v2.sequence + 1,
-            client_revision = EXCLUDED.client_revision,
-            updated_at = NOW()
-         WHERE scorm_learning_state_v2.client_revision < EXCLUDED.client_revision
-            OR EXCLUDED.client_revision = 0;`,
-        {
-            replacements: {
-                registrationId: String(registrationId),
-                stateJson: JSON.stringify(doc),
-                sequence,
-                clientRevision
-            }
-        }
-    );
-    return loadV2Document(registrationId) || doc;
-}
-
-async function loadStateDocument(registrationId) {
-    if (isPostgres()) {
-        await ensureV2Ready();
-        return loadV2Document(registrationId);
-    }
-    const runtime = await RuntimeStore.load(registrationId);
-    return runtimeToState(registrationId, runtime);
 }
 
 async function authorize(registrationId, token) {
@@ -420,9 +293,6 @@ function launchValues(previousState) {
 }
 
 async function persistDocument(registrationId, payload = {}) {
-    if (isPostgres()) {
-        return persistV2Document(registrationId, payload);
-    }
     await ensureReady();
     const currentRuntime = await RuntimeStore.load(registrationId);
     const previous = runtimeToState(registrationId, currentRuntime) || emptyState(registrationId);
@@ -465,9 +335,9 @@ async function getState(registrationId, token) {
     const registration = await authorize(registrationId, token);
     await ensureReady();
 
-    let beforeLaunchState;
+    let runtime;
     try {
-        beforeLaunchState = await loadStateDocument(registrationId);
+        runtime = await RuntimeStore.load(registrationId);
     } catch (err) {
         console.error('[scorm-tracking] canonical state load failed', {
             registrationId,
@@ -480,7 +350,7 @@ async function getState(registrationId, token) {
         return fallback;
     }
 
-    const beforeLaunch = beforeLaunchState || emptyState(registrationId);
+    const beforeLaunch = runtimeToState(registrationId, runtime) || emptyState(registrationId);
     const resume = hasResumeActivity(beforeLaunch);
     let state = beforeLaunch;
 
@@ -537,26 +407,6 @@ async function listByRegistrationIds(registrationIds) {
     const output = new Map();
     if (!ids.length) return output;
 
-    // Host tracking reads the v2 attempt-state document on PostgreSQL.
-    if (isPostgres()) {
-        await ensureV2Ready();
-        const { sequelize } = require('../../config/database');
-        const [rows] = await sequelize.query(
-            'SELECT registration_id, state_json, sequence, client_revision, updated_at FROM scorm_learning_state_v2 WHERE registration_id IN (:ids)',
-            { replacements: { ids } }
-        );
-        for (const row of rows) {
-            try {
-                const doc = JSON.parse(row.state_json);
-                doc.sequence = Number(row.sequence || 0);
-                doc.clientRevision = Number(row.client_revision || 0);
-                doc.updatedAt = row.updated_at || doc.updatedAt || null;
-                if (doc && hasActivity(doc)) output.set(String(row.registration_id), doc);
-            } catch (_) { /* skip corrupt documents */ }
-        }
-        return output;
-    }
-
     const snapshots = await RuntimeReader.listByRegistrationIds(ids);
     for (const [registrationId, runtime] of snapshots.entries()) {
         const state = runtimeToState(registrationId, runtime);
@@ -566,20 +416,6 @@ async function listByRegistrationIds(registrationIds) {
 }
 
 async function destroyState(registrationId) {
-    if (isPostgres()) {
-        try {
-            const { sequelize } = require('../../config/database');
-            await sequelize.query(
-                'DELETE FROM scorm_learning_state_v2 WHERE registration_id = :registrationId',
-                { replacements: { registrationId: String(registrationId) } }
-            );
-        } catch (err) {
-            console.warn('[scorm-tracking] v2 state delete skipped', {
-                registrationId,
-                error: err?.message || String(err)
-            });
-        }
-    }
     try {
         await RuntimeStore.destroy(registrationId);
     } catch (err) {
@@ -591,7 +427,6 @@ async function destroyState(registrationId) {
 }
 
 function resetReadyForTests() {
-    v2ReadyPromise = null;
     if (typeof RuntimeStore.resetReadyForTests === 'function') RuntimeStore.resetReadyForTests();
 }
 

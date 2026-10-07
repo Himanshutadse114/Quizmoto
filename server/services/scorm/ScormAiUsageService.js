@@ -12,9 +12,7 @@ const AI_OPERATION_KINDS = new Set([
     'course_generation',
     'quiz_generation',
     'source_analysis',
-    'source_upload',
-    'video_script',
-    'video_build'
+    'source_upload'
 ]);
 
 function normalizeLimit(value) {

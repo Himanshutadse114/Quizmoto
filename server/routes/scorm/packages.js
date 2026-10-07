@@ -19,13 +19,6 @@ const { deletePackageFromStorage } = require('../../services/scorm/ScormPackageC
 const { retireCatalogSourcesForPackage } = require('../../services/scorm/ScormCourseCatalogService');
 const logger = require('../../utils/logger');
 
-// Local async wrapper: forwards promise rejections to Express' error-handling
-// middleware so a DB blip in an unguarded handler can never become an
-// unhandled rejection / process crash. Success-path behavior is unchanged.
-const asyncHandler = (fn) => (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-};
-
 const backgroundUnpackQueue = [];
 const backgroundUnpackSet = new Set();
 let backgroundUnpackRunning = false;
@@ -389,7 +382,7 @@ router.post('/:id/reprocess', auth, async (req, res) => {
     }
 });
 
-router.get('/', auth, asyncHandler(async (req, res) => {
+router.get('/', auth, async (req, res) => {
     res.setHeader('Cache-Control', 'private, no-store');
     const list = await ScormPackage.findAll({
         where: { hostId: req.userId, source: { [Op.ne]: 'catalog' } },
@@ -418,7 +411,7 @@ router.get('/', auth, asyncHandler(async (req, res) => {
         order: [['createdAt', 'DESC']]
     });
     res.json(list.filter((p) => p.status !== 'deleted'));
-}));
+});
 
 router.get('/:id/download-link', auth, async (req, res) => {
     try {
@@ -558,14 +551,14 @@ router.get('/:id/analysis', auth, async (req, res) => {
     }
 });
 
-router.get('/:id', auth, asyncHandler(async (req, res) => {
+router.get('/:id', auth, async (req, res) => {
     const pkg = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId } });
     if (!pkg || pkg.status === 'deleted') return res.status(404).json({ message: 'Not found' });
     res.setHeader('Cache-Control', 'private, no-store');
     res.json(pkg);
-}));
+});
 
-router.delete('/:id', auth, asyncHandler(async (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
     const managed = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId, source: 'catalog' } });
     if (managed) return res.status(403).json({ message: 'Super Admin catalogue packages cannot be deleted by a tenant.', code: 'SCORM_CATALOG_PACKAGE_READ_ONLY' });
     const pkg = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId } });
@@ -608,6 +601,6 @@ router.delete('/:id', auth, asyncHandler(async (req, res) => {
         archivedCourses: true,
         storageDeleted: storageResult.deleted || 0
     });
-}));
+});
 
 module.exports = router;

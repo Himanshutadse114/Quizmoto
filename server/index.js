@@ -14,10 +14,6 @@ try {
     process.exit(1);
 }
 
-// Mandatory JWT signing secret. Requiring this module fails fast with a clear
-// message when JWT_SECRET is missing/weak (ephemeral random secret in test env).
-const JWT_SECRET = require('./config/jwtSecret');
-
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -171,35 +167,6 @@ app.use((req, res, next) => {
     next();
 });
 
-// Helmet, with the directives that conflict with this product's document
-// responses disabled (see boot report for the full analysis):
-// - contentSecurityPolicy: every HTML/JS document this server emits already
-//   carries its own precise CSP via res.setHeader (play shell, SCORM content
-//   files, flipbook reader), including explicit frame-ancestors allowlists.
-//   Helmet's default (script-src 'self', frame-ancestors 'self') would break
-//   inline player scripts and contradict the intentional embed policies.
-// - frameguard: X-Frame-Options: SAMEORIGIN contradicts the routes' own
-//   frame-ancestors directives (flipbook reader allows '*', preview embeds
-//   allow any https/http ancestor). Browsers honor frame-ancestors over
-//   X-Frame-Options anyway; sending both would be contradictory.
-// - crossOriginOpenerPolicy: the default 'same-origin' severs window.opener
-//   for the cross-origin LMS popup flow (play.js notifyOpener/notifyParentExit
-//   postMessage back to the frontend). 'same-origin-allow-popups' keeps the
-//   opener link while still isolating popups opened by the player itself.
-// - crossOriginResourcePolicy: the default 'same-origin' would block
-//   cross-origin <img> loads of backend-hosted assets (template thumbnails,
-//   flipbook pages, SCORM assets) from the LMS frontend. This backend is an
-//   asset server by design, so the directive is disabled.
-// Trade-off: we lose helmet's generic XSS/framing defaults, but every rendered
-// document already sets a tailored policy; JSON API responses gain the rest
-// (HSTS, nosniff, referrer policy, etc.).
-app.use(helmet({
-    contentSecurityPolicy: false,
-    frameguard: false,
-    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
-    crossOriginResourcePolicy: false
-}));
-
 app.use((req, res, next) => cors({
     origin: (origin, callback) => {
         if (isSameHostBrowserOrigin(req, origin)) return callback(null, true);
@@ -229,34 +196,8 @@ app.use(rateLimit({
     }
 }));
 
-// Large-payload JSON endpoints (base64 ZIPs / data URLs). This dispatcher runs
-// BEFORE the tight global parser so the 50mb budget applies to exactly these
-// routes; body-parser marks the request parsed (req._body), so the global pass
-// below skips them. Raw binary uploads (SCORM ZIP via express.raw, author
-// chunks) carry their own route-level limits and never reach these parsers.
-// Verified: no other route legitimately needs >1mb — auth/account/player
-// payloads are a few KB; session/xapi/campaign payloads are small JSON; the
-// video upload metadata is header-based; session.js already sets its own 2mb.
-const LARGE_JSON_BODY_PATTERNS = [
-    /^\/api\/scorm\/packages\/upload-json$/, // {zipBase64} SCORM package import (<=100mb)
-    /^\/api\/scorm\/awareness-gallery\/central\/upload$/, // {zipBase64} central template ZIP
-    /^\/api\/scorm\/awareness-gallery\/central\/[^/]+\/thumbnail$/, // {dataUrl} central thumbnail
-    /^\/api\/scorm\/awareness-gallery\/mine\/[^/]+\/image$/, // {dataUrl} template image replace
-    /^\/api\/scorm\/author\/(analyze|generate)$/, // {fileBase64} AI-authoring source doc (<=100mb)
-    /^\/api\/scorm\/flipbooks\/[^/]+\/pages$/ // {dataUrl} flipbook page image (direct-upload fallback)
-];
-const largeJsonParser = express.json({ limit: '50mb' });
-app.use((req, res, next) => {
-    const method = String(req.method || '').toUpperCase();
-    if (method !== 'POST' && method !== 'PUT' && method !== 'PATCH') return next();
-    if (LARGE_JSON_BODY_PATTERNS.some((re) => re.test(req.path))) {
-        return largeJsonParser(req, res, next);
-    }
-    next();
-});
-
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ limit: '1mb', extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const startServer = async () => {
     app.get(['/api', '/api/', '/health'], (req, res) => {
@@ -314,36 +255,6 @@ const startServer = async () => {
             }
         }
 
-        // Crash recovery for awareness email campaigns. A campaign left in
-        // 'sending' when the process died would otherwise look live forever and
-        // could double-send if an operator resumes it blindly. Park each one as
-        // 'stopped' with the progress snapshot in lastError. Never auto-resume
-        // sending here. A failure in this block must never prevent boot.
-        try {
-            const ScormAwarenessEmailCampaign = require('./models/scorm/ScormAwarenessEmailCampaign');
-            const stuck = await ScormAwarenessEmailCampaign.findAll({ where: { status: 'sending' } });
-            for (const campaign of stuck) {
-                const sent = Number(campaign.sentCount || 0);
-                const failed = Number(campaign.failedCount || 0);
-                campaign.status = 'stopped';
-                campaign.endedAt = new Date();
-                campaign.lastError =
-                    `Server restarted during delivery; sent=${sent} failed=${failed} — review before re-sending`;
-                await campaign.save();
-            }
-            if (stuck.length > 0) {
-                logger.info('awareness_email_campaign_crash_recovery', {
-                    module: 'awareness',
-                    recovered: stuck.length
-                });
-            }
-        } catch (recoveryErr) {
-            logger.warn('awareness_email_campaign_crash_recovery_failed', {
-                module: 'awareness',
-                error: recoveryErr.message
-            });
-        }
-
         if (process.env.NODE_ENV === 'test') {
             const { seedTestFixtures } = require('./tests/fixtures');
             await seedTestFixtures();
@@ -390,8 +301,7 @@ const startServer = async () => {
             const { getAccessRole } = require('./services/scorm/ScormAccessService');
             const { resolveWorkspaceContext } = require('./services/scorm/ScormWorkspaceService');
             const { assertActiveAccount } = require('./services/AccountProfileService');
-            // JWT_SECRET comes from server/config/jwtSecret.js (required at the top
-            // of this file); no fallback is used anywhere in this process.
+            const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
             io.on('connection', (socket) => {
                 socket.on('join_scorm_course', async (payload) => {
                     try {
@@ -439,32 +349,6 @@ const startServer = async () => {
         SessionWatchdogService.startPeriodic(
             Number(process.env.SESSION_WATCHDOG_INTERVAL_MS) || 15000
         );
-
-        // Global error-handling middleware (4 args). Registered after every
-        // route so any next(err) — e.g. from the asyncHandler wrappers or a DB
-        // blip mid-request — lands here instead of crashing the process or
-        // hanging the socket. Stack traces are only exposed outside production.
-        // eslint-disable-next-line no-unused-vars
-        app.use((err, req, res, next) => {
-            logger.error('unhandled_request_error', {
-                module: 'http',
-                method: req.method,
-                url: req.originalUrl,
-                error: err && err.message,
-                stack: err && err.stack
-            });
-            if (res.headersSent) return next(err);
-            const rawStatus = Number(err && err.status);
-            const status = rawStatus >= 400 && rawStatus < 600 ? rawStatus : 500;
-            const body = status >= 500
-                ? { error: 'Internal server error' }
-                : { error: (err && err.message) || 'Bad request' };
-            if (String(process.env.NODE_ENV || '').toLowerCase() !== 'production') {
-                body.message = err && err.message;
-                body.stack = err && err.stack;
-            }
-            res.status(status).json(body);
-        });
 
         const PORT = process.env.PORT || 5001;
         server.listen(PORT, '0.0.0.0', () => {

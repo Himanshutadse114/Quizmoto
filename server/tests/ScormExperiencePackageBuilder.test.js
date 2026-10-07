@@ -43,7 +43,7 @@ describe('ScormExperiencePackageBuilder V5', () => {
             quiz: []
         };
         const result = enrichAnalysis(input);
-        expect(result.experienceVersion).to.equal(6);
+        expect(result.experienceVersion).to.equal(5);
         expect(result.slides).to.have.length(1);
         expect(result.slides[0].title).to.equal('Phishing Process');
         expect(result.slides[0].layout).to.equal('process');

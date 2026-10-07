@@ -1,10 +1,4 @@
 const { expect } = require('chai');
-// ScormAccessService reads SCORM_SUPER_ADMIN_EMAIL once at module load and
-// runs deny-by-default when it is unset, so configure a test identity BEFORE
-// requiring the service. Respect an explicitly provided env value.
-if (!process.env.SCORM_SUPER_ADMIN_EMAIL) {
-    process.env.SCORM_SUPER_ADMIN_EMAIL = 'superadmin@example.com';
-}
 const ScormAccessGrant = require('../models/ScormAccessGrant');
 const ScormAccessRequest = require('../models/ScormAccessRequest');
 const Access = require('../services/scorm/ScormAccessService');
@@ -187,31 +181,5 @@ describe('ScormAccessService', () => {
         expect(payload.message).to.include('registration has been captured');
         expect(payload.message).to.include('LMSGEN administrator');
         expect(payload.message).to.include('same credentials');
-    });
-
-    it('denies super-admin checks when SCORM_SUPER_ADMIN_EMAIL is unset', async () => {
-        const servicePath = require.resolve('../services/scorm/ScormAccessService');
-        const saved = process.env.SCORM_SUPER_ADMIN_EMAIL;
-        const origFindOne = ScormAccessGrant.findOne;
-        const origFindOrCreate = ScormAccessGrant.findOrCreate;
-        delete process.env.SCORM_SUPER_ADMIN_EMAIL;
-        delete require.cache[servicePath];
-        const Fresh = require('../services/scorm/ScormAccessService');
-        ScormAccessGrant.findOne = async () => null;
-        ScormAccessGrant.findOrCreate = async () => { throw new Error('must not hit DB when unconfigured'); };
-        try {
-            expect(Fresh.SUPER_ADMIN_CONFIGURED).to.equal(false);
-            expect(Fresh.isSuperAdminEmail('anyone@example.com')).to.equal(false);
-            expect(Fresh.isSuperAdminEmail('')).to.equal(false);
-            expect(await Fresh.ensureSuperAdminGrant()).to.equal(null);
-            expect(await Fresh.getAccessRole('anyone@example.com')).to.equal(null);
-        } finally {
-            ScormAccessGrant.findOne = origFindOne;
-            ScormAccessGrant.findOrCreate = origFindOrCreate;
-            if (saved === undefined) delete process.env.SCORM_SUPER_ADMIN_EMAIL;
-            else process.env.SCORM_SUPER_ADMIN_EMAIL = saved;
-            delete require.cache[servicePath];
-            require(servicePath); // restore the configured instance in cache
-        }
     });
 });

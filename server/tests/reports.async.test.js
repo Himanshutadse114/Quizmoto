@@ -17,7 +17,6 @@ describe('Reports async path (REPORTS_ASYNC)', function () {
     let app;
     let hostToken;
     let hostId;
-    let otherId;
     let sessionId;
     let testRunId;
     let prevAsync;
@@ -63,18 +62,9 @@ describe('Reports async path (REPORTS_ASYNC)', function () {
         hostId = host.id;
         hostToken = jwt.sign(
             { userId: hostId },
-            require('../config/jwtSecret'),
+            process.env.JWT_SECRET || 'fallback_secret',
             { expiresIn: '1h' }
         );
-
-        // A second, real platform user: authenticated but not the job owner,
-        // so the job-status endpoint must answer 403 (not 401).
-        const other = await User.create({
-            username: 'asyncother',
-            email: 'async-other@test.com',
-            password: 'pass'
-        });
-        otherId = other.id;
 
         const quiz = await Quiz.create({ title: 'Async Report Quiz', hostId });
         const session = await GameSession.create({
@@ -141,8 +131,8 @@ describe('Reports async path (REPORTS_ASYNC)', function () {
             .set('x-test-run-id', testRunId);
 
         const otherToken = jwt.sign(
-            { userId: otherId },
-            require('../config/jwtSecret'),
+            { userId: 99999 },
+            process.env.JWT_SECRET || 'fallback_secret',
             { expiresIn: '1h' }
         );
 

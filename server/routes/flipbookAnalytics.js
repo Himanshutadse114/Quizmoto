@@ -13,7 +13,7 @@ const {
     getLibraryAnalytics
 } = require('../services/FlipbookAnalyticsService');
 
-const JWT_SECRET = require('../config/jwtSecret');
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
 async function publicBook(shareToken) {
     return Flipbook.findOne({

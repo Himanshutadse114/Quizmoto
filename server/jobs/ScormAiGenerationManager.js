@@ -11,7 +11,6 @@ const {
     failProgress
 } = require('../services/scorm/ScormGenerationProgress');
 const ScormGenerationJob = require('../models/scorm/ScormGenerationJob');
-const { isVideoStudioKind } = require('./VideoStudioManager');
 const { getObjectStorage } = require('../storage/ObjectStorage');
 const logger = require('../utils/logger');
 const {
@@ -192,13 +191,6 @@ async function recoverPersistedJobs() {
             if (shuttingDown) break;
             const id = cleanId(row.progressId);
             if (!id || active.has(id) || queued.has(id)) continue;
-
-            // Video Studio jobs live in the same table but are owned by
-            // VideoStudioManager. Never claim them here: running course
-            // generation on a video payload fails with a confusing
-            // "analysis, source document, or topic/description required".
-            const rowKind = String(parseJson(row.payloadJson, null)?.kind || '');
-            if (isVideoStudioKind(rowKind)) continue;
 
             const claimWhere = {
                 progressId: id,
@@ -419,7 +411,11 @@ function startJob(job) {
             return;
         }
         if (message.type === 'complete') {
-            settle('complete', message.result || null);
+            // A platform-wide purge can cancel a worker just as it finishes.
+            // Treat that result as cancelled so its durable usage record cannot
+            // reattach IDs after the purge has removed the generated course.
+            if (entry.cancelRequested) settle('cancelled');
+            else settle('complete', message.result || null);
             return;
         }
         if (message.type === 'error') {
@@ -603,6 +599,29 @@ async function cancel(progressId, userId) {
     return cancelled;
 }
 
+async function cancelAll() {
+    startRecoveryLoop();
+    const durable = await ScormGenerationJob.findAll({
+        where: { status: { [Op.in]: ['queued', 'running'] } },
+        attributes: ['progressId', 'userId']
+    }).catch(() => []);
+    const jobs = new Map(durable.map((row) => [String(row.progressId), String(row.userId || '')]));
+
+    for (const [progressId, job] of queued) jobs.set(progressId, String(job.userId || ''));
+    for (const [progressId, job] of active) jobs.set(progressId, String(job.userId || ''));
+
+    await Promise.all([...jobs].map(([progressId, userId]) => cancel(progressId, userId)));
+    return { cancelled: jobs.size };
+}
+
+async function waitForIdle(timeoutMs = 6000) {
+    const deadline = Date.now() + Math.max(0, Number(timeoutMs) || 0);
+    while ((active.size || queued.size) && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    return { idle: active.size === 0 && queued.size === 0, active: active.size, queued: queued.size };
+}
+
 async function getProgress(progressId, userId) {
     startRecoveryLoop();
     const id = cleanId(progressId);
@@ -662,4 +681,4 @@ function beginShutdown() {
 process.once('SIGTERM', beginShutdown);
 process.once('SIGINT', beginShutdown);
 
-module.exports = { enqueue, cancel, getProgress, stats, recoverPersistedJobs };
+module.exports = { enqueue, cancel, cancelAll, waitForIdle, getProgress, stats, recoverPersistedJobs };
