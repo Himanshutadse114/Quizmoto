@@ -80,6 +80,21 @@ describe('ScormLaunchMetadataService', () => {
         expect(saved).to.equal(1);
     });
 
+    it('validates catalogue packages against their shared source content prefix', async () => {
+        const pkg = {
+            id: 'tenant-copy-package',
+            status: 'ready',
+            source: 'catalog',
+            storagePrefixContent: 'scorm/packages/source-package/content/',
+            entryHref: 'index.html'
+        };
+        const storage = fakeStorage({
+            'scorm/packages/source-package/content/index.html': '<html></html>'
+        });
+
+        expect(await ensurePackageLaunchMetadata(pkg, { storage })).to.equal('index.html');
+    });
+
     it('rejects ready packages that have no launchable content', async () => {
         const pkg = { id: 'pkg-empty', status: 'ready', entryHref: null };
         let caught = null;

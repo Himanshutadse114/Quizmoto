@@ -15,6 +15,23 @@ function packageContentKey(packageId, relativePath) {
     return `${packageContentPrefix(packageId)}${clean}`;
 }
 
+/**
+ * Resolve content for both ordinary packages and catalogue-managed packages.
+ * Catalogue packages keep their own database id but intentionally reuse the
+ * source package's R2 content prefix instead of duplicating every object.
+ */
+function storedPackageContentKey(pkg, relativePath) {
+    const clean = String(relativePath || '').replace(/^\/+/, '').replace(/\\/g, '/');
+    const configuredPrefix = typeof pkg === 'object' && pkg
+        ? String(pkg.storagePrefixContent || '').replace(/\\/g, '/').replace(/^\/+/, '')
+        : '';
+    if (configuredPrefix) {
+        return `${configuredPrefix.replace(/\/*$/, '/')}${clean}`;
+    }
+    const packageId = typeof pkg === 'object' && pkg ? pkg.id : pkg;
+    return packageContentKey(packageId, clean);
+}
+
 function packageMetaKey(packageId) {
     return `scorm/packages/${packageId}/meta.json`;
 }
@@ -28,6 +45,7 @@ module.exports = {
     packageZipKey,
     packageContentPrefix,
     packageContentKey,
+    storedPackageContentKey,
     packageMetaKey,
     sourceUploadKey
 };

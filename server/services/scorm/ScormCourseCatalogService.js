@@ -8,6 +8,7 @@ const {
     ScormCourseProvision
 } = require('../../models/scorm');
 const { createInviteCode } = require('./ScormInviteService');
+const { packageContentPrefix } = require('./storageKeys');
 
 function fail(message, code, status = 400) {
     const err = new Error(message);
@@ -53,7 +54,7 @@ async function ensureProvision({ source, targetHostId, targetWorkspaceId = null,
             description: source.package.description,
             standard: source.package.standard,
             storageKeyZip: source.package.storageKeyZip,
-            storagePrefixContent: source.package.storagePrefixContent,
+            storagePrefixContent: source.package.storagePrefixContent || packageContentPrefix(source.package.id),
             entryHref: source.package.entryHref,
             manifestHash: source.package.manifestHash,
             byteSize: source.package.byteSize,
@@ -69,7 +70,7 @@ async function ensureProvision({ source, targetHostId, targetWorkspaceId = null,
             description: source.package.description,
             standard: source.package.standard,
             storageKeyZip: source.package.storageKeyZip,
-            storagePrefixContent: source.package.storagePrefixContent,
+            storagePrefixContent: source.package.storagePrefixContent || packageContentPrefix(source.package.id),
             entryHref: source.package.entryHref,
             manifestHash: source.package.manifestHash,
             byteSize: source.package.byteSize,

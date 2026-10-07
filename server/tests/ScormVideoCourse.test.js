@@ -45,6 +45,13 @@ describe('SCORM video course', () => {
         expect(contentRouter.requestedByteRange('bytes=20-10')).to.equal(null);
     });
 
+    it('serves catalogue copies from the shared source-package R2 prefix', () => {
+        expect(contentRouter.resolveContentObjectKey({
+            id: 'tenant-copy-package',
+            storagePrefixContent: 'scorm/packages/source-package/content/'
+        }, 'index.html')).to.equal('scorm/packages/source-package/content/index.html');
+    });
+
     it('builds a responsive player with resume and genuine watched-coverage tracking', () => {
         const html = playerHtml({
             title: 'Safe handling',

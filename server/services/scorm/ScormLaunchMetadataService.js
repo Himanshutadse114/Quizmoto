@@ -1,6 +1,6 @@
 const path = require('path').posix;
 const { getObjectStorage } = require('../../storage/ObjectStorage');
-const { packageContentKey, packageMetaKey } = require('./storageKeys');
+const { storedPackageContentKey, packageMetaKey } = require('./storageKeys');
 
 const COMMON_ENTRY_FILES = [
     'index.html',
@@ -93,20 +93,20 @@ async function objectText(storage, key) {
     }
 }
 
-async function existingEntry(storage, packageId, candidate) {
+async function existingEntry(storage, pkg, candidate) {
     const href = normalizeEntryHref(candidate);
     if (!href) return null;
-    return await storage.exists(packageContentKey(packageId, href)) ? href : null;
+    return await storage.exists(storedPackageContentKey(pkg, href)) ? href : null;
 }
 
 async function recoverEntryHref(pkg, { storage = getObjectStorage() } = {}) {
     if (!pkg || !pkg.id) return null;
 
-    let found = await existingEntry(storage, pkg.id, pkg.entryHref);
+    let found = await existingEntry(storage, pkg, pkg.entryHref);
     if (found) return found;
 
     const meta = await objectJson(storage, packageMetaKey(pkg.id));
-    found = await existingEntry(storage, pkg.id, meta?.entryHref);
+    found = await existingEntry(storage, pkg, meta?.entryHref);
     if (found) return found;
 
     const manifestCandidates = [
@@ -115,14 +115,14 @@ async function recoverEntryHref(pkg, { storage = getObjectStorage() } = {}) {
     ].filter(Boolean);
 
     for (const manifestPath of [...new Set(manifestCandidates)]) {
-        const xml = await objectText(storage, packageContentKey(pkg.id, manifestPath));
+        const xml = await objectText(storage, storedPackageContentKey(pkg, manifestPath));
         if (!xml) continue;
-        found = await existingEntry(storage, pkg.id, manifestEntryHref(xml));
+        found = await existingEntry(storage, pkg, manifestEntryHref(xml));
         if (found) return found;
     }
 
     for (const candidate of COMMON_ENTRY_FILES) {
-        found = await existingEntry(storage, pkg.id, candidate);
+        found = await existingEntry(storage, pkg, candidate);
         if (found) return found;
     }
 

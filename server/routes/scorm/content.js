@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getObjectStorage } = require('../../storage/ObjectStorage');
 const { redirectToSignedObject } = require('../../storage/DirectObjectDelivery');
-const { packageContentKey } = require('../../services/scorm/storageKeys');
+const { storedPackageContentKey } = require('../../services/scorm/storageKeys');
 const { ScormPackage, ScormRegistration, ScormCourse } = require('../../models/scorm');
 const jwt = require('jsonwebtoken');
 const { guessContentType } = require('../../services/scorm/ScormUnpackService');
@@ -25,11 +25,16 @@ async function resolvePackageAccess(accessToken, packageIdHint) {
 
     if (decoded.typ === 'scorm_reg' && decoded.scormRegId) {
         const reg = await ScormRegistration.findByPk(decoded.scormRegId, {
-            include: [{ model: ScormCourse, as: 'course' }]
+            include: [{
+                model: ScormCourse,
+                as: 'course',
+                include: [{ model: ScormPackage, as: 'package' }]
+            }]
         });
-        if (!reg || reg.status === 'revoked' || !reg.course) return null;
+        if (!reg || reg.status === 'revoked' || !reg.course || !reg.course.package) return null;
         return {
             packageId: reg.course.packageId,
+            packageRecord: reg.course.package,
             registrationId: reg.id,
             isPreview: Boolean(reg.isPreview)
         };
@@ -38,7 +43,7 @@ async function resolvePackageAccess(accessToken, packageIdHint) {
     if (decoded.userId && packageIdHint) {
         const pkg = await ScormPackage.findOne({ where: { id: packageIdHint, hostId: decoded.userId } });
         if (!pkg) return null;
-        return { packageId: pkg.id, registrationId: null, isPreview: false };
+        return { packageId: pkg.id, packageRecord: pkg, registrationId: null, isPreview: false };
     }
 
     return null;
@@ -399,6 +404,10 @@ function isDirectBinaryContent(rel) {
     return /\.(?:avif|bmp|gif|jpe?g|png|svg|webp|ico|woff2?|ttf|otf|eot|mp3|m4a|aac|wav|flac|pdf)$/i.test(String(rel || ''));
 }
 
+function resolveContentObjectKey(pkg, rel) {
+    return storedPackageContentKey(pkg, rel);
+}
+
 async function streamVideoContent(req, res, storage, key, rel, { allowPreviewEmbed = false } = {}) {
     if (await redirectToSignedObject(res, storage, key, {
         expiresIn: 4 * 60 * 60,
@@ -427,8 +436,10 @@ async function streamVideoContent(req, res, storage, key, rel, { allowPreviewEmb
     object.stream.pipe(res);
 }
 
-async function sendContent(req, res, packageId, rel, { allowPreviewEmbed = false } = {}) {
-    const key = packageContentKey(packageId, rel);
+async function sendContent(req, res, packageId, rel, { allowPreviewEmbed = false, packageRecord = null } = {}) {
+    const pkg = packageRecord || await ScormPackage.findByPk(packageId);
+    if (!pkg) throw new Error('Package not found');
+    const key = resolveContentObjectKey(pkg, rel);
     const storage = getObjectStorage();
     if (isVideoContent(rel)) {
         await streamVideoContent(req, res, storage, key, rel, { allowPreviewEmbed });
@@ -465,7 +476,10 @@ router.get('/t/:accessToken/*path', async (req, res) => {
         const access = await resolvePackageAccess(accessToken, null);
         if (!access) return res.status(401).json({ message: 'Unauthorized' });
         const allowPreviewEmbed = access.isPreview && String(req.query.previewEmbed || '') === '1';
-        await sendContent(req, res, access.packageId, rel, { allowPreviewEmbed });
+        await sendContent(req, res, access.packageId, rel, {
+            allowPreviewEmbed,
+            packageRecord: access.packageRecord
+        });
     } catch (err) {
         res.status(404).json({ message: 'Content not found' });
     }
@@ -481,7 +495,10 @@ router.get('/:packageId/*path', async (req, res) => {
         const access = await resolvePackageAccess(token, packageId);
         if (!access || access.packageId !== packageId) return res.status(401).json({ message: 'Unauthorized' });
         const allowPreviewEmbed = access.isPreview && String(req.query.previewEmbed || '') === '1';
-        await sendContent(req, res, packageId, rel, { allowPreviewEmbed });
+        await sendContent(req, res, packageId, rel, {
+            allowPreviewEmbed,
+            packageRecord: access.packageRecord
+        });
     } catch (err) {
         res.status(404).json({ message: 'Content not found' });
     }
@@ -493,4 +510,5 @@ router.authoredRuntimeBridge = authoredRuntimeBridge;
 router.universalRuntimeProgressBridge = universalRuntimeProgressBridge;
 router.requestedByteRange = requestedByteRange;
 router.isVideoContent = isVideoContent;
+router.resolveContentObjectKey = resolveContentObjectKey;
 module.exports = router;
