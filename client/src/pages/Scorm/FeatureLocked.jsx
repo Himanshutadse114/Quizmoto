@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowUpRight, CheckCircle2, LockKeyhole, RefreshCw, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, CheckCircle2, LockKeyhole, RefreshCw, ShieldCheck, Target, Workflow } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getScormFeature } from './scormFeatureCatalog';
 import './freeDemo.css';
@@ -54,6 +54,20 @@ export default function ScormFeatureLocked({ featureId }) {
               </div>
             ))}
           </div>
+          <div className="feature-workflow">
+            <div className="feature-section-heading">
+              <span className="feature-section-icon"><Workflow size={15} /></span>
+              <div><div className="scorm-eyebrow">Typical workflow</div><h2>How this module works</h2></div>
+            </div>
+            <div className="feature-workflow-grid">
+              {feature.workflow.map(([title, detail], index) => (
+                <div key={title} className="feature-workflow-step">
+                  <span className="feature-step-number">{index + 1}</span>
+                  <div><h3>{title}</h3><p>{detail}</p></div>
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
 
         <aside className="scorm-panel p-5">
@@ -61,10 +75,28 @@ export default function ScormFeatureLocked({ featureId }) {
           <div className="scorm-eyebrow mt-4">Safe product tour</div>
           <h2 className="text-[17px] mt-1 font-semibold">Explore without changing data</h2>
           <p className="mt-2 text-xs leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>The navigation and capability details stay visible, while creation, uploads, learner data and live sessions remain protected until your tenant is active.</p>
+          <div className="feature-best-for">
+            <div className="scorm-eyebrow">Best suited to</div>
+            <div className="feature-tag-list">
+              {feature.bestFor.map((item) => <span key={item}>{item}</span>)}
+            </div>
+          </div>
           <button type="button" onClick={checkAccess} disabled={checking} className="scorm-button-secondary mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold disabled:opacity-50"><RefreshCw size={13} className={checking ? 'animate-spin' : ''} /> {checking ? 'Checking…' : 'Refresh access'}</button>
           {notice && <div className="mt-3 text-[10px] leading-relaxed" style={{ color: 'var(--scorm-accent-strong)' }}>{notice}</div>}
         </aside>
       </div>
+
+      <section className="scorm-panel feature-outcomes mt-5">
+        <div className="feature-section-heading">
+          <span className="feature-section-icon"><Target size={15} /></span>
+          <div><div className="scorm-eyebrow">Expected result</div><h2>What this gives your team</h2></div>
+        </div>
+        <div className="feature-outcome-grid">
+          {feature.outcomes.map((outcome) => (
+            <div key={outcome} className="feature-outcome-card"><CheckCircle2 size={15} /><span>{outcome}</span></div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
