@@ -88,8 +88,7 @@ const Flipbook = sequelize.define('Flipbook', {
         { fields: ['ownerUserId'] },
         { fields: ['ownerEmail'] },
         { unique: true, fields: ['shareToken'] },
-        { fields: ['status'] },
-        { fields: ['isPlatformDefault'] }
+        { fields: ['status'] }
     ]
 });
 

@@ -17,6 +17,9 @@ describe('platform-default Publica distribution', () => {
 
     it('stores a single selected publication and validates the Super Admin source', () => {
         expect(model).to.include('isPlatformDefault');
+        expect(model).to.not.include("{ fields: ['isPlatformDefault'] }");
+        expect(service).to.include("await qi.addColumn(table, 'isPlatformDefault'");
+        expect(service).to.include("await qi.addIndex(table, ['isPlatformDefault']");
         expect(service).to.include('await Flipbook.update({ isPlatformDefault: false }');
         expect(service).to.include("status: 'published'");
         expect(service).to.include('ownerUserId');

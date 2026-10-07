@@ -61,11 +61,19 @@ function normaliseLimit(value) {
 
 async function ensureFlipbookSchema() {
     if (!schemaPromise) {
-        schemaPromise = Promise.all([
-            Flipbook.sync(),
-            FlipbookEntitlement.sync(),
-            ensureFlipbookTenantSchema()
-        ]).then(ensureBrandingColumns).catch((err) => {
+        schemaPromise = (async () => {
+            // Keep additive indexes out of the model-level sync. On a long-lived
+            // PostgreSQL table Sequelize creates missing indexes before this
+            // service can add their new columns, which makes the whole migration
+            // fail with "column does not exist". Create the table first, then add
+            // columns, and only then add their indexes in ensureBrandingColumns.
+            await Promise.all([
+                Flipbook.sync(),
+                FlipbookEntitlement.sync(),
+                ensureFlipbookTenantSchema()
+            ]);
+            await ensureBrandingColumns();
+        })().catch((err) => {
             schemaPromise = null;
             throw err;
         });

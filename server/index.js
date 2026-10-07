@@ -225,6 +225,18 @@ const startServer = async () => {
             throw migrationErr;
         }
 
+        // Publica has its own additive schema because it is also used outside
+        // the SCORM tenant routes. Complete it before accepting traffic so an
+        // older production database can never be queried with a newer model.
+        try {
+            const { ensureFlipbookSchema } = require('./services/FlipbookService');
+            await ensureFlipbookSchema();
+            logger.info('publica_schema_ready', { module: 'publica' });
+        } catch (migrationErr) {
+            logger.error('publica_schema_upgrade_failed', { module: 'publica', error: migrationErr.message });
+            throw migrationErr;
+        }
+
         // Historical admin previews used to create a new registration per click.
         // Compact them once at boot so production data is clean after deployment.
         if (process.env.NODE_ENV !== 'test') {
