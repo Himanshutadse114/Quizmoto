@@ -26,6 +26,7 @@ describe('Video Studio', function () {
     };
 
     before(() => {
+        const RealVideoStudioManager = require('../jobs/VideoStudioManager');
         stubModule(path.join(__dirname, '../routes/middleware'), fakeAuth);
         stubModule(path.join(__dirname, '../services/scorm/AiOperationGuard'), {
             runMeteredAiOperation: async (_req, _opts, operation) => operation()
@@ -39,7 +40,8 @@ describe('Video Studio', function () {
                 result: { blueprint: { title: 'T', layout: 'linkedin', scenes: [] } }
             }),
             cancel: async () => true,
-            stats: () => ({ active: 0, queued: 0 })
+            stats: () => ({ active: 0, queued: 0 }),
+            isVideoStudioKind: RealVideoStudioManager.isVideoStudioKind
         });
         delete require.cache[require.resolve('../routes/scorm/videoStudio')];
         const videoStudioRouter = require('../routes/scorm/videoStudio');
@@ -162,6 +164,16 @@ describe('Video Studio', function () {
     });
 
     describe('VideoStudioService', () => {
+        it('isVideoStudioKind keeps video jobs out of the course manager recovery', () => {
+            const { JOB_TYPES } = require('../jobs/jobTypes');
+            const Manager = require('../jobs/VideoStudioManager');
+            expect(Manager.isVideoStudioKind(JOB_TYPES.VIDEO_SCRIPT)).to.equal(true);
+            expect(Manager.isVideoStudioKind(JOB_TYPES.VIDEO_BUILD)).to.equal(true);
+            expect(Manager.isVideoStudioKind('course_generation')).to.equal(false);
+            expect(Manager.isVideoStudioKind(undefined)).to.equal(false);
+            expect(Manager.isVideoStudioKind(null)).to.equal(false);
+        });
+
         it('sceneCountFor scales with duration', () => {
             expect(VideoStudioService.sceneCountFor(20)).to.equal(3);
             expect(VideoStudioService.sceneCountFor(60)).to.equal(5);

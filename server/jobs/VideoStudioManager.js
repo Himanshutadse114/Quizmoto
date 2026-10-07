@@ -25,6 +25,7 @@ const {
 } = require('../services/scorm/ScormGenerationProgress');
 const ScormGenerationJob = require('../models/scorm/ScormGenerationJob');
 const logger = require('../utils/logger');
+const { JOB_TYPES } = require('./jobTypes');
 
 const INSTANCE_ID = `videostudio-${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
 const LEASE_MS = Math.max(20000, Number(process.env.VIDEO_STUDIO_LEASE_MS || 120000));
@@ -36,6 +37,10 @@ const active = new Map();   // progressId -> { child, job }
 const queued = new Map();   // progressId -> job
 let recoveryTimer = null;
 let recoveryRunning = false;
+
+function isVideoStudioKind(kind) {
+    return kind === JOB_TYPES.VIDEO_SCRIPT || kind === JOB_TYPES.VIDEO_BUILD;
+}
 
 function concurrency() {
     const configured = Number(process.env.VIDEO_STUDIO_CONCURRENCY || 1);
@@ -278,6 +283,11 @@ async function recoverStaleJobs() {
     for (const row of rows) {
         const id = cleanId(row.progressId);
         if (!id || active.has(id) || queued.has(id)) continue;
+        // Only video-studio rows belong to this manager; course rows are
+        // owned by ScormAiGenerationManager and must not be touched here.
+        let kind = '';
+        try { kind = String(JSON.parse(row.payloadJson || '{}').kind || ''); } catch (_) { /* keep '' */ }
+        if (!isVideoStudioKind(kind)) continue;
         logger.info('video_studio_job_recovered', { module: 'video-studio', progressId: id });
         await updateDurableJob(id, {
             status: 'error', stage: 'Interrupted',
@@ -295,4 +305,4 @@ function stats() {
     };
 }
 
-module.exports = { enqueue, cancel, getProgress, stats };
+module.exports = { enqueue, cancel, getProgress, stats, isVideoStudioKind };
