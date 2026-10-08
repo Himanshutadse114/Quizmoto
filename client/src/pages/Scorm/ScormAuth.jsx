@@ -273,7 +273,7 @@ export default function ScormAuth() {
             : 'Set new password';
 
   const description = isLogin
-    ? 'Sign in to your tenant, or open the complete interactive LMSGEN product tour before activation.'
+    ? 'Sign in to continue to your workspace.'
     : isRegister
       ? 'Create your account and verify your email before registration is completed.'
       : mode === 'register-otp'
@@ -310,13 +310,7 @@ export default function ScormAuth() {
         >
           <section className="sa-form-panel">
             <h2 className="sa-form-title">{title}</h2>
-            <p className="mt-2 mb-5 text-xs opacity-70 leading-relaxed">{description}</p>
-
-            {isLogin && (
-              <div className="sa-product-preview" aria-label="LMSGEN platform capabilities">
-                <span>AI course authoring</span><span>SCORM library</span><span>Learner campaigns</span><span>Tracking & reports</span><span>Quizmoto</span><span>Publica</span>
-              </div>
-            )}
+            <p className="sa-auth-description">{description}</p>
 
             {error && <div className="sa-error">{error}</div>}
             {notice && !error && (
@@ -452,27 +446,22 @@ export default function ScormAuth() {
                   type="button"
                   onClick={() => navigate('/login/microsoft')}
                   disabled={busy}
-                  className="w-full min-h-[45px] mt-3 rounded-[9px] border text-[11px] font-semibold flex items-center justify-center gap-3 transition hover:opacity-90 disabled:opacity-50"
-                  style={{ borderColor: 'var(--sa-border)', background: 'var(--sa-panel-2)', color: 'var(--sa-cream)' }}
+                  className="sa-social-button"
                 >
                   <MicrosoftMark /> Sign in with Microsoft
                 </button>
 
-                <div className="sa-google-block" style={{ marginTop: 10 }}>
+                <div className="sa-google-block">
                   <GoogleButton
                     width={googleWidth}
                     onSuccess={handleGoogleSuccess}
                     onError={() => setError('Google Sign-In failed. Please try again.')}
                   />
                 </div>
-
-                <p className="mt-3 text-[10px] opacity-60 leading-relaxed text-center">
-                  Assigned identities open their tenant and role. Unassigned accounts open a safe product demo; Quizmoto and paid operations remain locked until activation.
-                </p>
               </>
             )}
 
-            <div className="mt-5 text-center text-xs opacity-75">
+            <div className="sa-auth-switch">
               {isLogin ? (
                 <>
                   Need an account?{' '}

@@ -17,7 +17,9 @@ describe('SCORM AI platform product structure', () => {
     it('uses LMSGEN authentication as the protected product entry', () => {
         expect(app).to.include('<Route path="/login" element={<PlatformEntry />} />');
         expect(app).to.include('return <ScormAuth />');
-        expect(auth).to.include('open the complete interactive LMSGEN product tour');
+        expect(auth).to.include('Sign in to continue to your workspace.');
+        expect(auth).to.not.include('sa-product-preview');
+        expect(auth).to.not.include('Assigned identities open their tenant and role');
     });
 
     it('gates Quizmoto inside LMSGEN while preserving approved live stages', () => {
