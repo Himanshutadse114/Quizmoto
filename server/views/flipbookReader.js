@@ -1,6 +1,4 @@
 const readerStyles = require('./flipbookReaderStyles');
-const shareRuntime = require('./flipbookShareRuntime');
-const touchRuntime = require('./flipbookTouchRuntime');
 
 function escapeHtml(value) {
     return String(value || '')
@@ -15,7 +13,7 @@ function safeJson(value) {
     return JSON.stringify(value).replace(/</g, '\u003c');
 }
 
-function renderFlipbookReader(book, { publicUrl = '' } = {}) {
+function renderFlipbookReader(book) {
     const pageCount = Math.max(0, Number(book.pageCount || 0));
     const shareToken = String(book.shareToken || '');
     const title = escapeHtml(book.title || 'Publication');
@@ -35,7 +33,6 @@ function renderFlipbookReader(book, { publicUrl = '' } = {}) {
         description: String(book.description || ''),
         pageCount,
         token: shareToken,
-        shareUrl: String(publicUrl || ''),
         aspectRatio,
         pages
     };
@@ -55,7 +52,7 @@ function renderFlipbookReader(book, { publicUrl = '' } = {}) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes">
 <meta name="robots" content="noindex,nofollow,noarchive">
-<meta name="theme-color" content="#F1F5F9">
+<meta name="theme-color" content="#080F18">
 <title>${title} | LMSGEN Publica</title>
 <meta name="description" content="${description}">
 <style>
@@ -65,7 +62,6 @@ ${readerStyles}
 <body>
 <div class="reader-shell">
   <div class="protection-toast" id="protectionToast" role="status">This is a protected Publica publication.</div>
-  <div class="protection-toast" id="shareStatus" role="status" aria-live="polite" aria-atomic="true"></div>
   <main class="reader-stage" id="readerStage">
     <button class="edge-arrow left" id="leftEdge" aria-label="Previous page">‹</button>
     <div class="zoom-space" id="zoomSpace">
@@ -118,7 +114,6 @@ const fullBtn=document.getElementById('fullBtn');
 const mobileFullscreenExit=document.getElementById('mobileFullscreenExit');
 const protectionToast=document.getElementById('protectionToast');
 let pageFlip=null;
-let pageTurnInProgress=false;
 let currentIndex=0;
 let audioCtx=null;
 let hintTimer=null;
@@ -147,28 +142,22 @@ function isTouchTablet(){
 }
 function useSinglePage(){return isMobile()||(isTouchTablet()&&window.innerHeight>=window.innerWidth)}
 
-function stageSize(){
-  const style=getComputedStyle(readerStage);
-  const horizontal=(parseFloat(style.paddingLeft)||0)+(parseFloat(style.paddingRight)||0);
-  const vertical=(parseFloat(style.paddingTop)||0)+(parseFloat(style.paddingBottom)||0);
-  return {width:Math.max(1,readerStage.clientWidth-horizontal-2),height:Math.max(1,readerStage.clientHeight-vertical-2)};
-}
 function pageDimensions(){
   const ratio=Math.max(.35,Math.min(1.8,Number(DATA.aspectRatio)||.70710678));
   const mobile=useSinglePage();
-  const available=stageSize();
-  const maxStageHeight=available.height;
+  const footerHeight=mobile?(document.querySelector('.control-row')?.getBoundingClientRect().height||0):0;
+  const maxStageHeight=Math.max(240,window.innerHeight-(mobile?footerHeight+10:92));
   if(mobile){
-    let width=Math.min(available.width,isTouchTablet()?720:520);
+    let width=Math.min(window.innerWidth-18,isTouchTablet()?720:520);
     let height=width/ratio;
     if(height>maxStageHeight){height=maxStageHeight;width=height*ratio}
-    return {width:Math.max(1,Math.floor(width)),height:Math.max(1,Math.floor(height)),mobile:true};
+    return {width:Math.max(190,Math.round(width)),height:Math.max(240,Math.round(height)),mobile:true};
   }
   let height=Math.min(maxStageHeight,900);
   let width=height*ratio;
-  const maxSpreadWidth=available.width;
+  const maxSpreadWidth=Math.max(620,window.innerWidth-100);
   if(width*2>maxSpreadWidth){width=maxSpreadWidth/2;height=width/ratio}
-  return {width:Math.max(1,Math.floor(width)),height:Math.max(1,Math.floor(height)),mobile:false};
+  return {width:Math.max(280,Math.round(width)),height:Math.max(396,Math.round(height)),mobile:false};
 }
 
 function spreadState(){
@@ -191,8 +180,7 @@ function updateControls(index){
   const state=spreadState();
   const canPrev=state?state.spreadIndex>0:currentIndex>0;
   const canNext=state?state.spreadIndex<state.spreads.length-1:currentIndex<DATA.pageCount-1;
-  prevBtn.disabled=pageTurnInProgress||!canPrev;leftEdge.disabled=pageTurnInProgress||!canPrev;nextBtn.disabled=pageTurnInProgress||!canNext;rightEdge.disabled=pageTurnInProgress||!canNext;
-  pageSlider.disabled=pageTurnInProgress;pageJump.disabled=pageTurnInProgress;
+  prevBtn.disabled=!canPrev;leftEdge.disabled=!canPrev;nextBtn.disabled=!canNext;rightEdge.disabled=!canNext;
   nextBtn.innerHTML=currentIndex===0?'<span class="word">Open</span>':'<span class="word">Next</span>';
   pageSlider.value=String(currentIndex+1);
   pageJump.value=String(currentIndex+1);
@@ -247,7 +235,7 @@ function hideHint(){
 }
 
 function jumpToPage(value){
-  if(!pageFlip||!DATA.pageCount||pageTurnInProgress)return;
+  if(!pageFlip||!DATA.pageCount)return;
   const human=Math.max(1,Math.min(DATA.pageCount,Math.round(Number(value)||1)));
   const target=human-1;
   ensureAudio();
@@ -261,7 +249,9 @@ function renderBookScale(){
 function applyZoom(next){
   const clamped=Math.max(.75,Math.min(2.25,Math.round(next*20)/20));
   zoomLevel=clamped;
-  updatePresentationScale();
+  renderBookScale();
+  zoomSpace.style.width=Math.ceil(baseFrameWidth*zoomLevel)+'px';
+  zoomSpace.style.height=Math.ceil(baseFrameHeight*zoomLevel)+'px';
   zoomValue.textContent=Math.round(zoomLevel*100)+'%';
   zoomOutBtn.disabled=zoomLevel<=.75;
   zoomInBtn.disabled=zoomLevel>=2.25;
@@ -281,16 +271,6 @@ function init(){
   let rememberedPage=0;
   try{rememberedPage=Math.max(0,Math.min(DATA.pageCount-1,Number(sessionStorage.getItem(PAGE_STATE_KEY))||0))}catch(_){}
   lastSinglePageMode=dims.mobile;
-  const pageEls=document.querySelectorAll('#book .book-page');
-  if(dims.mobile){
-    // Portrait (mobile/tablet) + hard-density cover pages: page-flip@2.0.7 draws a
-    // hard page turn with a "mirror the static page" trick that assumes a two-page
-    // spread. In single-page portrait mode the static page and the turning page
-    // are the SAME element, so the turn renders edge-on/invisible and the next
-    // page just pops in with no visible flip. Force soft density on small screens
-    // so every turn uses the curl animation (desktop keeps the hard-cover turn).
-    pageEls.forEach(el=>el.removeAttribute('data-density'));
-  }
   pageFlip=new window.St.PageFlip(bookEl,{
     width:dims.width,
     height:dims.height,
@@ -305,7 +285,7 @@ function init(){
     startPage:rememberedPage,
     autoSize:false,
     maxShadowOpacity:.5,
-    showCover:!dims.mobile,
+    showCover:true,
     mobileScrollSupport:true,
     swipeDistance:30,
     clickEventForward:true,
@@ -327,12 +307,10 @@ function init(){
     hideHint();
   });
   pageFlip.on('changeOrientation',()=>{setTimeout(()=>{try{updateControls(pageFlip.getCurrentPageIndex())}catch(_){}},0)});
-  pageFlip.on('changeState',e=>{pageTurnInProgress=e.data==='flipping';updateControls(currentIndex)});
-  pageFlip.loadFromHTML(pageEls);
-  installBookTouch();
+  pageFlip.loadFromHTML(document.querySelectorAll('#book .book-page'));
 
-  prevBtn.onclick=()=>{if(prevBtn.disabled||pageTurnInProgress)return;ensureAudio();try{pageFlip.flipPrev('top')}catch(_){}};
-  nextBtn.onclick=()=>{if(nextBtn.disabled||pageTurnInProgress)return;ensureAudio();try{pageFlip.flipNext('top')}catch(_){}};
+  prevBtn.onclick=()=>{ensureAudio();try{pageFlip.flipPrev('top')}catch(_){}};
+  nextBtn.onclick=()=>{ensureAudio();try{pageFlip.flipNext('top')}catch(_){}};
   leftEdge.onclick=prevBtn.onclick;
   rightEdge.onclick=nextBtn.onclick;
   pageSlider.addEventListener('input',()=>{
@@ -370,14 +348,8 @@ function updatePresentationScale(){
   if(fullscreenActive()&&(isMobile()||isTouchTablet())&&baseFrameWidth>0&&baseFrameHeight>0){
     const fit=Math.min(window.innerWidth/baseFrameWidth,window.innerHeight/baseFrameHeight);
     presentationScale=Math.max(.1,Math.min(4,fit/zoomLevel));
-  }else if(baseFrameWidth>0&&baseFrameHeight>0){
-    const available=stageSize();
-    presentationScale=Math.max(.01,Math.min(1,available.width/baseFrameWidth,available.height/baseFrameHeight));
   }else presentationScale=1;
   renderBookScale();
-  zoomSpace.style.width=Math.ceil(baseFrameWidth*zoomLevel*presentationScale)+'px';
-  zoomSpace.style.height=Math.ceil(baseFrameHeight*zoomLevel*presentationScale)+'px';
-  readerStage.classList.toggle('is-zoomed',zoomLevel>1&&!fullscreenActive());
 }
 function syncFullscreen(){
   const active=fullscreenActive();
@@ -419,16 +391,15 @@ document.addEventListener('fullscreenchange',syncFullscreen);
 document.addEventListener('webkitfullscreenchange',syncFullscreen);
 let tabletResizeTimer=null;
 window.addEventListener('resize',()=>{
-  updatePresentationScale();
-  if(lastSinglePageMode===null||useSinglePage()===lastSinglePageMode)return;
+  if(fullscreenActive())updatePresentationScale();
+  if(!isTouchTablet()||lastSinglePageMode===null||useSinglePage()===lastSinglePageMode)return;
   if(tabletResizeTimer)clearTimeout(tabletResizeTimer);
   tabletResizeTimer=setTimeout(()=>{
     try{sessionStorage.setItem(PAGE_STATE_KEY,String(currentIndex))}catch(_){}
     location.reload();
   },180);
 });
-${shareRuntime}
-${touchRuntime}
+document.getElementById('shareBtn').onclick=async()=>{const url=location.href;try{if(navigator.share)await navigator.share({title:DATA.title,url});else{await navigator.clipboard.writeText(url);const b=document.getElementById('shareBtn');const old=b.innerHTML;b.textContent='Copied';setTimeout(()=>b.innerHTML=old,1200)}}catch(_){} };
 try{const key='lmsgen-flipbook-viewed:'+DATA.token;if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');fetch(location.pathname,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',keepalive:true}).catch(()=>{})}}catch(_){}
 </script>
 </body>

@@ -28,7 +28,7 @@ function publicationUrl(book) {
 }
 
 function libraryUrl(library) {
-    return `${publicAppUrl()}/publica-library/${shareIdentifier(library)}`;
+    return `${publicAppUrl()}/publica-library/${library?.shareToken || ''}`;
 }
 
 async function assertBookSlugAvailable(slug, currentId = null) {

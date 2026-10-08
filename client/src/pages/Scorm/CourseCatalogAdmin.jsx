@@ -49,7 +49,7 @@ export default function CourseCatalogAdmin() {
   const filtered = data.courses.filter((course) => `${course.title} ${course.description || ''}`.toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
-    <div className="platform-admin-section px-4 py-6 md:px-8 md:py-8 max-w-[1280px] mx-auto">
+    <div className="px-4 py-6 md:px-8 md:py-8 max-w-[1280px] mx-auto">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
         <div>
           <div className="text-[#4FC9BF] text-[9px] uppercase tracking-[.15em] font-semibold">Course distribution</div>

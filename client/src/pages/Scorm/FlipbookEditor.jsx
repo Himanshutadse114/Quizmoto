@@ -366,13 +366,9 @@ export default function FlipbookEditor() {
         <div className="flip-editor-state">{editing ? 'Edit publication' : 'New publication'}</div>
       </div>
 
-      <header className="platform-page-header flip-editor-heading">
-        <div className="flip-kicker">LMSGEN Publica</div>
-        <h1>{editing ? 'Edit publication' : 'Create publication'}</h1>
-        <p>Upload a PDF or image pages. Page conversion happens in your browser before secure storage.</p>
-      </header>
       <div className="flip-editor-grid">
         <section className="flip-editor-panel">
+          <div className="flip-section-heading compact"><div><div className="flip-kicker">LMSGEN Publica</div><h1>{editing ? 'Edit publication' : 'Create publication'}</h1><p>Upload a PDF or image pages. Page conversion happens in your browser before secure storage.</p></div></div>
           <label className="flip-field"><span>Title</span><input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={180} placeholder="Employee Security Handbook" /></label>
           <label className="flip-field"><span>Description</span><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} maxLength={3000} placeholder="Optional short description for readers" /></label>
           <label className="flip-field"><span><Link2 size={12} /> Custom share link</span><input value={shareSlug} onChange={(e) => setShareSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} maxLength={64} placeholder="employee-security-handbook" /><small>Your public link will use this readable name. Leave it blank to keep a secure generated link.</small></label>

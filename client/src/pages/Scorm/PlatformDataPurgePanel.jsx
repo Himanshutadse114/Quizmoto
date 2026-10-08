@@ -41,9 +41,9 @@ export default function PlatformDataPurgePanel() {
   };
 
   return (
-    <div className="platform-admin-section px-4 py-6 md:px-8 md:py-8 max-w-[1280px] mx-auto">
+    <div className="px-4 py-6 md:px-8 md:py-8 max-w-[1280px] mx-auto">
       <section className="rounded-2xl border border-rose-500/35 bg-rose-500/[.035] overflow-hidden">
-        <div className="platform-panel-body p-5 md:p-6 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+        <div className="p-5 md:p-6 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 text-rose-400 text-[9px] uppercase tracking-[.15em] font-semibold"><ShieldAlert size={14} /> Irreversible platform operation</div>
             <h1 className="mt-2 text-xl md:text-2xl font-semibold tracking-[-.02em]">Delete every course and Publica</h1>

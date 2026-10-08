@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { Copy, ExternalLink, Globe2, Library, RefreshCw, Save, Share2 } from 'lucide-react';
+import { BarChart3, Copy, ExternalLink, Globe2, Library, RefreshCw, Save, Share2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import { copyText } from '../../utils/clipboard';
@@ -80,8 +81,9 @@ export default function FlipbookLibraryShare() {
   return (
     <section className="flip-admin-panel flip-library-share-panel">
       <div className="flip-section-heading">
-        <div><div className="flip-kicker"><Library size={13} /> Shared Publica library</div><h2>{library.title}</h2><p>Share all your published publications with one secure link. Individual publication links still work.</p></div>
+        <div><div className="flip-kicker"><Library size={13} /> Shared Publica library</div><h2>{library.title}</h2><p>One secure, automatically generated link shows all of your published publications. Individual publication links continue to work as before.</p></div>
         <div className="flip-header-actions">
+          <Link to="/scorm/publica/analytics" className="flip-button-secondary"><BarChart3 size={14} /> Library analytics</Link>
           <button type="button" onClick={copy} className="flip-button-secondary"><Copy size={14} /> {copied ? 'Copied' : 'Copy library link'}</button>
           <button type="button" onClick={share} className="flip-button-secondary"><Share2 size={14} /> Share</button>
           {library.shareUrl && <a href={library.shareUrl} target="_blank" rel="noreferrer" className="flip-button-primary"><ExternalLink size={14} /> Open library</a>}
@@ -89,12 +91,10 @@ export default function FlipbookLibraryShare() {
       </div>
       <div className="flip-library-settings">
         <label className="flip-library-setting"><span>Library name</span><input value={name} onChange={(event) => setName(event.target.value)} maxLength={180} placeholder="Your publication library" /></label>
-        <button type="button" className="flip-library-save scorm-button-secondary" onClick={saveBranding} disabled={saving || name === library.title}><Save size={14} /> {saving ? 'Saving…' : saved ? 'Saved' : 'Save settings'}</button>
+        <button type="button" className="flip-library-save" onClick={saveBranding} disabled={saving}><Save size={14} /> {saving ? 'Saving…' : saved ? 'Saved' : 'Save settings'}</button>
       </div>
-      <div className="flip-library-footer">
-        <div className="flip-library-link-preview"><Globe2 size={13} /><span title={library.shareUrl}>{library.shareUrl}</span></div>
-        <div className="flip-library-share-summary"><strong>{library.bookCount}</strong><span>published publication{library.bookCount === 1 ? '' : 's'}</span></div>
-      </div>
+      <div className="flip-library-link-preview"><Globe2 size={13} /><span>{library.shareUrl}</span></div>
+      <div className="flip-library-share-summary"><strong>{library.bookCount}</strong><span>published publication{library.bookCount === 1 ? '' : 's'} currently visible in this shared library</span></div>
     </section>
   );
 }

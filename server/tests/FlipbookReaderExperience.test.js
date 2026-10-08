@@ -3,36 +3,6 @@ const flipbookAnalyticsRouter = require('../routes/flipbookAnalytics');
 const { renderFlipbookReader } = require('../views/flipbookReader');
 
 describe('Flipbook reader experience', () => {
-    it('always uses light reader chrome with scale-aware touch flipping', () => {
-        const html = renderFlipbookReader({ title: 'Touch QA', shareToken: 'touch-qa', pageCount: 4 });
-        expect(html).to.include('color-scheme:light');
-        expect(html).to.include('touch-action:none');
-        expect(html).to.include('installBookTouch();');
-        expect(html).to.include('surface.offsetWidth/rect.width');
-        expect(html).to.include('surface.offsetHeight/rect.height');
-        expect(html).to.include('capture:true,passive:false');
-        expect(html).to.include("bookEl.addEventListener('touchcancel'");
-        expect(html).not.to.include('color-scheme:dark');
-        expect(html).to.include("flippingTime:window.matchMedia('(prefers-reduced-motion: reduce)').matches?1:900");
-        expect(html).not.to.include('function pageTurnTiming(dims)');
-        expect(html).to.include('pageFlip.userStop(pos,true)');
-        expect(html).to.include('pageSlider.disabled=pageTurnInProgress');
-    });
-    it('fits the real stage and reports sharing failures rather than swallowing them', () => {
-        const html = renderFlipbookReader({ title: 'Reader QA', shareToken: 'reader-qa', pageCount: 4 }, { publicUrl: 'https://www.lmsgen.in/publica/reader-qa' });
-        expect(html).to.include('"shareUrl":"https://www.lmsgen.in/publica/reader-qa"');
-        expect(html).to.include('function stageSize()');
-        expect(html).to.include('readerStage.clientWidth-horizontal-2');
-        expect(html).to.include('readerStage.clientHeight-vertical-2');
-        expect(html).to.include('.reader-stage.is-zoomed{overflow:auto}');
-        expect(html).to.include('id="shareStatus" role="status"');
-        expect(html).to.include("copied?'Link copied'");
-        expect(html).to.include("error?.name==='AbortError'");
-        expect(html).to.include("document.execCommand('copy')");
-        expect(html).to.include('Unable to copy the link.');
-        const inlineScript = html.match(/<script>\s*([\s\S]*?)<\/script>/)?.[1];
-        expect(() => new Function(inlineScript)).not.to.throw();
-    });
     it('silently restores a remembered reader identity without breaking the injected script', () => {
         const injected = flipbookAnalyticsRouter.trackingInjection('shared-book-token');
         const browserScript = injected.script

@@ -271,7 +271,7 @@ export default function CampaignPortal() {
   const selectedSsoUnavailable = !dashboard && config && !config.emailEnabled && !config.googleEnabled && !config.microsoftEnabled;
 
   return (
-    <div className="platform-learner-surface min-h-screen bg-[#f4f8f7] text-[#102321]">
+    <div className="min-h-screen bg-[#f4f8f7] text-[#102321]">
       {videoPlayer && <LearnerVideoModal item={videoPlayer.item} streamUrl={videoPlayer.streamUrl} token={token} progressPath={`/api/scorm-learner/campaign/session/videos/${videoPlayer.item.videoId}/progress`} onClose={() => { setVideoPlayer(null); loadDashboard().catch(() => {}); }} onProgress={(next) => setVideoPlayer((current) => current ? { ...current, item: { ...current.item, ...next } } : current)} />}
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-[#dce8e5]">
         <div className="max-w-6xl mx-auto px-4 md:px-7 h-16 flex items-center gap-3">

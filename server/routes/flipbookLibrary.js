@@ -7,7 +7,6 @@ const User = require('../models/User');
 const Flipbook = require('../models/Flipbook');
 const FlipbookLibrary = require('../models/FlipbookLibrary');
 const { assertActiveAccount } = require('../services/AccountProfileService');
-const { assignLibraryLink } = require('../services/PublicaLibraryLinkService');
 const {
     shareIdentifier,
     publicationUrl,
@@ -82,7 +81,7 @@ async function getOrCreateLibrary(user) {
         changed = true;
     }
     if (changed) await library.save();
-    return assignLibraryLink(library);
+    return library;
 }
 
 async function publishedBooks(ownerUserId) {
@@ -99,7 +98,7 @@ function libraryPayload(library, books = []) {
         description: library.description || '',
         shareEnabled: Boolean(library.shareEnabled),
         shareToken: library.shareToken,
-        shareIdentifier: shareIdentifier(library),
+        shareIdentifier: library.shareToken,
         shareUrl: library.shareEnabled ? libraryUrl(library) : null,
         bookCount: books.length,
         updatedAt: library.updatedAt,
@@ -138,7 +137,6 @@ router.get('/public-library/:shareToken', async (req, res, next) => {
         await ensureLibrarySchema();
         const library = await FlipbookLibrary.findOne({ where: { ...publicIdentifierWhere(req.params.shareToken), shareEnabled: true } });
         if (!library) return res.status(404).json({ message: 'This Publica library is not available.' });
-        await assignLibraryLink(library);
         const books = await publishedBooks(library.ownerUserId);
         res.setHeader('Cache-Control', 'private, no-store');
         res.json({ library: libraryPayload(library, books) });
@@ -180,7 +178,9 @@ router.patch('/library', genericPlatformAuth, async (req, res, next) => {
 router.post('/library/regenerate-share-link', genericPlatformAuth, async (req, res, next) => {
     try {
         const library = await getOrCreateLibrary(req.flipbookLibraryUser);
-        await assignLibraryLink(library, { regenerate: true });
+        library.shareToken = shareToken();
+        library.shareSlug = null;
+        await library.save();
         const books = await publishedBooks(req.flipbookLibraryUser.id);
         res.json({ library: libraryPayload(library, books) });
     } catch (err) {

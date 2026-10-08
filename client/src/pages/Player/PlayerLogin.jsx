@@ -34,7 +34,7 @@ const PlayerLogin = () => {
     };
 
     return (
-        <div className="platform-learner-surface min-h-screen flex flex-col items-center justify-center p-6 bg-quizmoto-darkPurple relative z-10 overflow-hidden font-sans">
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-quizmoto-darkPurple relative z-10 overflow-hidden font-sans">
             {/* Ambient Background Elements */}
             <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-quizmoto-purple rounded-full blur-[120px] opacity-50 z-0"></div>
             <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-quizmoto-blue rounded-full blur-[120px] opacity-30 z-0"></div>

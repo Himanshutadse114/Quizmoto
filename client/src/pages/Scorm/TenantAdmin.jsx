@@ -302,7 +302,7 @@ export default function TenantAdmin() {
   };
 
   return (
-    <div className="platform-admin-section px-4 py-6 md:px-8 md:py-8 max-w-[1280px] mx-auto">
+    <div className="px-4 py-6 md:px-8 md:py-8 max-w-[1280px] mx-auto">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6"><div><div className="text-[#4FC9BF] text-[9px] uppercase tracking-[.15em] font-semibold">Platform administration</div><h1 className="mt-2 text-2xl md:text-3xl font-semibold tracking-[-.025em]">Tenant Management</h1><p className="mt-2 text-xs md:text-sm opacity-65 max-w-3xl leading-relaxed">Create independent tenant spaces, assign the primary Admin and control capacity, product features and access from one place.</p></div><button type="button" onClick={loadTenants} disabled={loading} className="scorm-button-secondary min-h-10 px-3.5 text-[10px] font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50"><RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh</button></div>
       {message && <div className="mb-4 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-500">{message}</div>}
       {error && <div className="mb-4 rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-xs text-rose-400">{error}</div>}

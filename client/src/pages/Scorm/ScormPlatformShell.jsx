@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom';
-import PlatformPageLayout from '../../components/PlatformPageLayout';
 import {
   LayoutDashboard,
   BookOpen,
@@ -31,7 +30,6 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import useDialogFocus from '../../hooks/useDialogFocus';
 import ScormGenerationNotifier from '../../components/ScormGenerationNotifier';
-import ScormWorkspaceSearch from './ScormWorkspaceSearch';
 import { readScormPlatformTheme, saveScormPlatformTheme } from './platformTheme';
 import './scormEditorialTheme.css';
 import './scormDashboard.css';
@@ -147,7 +145,7 @@ function displayRole(role, isSuperAdmin, scormAccess) {
   return 'LMSGEN member';
 }
 
-function navigationGroups({ isSuperAdmin, scormAccess, role }) {
+function Navigation({ onNavigate, isSuperAdmin, scormAccess, role }) {
   const analyticsOnly = scormAccess && role === 'analytics_viewer';
   let groups = !scormAccess ? DEMO_NAV_GROUPS : analyticsOnly ? ANALYTICS_NAV_GROUPS : OPERATIONAL_NAV_GROUPS;
 
@@ -184,12 +182,6 @@ function navigationGroups({ isSuperAdmin, scormAccess, role }) {
       items: [{ to: '/scorm/settings', label: 'Settings', icon: Settings }]
     }
   ];
-
-  return groups;
-}
-
-function Navigation({ onNavigate, isSuperAdmin, scormAccess, role }) {
-  const groups = navigationGroups({ isSuperAdmin, scormAccess, role });
 
   return (
     <nav aria-label="Workspace navigation" className={`scorm-nav flex-1 px-3 overflow-y-auto ${scormAccess ? 'py-5' : 'py-3'}`}>
@@ -355,13 +347,10 @@ export default function ScormPlatformShell() {
       )}
 
       <div inert={mobileOpen} className="lg:pl-[268px] min-h-screen">
-        <header className="scorm-topbar sticky top-0 z-30 min-h-[64px] border-b px-4 md:px-7 py-2.5 flex flex-wrap items-center gap-3 md:gap-4">
+        <header className="scorm-topbar sticky top-0 z-30 min-h-[64px] border-b px-4 md:px-7 py-2.5 flex items-center gap-3 md:gap-4">
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open LMSGEN navigation" aria-expanded={mobileOpen} aria-controls="workspace-navigation-drawer" className="scorm-topbar-icon lg:hidden w-10 h-10 grid place-items-center shrink-0"><Menu size={18} /></button>
-          <div className="scorm-topbar-search-area">
-            <ScormWorkspaceSearch groups={navigationGroups({ isSuperAdmin, scormAccess, role })} scormAccess={scormAccess} />
-            {demoAccess && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> Interactive demo · Product operations are locked</div>}
-            {analyticsOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><BarChart3 size={12} /> Read-only analytics access</div>}
-          </div>
+          {demoAccess && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> Interactive demo · Product operations are locked</div>}
+          {analyticsOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><BarChart3 size={12} /> Read-only analytics access</div>}
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
             {demoAccess ? (
@@ -383,7 +372,7 @@ export default function ScormPlatformShell() {
             )}
           </div>
         </header>
-        <main id="workspace-content" tabIndex={-1} className="scorm-main min-h-[calc(100vh-64px)] pb-24 lg:pb-0"><PlatformPageLayout><Outlet /></PlatformPageLayout></main>
+        <main id="workspace-content" tabIndex={-1} className="scorm-main min-h-[calc(100vh-64px)] pb-24 lg:pb-0"><Outlet /></main>
       </div>
       {scormAccess && !analyticsOnly && <ScormGenerationNotifier />}
       {!mobileOpen && <MobileTabBar scormAccess={scormAccess} role={role} />}

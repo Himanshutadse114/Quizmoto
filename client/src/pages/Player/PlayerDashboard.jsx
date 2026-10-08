@@ -96,7 +96,7 @@ const PlayerDashboard = () => {
     };
 
     return (
-        <div className="platform-learner-surface flex flex-col md:flex-row h-screen bg-quizmoto-darkPurple overflow-y-auto md:overflow-hidden">
+        <div className="flex flex-col md:flex-row h-screen bg-quizmoto-darkPurple font-sans overflow-y-auto md:overflow-hidden">
             
             {/* Sidebar Navigation */}
             <motion.div 

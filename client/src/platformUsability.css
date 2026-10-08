@@ -1,38 +1,23 @@
 /* Primary: route headings and main actions. Secondary: panels and supporting
    actions. Tertiary: metadata and optional controls. Marketing and generated
    course previews keep their independent visual systems. */
-html body #root :is(.scorm-editorial, .scorm-auth-workbench, .platform-learner-surface, .public-flip-library) {
-  --platform-heading-size: 22px;
-  --platform-body-size: 14px;
+html body #root :is(.scorm-editorial, .scorm-auth-workbench) {
   font-size: 14px;
   line-height: 1.55;
   text-rendering: optimizeLegibility;
 }
 html body #root .scorm-editorial main h1:not([style*="--preview-primary"] *) {
-  font-size: var(--platform-heading-size) !important;
-  line-height: 1.35 !important;
-  letter-spacing: -.02em !important;
+  font-size: clamp(28px, 2.7vw, 38px) !important;
+  line-height: 1.2 !important;
+  letter-spacing: -.025em !important;
   overflow-wrap: anywhere;
 }
 html body #root .scorm-editorial main h2:not([style*="--preview-primary"] *) {
-  font-size: var(--platform-heading-size) !important;
+  font-size: 22px !important;
   line-height: 1.35 !important;
   letter-spacing: -.02em !important;
 }
-/* Match the Content Editor reference, including titles rendered as divs.
-   Course content, live game questions and marketing keep their own typography. */
-html body #root .scorm-editorial :is(h1, h2, h3, h4, h5, h6, .scorm-display, .scorm-page-title, .demo-title, .reports-title, .reports-section-title, .qe-heading, .qc-modal-title, .sa-title, .sa-form-title):not([style*="--preview-primary"] *),
-html body #root .scorm-auth-workbench :is(h1, h2, h3, h4, h5, h6, .sa-title, .sa-form-title),
-html body #root :is(.platform-learner-surface, .public-flip-library) :is(h1, h2, h3, h4, h5, h6) {
-  font-size: var(--platform-heading-size) !important;
-  line-height: 1.35 !important;
-  letter-spacing: -.02em !important;
-}
-html body #root .scorm-editorial :is([role="heading"], .qh-title, .qh-section-title, .qh-empty-title, .qe-question-name, .qe-loading-title):not([style*="--preview-primary"] *) {
-  font-size: var(--platform-heading-size) !important;
-  line-height: 1.35 !important;
-  letter-spacing: -.02em !important;
-}
+html body #root .scorm-editorial main h3:not([style*="--preview-primary"] *) { line-height: 1.4 !important; }
 html body #root .scorm-editorial :is(.scorm-micro, .scorm-eyebrow, .scorm-meta, .scorm-metric-label, .scorm-nav-section),
 html body #root .scorm-auth-workbench .sa-label {
   font-size: 11px !important;
@@ -43,10 +28,9 @@ html body #root .scorm-editorial :is([class~="text-[7px]"], [class~="text-[8px]"
   font-size: 12px !important;
   line-height: 1.5 !important;
 }
-html body #root .scorm-editorial :is(p, .demo-lead, .qe-header-meta, .qc-builder-note, .qc-modal-sub, .feature-section-copy, .demo-summary-card span):not([style*="--preview-primary"] *),
-html body #root .scorm-auth-workbench :is(p, .sa-auth-description, .sa-auth-switch),
-html body #root :is(.platform-learner-surface, .public-flip-library) p {
-  font-size: var(--platform-body-size) !important;
+html body #root .scorm-editorial :is(p.text-xs, p.text-sm, .demo-lead),
+html body #root .scorm-auth-workbench :is(.sa-auth-description, .sa-auth-switch) {
+  font-size: 14px !important;
   line-height: 1.6 !important;
 }
 html body #root .scorm-editorial .scorm-nav-item {
@@ -92,7 +76,7 @@ html body #root .scorm-editorial .scorm-search-shell:focus-within {
   outline-offset: 2px !important;
 }
 html body #root .scorm-editorial :is(input, textarea, select):disabled { cursor: not-allowed; }
-html body #root .scorm-editorial .flip-empty h2 { font-size: var(--platform-heading-size) !important; }
+html body #root .scorm-editorial .flip-empty h2 { font-size: 24px !important; }
 html body #root .scorm-editorial .flip-empty { min-height: 240px; padding: 32px 24px; }
 html body #root .scorm-editorial .flip-icon-button { min-width: 36px; min-height: 36px; }
 html body #root .scorm-editorial :is(.flip-kicker, .flip-quota-label, .flip-library-kicker, .flip-field-label, .flip-editor-label, .scorm-mobile-tab span, .scorm-direct-pulse-kicker) {
@@ -104,7 +88,7 @@ html body #root .scorm-editorial :is(.flip-empty-inline, .flip-library-meta, .fl
 html body #root .scorm-editorial :is(.flip-button-primary, .flip-button-secondary, .flip-library-button, .flip-library-share button) { font-size: 13px !important; min-height: 42px; }
 html body #root .scorm-editorial.scorm-theme-light :is(.flip-kicker, .flip-library-kicker, .flip-quota-label) { color: #08665F !important; }
 html body #root .scorm-auth-workbench :is(.sa-note, .sa-auth-divider, .sa-divider span, [class~="text-[10px]"]) { font-size: 12px !important; }
-html body #root .scorm-editorial :is(.qe-kicker, .qe-label, .qe-summary-label, .qe-question-sub, .qe-option-letter, .qc-label, .qc-modal-kicker, .qc-upload-meta, .scorm-progress-kicker) { font-size: 12px !important; line-height: 1.5 !important; }
+html body #root .scorm-editorial :is(.qe-kicker, .qe-header-meta, .qe-label, .qe-summary-label, .qe-question-sub, .qe-option-letter, .qc-builder-note, .qc-label, .qc-modal-kicker, .qc-upload-meta, .scorm-progress-kicker) { font-size: 12px !important; line-height: 1.5 !important; }
 html body #root .scorm-editorial :is(.qe-save, .qe-add, .qc-ai-button, .qc-generate) { min-height: 44px !important; font-size: 13px !important; }
 html body #root .scorm-editorial :is(.flip-library-setting>span, .flip-library-share-summary, .flip-library-link-preview, .flip-status, .flip-field>span, .flip-field>label, .flip-field small, .flip-upload-zone span, .flip-preview-book span, .flip-range-tabs button, .flip-analytics-empty, .flip-analytics-help, .flip-card-meta, .flip-file-note, .flip-limit-banner, .flip-error, .flip-success, .flip-page-table :is(th,td,span,strong), .flip-analytics-table :is(th,td,span,strong)) { font-size: 12px !important; line-height: 1.5 !important; }
 html body #root .scorm-editorial :is(.flip-range-tabs button, .flip-page-pager button, .flip-page-jump-form button) { min-height: 36px !important; }
@@ -141,6 +125,7 @@ html body #root .scorm-editorial .flip-quota-value { font-size: 14px !important;
   html body #root .publica-user-limits .flip-user-row .flip-limit-input { grid-column: 2; width: 100%; min-height: 44px; }
   html body #root .publica-user-limits .flip-user-info :is(strong,span),
   html body #root .publica-user-limits .flip-user-usage { font-size: 12px; }
+  html body #root .scorm-editorial main h2:not([style*="--preview-primary"] *) { font-size: 20px !important; }
   html body #root :is(.scorm-editorial, .scorm-auth-workbench) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea, select) { font-size: 16px !important; }
   html body #root .scorm-editorial :is(.scorm-button-primary, .scorm-button-secondary, .scorm-button-tertiary, .flip-button-primary, .flip-button-secondary, .flip-icon-button, .scorm-mobile-tab) { min-height: 44px !important; }
   html body #root .scorm-editorial .flip-icon-button { min-width: 44px; }

@@ -82,7 +82,7 @@ html body .scorm-editorial.scorm-theme-light main aside.scorm-panel::-webkit-scr
  * route wrapper only while this dialog exists. :has() is supported by all of
  * the browsers targeted by the current platform.
  */
-html body .scorm-editorial :is(.scorm-main, .platform-route-frame) > div[class~="relative"][class~="z-10"]:has(> [role="dialog"][aria-label="Course colour theme"]) {
+html body .scorm-editorial .scorm-main > div[class~="relative"][class~="z-10"]:has(> [role="dialog"][aria-label="Course colour theme"]) {
   z-index: 10000 !important;
 }
 

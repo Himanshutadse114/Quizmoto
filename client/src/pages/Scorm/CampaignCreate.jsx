@@ -137,7 +137,7 @@ export default function CampaignCreate() {
 
         {error && <div className="mb-5 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(251,113,133,.30)', background: 'rgba(251,113,133,.08)' }}>{error}</div>}
         {loading ? <div className="scorm-panel rounded-2xl border p-12 text-center text-sm" style={{ borderColor: 'var(--scorm-line)', color: 'var(--scorm-muted)' }}>Preparing campaign options…</div> : (
-          <div className="platform-content-grid grid xl:grid-cols-[.92fr_1.08fr] gap-5 items-start">
+          <div className="grid xl:grid-cols-[.92fr_1.08fr] gap-5 items-start">
             <section className="scorm-panel rounded-2xl border p-5 md:p-6 space-y-5" style={{ borderColor: 'var(--scorm-line)' }}>
               <div><div className="scorm-micro text-[9px] uppercase font-semibold">Campaign basics</div><h2 className="text-lg font-semibold mt-1">Who is this campaign for?</h2></div>
               <label className="block"><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Campaign name</span><input value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2.5 text-sm" placeholder="September Security Awareness" maxLength={180} /></label>

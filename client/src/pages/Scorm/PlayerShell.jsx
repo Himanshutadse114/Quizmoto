@@ -74,7 +74,7 @@ export default function ScormPlayerShell() {
               <BookOpen size={20} />
             </div>
             <div className="mt-6 text-[11px] font-semibold text-[#93a4bb]">LMSGEN Learning</div>
-            <div className="scorm-page-title mt-1 font-semibold text-[#f8fafc]">
+            <div className="mt-1 text-2xl md:text-[30px] font-semibold tracking-[-0.04em] leading-tight text-[#f8fafc]">
               Your course is opening in a separate window.
             </div>
           </div>

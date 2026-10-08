@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { BookOpenCheck, ChevronLeft, ChevronRight, ExternalLink, RefreshCw, Share2 } from 'lucide-react';
 import axios from 'axios';
 import { apiUrl } from '../../config';
@@ -11,9 +11,7 @@ const BOOKS_PER_PAGE = 6;
 
 export default function FlipbookLibraryViewer() {
   const { shareToken = '' } = useParams();
-  const navigate = useNavigate();
   const [library, setLibrary] = useState(null);
-  const [loadedToken, setLoadedToken] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
@@ -30,22 +28,15 @@ export default function FlipbookLibraryViewer() {
       if (!endpoint) { setLoading(false); setError('This library link is invalid.'); return; }
       try {
         const res = await axios.get(endpoint);
-        if (active) { setLibrary(res.data?.library || null); setLoadedToken(shareToken); }
+        if (active) setLibrary(res.data?.library || null);
       } catch (err) {
         if (active) setError(err.response?.data?.message || 'This Publica library is not available.');
       } finally { if (active) setLoading(false); }
     })();
     return () => { active = false; };
-  }, [endpoint, shareToken]);
+  }, [endpoint]);
 
   useEffect(() => { setPage(1); }, [shareToken]);
-
-  useEffect(() => {
-    const identifier = library?.shareIdentifier;
-    if (loadedToken === shareToken && identifier && identifier !== shareToken) {
-      navigate(`/publica-library/${encodeURIComponent(identifier)}${window.location.search}`, { replace: true });
-    }
-  }, [library?.shareIdentifier, loadedToken, shareToken, navigate]);
 
   const changePage = (nextPage) => {
     setPage(Math.max(1, Math.min(pageCount, nextPage)));
@@ -55,7 +46,7 @@ export default function FlipbookLibraryViewer() {
   };
 
   const share = async () => {
-    const url = library?.shareUrl || window.location.href;
+    const url = window.location.href;
     try {
       if (navigator.share) await navigator.share({ title: library?.title || 'LMSGEN Publica Library', url });
       else await copyText(url, { successMessage: 'Library link copied.' });

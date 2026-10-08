@@ -335,3 +335,420 @@ html body .scorm-editorial.scorm-theme-light .scorm-learner-audit .bg-white\/\[\
     min-height: 38px;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* High-contrast light theme                                                   */
+/* -------------------------------------------------------------------------- */
+
+/* Keep the full product hierarchy visible in daylight and on lower-quality
+   displays. The canvas, nested surfaces and controls intentionally use
+   separate tones; contrast no longer depends on a very soft shadow alone. */
+html body .scorm-editorial.scorm-theme-light {
+  --scorm-canvas: #e7efed;
+  --scorm-surface: #ffffff;
+  --scorm-surface-soft: #f0f5f3;
+  --scorm-surface-muted: #dfe9e6;
+  --scorm-ink: #071b17;
+  --scorm-ink-soft: #263f3a;
+  --scorm-muted: #435b56;
+  --scorm-subtle: #506863;
+  --scorm-line: #aebfbb;
+  --scorm-line-strong: #78928c;
+  --scorm-sidebar: #f8fbfa;
+  --scorm-sidebar-soft: #eaf2f0;
+  --scorm-sidebar-line: #9fb4af;
+  --scorm-sidebar-text: #071b17;
+  --scorm-sidebar-muted: #435b56;
+  --scorm-accent: #16b8aa;
+  --scorm-accent-strong: #075e56;
+  --scorm-accent-soft: #d6f1ed;
+
+  --scorm-platform-teal: #16b8aa;
+  --scorm-platform-teal-strong: #087b71;
+  --scorm-platform-teal-hover: #06675f;
+  --scorm-platform-teal-dark: #033d37;
+  --scorm-platform-teal-soft: #ffffff;
+  --scorm-platform-teal-soft-strong: #e5f2ef;
+  --scorm-platform-teal-line: #86aaa4;
+  --scorm-platform-teal-line-soft: #adc2bd;
+  --scorm-platform-teal-surface: #ffffff;
+  --scorm-platform-teal-surface-2: #f0f5f3;
+  --scorm-platform-teal-surface-3: #dfe9e6;
+  --scorm-platform-teal-text: #163b35;
+  --scorm-platform-teal-muted: #435b56;
+
+  background: #e7efed !important;
+  color: #071b17 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-main,
+html body .scorm-editorial.scorm-theme-light main {
+  background:
+    radial-gradient(circle at 92% -8%, rgba(22, 184, 170, .14), transparent 28rem),
+    linear-gradient(180deg, #f4f8f7 0%, #edf3f1 52%, #e7efed 100%) !important;
+  color: #071b17 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-topbar {
+  background: rgba(255, 255, 255, .98) !important;
+  border-color: #9fb4af !important;
+  box-shadow: 0 1px 0 rgba(7, 27, 23, .10), 0 8px 22px rgba(7, 55, 48, .09) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-sidebar,
+html body .scorm-editorial.scorm-theme-light .scorm-mobile-drawer {
+  background: #f8fbfa !important;
+  border-color: #9fb4af !important;
+  box-shadow: 8px 0 26px rgba(7, 55, 48, .10) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-sidebar-profile,
+html body .scorm-editorial.scorm-theme-light .scorm-sidebar-footer > div,
+html body .scorm-editorial.scorm-theme-light .scorm-status-card {
+  background: #eaf2f0 !important;
+  border-color: #9fb4af !important;
+  color: #163b35 !important;
+  box-shadow: 0 2px 8px rgba(7, 55, 48, .07) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-nav-section,
+html body .scorm-editorial.scorm-theme-light .scorm-brand-subtitle {
+  color: #435b56 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-nav-item {
+  color: #203a35 !important;
+  border-color: transparent !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-nav-item:hover {
+  background: #e5efec !important;
+  border-color: #a6bbb6 !important;
+  color: #071b17 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-nav-icon {
+  background: #e7efed !important;
+  border-color: #afc1bd !important;
+  color: #38534d !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-nav-item.scorm-nav-active {
+  background: linear-gradient(90deg, #c9ebe6 0%, #e2f3f0 100%) !important;
+  border-color: #69aaa1 !important;
+  color: #0a302b !important;
+  box-shadow: inset 4px 0 0 #087b71, 0 4px 12px rgba(8, 123, 113, .14) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-nav-item.scorm-nav-active .scorm-nav-icon {
+  background: #b8e2dc !important;
+  border-color: #69aaa1 !important;
+  color: #064f48 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-mobile-tabbar {
+  background: rgba(255, 255, 255, .98) !important;
+  border-color: #91aaa4 !important;
+  box-shadow: 0 -8px 24px rgba(7, 55, 48, .14) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-mobile-tab {
+  color: #435b56 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-mobile-tab.is-active {
+  background: #d1efea !important;
+  color: #075e56 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-panel,
+html body .scorm-editorial.scorm-theme-light .scorm-soft-card,
+html body .scorm-editorial.scorm-theme-light .scorm-metric-card,
+html body .scorm-editorial.scorm-theme-light .scorm-action-card,
+html body .scorm-editorial.scorm-theme-light main [class*="rounded-2xl"].border {
+  background: #ffffff !important;
+  border-color: #aebfbb !important;
+  color: #071b17 !important;
+  box-shadow: 0 8px 22px rgba(7, 55, 48, .10) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-panel-header {
+  background: #eaf1ef !important;
+  border-color: #aebfbb !important;
+}
+
+html body .scorm-editorial.scorm-theme-light [style*="background: var(--scorm-surface-soft)"],
+html body .scorm-editorial.scorm-theme-light [style*="background:var(--scorm-surface-soft)"] {
+  background: #f0f5f3 !important;
+  color: #071b17 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light [style*="background: var(--scorm-surface-muted)"],
+html body .scorm-editorial.scorm-theme-light [style*="background:var(--scorm-surface-muted)"] {
+  background: #dfe9e6 !important;
+  color: #071b17 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main h1,
+html body .scorm-editorial.scorm-theme-light main h2,
+html body .scorm-editorial.scorm-theme-light main h3,
+html body .scorm-editorial.scorm-theme-light main h4,
+html body .scorm-editorial.scorm-theme-light main .font-semibold,
+html body .scorm-editorial.scorm-theme-light main .scorm-display,
+html body .scorm-editorial.scorm-theme-light main .scorm-page-title,
+html body .scorm-editorial.scorm-theme-light main .scorm-metric-value {
+  color: #071b17 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main p,
+html body .scorm-editorial.scorm-theme-light .scorm-preview-muted {
+  color: #263f3a !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-eyebrow,
+html body .scorm-editorial.scorm-theme-light .scorm-breadcrumb,
+html body .scorm-editorial.scorm-theme-light .scorm-micro,
+html body .scorm-editorial.scorm-theme-light .scorm-metric-label,
+html body .scorm-editorial.scorm-theme-light .scorm-meta,
+html body .scorm-editorial.scorm-theme-light main [class*="text-white/"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-gray-"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-slate-"],
+html body .scorm-editorial.scorm-theme-light main [class*="text-zinc-"] {
+  color: #435b56 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main .border,
+html body .scorm-editorial.scorm-theme-light main [class*="border-"],
+html body .scorm-editorial.scorm-theme-light main [class*="divide-"] > * + * {
+  border-color: #aebfbb !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main input,
+html body .scorm-editorial.scorm-theme-light main textarea,
+html body .scorm-editorial.scorm-theme-light main select {
+  background: #ffffff !important;
+  border-color: #8fa7a1 !important;
+  color: #071b17 !important;
+  box-shadow: inset 0 1px 1px rgba(7, 27, 23, .035) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main input::placeholder,
+html body .scorm-editorial.scorm-theme-light main textarea::placeholder {
+  color: #5a706b !important;
+  opacity: 1 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main input:hover,
+html body .scorm-editorial.scorm-theme-light main textarea:hover,
+html body .scorm-editorial.scorm-theme-light main select:hover {
+  border-color: #64847d !important;
+}
+
+html body .scorm-editorial.scorm-theme-light main input:focus,
+html body .scorm-editorial.scorm-theme-light main textarea:focus,
+html body .scorm-editorial.scorm-theme-light main select:focus,
+html body .scorm-editorial.scorm-theme-light main button:focus-visible,
+html body .scorm-editorial.scorm-theme-light main a:focus-visible {
+  border-color: #087b71 !important;
+  outline: 2px solid #087b71 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(22, 184, 170, .22) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-button-primary,
+html body .scorm-editorial.scorm-theme-light main button[class*="bg-blue-"],
+html body .scorm-editorial.scorm-theme-light main button[class*="bg-cyan-"],
+html body .scorm-editorial.scorm-theme-light main a[class*="bg-blue-"],
+html body .scorm-editorial.scorm-theme-light main a[class*="bg-cyan-"] {
+  background: #16b8aa !important;
+  border-color: #087b71 !important;
+  color: #032e29 !important;
+  box-shadow: 0 6px 15px rgba(8, 123, 113, .22) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-button-primary:hover:not(:disabled),
+html body .scorm-editorial.scorm-theme-light main button[class*="bg-blue-"]:hover:not(:disabled),
+html body .scorm-editorial.scorm-theme-light main button[class*="bg-cyan-"]:hover:not(:disabled),
+html body .scorm-editorial.scorm-theme-light main a[class*="bg-blue-"]:hover,
+html body .scorm-editorial.scorm-theme-light main a[class*="bg-cyan-"]:hover {
+  background: #0da194 !important;
+  border-color: #06675f !important;
+  color: #021f1c !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-button-secondary,
+html body .scorm-editorial.scorm-theme-light .scorm-theme-toggle,
+html body .scorm-editorial.scorm-theme-light .scorm-sidebar-switch,
+html body .scorm-editorial.scorm-theme-light .scorm-topbar-icon,
+html body .scorm-editorial.scorm-theme-light .scorm-drawer-close {
+  background: #ffffff !important;
+  border-color: #8fa7a1 !important;
+  color: #163b35 !important;
+  box-shadow: 0 2px 5px rgba(7, 55, 48, .08) !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-button-secondary:hover:not(:disabled),
+html body .scorm-editorial.scorm-theme-light .scorm-theme-toggle:hover,
+html body .scorm-editorial.scorm-theme-light .scorm-sidebar-switch:hover,
+html body .scorm-editorial.scorm-theme-light .scorm-topbar-icon:hover,
+html body .scorm-editorial.scorm-theme-light .scorm-drawer-close:hover {
+  background: #dff0ed !important;
+  border-color: #64847d !important;
+  color: #075e56 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light button:disabled,
+html body .scorm-editorial.scorm-theme-light input:disabled,
+html body .scorm-editorial.scorm-theme-light select:disabled,
+html body .scorm-editorial.scorm-theme-light textarea:disabled {
+  opacity: .68 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light table {
+  background: #ffffff !important;
+  color: #16312c !important;
+}
+
+html body .scorm-editorial.scorm-theme-light table thead,
+html body .scorm-editorial.scorm-theme-light table thead tr,
+html body .scorm-editorial.scorm-theme-light table th {
+  background: #e3ece9 !important;
+  border-color: #9fb4af !important;
+  color: #314b46 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light table td,
+html body .scorm-editorial.scorm-theme-light table tbody tr {
+  background: #ffffff !important;
+  border-color: #b8c7c4 !important;
+  color: #203a35 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light table tbody tr:hover {
+  background: #eaf2f0 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-progress-track,
+html body .scorm-editorial.scorm-theme-light .scorm-preview-progress-track {
+  background: #c8d5d2 !important;
+  border-color: #9fb4af !important;
+}
+
+html body .scorm-editorial.scorm-theme-light .scorm-progress-fill,
+html body .scorm-editorial.scorm-theme-light .scorm-preview-progress-fill {
+  background: #087b71 !important;
+}
+
+html body .scorm-editorial.scorm-theme-light ::selection {
+  background: #9eddd5;
+  color: #041f1b;
+}
+
+/* Authentication and registration use the same contrast standard. */
+html body .scorm-auth-workbench.scorm-theme-light {
+  --sa-bg: #e7efed !important;
+  --sa-bg-deep: #dce7e4 !important;
+  --sa-panel: #ffffff !important;
+  --sa-panel-2: #f0f5f3 !important;
+  --sa-panel-3: #dfe9e6 !important;
+  --sa-border: #aebfbb !important;
+  --sa-border-strong: #78928c !important;
+  --sa-border-soft: #c1cecb !important;
+  --sa-cream: #071b17 !important;
+  --sa-cream-soft: #263f3a !important;
+  --sa-soft: #435b56 !important;
+  --sa-muted: #506863 !important;
+  --sa-muted-deep: #5a706b !important;
+  --sa-orange: #16b8aa !important;
+  --sa-orange-strong: #075e56 !important;
+  --sa-yellow: #075e56 !important;
+  background:
+    radial-gradient(circle at 18% -8%, rgba(22, 184, 170, .18), transparent 26rem),
+    linear-gradient(180deg, #f3f7f6 0%, #e7efed 62%, #dce7e4 100%) !important;
+  color: #071b17 !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-card {
+  background: #ffffff !important;
+  border-color: #8fa7a1 !important;
+  border-top-color: #087b71 !important;
+  box-shadow: 0 24px 58px rgba(7, 55, 48, .17) !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-brand-panel {
+  background: linear-gradient(155deg, #e4f1ee 0%, #cfe5e0 100%) !important;
+  border-color: #9fb4af !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-form-panel {
+  background: #ffffff !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-title,
+html body .scorm-auth-workbench.scorm-theme-light .sa-form-title,
+html body .scorm-auth-workbench.scorm-theme-light .sa-upload-title {
+  color: #071b17 !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-copy,
+html body .scorm-auth-workbench.scorm-theme-light .sa-form-sub,
+html body .scorm-auth-workbench.scorm-theme-light .sa-notice,
+html body .scorm-auth-workbench.scorm-theme-light .sa-point,
+html body .scorm-auth-workbench.scorm-theme-light .sa-google-label,
+html body .scorm-auth-workbench.scorm-theme-light .sa-google-hint,
+html body .scorm-auth-workbench.scorm-theme-light .sa-label,
+html body .scorm-auth-workbench.scorm-theme-light .sa-top-note {
+  color: #314b46 !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-tabs,
+html body .scorm-auth-workbench.scorm-theme-light .sa-google-button,
+html body .scorm-auth-workbench.scorm-theme-light .sa-input,
+html body .scorm-auth-workbench.scorm-theme-light .sa-theme-toggle {
+  background: #ffffff !important;
+  border-color: #8fa7a1 !important;
+  color: #163b35 !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-input::placeholder {
+  color: #5a706b !important;
+  opacity: 1 !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-input:focus,
+html body .scorm-auth-workbench.scorm-theme-light button:focus-visible,
+html body .scorm-auth-workbench.scorm-theme-light a:focus-visible {
+  border-color: #087b71 !important;
+  outline: 2px solid #087b71 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(22, 184, 170, .22) !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-tab {
+  color: #435b56 !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-tab.is-active {
+  background: #cfece7 !important;
+  border-color: #69aaa1 !important;
+  color: #075e56 !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-notice {
+  background: #dcefeb !important;
+  border-color: #86aaa4 !important;
+  color: #204a43 !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-submit {
+  background: #16b8aa !important;
+  border-color: #087b71 !important;
+  color: #032e29 !important;
+  box-shadow: 0 8px 20px rgba(8, 123, 113, .24) !important;
+}
+
+html body .scorm-auth-workbench.scorm-theme-light .sa-submit:hover {
+  background: #0da194 !important;
+  border-color: #06675f !important;
+  color: #021f1c !important;
+}

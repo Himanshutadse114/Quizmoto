@@ -50,17 +50,17 @@ const STAFF_JOINING_MODES = [
 
 function LinkCard({ icon: Icon, title, description, value, onCopy }) {
   return (
-    <div className="sso-access-card rounded-2xl border p-4 md:p-5" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
+    <div className="rounded-2xl border p-4 md:p-5" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-xl grid place-items-center border shrink-0" style={{ borderColor: 'var(--scorm-line)' }}><Icon size={17} /></div>
         <div className="min-w-0 flex-1">
-          <h3 className="platform-item-title text-sm font-semibold">{title}</h3>
+          <h3 className="text-sm font-semibold">{title}</h3>
           <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>{description}</p>
+          <div className="mt-3 flex flex-col sm:flex-row gap-2">
+            <input aria-label={title} readOnly value={value} className="flex-1 min-w-0 px-3 py-2.5 text-[11px]" />
+            <button type="button" disabled={!value} onClick={onCopy} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center justify-center gap-2"><Copy size={13} /> Copy</button>
+          </div>
         </div>
-      </div>
-      <div className="sso-link-controls mt-3 flex gap-2">
-        <input aria-label={title} readOnly value={value} className="flex-1 min-w-0 px-3 py-2.5 text-[11px]" />
-        <button type="button" aria-label={`Copy ${title}`} disabled={!value} onClick={onCopy} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center justify-center gap-2"><Copy size={13} /> Copy</button>
       </div>
     </div>
   );
@@ -172,7 +172,7 @@ export default function LearnerAccessSettings() {
   }
 
   return (
-    <div className="platform-section-page scorm-sso-page p-4 md:p-7 lg:p-9 max-w-6xl mx-auto">
+    <div className="p-4 md:p-7 lg:p-9 max-w-6xl mx-auto">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-7 pb-7 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
         <div className="max-w-3xl">
           <div className="scorm-micro text-[10px] uppercase font-semibold">Workspace administration</div>
@@ -216,8 +216,8 @@ export default function LearnerAccessSettings() {
 
         <div className="grid lg:grid-cols-2 gap-5 mt-5">
           <div className="rounded-2xl border p-4 md:p-5" style={{ borderColor: 'var(--scorm-line)' }}>
-            <div className="sso-provider-heading flex items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2"><ShieldCheck size={17} /><h3 className="platform-item-title font-semibold">Staff Google Workspace</h3></div>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2"><ShieldCheck size={17} /><h3 className="font-semibold">Staff Google Workspace</h3></div>
               <label className="inline-flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={Boolean(config?.staffGoogleEnabled)} onChange={(e) => patch({ staffGoogleEnabled: e.target.checked })} /> Enabled</label>
             </div>
             <label><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Google OAuth client ID</span><input value={config?.staffGoogleClientId || ''} onChange={(e) => patch({ staffGoogleClientId: e.target.value })} className="w-full px-3 py-2.5 text-xs" placeholder="123...apps.googleusercontent.com" /></label>
@@ -225,8 +225,8 @@ export default function LearnerAccessSettings() {
           </div>
 
           <div className="rounded-2xl border p-4 md:p-5" style={{ borderColor: 'var(--scorm-line)' }}>
-            <div className="sso-provider-heading flex items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2"><Building2 size={17} /><h3 className="platform-item-title font-semibold">Staff Microsoft Entra ID</h3></div>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2"><Building2 size={17} /><h3 className="font-semibold">Staff Microsoft Entra ID</h3></div>
               <label className="inline-flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={Boolean(config?.staffMicrosoftEnabled)} onChange={(e) => patch({ staffMicrosoftEnabled: e.target.checked })} /> Enabled</label>
             </div>
             <div className="space-y-3">
@@ -238,7 +238,7 @@ export default function LearnerAccessSettings() {
         </div>
 
         <div className="mt-5">
-          <div className="flex items-center gap-2 mb-2"><LockKeyhole size={15} /><h3 className="platform-item-title text-sm font-semibold">Staff allowed domains</h3></div>
+          <div className="flex items-center gap-2 mb-2"><LockKeyhole size={15} /><h3 className="text-sm font-semibold">Staff allowed domains</h3></div>
           <input aria-label="Staff allowed domains" value={Array.isArray(config?.staffAllowedDomains) ? config.staffAllowedDomains.join(', ') : (config?.staffAllowedDomains || '')} onChange={(e) => patch({ staffAllowedDomains: e.target.value })} className="w-full px-3 py-2.5 text-sm" placeholder="company.com, subsidiary.com" />
           {config?.staffJoiningMode === 'sso_only' && !config?.staffGoogleEnabled && !config?.staffMicrosoftEnabled && <div className="mt-3 rounded-xl border px-3 py-2.5 text-xs" style={{ borderColor: 'rgba(251,191,36,.3)', background: 'rgba(251,191,36,.08)' }}>Enable Staff Google or Staff Microsoft before saving Staff SSO only.</div>}
         </div>
@@ -251,8 +251,8 @@ export default function LearnerAccessSettings() {
 
         <div className="grid lg:grid-cols-2 gap-5 mt-5">
           <div className="rounded-2xl border p-4 md:p-5" style={{ borderColor: 'var(--scorm-line)' }}>
-            <div className="sso-provider-heading flex items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2"><ShieldCheck size={17} /><h3 className="platform-item-title font-semibold">Learner Google Workspace</h3></div>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2"><ShieldCheck size={17} /><h3 className="font-semibold">Learner Google Workspace</h3></div>
               <label className="inline-flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={Boolean(config?.googleEnabled)} onChange={(e) => patch({ googleEnabled: e.target.checked })} /> Enabled</label>
             </div>
             <label><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Google OAuth client ID</span><input value={config?.googleClientId || ''} onChange={(e) => patch({ googleClientId: e.target.value })} className="w-full px-3 py-2.5 text-xs" placeholder="123...apps.googleusercontent.com" /></label>
@@ -260,8 +260,8 @@ export default function LearnerAccessSettings() {
           </div>
 
           <div className="rounded-2xl border p-4 md:p-5" style={{ borderColor: 'var(--scorm-line)' }}>
-            <div className="sso-provider-heading flex items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2"><Building2 size={17} /><h3 className="platform-item-title font-semibold">Learner Microsoft Entra ID</h3></div>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2"><Building2 size={17} /><h3 className="font-semibold">Learner Microsoft Entra ID</h3></div>
               <label className="inline-flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={Boolean(config?.microsoftEnabled)} onChange={(e) => patch({ microsoftEnabled: e.target.checked })} /> Enabled</label>
             </div>
             <div className="space-y-3">
@@ -273,7 +273,7 @@ export default function LearnerAccessSettings() {
         </div>
 
         <div className="mt-5">
-          <div className="flex items-center gap-2 mb-2"><KeyRound size={15} /><h3 className="platform-item-title text-sm font-semibold">Learner allowed domains</h3></div>
+          <div className="flex items-center gap-2 mb-2"><KeyRound size={15} /><h3 className="text-sm font-semibold">Learner allowed domains</h3></div>
           <input aria-label="Learner allowed domains" value={Array.isArray(config?.allowedDomains) ? config.allowedDomains.join(', ') : (config?.allowedDomains || '')} onChange={(e) => patch({ allowedDomains: e.target.value })} className="w-full px-3 py-2.5 text-sm" placeholder="company.com, subsidiary.com" />
           {config?.joiningMode === 'sso_only' && !config?.googleEnabled && !config?.microsoftEnabled && <div className="mt-3 rounded-xl border px-3 py-2.5 text-xs" style={{ borderColor: 'rgba(251,191,36,.3)', background: 'rgba(251,191,36,.08)' }}>Enable Learner Google or Learner Microsoft before saving Learner SSO only.</div>}
         </div>

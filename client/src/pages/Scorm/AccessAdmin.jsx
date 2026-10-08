@@ -57,14 +57,14 @@ export default function AccessAdmin({ initialTab = 'tenants' }) {
       ) : tab === 'flipbooks' ? (
         <>
           <FlipbookTenantAdmin />
-          <div className="platform-admin-section px-4 pb-8 md:px-8 max-w-[1280px] mx-auto"><PublicaUserLimits /></div>
+          <div className="px-4 pb-8 md:px-8 max-w-[1280px] mx-auto"><PublicaUserLimits /></div>
         </>
       ) : tab === 'courses' ? (
         <CourseCatalogAdmin />
       ) : tab === 'danger' ? (
         <PlatformDataPurgePanel />
       ) : (
-        <div className="platform-admin-section px-4 py-6 md:px-8 md:py-8 max-w-[1280px] mx-auto space-y-4">
+        <div className="px-4 py-6 md:px-8 md:py-8 max-w-[1280px] mx-auto space-y-4">
           <div className="mb-5">
             <div className="text-[#4FC9BF] text-[9px] uppercase tracking-[.15em] font-semibold">Platform communication</div>
             <h1 className="mt-2 text-xl md:text-2xl font-semibold tracking-[-.02em]">Email Templates</h1>

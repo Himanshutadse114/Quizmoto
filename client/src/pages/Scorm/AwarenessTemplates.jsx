@@ -46,7 +46,7 @@ function Card({template,central,onPreview,onImport,onEdit,onDelete,onArchive,onT
       {central&&!template.isActive&&<span className="aw-card-hidden">Hidden</span>}
     </button>
     <div className="aw-card-body">
-      <h3 className="platform-item-title">{template.title}</h3>
+      <h3>{template.title}</h3>
       <p>{template.description||'Curated awareness email template ready to use.'}</p>
       <div className="aw-card-meta">
         {central?<span>{template.assetCount||0} template image{template.assetCount===1?'':'s'}</span>:<span>{template.lastSentAt?'Previously sent':'Ready to use'}</span>}
@@ -55,10 +55,8 @@ function Card({template,central,onPreview,onImport,onEdit,onDelete,onArchive,onT
         <button type="button" className="aw-btn-secondary" onClick={()=>onPreview?.(template)}><Eye size={14}/> Preview</button>
         {central?<>
           {template.isActive&&<button type="button" className="aw-btn-primary" onClick={()=>onImport(template)}><Plus size={14}/> {imported?'Add another copy':'Add to My Library'}</button>}
-          <div className="aw-card-utilities">
-            {onThumbnail&&<label className="aw-icon-btn aw-file-icon" title="Upload thumbnail"><ImageIcon size={14}/><input type="file" aria-label={`Upload thumbnail for ${template.title}`} accept="image/png,image/jpeg,image/webp" onChange={e=>{onThumbnail(template,e.target.files?.[0]);e.target.value=''}}/></label>}
-            {onArchive&&<button type="button" className="aw-icon-btn" aria-label={template.isActive?'Hide from users':'Restore to gallery'} title={template.isActive?'Hide from users':'Restore to gallery'} onClick={()=>onArchive(template)}><Archive size={14}/></button>}
-          </div>
+          {onThumbnail&&<label className="aw-icon-btn aw-file-icon" title="Upload thumbnail"><ImageIcon size={14}/><input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>{onThumbnail(template,e.target.files?.[0]);e.target.value=''}}/></label>}
+          {onArchive&&<button type="button" className="aw-icon-btn" title={template.isActive?'Hide from users':'Restore to gallery'} onClick={()=>onArchive(template)}><Archive size={14}/></button>}
         </>:<>
           <button type="button" className="aw-btn-primary" onClick={()=>onEdit(template)}><Pencil size={14}/> Edit</button>
           <button type="button" className="aw-btn-secondary" onClick={()=>onSend(template)}><Send size={14}/> Send</button>
@@ -477,7 +475,7 @@ export default function AwarenessTemplates(){
 
   if(loading)return <div className="aw-loading"><RefreshCw className="animate-spin" size={20}/> Loading awareness template library…</div>;
 
-  return <div className="platform-section-page aw-gallery-page">
+  return <div className="aw-gallery-page">
     <header className="aw-gallery-header">
       <div><div className="aw-kicker"><Mail size={15}/> Awareness Emails</div><h1>Curated awareness template library</h1><p>Use professionally designed email templates without regenerating the design. Add a template to My Library before editing, sending or exporting it.</p></div>
       <button type="button" className="aw-btn-secondary" onClick={load}><RefreshCw size={14}/> Refresh</button>
@@ -498,7 +496,7 @@ export default function AwarenessTemplates(){
           <label className={'aw-btn-primary '+(uploading?'is-disabled':'')}><Upload size={15}/>{uploading?'Importing ZIP…':'Add Template ZIP'}<input type="file" accept=".zip,application/zip" disabled={uploading} onChange={e=>{uploadZip(e.target.files?.[0]);e.target.value=''}}/></label>
         </div>
       </div>}
-      <div className="aw-gallery-tools"><div className="aw-search scorm-search-shell"><Search size={14}/><input type="search" aria-label="Search templates or categories" className="scorm-search-shell-input" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search templates or categories"/></div><span>{filteredCentral.length} template{filteredCentral.length===1?'':'s'}</span></div>
+      <div className="aw-gallery-tools"><div className="aw-search scorm-search-shell"><Search size={14}/><input type="search" className="scorm-search-shell-input" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search templates or categories"/></div><span>{filteredCentral.length} template{filteredCentral.length===1?'':'s'}</span></div>
       <div className="aw-template-grid">
         {filteredCentral.map(item=><Card key={item.id} template={item} central onPreview={previewCentral} onImport={importTemplate} onThumbnail={isSuperAdmin?uploadThumbnail:null} onArchive={isSuperAdmin?archiveCentral:null} imported={mine.some(x=>x.centralTemplateId===item.id)}/>)}
       </div>

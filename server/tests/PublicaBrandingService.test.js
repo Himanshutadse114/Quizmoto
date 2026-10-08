@@ -19,10 +19,8 @@ describe('Publica branding and share links', () => {
         expect(service.publicationUrl({ shareToken: 'secure-token', shareSlug: 'security-guide' })).to.equal('https://www.lmsgen.in/publica/security-guide');
     });
 
-    it('prefers short library aliases while retaining the legacy token fallback', () => {
+    it('always builds library URLs from their collision-proof secure token', () => {
         expect(service.libraryUrl({ shareToken: 'token', shareSlug: 'insights' }))
-            .to.equal('https://www.lmsgen.in/publica-library/insights');
-        expect(service.libraryUrl({ shareToken: 'token', shareSlug: null }))
             .to.equal('https://www.lmsgen.in/publica-library/token');
     });
 

@@ -75,9 +75,7 @@ router.get('/:regId', async (req, res) => {
         const learnerName = reg.learnerName || 'Learner';
         const courseTitle = reg.course.title || 'Course Player';
         const presentationLight = pkg.source === 'presentation_import';
-        // Fit the whole desktop player, not just uploaded packages. A fixed
-        // iframe viewport keeps both CSS and JavaScript in desktop layout.
-        const scaleCourseDesktop = true;
+        const scaleUploadedCourse = pkg.source === 'upload';
         // Every course autosaves through the parent runtime. Course-specific
         // navigation stays inside the player so no floating controls obscure it.
         const shellTheme = presentationLight
@@ -100,7 +98,7 @@ router.get('/:regId', async (req, res) => {
             learnerName,
             contentSrc,
             presentationLight,
-            scaleCourseDesktop,
+            scaleUploadedCourse,
             presentationInterFonts: presentationLight ? PRESENTATION_INTER_FONTS : null
         });
 
@@ -114,7 +112,7 @@ router.get('/:regId', async (req, res) => {
 html,body{margin:0;height:100%;overflow:hidden;background:${shellTheme.background};color:${shellTheme.text};font-family:system-ui,sans-serif}
 #frame-viewport{position:relative;width:100%;height:100%;overflow:hidden;background:${shellTheme.frameBackground}}
 #frame{border:0;width:100%;height:100%;display:block;background:${shellTheme.frameBackground}}
-html.qmx-course-desktop-fit #frame{position:absolute;left:var(--qmx-course-left,0);top:var(--qmx-course-top,0);width:1280px;height:720px;max-width:none;max-height:none;transform:scale(var(--qmx-course-scale,1));transform-origin:top left}
+html.qmx-upload-desktop-fit #frame{position:absolute;left:var(--qmx-upload-left,0);top:var(--qmx-upload-top,0);width:1280px;height:720px;max-width:none;max-height:none;transform:scale(var(--qmx-upload-scale,1));transform-origin:top left}
 #status{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 </style>
 <script>
@@ -214,42 +212,42 @@ function applyPresentationLayoutGuard(){
     if(width>0&&height>0)doc.documentElement.style.setProperty("--slide-ratio",width+" / "+height);
   }catch(e){}
 }
-function syncCourseDesktopFit(){
-  if(!BOOT.scaleCourseDesktop)return;
+function syncUploadedCourseDesktopFit(){
+  if(!BOOT.scaleUploadedCourse)return;
   try{
     var root=document.documentElement,visual=window.visualViewport;
     var width=Math.max(1,Math.min(Number(window.innerWidth||1280),Number(visual&&visual.width||window.innerWidth||1280)));
     var height=Math.max(1,Math.min(Number(window.innerHeight||720),Number(visual&&visual.height||window.innerHeight||720)));
-    var constrained=width<1280||height<720;
-    root.classList.toggle("qmx-course-desktop-fit",constrained);
-    if(!constrained){
-      root.style.removeProperty("--qmx-course-scale");
-      root.style.removeProperty("--qmx-course-left");
-      root.style.removeProperty("--qmx-course-top");
+    var mobile=width<820;
+    root.classList.toggle("qmx-upload-desktop-fit",mobile);
+    if(!mobile){
+      root.style.removeProperty("--qmx-upload-scale");
+      root.style.removeProperty("--qmx-upload-left");
+      root.style.removeProperty("--qmx-upload-top");
       return;
     }
-    var scale=Math.max(.01,Math.min(1,width/1280,height/720));
+    var scale=Math.max(.1,Math.min(1,width/1280,height/720));
     var left=Number(visual&&visual.offsetLeft||0)+Math.max(0,(width-1280*scale)/2);
     var top=Number(visual&&visual.offsetTop||0)+Math.max(0,(height-720*scale)/2);
-    root.style.setProperty("--qmx-course-scale",scale.toFixed(6));
-    root.style.setProperty("--qmx-course-left",left.toFixed(2)+"px");
-    root.style.setProperty("--qmx-course-top",top.toFixed(2)+"px");
+    root.style.setProperty("--qmx-upload-scale",scale.toFixed(6));
+    root.style.setProperty("--qmx-upload-left",left.toFixed(2)+"px");
+    root.style.setProperty("--qmx-upload-top",top.toFixed(2)+"px");
   }catch(e){}
 }
-function installCourseDesktopFit(){
-  if(!BOOT.scaleCourseDesktop)return;
+function installUploadedCourseDesktopFit(){
+  if(!BOOT.scaleUploadedCourse)return;
   var queued=false;
   function schedule(){
     if(queued)return;queued=true;
-    (window.requestAnimationFrame||function(fn){return setTimeout(fn,16);})(function(){queued=false;syncCourseDesktopFit();});
+    (window.requestAnimationFrame||function(fn){return setTimeout(fn,16);})(function(){queued=false;syncUploadedCourseDesktopFit();});
   }
-  syncCourseDesktopFit();
+  syncUploadedCourseDesktopFit();
   window.addEventListener("resize",schedule,{passive:true});
   window.addEventListener("orientationchange",schedule,{passive:true});
   if(window.visualViewport){window.visualViewport.addEventListener("resize",schedule,{passive:true});window.visualViewport.addEventListener("scroll",schedule,{passive:true});}
 }
 function loadContent(){
-  try{var frame=document.getElementById("frame");if(frame&&!frame.getAttribute("data-loaded")){installCourseDesktopFit();frame.setAttribute("data-loaded","1");frame.addEventListener("load",applyPresentationLayoutGuard);frame.src=BOOT.contentSrc;}}catch(e){}
+  try{var frame=document.getElementById("frame");if(frame&&!frame.getAttribute("data-loaded")){installUploadedCourseDesktopFit();frame.setAttribute("data-loaded","1");frame.addEventListener("load",applyPresentationLayoutGuard);frame.src=BOOT.contentSrc;}}catch(e){}
 }
 function beginLaunchTracking(d){
   installDefaults(!!(d&&d.resume));installTimeBaseline(d||{});stateLoaded=true;dirty=true;revision++;

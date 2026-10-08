@@ -551,29 +551,6 @@ router.get('/:id/analysis', auth, async (req, res) => {
     }
 });
 
-// Rename inventory metadata only. Do not touch third-party ZIP contents,
-// authored analysis or the independently named courses created from a package.
-router.patch('/:id', auth, async (req, res) => {
-    try {
-        const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
-        if (!title || title.length > 200) {
-            return res.status(400).json({ message: 'Package name must contain 1–200 characters.' });
-        }
-        const pkg = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId } });
-        if (!pkg || pkg.status === 'deleted') return res.status(404).json({ message: 'Package not found.' });
-        if (pkg.source === 'catalog') {
-            return res.status(403).json({ message: 'Super Admin catalogue packages are view-only.', code: 'SCORM_CATALOG_PACKAGE_READ_ONLY' });
-        }
-        // Updating one field avoids overwriting concurrent background unpack data.
-        await pkg.update({ title });
-        res.setHeader('Cache-Control', 'private, no-store');
-        return res.json({ id: pkg.id, title: pkg.title });
-    } catch (err) {
-        logger.error('scorm_package_rename_failed', { module: 'scorm', packageId: req.params.id, error: err.message });
-        return res.status(500).json({ message: 'Unable to rename this package. Please try again.' });
-    }
-});
-
 router.get('/:id', auth, async (req, res) => {
     const pkg = await ScormPackage.findOne({ where: { id: req.params.id, hostId: req.userId } });
     if (!pkg || pkg.status === 'deleted') return res.status(404).json({ message: 'Not found' });

@@ -192,10 +192,10 @@ export default function AccountSettings() {
       {message && <div className="mb-4 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-500"><CheckCircle2 size={14} className="inline mr-2" />{message}</div>}
       {error && <div className="mb-4 rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-xs text-rose-500">{error}</div>}
 
-      <form onSubmit={save} className="platform-content-stack space-y-4">
+      <form onSubmit={save} className="space-y-4">
         <section className="scorm-panel rounded-2xl border overflow-hidden">
-          <div className="platform-panel-body px-5 py-4 border-b flex items-center gap-2"><UserRound size={16} className="text-[#4FC9BF]" /><h2 className="text-sm font-semibold">Profile</h2></div>
-          <div className="platform-panel-content platform-content-grid p-5 grid md:grid-cols-[180px_1fr] gap-6 md:gap-8">
+          <div className="px-5 py-4 border-b flex items-center gap-2"><UserRound size={16} className="text-[#4FC9BF]" /><h2 className="text-sm font-semibold">Profile</h2></div>
+          <div className="p-5 grid md:grid-cols-[180px_1fr] gap-6 md:gap-8">
             <div>
               <div className="w-28 h-28 rounded-3xl border overflow-hidden grid place-items-center bg-[#4FC9BF]/10 text-[#4FC9BF] text-2xl font-semibold">
                 {form.avatar ? <img src={form.avatar} alt="Avatar preview" className="w-full h-full object-cover" /> : initials(form.displayName)}
@@ -216,8 +216,8 @@ export default function AccountSettings() {
         </section>
 
         <section className="scorm-panel rounded-2xl border overflow-hidden">
-          <div className="platform-panel-body px-5 py-4 border-b flex items-center gap-2"><BookOpenCheck size={16} className="text-[#4FC9BF]" /><div><h2 className="text-sm font-semibold">LMSGEN Publica</h2><p className="mt-0.5 text-[10px] opacity-55">This is the gallery name readers see when they open your shared library.</p></div></div>
-          <div className="platform-panel-content p-5">
+          <div className="px-5 py-4 border-b flex items-center gap-2"><BookOpenCheck size={16} className="text-[#4FC9BF]" /><div><h2 className="text-sm font-semibold">LMSGEN Publica</h2><p className="mt-0.5 text-[10px] opacity-55">This is the gallery name readers see when they open your shared library.</p></div></div>
+          <div className="p-5">
             <label className="block"><span className="text-[9px] uppercase tracking-[.08em] opacity-55">Publica library name</span><input value={form.publicaLibraryName} onChange={(event) => setForm((current) => ({ ...current, publicaLibraryName: event.target.value }))} minLength={2} maxLength={180} required placeholder="My Publica Library" className="mt-1.5 w-full h-11 rounded-xl border bg-transparent px-3.5 text-sm outline-none focus:border-[#4FC9BF]" /></label>
             <p className="mt-2 text-[10px] leading-relaxed opacity-55">Your secure library link is generated automatically and remains unique to your account.</p>
           </div>
@@ -225,7 +225,7 @@ export default function AccountSettings() {
 
         {isSuperAdmin && (
           <section className="scorm-panel rounded-2xl border overflow-hidden">
-            <div className="platform-panel-body px-5 py-4 border-b flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="px-5 py-4 border-b flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <Database size={16} className="text-[#4FC9BF]" />
                 <div>
@@ -237,7 +237,7 @@ export default function AccountSettings() {
                 <RefreshCw size={13} className={infrastructureLoading ? 'animate-spin' : ''} /> Refresh status
               </button>
             </div>
-            <div className="platform-panel-content p-5">
+            <div className="p-5">
               {infrastructureError && <div className="mb-4 rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-xs text-rose-500">{infrastructureError}</div>}
               <div className="grid gap-3 md:grid-cols-2">
                 <InfrastructureStatus icon={<Database size={18} />} label="Database" value={infrastructure?.database} loading={infrastructureLoading && !infrastructure} />

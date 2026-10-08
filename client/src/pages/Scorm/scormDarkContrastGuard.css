@@ -1,0 +1,190 @@
+/*
+ * Final dark-mode contrast guard for LMSGEN administration and sign-in.
+ * Keep this scoped to the platform theme so generated learner packages and
+ * the live Quizmoto experience retain their own visual systems.
+ */
+
+:root {
+  --scorm-dark-canvas: #050807;
+  --scorm-dark-canvas-deep: #020403;
+  --scorm-dark-surface: #121C19;
+  --scorm-dark-surface-2: #192622;
+  --scorm-dark-surface-3: #22312D;
+  --scorm-dark-line: rgba(225, 244, 239, .20);
+  --scorm-dark-line-soft: rgba(225, 244, 239, .12);
+  --scorm-dark-ink: #F7FCFA;
+  --scorm-dark-ink-soft: #CDDAD6;
+  --scorm-dark-ink-muted: #9DB0AB;
+  --scorm-dark-teal: #63D8CE;
+  --scorm-dark-teal-strong: #8BE9E1;
+}
+
+html body.scorm-platform-dark .scorm-editorial,
+html body .scorm-editorial.scorm-theme-dark {
+  --sai-paper: var(--scorm-dark-canvas) !important;
+  --sai-surface: var(--scorm-dark-surface) !important;
+  --sai-surface-2: var(--scorm-dark-surface-2) !important;
+  --sai-surface-3: var(--scorm-dark-surface-3) !important;
+  --sai-line: var(--scorm-dark-line) !important;
+  --sai-line-soft: var(--scorm-dark-line-soft) !important;
+  --sai-ink: var(--scorm-dark-ink) !important;
+  --sai-ink-soft: var(--scorm-dark-ink-soft) !important;
+  --sai-ink-faint: var(--scorm-dark-ink-muted) !important;
+  --sai-brand: var(--scorm-dark-teal) !important;
+  --sai-brand-strong: var(--scorm-dark-teal-strong) !important;
+  --platform-teal-bg: var(--scorm-dark-canvas) !important;
+  --platform-teal-bg-deep: var(--scorm-dark-canvas-deep) !important;
+  --platform-teal-surface: var(--scorm-dark-surface) !important;
+  --platform-teal-surface-2: var(--scorm-dark-surface-2) !important;
+  --platform-teal-surface-3: var(--scorm-dark-surface-3) !important;
+  --platform-teal-line: var(--scorm-dark-line) !important;
+  --platform-teal-line-soft: var(--scorm-dark-line-soft) !important;
+  --platform-teal-text: var(--scorm-dark-ink) !important;
+  --platform-teal-body: var(--scorm-dark-ink-soft) !important;
+  --platform-teal-muted: var(--scorm-dark-ink-muted) !important;
+  --platform-teal: var(--scorm-dark-teal) !important;
+  --platform-teal-strong: var(--scorm-dark-teal-strong) !important;
+  --modern-bg: var(--scorm-dark-canvas) !important;
+  --modern-bg-soft: var(--scorm-dark-canvas-deep) !important;
+  --modern-surface: var(--scorm-dark-surface) !important;
+  --modern-surface-2: var(--scorm-dark-surface-2) !important;
+  --modern-surface-3: var(--scorm-dark-surface-3) !important;
+  --modern-border: var(--scorm-dark-line) !important;
+  --modern-border-strong: rgba(99, 216, 206, .50) !important;
+  --modern-text: var(--scorm-dark-ink) !important;
+  --modern-body: var(--scorm-dark-ink-soft) !important;
+  --modern-muted: var(--scorm-dark-ink-muted) !important;
+  --modern-blue: var(--scorm-dark-teal) !important;
+  --modern-blue-strong: var(--scorm-dark-teal-strong) !important;
+  --scorm-canvas: var(--scorm-dark-canvas) !important;
+  --scorm-surface: var(--scorm-dark-surface) !important;
+  --scorm-surface-soft: var(--scorm-dark-surface-2) !important;
+  --scorm-surface-muted: var(--scorm-dark-surface-3) !important;
+  --scorm-ink: var(--scorm-dark-ink) !important;
+  --scorm-ink-soft: var(--scorm-dark-ink-soft) !important;
+  --scorm-muted: var(--scorm-dark-ink-muted) !important;
+  --scorm-subtle: var(--scorm-dark-ink-muted) !important;
+  --scorm-line: var(--scorm-dark-line) !important;
+  --scorm-line-strong: rgba(99, 216, 206, .50) !important;
+  --scorm-sidebar-text: var(--scorm-dark-ink-soft) !important;
+  --scorm-sidebar-muted: var(--scorm-dark-ink-muted) !important;
+  color: var(--scorm-dark-ink) !important;
+  background: var(--scorm-dark-canvas) !important;
+}
+
+html body.scorm-platform-dark .scorm-editorial .scorm-main,
+html body.scorm-platform-dark .scorm-editorial main,
+html body .scorm-editorial.scorm-theme-dark .scorm-main,
+html body .scorm-editorial.scorm-theme-dark main {
+  background:
+    radial-gradient(circle at 84% -8%, rgba(99, 216, 206, .11), transparent 28rem),
+    linear-gradient(180deg, #0A1210 0%, var(--scorm-dark-canvas) 58%, var(--scorm-dark-canvas-deep) 100%) !important;
+}
+
+html body.scorm-platform-dark .scorm-editorial .scorm-topbar,
+html body .scorm-editorial.scorm-theme-dark .scorm-topbar {
+  background: rgba(5, 8, 7, .96) !important;
+  border-color: var(--scorm-dark-line) !important;
+}
+
+html body.scorm-platform-dark .scorm-editorial .scorm-sidebar,
+html body.scorm-platform-dark .scorm-editorial .scorm-mobile-drawer,
+html body .scorm-editorial.scorm-theme-dark .scorm-sidebar,
+html body .scorm-editorial.scorm-theme-dark .scorm-mobile-drawer {
+  background: linear-gradient(180deg, #09110F 0%, #040706 100%) !important;
+  border-color: var(--scorm-dark-line) !important;
+}
+
+html body.scorm-platform-dark .scorm-editorial .scorm-nav-item,
+html body .scorm-editorial.scorm-theme-dark .scorm-nav-item {
+  color: var(--scorm-dark-ink-soft) !important;
+}
+
+html body.scorm-platform-dark .scorm-editorial .scorm-nav-section,
+html body.scorm-platform-dark .scorm-editorial .scorm-brand-subtitle,
+html body .scorm-editorial.scorm-theme-dark .scorm-nav-section,
+html body .scorm-editorial.scorm-theme-dark .scorm-brand-subtitle {
+  color: var(--scorm-dark-ink-muted) !important;
+}
+
+html body.scorm-platform-dark .scorm-auth-workbench,
+html body .scorm-auth-workbench.scorm-theme-dark {
+  --sa-bg: var(--scorm-dark-canvas) !important;
+  --sa-bg-deep: var(--scorm-dark-canvas-deep) !important;
+  --sa-panel: var(--scorm-dark-surface) !important;
+  --sa-panel-2: var(--scorm-dark-surface-2) !important;
+  --sa-panel-3: var(--scorm-dark-surface-3) !important;
+  --sa-border: var(--scorm-dark-line) !important;
+  --sa-border-strong: rgba(99, 216, 206, .52) !important;
+  --sa-cream: var(--scorm-dark-ink) !important;
+  --sa-cream-soft: var(--scorm-dark-ink-soft) !important;
+  --sa-soft: var(--scorm-dark-ink-soft) !important;
+  --sa-muted: var(--scorm-dark-ink-muted) !important;
+  --sa-muted-deep: var(--scorm-dark-ink-muted) !important;
+  --sa-orange: var(--scorm-dark-teal) !important;
+  --sa-orange-strong: var(--scorm-dark-teal-strong) !important;
+  background:
+    radial-gradient(circle at 18% -8%, rgba(99, 216, 206, .12), transparent 25rem),
+    linear-gradient(180deg, #08100E 0%, var(--scorm-dark-canvas) 58%, var(--scorm-dark-canvas-deep) 100%) !important;
+}
+
+html body.scorm-platform-dark .scorm-auth-workbench .sa-card,
+html body .scorm-auth-workbench.scorm-theme-dark .sa-card {
+  background: var(--scorm-dark-surface) !important;
+  border-color: var(--scorm-dark-line) !important;
+  border-top-color: var(--scorm-dark-teal) !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, .48) !important;
+}
+
+html body.scorm-platform-dark .scorm-auth-workbench .sa-form-panel,
+html body .scorm-auth-workbench.scorm-theme-dark .sa-form-panel {
+  background: linear-gradient(180deg, #15211E 0%, var(--scorm-dark-surface) 100%) !important;
+}
+
+html body.scorm-platform-dark .scorm-auth-workbench .sa-form-title,
+html body .scorm-auth-workbench.scorm-theme-dark .sa-form-title {
+  color: var(--scorm-dark-ink) !important;
+}
+
+html body.scorm-platform-dark .scorm-auth-workbench .sa-auth-description,
+html body.scorm-platform-dark .scorm-auth-workbench .sa-label,
+html body.scorm-platform-dark .scorm-auth-workbench .sa-auth-switch,
+html body .scorm-auth-workbench.scorm-theme-dark .sa-auth-description,
+html body .scorm-auth-workbench.scorm-theme-dark .sa-label,
+html body .scorm-auth-workbench.scorm-theme-dark .sa-auth-switch {
+  color: var(--scorm-dark-ink-soft) !important;
+}
+
+html body.scorm-platform-dark .scorm-auth-workbench .sa-input,
+html body .scorm-auth-workbench.scorm-theme-dark .sa-input {
+  background: #070C0B !important;
+  border-color: #3B504B !important;
+  color: var(--scorm-dark-ink) !important;
+}
+
+html body.scorm-platform-dark .scorm-auth-workbench .sa-input::placeholder,
+html body .scorm-auth-workbench.scorm-theme-dark .sa-input::placeholder {
+  color: #91A49F !important;
+  opacity: 1 !important;
+}
+
+html body.scorm-platform-dark .scorm-auth-workbench .sa-input-wrap svg,
+html body .scorm-auth-workbench.scorm-theme-dark .sa-input-wrap svg {
+  color: #A8BAB5 !important;
+}
+
+html body.scorm-platform-dark .scorm-auth-workbench .sa-social-button,
+html body.scorm-platform-dark .scorm-auth-workbench .sa-google-button,
+html body .scorm-auth-workbench.scorm-theme-dark .sa-social-button,
+html body .scorm-auth-workbench.scorm-theme-dark .sa-google-button {
+  background: var(--scorm-dark-surface-2) !important;
+  border-color: #405650 !important;
+  color: var(--scorm-dark-ink) !important;
+}
+
+html body.scorm-platform-dark .scorm-auth-workbench .sa-theme-toggle,
+html body .scorm-auth-workbench.scorm-theme-dark .sa-theme-toggle {
+  background: #101A17 !important;
+  border-color: #405650 !important;
+  color: var(--scorm-dark-ink) !important;
+}

@@ -129,7 +129,7 @@ export default function ScormCourses() {
   const learnerCount = (tracking.courses || []).reduce((sum, course) => sum + Number(course.learners || 0), 0);
 
   return (
-    <div className="platform-section-page scorm-courses-page p-4 md:p-7 lg:p-9 max-w-7xl mx-auto">
+    <div className="p-4 md:p-7 lg:p-9 max-w-7xl mx-auto">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7 pb-7 border-b border-white/10">
         <div className="max-w-3xl">
           <div className="scorm-micro text-[10px] uppercase font-semibold text-slate-500">{trialAccess ? 'Interactive course demo' : 'Course management'}</div>
@@ -194,11 +194,11 @@ export default function ScormCourses() {
               <Link
                 key={course.id}
                 to={`/scorm/courses/${course.id}`}
-                className="scorm-course-row scorm-course-entry grid gap-4 items-center px-5 md:px-6 py-5 transition-colors"
+                className="scorm-course-row grid grid-cols-1 lg:grid-cols-[1.5fr_.65fr_.65fr_.75fr_auto] gap-4 items-center px-5 md:px-6 py-5 transition-colors"
               >
                 <div className="min-w-0">
-                  <div className="scorm-course-name flex items-center gap-2 min-w-0">
-                    <h3 className="platform-item-title font-semibold text-[#f1f5f9]">{course.title}</h3>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h3 className="font-semibold text-[14px] truncate text-[#f1f5f9]">{course.title}</h3>
                     <span className={`scorm-course-status scorm-micro shrink-0 px-2 py-1 rounded-md text-[8px] uppercase font-semibold border ${course.status === 'published' ? 'is-published' : 'is-draft'}`}>{trialAccess ? 'Included' : course.status}</span>
                     {course.readOnly && <span className="inline-flex items-center gap-1 text-[8px] uppercase font-semibold text-[#8295ae]"><LockKeyhole size={10} /> View only</span>}
                   </div>
