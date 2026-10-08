@@ -118,6 +118,7 @@ const fullBtn=document.getElementById('fullBtn');
 const mobileFullscreenExit=document.getElementById('mobileFullscreenExit');
 const protectionToast=document.getElementById('protectionToast');
 let pageFlip=null;
+let pageTurnInProgress=false;
 let currentIndex=0;
 let audioCtx=null;
 let hintTimer=null;
@@ -170,6 +171,15 @@ function pageDimensions(){
   return {width:Math.max(1,Math.floor(width)),height:Math.max(1,Math.floor(height)),mobile:false};
 }
 
+function pageTurnTiming(dims){
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return 1;
+  // PageFlip 2.0.7 shortens duration below a 1000px animation path. Compensate
+  // for that so small phone pages do not turn twice as fast as desktop pages.
+  const duration=dims.mobile||isTouchTablet()?1200:900;
+  const path=Math.max(1,dims.width*2-dims.height/10,dims.height/10);
+  return Math.round(duration*Math.max(1,1000/path));
+}
+
 function spreadState(){
   try{
     const collection=pageFlip?.getPageCollection?.();
@@ -190,7 +200,8 @@ function updateControls(index){
   const state=spreadState();
   const canPrev=state?state.spreadIndex>0:currentIndex>0;
   const canNext=state?state.spreadIndex<state.spreads.length-1:currentIndex<DATA.pageCount-1;
-  prevBtn.disabled=!canPrev;leftEdge.disabled=!canPrev;nextBtn.disabled=!canNext;rightEdge.disabled=!canNext;
+  prevBtn.disabled=pageTurnInProgress||!canPrev;leftEdge.disabled=pageTurnInProgress||!canPrev;nextBtn.disabled=pageTurnInProgress||!canNext;rightEdge.disabled=pageTurnInProgress||!canNext;
+  pageSlider.disabled=pageTurnInProgress;pageJump.disabled=pageTurnInProgress;
   nextBtn.innerHTML=currentIndex===0?'<span class="word">Open</span>':'<span class="word">Next</span>';
   pageSlider.value=String(currentIndex+1);
   pageJump.value=String(currentIndex+1);
@@ -245,7 +256,7 @@ function hideHint(){
 }
 
 function jumpToPage(value){
-  if(!pageFlip||!DATA.pageCount)return;
+  if(!pageFlip||!DATA.pageCount||pageTurnInProgress)return;
   const human=Math.max(1,Math.min(DATA.pageCount,Math.round(Number(value)||1)));
   const target=human-1;
   ensureAudio();
@@ -288,7 +299,7 @@ function init(){
     minHeight:dims.height,
     maxHeight:dims.height,
     drawShadow:true,
-    flippingTime:window.matchMedia('(prefers-reduced-motion: reduce)').matches?1:900,
+    flippingTime:pageTurnTiming(dims),
     usePortrait:dims.mobile,
     startPage:rememberedPage,
     autoSize:false,
@@ -315,11 +326,12 @@ function init(){
     hideHint();
   });
   pageFlip.on('changeOrientation',()=>{setTimeout(()=>{try{updateControls(pageFlip.getCurrentPageIndex())}catch(_){}},0)});
+  pageFlip.on('changeState',e=>{pageTurnInProgress=e.data==='flipping';updateControls(currentIndex)});
   pageFlip.loadFromHTML(document.querySelectorAll('#book .book-page'));
   installBookTouch();
 
-  prevBtn.onclick=()=>{ensureAudio();try{pageFlip.flipPrev('top')}catch(_){}};
-  nextBtn.onclick=()=>{ensureAudio();try{pageFlip.flipNext('top')}catch(_){}};
+  prevBtn.onclick=()=>{if(prevBtn.disabled||pageTurnInProgress)return;ensureAudio();try{pageFlip.flipPrev('top')}catch(_){}};
+  nextBtn.onclick=()=>{if(nextBtn.disabled||pageTurnInProgress)return;ensureAudio();try{pageFlip.flipNext('top')}catch(_){}};
   leftEdge.onclick=prevBtn.onclick;
   rightEdge.onclick=nextBtn.onclick;
   pageSlider.addEventListener('input',()=>{

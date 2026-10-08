@@ -352,9 +352,9 @@
     border-radius: 12px;
   }
 
-  .public-flip-library-card { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: start; padding: 12px; gap: 12px; }
-  .public-flip-library-card .public-flip-library-cover { height: 124px; border: 1px solid #bcc9d5; border-radius: 6px; }
-  .public-flip-library-card .public-flip-library-cover img { object-fit: contain !important; object-position: center !important; }
+  .public-flip-library-card { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: start; padding: 12px; gap: 12px; }
+  .public-flip-library-card .public-flip-library-cover { position: relative; height: 63px; min-height: 0; aspect-ratio: 16 / 9; border: 1px solid #bcc9d5; border-radius: 6px; }
+  .public-flip-library-card .public-flip-library-cover img { position: absolute; inset: 0; object-fit: contain !important; object-position: center !important; }
   .public-flip-library-body { padding: 0; }
   html body #root .public-flip-library .public-flip-library-body h2 { font-size: 16px !important; line-height: 1.4 !important; }
   .public-flip-library-body > p { margin-top: 6px; font-size: 12px; }

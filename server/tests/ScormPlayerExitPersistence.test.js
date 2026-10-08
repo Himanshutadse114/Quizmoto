@@ -77,13 +77,14 @@ describe('SCORM player local-first persistence', () => {
         expect(source).to.not.include('id="btnExit"');
     });
 
-    it('fits uploaded SCORM as a desktop canvas on phones without rewriting its internal DOM', () => {
-        expect(source).to.include("const scaleUploadedCourse = pkg.source === 'upload'");
-        expect(source).to.include('scaleUploadedCourse,');
-        expect(source).to.include('function syncUploadedCourseDesktopFit()');
-        expect(source).to.include('root.classList.toggle("qmx-upload-desktop-fit",mobile)');
+    it('fits every SCORM source as a desktop canvas without rewriting its internal DOM', () => {
+        expect(source).to.include('const scaleCourseDesktop = true;');
+        expect(source).to.include('scaleCourseDesktop,');
+        expect(source).to.include('function syncCourseDesktopFit()');
+        expect(source).to.include('root.classList.toggle("qmx-course-desktop-fit",constrained)');
+        expect(source).to.include('width<1280||height<720');
         expect(source).to.include('width:1280px;height:720px');
-        expect(source).to.include('transform:scale(var(--qmx-upload-scale,1))');
+        expect(source).to.include('transform:scale(var(--qmx-course-scale,1))');
     });
 
     it('uses a light Quizmoto shell for presentation courses without changing other course formats', () => {

@@ -9,19 +9,20 @@ for (const colorScheme of ['dark', 'light']) for (const width of [320, 390, 768,
   await page.addInitScript(theme => { localStorage.setItem('lmsgen-platform-theme', theme); window.copied = []; Object.defineProperty(navigator, 'share', { value: undefined, configurable: true }); Object.defineProperty(navigator, 'clipboard', { value: { writeText: async value => window.copied.push(value) }, configurable: true }); }, colorScheme);
   await page.route('**/api/**', route => route.fulfill(route.request().url().includes('public-library')
     ? { json: { library: { title: 'My Library', bookCount: 8, books, shareUrl: shortUrl, shareIdentifier: 'AbCdEf0123456789' } } }
-    : { contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1800"><rect width="1200" height="1800" fill="#164452"/></svg>' }));
+    : { contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="#164452"/><rect x="4" y="4" width="1592" height="892" fill="none" stroke="#fff" stroke-width="8"/></svg>' }));
   await page.goto(`/publica-library/${'a'.repeat(48)}`);
   await expect(page.locator('.public-flip-library-card')).toHaveCount(6);
   await expect(page).toHaveURL(/\/publica-library\/AbCdEf0123456789$/);
   const metrics = await page.locator('.public-flip-library').evaluate(el => {
     const card = el.querySelector('.public-flip-library-card');
     const cover = card.querySelector('.public-flip-library-cover');
-    return { scheme: getComputedStyle(el).colorScheme, background: getComputedStyle(el).backgroundColor, title: getComputedStyle(card.querySelector('h2')).fontSize, height: card.getBoundingClientRect().height, coverWidth: cover.getBoundingClientRect().width, overflow: document.documentElement.scrollWidth > innerWidth };
+    const image = cover.querySelector('img');
+    return { scheme: getComputedStyle(el).colorScheme, background: getComputedStyle(el).backgroundColor, title: getComputedStyle(card.querySelector('h2')).fontSize, height: card.getBoundingClientRect().height, coverWidth: cover.getBoundingClientRect().width, coverRatio: cover.getBoundingClientRect().width / cover.getBoundingClientRect().height, imageFit: getComputedStyle(image).objectFit, overflow: document.documentElement.scrollWidth > innerWidth };
   });
   expect(metrics.scheme).toBe('light');
   expect(metrics.background).toBe('rgb(241, 245, 249)');
   expect(metrics.overflow).toBe(false);
-  if (width < 640) { expect(metrics.title).toBe('16px'); expect(metrics.coverWidth).toBe(88); expect(metrics.height).toBeLessThan(270); }
+  if (width < 640) { expect(metrics.title).toBe('16px'); expect(metrics.coverWidth).toBe(112); expect(metrics.coverRatio).toBeCloseTo(16 / 9, 2); expect(metrics.imageFit).toBe('contain'); expect(metrics.height).toBeLessThan(270); }
   await page.getByRole('button', { name: 'Share library' }).click();
   expect(await page.evaluate(() => window.copied)).toEqual([shortUrl]);
   await page.getByRole('button', { name: 'Next', exact: true }).click();

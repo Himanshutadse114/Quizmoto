@@ -13,6 +13,10 @@ describe('Flipbook reader experience', () => {
         expect(html).to.include('capture:true,passive:false');
         expect(html).to.include("bookEl.addEventListener('touchcancel'");
         expect(html).not.to.include('color-scheme:dark');
+        expect(html).to.include('function pageTurnTiming(dims)');
+        expect(html).to.include('duration=dims.mobile||isTouchTablet()?1200:900');
+        expect(html).to.include('1000/path');
+        expect(html).to.include('pageSlider.disabled=pageTurnInProgress');
     });
     it('fits the real stage and reports sharing failures rather than swallowing them', () => {
         const html = renderFlipbookReader({ title: 'Reader QA', shareToken: 'reader-qa', pageCount: 4 }, { publicUrl: 'https://www.lmsgen.in/publica/reader-qa' });

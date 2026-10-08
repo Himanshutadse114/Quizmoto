@@ -41,7 +41,7 @@ function installBookTouch(){
   },{capture:true,passive:false});
   bookEl.addEventListener('touchend',event=>{
     event.stopImmediatePropagation();
-    if(!gesture)return;
+    if(!gesture){if(pageTurnInProgress&&event.cancelable)event.preventDefault();return}
     const touch=Array.from(event.changedTouches).find(t=>t.identifier===gesture.id);
     if(!touch)return;
     const dx=touch.clientX-gesture.screenX,dy=touch.clientY-gesture.screenY;
