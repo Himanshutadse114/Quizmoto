@@ -28,6 +28,11 @@ html body #root :is(.platform-learner-surface, .public-flip-library) :is(h1, h2,
   line-height: 1.35 !important;
   letter-spacing: -.02em !important;
 }
+html body #root .scorm-editorial :is([role="heading"], .qh-title, .qh-section-title, .qh-empty-title, .qe-question-name, .qe-loading-title):not([style*="--preview-primary"] *) {
+  font-size: var(--platform-heading-size) !important;
+  line-height: 1.35 !important;
+  letter-spacing: -.02em !important;
+}
 html body #root .scorm-editorial :is(.scorm-micro, .scorm-eyebrow, .scorm-meta, .scorm-metric-label, .scorm-nav-section),
 html body #root .scorm-auth-workbench .sa-label {
   font-size: 11px !important;

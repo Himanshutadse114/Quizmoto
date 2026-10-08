@@ -80,7 +80,7 @@ export default function MicrosoftUniversalCallback() {
   }, [navigate, loginScormWorkspaceWithMicrosoft]);
 
   return (
-    <div className="min-h-screen bg-[#f4f8f7] text-[#102321] grid place-items-center p-4">
+    <div className="platform-learner-surface min-h-screen bg-[#f4f8f7] text-[#102321] grid place-items-center p-4">
       <div className="w-full max-w-md bg-white border border-[#dce8e5] rounded-2xl p-7 text-center shadow-[0_20px_60px_rgba(16,35,33,.08)]">
         {error ? (
           <>

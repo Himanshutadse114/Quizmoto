@@ -100,7 +100,7 @@ export default function PlatformStartupGate({ children }) {
   if (!preparing) return children;
 
   return (
-    <div className={`platform-startup platform-startup-${theme}`} role="status" aria-live="polite" aria-label="Preparing LMSGEN workspace">
+    <div className={`platform-learner-surface platform-startup platform-startup-${theme}`} role="status" aria-live="polite" aria-label="Preparing LMSGEN workspace">
       <div className="platform-startup-glow" aria-hidden="true" />
       <section className="platform-startup-card">
         <img src={theme === 'light' ? '/branding/lmsgen-logo-light.png' : '/branding/lmsgen-logo-dark.png'} alt="LMSGEN" className="platform-startup-logo" />

@@ -52,6 +52,12 @@ export default function ScormLibrary() {
   const [status, setStatus] = useState('all');
   const [selectedFile, setSelectedFile] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [renameId, setRenameId] = useState(null);
+  const [renameTitle, setRenameTitle] = useState('');
+  const [renaming, setRenaming] = useState(false);
+  const [renameError, setRenameError] = useState('');
+  const [renameNotice, setRenameNotice] = useState('');
+  const renameTriggerRef = useRef(null);
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
   const load = useCallback(
@@ -311,6 +317,35 @@ export default function ScormLibrary() {
     }
   };
 
+  const cancelRename = () => {
+    setRenameId(null);
+    setRenameError('');
+    window.requestAnimationFrame(() => document.getElementById(`rename-package-${renameTriggerRef.current}`)?.focus());
+  };
+
+  const renamePackage = async (event, pkg) => {
+    event.preventDefault();
+    if (renaming) return;
+    const nextTitle = renameTitle.trim();
+    if (!nextTitle || nextTitle.length > 200) {
+      setRenameError('Enter a package name between 1 and 200 characters.');
+      return;
+    }
+    setRenaming(true);
+    setRenameError('');
+    setRenameNotice('');
+    try {
+      const response = await axios.patch(apiUrl(`/api/scorm/packages/${encodeURIComponent(pkg.id)}`), { title: nextTitle }, { headers });
+      setPackages(current => current.map(item => String(item.id) === String(pkg.id) ? { ...item, title: response.data.title } : item));
+      setRenameNotice(`Package renamed to “${response.data.title}”.`);
+      cancelRename();
+    } catch (error) {
+      setRenameError(error.response?.data?.message || 'Could not rename this package. Try again.');
+    } finally {
+      setRenaming(false);
+    }
+  };
+
   const onFile = (e) => setSelectedFile(e.target.files?.[0] || null);
 
   const createCourse = async (packageId, defaultTitle) => {
@@ -457,6 +492,7 @@ export default function ScormLibrary() {
         </div>
 
         <div className="scorm-course-rows divide-y">
+          {renameNotice && <div role="status" className="px-5 py-3 text-sm">{renameNotice}</div>}
           {initialLoading ? <div role="status" className="p-8 text-center text-sm"><LoaderCircle size={20} className="animate-spin mx-auto mb-2" />Loading packages…</div> : loadError ? <div role="alert" className="p-8 text-center text-sm"><p>{loadError}</p><button type="button" className="scorm-button-secondary mt-3 px-4" onClick={() => { setInitialLoading(true); load().catch((e) => setLoadError(e.response?.data?.message || 'Could not load course packages.')).finally(() => setInitialLoading(false)); }}>Try again</button></div> : filtered.length === 0 && <div className="p-10 text-center"><FileArchive size={24} className="mx-auto mb-3" style={muted} /><div className="text-sm font-semibold" style={ink}>No packages match this view</div><div className="text-xs mt-1" style={muted}>Try another search or upload a trackable course ZIP.</div></div>}
           {filtered.map((p) => {
             const generated = isGenerated(p);
@@ -464,7 +500,47 @@ export default function ScormLibrary() {
             const editable = isQuizmotoAi(p) || videoCourse;
             const sourceLabel = videoCourse ? 'Video course' : generated ? 'Generated' : 'External';
             const deleting = String(deletingId) === String(p.id);
-            return <div key={p.id} className={`scorm-course-row px-5 md:px-6 py-5 transition-all ${deleting ? 'opacity-70' : ''}`} aria-busy={deleting}><div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_130px_150px_auto] gap-4 xl:items-center"><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap min-w-0"><h3 className="font-semibold text-[14px] truncate max-w-full" title={p.title}>{p.title}</h3><span className={`scorm-course-status scorm-micro shrink-0 px-2 py-1 rounded-md text-[8px] uppercase font-semibold border ${deleting ? 'is-draft' : (p.status === 'ready' ? 'is-published' : 'is-draft')}`}>{deleting ? 'deleting' : p.status}</span></div><div className="scorm-micro text-[9px] mt-1 flex flex-wrap gap-x-1"><span>Trackable package</span><span>·</span><span>{sourceLabel}</span>{p.fileCount != null && <><span>·</span><span>{p.fileCount} files</span></>}{p.entryHref && <><span>·</span><span className="truncate max-w-[260px]">{p.entryHref}</span></>}</div>{p.status === 'processing' && !deleting && <div className="text-[10px] mt-2" style={{ color: 'var(--scorm-amber)' }}>Validating and extracting package…</div>}{deleting && <div className="text-[10px] mt-2 inline-flex items-center gap-2" style={{ color: 'var(--scorm-amber)' }}><LoaderCircle size={13} className="animate-spin" /> Deleting course and stored files…</div>}{p.errorMessage && <div className="text-[10px] mt-2" style={{ color: 'var(--scorm-red)' }}>{p.errorMessage}</div>}</div><div><div className="text-xs font-semibold" style={ink}>{sourceLabel}</div><div className="scorm-micro text-[8px] uppercase mt-1">Source</div></div><div><div className="text-xs font-semibold" style={ink}>{p.fileCount != null ? p.fileCount : '—'}</div><div className="scorm-micro text-[8px] uppercase mt-1">Files</div></div><div className="flex flex-wrap gap-2 xl:justify-end">{p.status === 'ready' && !videoCourse && <button disabled={deleting} onClick={() => createCourse(p.id, p.title)} className="scorm-button-secondary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-wait"><Plus size={13} /> Create course</button>}{(p.status === 'ready' || p.storageKeyZip) && <button disabled={deleting} onClick={() => downloadPkg(p.id, p.title)} className="scorm-button-tertiary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-wait"><Download size={13} /> Download</button>}<button onClick={() => editPkg(p)} disabled={!editable || deleting} title={editable ? (videoCourse ? 'Replace video and rebuild this course' : 'Edit generated package') : 'Only generated packages can be edited'} className="scorm-button-secondary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"><Pencil size={13} /> {videoCourse ? 'Replace video' : 'Edit'}</button><button disabled={Boolean(deletingId)} onClick={() => removePkg(p)} className="px-3 py-2 rounded-lg border text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-55 disabled:cursor-wait" style={{ color: 'var(--scorm-red)', borderColor: 'color-mix(in srgb, var(--scorm-red) 28%, transparent)', background: 'var(--scorm-red-soft)' }}>{deleting ? <LoaderCircle size={13} className="animate-spin" /> : <Trash2 size={13} />} {deleting ? 'Deleting…' : 'Delete'}</button></div></div></div>;
+            return <div key={p.id} className={`scorm-course-row px-5 md:px-6 py-5 transition-all ${deleting ? 'opacity-70' : ''}`} aria-busy={deleting}>
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_130px_150px_auto] gap-4 xl:items-center">
+                <div className="min-w-0">
+                  {String(renameId) === String(p.id) ? (
+                    <form onSubmit={event => renamePackage(event, p)} onKeyDown={event => { if (event.key === 'Escape' && !renaming) { event.preventDefault(); cancelRename(); } }} className="space-y-2">
+                      <label htmlFor={`package-name-${p.id}`} className="block text-sm font-semibold">Package name</label>
+                      <input id={`package-name-${p.id}`} type="text" value={renameTitle} onChange={event => setRenameTitle(event.target.value)}
+                        autoFocus required maxLength={200} disabled={renaming} aria-invalid={Boolean(renameError)}
+                        aria-describedby={renameError ? `package-name-error-${p.id}` : `package-name-hint-${p.id}`}
+                        className="scorm-course-search w-full px-3 py-2 text-sm" />
+                      <div id={`package-name-hint-${p.id}`} className="text-xs" style={muted}>Changes the library name only. Course files and existing course names stay unchanged.</div>
+                      {renameError && <div id={`package-name-error-${p.id}`} role="alert" className="text-sm" style={{ color: 'var(--scorm-red)' }}>{renameError}</div>}
+                      <div className="flex flex-wrap gap-2">
+                        <button type="submit" disabled={renaming || !renameTitle.trim()} className="scorm-button-primary px-3 py-2 text-xs font-semibold inline-flex items-center gap-2 disabled:opacity-50">
+                          {renaming && <LoaderCircle size={14} className="animate-spin" />} {renaming ? 'Saving…' : 'Save name'}
+                        </button>
+                        <button type="button" disabled={renaming} onClick={cancelRename} className="scorm-button-tertiary px-3 py-2 text-xs">Cancel</button>
+                      </div>
+                    </form>
+                  ) : <div className="flex items-center gap-2 flex-wrap min-w-0">
+                    <h3 className="font-semibold text-[14px] truncate max-w-full" title={p.title}>{p.title}</h3>
+                    <span className={`scorm-course-status scorm-micro shrink-0 px-2 py-1 rounded-md text-[8px] uppercase font-semibold border ${deleting ? 'is-draft' : (p.status === 'ready' ? 'is-published' : 'is-draft')}`}>{deleting ? 'deleting' : p.status}</span>
+                  </div>}
+                  <div className="scorm-micro text-[9px] mt-1 flex flex-wrap gap-x-1"><span>Trackable package</span><span>·</span><span>{sourceLabel}</span>{p.fileCount != null && <><span>·</span><span>{p.fileCount} files</span></>}{p.entryHref && <><span>·</span><span className="truncate max-w-[260px]">{p.entryHref}</span></>}</div>
+                  {p.status === 'processing' && !deleting && <div className="text-[10px] mt-2" style={{ color: 'var(--scorm-amber)' }}>Validating and extracting package…</div>}
+                  {deleting && <div className="text-[10px] mt-2 inline-flex items-center gap-2" style={{ color: 'var(--scorm-amber)' }}><LoaderCircle size={13} className="animate-spin" /> Deleting course and stored files…</div>}
+                  {p.errorMessage && <div className="text-[10px] mt-2" style={{ color: 'var(--scorm-red)' }}>{p.errorMessage}</div>}
+                </div>
+                <div><div className="text-xs font-semibold" style={ink}>{sourceLabel}</div><div className="scorm-micro text-[8px] uppercase mt-1">Source</div></div>
+                <div><div className="text-xs font-semibold" style={ink}>{p.fileCount != null ? p.fileCount : '—'}</div><div className="scorm-micro text-[8px] uppercase mt-1">Files</div></div>
+                <div className="flex flex-wrap gap-2 xl:justify-end">
+                  {p.status === 'ready' && !videoCourse && <button disabled={deleting || renaming} onClick={() => createCourse(p.id, p.title)} className="scorm-button-secondary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-wait"><Plus size={13} /> Create course</button>}
+                  {(p.status === 'ready' || p.storageKeyZip) && <button disabled={deleting || renaming} onClick={() => downloadPkg(p.id, p.title)} className="scorm-button-tertiary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-wait"><Download size={13} /> Download</button>}
+                  {String(renameId) !== String(p.id) && <button id={`rename-package-${p.id}`} type="button" disabled={deleting || renaming || p.source === 'catalog' || p.readOnly} aria-label={`Rename ${p.title}`}
+                    onClick={() => { renameTriggerRef.current = p.id; setRenameId(p.id); setRenameTitle(p.title || ''); setRenameError(''); setRenameNotice(''); }}
+                    className="scorm-button-secondary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40"><Pencil size={13} /> Rename</button>}
+                  {editable && <button onClick={() => editPkg(p)} disabled={deleting || renaming} title={videoCourse ? 'Replace video and rebuild this course' : 'Edit generated package'} className="scorm-button-secondary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"><Pencil size={13} /> {videoCourse ? 'Replace video' : 'Edit'}</button>}
+                  <button disabled={Boolean(deletingId) || renaming || String(renameId) === String(p.id)} onClick={() => removePkg(p)} className="px-3 py-2 rounded-lg border text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-55 disabled:cursor-wait" style={{ color: 'var(--scorm-red)', borderColor: 'color-mix(in srgb, var(--scorm-red) 28%, transparent)', background: 'var(--scorm-red-soft)' }}>{deleting ? <LoaderCircle size={13} className="animate-spin" /> : <Trash2 size={13} />} {deleting ? 'Deleting…' : 'Delete'}</button>
+                </div>
+              </div>
+            </div>;
           })}
         </div>
       </section>

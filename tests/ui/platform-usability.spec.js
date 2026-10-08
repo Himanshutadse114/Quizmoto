@@ -2,24 +2,110 @@ const { test, expect } = require('@playwright/test');
 const { renderFlipbookReader } = require('../../server/views/flipbookReader');
 
 const identity = { username: 'Audit workspace', email: 'audit@example.com', role: 'super_admin', isSuperAdmin: true, scormAccess: true, platformAccess: true };
-async function workspace(page, theme = 'dark') {
+async function workspace(page, theme = 'dark', account = identity) {
   await page.addInitScript(({ identity, theme }) => {
     localStorage.setItem('token', 'ui-fixture');
     localStorage.setItem('user', JSON.stringify(identity));
     localStorage.setItem('scormAccessGranted', '1');
     localStorage.setItem('scormPlatformAccess', '1');
     localStorage.setItem('quizmoto_scorm_platform_theme', theme);
-  }, { identity, theme });
+  }, { identity: account, theme });
   await page.route('**/api/**', route => {
     const path = new URL(route.request().url()).pathname;
     let data = { users: [], roster: [], groups: [], courses: [], packages: [], features: {}, summary: {}, overview: {} };
-    if (path.endsWith('/auth/scorm/status')) data = { ...identity, token: 'ui-fixture' };
+    if (path.endsWith('/auth/scorm/status')) data = { ...account, token: 'ui-fixture' };
     if (path.endsWith('/courses') || path.endsWith('/packages')) data = [];
     if (path.endsWith('/flipbooks')) data = { flipbooks: [], quota: { max: 2, used: 0 } };
     if (path.endsWith('/flipbooks/library')) data = { library: { books: [], enabled: false } };
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
   });
 }
+
+for (const theme of ['dark', 'light']) for (const width of [320, 390, 1440]) {
+  test(`${theme} header search navigates platform pages at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 });
+    await workspace(page, theme);
+    await page.goto('/scorm/roster');
+    const search = page.getByRole('searchbox', { name: 'Search platform pages' });
+    await expect(search).toBeVisible();
+    await page.locator('header.scorm-topbar').screenshot({ path: testInfo.outputPath('header-search.png') });
+    if (width === 1440) {
+      const searchBox = await search.boundingBox();
+      const themeBox = await page.getByRole('button', { name: /Switch to .* theme/ }).boundingBox();
+      expect(searchBox.x + searchBox.width).toBeLessThan(themeBox.x);
+    }
+    await search.fill('publica');
+    await page.getByRole('navigation', { name: 'Search results', exact: true }).getByRole('link', { name: 'Publica' }).click();
+    await expect(page).toHaveURL(/\/scorm\/publica$/);
+    await expect(search).toHaveValue('');
+    await search.fill('not-a-platform-page');
+    await expect(page.getByRole('status').filter({ hasText: 'No matching pages' })).toBeVisible();
+    await search.press('Escape');
+    await expect(search).toHaveValue('');
+    await search.fill('roster');
+    await search.press('Enter');
+    await expect(page).toHaveURL(/\/scorm\/roster$/);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
+}
+
+test('analytics header search does not expose administration or authoring pages', async ({ page }) => {
+  await workspace(page, 'dark', { ...identity, role: 'analytics_viewer', isSuperAdmin: false });
+  await page.goto('/scorm/tracking');
+  const search = page.getByRole('searchbox', { name: 'Search platform pages' });
+  for (const query of ['tenant', 'danger', 'author', 'roster']) {
+    await search.fill(query);
+    await expect(page.getByRole('status').filter({ hasText: 'No matching pages' })).toBeVisible();
+  }
+  await search.fill('reports');
+  await expect(page.getByRole('navigation', { name: 'Search results', exact: true }).getByRole('link', { name: 'Reports & Insights' })).toBeVisible();
+});
+
+for (const theme of ['dark', 'light']) for (const width of [390, 1440]) test(`${theme} uploaded SCORM package can be renamed at ${width}px without replacing files`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 });
+  await workspace(page, theme);
+  let title = 'Uploaded security course';
+  let failSave = true;
+  let saves = 0;
+  const pkg = () => ({ id: 'uploaded-package', title, source: 'upload', status: 'ready', fileCount: 13, entryHref: 'index.html' });
+  await page.route('**/api/scorm/packages', route => route.fulfill({ json: [pkg()] }));
+  await page.route('**/api/scorm/packages/uploaded-package', route => {
+    expect(route.request().method()).toBe('PATCH');
+    saves++;
+    if (failSave) return route.fulfill({ status: 503, json: { message: 'Saving temporarily unavailable' } });
+    expect(Object.keys(route.request().postDataJSON())).toEqual(['title']);
+    title = route.request().postDataJSON().title;
+    return route.fulfill({ json: { id: 'uploaded-package', title } });
+  });
+  await page.goto('/scorm/library');
+  const rename = page.getByRole('button', { name: 'Rename Uploaded security course', exact: true });
+  await rename.click();
+  const input = page.getByLabel('Package name', { exact: true });
+  await expect(input).toBeFocused();
+  await input.fill('Changed but cancelled');
+  await input.press('Escape');
+  await expect(rename).toBeFocused();
+  await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
+  expect(saves).toBe(0);
+  await rename.click();
+  await input.fill('');
+  await expect(page.getByRole('button', { name: 'Save name', exact: true })).toBeDisabled();
+  await input.fill('New SCORM name');
+  await page.getByRole('button', { name: 'Save name', exact: true }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Saving temporarily unavailable' })).toBeVisible();
+  await expect(input).toHaveValue('New SCORM name');
+  await page.locator('.scorm-course-rows').screenshot({ path: testInfo.outputPath('package-rename-form.png') });
+  failSave = false;
+  await page.getByRole('button', { name: 'Save name', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'New SCORM name', exact: true })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Package renamed' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'New SCORM name', exact: true })).toBeVisible();
+  await expect(page.getByText('index.html', { exact: true })).toBeVisible();
+  expect(saves).toBe(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.locator('.scorm-course-rows').screenshot({ path: testInfo.outputPath('package-renamed.png') });
+});
 
 test('password visibility keeps the entered password and never submits the form', async ({ page }) => {
   await page.route('**/api/**', route => route.fulfill({ json: {} }));
