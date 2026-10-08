@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -14,7 +14,6 @@ import {
   X
 } from 'lucide-react';
 import { apiUrl } from '../../config';
-import useDialogFocus from '../../hooks/useDialogFocus';
 
 const COURSE_THEMES = [
   { id: 'neutral', name: 'Neutral', primary: '#177E78', background: '#E7E7E4', text: '#282824' },
@@ -83,8 +82,6 @@ function ThemeCard({ theme, selected, disabled, onSelect }) {
 }
 
 function ThemeModal({ course, value, loading, saving, onChange, onClose, onSave }) {
-  const dialogRef = useRef(null);
-  useDialogFocus(Boolean(course), dialogRef, () => { if (!saving) onClose(); });
   if (!course) return null;
   return (
     <div
@@ -92,8 +89,6 @@ function ThemeModal({ course, value, loading, saving, onChange, onClose, onSave 
       role="dialog"
       aria-modal="true"
       aria-label="Course colour theme"
-      ref={dialogRef}
-      tabIndex={-1}
     >
       <div className="w-full md:max-w-2xl max-h-[min(92dvh,720px)] md:max-h-[88vh] mb-[5.25rem] md:mb-0 scorm-panel rounded-t-[28px] md:rounded-2xl border overflow-hidden shadow-2xl flex flex-col">
         <div className="p-4 md:p-6 border-b flex items-start justify-between gap-3 shrink-0">
@@ -284,7 +279,6 @@ export default function VisualStudio() {
             <div className="relative flex-1">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8295ae]" />
               <input
-                aria-label="Search courses"
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}

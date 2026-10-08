@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LockKeyhole, Mail, UserRound, Sun, Moon, ShieldCheck, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { LockKeyhole, Mail, UserRound, Sun, Moon, ShieldCheck, KeyRound } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { motion as Motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -76,7 +76,6 @@ export default function ScormAuth() {
   const [identifier, setIdentifier] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [verificationToken, setVerificationToken] = useState('');
@@ -116,7 +115,6 @@ export default function ScormAuth() {
   };
 
   const switchMode = (nextMode) => {
-    setShowPassword(false);
     setMode(nextMode);
     setError('');
     setNotice('');
@@ -275,7 +273,7 @@ export default function ScormAuth() {
             : 'Set new password';
 
   const description = isLogin
-    ? 'Sign in to continue to your workspace.'
+    ? 'Sign in to your tenant, or open the complete interactive LMSGEN product tour before activation.'
     : isRegister
       ? 'Create your account and verify your email before registration is completed.'
       : mode === 'register-otp'
@@ -312,9 +310,15 @@ export default function ScormAuth() {
         >
           <section className="sa-form-panel">
             <h2 className="sa-form-title">{title}</h2>
-            <p className="sa-auth-description">{description}</p>
+            <p className="mt-2 mb-5 text-xs opacity-70 leading-relaxed">{description}</p>
 
-            {error && <div className="sa-error" role="alert">{error}</div>}
+            {isLogin && (
+              <div className="sa-product-preview" aria-label="LMSGEN platform capabilities">
+                <span>AI course authoring</span><span>SCORM library</span><span>Learner campaigns</span><span>Tracking & reports</span><span>Quizmoto</span><span>Publica</span>
+              </div>
+            )}
+
+            {error && <div className="sa-error">{error}</div>}
             {notice && !error && (
               <div className="mb-4 rounded-[8px] border px-3 py-2 text-[11px] leading-relaxed" style={{ borderColor: 'rgba(71,199,193,.35)', background: 'rgba(71,199,193,.08)' }}>
                 {notice}
@@ -356,7 +360,7 @@ export default function ScormAuth() {
                   <div className="sa-input-wrap">
                     <LockKeyhole size={15} />
                     <input
-                      type={showPassword ? 'text' : 'password'}
+                      type="password"
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                       required
@@ -365,9 +369,6 @@ export default function ScormAuth() {
                       className="sa-input"
                       autoComplete={isLogin ? 'current-password' : 'new-password'}
                     />
-                    <button type="button" className="sa-password-toggle" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} onClick={() => setShowPassword((current) => !current)}>
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
                   </div>
                 </label>
               )}
@@ -451,22 +452,27 @@ export default function ScormAuth() {
                   type="button"
                   onClick={() => navigate('/login/microsoft')}
                   disabled={busy}
-                  className="sa-social-button"
+                  className="w-full min-h-[45px] mt-3 rounded-[9px] border text-[11px] font-semibold flex items-center justify-center gap-3 transition hover:opacity-90 disabled:opacity-50"
+                  style={{ borderColor: 'var(--sa-border)', background: 'var(--sa-panel-2)', color: 'var(--sa-cream)' }}
                 >
                   <MicrosoftMark /> Sign in with Microsoft
                 </button>
 
-                <div className="sa-google-block">
+                <div className="sa-google-block" style={{ marginTop: 10 }}>
                   <GoogleButton
                     width={googleWidth}
                     onSuccess={handleGoogleSuccess}
                     onError={() => setError('Google Sign-In failed. Please try again.')}
                   />
                 </div>
+
+                <p className="mt-3 text-[10px] opacity-60 leading-relaxed text-center">
+                  Assigned identities open their tenant and role. Unassigned accounts open a safe product demo; Quizmoto and paid operations remain locked until activation.
+                </p>
               </>
             )}
 
-            <div className="sa-auth-switch">
+            <div className="mt-5 text-center text-xs opacity-75">
               {isLogin ? (
                 <>
                   Need an account?{' '}

@@ -72,7 +72,7 @@ const PlayerLogin = () => {
                 </div>
 
                 <div className="mt-10 text-center">
-                    <p className="text-xs text-white/85 font-semibold uppercase tracking-wide">
+                    <p className="text-sm text-white/60 font-bold uppercase tracking-widest text-[10px]">
                         Secure player authentication
                     </p>
                 </div>

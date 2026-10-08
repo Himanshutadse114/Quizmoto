@@ -157,7 +157,6 @@ export default function ScormCourses() {
           <div className="relative flex-1 max-w-xl">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8295ae]" />
             <input
-              aria-label="Search courses"
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -170,7 +169,6 @@ export default function ScormCourses() {
               <button
                 key={item}
                 onClick={() => setStatus(item)}
-                aria-pressed={status === item}
                 className={`scorm-course-filter px-3 py-2 rounded-md text-[11px] font-semibold capitalize border ${status === item ? 'is-active' : ''}`}
               >
                 {item}

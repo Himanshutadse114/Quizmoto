@@ -135,8 +135,8 @@ export default function LearnerRoster() {
         </button>
       </div>
 
-      {message && <div role="status" className="mb-4 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(52,211,153,.28)', background: 'rgba(52,211,153,.08)', color: 'var(--scorm-ink)' }}>{message}</div>}
-      {error && <div role="alert" className="mb-4 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(251,113,133,.3)', background: 'rgba(251,113,133,.08)', color: 'var(--scorm-ink)' }}>{error}</div>}
+      {message && <div className="mb-4 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(52,211,153,.28)', background: 'rgba(52,211,153,.08)', color: 'var(--scorm-ink)' }}>{message}</div>}
+      {error && <div className="mb-4 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(251,113,133,.3)', background: 'rgba(251,113,133,.08)', color: 'var(--scorm-ink)' }}>{error}</div>}
 
       <div className="grid lg:grid-cols-[.82fr_1.18fr] gap-5 mb-6">
         <section className="scorm-panel rounded-2xl border p-5 md:p-6">
@@ -146,12 +146,12 @@ export default function LearnerRoster() {
           </div>
           <form onSubmit={addOne} className="space-y-3">
             <div>
-              <label htmlFor="roster-name" className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Name <span className="normal-case font-normal">optional</span></label>
-              <input id="roster-name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2.5 text-sm" placeholder="Learner name" />
+              <label className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Name <span className="normal-case font-normal">optional</span></label>
+              <input value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2.5 text-sm" placeholder="Learner name" />
             </div>
             <div>
-              <label htmlFor="roster-email" className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Email</label>
-              <input id="roster-email" autoComplete="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2.5 text-sm" placeholder="learner@company.com" />
+              <label className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Email</label>
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2.5 text-sm" placeholder="learner@company.com" />
             </div>
             <button type="submit" disabled={saving} className="scorm-button-primary px-4 py-2.5 text-xs font-semibold disabled:opacity-50">Add learner</button>
           </form>
@@ -162,14 +162,14 @@ export default function LearnerRoster() {
             <div className="flex items-center gap-2"><FileSpreadsheet size={17} /><h2 className="font-semibold">Import learner CSV</h2></div>
             <div className="flex rounded-lg border p-1" style={{ borderColor: 'var(--scorm-line)' }}>
               {['append', 'replace'].map((value) => (
-                <button key={value} type="button" onClick={() => setMode(value)} aria-pressed={mode === value} className={`px-3 py-1.5 rounded-md text-[10px] font-semibold capitalize ${mode === value ? 'scorm-button-primary' : ''}`}>{value}</button>
+                <button key={value} type="button" onClick={() => setMode(value)} className={`px-3 py-1.5 rounded-md text-[10px] font-semibold capitalize ${mode === value ? 'scorm-button-primary' : ''}`}>{value}</button>
               ))}
             </div>
           </div>
           <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--scorm-muted)' }}>
             Upload CSV/TXT or paste a list. Name + Email, Email + Name, quoted fields, tab-separated exports and First Name + Last Name + Email are supported. Replace mode makes the import authoritative.
           </p>
-          <textarea aria-label="Learner CSV to import" value={paste} onChange={(e) => setPaste(e.target.value)} rows={6} className="w-full px-3 py-2.5 text-sm font-mono" placeholder={'Name,Email\nAsha,asha@company.com\nRahul,rahul@company.com'} />
+          <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={6} className="w-full px-3 py-2.5 text-sm font-mono" placeholder={'Name,Email\nAsha,asha@company.com\nRahul,rahul@company.com'} />
           <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" disabled={saving || !paste.trim()} onClick={importPaste} className="scorm-button-primary px-4 py-2.5 text-xs font-semibold disabled:opacity-50">Import pasted list</button>
             <label className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold cursor-pointer inline-flex items-center gap-2">
@@ -189,7 +189,7 @@ export default function LearnerRoster() {
           </div>
           <div className="relative w-full sm:w-72">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" />
-            <input aria-label="Search learners by name or email" type="search" value={query} onChange={(e) => setQuery(e.target.value)} className="scorm-search-input w-full py-2.5 text-xs" placeholder="Search name or email" />
+            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} className="scorm-search-input w-full py-2.5 text-xs" placeholder="Search name or email" />
           </div>
         </div>
 

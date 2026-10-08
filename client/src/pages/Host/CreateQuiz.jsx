@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { apiUrl } from '../../config';
-import useDialogFocus from '../../hooks/useDialogFocus';
 import './quizmotoEditWorkbench.css';
 import './quizmotoCreateWorkbench.css';
 
@@ -47,8 +46,6 @@ const CreateQuiz = () => {
     const [questions, setQuestions] = useState([emptyQuestion()]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [showAiModal, setShowAiModal] = useState(false);
-    const aiDialogRef = useRef(null);
-    useDialogFocus(showAiModal, aiDialogRef, () => { if (!isGenerating) setShowAiModal(false); });
     const [aiTopic, setAiTopic] = useState('');
     const [aiDescription, setAiDescription] = useState('');
     const [aiFile, setAiFile] = useState(null);
@@ -308,7 +305,6 @@ const CreateQuiz = () => {
                                                 </label>
                                                 <input
                                                     type="text"
-                                                    aria-label={`Question ${qIndex + 1}, option ${letter}`}
                                                     placeholder={`Option ${letter}`}
                                                     className="qe-option-input"
                                                     value={q.options[oIndex] || ''}
@@ -377,8 +373,6 @@ const CreateQuiz = () => {
                             role="dialog"
                             aria-modal="true"
                             aria-label="Generate quiz with AI"
-                            ref={aiDialogRef}
-                            tabIndex={-1}
                         >
                             <div className="qc-modal-head">
                                 <div className="qc-ai-mark"><Sparkles size={20} /></div>

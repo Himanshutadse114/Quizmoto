@@ -158,9 +158,8 @@ export default function TeamAccess() {
 
           <form onSubmit={invite} className="p-5 space-y-4">
             <div>
-              <label htmlFor="team-member-name" className="qmx-field-label block text-[10px] uppercase tracking-[.11em] font-semibold mb-2">Name <span className="normal-case opacity-60">(optional)</span></label>
+              <label className="qmx-field-label block text-[10px] uppercase tracking-[.11em] font-semibold mb-2">Name <span className="normal-case opacity-60">(optional)</span></label>
               <input
-                id="team-member-name"
                 value={form.displayName}
                 onChange={(event) => setForm((current) => ({ ...current, displayName: event.target.value }))}
                 className="w-full rounded-xl border bg-transparent px-3.5 py-3 text-sm outline-none"
@@ -170,11 +169,10 @@ export default function TeamAccess() {
             </div>
 
             <div>
-              <label htmlFor="team-member-email" className="qmx-field-label block text-[10px] uppercase tracking-[.11em] font-semibold mb-2">Work email</label>
+              <label className="qmx-field-label block text-[10px] uppercase tracking-[.11em] font-semibold mb-2">Work email</label>
               <div className="relative">
                 <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 opacity-45" />
                 <input
-                  id="team-member-email"
                   type="email"
                   required
                   value={form.email}

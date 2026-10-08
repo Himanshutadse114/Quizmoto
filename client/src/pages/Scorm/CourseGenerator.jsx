@@ -436,7 +436,6 @@ export default function CourseGenerator() {
               <div className="min-w-0">
                 <div className="scorm-micro text-[9px] uppercase font-semibold h-4 flex items-center mb-2">{presentationMode || videoMode ? 'Course title' : 'Topic'}</div>
                 <input
-                  aria-label="Course topic"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   placeholder={presentationMode ? 'Optional course title' : videoMode ? 'Video course title' : 'e.g. Phishing Awareness'}
