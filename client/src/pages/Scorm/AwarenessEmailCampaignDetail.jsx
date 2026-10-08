@@ -122,7 +122,7 @@ export default function AwarenessEmailCampaignDetail(){
   const recipients=campaign.recipients||[];
 
   return <div className="aw-campaigns aw-campaign-detail-page">
-    <div className="aw-campaign-page-head">
+    <div className="platform-page-header aw-campaign-page-head">
       <div className="aw-campaign-heading-main">
         <div className="aw-campaign-context-row">
           <button type="button" className="aw-back" onClick={()=>navigate('/scorm/awareness-templates?tab=campaigns')}><ArrowLeft size={13}/> Email campaigns</button>

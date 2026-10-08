@@ -291,7 +291,7 @@ export default function ScormReports() {
   return (
     <div className="scorm-reports-page p-4 md:p-7 lg:p-9 max-w-7xl mx-auto relative z-10">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6 pb-6 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
-        <div className="flex items-start gap-3 min-w-0">
+        <div className="platform-header-leading flex items-start gap-3 min-w-0">
           <button type="button" onClick={() => navigate('/scorm')} className="scorm-button-secondary w-10 h-10 grid place-items-center shrink-0" aria-label="Back to dashboard"><ArrowLeft size={16} /></button>
           <div className="min-w-0">
             <div className="scorm-micro reports-accent text-[9px] uppercase font-semibold">Learning evidence</div>

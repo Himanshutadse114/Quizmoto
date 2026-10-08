@@ -1,0 +1,117 @@
+html body #root .scorm-editorial {
+  --platform-page-width: 1280px;
+  --platform-page-block: 24px;
+  --platform-page-inline: 28px;
+  --platform-page-bottom: 40px;
+  --platform-section-gap: 24px;
+  --platform-panel-padding: 20px;
+  --platform-field-gap: 16px;
+  --platform-control-gap: 8px;
+}
+html body #root .scorm-editorial #workspace-content { padding-inline: 0 !important; min-width: 0; }
+html body #root .scorm-editorial #workspace-content > .platform-route-frame {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--platform-page-width);
+  margin-inline: auto;
+  padding: var(--platform-page-block) var(--platform-page-inline) var(--platform-page-bottom) !important;
+  min-width: 0;
+}
+/* Reset only the route's outer container, never descendants, fixed overlays,
+   dialogs, authored slides, reader pages or independent public/auth layouts. */
+html body #root .scorm-editorial #workspace-content > .platform-route-frame > :not(.fixed, .absolute, [role="dialog"]) {
+  width: 100%;
+  max-width: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-width: 0;
+}
+html body #root .scorm-editorial #workspace-content .platform-page-header,
+html body #root .scorm-editorial #workspace-content .platform-admin-section > :first-child:has(h1),
+html body #root .scorm-editorial #workspace-content .platform-route-frame > :is(div, section) > :is(div, section, header):first-child:has(h1, h2.scorm-display, .demo-title, .reports-title) {
+  padding: 0 0 var(--platform-section-gap) !important;
+  margin: 0 0 var(--platform-section-gap) !important;
+  gap: var(--platform-field-gap);
+  border-radius: 0;
+  border-bottom: 1px solid var(--scorm-line);
+}
+html body #root .scorm-editorial #workspace-content :is(.platform-page-header, .scorm-page-hero, .aw-gallery-header, .flipbooks-header, .platform-admin-section > :first-child:has(h1), .platform-route-frame > :is(div, section) > :is(div, section, header):first-child:has(h1, h2.scorm-display, .demo-title, .reports-title)) :is(h1, h2.scorm-display, .demo-title, .reports-title) {
+  margin-block: 8px 0 !important;
+}
+html body #root .scorm-editorial #workspace-content :is(.platform-page-header, .scorm-page-hero, .aw-gallery-header, .flipbooks-header, .platform-admin-section > :first-child:has(h1), .platform-route-frame > :is(div, section) > :is(div, section, header):first-child:has(h1, h2.scorm-display, .demo-title, .reports-title)) p { margin-block: 10px 0 !important; }
+
+/* Administrative tabs contain subpages, not a second set of page gutters. */
+html body #root .scorm-editorial #workspace-content .platform-admin-section,
+html body #root .scorm-editorial #workspace-content .access-admin-compact > div:first-child,
+html body #root .scorm-editorial #workspace-content .platform-nested-content {
+  width: 100%;
+  max-width: none !important;
+  margin-inline: 0 !important;
+  padding-inline: 0 !important;
+}
+html body #root .scorm-editorial #workspace-content .platform-admin-section { padding-block: var(--platform-section-gap) 0 !important; }
+html body #root .scorm-editorial #workspace-content .platform-nested-content { padding-block: 0 !important; }
+html body #root .scorm-editorial #workspace-content .platform-admin-section > :first-child:has(h1) { margin-bottom: var(--platform-section-gap); }
+
+/* One standard inset for panels; flush panels keep their outer padding at zero
+   and apply the same inset to their header/body instead. */
+html body #root .scorm-editorial #workspace-content .platform-route-frame :is(.scorm-panel, .scorm-preview-panel):is([class~="p-4"], [class~="p-5"], [class~="p-6"], [class~="p-7"]):not([style*="--preview-primary"] *),
+html body #root .scorm-editorial #workspace-content .platform-route-frame :is(.flip-editor-panel, .flip-editor-preview, .flip-analytics-panel, .platform-panel):not([style*="--preview-primary"] *) {
+  padding: var(--platform-panel-padding) !important;
+  min-width: 0;
+}
+html body #root .scorm-editorial #workspace-content .platform-route-frame :is(.scorm-panel-header, .scorm-course-toolbar, .reports-section-header, .scorm-course-generator-panel-header, .platform-panel-body, .demo-group-heading) {
+  padding: 16px var(--platform-panel-padding) !important;
+  min-width: 0;
+}
+html body #root .scorm-editorial #workspace-content .platform-route-frame :is(.platform-content-stack, .platform-content-grid) { gap: var(--platform-section-gap) !important; }
+html body #root .scorm-editorial #workspace-content .platform-route-frame .platform-content-stack:not(.flex, .grid) > :not([hidden]) ~ :not([hidden]) { margin-top: var(--platform-section-gap) !important; }
+html body #root .scorm-editorial #workspace-content .platform-route-frame > :is(div, section) > .grid:has(> section) { gap: var(--platform-section-gap) !important; }
+html body #root .scorm-editorial #workspace-content .platform-route-frame > :is(div, section) > :is(section, .grid):is([class~="mb-5"], [class~="mb-6"], [class~="mb-7"]) { margin-bottom: var(--platform-section-gap) !important; }
+html body #root .scorm-editorial #workspace-content .platform-route-frame > :is(div, section) > :is(section, .grid):is([class~="mt-5"], [class~="mt-6"], [class~="mt-7"]) { margin-top: var(--platform-section-gap) !important; }
+html body #root .scorm-editorial #workspace-content .platform-route-frame :is(.platform-panel-content, .feature-workflow, .feature-outcomes) { padding: var(--platform-panel-padding) !important; min-width: 0; }
+html body #root .scorm-editorial #workspace-content .platform-route-frame .platform-form-grid { gap: var(--platform-field-gap) !important; }
+html body #root .scorm-editorial #workspace-content .platform-route-frame .platform-actions { gap: var(--platform-control-gap) !important; }
+html body #root .scorm-editorial #workspace-content .platform-route-frame :is(.platform-page-header, .platform-panel, .platform-admin-section) { min-width: 0; }
+
+/* Editors previously added another centered shell and a padded, offset title. */
+html body #root .scorm-editorial #workspace-content .platform-route-frame .qe-shell { width: 100%; max-width: none; margin: 0; padding: 0; }
+html body #root .scorm-editorial #workspace-content .platform-route-frame .qe-topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 16px;
+  padding: 0 0 var(--platform-section-gap) !important;
+  margin: 0 0 var(--platform-section-gap);
+  border: 0;
+  border-bottom: 1px solid var(--scorm-line);
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  position: static;
+}
+html body #root .scorm-editorial #workspace-content .platform-route-frame .qe-back { grid-column: 1 / -1; justify-self: start; }
+html body #root .scorm-editorial #workspace-content .platform-route-frame .qe-header-copy { grid-column: 1; }
+html body #root .scorm-editorial #workspace-content .platform-route-frame .qe-save { grid-column: 2; }
+html body #root .scorm-editorial #workspace-content .platform-route-frame .qe-heading { margin-top: 8px; }
+html body #root .scorm-editorial #workspace-content .platform-header-leading { display: block; }
+html body #root .scorm-editorial #workspace-content .platform-header-leading > button { margin-bottom: 12px; }
+html body #root .scorm-editorial #workspace-content .platform-route-frame > div > header:has(> button[aria-label="Back to Quizmoto"]) { display: block; }
+html body #root .scorm-editorial #workspace-content .platform-route-frame > div > header > button[aria-label="Back to Quizmoto"] { margin-bottom: 12px; }
+html body #root .scorm-editorial #workspace-content .aw-campaign-detail-page .aw-campaign-page-head { padding: 0 0 var(--platform-section-gap) !important; border-inline: 0; border-top: 0; background: transparent; box-shadow: none; }
+html body #root .scorm-editorial #workspace-content .aw-campaign-detail-page .aw-campaign-page-head h2 { margin-top: 8px !important; }
+html body #root .scorm-editorial #workspace-content .platform-route-frame :is(.aw-gallery-page, .aw-campaign-detail-page) { gap: var(--platform-section-gap); }
+html body #root .scorm-editorial #workspace-content .platform-route-frame :is(.aw-gallery-header, .aw-campaign-page-head) { margin-bottom: 0 !important; }
+html body #root .scorm-editorial #workspace-content .flip-editor-heading p { max-width: 760px; color: var(--scorm-muted); }
+html body #root .scorm-editorial #workspace-content .flip-editor-panel > .flip-field:first-child { margin-top: 0; }
+
+@media (max-width: 767px) {
+  html body #root .scorm-editorial {
+    --platform-page-block: 20px;
+    --platform-page-inline: 16px;
+    --platform-page-bottom: 32px;
+    --platform-section-gap: 20px;
+    --platform-panel-padding: 16px;
+  }
+  html body #root .scorm-editorial #workspace-content .platform-route-frame .qe-topbar { grid-template-columns: minmax(0, 1fr); }
+  html body #root .scorm-editorial #workspace-content .platform-route-frame .qe-save { grid-column: 1; justify-self: start; }
+}

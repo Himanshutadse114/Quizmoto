@@ -219,7 +219,7 @@ export default function ScormHome() {
           </div>
         </section>
 
-        <div className="space-y-5">
+        <div className="platform-content-stack space-y-5">
           <section className="scorm-progress-hero min-h-[270px] flex flex-col justify-between">
             <div className="flex items-start justify-between gap-4">
               <div><div className="scorm-progress-kicker">Direct learner pulse</div><h3 className="text-[22px] mt-1">Overall direct progress</h3></div>

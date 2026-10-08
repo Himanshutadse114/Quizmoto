@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
-import { Download, FileSpreadsheet, Search, Trash2, Upload, UserPlus, Users, RefreshCw } from 'lucide-react';
+import { ChevronDown, Download, FileSpreadsheet, Search, Trash2, Upload, UserPlus, Users, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
 import { parseRosterText, ROSTER_CSV_TEMPLATE } from './rosterCsv';
+import './learnerRoster.css';
 
 export default function LearnerRoster() {
   const { token } = useAuth();
@@ -18,6 +19,7 @@ export default function LearnerRoster() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const fileInput = useRef(null);
 
   const load = async () => {
     setLoading(true);
@@ -121,8 +123,8 @@ export default function LearnerRoster() {
   };
 
   return (
-    <div className="p-4 md:p-7 lg:p-9 max-w-6xl mx-auto">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-7 pb-7 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
+    <div className="learner-roster-page p-4 md:p-7 lg:p-9 max-w-6xl mx-auto">
+      <header className="platform-page-header flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-7 pb-7 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
         <div className="max-w-3xl">
           <div className="scorm-micro text-[10px] uppercase font-semibold">Learner access</div>
           <h1 className="text-[28px] md:text-[34px] leading-tight tracking-[-.025em] font-semibold mt-2">Approved learner roster</h1>
@@ -133,56 +135,63 @@ export default function LearnerRoster() {
         <button type="button" onClick={load} disabled={loading} className="scorm-button-secondary inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold disabled:opacity-50">
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
         </button>
-      </div>
+      </header>
 
       {message && <div role="status" className="mb-4 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(52,211,153,.28)', background: 'rgba(52,211,153,.08)', color: 'var(--scorm-ink)' }}>{message}</div>}
       {error && <div role="alert" className="mb-4 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(251,113,133,.3)', background: 'rgba(251,113,133,.08)', color: 'var(--scorm-ink)' }}>{error}</div>}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[.82fr_1.18fr] gap-5 mb-6">
-        <section className="scorm-panel min-w-0 rounded-2xl border p-5 md:p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <UserPlus size={17} />
-            <h2 className="font-semibold">Add one learner</h2>
+      <div className="roster-entry-grid platform-content-grid grid gap-5 mb-6">
+        <section aria-labelledby="roster-add-heading" className="scorm-panel roster-add-panel min-w-0 rounded-2xl border p-5 md:p-6">
+          <div className="roster-panel-heading">
+            <UserPlus size={17} aria-hidden="true" />
+            <h2 id="roster-add-heading" className="platform-item-title font-semibold">Add one learner</h2>
           </div>
-          <form onSubmit={addOne} className="space-y-3">
+          <form onSubmit={addOne} className="roster-add-form">
             <div>
               <label htmlFor="roster-name" className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Name <span className="normal-case font-normal">optional</span></label>
-              <input id="roster-name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2.5 text-sm" placeholder="Learner name" />
+              <input id="roster-name" autoComplete="name" disabled={saving} value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2.5 text-sm" placeholder="Learner name" />
             </div>
             <div>
               <label htmlFor="roster-email" className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Email</label>
-              <input id="roster-email" autoComplete="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2.5 text-sm" placeholder="learner@company.com" />
+              <input id="roster-email" autoComplete="email" type="email" required disabled={saving} value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2.5 text-sm" placeholder="learner@company.com" />
             </div>
             <button type="submit" disabled={saving} className="scorm-button-primary px-4 py-2.5 text-xs font-semibold disabled:opacity-50">Add learner</button>
           </form>
         </section>
 
-        <section className="scorm-panel min-w-0 rounded-2xl border p-5 md:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2"><FileSpreadsheet size={17} /><h2 className="font-semibold">Import learner CSV</h2></div>
-            <div className="flex rounded-lg border p-1" style={{ borderColor: 'var(--scorm-line)' }}>
+        <section aria-labelledby="roster-import-heading" className="scorm-panel roster-import-panel min-w-0 rounded-2xl border p-5 md:p-6">
+          <div className="roster-panel-heading"><FileSpreadsheet size={17} aria-hidden="true" /><h2 id="roster-import-heading" className="platform-item-title font-semibold">Import learner CSV</h2></div>
+          <p className="roster-import-description">Upload a CSV or TXT file to add learners in bulk. Start with the template for the correct column names.</p>
+          <div className="roster-import-mode">
+            <span id="roster-import-mode-label" className="font-semibold">Import mode</span>
+            <div role="group" aria-labelledby="roster-import-mode-label" aria-describedby="roster-mode-help" className="roster-mode-control">
               {['append', 'replace'].map((value) => (
-                <button key={value} type="button" onClick={() => setMode(value)} aria-pressed={mode === value} className={`px-3 py-1.5 rounded-md text-[10px] font-semibold capitalize ${mode === value ? 'scorm-button-primary' : ''}`}>{value}</button>
+                <button key={value} type="button" disabled={saving} onClick={() => setMode(value)} aria-pressed={mode === value} className={`px-3 py-1.5 rounded-md text-[10px] font-semibold ${mode === value ? 'scorm-button-primary' : ''}`}>{value === 'append' ? 'Append' : 'Replace'}</button>
               ))}
             </div>
           </div>
-          <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--scorm-muted)' }}>
-            Upload CSV/TXT or paste a list. Name + Email, Email + Name, quoted fields, tab-separated exports and First Name + Last Name + Email are supported. Replace mode makes the import authoritative.
+          <p id="roster-mode-help" role={mode === 'replace' ? 'note' : undefined} className={`roster-mode-help ${mode === 'replace' ? 'is-replace' : ''}`}>
+            {mode === 'append' ? 'Append adds learners to your existing roster.' : 'Replace removes existing roster entries that are not in this import.'}
           </p>
-          <textarea aria-label="Learner CSV to import" value={paste} onChange={(e) => setPaste(e.target.value)} rows={6} className="w-full px-3 py-2.5 text-sm font-mono" placeholder={'Name,Email\nAsha,asha@company.com\nRahul,rahul@company.com'} />
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" disabled={saving || !paste.trim()} onClick={importPaste} className="scorm-button-primary px-4 py-2.5 text-xs font-semibold disabled:opacity-50">Import pasted list</button>
-            <label className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold cursor-pointer inline-flex items-center gap-2">
-              <Upload size={13} /> Import CSV/TXT
-              <input type="file" accept=".csv,.txt,text/csv,text/plain" className="hidden" onChange={importFile} />
-            </label>
-            <button type="button" onClick={downloadTemplate} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center gap-2"><Download size={13} /> Download template</button>
+          <div className="roster-import-actions platform-actions">
+            <button type="button" disabled={saving} onClick={() => fileInput.current?.click()} className="scorm-button-primary px-4 py-2.5 text-xs font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50"><Upload size={14} aria-hidden="true" /> Import CSV/TXT</button>
+            <input ref={fileInput} aria-label="Choose learner CSV or text file" type="file" accept=".csv,.txt,text/csv,text/plain" className="hidden" disabled={saving} onChange={importFile} />
+            <button type="button" onClick={downloadTemplate} className="scorm-button-tertiary inline-flex items-center gap-2"><Download size={14} aria-hidden="true" /> Download template</button>
           </div>
+          <details className="roster-paste-section">
+            <summary>Or paste a learner list <ChevronDown size={16} aria-hidden="true" /></summary>
+            <div className="roster-paste-content">
+              <label htmlFor="roster-paste" className="scorm-micro block uppercase font-semibold">Learner CSV to import</label>
+              <textarea id="roster-paste" aria-describedby="roster-format-help" disabled={saving} value={paste} onChange={(e) => setPaste(e.target.value)} rows={4} className="w-full px-3 py-2.5 text-sm font-mono" placeholder={'Name,Email\nAsha,asha@company.com\nRahul,rahul@company.com'} />
+              <p id="roster-format-help">Name + Email, Email + Name, quoted fields, tab-separated lists and First Name + Last Name + Email are supported.</p>
+              <button type="button" disabled={saving || !paste.trim()} onClick={importPaste} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold disabled:opacity-50">Import pasted list</button>
+            </div>
+          </details>
         </section>
       </div>
 
       <section className="scorm-panel rounded-2xl border overflow-hidden">
-        <div className="p-4 md:p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--scorm-line)' }}>
+        <div className="platform-panel-body p-4 md:p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--scorm-line)' }}>
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl grid place-items-center border" style={{ borderColor: 'var(--scorm-line)', color: 'var(--scorm-accent-strong)' }}><Users size={16} /></div>
             <div><div className="font-semibold">Approved learners</div><div className="scorm-micro text-[9px] mt-0.5">{roster.length} email{roster.length === 1 ? '' : 's'}</div></div>

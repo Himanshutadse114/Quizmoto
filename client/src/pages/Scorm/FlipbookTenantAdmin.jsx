@@ -81,7 +81,7 @@ export default function FlipbookTenantAdmin() {
   };
 
   return (
-    <div className="px-4 py-6 md:px-8 md:py-8 max-w-[1280px] mx-auto">
+    <div className="platform-admin-section px-4 py-6 md:px-8 md:py-8 max-w-[1280px] mx-auto">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-5">
         <div>
           <div className="text-[#4FC9BF] text-[9px] uppercase tracking-[.15em] font-semibold">Tenant content controls</div>

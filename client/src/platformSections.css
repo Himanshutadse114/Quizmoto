@@ -1,10 +1,6 @@
 /* Scoped refinement of administrative lists and panels. Page/section headings
    retain the 22px reference; record names use a quieter secondary level. */
 html body #root .scorm-editorial .platform-section-page {
-  width: 100%;
-  max-width: 1280px;
-  margin-inline: auto;
-  padding: 24px 28px 40px !important;
   min-width: 0;
 }
 html body #root .scorm-editorial main .platform-section-page h3.platform-item-title {
@@ -119,7 +115,7 @@ html body #root .scorm-editorial .flipbooks-header > .flip-header-actions {
 }
 html body #root .scorm-editorial .flip-quota-card { min-width: 0; padding: 10px 12px; border-radius: 10px; }
 html body #root .scorm-editorial .flip-quota-icon { width: 32px; height: 32px; }
-html body #root .scorm-editorial .flip-library-share-panel { margin: 0 0 24px !important; border-radius: 12px; }
+html body #root .scorm-editorial .flip-library-share-panel { margin: 0 0 var(--platform-section-gap, 24px) !important; border-radius: 12px; }
 html body #root .scorm-editorial .flip-library-share-panel .flip-section-heading {
   padding: 20px;
   gap: 16px;
@@ -167,7 +163,6 @@ html body #root .scorm-editorial .flip-card-actions .flip-icon-button { width: 1
   html body #root .scorm-editorial .flipbooks-header > .flip-header-actions { justify-content: flex-start; max-width: none; }
 }
 @media (max-width: 760px) {
-  html body #root .scorm-editorial .platform-section-page { padding: 20px 16px 32px !important; }
   html body #root .scorm-editorial .scorm-course-entry { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 10px; position: relative; }
   html body #root .scorm-editorial .scorm-course-entry > div:first-child { grid-column: 1 / -1; padding-right: 18px; }
   html body #root .scorm-editorial .scorm-course-entry > svg { position: absolute; right: 16px; top: 20px; }

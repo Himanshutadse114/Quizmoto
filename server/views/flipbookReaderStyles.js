@@ -4,8 +4,9 @@ module.exports = `
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:var(--canvas);color:var(--ink);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 body{overflow:hidden}
-.reader-shell{height:100dvh;display:grid;grid-template-rows:minmax(0,1fr) auto;background:var(--canvas)}
-.reader-stage{position:relative;min-height:0;display:flex;align-items:center;justify-content:center;overflow:auto;padding:12px 60px 8px}
+.reader-shell{width:100%;max-width:100%;min-width:0;height:100dvh;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;overflow:hidden;background:var(--canvas)}
+.reader-stage{position:relative;min-width:0;min-height:0;display:flex;align-items:safe center;justify-content:safe center;overflow:hidden;padding:12px 60px 8px}
+.reader-stage.is-zoomed{overflow:auto}
 .zoom-space{position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
 .book-frame{display:flex;align-items:center;justify-content:center;overflow:visible;transform-origin:center center;transition:transform .18s ease}
 .flip-book{opacity:0;transition:opacity .18s ease;filter:drop-shadow(0 16px 28px rgba(0,0,0,.5))}
@@ -14,7 +15,7 @@ body{overflow:hidden}
 .book-page img{display:block;width:100%;height:100%;object-fit:contain;background:#fff;pointer-events:none;-webkit-user-drag:none}
 .front-cover-page,.back-cover-page{box-shadow:inset 0 0 24px rgba(23,49,58,.08)}
 .turn-hint{position:absolute;left:50%;bottom:4px;transform:translateX(-50%);padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:12px;white-space:nowrap;pointer-events:none;transition:opacity .3s ease;z-index:10}
-.protection-toast{position:fixed;top:14px;left:50%;z-index:120;transform:translate(-50%,-16px);opacity:0;pointer-events:none;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-size:13px;font-weight:600;transition:.18s ease}
+.protection-toast{position:fixed;top:14px;left:50%;z-index:120;transform:translate(-50%,-16px);opacity:0;pointer-events:none;width:max-content;max-width:calc(100% - 32px);text-align:center;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-size:13px;font-weight:600;transition:.18s ease}
 .protection-toast.is-visible{opacity:1;transform:translate(-50%,0)}
 .edge-arrow{position:fixed;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;font-size:25px;cursor:pointer;z-index:12}
 .edge-arrow.left{left:12px}.edge-arrow.right{right:12px}
@@ -42,6 +43,7 @@ body{overflow:hidden}
 .tool-group{display:flex;align-items:center;gap:4px}.tool-btn{min-width:44px;padding:0 10px}
 #shareBtn{border-color:transparent;background:transparent;color:var(--muted)}
 #shareBtn:hover{background:var(--accent-soft);color:var(--ink)}
+#shareBtn .label,#fullBtn .label{display:inline}
 .zoom-value{min-width:52px;font-size:12px;color:var(--muted)}
 .mobile-label{display:none}
 .mobile-fullscreen-exit{display:none;position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));z-index:80;width:44px;height:44px;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);font:500 24px/1 Arial,sans-serif;place-items:center}
@@ -58,7 +60,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
  .page-jump{display:block;width:44px;flex:0 0 44px;font-size:16px}
  .page-status{min-width:72px;font-size:12px}.page-slider{flex:1;height:44px}
 }
-@media(min-width:761px) and (max-width:1180px) and (hover:none) and (pointer:coarse){.reader-stage{padding:8px 52px 5px}.control-dock{width:calc(100vw - 24px)}.tool-btn .label{display:none}}
+@media(min-width:761px) and (max-width:1180px) and (hover:none) and (pointer:coarse){.reader-stage{padding:8px 52px 5px}.control-dock{width:100%;max-width:1080px}.tool-btn .label{display:none}}
 @media(max-width:760px),(max-width:1180px) and (hover:none) and (pointer:coarse){
  html.reader-fullscreen,html.reader-fullscreen body{background:#050807!important}
  html.reader-fullscreen .reader-shell{height:100dvh;grid-template-rows:minmax(0,1fr);background:#050807!important}

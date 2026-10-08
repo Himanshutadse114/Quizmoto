@@ -59,7 +59,6 @@ async function findPublicBook(identifier) {
 
 function renderPublicReader(book) {
     const publicUrl = publicFlipbookUrl(book);
-    const publicTitle = String(book.title || 'Publication');
     const mobileOverrides = `
 <style id="lmsgen-public-flipbook-mobile-overrides">
 @media(max-width:760px){
@@ -68,31 +67,8 @@ function renderPublicReader(book) {
   #zoomResetBtn{width:100%!important}
 }
 </style>`;
-    const canonicalShareScript = `
-<script>
-(() => {
-  const publicUrl = ${JSON.stringify(publicUrl)};
-  const publicTitle = ${JSON.stringify(publicTitle)};
-  const shareButton = document.getElementById('shareBtn');
-  if (!shareButton) return;
-  shareButton.onclick = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: publicTitle, url: publicUrl });
-      } else {
-        await navigator.clipboard.writeText(publicUrl);
-        const original = shareButton.innerHTML;
-        shareButton.textContent = 'Copied';
-        setTimeout(() => { shareButton.innerHTML = original; }, 1200);
-      }
-    } catch (_) {}
-  };
-})();
-</script>`;
-
-    return renderFlipbookReader(book)
-        .replace('</head>', `${mobileOverrides}</head>`)
-        .replace('</body>', `${canonicalShareScript}</body>`);
+    return renderFlipbookReader(book, { publicUrl })
+        .replace('</head>', `${mobileOverrides}</head>`);
 }
 
 function ownerPayload(book, { readOnly = false, isPlatformDefault = Boolean(book.isPlatformDefault) } = {}) {

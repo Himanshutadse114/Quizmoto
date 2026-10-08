@@ -33,7 +33,7 @@ export default function PendingScormHome() {
         <div className="demo-summary-card"><Sparkles size={16} /><div><strong>One workspace</strong><span>Create, deliver, measure and administer learning</span></div></div>
       </section>
 
-      <div className="space-y-5">
+      <div className="platform-content-stack space-y-5">
         {SCORM_FEATURE_GROUPS.map((group) => (
           <section key={group.label} className="scorm-panel overflow-hidden">
             <div className="demo-group-heading">

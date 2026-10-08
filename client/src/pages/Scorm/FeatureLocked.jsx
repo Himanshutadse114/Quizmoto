@@ -46,7 +46,7 @@ export default function ScormFeatureLocked({ featureId }) {
       <div className="grid lg:grid-cols-[1.35fr_.65fr] gap-5 items-start">
         <section className="scorm-panel overflow-hidden">
           <div className="demo-group-heading"><div><div className="scorm-eyebrow">Included capability</div><h2>What your team can do here</h2></div><span>{feature.capabilities.length} capabilities</span></div>
-          <div className="p-4 md:p-5 grid sm:grid-cols-2 gap-3">
+          <div className="platform-panel-content p-4 md:p-5 grid sm:grid-cols-2 gap-3">
             {feature.capabilities.map((capability) => (
               <div key={capability} className="rounded-xl border px-4 py-3.5 flex items-start gap-3" style={{ borderColor: 'var(--scorm-line)', background: 'var(--scorm-surface-soft)' }}>
                 <span className="mt-0.5 w-7 h-7 rounded-lg grid place-items-center shrink-0 border" style={{ borderColor: 'var(--scorm-line)', color: 'var(--scorm-accent-strong)' }}><CheckCircle2 size={14} /></span>

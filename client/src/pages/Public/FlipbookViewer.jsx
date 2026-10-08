@@ -16,7 +16,7 @@ export default function FlipbookViewer({ shareToken: propToken }) {
 
   if (!shareToken) {
     return (
-      <main style={{ width: '100vw', height: '100dvh', display: 'grid', placeItems: 'center', background: '#080F18', color: '#F5F8FC', fontFamily: 'Inter, Arial, sans-serif' }}>
+      <main style={{ position: 'fixed', inset: 0, width: '100%', height: '100dvh', display: 'grid', placeItems: 'center', background: '#080F18', color: '#F5F8FC', fontFamily: 'Inter, Arial, sans-serif' }}>
         <div style={{ textAlign: 'center', padding: 24 }}>
           <h1 style={{ margin: '0 0 8px', fontSize: 22 }}>Publication unavailable</h1>
           <p style={{ margin: 0, color: '#B7C6D6' }}>This Publica link is invalid.</p>
@@ -26,12 +26,12 @@ export default function FlipbookViewer({ shareToken: propToken }) {
   }
 
   return (
-    <main style={{ width: '100vw', height: '100dvh', margin: 0, padding: 0, overflow: 'hidden', background: '#080F18' }}>
+    <main style={{ position: 'fixed', inset: 0, width: '100%', height: '100dvh', minWidth: 0, margin: 0, padding: 0, overflow: 'hidden', background: '#080F18' }}>
       <iframe
         src={readerUrl}
         title="LMSGEN Publica"
         style={{ width: '100%', height: '100%', border: 0, display: 'block', background: '#080F18' }}
-        allow="fullscreen; clipboard-read; clipboard-write"
+        allow="fullscreen; clipboard-read; clipboard-write; web-share"
         allowFullScreen
         referrerPolicy="strict-origin-when-cross-origin"
       />

@@ -3,6 +3,21 @@ const flipbookAnalyticsRouter = require('../routes/flipbookAnalytics');
 const { renderFlipbookReader } = require('../views/flipbookReader');
 
 describe('Flipbook reader experience', () => {
+    it('fits the real stage and reports sharing failures rather than swallowing them', () => {
+        const html = renderFlipbookReader({ title: 'Reader QA', shareToken: 'reader-qa', pageCount: 4 }, { publicUrl: 'https://www.lmsgen.in/publica/reader-qa' });
+        expect(html).to.include('"shareUrl":"https://www.lmsgen.in/publica/reader-qa"');
+        expect(html).to.include('function stageSize()');
+        expect(html).to.include('readerStage.clientWidth-horizontal-2');
+        expect(html).to.include('readerStage.clientHeight-vertical-2');
+        expect(html).to.include('.reader-stage.is-zoomed{overflow:auto}');
+        expect(html).to.include('id="shareStatus" role="status"');
+        expect(html).to.include("copied?'Link copied'");
+        expect(html).to.include("error?.name==='AbortError'");
+        expect(html).to.include("document.execCommand('copy')");
+        expect(html).to.include('Unable to copy the link.');
+        const inlineScript = html.match(/<script>\s*([\s\S]*?)<\/script>/)?.[1];
+        expect(() => new Function(inlineScript)).not.to.throw();
+    });
     it('silently restores a remembered reader identity without breaking the injected script', () => {
         const injected = flipbookAnalyticsRouter.trackingInjection('shared-book-token');
         const browserScript = injected.script

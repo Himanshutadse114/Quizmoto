@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom';
+import PlatformPageLayout from '../../components/PlatformPageLayout';
 import {
   LayoutDashboard,
   BookOpen,
@@ -382,7 +383,7 @@ export default function ScormPlatformShell() {
             )}
           </div>
         </header>
-        <main id="workspace-content" tabIndex={-1} className="scorm-main min-h-[calc(100vh-64px)] pb-24 lg:pb-0"><Outlet /></main>
+        <main id="workspace-content" tabIndex={-1} className="scorm-main min-h-[calc(100vh-64px)] pb-24 lg:pb-0"><PlatformPageLayout><Outlet /></PlatformPageLayout></main>
       </div>
       {scormAccess && !analyticsOnly && <ScormGenerationNotifier />}
       {!mobileOpen && <MobileTabBar scormAccess={scormAccess} role={role} />}

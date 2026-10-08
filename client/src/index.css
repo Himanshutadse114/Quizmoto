@@ -268,12 +268,6 @@ body {
     min-height: calc(100vh - 54px) !important;
     padding-bottom: 76px !important;
   }
-
-  .scorm-editorial .scorm-main > div {
-    padding-left: 12px !important;
-    padding-right: 12px !important;
-  }
-
   .scorm-editorial .scorm-page-hero {
     padding: 10px 0 12px !important;
     margin-bottom: 16px !important;
@@ -442,12 +436,6 @@ body {
   .scorm-auth-workbench .sa-google-button {
     min-height: 38px !important;
   }
-
-  .scorm-editorial .scorm-main > div {
-    padding-left: 10px !important;
-    padding-right: 10px !important;
-  }
-
   .scorm-editorial .scorm-display {
     font-size: 26px !important;
   }

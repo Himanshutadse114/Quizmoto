@@ -167,7 +167,7 @@ export default function CampaignAnalytics() {
   return (
     <div className="scorm-campaign-analytics-page p-4 md:p-7 lg:p-9 max-w-7xl mx-auto">
       <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6 pb-6 border-b" style={{ borderColor: 'var(--scorm-line)' }}>
-        <div className="flex items-start gap-3 min-w-0">
+        <div className="platform-header-leading flex items-start gap-3 min-w-0">
           <button type="button" onClick={() => navigate('/scorm/assignments')} className="scorm-button-secondary w-10 h-10 grid place-items-center shrink-0" aria-label="Back to campaigns"><ArrowLeft size={16} /></button>
           <div className="min-w-0">
             <div className="scorm-micro text-[9px] uppercase font-semibold">Campaign analytics</div>
