@@ -191,7 +191,7 @@ const Join = () => {
     const realtimeReady = !!socket;
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-quizmoto-purple">
+        <div className="platform-learner-surface min-h-screen flex flex-col items-center justify-center p-6 bg-quizmoto-purple">
             <Motion.div
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}

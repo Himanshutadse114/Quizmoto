@@ -116,7 +116,8 @@ for (const theme of ['dark', 'light']) test(`${theme} mobile roster has usable f
   await page.getByLabel('Email', { exact: true }).fill('learner@example.com');
   await expect(page.getByLabel('Search learners by name or email')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  expect(await page.locator('main h1').evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeLessThanOrEqual(38);
+  expect(await page.locator('main h1').evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBe(22);
+  expect(await page.locator('main p').first().evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBe(14);
 });
 
 for (const width of [320, 390, 768, 1440]) test(`dark Publica reader fits ${width}px and keeps working page navigation`, async ({ page }, testInfo) => {
