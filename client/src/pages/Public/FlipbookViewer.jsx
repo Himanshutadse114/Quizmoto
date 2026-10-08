@@ -16,21 +16,21 @@ export default function FlipbookViewer({ shareToken: propToken }) {
 
   if (!shareToken) {
     return (
-      <main style={{ position: 'fixed', inset: 0, width: '100%', height: '100dvh', display: 'grid', placeItems: 'center', background: '#080F18', color: '#F5F8FC', fontFamily: 'Inter, Arial, sans-serif' }}>
+      <main style={{ position: 'fixed', inset: 0, width: '100%', height: '100dvh', display: 'grid', placeItems: 'center', background: '#F1F5F9', color: '#172B3A', colorScheme: 'light', fontFamily: 'Inter, Arial, sans-serif' }}>
         <div style={{ textAlign: 'center', padding: 24 }}>
           <h1 style={{ margin: '0 0 8px', fontSize: 22 }}>Publication unavailable</h1>
-          <p style={{ margin: 0, color: '#B7C6D6' }}>This Publica link is invalid.</p>
+          <p style={{ margin: 0, color: '#465D70' }}>This Publica link is invalid.</p>
         </div>
       </main>
     );
   }
 
   return (
-    <main style={{ position: 'fixed', inset: 0, width: '100%', height: '100dvh', minWidth: 0, margin: 0, padding: 0, overflow: 'hidden', background: '#080F18' }}>
+    <main style={{ position: 'fixed', inset: 0, width: '100%', height: '100dvh', minWidth: 0, margin: 0, padding: 0, overflow: 'hidden', background: '#F1F5F9', colorScheme: 'light' }}>
       <iframe
         src={readerUrl}
         title="LMSGEN Publica"
-        style={{ width: '100%', height: '100%', border: 0, display: 'block', background: '#080F18' }}
+        style={{ width: '100%', height: '100%', border: 0, display: 'block', background: '#F1F5F9' }}
         allow="fullscreen; clipboard-read; clipboard-write; web-share"
         allowFullScreen
         referrerPolicy="strict-origin-when-cross-origin"

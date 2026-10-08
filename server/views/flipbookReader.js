@@ -1,5 +1,6 @@
 const readerStyles = require('./flipbookReaderStyles');
 const shareRuntime = require('./flipbookShareRuntime');
+const touchRuntime = require('./flipbookTouchRuntime');
 
 function escapeHtml(value) {
     return String(value || '')
@@ -54,7 +55,7 @@ function renderFlipbookReader(book, { publicUrl = '' } = {}) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes">
 <meta name="robots" content="noindex,nofollow,noarchive">
-<meta name="theme-color" content="#080F18">
+<meta name="theme-color" content="#F1F5F9">
 <title>${title} | LMSGEN Publica</title>
 <meta name="description" content="${description}">
 <style>
@@ -315,6 +316,7 @@ function init(){
   });
   pageFlip.on('changeOrientation',()=>{setTimeout(()=>{try{updateControls(pageFlip.getCurrentPageIndex())}catch(_){}},0)});
   pageFlip.loadFromHTML(document.querySelectorAll('#book .book-page'));
+  installBookTouch();
 
   prevBtn.onclick=()=>{ensureAudio();try{pageFlip.flipPrev('top')}catch(_){}};
   nextBtn.onclick=()=>{ensureAudio();try{pageFlip.flipNext('top')}catch(_){}};
@@ -413,6 +415,7 @@ window.addEventListener('resize',()=>{
   },180);
 });
 ${shareRuntime}
+${touchRuntime}
 try{const key='lmsgen-flipbook-viewed:'+DATA.token;if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');fetch(location.pathname,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',keepalive:true}).catch(()=>{})}}catch(_){}
 </script>
 </body>

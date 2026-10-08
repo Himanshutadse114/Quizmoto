@@ -3,6 +3,17 @@ const flipbookAnalyticsRouter = require('../routes/flipbookAnalytics');
 const { renderFlipbookReader } = require('../views/flipbookReader');
 
 describe('Flipbook reader experience', () => {
+    it('always uses light reader chrome with scale-aware touch flipping', () => {
+        const html = renderFlipbookReader({ title: 'Touch QA', shareToken: 'touch-qa', pageCount: 4 });
+        expect(html).to.include('color-scheme:light');
+        expect(html).to.include('touch-action:none');
+        expect(html).to.include('installBookTouch();');
+        expect(html).to.include('surface.offsetWidth/rect.width');
+        expect(html).to.include('surface.offsetHeight/rect.height');
+        expect(html).to.include('capture:true,passive:false');
+        expect(html).to.include("bookEl.addEventListener('touchcancel'");
+        expect(html).not.to.include('color-scheme:dark');
+    });
     it('fits the real stage and reports sharing failures rather than swallowing them', () => {
         const html = renderFlipbookReader({ title: 'Reader QA', shareToken: 'reader-qa', pageCount: 4 }, { publicUrl: 'https://www.lmsgen.in/publica/reader-qa' });
         expect(html).to.include('"shareUrl":"https://www.lmsgen.in/publica/reader-qa"');
