@@ -1,5 +1,5 @@
-// Own touch input so a slow swipe is not discarded by PageFlip's 250ms cutoff.
-// Convert screen coordinates back to engine coordinates after zoom/fullscreen scaling.
+// Preserve the original PageFlip swipe-to-turn behavior, normalizing coordinates
+// for the fitted/fullscreen canvas and accepting deliberate slower swipes.
 module.exports = `
 function installBookTouch(){
   let gesture=null;
@@ -49,11 +49,11 @@ function installBookTouch(){
     const swipe=Math.abs(dx)>=30&&Math.abs(dx)>Math.abs(dy)*1.25;
     if(event.cancelable)event.preventDefault();
     if(swipe){
-      pageFlip.userStop(pos,true);
       const corner=gesture.start.y<pageFlip.getBoundsRect().height/2?'top':'bottom';
       if(dx<0&&!nextBtn.disabled)pageFlip.flipNext(corner);
       else if(dx>0&&!prevBtn.disabled)pageFlip.flipPrev(corner);
       else if(gesture.dragging){pageFlip.userMove(gesture.start,true);pageFlip.getFlipController().stopMove()}
+      pageFlip.userStop(pos,true);
     }else if(gesture.dragging)pageFlip.userStop(pos);
     else if(Math.abs(dx)<10&&Math.abs(dy)<10){pageFlip.startUserTouch(pos);pageFlip.userStop(pos)}
     gesture=null;

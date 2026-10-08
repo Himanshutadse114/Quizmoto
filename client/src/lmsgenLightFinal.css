@@ -1,265 +1,242 @@
 /*
  * Final LMSGEN light-mode authority.
  *
- * The #root scope gives these rules precedence over lazy route compatibility
- * layers regardless of their asynchronous stylesheet insertion order.
+ * This stylesheet is imported last from main.jsx so legacy dark compatibility
+ * layers and lazy route CSS cannot leak dark surfaces back into light mode.
  * Generated learner SCORM documents do not load the admin application CSS.
  */
 
-html body #root .scorm-editorial.scorm-theme-light {
+html body .scorm-editorial.scorm-theme-light {
   color-scheme: light;
 
-  --slp-bg: #f2f5f1 !important;
-  --slp-surface: #fbfcfa !important;
-  --slp-surface-soft: #f6f8f4 !important;
-  --slp-surface-muted: #edf2eb !important;
-  --slp-line: #d5ded8 !important;
-  --slp-line-strong: #80998c !important;
-  --slp-text: #2b3b36 !important;
-  --slp-body: #495e56 !important;
-  --slp-muted: #596e64 !important;
-  --slp-teal: #91c2b4 !important;
-  --slp-teal-dark: #366653 !important;
-  --slp-teal-soft: #e4eee7 !important;
-  --slp-shadow: 0 3px 12px rgba(43, 59, 54, .045) !important;
-
-  --scorm-canvas: #f2f5f1 !important;
-  --scorm-surface: #fbfcfa !important;
-  --scorm-surface-soft: #f6f8f4 !important;
-  --scorm-surface-muted: #edf2eb !important;
-  --scorm-ink: #2b3b36 !important;
-  --scorm-ink-soft: #495e56 !important;
-  --scorm-muted: #596e64 !important;
-  --scorm-subtle: #5c6c62 !important;
-  --scorm-line: #d5ded8 !important;
-  --scorm-line-strong: #b8d5d0 !important;
-  --scorm-sidebar: #fbfcfa !important;
-  --scorm-sidebar-soft: #f6f8f4 !important;
-  --scorm-sidebar-line: #d5ded8 !important;
-  --scorm-sidebar-text: #2b3b36 !important;
-  --scorm-sidebar-muted: #596e64 !important;
-  --scorm-accent: #91c2b4 !important;
-  --scorm-accent-strong: #366653 !important;
-  --scorm-accent-soft: #e4eee7 !important;
+  --scorm-canvas: #f5f9f8;
+  --scorm-surface: #ffffff;
+  --scorm-surface-soft: #f7fbfa;
+  --scorm-surface-muted: #eef6f4;
+  --scorm-ink: #13211e;
+  --scorm-ink-soft: #405a55;
+  --scorm-muted: #61736f;
+  --scorm-subtle: #7d8f8b;
+  --scorm-line: #d8e5e2;
+  --scorm-line-strong: #b8d5d0;
+  --scorm-sidebar: #ffffff;
+  --scorm-sidebar-soft: #f8fbfa;
+  --scorm-sidebar-line: #d8e5e2;
+  --scorm-sidebar-text: #13211e;
+  --scorm-sidebar-muted: #61736f;
+  --scorm-accent: #4fc9bf;
+  --scorm-accent-strong: #0b6259;
+  --scorm-accent-soft: #e4f7f4;
 
   /* The global teal guard is dark-mode biased. Override its tokens here too. */
-  --scorm-platform-teal: #91c2b4 !important;
-  --scorm-platform-teal-strong: #168c82 !important;
-  --scorm-platform-teal-hover: #0f7169 !important;
-  --scorm-platform-teal-dark: #203f34 !important;
-  --scorm-platform-teal-soft: #fbfcfa !important;
-  --scorm-platform-teal-soft-strong: #edf8f6 !important;
-  --scorm-platform-teal-line: #b9d8d3 !important;
-  --scorm-platform-teal-line-soft: #d5ded8 !important;
-  --scorm-platform-teal-surface: #fbfcfa !important;
-  --scorm-platform-teal-surface-2: #f6f8f4 !important;
-  --scorm-platform-teal-surface-3: #edf2eb !important;
-  --scorm-platform-teal-text: #173f39 !important;
-  --scorm-platform-teal-muted: #5f7772 !important;
+  --scorm-platform-teal: #4fc9bf;
+  --scorm-platform-teal-strong: #168c82;
+  --scorm-platform-teal-hover: #0f7169;
+  --scorm-platform-teal-dark: #073b36;
+  --scorm-platform-teal-soft: #ffffff;
+  --scorm-platform-teal-soft-strong: #edf8f6;
+  --scorm-platform-teal-line: #b9d8d3;
+  --scorm-platform-teal-line-soft: #d2e6e2;
+  --scorm-platform-teal-surface: #ffffff;
+  --scorm-platform-teal-surface-2: #f7fbfa;
+  --scorm-platform-teal-surface-3: #eef6f4;
+  --scorm-platform-teal-text: #173f39;
+  --scorm-platform-teal-muted: #5f7772;
 
-  background: #f2f5f1 !important;
-  color: #2b3b36 !important;
+  background: #f5f9f8 !important;
+  color: #13211e !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-main,
-html body #root .scorm-editorial.scorm-theme-light main {
+html body .scorm-editorial.scorm-theme-light .scorm-main,
+html body .scorm-editorial.scorm-theme-light main {
   background:
     radial-gradient(circle at 92% -8%, rgba(79, 201, 191, .08), transparent 27rem),
-    linear-gradient(180deg, #f9fcfb 0%, #f2f5f1 56%, #f1f7f5 100%) !important;
-  color: #2b3b36 !important;
+    linear-gradient(180deg, #f9fcfb 0%, #f5f9f8 56%, #f1f7f5 100%) !important;
+  color: #13211e !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-topbar {
+html body .scorm-editorial.scorm-theme-light .scorm-topbar {
   background: rgba(255, 255, 255, .96) !important;
-  border-color: #d5ded8 !important;
+  border-color: #d8e5e2 !important;
   box-shadow: 0 1px 0 rgba(29, 78, 70, .04), 0 5px 18px rgba(29, 78, 70, .035) !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-workspace-search-field input::placeholder {
-  color: #5c6c62 !important;
-  opacity: 1 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-workspace-search-results {
-  box-shadow: 0 6px 20px rgba(43, 59, 54, .08) !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-sidebar,
-html body #root .scorm-editorial.scorm-theme-light .scorm-mobile-drawer {
-  background: #fbfcfa !important;
+html body .scorm-editorial.scorm-theme-light .scorm-sidebar,
+html body .scorm-editorial.scorm-theme-light .scorm-mobile-drawer {
+  background: #ffffff !important;
   background-image: none !important;
-  border-color: #d5ded8 !important;
+  border-color: #d8e5e2 !important;
   box-shadow: 8px 0 24px rgba(29, 78, 70, .035) !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-sidebar-profile {
-  background: #f6f8f4 !important;
-  border-color: #d5ded8 !important;
-  color: #2b3b36 !important;
+html body .scorm-editorial.scorm-theme-light .scorm-sidebar-profile {
+  background: #f7fbfa !important;
+  border-color: #d8e5e2 !important;
+  color: #13211e !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-sidebar-profile [class*="text-[#93c5fd]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-topbar [class*="text-[#93c5fd]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-topbar [class*="text-[#60a5fa]"] {
-  color: #366653 !important;
+html body .scorm-editorial.scorm-theme-light .scorm-sidebar-profile [class*="text-[#93c5fd]"],
+html body .scorm-editorial.scorm-theme-light .scorm-topbar [class*="text-[#93c5fd]"],
+html body .scorm-editorial.scorm-theme-light .scorm-topbar [class*="text-[#60a5fa]"] {
+  color: #0b6259 !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-sidebar-profile [class*="text-[#8295ae]"] {
-  color: #596e64 !important;
+html body .scorm-editorial.scorm-theme-light .scorm-sidebar-profile [class*="text-[#8295ae]"] {
+  color: #61736f !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-invite-panel,
-html body #root .scorm-editorial.scorm-theme-light .scorm-learner-expanded-row {
-  background: #f6f8f4 !important;
+html body .scorm-editorial.scorm-theme-light .scorm-invite-panel,
+html body .scorm-editorial.scorm-theme-light .scorm-learner-expanded-row {
+  background: #f7fbfa !important;
   background-image: none !important;
-  border-color: #d5ded8 !important;
-  color: #2b3b36 !important;
+  border-color: #d8e5e2 !important;
+  color: #13211e !important;
 }
 
 /* White/light cards stay white even when an older dark route rule is loaded. */
-html body #root .scorm-editorial.scorm-theme-light .scorm-panel,
-html body #root .scorm-editorial.scorm-theme-light .scorm-soft-card,
-html body #root .scorm-editorial.scorm-theme-light .scorm-metric-card,
-html body #root .scorm-editorial.scorm-theme-light .scorm-action-card,
-html body #root .scorm-editorial.scorm-theme-light main [class*="rounded-2xl"].border {
-  background: #fbfcfa !important;
+html body .scorm-editorial.scorm-theme-light .scorm-panel,
+html body .scorm-editorial.scorm-theme-light .scorm-soft-card,
+html body .scorm-editorial.scorm-theme-light .scorm-metric-card,
+html body .scorm-editorial.scorm-theme-light .scorm-action-card,
+html body .scorm-editorial.scorm-theme-light main [class*="rounded-2xl"].border {
+  background: #ffffff !important;
   background-image: none !important;
-  border-color: #d5ded8 !important;
-  color: #2b3b36 !important;
+  border-color: #d8e5e2 !important;
+  color: #13211e !important;
   box-shadow: 0 7px 22px rgba(29, 78, 70, .055) !important;
 }
 
 /* Inline route surfaces often use these theme tokens. Make the computed light
    surface explicit so a later legacy declaration cannot turn them charcoal. */
-html body #root .scorm-editorial.scorm-theme-light [style*="background: var(--scorm-surface-soft)"],
-html body #root .scorm-editorial.scorm-theme-light [style*="background:var(--scorm-surface-soft)"] {
-  background: #f6f8f4 !important;
+html body .scorm-editorial.scorm-theme-light [style*="background: var(--scorm-surface-soft)"],
+html body .scorm-editorial.scorm-theme-light [style*="background:var(--scorm-surface-soft)"] {
+  background: #f7fbfa !important;
   background-image: none !important;
-  color: #2b3b36 !important;
+  color: #13211e !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light [style*="background: var(--scorm-surface-muted)"],
-html body #root .scorm-editorial.scorm-theme-light [style*="background:var(--scorm-surface-muted)"] {
-  background: #edf2eb !important;
+html body .scorm-editorial.scorm-theme-light [style*="background: var(--scorm-surface-muted)"],
+html body .scorm-editorial.scorm-theme-light [style*="background:var(--scorm-surface-muted)"] {
+  background: #eef6f4 !important;
   background-image: none !important;
-  color: #2b3b36 !important;
+  color: #13211e !important;
 }
 
 /* Buttons in light mode should read as SaaS controls, not dark pills. */
-html body #root .scorm-editorial.scorm-theme-light .scorm-button-secondary {
-  background: #fbfcfa !important;
+html body .scorm-editorial.scorm-theme-light .scorm-button-secondary {
+  background: #ffffff !important;
   background-image: none !important;
   border-color: #b9d8d3 !important;
-  color: #344e42 !important;
+  color: #264e49 !important;
   box-shadow: 0 1px 2px rgba(29, 78, 70, .03) !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-button-secondary:hover:not(:disabled) {
+html body .scorm-editorial.scorm-theme-light .scorm-button-secondary:hover:not(:disabled) {
   background: #edf8f6 !important;
   border-color: #93cec6 !important;
-  color: #366653 !important;
+  color: #0b6259 !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-button-primary {
-  background: #91c2b4 !important;
+html body .scorm-editorial.scorm-theme-light .scorm-button-primary {
+  background: #4fc9bf !important;
   background-image: none !important;
-  border-color: #648777 !important;
-  color: #203f34 !important;
+  border-color: #35b6ab !important;
+  color: #073b36 !important;
   box-shadow: 0 5px 14px rgba(49, 164, 153, .13) !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-button-primary:hover:not(:disabled) {
-  background: #82b5a5 !important;
+html body .scorm-editorial.scorm-theme-light .scorm-button-primary:hover:not(:disabled) {
+  background: #68d4ca !important;
   border-color: #2ea89e !important;
   color: #063630 !important;
 }
 
 /* Campaign workspace ----------------------------------------------------- */
-html body #root .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel {
-  background: #fbfcfa !important;
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel {
+  background: #ffffff !important;
   border-color: #d6e4e1 !important;
   box-shadow: 0 8px 24px rgba(29, 78, 70, .055) !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-list-row {
-  background: #fbfcfa !important;
-  color: #2b3b36 !important;
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-list-row {
+  background: #ffffff !important;
+  color: #13211e !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-list-row:hover {
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page .campaign-list-row:hover {
   background: #f4faf8 !important;
 }
 
 /* Header filter chips do not have semantic classes yet. Their active state is
    identifiable by the accent token in the inline style emitted by React. */
-html body #root .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel > div:first-child button {
-  background: #fbfcfa !important;
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel > div:first-child button {
+  background: #ffffff !important;
   border-color: #d2e2df !important;
   color: #425b56 !important;
   box-shadow: none !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel > div:first-child button[style*="var(--scorm-accent-strong)"] {
-  background: #e4eee7 !important;
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel > div:first-child button[style*="var(--scorm-accent-strong)"] {
+  background: #e4f7f4 !important;
   border-color: #9bd9d1 !important;
-  color: #366653 !important;
+  color: #0b6259 !important;
 }
 
 /* The pagination bar in the reported screenshot was still inheriting a dark
    route surface. Keep it visibly connected to the white campaign card. */
-html body #root .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel > div:last-child[style*="var(--scorm-surface-soft)"] {
-  background: #f6f8f4 !important;
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel > div:last-child[style*="var(--scorm-surface-soft)"] {
+  background: #f7fbfa !important;
   border-color: #dce8e5 !important;
   color: #35514c !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel > div:last-child[style*="var(--scorm-surface-soft)"] span {
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel > div:last-child[style*="var(--scorm-surface-soft)"] span {
   color: #35514c !important;
 }
 
 /* Inline campaign detail / running learner manager are normal workspace
    sections. In light mode they must never retain the former dark modal shell. */
-html body #root .scorm-editorial.scorm-theme-light .scorm-campaigns-page > [role="dialog"] > div.relative,
-html body #root .scorm-editorial.scorm-theme-light .scorm-campaigns-page > [role="dialog"] > section.relative {
-  background: #fbfcfa !important;
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > [role="dialog"] > div.relative,
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > [role="dialog"] > section.relative {
+  background: #ffffff !important;
   background-image: none !important;
-  border-color: #d5ded8 !important;
-  color: #2b3b36 !important;
+  border-color: #d8e5e2 !important;
+  color: #13211e !important;
   box-shadow: 0 8px 24px rgba(29, 78, 70, .055) !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-campaigns-page > [role="dialog"] [style*="background: var(--scorm-surface-soft)"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-campaigns-page > [role="dialog"] [style*="background:var(--scorm-surface-soft)"] {
-  background: #f6f8f4 !important;
-  color: #2b3b36 !important;
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > [role="dialog"] [style*="background: var(--scorm-surface-soft)"],
+html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > [role="dialog"] [style*="background:var(--scorm-surface-soft)"] {
+  background: #f7fbfa !important;
+  color: #13211e !important;
 }
 
 /* Readable text and separators throughout the light admin shell. */
-html body #root .scorm-editorial.scorm-theme-light main h1,
-html body #root .scorm-editorial.scorm-theme-light main h2,
-html body #root .scorm-editorial.scorm-theme-light main h3,
-html body #root .scorm-editorial.scorm-theme-light main h4,
-html body #root .scorm-editorial.scorm-theme-light main .font-semibold {
-  color: #2b3b36;
+html body .scorm-editorial.scorm-theme-light main h1,
+html body .scorm-editorial.scorm-theme-light main h2,
+html body .scorm-editorial.scorm-theme-light main h3,
+html body .scorm-editorial.scorm-theme-light main h4,
+html body .scorm-editorial.scorm-theme-light main .font-semibold {
+  color: #13211e;
 }
 
-html body #root .scorm-editorial.scorm-theme-light main .border,
-html body #root .scorm-editorial.scorm-theme-light main [class*="border-"] {
-  border-color: #d5ded8;
+html body .scorm-editorial.scorm-theme-light main .border,
+html body .scorm-editorial.scorm-theme-light main [class*="border-"] {
+  border-color: #d8e5e2;
 }
 
-html body #root .scorm-editorial.scorm-theme-light main input,
-html body #root .scorm-editorial.scorm-theme-light main textarea,
-html body #root .scorm-editorial.scorm-theme-light main select {
-  background: #fbfcfa !important;
+html body .scorm-editorial.scorm-theme-light main input,
+html body .scorm-editorial.scorm-theme-light main textarea,
+html body .scorm-editorial.scorm-theme-light main select {
+  background: #ffffff !important;
   border-color: #cadbd7 !important;
-  color: #2b3b36 !important;
+  color: #13211e !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light main input:focus,
-html body #root .scorm-editorial.scorm-theme-light main textarea:focus,
-html body #root .scorm-editorial.scorm-theme-light main select:focus {
-  border-color: #91c2b4 !important;
+html body .scorm-editorial.scorm-theme-light main input:focus,
+html body .scorm-editorial.scorm-theme-light main textarea:focus,
+html body .scorm-editorial.scorm-theme-light main select:focus {
+  border-color: #4fc9bf !important;
   box-shadow: 0 0 0 3px rgba(79, 201, 191, .13) !important;
 }
 
@@ -267,535 +244,94 @@ html body #root .scorm-editorial.scorm-theme-light main select:focus {
    A small set of older admin screens used fixed dark utility colours. The
    adapter is opt-in so public learner pages and deliberate preview overlays
    keep their authored appearance. */
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#07111F]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#07111f]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#08111d]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#08182b]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#081321]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#091423]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#0B1728]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#12100e]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#17140f]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#191611]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#0d1928]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#122541]"] {
-  background: #fbfcfa !important;
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#07111F]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#07111f]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#08111d]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#08182b]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#081321]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#091423]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#0B1728]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#12100e]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#17140f]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#191611]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#0d1928]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#122541]"] {
+  background: #ffffff !important;
   background-image: none !important;
-  color: #2b3b36 !important;
+  color: #13211e !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-learner-audit[class*="bg-[#07111F]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-learner-audit[class*="bg-[#12100e]"] {
-  background: #fbfcfa !important;
+html body .scorm-editorial.scorm-theme-light .scorm-learner-audit[class*="bg-[#07111F]"],
+html body .scorm-editorial.scorm-theme-light .scorm-learner-audit[class*="bg-[#12100e]"] {
+  background: #ffffff !important;
   background-image: none !important;
-  border-color: #d5ded8 !important;
-  color: #2b3b36 !important;
+  border-color: #d8e5e2 !important;
+  color: #13211e !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#0b1e34]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#0a1d33]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#0D2038]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#251d15]"] {
-  background: #e4eee7 !important;
-  color: #366653 !important;
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#0b1e34]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#0a1d33]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#0D2038]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="bg-[#251d15]"] {
+  background: #e4f7f4 !important;
+  color: #0b6259 !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#243751]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#263A55]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#29405f]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#2B405D]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#315174]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#315a8b]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#332C24]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#3b3229]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#3e352c]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#4b3f33]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#5b4937]"] {
-  border-color: #d5ded8 !important;
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#243751]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#263A55]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#29405f]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#2B405D]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#315174]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#315a8b]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#332C24]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#3b3229]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#3e352c]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#4b3f33]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="border-[#5b4937]"] {
+  border-color: #d8e5e2 !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#F1E8D4]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#F8FAFC]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#f1f5f9]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#d1dbea]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#dce7f5]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-author-visual .text-white {
-  color: #2b3b36 !important;
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#F1E8D4]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#F8FAFC]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#f1f5f9]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#d1dbea]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#dce7f5]"],
+html body .scorm-editorial.scorm-theme-light .scorm-author-visual .text-white {
+  color: #13211e !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#9D8568]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#91A3BA]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#8295ae]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#8fa2ba]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#9fb0c5]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#b8c7da]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-author-visual .text-slate-400,
-html body #root .scorm-editorial.scorm-theme-light .scorm-author-visual .text-slate-500,
-html body #root .scorm-editorial.scorm-theme-light .scorm-author-visual .text-slate-600 {
-  color: #596e64 !important;
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#9D8568]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#91A3BA]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#8295ae]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#8fa2ba]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#9fb0c5]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#b8c7da]"],
+html body .scorm-editorial.scorm-theme-light .scorm-author-visual .text-slate-400,
+html body .scorm-editorial.scorm-theme-light .scorm-author-visual .text-slate-500,
+html body .scorm-editorial.scorm-theme-light .scorm-author-visual .text-slate-600 {
+  color: #61736f !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#22D3EE]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#60a5fa]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#93c5fd]"],
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#FF9A37]"] {
-  color: #366653 !important;
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#22D3EE]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#60a5fa]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#93c5fd]"],
+html body .scorm-editorial.scorm-theme-light .scorm-light-adapted [class*="text-[#FF9A37]"] {
+  color: #0b6259 !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-light-feature-hero {
-  background: radial-gradient(circle at 85% 15%, rgba(79, 201, 191, .12), transparent 35%), #fbfcfa !important;
-  border-color: #d5ded8 !important;
+html body .scorm-editorial.scorm-theme-light .scorm-light-feature-hero {
+  background: radial-gradient(circle at 85% 15%, rgba(79, 201, 191, .12), transparent 35%), #ffffff !important;
+  border-color: #d8e5e2 !important;
   box-shadow: 0 7px 22px rgba(29, 78, 70, .055) !important;
 }
 
-html body #root .scorm-editorial.scorm-theme-light .scorm-learner-audit .bg-white\/5,
-html body #root .scorm-editorial.scorm-theme-light .scorm-learner-audit .bg-white\/\[\.03\] {
-  background: #edf2eb !important;
+html body .scorm-editorial.scorm-theme-light .scorm-learner-audit .bg-white\/5,
+html body .scorm-editorial.scorm-theme-light .scorm-learner-audit .bg-white\/\[\.03\] {
+  background: #eef6f4 !important;
 }
 
 @media (max-width: 767px) {
-  html body #root .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel > div:first-child button {
+  html body .scorm-editorial.scorm-theme-light .scorm-campaigns-page > section.scorm-panel > div:first-child button {
     min-height: 38px;
   }
-}
-
-/* -------------------------------------------------------------------------- */
-/* High-contrast light theme                                                   */
-/* -------------------------------------------------------------------------- */
-
-/* Calm daylight hierarchy: off-white canvas, warm paper surfaces and muted
-   sage accents. Text and interactive focus retain readable contrast; softer
-   decoration must not mean faded copy or indistinguishable controls. */
-html body #root .scorm-editorial.scorm-theme-light {
-  --scorm-canvas: #f2f5f1 !important;
-  --scorm-surface: #fbfcfa !important;
-  --scorm-surface-soft: #f6f8f4 !important;
-  --scorm-surface-muted: #edf2eb !important;
-  --scorm-ink: #2b3b36 !important;
-  --scorm-ink-soft: #495e56 !important;
-  --scorm-muted: #596e64 !important;
-  --scorm-subtle: #5c6c62 !important;
-  --scorm-line: #d5ded8 !important;
-  --scorm-line-strong: #80998c !important;
-  --scorm-sidebar: #f6f8f4 !important;
-  --scorm-sidebar-soft: #edf2eb !important;
-  --scorm-sidebar-line: #d5ded8 !important;
-  --scorm-sidebar-text: #2b3b36 !important;
-  --scorm-sidebar-muted: #596e64 !important;
-  --scorm-accent: #91c2b4 !important;
-  --scorm-accent-strong: #366653 !important;
-  --scorm-accent-soft: #e4eee7 !important;
-
-  --scorm-platform-teal: #91c2b4 !important;
-  --scorm-platform-teal-strong: #527e6b !important;
-  --scorm-platform-teal-hover: #416957 !important;
-  --scorm-platform-teal-dark: #284c3c !important;
-  --scorm-platform-teal-soft: #fbfcfa !important;
-  --scorm-platform-teal-soft-strong: #eaf1eb !important;
-  --scorm-platform-teal-line: #a6beb1 !important;
-  --scorm-platform-teal-line-soft: #d5ded8 !important;
-  --scorm-platform-teal-surface: #fbfcfa !important;
-  --scorm-platform-teal-surface-2: #f6f8f4 !important;
-  --scorm-platform-teal-surface-3: #edf2eb !important;
-  --scorm-platform-teal-text: #344e42 !important;
-  --scorm-platform-teal-muted: #596e64 !important;
-
-  background: #f2f5f1 !important;
-  color: #2b3b36 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-main,
-html body #root .scorm-editorial.scorm-theme-light main {
-  background:
-    radial-gradient(circle at 92% -8%, rgba(107, 155, 129, .035), transparent 28rem),
-    linear-gradient(180deg, #f4f6f2 0%, #f2f5f1 52%, #f2f5f1 100%) !important;
-  color: #2b3b36 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-topbar {
-  background: rgba(248, 250, 246, .98) !important;
-  border-color: #d5ded8 !important;
-  box-shadow: 0 2px 8px rgba(43, 59, 54, .035) !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-sidebar,
-html body #root .scorm-editorial.scorm-theme-light .scorm-mobile-drawer {
-  background: #f6f8f4 !important;
-  border-color: #d5ded8 !important;
-  box-shadow: none !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-sidebar-profile,
-html body #root .scorm-editorial.scorm-theme-light .scorm-sidebar-footer > div,
-html body #root .scorm-editorial.scorm-theme-light .scorm-status-card {
-  background: #edf2eb !important;
-  border-color: #d5ded8 !important;
-  color: #344e42 !important;
-  box-shadow: 0 2px 8px rgba(7, 55, 48, .07) !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-nav-section,
-html body #root .scorm-editorial.scorm-theme-light .scorm-brand-subtitle {
-  color: #596e64 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-nav-item {
-  color: #3e554a !important;
-  border-color: transparent !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-nav-item:hover {
-  background: #edf2eb !important;
-  border-color: #c2d1c7 !important;
-  color: #2b3b36 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-nav-icon {
-  background: #f2f5f1 !important;
-  border-color: #d5ded8 !important;
-  color: #4a6557 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-nav-item.scorm-nav-active {
-  background: linear-gradient(90deg, #e4eee7 0%, #edf3ec 100%) !important;
-  border-color: #9eb9aa !important;
-  color: #344e42 !important;
-  box-shadow: inset 3px 0 0 #527e6b !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-nav-item.scorm-nav-active .scorm-nav-icon {
-  background: #dce9de !important;
-  border-color: #9eb9aa !important;
-  color: #366653 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-mobile-tabbar {
-  background: rgba(248, 250, 246, .98) !important;
-  border-color: #d5ded8 !important;
-  box-shadow: 0 -2px 10px rgba(43, 59, 54, .045) !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-mobile-tab {
-  color: #596e64 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-mobile-tab.is-active {
-  background: #e4eee7 !important;
-  color: #366653 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-panel,
-html body #root .scorm-editorial.scorm-theme-light .scorm-soft-card,
-html body #root .scorm-editorial.scorm-theme-light .scorm-metric-card,
-html body #root .scorm-editorial.scorm-theme-light .scorm-action-card,
-html body #root .scorm-editorial.scorm-theme-light main [class*="rounded-2xl"].border {
-  background: #fbfcfa !important;
-  border-color: #d5ded8 !important;
-  color: #2b3b36 !important;
-  box-shadow: 0 3px 12px rgba(43, 59, 54, .045) !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-panel-header {
-  background: #edf2eb !important;
-  border-color: #d5ded8 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light [style*="background: var(--scorm-surface-soft)"],
-html body #root .scorm-editorial.scorm-theme-light [style*="background:var(--scorm-surface-soft)"] {
-  background: #f6f8f4 !important;
-  color: #2b3b36 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light [style*="background: var(--scorm-surface-muted)"],
-html body #root .scorm-editorial.scorm-theme-light [style*="background:var(--scorm-surface-muted)"] {
-  background: #edf2eb !important;
-  color: #2b3b36 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light main h1,
-html body #root .scorm-editorial.scorm-theme-light main h2,
-html body #root .scorm-editorial.scorm-theme-light main h3,
-html body #root .scorm-editorial.scorm-theme-light main h4,
-html body #root .scorm-editorial.scorm-theme-light main .font-semibold,
-html body #root .scorm-editorial.scorm-theme-light main .scorm-display,
-html body #root .scorm-editorial.scorm-theme-light main .scorm-page-title,
-html body #root .scorm-editorial.scorm-theme-light main .scorm-metric-value {
-  color: #2b3b36 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light main p,
-html body #root .scorm-editorial.scorm-theme-light .scorm-preview-muted {
-  color: #495e56 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-eyebrow,
-html body #root .scorm-editorial.scorm-theme-light .scorm-breadcrumb,
-html body #root .scorm-editorial.scorm-theme-light .scorm-micro,
-html body #root .scorm-editorial.scorm-theme-light .scorm-metric-label,
-html body #root .scorm-editorial.scorm-theme-light .scorm-meta,
-html body #root .scorm-editorial.scorm-theme-light main [class*="text-white/"],
-html body #root .scorm-editorial.scorm-theme-light main [class*="text-gray-"],
-html body #root .scorm-editorial.scorm-theme-light main [class*="text-slate-"],
-html body #root .scorm-editorial.scorm-theme-light main [class*="text-zinc-"] {
-  color: #596e64 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light main .border,
-html body #root .scorm-editorial.scorm-theme-light main [class*="border-"],
-html body #root .scorm-editorial.scorm-theme-light main [class*="divide-"] > * + * {
-  border-color: #d5ded8 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light main input,
-html body #root .scorm-editorial.scorm-theme-light main textarea,
-html body #root .scorm-editorial.scorm-theme-light main select {
-  background: #fbfcfa !important;
-  border-color: #80998c !important;
-  color: #2b3b36 !important;
-  box-shadow: inset 0 1px 1px rgba(7, 27, 23, .035) !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light main input::placeholder,
-html body #root .scorm-editorial.scorm-theme-light main textarea::placeholder {
-  color: #5c6c62 !important;
-  opacity: 1 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light main input:hover,
-html body #root .scorm-editorial.scorm-theme-light main textarea:hover,
-html body #root .scorm-editorial.scorm-theme-light main select:hover {
-  border-color: #678774 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light main input:focus,
-html body #root .scorm-editorial.scorm-theme-light main textarea:focus,
-html body #root .scorm-editorial.scorm-theme-light main select:focus,
-html body #root .scorm-editorial.scorm-theme-light main button:focus-visible,
-html body #root .scorm-editorial.scorm-theme-light main a:focus-visible {
-  border-color: #527e6b !important;
-  outline: 2px solid #527e6b !important;
-  outline-offset: 2px !important;
-  box-shadow: 0 0 0 4px rgba(22, 184, 170, .22) !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-button-primary,
-html body #root .scorm-editorial.scorm-theme-light main button[class*="bg-blue-"],
-html body #root .scorm-editorial.scorm-theme-light main button[class*="bg-cyan-"],
-html body #root .scorm-editorial.scorm-theme-light main a[class*="bg-blue-"],
-html body #root .scorm-editorial.scorm-theme-light main a[class*="bg-cyan-"] {
-  background: #91c2b4 !important;
-  border-color: #527e6b !important;
-  color: #203f34 !important;
-  box-shadow: 0 2px 5px rgba(43, 59, 54, .06) !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-button-primary:hover:not(:disabled),
-html body #root .scorm-editorial.scorm-theme-light main button[class*="bg-blue-"]:hover:not(:disabled),
-html body #root .scorm-editorial.scorm-theme-light main button[class*="bg-cyan-"]:hover:not(:disabled),
-html body #root .scorm-editorial.scorm-theme-light main a[class*="bg-blue-"]:hover,
-html body #root .scorm-editorial.scorm-theme-light main a[class*="bg-cyan-"]:hover {
-  background: #82b5a5 !important;
-  border-color: #416957 !important;
-  color: #203f34 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-button-secondary,
-html body #root .scorm-editorial.scorm-theme-light .scorm-theme-toggle,
-html body #root .scorm-editorial.scorm-theme-light .scorm-sidebar-switch,
-html body #root .scorm-editorial.scorm-theme-light .scorm-topbar-icon,
-html body #root .scorm-editorial.scorm-theme-light .scorm-drawer-close {
-  background: #fbfcfa !important;
-  border-color: #80998c !important;
-  color: #344e42 !important;
-  box-shadow: none !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-button-secondary:hover:not(:disabled),
-html body #root .scorm-editorial.scorm-theme-light .scorm-theme-toggle:hover,
-html body #root .scorm-editorial.scorm-theme-light .scorm-sidebar-switch:hover,
-html body #root .scorm-editorial.scorm-theme-light .scorm-topbar-icon:hover,
-html body #root .scorm-editorial.scorm-theme-light .scorm-drawer-close:hover {
-  background: #eaf1eb !important;
-  border-color: #678774 !important;
-  color: #366653 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light button:disabled,
-html body #root .scorm-editorial.scorm-theme-light input:disabled,
-html body #root .scorm-editorial.scorm-theme-light select:disabled,
-html body #root .scorm-editorial.scorm-theme-light textarea:disabled {
-  opacity: .68 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light table {
-  background: #fbfcfa !important;
-  color: #2b3b36 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light table thead,
-html body #root .scorm-editorial.scorm-theme-light table thead tr,
-html body #root .scorm-editorial.scorm-theme-light table th {
-  background: #edf2eb !important;
-  border-color: #d5ded8 !important;
-  color: #495e56 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light table td,
-html body #root .scorm-editorial.scorm-theme-light table tbody tr {
-  background: #fbfcfa !important;
-  border-color: #d5ded8 !important;
-  color: #3e554a !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light table tbody tr:hover {
-  background: #edf2eb !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-progress-track,
-html body #root .scorm-editorial.scorm-theme-light .scorm-preview-progress-track {
-  background: #dce6dc !important;
-  border-color: #d5ded8 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .scorm-progress-fill,
-html body #root .scorm-editorial.scorm-theme-light .scorm-preview-progress-fill {
-  background: #527e6b !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light ::selection {
-  background: #cfdfd0;
-  color: #2b3b36;
-}
-
-/* Authentication and registration use the same contrast standard. */
-html body #root .scorm-auth-workbench.scorm-theme-light {
-  --sa-bg: #f2f5f1 !important;
-  --sa-bg-deep: #edf2eb !important;
-  --sa-panel: #fbfcfa !important;
-  --sa-panel-2: #f6f8f4 !important;
-  --sa-panel-3: #edf2eb !important;
-  --sa-border: #d5ded8 !important;
-  --sa-border-strong: #80998c !important;
-  --sa-border-soft: #d5ded8 !important;
-  --sa-cream: #2b3b36 !important;
-  --sa-cream-soft: #495e56 !important;
-  --sa-soft: #596e64 !important;
-  --sa-muted: #5c6c62 !important;
-  --sa-muted-deep: #5c6c62 !important;
-  --sa-orange: #91c2b4 !important;
-  --sa-orange-strong: #366653 !important;
-  --sa-yellow: #366653 !important;
-  background: #f2f5f1 !important;
-  color: #2b3b36 !important;
-}
-
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-card {
-  background: #fbfcfa !important;
-  border-color: #80998c !important;
-  border-top-color: #527e6b !important;
-  box-shadow: 0 12px 32px rgba(43, 59, 54, .07) !important;
-}
-
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-brand-panel {
-  background: linear-gradient(155deg, #edf3ec 0%, #e4eee7 100%) !important;
-  border-color: #d5ded8 !important;
-}
-
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-form-panel {
-  background: #fbfcfa !important;
-}
-
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-title,
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-form-title,
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-upload-title {
-  color: #2b3b36 !important;
-}
-
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-copy,
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-form-sub,
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-notice,
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-point,
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-google-label,
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-google-hint,
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-label,
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-top-note {
-  color: #495e56 !important;
-}
-
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-tabs,
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-google-button,
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-input,
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-theme-toggle {
-  background: #fbfcfa !important;
-  border-color: #80998c !important;
-  color: #344e42 !important;
-}
-
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-input::placeholder {
-  color: #5c6c62 !important;
-  opacity: 1 !important;
-}
-
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-input:focus,
-html body #root .scorm-auth-workbench.scorm-theme-light button:focus-visible,
-html body #root .scorm-auth-workbench.scorm-theme-light a:focus-visible {
-  border-color: #527e6b !important;
-  outline: 2px solid #527e6b !important;
-  outline-offset: 2px !important;
-  box-shadow: 0 0 0 4px rgba(22, 184, 170, .22) !important;
-}
-
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-tab {
-  color: #596e64 !important;
-}
-
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-tab.is-active {
-  background: #e4eee7 !important;
-  border-color: #9eb9aa !important;
-  color: #366653 !important;
-}
-
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-notice {
-  background: #edf3ec !important;
-  border-color: #a6beb1 !important;
-  color: #344e42 !important;
-}
-
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-submit {
-  background: #91c2b4 !important;
-  border-color: #527e6b !important;
-  color: #203f34 !important;
-  box-shadow: 0 3px 8px rgba(43, 59, 54, .07) !important;
-}
-
-html body #root .scorm-auth-workbench.scorm-theme-light .sa-submit:hover {
-  background: #82b5a5 !important;
-  border-color: #416957 !important;
-  color: #203f34 !important;
-}
-
-/* Publica and Quizmoto have route-specific controls. Keep the same primary,
-   secondary and tertiary hierarchy without touching authored preview content. */
-html body #root .scorm-editorial.scorm-theme-light .flip-button-primary,
-html body #root .scorm-editorial.scorm-theme-light .quizmoto-edit-workbench .qe-save,
-html body #root .scorm-editorial.scorm-theme-light .quizmoto-edit-workbench .qc-generate:not(:disabled) {
-  background: #91c2b4 !important;
-  background-image: none !important;
-  border-color: #648777 !important;
-  color: #203f34 !important;
-  box-shadow: 0 2px 5px rgba(43, 59, 54, .06) !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light .flip-button-primary:hover:not(.is-disabled),
-html body #root .scorm-editorial.scorm-theme-light .quizmoto-edit-workbench :is(.qe-save, .qc-generate):hover:not(:disabled) {
-  background: #82b5a5 !important;
-  border-color: #416957 !important;
-}
-
-html body #root .scorm-editorial.scorm-theme-light :is(.flip-button-secondary, .flip-library-button),
-html body #root .scorm-editorial.scorm-theme-light .quizmoto-edit-workbench :is(.qe-add, .qe-image-button, .qc-ai-button) {
-  background: #f6f8f4 !important;
-  border-color: #a6beb1 !important;
-  color: #344e42 !important;
-  box-shadow: none !important;
 }

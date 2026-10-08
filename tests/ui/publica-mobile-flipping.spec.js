@@ -39,8 +39,9 @@ for (const width of [320, 390]) test(`mobile ${width}px flips with touch and but
   await frame.locator('#nextBtn').tap();
   await expect.poll(() => frame.locator('#book').evaluate(() => pageFlip.getState())).toBe('flipping');
   const duration = await frame.locator('#book').evaluate(() => pageFlip.getRender().animation.duration);
-  expect(duration).toBeGreaterThanOrEqual(1150);
-  expect(duration).toBeLessThanOrEqual(1250);
+  expect(await frame.locator('#book').evaluate(() => pageFlip.getSettings().flippingTime)).toBe(900);
+  expect(duration).toBeGreaterThan(50);
+  expect(duration).toBeLessThanOrEqual(900);
   await expect(frame.locator('#nextBtn')).toBeDisabled();
   await frame.locator('#book').evaluate(() => nextBtn.onclick());
   await page.screenshot({ path: testInfo.outputPath('mobile-page-turn.png') });

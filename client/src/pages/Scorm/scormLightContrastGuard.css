@@ -8,13 +8,13 @@
  */
 
 :root {
-  --scorm-light-contrast-text: #2B3B36;
-  --scorm-light-contrast-body: #495E56;
-  --scorm-light-contrast-muted: #596E64;
-  --scorm-light-contrast-subtle: #5C6C62;
-  --scorm-light-contrast-teal: #366653;
-  --scorm-light-contrast-teal-hover: #284C3C;
-  --scorm-light-contrast-active: #344E42;
+  --scorm-light-contrast-text: #14201E;
+  --scorm-light-contrast-body: #35514C;
+  --scorm-light-contrast-muted: #536562;
+  --scorm-light-contrast-subtle: #5F716E;
+  --scorm-light-contrast-teal: #0B6259;
+  --scorm-light-contrast-teal-hover: #084F48;
+  --scorm-light-contrast-active: #123A35;
 }
 
 /* Stronger light-theme text tokens. */

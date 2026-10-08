@@ -13,9 +13,9 @@ describe('Flipbook reader experience', () => {
         expect(html).to.include('capture:true,passive:false');
         expect(html).to.include("bookEl.addEventListener('touchcancel'");
         expect(html).not.to.include('color-scheme:dark');
-        expect(html).to.include('function pageTurnTiming(dims)');
-        expect(html).to.include('duration=dims.mobile||isTouchTablet()?1200:900');
-        expect(html).to.include('1000/path');
+        expect(html).to.include("flippingTime:window.matchMedia('(prefers-reduced-motion: reduce)').matches?1:900");
+        expect(html).not.to.include('function pageTurnTiming(dims)');
+        expect(html).to.include('pageFlip.userStop(pos,true)');
         expect(html).to.include('pageSlider.disabled=pageTurnInProgress');
     });
     it('fits the real stage and reports sharing failures rather than swallowing them', () => {

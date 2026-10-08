@@ -18,7 +18,6 @@ import './pages/Host/quizmotoTealTheme.css';
 import './pages/Scorm/scormVisualStudioFixes.css';
 import './pages/Scorm/scormReferenceTheme.css';
 import './pages/Scorm/scormReferencePolish.css';
-import './pages/Scorm/scormDarkContrastGuard.css';
 import './pages/Scorm/flipbookAnalytics.css';
 
 const CreateQuiz = lazy(() => import('./pages/Host/CreateQuiz'));

@@ -171,15 +171,6 @@ function pageDimensions(){
   return {width:Math.max(1,Math.floor(width)),height:Math.max(1,Math.floor(height)),mobile:false};
 }
 
-function pageTurnTiming(dims){
-  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return 1;
-  // PageFlip 2.0.7 shortens duration below a 1000px animation path. Compensate
-  // for that so small phone pages do not turn twice as fast as desktop pages.
-  const duration=dims.mobile||isTouchTablet()?1200:900;
-  const path=Math.max(1,dims.width*2-dims.height/10,dims.height/10);
-  return Math.round(duration*Math.max(1,1000/path));
-}
-
 function spreadState(){
   try{
     const collection=pageFlip?.getPageCollection?.();
@@ -299,7 +290,7 @@ function init(){
     minHeight:dims.height,
     maxHeight:dims.height,
     drawShadow:true,
-    flippingTime:pageTurnTiming(dims),
+    flippingTime:window.matchMedia('(prefers-reduced-motion: reduce)').matches?1:900,
     usePortrait:dims.mobile,
     startPage:rememberedPage,
     autoSize:false,
