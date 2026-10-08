@@ -175,6 +175,7 @@ if (marketingPage) {
     import('./App.jsx'),
     import('./components/PlatformDataBootstrap.jsx'),
     import('./lmsgenLightFinal.css'),
+    import('./platformUsability.css'),
   ]).then(([, , , appModule, bootstrapModule]) => {
     const App = appModule.default
     const PlatformDataBootstrap = bootstrapModule.default

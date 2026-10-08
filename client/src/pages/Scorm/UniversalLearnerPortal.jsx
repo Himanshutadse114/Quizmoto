@@ -243,7 +243,7 @@ export default function UniversalLearnerPortal() {
           <section className="max-w-md mx-auto bg-white border border-[#dce8e5] rounded-[24px] shadow-[0_20px_60px_rgba(16,35,33,.08)] overflow-hidden">
             <div className="p-6 md:p-7 border-b border-[#e1ece9] bg-gradient-to-br from-[#e9f8f5] to-white">
               <div className="w-11 h-11 rounded-2xl bg-[#c8f0eb] text-[#087b73] grid place-items-center mb-4"><GraduationCap size={21} /></div>
-              <div className="text-[10px] uppercase tracking-[.14em] font-bold text-[#5b7773]">Learner portal</div>
+              <div className="text-xs uppercase tracking-[.08em] font-semibold text-[#45635e]">Learner portal</div>
               <h1 className="text-2xl md:text-[30px] font-semibold tracking-[-.035em] leading-tight mt-2">Sign in to your learning</h1>
               <p className="text-sm leading-relaxed text-[#617572] mt-2">Use Microsoft or Google. LMSGEN will match your verified email to the correct organisation and assigned courses.</p>
             </div>

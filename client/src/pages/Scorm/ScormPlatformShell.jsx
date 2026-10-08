@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -28,6 +28,7 @@ import {
   Settings
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import useDialogFocus from '../../hooks/useDialogFocus';
 import ScormGenerationNotifier from '../../components/ScormGenerationNotifier';
 import { readScormPlatformTheme, saveScormPlatformTheme } from './platformTheme';
 import './scormEditorialTheme.css';
@@ -183,7 +184,7 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess, role }) {
   ];
 
   return (
-    <nav className={`scorm-nav flex-1 px-3 overflow-y-auto ${scormAccess ? 'py-5' : 'py-3'}`}>
+    <nav aria-label="Workspace navigation" className={`scorm-nav flex-1 px-3 overflow-y-auto ${scormAccess ? 'py-5' : 'py-3'}`}>
       {groups.map((group, groupIndex) => (
         <div key={group.label} className={groupIndex ? (scormAccess ? 'mt-6' : 'mt-3') : ''}>
           <div className={`scorm-nav-section px-2.5 uppercase font-semibold ${scormAccess ? 'pb-2.5 text-[10px]' : 'pb-1 text-[8px]'}`}>{group.label}</div>
@@ -264,11 +265,21 @@ function MobileTabBar({ scormAccess, role }) {
 
 export default function ScormPlatformShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const drawerRef = useRef(null);
+  const closeDrawer = useCallback(() => setMobileOpen(false), []);
+  useDialogFocus(mobileOpen, drawerRef, closeDrawer);
   const [theme, setTheme] = useState(readScormPlatformTheme);
   const navigate = useNavigate();
   const { platformAccess, scormAccess, user, refreshScormAccess, logout } = useAuth();
 
   useEffect(() => { saveScormPlatformTheme(theme); }, [theme]);
+
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const closeOnDesktop = (event) => { if (event.matches) closeDrawer(); };
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => desktop.removeEventListener('change', closeOnDesktop);
+  }, [closeDrawer]);
 
   useEffect(() => {
     if (!platformAccess) return;
@@ -292,13 +303,13 @@ export default function ScormPlatformShell() {
   const trialAccess = Boolean(user?.trialAccess || user?.role === 'trial');
   const role = user?.role || (scormAccess ? 'admin' : trialAccess ? 'trial' : quizmotoOnly ? 'quizmoto' : 'pending');
   const isSuperAdmin = Boolean(scormAccess && (user?.isSuperAdmin || role === 'super_admin'));
-  const isWorkspaceAdmin = Boolean(scormAccess && (role === 'admin' || isSuperAdmin));
   const analyticsOnly = Boolean(scormAccess && role === 'analytics_viewer');
   const demoAccess = !scormAccess;
   const roleName = displayRole(role, isSuperAdmin, scormAccess);
 
   return (
     <div className={`scorm-editorial scorm-theme-${theme} min-h-screen relative z-20`}>
+      <a href="#workspace-content" className="platform-skip-link">Skip to content</a>
       <aside className="scorm-sidebar fixed inset-y-0 left-0 z-40 hidden lg:flex w-[268px] flex-col border-r">
         <div className="scorm-brand-wrap h-[76px] px-5 flex items-center border-b"><Brand theme={theme} /></div>
         <Navigation isSuperAdmin={isSuperAdmin} scormAccess={scormAccess} role={role} />
@@ -321,7 +332,7 @@ export default function ScormPlatformShell() {
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button aria-label="Close navigation" className="absolute inset-0 bg-[#02050b]/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <div className="scorm-mobile-drawer absolute inset-y-0 left-0 w-[304px] max-w-[88vw] border-r flex flex-col">
+          <div ref={drawerRef} id="workspace-navigation-drawer" role="dialog" aria-modal="true" aria-label="Workspace navigation" tabIndex={-1} className="scorm-mobile-drawer absolute inset-y-0 left-0 w-[304px] max-w-[88vw] border-r flex flex-col">
             <div className="h-[72px] px-4 flex items-center justify-between border-b">
               <Brand theme={theme} />
               <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="scorm-drawer-close w-9 h-9 grid place-items-center"><X size={17} /></button>
@@ -335,9 +346,9 @@ export default function ScormPlatformShell() {
         </div>
       )}
 
-      <div className="lg:pl-[268px] min-h-screen">
+      <div inert={mobileOpen} className="lg:pl-[268px] min-h-screen">
         <header className="scorm-topbar sticky top-0 z-30 min-h-[64px] border-b px-4 md:px-7 py-2.5 flex items-center gap-3 md:gap-4">
-          <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open LMSGEN navigation" className="scorm-topbar-icon lg:hidden w-10 h-10 grid place-items-center shrink-0"><Menu size={18} /></button>
+          <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open LMSGEN navigation" aria-expanded={mobileOpen} aria-controls="workspace-navigation-drawer" className="scorm-topbar-icon lg:hidden w-10 h-10 grid place-items-center shrink-0"><Menu size={18} /></button>
           {demoAccess && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><LockKeyhole size={12} /> Interactive demo · Product operations are locked</div>}
           {analyticsOnly && <div className="hidden md:flex items-center gap-2 text-[10px] font-semibold text-[#93c5fd]"><BarChart3 size={12} /> Read-only analytics access</div>}
           <div className="ml-auto flex items-center gap-2">
@@ -355,20 +366,16 @@ export default function ScormPlatformShell() {
               </>
             ) : (
               <>
-                <Link to="/scorm/publica" className="scorm-button-secondary hidden lg:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><BookOpenCheck size={14} /><span>Publica</span></Link>
-                <Link to="/scorm/quizmoto" className="scorm-button-secondary hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Gamepad2 size={14} /><span>Quizmoto</span></Link>
-                {isWorkspaceAdmin && <Link to="/scorm/team" className="scorm-button-secondary hidden xl:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Users size={14} /> Team</Link>}
-                {isSuperAdmin && <Link to="/scorm/access" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><ShieldCheck size={14} /> Tenants</Link>}
-                <Link to="/scorm/library?upload=1" className="scorm-button-secondary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Upload size={14} /> {scormAccess ? 'Upload' : 'Library'}</Link>
-                <Link to="/scorm/author" className="scorm-button-primary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold">{scormAccess ? <Plus size={14} /> : <LockKeyhole size={14} />}<span className="hidden sm:inline">{scormAccess ? 'Create course' : 'Explore AI Author'}</span><span className="sm:hidden">{scormAccess ? 'Create' : 'AI'}</span></Link>
+                <Link to="/scorm/library?upload=1" className="scorm-button-tertiary hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold"><Upload size={14} /> {scormAccess ? 'Upload' : 'Library'}</Link>
+                <Link to="/scorm/author" className="scorm-button-secondary inline-flex items-center gap-2 px-3.5 md:px-4 py-2.5 text-xs font-semibold">{scormAccess ? <Plus size={14} /> : <LockKeyhole size={14} />}<span className="hidden sm:inline">{scormAccess ? 'Create course' : 'Explore AI Author'}</span><span className="sm:hidden">{scormAccess ? 'Create' : 'AI'}</span></Link>
               </>
             )}
           </div>
         </header>
-        <main className="scorm-main min-h-[calc(100vh-64px)] pb-24 lg:pb-0"><Outlet /></main>
+        <main id="workspace-content" tabIndex={-1} className="scorm-main min-h-[calc(100vh-64px)] pb-24 lg:pb-0"><Outlet /></main>
       </div>
       {scormAccess && !analyticsOnly && <ScormGenerationNotifier />}
-      <MobileTabBar scormAccess={scormAccess} role={role} />
+      {!mobileOpen && <MobileTabBar scormAccess={scormAccess} role={role} />}
     </div>
   );
 }

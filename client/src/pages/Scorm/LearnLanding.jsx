@@ -134,8 +134,9 @@ export default function ScormLearnLanding() {
 
           <form onSubmit={start} className="space-y-3 sm:space-y-4 min-w-0">
             <div className="min-w-0">
-              <label className="block text-[10px] sm:text-[11px] font-semibold text-[#cbd5e1] mb-1">Your name</label>
+              <label htmlFor="learner-name" className="block text-[10px] sm:text-[11px] font-semibold text-[#cbd5e1] mb-1">Your name</label>
               <input
+                id="learner-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -145,8 +146,9 @@ export default function ScormLearnLanding() {
               />
             </div>
             <div className="min-w-0">
-              <label className="block text-[10px] sm:text-[11px] font-semibold text-[#cbd5e1] mb-1">Email <span className="text-[#fda4af]">*</span></label>
+              <label htmlFor="learner-email" className="block text-[10px] sm:text-[11px] font-semibold text-[#cbd5e1] mb-1">Email <span className="text-[#fda4af]">*</span></label>
               <input
+                id="learner-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -158,7 +160,7 @@ export default function ScormLearnLanding() {
               />
               <div className="hidden sm:block mt-1.5 text-[10px] text-[#71839c]">Required to identify your learner record and save course progress.</div>
             </div>
-            {error && <div className="rounded-xl border border-[#7f2739] bg-[#35131d] p-3 text-xs text-[#fecdd3]">{error}</div>}
+            {error && <div role="alert" className="rounded-xl border border-[#7f2739] bg-[#35131d] p-3 text-xs text-[#fecdd3]">{error}</div>}
             <button
               type="submit"
               disabled={loading || !course}

@@ -11,11 +11,8 @@ import {
   Gauge,
   Pencil,
   RefreshCw,
-  Search,
   Share2,
-  ShieldCheck,
-  Trash2,
-  Users
+  Trash2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config';
@@ -33,8 +30,8 @@ function shareUrl(book) {
 function QuotaCard({ quota }) {
   const max = quota?.max;
   const used = quota?.used || 0;
-  const label = max === null ? `${used} used · Unlimited` : `${used} of ${max} used`;
-  const pct = max === null || max === 0 ? (max === 0 ? 100 : 12) : Math.min(100, Math.round((used / max) * 100));
+  const label = !quota ? 'Allowance unavailable' : max === null ? `${used} used · Unlimited` : Number.isFinite(max) ? `${used} of ${max} used` : `${used} used`;
+  const pct = Number.isFinite(max) && max > 0 ? Math.min(100, Math.round((used / max) * 100)) : max === 0 ? 100 : 0;
   return (
     <div className="flip-quota-card">
       <div className="flip-quota-icon"><Gauge size={18} /></div>
@@ -95,71 +92,9 @@ function FlipbookCard({ book, onDelete, onCopied }) {
   );
 }
 
-function AdminLimits({ token }) {
-  const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
-  const [users, setUsers] = useState([]);
-  const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(null);
-  const [drafts, setDrafts] = useState({});
-  const [error, setError] = useState('');
-
-  const load = useCallback(async () => {
-    setLoading(true); setError('');
-    try {
-      const res = await axios.get(apiUrl(`${API}/admin/users`), { headers, params: query ? { q: query } : undefined });
-      setUsers(res.data.users || []);
-      const next = {};
-      (res.data.users || []).forEach((item) => { next[item.id] = item.quota?.max === null ? '' : String(item.quota?.max ?? 2); });
-      setDrafts(next);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Could not load user Publica limits.');
-    } finally { setLoading(false); }
-  }, [headers, query]);
-
-  useEffect(() => { const t = window.setTimeout(load, query ? 250 : 0); return () => window.clearTimeout(t); }, [load, query]);
-
-  const save = async (item) => {
-    setSaving(item.id); setError('');
-    try {
-      const raw = drafts[item.id];
-      const maxFlipbooks = raw === '' ? null : Math.max(0, Math.floor(Number(raw) || 0));
-      await axios.patch(apiUrl(`${API}/admin/users/${item.id}/limit`), { maxFlipbooks }, { headers });
-      await load();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Could not update this user limit.');
-    } finally { setSaving(null); }
-  };
-
-  return (
-    <section className="flip-admin-panel">
-      <div className="flip-section-heading">
-        <div><div className="flip-kicker"><ShieldCheck size={13} /> Super Admin</div><h2>User Publica limits</h2><p>Set how many publications each account can keep and share. Leave blank for unlimited.</p></div>
-        <div className="flip-search scorm-search-shell"><Search size={14} /><input type="search" className="scorm-search-shell-input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search user or email" /></div>
-      </div>
-      {error && <div className="flip-error">{error}</div>}
-      {loading ? <div className="flip-admin-loading"><RefreshCw size={16} className="animate-spin" /> Loading users…</div> : (
-        <div className="flip-user-list">
-          {users.map((item) => (
-            <div className="flip-user-row" key={item.id}>
-              <div className="flip-user-avatar"><Users size={15} /></div>
-              <div className="flip-user-info"><strong>{item.username || 'Platform user'}</strong><span>{item.email || 'No email'}</span></div>
-              <div className="flip-user-usage">{item.quota?.used || 0} used</div>
-              {item.isSuperAdmin ? <div className="flip-unlimited">Unlimited</div> : <>
-                <input type="number" min="0" step="1" value={drafts[item.id] ?? ''} onChange={(e) => setDrafts((current) => ({ ...current, [item.id]: e.target.value }))} placeholder="Unlimited" className="flip-limit-input" />
-                <button type="button" onClick={() => save(item)} disabled={saving === item.id} className="flip-button-secondary">{saving === item.id ? 'Saving…' : 'Save'}</button>
-              </>}
-            </div>
-          ))}
-          {!users.length && <div className="flip-empty-inline">No matching platform users.</div>}
-        </div>
-      )}
-    </section>
-  );
-}
 
 export default function Flipbooks() {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
   const prepared = useMemo(() => peekScormData('flipbooks', token), [token]);
   const [books, setBooks] = useState(() => prepared?.flipbooks || []);
@@ -167,7 +102,6 @@ export default function Flipbooks() {
   const [loading, setLoading] = useState(() => !prepared);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState('');
-  const isSuperAdmin = Boolean(user?.isSuperAdmin || user?.role === 'super_admin');
 
   const load = useCallback(async () => {
     const cached = peekScormData('flipbooks', token);
@@ -223,15 +157,14 @@ export default function Flipbooks() {
       {books.some((book) => book.readOnly && book.isPlatformDefault) && <div className="flip-limit-banner"><BookOpenCheck size={15} /><span>The publication marked “Included by LMSGEN” is available to every account, is read-only, and does not use your Publica allowance.</span></div>}
       {atLimit && <div className="flip-limit-banner"><Gauge size={15} /><span>You have reached your Publica allowance. Delete a publication or ask the Super Admin to increase the limit.</span></div>}
       {copied && <div className="flip-toast">Share link copied</div>}
-      {error && <div className="flip-error">{error}</div>}
+      {error && <div className="flip-error" role="alert"><span>{error}</span> <button type="button" onClick={load} className="underline">Try again</button></div>}
 
       {loading ? <div className="flip-loading"><RefreshCw size={20} className="animate-spin" /><span>Loading publications…</span></div> : books.length ? (
         <div className="flip-grid">{books.map((book) => <FlipbookCard key={book.id} book={book} onDelete={remove} onCopied={markCopied} />)}</div>
-      ) : (
+      ) : error ? null : (
         <div className="flip-empty"><div className="flip-empty-icon"><BookOpenCheck size={30} /></div><h2>Create your first publication</h2><p>Upload a PDF or a set of images. LMSGEN Publica will build the reader and give you a secure sharing link.</p><Link to="/scorm/publica/new" className="flip-button-primary"><FilePlus2 size={16} /> Create publication</Link></div>
       )}
 
-      {isSuperAdmin && <AdminLimits token={token} />}
     </div>
   );
 }

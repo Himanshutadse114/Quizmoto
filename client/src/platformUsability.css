@@ -1,0 +1,148 @@
+/* Primary: route headings and main actions. Secondary: panels and supporting
+   actions. Tertiary: metadata and optional controls. Marketing and generated
+   course previews keep their independent visual systems. */
+html body #root :is(.scorm-editorial, .scorm-auth-workbench) {
+  font-size: 14px;
+  line-height: 1.55;
+  text-rendering: optimizeLegibility;
+}
+html body #root .scorm-editorial main h1:not([style*="--preview-primary"] *) {
+  font-size: clamp(28px, 2.7vw, 38px) !important;
+  line-height: 1.2 !important;
+  letter-spacing: -.025em !important;
+  overflow-wrap: anywhere;
+}
+html body #root .scorm-editorial main h2:not([style*="--preview-primary"] *) {
+  font-size: 22px !important;
+  line-height: 1.35 !important;
+  letter-spacing: -.02em !important;
+}
+html body #root .scorm-editorial main h3:not([style*="--preview-primary"] *) { line-height: 1.4 !important; }
+html body #root .scorm-editorial :is(.scorm-micro, .scorm-eyebrow, .scorm-meta, .scorm-metric-label, .scorm-nav-section),
+html body #root .scorm-auth-workbench .sa-label {
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+  letter-spacing: .055em !important;
+}
+html body #root .scorm-editorial :is([class~="text-[7px]"], [class~="text-[8px]"], [class~="text-[9px]"], [class~="text-[10px]"], [class~="text-[11px]"]):not([style*="--preview-primary"] *) {
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+}
+html body #root .scorm-editorial :is(p.text-xs, p.text-sm, .demo-lead),
+html body #root .scorm-auth-workbench :is(.sa-auth-description, .sa-auth-switch) {
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+}
+html body #root .scorm-editorial .scorm-nav-item {
+  min-height: 42px !important;
+  font-size: 13px !important;
+}
+html body #root .scorm-editorial :is(.scorm-sidebar-profile, .scorm-sidebar-switch) { font-size: 12px !important; }
+html body #root .scorm-editorial :is(.scorm-button-primary, .scorm-button-secondary, .flip-button-primary, .flip-button-secondary),
+html body #root .scorm-auth-workbench :is(.sa-submit, .sa-social-button) {
+  min-height: 42px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+html body #root .scorm-editorial .scorm-button-tertiary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--scorm-ink-soft);
+  font-size: 13px;
+}
+html body #root .scorm-editorial .scorm-button-tertiary:hover {
+  background: var(--scorm-surface-soft);
+  color: var(--scorm-ink);
+}
+html body #root .scorm-auth-workbench .sa-input {
+  min-height: 44px !important;
+  font-size: 15px !important;
+}
+html body #root :is(.scorm-editorial, .scorm-auth-workbench) :is(button, a, input, select, textarea, [tabindex]):focus-visible,
+html body #root .live-quiz-stage :is(button, a, input, select):focus-visible {
+  outline: 2px solid #63D8CE !important;
+  outline-offset: 3px !important;
+}
+html body #root :is(.scorm-editorial.scorm-theme-light, .scorm-auth-workbench.scorm-theme-light) :is(button, a, input, select, textarea, [tabindex]):focus-visible { outline-color: #0B6259 !important; }
+html body #root .scorm-editorial .scorm-search-shell:focus-within {
+  outline: 2px solid var(--scorm-accent-strong) !important;
+  outline-offset: 2px !important;
+}
+html body #root .scorm-editorial :is(input, textarea, select):disabled { cursor: not-allowed; }
+html body #root .scorm-editorial .flip-empty h2 { font-size: 24px !important; }
+html body #root .scorm-editorial .flip-empty { min-height: 240px; padding: 32px 24px; }
+html body #root .scorm-editorial .flip-icon-button { min-width: 36px; min-height: 36px; }
+html body #root .scorm-editorial :is(.flip-kicker, .flip-quota-label, .flip-library-kicker, .flip-field-label, .flip-editor-label, .scorm-mobile-tab span, .scorm-direct-pulse-kicker) {
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+html body #root .scorm-editorial :is(.flipbooks-page, .flip-editor-page, .flip-library-share, .flip-analytics-page) :is(p, input, select, textarea) { font-size: 14px !important; line-height: 1.55; }
+html body #root .scorm-editorial :is(.flip-empty-inline, .flip-library-meta, .flip-field-hint, .flip-library-count, .flip-library-setting label, .flip-library-setting button) { font-size: 12px !important; }
+html body #root .scorm-editorial :is(.flip-button-primary, .flip-button-secondary, .flip-library-button, .flip-library-share button) { font-size: 13px !important; min-height: 42px; }
+html body #root .scorm-editorial.scorm-theme-light :is(.flip-kicker, .flip-library-kicker, .flip-quota-label) { color: #08665F !important; }
+html body #root .scorm-auth-workbench :is(.sa-note, .sa-auth-divider, .sa-divider span, [class~="text-[10px]"]) { font-size: 12px !important; }
+html body #root .scorm-editorial :is(.qe-kicker, .qe-header-meta, .qe-label, .qe-summary-label, .qe-question-sub, .qe-option-letter, .qc-builder-note, .qc-label, .qc-modal-kicker, .qc-upload-meta, .scorm-progress-kicker) { font-size: 12px !important; line-height: 1.5 !important; }
+html body #root .scorm-editorial :is(.qe-save, .qe-add, .qc-ai-button, .qc-generate) { min-height: 44px !important; font-size: 13px !important; }
+html body #root .scorm-editorial :is(.flip-library-setting>span, .flip-library-share-summary, .flip-library-link-preview, .flip-status, .flip-field>span, .flip-field>label, .flip-field small, .flip-upload-zone span, .flip-preview-book span, .flip-range-tabs button, .flip-analytics-empty, .flip-analytics-help, .flip-card-meta, .flip-file-note, .flip-limit-banner, .flip-error, .flip-success, .flip-page-table :is(th,td,span,strong), .flip-analytics-table :is(th,td,span,strong)) { font-size: 12px !important; line-height: 1.5 !important; }
+html body #root .scorm-editorial :is(.flip-range-tabs button, .flip-page-pager button, .flip-page-jump-form button) { min-height: 36px !important; }
+html body #root .scorm-editorial :is(.flip-editor-kicker, .flip-editor-state, .flip-thumbnail-heading span, .flip-thumbnail-empty span, .scorm-alert) { font-size: 12px !important; line-height: 1.5 !important; }
+html body #root .scorm-editorial .flip-quota-value { font-size: 14px !important; }
+@media(max-width:767px){html body #root .scorm-editorial :is(.flip-range-tabs button, .flip-page-pager button, .flip-page-jump-form button) { min-height: 44px !important; }}
+.platform-skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 1000;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: #FFFFFF;
+  color: #132A24;
+  transform: translateY(-160%);
+}
+.platform-skip-link:focus { transform: translateY(0); }
+.sa-password-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--sa-soft);
+}
+.scorm-auth-workbench .sa-password-toggle svg { position: static; transform: none; color: inherit; }
+.scorm-auth-workbench .sa-input-wrap:has(.sa-password-toggle) .sa-input { padding-right: 52px !important; }
+@media (max-width: 767px) {
+  html body #root .publica-user-limits .flip-user-row { min-width: 0; grid-template-columns: 32px minmax(0,1fr) auto; gap: 8px; }
+  html body #root .publica-user-limits .flip-user-row .flip-limit-input { grid-column: 2; width: 100%; min-height: 44px; }
+  html body #root .publica-user-limits .flip-user-info :is(strong,span),
+  html body #root .publica-user-limits .flip-user-usage { font-size: 12px; }
+  html body #root .scorm-editorial main h2:not([style*="--preview-primary"] *) { font-size: 20px !important; }
+  html body #root :is(.scorm-editorial, .scorm-auth-workbench) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea, select) { font-size: 16px !important; }
+  html body #root .scorm-editorial :is(.scorm-button-primary, .scorm-button-secondary, .scorm-button-tertiary, .flip-button-primary, .flip-button-secondary, .flip-icon-button, .scorm-mobile-tab) { min-height: 44px !important; }
+  html body #root .scorm-editorial .flip-icon-button { min-width: 44px; }
+  html body #root .scorm-editorial :is(.scorm-topbar-icon, .scorm-drawer-close) { min-width: 44px; min-height: 44px; }
+  html body #root .scorm-editorial .scorm-mobile-tabbar {
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    max-width: calc(100vw - 16px);
+  }
+  html body #root .scorm-editorial .scorm-main { padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important; min-width: 0; }
+  html body #root .scorm-editorial .scorm-topbar { gap: 8px; padding-inline: 12px; }
+  html body #root .scorm-editorial .scorm-topbar .scorm-button-tertiary.hidden { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #root *, #root *::before, #root *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

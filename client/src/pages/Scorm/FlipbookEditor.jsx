@@ -373,7 +373,7 @@ export default function FlipbookEditor() {
           <label className="flip-field"><span>Description</span><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} maxLength={3000} placeholder="Optional short description for readers" /></label>
           <label className="flip-field"><span><Link2 size={12} /> Custom share link</span><input value={shareSlug} onChange={(e) => setShareSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} maxLength={64} placeholder="employee-security-handbook" /><small>Your public link will use this readable name. Leave it blank to keep a secure generated link.</small></label>
 
-          <div className="flip-upload-zone" role="button" tabIndex={0} onClick={() => fileInput.current?.click()} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && fileInput.current?.click()}>
+          <div className="flip-upload-zone" role="button" aria-label="Upload publication PDF or page images" aria-disabled={busy} tabIndex={busy ? -1 : 0} onClick={() => { if (!busy) fileInput.current?.click(); }} onKeyDown={(e) => { if (!busy && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); fileInput.current?.click(); } }}>
             <input ref={fileInput} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple onChange={(e) => chooseFiles(e.target.files)} hidden />
             <div className="flip-upload-icon"><UploadCloud size={25} /></div>
             <strong>{fileSummary || (book?.pageCount ? 'Replace existing pages' : 'Upload your PDF or page images')}</strong>
@@ -390,8 +390,8 @@ export default function FlipbookEditor() {
           </div>
 
           {progress && <div className="flip-progress"><div className="flip-progress-row"><span>{progressText}</span><strong>{progressPercent}%</strong></div><div className="flip-progress-track"><span style={{ width: `${progressPercent}%` }} /></div></div>}
-          {error && <div className="flip-error">{error}</div>}
-          {success && <div className="flip-success"><CheckCircle2 size={15} /> {success}</div>}
+          {error && <div className="flip-error" role="alert">{error}</div>}
+          {success && <div className="flip-success" role="status"><CheckCircle2 size={15} /> {success}</div>}
 
           <div className="flip-editor-actions">
             <button type="button" onClick={() => save('draft')} disabled={busy} className="flip-button-secondary"><Save size={15} /> {busy ? 'Working…' : 'Save draft'}</button>
@@ -408,7 +408,7 @@ export default function FlipbookEditor() {
             </div>
           </div>
           <div className="flip-preview-copy"><strong>Responsive reader included</strong><p>Desktop readers see a book-style spread. Phones automatically switch to a single-page swipe view with the same share link.</p></div>
-          {published && <div className="flip-share-box"><div><div className="flip-kicker">Published link</div><div className="flip-share-url">{publishedUrl}</div></div><div className="flex gap-2"><button type="button" onClick={copyShare} className="flip-icon-button"><Copy size={14} /></button><a href={publishedUrl} target="_blank" rel="noreferrer" className="flip-icon-button"><Share2 size={14} /></a></div></div>}
+          {published && <div className="flip-share-box"><div><div className="flip-kicker">Published link</div><div className="flip-share-url">{publishedUrl}</div></div><div className="flex gap-2"><button type="button" aria-label="Copy publication link" onClick={copyShare} className="flip-icon-button"><Copy size={14} /></button><a href={publishedUrl} aria-label="Open published reader in a new tab" target="_blank" rel="noreferrer" className="flip-icon-button"><Share2 size={14} /></a></div></div>}
         </aside>
       </div>
     </div>

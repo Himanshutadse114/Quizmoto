@@ -155,7 +155,7 @@ export default function QuizmotoModule() {
           <div><div className="scorm-eyebrow">Quiz management</div><h2 className="text-[18px] mt-1">Quiz library</h2></div>
           <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
             <label className="scorm-search-shell rounded-xl border border-[var(--scorm-line)] bg-[var(--scorm-surface-soft)] px-3 min-w-[260px] focus-within:border-[var(--scorm-accent)]"><Search size={14} className="text-[var(--scorm-muted)]" /><input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search quizzes" className="scorm-search-shell-input text-xs" /></label>
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="rounded-xl border border-[var(--scorm-line)] bg-[var(--scorm-surface-soft)] px-3 py-2.5 text-xs"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="az">A–Z title</option></select>
+            <select aria-label="Sort quizzes" value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="rounded-xl border border-[var(--scorm-line)] bg-[var(--scorm-surface-soft)] px-3 py-2.5 text-xs"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="az">A–Z title</option></select>
           </div>
         </div>
 

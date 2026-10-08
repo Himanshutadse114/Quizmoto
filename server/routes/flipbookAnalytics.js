@@ -30,8 +30,9 @@ function trackingInjection(shareToken) {
     const basePath = `/api/scorm/flipbooks/public/${encodeURIComponent(shareToken)}`;
     return {
         style: `<style id="lmsgen-flipbook-analytics-style">
-#lmsgenReaderGate{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;padding:18px;background:rgba(235,248,246,.96);backdrop-filter:blur(10px);font-family:Inter,Arial,sans-serif;color:#17313a}
+#lmsgenReaderGate{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;padding:18px;background:rgba(8,15,24,.97);backdrop-filter:blur(10px);font-family:Inter,Arial,sans-serif;color:#F5F8FC}
 #lmsgenReaderGate.is-hidden{display:none}#lmsgenReaderGate.is-restoring .lmsgen-reader-card{opacity:0;pointer-events:none}.lmsgen-reader-card{width:min(440px,100%);background:#fff;border:1px solid #d7ece8;border-radius:22px;box-shadow:0 24px 70px rgba(23,49,58,.16);padding:24px;transition:opacity .12s ease}.lmsgen-reader-mark{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:#e8f8f7;color:#0f9a95;font-size:21px;font-weight:800}.lmsgen-reader-card h2{margin:16px 0 7px;font-size:20px;line-height:1.15}.lmsgen-reader-card p{margin:0;color:#6a8588;font-size:12px;line-height:1.6}.lmsgen-reader-field{display:block;margin-top:16px}.lmsgen-reader-field span{display:block;margin-bottom:6px;font-size:10px;font-weight:800;color:#45666a;text-transform:uppercase;letter-spacing:.06em}.lmsgen-reader-field input{width:100%;height:45px;border:1px solid #d7ece8;border-radius:11px;background:#fff;color:#17313a;padding:0 12px;font:600 13px Inter,Arial,sans-serif;outline:none}.lmsgen-reader-field input:focus{border-color:#17b6b0;box-shadow:0 0 0 3px rgba(23,182,176,.12)}#lmsgenReaderSubmit{margin-top:18px;width:100%;height:46px;border:0;border-radius:11px;background:#17b6b0;color:#fff;font:800 13px Inter,Arial,sans-serif;cursor:pointer}#lmsgenReaderSubmit:hover{background:#0f9a95}#lmsgenReaderSubmit:disabled{opacity:.55;cursor:wait}.lmsgen-reader-privacy{margin-top:12px!important;font-size:10px!important;color:#789194!important}.lmsgen-reader-error{display:none;margin-top:10px;padding:9px 10px;border-radius:9px;background:#fff1f2;color:#be123c;font-size:11px}.lmsgen-reader-error.is-visible{display:block}
+.lmsgen-reader-card{background:#14202E;border-color:#3A4D61;box-shadow:0 24px 70px rgba(0,0,0,.4)}.lmsgen-reader-mark{background:#203D40;color:#73E5DA}.lmsgen-reader-card h2{font-size:22px;line-height:1.3}.lmsgen-reader-card p{color:#B7C6D6;font-size:14px}.lmsgen-reader-field span{color:#C9D6E4;font-size:12px}.lmsgen-reader-field input{height:44px;background:#0D1825;border-color:#3A4D61;color:#F5F8FC;font-size:16px}.lmsgen-reader-field input::placeholder{color:#9BAEC2}#lmsgenReaderSubmit{height:44px;background:#53D6CA;color:#072321;font-size:14px;font-weight:600}#lmsgenReaderSubmit:hover{background:#73E5DA}.lmsgen-reader-privacy{font-size:12px!important;color:#B7C6D6!important}.lmsgen-reader-error{background:#3F1927;color:#FFC1D0;font-size:13px}.lmsgen-reader-card :focus-visible{outline:2px solid #53D6CA;outline-offset:3px}
 </style>`,
         html: `<div id="lmsgenReaderGate" class="is-restoring"><form class="lmsgen-reader-card" id="lmsgenReaderForm"><div class="lmsgen-reader-mark">L</div><h2>Open this publication</h2><p>Enter your details to continue reading.</p><label class="lmsgen-reader-field"><span>Email address</span><input id="lmsgenReaderEmail" type="email" autocomplete="email" required placeholder="name@company.com"></label><label class="lmsgen-reader-field"><span>Name (optional)</span><input id="lmsgenReaderName" type="text" autocomplete="name" maxlength="160" placeholder="Your name"></label><div class="lmsgen-reader-error" id="lmsgenReaderError"></div><button id="lmsgenReaderSubmit" type="submit">Open publication</button><p class="lmsgen-reader-privacy">Your email and reading activity are shared with the publication author for engagement analytics. This browser will remember your access.</p></form></div>`,
         script: `<script id="lmsgen-flipbook-analytics-script">
@@ -44,6 +45,17 @@ function trackingInjection(shareToken) {
   const nameInput=document.getElementById('lmsgenReaderName');
   const submit=document.getElementById('lmsgenReaderSubmit');
   const errorBox=document.getElementById('lmsgenReaderError');
+  const readerShell=document.querySelector('.reader-shell');
+  if(readerShell)readerShell.inert=true;
+  gate.setAttribute('role','dialog');gate.setAttribute('aria-modal','true');gate.setAttribute('aria-label','Open this publication');
+  errorBox.setAttribute('role','alert');
+  gate.addEventListener('keydown',event=>{
+    if(event.key!=='Tab')return;
+    const items=[...gate.querySelectorAll('input,button:not(:disabled)')].filter(item=>item.getClientRects().length);
+    const first=items[0],last=items[items.length-1];
+    if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus()}
+    else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus()}
+  });
   const PROFILE_KEY='lmsgen-flipbook-reader-profile';
   const EMAIL_KEY='lmsgen-flipbook-reader-email';
   const NAME_KEY='lmsgen-flipbook-reader-name';
@@ -210,6 +222,8 @@ function trackingInjection(shareToken) {
     rememberProfile(String(data.readerEmail||email||'').trim().toLowerCase(),String(data.readerName||name||'').trim());
     gate.classList.add('is-hidden');
     gate.classList.remove('is-restoring');
+    if(readerShell)readerShell.inert=false;
+    document.getElementById('nextBtn')?.focus();
     markActivity();
     attachActivityListeners();
     window.setTimeout(()=>{if(!attachFlipTracking()){const timer=setInterval(()=>{if(attachFlipTracking())clearInterval(timer)},150)}},0);
@@ -229,6 +243,7 @@ function trackingInjection(shareToken) {
       try{await startSession(email,name);return}catch(_){}
     }
     gate.classList.remove('is-restoring');
+    emailInput.focus();
   }
 
   form?.addEventListener('submit',async event=>{

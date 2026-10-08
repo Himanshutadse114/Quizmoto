@@ -3,6 +3,7 @@ import { BookOpen, BookOpenCheck, Building2, Mail, ShieldAlert, UsersRound } fro
 import TenantAdmin from './TenantAdmin';
 import PlatformUsersAdmin from './PlatformUsersAdmin';
 import FlipbookTenantAdmin from './FlipbookTenantAdmin';
+import PublicaUserLimits from './PublicaUserLimits';
 import SuperAdminMailPanel from './SuperAdminMailPanel';
 import EmailTemplatesPanel from './EmailTemplatesPanel';
 import CourseCatalogAdmin from './CourseCatalogAdmin';
@@ -35,6 +36,7 @@ export default function AccessAdmin({ initialTab = 'tenants' }) {
                 key={value}
                 type="button"
                 onClick={() => setTab(value)}
+                aria-pressed={tab === value}
                 className="h-9 px-3.5 rounded-lg text-[10px] font-semibold inline-flex items-center gap-2 transition"
                 style={{
                   background: tab === value ? (value === 'danger' ? 'rgba(244,63,94,.12)' : 'rgba(79,201,191,.12)') : 'transparent',
@@ -53,7 +55,10 @@ export default function AccessAdmin({ initialTab = 'tenants' }) {
       ) : tab === 'users' ? (
         <PlatformUsersAdmin />
       ) : tab === 'flipbooks' ? (
-        <FlipbookTenantAdmin />
+        <>
+          <FlipbookTenantAdmin />
+          <div className="px-4 pb-8 md:px-8 max-w-[1280px] mx-auto"><PublicaUserLimits /></div>
+        </>
       ) : tab === 'courses' ? (
         <CourseCatalogAdmin />
       ) : tab === 'danger' ? (

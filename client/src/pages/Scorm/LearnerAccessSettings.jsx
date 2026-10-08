@@ -57,7 +57,7 @@ function LinkCard({ icon: Icon, title, description, value, onCopy }) {
           <h3 className="text-sm font-semibold">{title}</h3>
           <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>{description}</p>
           <div className="mt-3 flex flex-col sm:flex-row gap-2">
-            <input readOnly value={value} className="flex-1 min-w-0 px-3 py-2.5 text-[11px]" />
+            <input aria-label={title} readOnly value={value} className="flex-1 min-w-0 px-3 py-2.5 text-[11px]" />
             <button type="button" disabled={!value} onClick={onCopy} className="scorm-button-secondary px-4 py-2.5 text-xs font-semibold inline-flex items-center justify-center gap-2"><Copy size={13} /> Copy</button>
           </div>
         </div>
@@ -72,7 +72,7 @@ function ModeCards({ modes, selected, onSelect }) {
       {modes.map((mode) => {
         const active = selected === mode.id;
         return (
-          <button key={mode.id} type="button" onClick={() => onSelect(mode.id)} className="text-left rounded-2xl border p-4 transition" style={{ borderColor: active ? 'var(--scorm-accent)' : 'var(--scorm-line)', background: active ? 'var(--scorm-surface-soft)' : 'transparent' }}>
+          <button key={mode.id} type="button" aria-pressed={active} onClick={() => onSelect(mode.id)} className="text-left rounded-2xl border p-4 transition" style={{ borderColor: active ? 'var(--scorm-accent)' : 'var(--scorm-line)', background: active ? 'var(--scorm-surface-soft)' : 'transparent' }}>
             <div className="flex items-center justify-between gap-3"><div className="font-semibold text-sm">{mode.title}</div>{active && <CheckCircle2 size={16} style={{ color: 'var(--scorm-accent-strong)' }} />}</div>
             <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--scorm-muted)' }}>{mode.description}</p>
           </button>
@@ -232,14 +232,14 @@ export default function LearnerAccessSettings() {
             <div className="space-y-3">
               <label><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Application / client ID</span><input value={config?.staffMicrosoftClientId || ''} onChange={(e) => patch({ staffMicrosoftClientId: e.target.value })} className="w-full px-3 py-2.5 text-xs" /></label>
               <label><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Directory / tenant ID</span><input value={config?.staffMicrosoftTenantId || ''} onChange={(e) => patch({ staffMicrosoftTenantId: e.target.value })} className="w-full px-3 py-2.5 text-xs" /></label>
-              <div><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">SPA redirect URI</span><div className="flex gap-2"><input readOnly value={staffMicrosoftRedirectUri} className="min-w-0 flex-1 px-3 py-2.5 text-[10px]" /><button type="button" onClick={() => copy(staffMicrosoftRedirectUri, 'Staff Microsoft redirect URI')} className="scorm-button-secondary px-3 grid place-items-center"><Copy size={13} /></button></div></div>
+              <div><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">SPA redirect URI</span><div className="flex gap-2"><input aria-label="Staff Microsoft redirect URI" readOnly value={staffMicrosoftRedirectUri} className="min-w-0 flex-1 px-3 py-2.5 text-[10px]" /><button type="button" aria-label="Copy staff Microsoft redirect URI" onClick={() => copy(staffMicrosoftRedirectUri, 'Staff Microsoft redirect URI')} className="scorm-button-secondary px-3 grid place-items-center"><Copy size={13} /></button></div></div>
             </div>
           </div>
         </div>
 
         <div className="mt-5">
           <div className="flex items-center gap-2 mb-2"><LockKeyhole size={15} /><h3 className="text-sm font-semibold">Staff allowed domains</h3></div>
-          <input value={Array.isArray(config?.staffAllowedDomains) ? config.staffAllowedDomains.join(', ') : (config?.staffAllowedDomains || '')} onChange={(e) => patch({ staffAllowedDomains: e.target.value })} className="w-full px-3 py-2.5 text-sm" placeholder="company.com, subsidiary.com" />
+          <input aria-label="Staff allowed domains" value={Array.isArray(config?.staffAllowedDomains) ? config.staffAllowedDomains.join(', ') : (config?.staffAllowedDomains || '')} onChange={(e) => patch({ staffAllowedDomains: e.target.value })} className="w-full px-3 py-2.5 text-sm" placeholder="company.com, subsidiary.com" />
           {config?.staffJoiningMode === 'sso_only' && !config?.staffGoogleEnabled && !config?.staffMicrosoftEnabled && <div className="mt-3 rounded-xl border px-3 py-2.5 text-xs" style={{ borderColor: 'rgba(251,191,36,.3)', background: 'rgba(251,191,36,.08)' }}>Enable Staff Google or Staff Microsoft before saving Staff SSO only.</div>}
         </div>
       </section>
@@ -267,14 +267,14 @@ export default function LearnerAccessSettings() {
             <div className="space-y-3">
               <label><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Application / client ID</span><input value={config?.microsoftClientId || ''} onChange={(e) => patch({ microsoftClientId: e.target.value })} className="w-full px-3 py-2.5 text-xs" /></label>
               <label><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">Directory / tenant ID</span><input value={config?.microsoftTenantId || ''} onChange={(e) => patch({ microsoftTenantId: e.target.value })} className="w-full px-3 py-2.5 text-xs" /></label>
-              <div><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">SPA redirect URI</span><div className="flex gap-2"><input readOnly value={learnerMicrosoftRedirectUri} className="min-w-0 flex-1 px-3 py-2.5 text-[10px]" /><button type="button" onClick={() => copy(learnerMicrosoftRedirectUri, 'Learner Microsoft redirect URI')} className="scorm-button-secondary px-3 grid place-items-center"><Copy size={13} /></button></div></div>
+              <div><span className="scorm-micro block text-[9px] uppercase font-semibold mb-1.5">SPA redirect URI</span><div className="flex gap-2"><input aria-label="Learner Microsoft redirect URI" readOnly value={learnerMicrosoftRedirectUri} className="min-w-0 flex-1 px-3 py-2.5 text-[10px]" /><button type="button" aria-label="Copy learner Microsoft redirect URI" onClick={() => copy(learnerMicrosoftRedirectUri, 'Learner Microsoft redirect URI')} className="scorm-button-secondary px-3 grid place-items-center"><Copy size={13} /></button></div></div>
             </div>
           </div>
         </div>
 
         <div className="mt-5">
           <div className="flex items-center gap-2 mb-2"><KeyRound size={15} /><h3 className="text-sm font-semibold">Learner allowed domains</h3></div>
-          <input value={Array.isArray(config?.allowedDomains) ? config.allowedDomains.join(', ') : (config?.allowedDomains || '')} onChange={(e) => patch({ allowedDomains: e.target.value })} className="w-full px-3 py-2.5 text-sm" placeholder="company.com, subsidiary.com" />
+          <input aria-label="Learner allowed domains" value={Array.isArray(config?.allowedDomains) ? config.allowedDomains.join(', ') : (config?.allowedDomains || '')} onChange={(e) => patch({ allowedDomains: e.target.value })} className="w-full px-3 py-2.5 text-sm" placeholder="company.com, subsidiary.com" />
           {config?.joiningMode === 'sso_only' && !config?.googleEnabled && !config?.microsoftEnabled && <div className="mt-3 rounded-xl border px-3 py-2.5 text-xs" style={{ borderColor: 'rgba(251,191,36,.3)', background: 'rgba(251,191,36,.08)' }}>Enable Learner Google or Learner Microsoft before saving Learner SSO only.</div>}
         </div>
       </section>

@@ -201,16 +201,18 @@ const Join = () => {
 
                 <h1 className="text-3xl md:text-3xl font-black text-center mb-8 text-quizmoto-purple italic tracking-tighter">Quizmoto<span className="text-quizmoto-yellow">!</span></h1>
 
-                {error && <p className="bg-red-50 text-red-500 p-3 rounded-2xl mb-6 text-center font-black text-[10px] uppercase tracking-widest border border-red-100">{error}</p>}
+                {error && <p role="alert" className="bg-red-50 text-red-500 p-3 rounded-2xl mb-6 text-center font-black text-[10px] uppercase tracking-widest border border-red-100">{error}</p>}
 
                 <div className="mb-8">
-                    <label className="block text-[8px] font-black uppercase tracking-[0.3em] text-gray-400 mb-4 text-center">Pick Your Identity</label>
+                    <div className="block text-xs font-semibold uppercase tracking-[0.08em] text-gray-600 mb-4 text-center">Pick your identity</div>
                     <div className="grid grid-cols-5 gap-3 mb-6">
                         {avatars.map(char => (
                             <button
                                 key={char}
                                 type="button"
                                 onClick={() => setSelectedAvatar(char)}
+                                aria-label={`Choose avatar ${char}`}
+                                aria-pressed={selectedAvatar === char}
                                 className={`text-2xl p-2 rounded-xl transition-all ${selectedAvatar === char ? 'bg-quizmoto-purple/10 scale-125 ring-2 ring-quizmoto-purple' : 'opacity-40 hover:opacity-100'}`}
                             >
                                 {char}
@@ -227,6 +229,7 @@ const Join = () => {
                                         key={t.name}
                                         type="button"
                                         onClick={() => setTeamName(t.name)}
+                                        aria-pressed={teamName === t.name}
                                         className={`py-3 rounded-2xl font-black text-white text-xs transition-all border-b-4 ${t.color} ${teamName === t.name ? 'scale-105 brightness-110 border-white/40' : 'opacity-40 hover:opacity-100 border-black/20'}`}
                                     >
                                         {t.name}
@@ -270,10 +273,15 @@ const Join = () => {
                     <div className="relative group">
                         <input
                             type="text"
+                            aria-label="Game PIN"
+                            inputMode="numeric"
+                            pattern="[0-9]{6}"
+                            maxLength={6}
+                            autoComplete="off"
                             placeholder="Game PIN"
                             className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-center font-black text-2xl focus:border-quizmoto-purple outline-none transition-all uppercase placeholder:text-gray-400"
                             value={pin}
-                            onChange={(e) => setPin(e.target.value)}
+                            onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
                             required
                         />
                     </div>
@@ -285,6 +293,9 @@ const Join = () => {
                         )}
                         <input
                             type="text"
+                            aria-label="Nickname"
+                            autoComplete="nickname"
+                            maxLength={32}
                             placeholder="Nickname"
                             className={`w-full p-4 border-2 rounded-2xl text-center font-black text-xl outline-none transition-all placeholder:text-gray-400 ${
                                 isLoggedIn
