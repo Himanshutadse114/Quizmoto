@@ -138,8 +138,8 @@ export default function LearnerRoster() {
       {message && <div role="status" className="mb-4 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(52,211,153,.28)', background: 'rgba(52,211,153,.08)', color: 'var(--scorm-ink)' }}>{message}</div>}
       {error && <div role="alert" className="mb-4 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(251,113,133,.3)', background: 'rgba(251,113,133,.08)', color: 'var(--scorm-ink)' }}>{error}</div>}
 
-      <div className="grid lg:grid-cols-[.82fr_1.18fr] gap-5 mb-6">
-        <section className="scorm-panel rounded-2xl border p-5 md:p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[.82fr_1.18fr] gap-5 mb-6">
+        <section className="scorm-panel min-w-0 rounded-2xl border p-5 md:p-6">
           <div className="flex items-center gap-2 mb-4">
             <UserPlus size={17} />
             <h2 className="font-semibold">Add one learner</h2>
@@ -157,8 +157,8 @@ export default function LearnerRoster() {
           </form>
         </section>
 
-        <section className="scorm-panel rounded-2xl border p-5 md:p-6">
-          <div className="flex items-center justify-between gap-3 mb-4">
+        <section className="scorm-panel min-w-0 rounded-2xl border p-5 md:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div className="flex items-center gap-2"><FileSpreadsheet size={17} /><h2 className="font-semibold">Import learner CSV</h2></div>
             <div className="flex rounded-lg border p-1" style={{ borderColor: 'var(--scorm-line)' }}>
               {['append', 'replace'].map((value) => (

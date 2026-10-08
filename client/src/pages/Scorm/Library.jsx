@@ -437,7 +437,7 @@ export default function ScormLibrary() {
   const surface = { background: 'var(--scorm-surface)', borderColor: 'var(--scorm-line-strong)' };
 
   return (
-    <div className="p-4 md:p-7 lg:p-9 max-w-7xl mx-auto">
+    <div className="platform-section-page scorm-library-page p-4 md:p-7 lg:p-9 max-w-7xl mx-auto">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7 pb-7 border-b border-white/10">
         <div className="max-w-3xl">
           <div className="scorm-micro text-[10px] uppercase font-semibold">Content operations</div>
@@ -501,7 +501,7 @@ export default function ScormLibrary() {
             const sourceLabel = videoCourse ? 'Video course' : generated ? 'Generated' : 'External';
             const deleting = String(deletingId) === String(p.id);
             return <div key={p.id} className={`scorm-course-row px-5 md:px-6 py-5 transition-all ${deleting ? 'opacity-70' : ''}`} aria-busy={deleting}>
-              <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_130px_150px_auto] gap-4 xl:items-center">
+              <div className="scorm-package-entry grid gap-4 items-center">
                 <div className="min-w-0">
                   {String(renameId) === String(p.id) ? (
                     <form onSubmit={event => renamePackage(event, p)} onKeyDown={event => { if (event.key === 'Escape' && !renaming) { event.preventDefault(); cancelRename(); } }} className="space-y-2">
@@ -520,7 +520,7 @@ export default function ScormLibrary() {
                       </div>
                     </form>
                   ) : <div className="flex items-center gap-2 flex-wrap min-w-0">
-                    <h3 className="font-semibold text-[14px] truncate max-w-full" title={p.title}>{p.title}</h3>
+                    <h3 className="platform-item-title font-semibold max-w-full" title={p.title}>{p.title}</h3>
                     <span className={`scorm-course-status scorm-micro shrink-0 px-2 py-1 rounded-md text-[8px] uppercase font-semibold border ${deleting ? 'is-draft' : (p.status === 'ready' ? 'is-published' : 'is-draft')}`}>{deleting ? 'deleting' : p.status}</span>
                   </div>}
                   <div className="scorm-micro text-[9px] mt-1 flex flex-wrap gap-x-1"><span>Trackable package</span><span>·</span><span>{sourceLabel}</span>{p.fileCount != null && <><span>·</span><span>{p.fileCount} files</span></>}{p.entryHref && <><span>·</span><span className="truncate max-w-[260px]">{p.entryHref}</span></>}</div>
@@ -528,9 +528,7 @@ export default function ScormLibrary() {
                   {deleting && <div className="text-[10px] mt-2 inline-flex items-center gap-2" style={{ color: 'var(--scorm-amber)' }}><LoaderCircle size={13} className="animate-spin" /> Deleting course and stored files…</div>}
                   {p.errorMessage && <div className="text-[10px] mt-2" style={{ color: 'var(--scorm-red)' }}>{p.errorMessage}</div>}
                 </div>
-                <div><div className="text-xs font-semibold" style={ink}>{sourceLabel}</div><div className="scorm-micro text-[8px] uppercase mt-1">Source</div></div>
-                <div><div className="text-xs font-semibold" style={ink}>{p.fileCount != null ? p.fileCount : '—'}</div><div className="scorm-micro text-[8px] uppercase mt-1">Files</div></div>
-                <div className="flex flex-wrap gap-2 xl:justify-end">
+                <div className="scorm-package-actions flex flex-wrap gap-2 xl:justify-end">
                   {p.status === 'ready' && !videoCourse && <button disabled={deleting || renaming} onClick={() => createCourse(p.id, p.title)} className="scorm-button-secondary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-wait"><Plus size={13} /> Create course</button>}
                   {(p.status === 'ready' || p.storageKeyZip) && <button disabled={deleting || renaming} onClick={() => downloadPkg(p.id, p.title)} className="scorm-button-tertiary px-3 py-2 text-[10px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-wait"><Download size={13} /> Download</button>}
                   {String(renameId) !== String(p.id) && <button id={`rename-package-${p.id}`} type="button" disabled={deleting || renaming || p.source === 'catalog' || p.readOnly} aria-label={`Rename ${p.title}`}

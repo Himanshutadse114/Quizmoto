@@ -38,7 +38,7 @@ function QuotaCard({ quota }) {
       <div className="min-w-0 flex-1">
         <div className="flip-kicker">Your allowance</div>
         <div className="flip-quota-value">{label}</div>
-        <div className="flip-quota-track"><span style={{ width: `${pct}%` }} /></div>
+        {Number.isFinite(max) && <div className="flip-quota-track"><span style={{ width: `${pct}%` }} /></div>}
       </div>
     </div>
   );
@@ -73,7 +73,7 @@ function FlipbookCard({ book, onDelete, onCopied }) {
       </div>
       <div className="flip-card-body">
         <div className="min-w-0">
-          <h3>{book.title}</h3>
+          <h3 className="platform-item-title">{book.title}</h3>
           <p>{book.description || 'Interactive page-flipping publication'}</p>
         </div>
         <div className="flip-card-meta"><span>{book.pageCount} pages</span><span><Eye size={12} /> {book.viewCount || 0} reader opens</span></div>
@@ -139,7 +139,7 @@ export default function Flipbooks() {
   const markCopied = (id) => { setCopied(id); window.setTimeout(() => setCopied(''), 1400); };
 
   return (
-    <div className="flipbooks-page">
+    <div className="platform-section-page flipbooks-page">
       <div className="flipbooks-header">
         <div>
           <div className="flip-kicker">Secure digital publishing</div>

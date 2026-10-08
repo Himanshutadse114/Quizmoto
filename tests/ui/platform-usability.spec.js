@@ -45,7 +45,8 @@ for (const theme of ['dark', 'light']) for (const width of [320, 390, 1440]) {
     await search.fill('roster');
     await search.press('Enter');
     await expect(page).toHaveURL(/\/scorm\/roster$/);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await expect(page.getByRole('heading', { name: 'Approved learner roster', exact: true })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 }
 

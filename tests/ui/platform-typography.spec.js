@@ -67,7 +67,7 @@ for (const theme of ['dark', 'light']) for (const width of [390, 1440]) {
           const title = 'h1,h2,h3,h4,h5,h6,[role="heading"],.scorm-display,.scorm-page-title,.demo-title,.reports-title,.reports-section-title,.sa-title,.sa-form-title,.qe-heading,.qe-question-name,.qe-loading-title,.qc-modal-title,.qh-title,.qh-section-title,.qh-empty-title';
           const elements = [...document.querySelectorAll(scope)].flatMap(root => [...root.querySelectorAll(title)]).filter(visible)
             .filter(el => !el.closest('[style*="--preview-primary"]'));
-          const metric = el => ({ text: el.textContent.trim().slice(0, 80), size: getComputedStyle(el).fontSize, family: getComputedStyle(el).fontFamily.split(',')[0].replaceAll('"', '') });
+          const metric = el => ({ text: el.textContent.trim().slice(0, 80), size: getComputedStyle(el).fontSize, expectedSize: el.classList.contains('platform-item-title') ? '16px' : '22px', family: getComputedStyle(el).fontFamily.split(',')[0].replaceAll('"', '') });
           return {
             headings: elements.map(metric),
             headingWords: elements.flatMap(el => [...el.querySelectorAll('span,em,strong,b')].filter(visible).map(metric)),
@@ -77,7 +77,7 @@ for (const theme of ['dark', 'light']) for (const width of [390, 1440]) {
         });
         findings.push({ path, ...result });
         expect(result.headings.length, `${path} must render its page headings`).toBeGreaterThan(0);
-        expect(result.headings.filter(item => item.size !== '22px' || item.family !== 'Montserrat'), path).toEqual([]);
+        expect(result.headings.filter(item => item.size !== item.expectedSize || item.family !== 'Montserrat'), path).toEqual([]);
         expect(result.headingWords.filter(item => item.family !== 'Montserrat'), `${path} nested heading words`).toEqual([]);
         expect(result.copy.filter(item => item.size !== '14px' || item.family !== 'Open Sans'), `${path} body copy`).toEqual([]);
       });
