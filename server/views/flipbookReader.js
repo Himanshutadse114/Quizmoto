@@ -290,6 +290,16 @@ function init(){
   let rememberedPage=0;
   try{rememberedPage=Math.max(0,Math.min(DATA.pageCount-1,Number(sessionStorage.getItem(PAGE_STATE_KEY))||0))}catch(_){}
   lastSinglePageMode=dims.mobile;
+  const pageEls=document.querySelectorAll('#book .book-page');
+  if(dims.mobile){
+    // Portrait (mobile/tablet) + hard-density cover pages: page-flip@2.0.7 draws a
+    // hard page turn with a "mirror the static page" trick that assumes a two-page
+    // spread. In single-page portrait mode the static page and the turning page
+    // are the SAME element, so the turn renders edge-on/invisible and the next
+    // page just pops in with no visible flip. Force soft density on small screens
+    // so every turn uses the curl animation (desktop keeps the hard-cover turn).
+    pageEls.forEach(el=>el.removeAttribute('data-density'));
+  }
   pageFlip=new window.St.PageFlip(bookEl,{
     width:dims.width,
     height:dims.height,
@@ -304,7 +314,7 @@ function init(){
     startPage:rememberedPage,
     autoSize:false,
     maxShadowOpacity:.5,
-    showCover:true,
+    showCover:!dims.mobile,
     mobileScrollSupport:true,
     swipeDistance:30,
     clickEventForward:true,
@@ -327,7 +337,7 @@ function init(){
   });
   pageFlip.on('changeOrientation',()=>{setTimeout(()=>{try{updateControls(pageFlip.getCurrentPageIndex())}catch(_){}},0)});
   pageFlip.on('changeState',e=>{pageTurnInProgress=e.data==='flipping';updateControls(currentIndex)});
-  pageFlip.loadFromHTML(document.querySelectorAll('#book .book-page'));
+  pageFlip.loadFromHTML(pageEls);
   installBookTouch();
 
   prevBtn.onclick=()=>{if(prevBtn.disabled||pageTurnInProgress)return;ensureAudio();try{pageFlip.flipPrev('top')}catch(_){}};
