@@ -8,7 +8,6 @@
   },
   "scripts": {
     "test:e2e": "playwright test",
-    "test:ui": "playwright test --config playwright.ui.config.js",
     "test:critical": "node scripts/run_critical.js"
   }
 }
