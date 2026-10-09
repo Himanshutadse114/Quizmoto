@@ -1,0 +1,120 @@
+/* Genny — LMSGEN website mascot overlay (all public marketing pages). */
+
+.lmsgen-mascot {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 120px;
+  z-index: 60;
+  pointer-events: none; /* clicks pass through except on the buttons */
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+.lmsgen-mascot-btn,
+.lmsgen-mascot-dismiss {
+  pointer-events: auto;
+}
+
+.lmsgen-mascot-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+  border-radius: 50%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lmsgen-mascot-btn:focus-visible {
+  outline: 3px solid #0aa184;
+  outline-offset: 4px;
+}
+
+/* Mount point for the vanilla (static-page) bundle: the avatar renderer
+   fills its target, so the mount defines the box. */
+.lmsgen-mascot-mount {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  line-height: 0;
+}
+
+.lmsgen-mascot-dismiss {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(2, 48, 42, 0.14);
+  background: #ffffff;
+  color: #334155;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(2, 48, 42, 0.2);
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.lmsgen-mascot-dismiss:hover {
+  background: #f1f5f9;
+}
+
+.lmsgen-mascot-bubble {
+  position: absolute;
+  right: 4px;
+  bottom: calc(100% + 12px);
+  max-width: 200px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 8px 28px rgba(2, 48, 42, 0.25);
+  animation: lmsgen-mascot-pop 0.35s ease-out;
+  cursor: pointer;
+}
+
+@keyframes lmsgen-mascot-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Phones: smaller, tucked in — never covering buttons (guide rule). */
+@media (max-width: 480px) {
+  .lmsgen-mascot {
+    width: 76px;
+    right: 12px;
+    bottom: 12px;
+  }
+
+  .lmsgen-mascot-bubble {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+
+  .lmsgen-mascot-dismiss {
+    width: 22px;
+    height: 22px;
+    font-size: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lmsgen-mascot-bubble {
+    animation: none;
+  }
+}
