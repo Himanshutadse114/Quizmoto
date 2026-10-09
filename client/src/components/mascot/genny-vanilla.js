@@ -7,12 +7,15 @@
 // injected by scripts/inject-mascot.mjs) brings Genny to those pages.
 //
 // Uses @bible-strong/avatar-web per the guide's "any other site" prompt.
-// Behavior mirrors the React twin (components/mascot/SiteMascot.jsx):
-//   page opens      -> "waking", then "idle"
+// Behavior:
+//   page opens      -> "waking", then "idle"; greeting bubble once per visit
+//   scroll sections -> scroll-spy tips: one short verified feature tip per
+//                      section (after ~1.2s dwell, max one per 9s, once per view)
+//   fast scroll     -> "playful" (22s cooldown)
 //   hover main CTA  -> "excited"
 //   contact form ok -> "celebrate" | form error -> "confused"
 //   30s no activity -> "drowsy", then "sleeping" (any activity wakes Genny)
-//   click Genny     -> "laughing"
+//   click Genny     -> "laughing"; click bubble -> dismiss bubble
 //   reduced motion  -> still "neutral" expression, no animation, no reactions
 // ---------------------------------------------------------------------------
 import { createAvatar } from '@bible-strong/avatar-web';
@@ -137,9 +140,11 @@ function writeFlag(key) {
   }
 
   // A transient reaction: only starts from idle, always settles back.
+  // Returns true when the reaction actually started.
   function react(name, next) {
-    if (mode !== 'idle') return;
+    if (mode !== 'idle') return false;
     playThen(name, next || 'idle');
+    return true;
   }
 
   function armIdleTimer() {
@@ -161,17 +166,144 @@ function writeFlag(key) {
   }
 
   // ---- entrance -----------------------------------------------------------
+  function showBubble(text, ms) {
+    bubble.textContent = text;
+    bubble.hidden = false;
+    if (greetHideTimer) clearTimeout(greetHideTimer);
+    greetHideTimer = setTimeout(() => {
+      bubble.hidden = true;
+    }, ms || 6000);
+  }
+
+  bubble.addEventListener('click', () => {
+    bubble.hidden = true;
+    if (greetHideTimer) clearTimeout(greetHideTimer);
+  });
+
   playThen('waking', 'idle', { waitMs: 3000 });
   armIdleTimer();
   if (!readFlag(GREETED_KEY) && !prefersReducedMotion) {
     setTimeout(() => {
       writeFlag(GREETED_KEY);
-      bubble.hidden = false;
-      greetHideTimer = setTimeout(() => {
-        bubble.hidden = true;
-      }, 6000);
+      showBubble("Hi, I'm Genny!", 6000);
     }, 3500);
   }
+
+  // ---- scroll-spy feature tips ---------------------------------------------
+  // One short, verified tip per section as the visitor scrolls. A tip shows
+  // only after the visitor lingers ~1.2s on a section, at most one per 9s,
+  // and once per page view — a guide, not a nag.
+  const TIPS = [
+    // homepage
+    { sel: '.lmsgen-pain-section', text: 'Weeks of course writing? AI builds it in minutes.', anim: 'happy' },
+    { sel: '.hp-platform-s', text: 'Enter a topic or upload material. You review before learners see it.', anim: 'happy' },
+    { sel: '.lmsgen-pdf-course-section', text: 'Turn PDFs into interactive flipbooks with page-level analytics.', anim: 'playful' },
+    { sel: '.hp-trust-s', text: 'Track every slide and every question. Always audit-ready.', anim: 'happy' },
+    { sel: '.hp-advg-s', text: 'Campaigns with deadlines and automatic reminders, all in one place.', anim: 'happy' },
+    { sel: '.hp-insights-s', text: 'Run a live Quizmoto quiz. Learners join with a simple code.', anim: 'excited' },
+    { sel: '.lmsgen-faq-section', text: 'Still curious? A free demo walks through your use case in 30 minutes.', anim: 'thinking' },
+    // solutions
+    { sel: '.sl-hero-s', text: 'Create, deliver and track training. All in one workspace.', anim: 'happy' },
+    { sel: '.sl-feat-templ-s', text: 'Build a course once, assign it anywhere.', anim: 'happy' },
+    { sel: '.nsl-local-s', text: 'Group learners by department or role.', anim: 'happy' },
+    { sel: '.nsol-manage-s', text: 'See completions, scores and pending learners at a glance.', anim: 'happy' },
+    // contact
+    { sel: '.ct-main-s', text: 'Share your learner count for a tailored plan.', anim: 'happy' },
+    // demo CTA (every page)
+    { sel: '.book-demo-s', text: 'Your turn! Book a free demo and see it live.', anim: 'excited' },
+  ];
+
+  const TIP_GAP_MS = 9000;
+  const TIP_DWELL_MS = 1200;
+  const shownTips = new Set();
+  let lastTipAt = 0;
+  let dwellTimer = null;
+
+  function showTip(tip, index) {
+    if (dismissed || prefersReducedMotion || mode !== 'idle') return false;
+    if (Date.now() - lastTipAt < TIP_GAP_MS) return false;
+    shownTips.add(index);
+    lastTipAt = Date.now();
+    showBubble(tip.text, 6500);
+    playThen(tip.anim, 'idle');
+    armIdleTimer();
+    return true;
+  }
+
+  if ('IntersectionObserver' in window && !prefersReducedMotion) {
+    const tipTargets = [];
+    TIPS.forEach((tip, index) => {
+      document.querySelectorAll(tip.sel).forEach((el) => {
+        tipTargets.push({ el, tip, index });
+      });
+    });
+
+    if (tipTargets.length) {
+      const visible = new Map();
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((en) => {
+            const target = tipTargets.find((t) => t.el === en.target);
+            if (!target) return;
+            if (en.isIntersecting) visible.set(en.target, target);
+            else visible.delete(en.target);
+          });
+
+          if (dwellTimer) {
+            clearTimeout(dwellTimer);
+            dwellTimer = null;
+          }
+          if (!visible.size) return;
+
+          // Most-centered section wins.
+          let best = null;
+          let bestRatio = -1;
+          visible.forEach((t, el) => {
+            const rect = el.getBoundingClientRect();
+            const mid = rect.top + rect.height / 2;
+            const dist = Math.abs(mid - window.innerHeight / 2);
+            const score = 1 / (1 + dist);
+            if (score > bestRatio) {
+              bestRatio = score;
+              best = t;
+            }
+          });
+          if (!best || shownTips.has(best.index)) return;
+
+          dwellTimer = setTimeout(() => {
+            dwellTimer = null;
+            showTip(best.tip, best.index);
+          }, TIP_DWELL_MS);
+        },
+        { rootMargin: '-35% 0px -35% 0px', threshold: [0, 0.5] },
+      );
+      tipTargets.forEach((t) => observer.observe(t.el));
+    }
+  }
+
+  // ---- fast scroll -> playful -------------------------------------------------
+  // Genny notices vigorous scrolling (with a cooldown so it stays charming).
+  let lastScrollY = window.scrollY;
+  let lastScrollT = performance.now();
+  let lastPlayfulAt = 0;
+  window.addEventListener(
+    'scroll',
+    () => {
+      const now = performance.now();
+      const dy = Math.abs(window.scrollY - lastScrollY);
+      const dt = now - lastScrollT;
+      lastScrollY = window.scrollY;
+      lastScrollT = now;
+      if (dt <= 0 || dismissed || prefersReducedMotion) return;
+      const velocity = (dy / dt) * 1000; // px per second
+      if (velocity > 2600 && now - lastPlayfulAt > 22000 && mode === 'idle') {
+        lastPlayfulAt = now;
+        if (react('playful')) armIdleTimer();
+      }
+      armIdleTimer();
+    },
+    { passive: true },
+  );
 
   // ---- inactivity ----------------------------------------------------------
   function onActivity() {
@@ -189,7 +321,7 @@ function writeFlag(key) {
     }
     armIdleTimer();
   }
-  ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart'].forEach((ev) =>
+  ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach((ev) =>
     window.addEventListener(ev, onActivity, { passive: true }),
   );
 

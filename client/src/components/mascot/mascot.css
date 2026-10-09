@@ -68,6 +68,7 @@
   position: absolute;
   right: 4px;
   bottom: calc(100% + 12px);
+  max-width: 200px;
   background: #ffffff;
   color: #0f172a;
   font-size: 14px;
@@ -77,8 +78,8 @@
   border-radius: 14px;
   border-bottom-right-radius: 4px;
   box-shadow: 0 8px 28px rgba(2, 48, 42, 0.25);
-  white-space: nowrap;
   animation: lmsgen-mascot-pop 0.35s ease-out;
+  cursor: pointer;
 }
 
 @keyframes lmsgen-mascot-pop {
