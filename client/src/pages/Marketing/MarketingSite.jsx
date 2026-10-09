@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import SiteMascot from '../../components/mascot/SiteMascot';
 
 const MARKETING_UI_STYLESHEETS = [
   {
@@ -383,31 +384,34 @@ export default function MarketingSite({ src, title, tabTitle }) {
   }, []);
 
   return (
-    <iframe
-      ref={frameRef}
-      src={hash ? `${src}${hash}` : src}
-      title={title}
-      loading="eager"
-      onLoad={(event) => {
-        const frame = event.currentTarget;
-        applySharedMarketingUi(frame, src);
-        syncMarketingFrameViewport(frame);
-        window.setTimeout(() => {
-          if (frame.isConnected) syncMarketingFrameViewport(frame);
-        }, 160);
-        window.setTimeout(() => {
-          if (frame.isConnected) syncMarketingFrameViewport(frame);
-        }, 520);
-      }}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        width: '100dvw',
-        height: '100dvh',
-        border: 0,
-        background: '#0A0F0E',
-        opacity: 1,
-      }}
-    />
+    <>
+      <iframe
+        ref={frameRef}
+        src={hash ? `${src}${hash}` : src}
+        title={title}
+        loading="eager"
+        onLoad={(event) => {
+          const frame = event.currentTarget;
+          applySharedMarketingUi(frame, src);
+          syncMarketingFrameViewport(frame);
+          window.setTimeout(() => {
+            if (frame.isConnected) syncMarketingFrameViewport(frame);
+          }, 160);
+          window.setTimeout(() => {
+            if (frame.isConnected) syncMarketingFrameViewport(frame);
+          }, 520);
+        }}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          width: '100dvw',
+          height: '100dvh',
+          border: 0,
+          background: '#0A0F0E',
+          opacity: 1,
+        }}
+      />
+      <SiteMascot frameRef={frameRef} pageSrc={src} />
+    </>
   );
 }
