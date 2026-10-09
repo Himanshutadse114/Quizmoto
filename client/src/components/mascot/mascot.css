@@ -47,6 +47,18 @@
   animation: lmsgen-mascot-breathe 4s ease-in-out infinite;
 }
 
+/* Keep Genny recognisable, but give the workspace coach a distinct uniform. */
+.lmsgen-mascot-platform .lmsgen-mascot-btn {
+  background: radial-gradient(circle, #164e631f 52%, transparent 54%);
+  filter: drop-shadow(0 2px 4px #164e6340);
+}
+.lmsgen-mascot-platform .lmsgen-mascot-btn::after {
+  content: ''; position: absolute; right: 12%; bottom: 9%;
+  width: 12px; height: 12px; border: 2px solid #ecfeff;
+  border-radius: 4px; background: #164e63; box-sizing: border-box;
+  pointer-events: none;
+}
+
 @keyframes lmsgen-mascot-breathe {
   0%, 100% { transform: translateY(0) rotate(-1deg); }
   50% { transform: translateY(-3px) rotate(1deg); }

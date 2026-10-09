@@ -6,11 +6,12 @@ import { mountGenny } from './genny-runtime.js';
 import { searchTopics, topicForPath, topicsForAccess, tourForAccess } from './genny-knowledge.js';
 import { demoGuidanceFor, demoTopics } from './genny-demo-guidance.js';
 import { watchGuideViewport } from './genny-viewport.js';
+import { GENNY_PERSONAS, GENNY_WEBSITE_TOPICS, GENNY_WEBSITE_TOUR } from './genny-personas.js';
 import './mascot.css';
 import './genny-guide.css';
 
-function TopicWorkflow({ topic, compact }) {
-  return <details className="genny-detail genny-workflow" open={!compact}><summary>How it works · {topic.steps.length} steps</summary><ol>{topic.steps.map(([title, detail]) => <li key={title}><strong>{title}</strong><span>{detail}</span></li>)}</ol></details>;
+function TopicWorkflow({ topic, compact, website = false }) {
+  return <details className="genny-detail genny-workflow" open={!compact}><summary>{website ? 'Why it fits' : 'How it works'} · {topic.steps.length} {website ? 'pointers' : 'steps'}</summary><ol>{topic.steps.map(([title, detail]) => <li key={title}><strong>{title}</strong><span>{detail}</span></li>)}</ol></details>;
 }
 
 export default function GennyGuide({ platform = false, frameRef, pageSrc, allowedRoutes, isSuperAdmin = false, scormAccess = false, accountKey = 'website', suspended = false }) {
@@ -33,12 +34,14 @@ export default function GennyGuide({ platform = false, frameRef, pageSrc, allowe
     try { return localStorage.getItem('lmsgen-genny-hover') !== 'off'; } catch { return true; }
   });
   const routesKey = allowedRoutes?.join('|');
+  const persona = GENNY_PERSONAS[platform ? 'platform' : 'website'];
   const isDemo = platform && !scormAccess;
   const topics = useMemo(() => {
+    if (!platform) return GENNY_WEBSITE_TOPICS;
     const available = topicsForAccess({ allowedRoutes: routesKey?.split('|'), isSuperAdmin });
     return isDemo ? demoTopics(available) : available;
-  }, [routesKey, isSuperAdmin, isDemo]);
-  const tour = useMemo(() => tourForAccess({ allowedRoutes: routesKey?.split('|'), isSuperAdmin }), [routesKey, isSuperAdmin]);
+  }, [routesKey, isSuperAdmin, isDemo, platform]);
+  const tour = useMemo(() => platform ? tourForAccess({ allowedRoutes: routesKey?.split('|'), isSuperAdmin }) : GENNY_WEBSITE_TOUR, [routesKey, isSuperAdmin, platform]);
   const pageTopic = topics.find((topic) => topic.id === topicForPath(location.pathname)?.id);
   const selected = (tourIndex !== null ? tour[tourIndex] : topics.find((topic) => topic.id === selection)) || pageTopic || topics[0];
   const results = searchTopics(query, topics);
@@ -144,13 +147,13 @@ export default function GennyGuide({ platform = false, frameRef, pageSrc, allowe
     <button type="button" className={`genny-launcher ${hidden ? 'is-alone' : ''}`} aria-expanded={open} aria-controls="genny-guide-panel" onClick={() => {
       try { sessionStorage.removeItem('lmsgen-mascot-dismissed'); } catch { /* optional storage */ }
       setHidden(false); setRestoreKey((key) => key + 1); activate();
-    }}>Genny guide <span aria-hidden="true">?</span></button>
+    }}>{persona.launcher} <span aria-hidden="true">?</span></button>
     {open && <section ref={panelRef} id="genny-guide-panel" className="genny-guide" role="region" aria-label="Genny interactive guide">
-      <header className="genny-guide-header"><div><span className="genny-eyebrow">YOUR LEARNING SIDEKICK</span><h2>Ask Genny</h2></div><button ref={closeRef} className="genny-close" type="button" onClick={close} aria-label="Close Genny guide"><span className="genny-close-icon" aria-hidden="true" /></button></header>
+      <header className="genny-guide-header"><div><span className="genny-eyebrow">{persona.eyebrow}</span><h2>{persona.title}</h2></div><button ref={closeRef} className="genny-close" type="button" onClick={close} aria-label="Close Genny guide"><span className="genny-close-icon" aria-hidden="true" /></button></header>
       <div className="genny-guide-body">
-        <p className="genny-intro">Big platform. Simple next steps. Choose a topic, ask about a feature, or let me show you around.</p>
-        <div className="genny-guide-toolbar"><button type="button" className="genny-primary" onClick={() => startTour()}>Start / resume tour</button><button type="button" onClick={() => { setTourIndex(null); setSelection(pageTopic?.id || topics[0]?.id); setQuery(''); }}>Explain this page</button></div>
-        <label className="genny-search">Find an answer<input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setTourIndex(null); setSelection(searchTopics(event.target.value, topics)[0]?.id); }} placeholder="Try: CSV, publish, quizzes, reports…" /></label>
+        <p className="genny-intro">{persona.intro}</p>
+        <div className="genny-guide-toolbar"><button type="button" className="genny-primary" onClick={() => startTour()}>{persona.tour}</button>{platform && <button type="button" onClick={() => { setTourIndex(null); setSelection(pageTopic?.id || topics[0]?.id); setQuery(''); }}>Explain this page</button>}</div>
+        <label className="genny-search">{persona.search}<input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setTourIndex(null); setSelection(searchTopics(event.target.value, topics)[0]?.id); }} placeholder={persona.placeholder} /></label>
         {tourIndex !== null && <div className="genny-tour-progress" aria-live="polite"><span>Tour · {tourIndex + 1} of {tour.length}</span><progress value={tourIndex + 1} max={tour.length} /></div>}
         {selected && <article key={selected.id} className="genny-topic-card" data-genny-card={selected.id}>
           <span className="genny-eyebrow">{selected.label}</span><h3>{selected.punch}</h3><p>{selected.explanation}</p>
@@ -163,12 +166,12 @@ export default function GennyGuide({ platform = false, frameRef, pageSrc, allowe
             <TopicWorkflow topic={selected} compact={compact} />
             <details className="genny-detail"><summary>Example & advanced tips</summary><span className="genny-eyebrow">ILLUSTRATIVE SCENARIO</span><p>{guidance.example}</p><strong className="genny-detail-label">Genny’s tip</strong><p>{guidance.tip}</p></details>
             <details className="genny-detail"><summary>{guidance.question}</summary><p>{guidance.answer}</p></details>
-          </details> : <TopicWorkflow topic={selected} compact={compact} />}
+          </details> : <TopicWorkflow topic={selected} compact={compact} website={!platform} />}
           {guidance && <details className="genny-detail genny-next"><summary>Where should I go next?</summary><div className="genny-topic-list">{guidance.next.map((id) => topics.find((topic) => topic.id === id)).filter(Boolean).map((topic) => <button type="button" key={topic.id} onClick={() => { setSelection(topic.id); setTourIndex(null); setQuery(''); }}>{topic.label}</button>)}</div></details>}
         </article>}
         {tourIndex !== null && <nav className="genny-tour-controls" aria-label="Genny tour steps"><button type="button" disabled={tourIndex === 0} onClick={() => recordStep(tourIndex - 1)}>Back</button><button type="button" className="genny-primary" onClick={() => {
           if (tourIndex + 1 < tour.length) recordStep(tourIndex + 1);
-          else { try { localStorage.setItem(progressKey, 'complete'); } catch { /* optional storage */ } setTourIndex(null); mascotRef.current?.explain('Tour complete! Pick a module and put your next step into action.'); }
+          else { try { localStorage.setItem(progressKey, 'complete'); } catch { /* optional storage */ } setTourIndex(null); mascotRef.current?.explain(persona.complete); }
         }}>{tourIndex + 1 === tour.length ? 'Finish tour' : 'Next'}</button><button type="button" onClick={() => { setTourIndex(null); }}>End tour</button></nav>}
         <details className="genny-detail genny-topics-disclosure" open={!!query || !compact}><summary>Browse features · {results.length}</summary><div className="genny-topic-list" aria-label="Genny topics">{results.map((topic) => <button key={topic.id} type="button" aria-pressed={selected?.id === topic.id} onClick={() => { setSelection(topic.id); setTourIndex(null); }}>{topic.label}</button>)}{!results.length && <><p>No matching feature yet. Try a module name.</p><button type="button" onClick={() => setQuery('')}>Show all topics</button></>}</div></details>
         <label className="genny-hover-toggle"><input type="checkbox" checked={hoverEnabled} onChange={toggleHover} /> Explain topics on hover or keyboard focus</label>

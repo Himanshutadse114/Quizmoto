@@ -3,6 +3,7 @@
 // Art/animation engine: Bible Strong Avatar Lab, Stephane Montlouis-Calixte
 // (AGPL-3.0, https://github.com/smontlouis/bible-strong-avatar-lab).
 import { GENNY_TOPICS, topicForElement, actionTipForElement } from './genny-knowledge.js';
+import { GENNY_PERSONAS } from './genny-personas.js';
 const DISMISS_KEY = 'lmsgen-mascot-dismissed';
 const GREETED_KEY = 'lmsgen-mascot-greeted';
 const TIP_GAP = 9000;
@@ -26,7 +27,7 @@ export const GENNY_TIPS = [
 ];
 
 // Preserve the artwork, but give reactions a real end and a short wake sequence.
-export function prepareGennyDefinition(source) {
+export function prepareGennyDefinition(source, { platform = false } = {}) {
   const animations = Object.fromEntries(Object.entries(source.animations).map(([name, animation]) => {
     const looping = name === 'idle' || name === 'sleeping';
     let steps = animation.steps.map((step, index) => ({
@@ -44,18 +45,32 @@ export function prepareGennyDefinition(source) {
     }];
   }));
   const expressions = { ...source.expressions };
-  for (const [direction, offset] of [['up', -16], ['down', 16]]) {
+  // 32 avatar units remain visible at the phone's 72px mascot size. Coordinates
+  // are relative to the neutral pose, not an accidental replacement of its y.
+  for (const [direction, x, y] of [['up', 0, -32], ['down', 0, 32], ['left', -32, 0], ['right', 32, 0]]) {
     const neutral = source.expressions.neutral;
     expressions[`genny-look-${direction}`] = {
-      ...neutral, head: { ...neutral.head, x: -offset / 2 },
-      eyes: { ...neutral.eyes, left: { ...neutral.eyes.left, y: offset }, right: { ...neutral.eyes.right, y: offset } },
+      ...neutral, head: { ...neutral.head, x: -y / 4, y: x / 4 },
+      eyes: { ...neutral.eyes,
+        left: { ...neutral.eyes.left, x: neutral.eyes.left.x + x, y: neutral.eyes.left.y + y },
+        right: { ...neutral.eyes.right, x: neutral.eyes.right.x + x, y: neutral.eyes.right.y + y } },
     };
     animations[`look-${direction}`] = {
-      playbackMode: 'once', steps: [{ expression: `genny-look-${direction}`, holdMs: 600, transitionMs: 150, transition: 'smooth' }],
+      playbackMode: 'once', steps: [{ expression: `genny-look-${direction}`, holdMs: 700, transitionMs: 180, transition: 'smooth' }],
       blink: { ...source.animations.idle.blink, enabled: false },
     };
   }
-  return { ...source, expressions, expressionOrder: [...source.expressionOrder, 'genny-look-up', 'genny-look-down'], animations, animationOrder: [...source.animationOrder, 'look-up', 'look-down'] };
+  // Idle eye motion must work without hover, including touch-only devices.
+  // The website explorer is curious; the workspace coach is calmer and focused.
+  animations.idle.steps = (platform
+    ? ['neutral', 'genny-look-left', 'neutral', 'genny-look-right']
+    : ['neutral', 'genny-look-up', 'genny-look-left', 'neutral', 'genny-look-right'])
+    .map((expression) => ({ expression, holdMs: platform ? 1500 : 1100, transitionMs: 450, transition: 'smooth' }));
+  const directions = ['up', 'down', 'left', 'right'];
+  const persona = GENNY_PERSONAS[platform ? 'platform' : 'website'];
+  return { ...source, colors: { ...source.colors, body: persona.body, eyes: persona.eyes }, expressions,
+    expressionOrder: [...source.expressionOrder, ...directions.map((direction) => `genny-look-${direction}`)],
+    animations, animationOrder: [...source.animationOrder, ...directions.map((direction) => `look-${direction}`)] };
 }
 
 export function mountGenny({ document: doc, createAvatar, definition, container = doc.body, onActivate, onTopic, onDismiss, topics = GENNY_TOPICS, currentTopic, platform = false, hoverEnabled = true }) {
@@ -66,15 +81,18 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
   const writeFlag = (key) => { try { win.sessionStorage.setItem(key, '1'); } catch { /* optional storage */ } };
   if (!platform && readFlag(DISMISS_KEY)) return { bindDocument: () => {}, destroy: () => {}, explain: () => {} };
 
-  const avatarDefinition = prepareGennyDefinition(definition);
+  const persona = GENNY_PERSONAS[platform ? 'platform' : 'website'];
+  const avatarDefinition = prepareGennyDefinition(definition, { platform });
   const root = doc.createElement('div');
   root.className = 'lmsgen-mascot';
+  root.dataset.persona = platform ? 'platform' : 'website';
   if (platform) root.className += ' lmsgen-mascot-platform';
   root.innerHTML = '<button type="button" class="lmsgen-mascot-bubble" aria-live="polite" aria-atomic="true" hidden></button>' +
     '<button type="button" class="lmsgen-mascot-btn" title="Genny"><span class="lmsgen-mascot-mount"></span></button>' +
     '<button type="button" class="lmsgen-mascot-dismiss" aria-label="Hide Genny the mascot for this visit" title="Hide"><span class="lmsgen-mascot-dismiss-icon" aria-hidden="true"></span></button>';
   container.appendChild(root);
   const button = root.querySelector('.lmsgen-mascot-btn');
+  button.setAttribute('title', persona.title);
   const bubble = root.querySelector('.lmsgen-mascot-bubble');
   const cleanups = [];
   const timers = new Set();
@@ -90,6 +108,7 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
   let unbindGuide = () => {};
   let retryTip = () => {};
   let lastTipAt = -Infinity;
+  let gazeUntil = 0;
 
   function later(fn, ms) {
     const id = win.setTimeout(() => { timers.delete(id); if (!destroyed) fn(); }, ms);
@@ -116,11 +135,19 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
   }
   function settle() {
     if (!pending || destroyed) return;
+    if (pending.name.startsWith('look-') && Date.now() < gazeUntil) {
+      // The renderer holds the final pose. Keep that gaze through an ongoing
+      // swipe rather than snapping back to idle halfway through the gesture.
+      cancel(reactionTimer);
+      reactionTimer = later(settle, gazeUntil - Date.now());
+      return;
+    }
     const { next } = pending;
     pending = null;
     cancel(reactionTimer);
     setMode(next === 'sleeping' ? 'asleep' : 'idle');
     play(next);
+    delete root.dataset.look;
     if (queued) {
       const reaction = queued;
       queued = null;
@@ -143,6 +170,12 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     // Safety only: once animations normally return via onAnimationEnd.
     reactionTimer = later(settle, duration + 250);
     return true;
+  }
+  function look(direction) {
+    if (media.matches || doc.hidden || (pending && pending.priority > 2)) return;
+    gazeUntil = Date.now() + 1100;
+    root.dataset.look = direction;
+    react(`look-${direction}`, 2);
   }
   function armIdle() {
     cancel(idleTimer);
@@ -181,7 +214,9 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     hideBubble();
     pending = queued = null;
     setMode('idle');
-    button.setAttribute('aria-label', onActivate ? 'Ask Genny, your platform guide' : media.matches ? 'Genny, the LMSGEN mascot' : 'Genny, the LMSGEN mascot. Select to make Genny laugh.');
+    gazeUntil = 0;
+    delete root.dataset.look;
+    button.setAttribute('aria-label', onActivate ? persona.title : media.matches ? 'Genny, the LMSGEN mascot' : 'Genny, the LMSGEN mascot. Select to make Genny laugh.');
     controller?.stop();
     if (media.matches) controller?.setExpression('neutral');
     else { play('idle'); armIdle(); retryTip(); }
@@ -193,7 +228,14 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
       defaultAnimation: media.matches ? undefined : 'idle',
       defaultExpression: media.matches ? 'neutral' : undefined,
       size: '100%', ariaLabel: 'Genny, the LMSGEN mascot',
-      onAnimationEnd: (name) => { if (pending?.name === name) settle(); },
+      onAnimationEnd: (name) => {
+        if (pending?.name !== name) return;
+        // Leave the renderer's RAF callback before starting the next animation.
+        // Starting synchronously can schedule two render loops on every reaction.
+        cancel(reactionTimer);
+        reactionTimer = later(() => { if (pending?.name === name) settle(); }, 0);
+      },
+      onExpressionChange: (name) => { root.dataset.expression = name; },
     });
   } catch { destroy(); return { bindDocument: () => {}, destroy }; }
 
@@ -202,7 +244,7 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
   cleanups.push(listen(root.querySelector('.lmsgen-mascot-dismiss'), 'click', () => { if (!platform) writeFlag(DISMISS_KEY); destroy(); onDismiss?.(); }));
   cleanups.push(listen(media, 'change', motionChanged));
   cleanups.push(listen(doc, 'keydown', (event) => { if (event.key === 'Escape') { hideBubble(); retryTip(); } }));
-  for (const event of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll']) {
+  for (const event of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'touchmove', 'scroll']) {
     cleanups.push(listen(win, event, activity, { passive: true }));
   }
   cleanups.push(listen(doc, 'visibilitychange', () => {
@@ -215,7 +257,7 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     if (!readFlag(greetKey)) greetingTimer = later(() => {
       if (media.matches || doc.hidden) return;
       writeFlag(greetKey);
-      showBubble(platform ? "New here? Tap me for a guided tour. I'll show you where to start." : "Hi, I'm Genny! Hover a topic or tap me to explore.");
+      showBubble(persona.greeting);
     }, 1500);
   }
 
@@ -226,7 +268,7 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     const guideWin = guideDoc.defaultView;
     const bindings = [];
     const shown = new Set();
-    const targets = GENNY_TIPS.flatMap((tip, index) => [...guideDoc.querySelectorAll(tip.sel)].map((el) => ({ el, tip, index })));
+    const targets = (platform ? [] : GENNY_TIPS).flatMap((tip, index) => [...guideDoc.querySelectorAll(tip.sel)].map((el) => ({ el, tip, index })));
     let candidate = null;
     let dwellUntil = 0;
     let tipTimer;
@@ -237,6 +279,40 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     let hoverTarget = null;
     let hoverIdentity = null;
     let hoverDismissed = false;
+    let touch = null;
+    let lastTouchAt = -Infinity;
+
+    // Passive touch listeners survive browsers cancelling pointer streams for
+    // native pan/zoom. Never preventDefault: page scrolling remains untouched.
+    const ignored = (target) => Boolean(target?.closest?.('.genny-guide, .lmsgen-mascot'));
+    const touchStart = (event) => {
+      touch = null;
+      if (event.touches?.length !== 1 || ignored(event.target)) return;
+      const point = event.touches[0];
+      touch = { x: point.clientX, y: point.clientY, id: point.identifier };
+      activity();
+      const width = guideWin.innerWidth || 375;
+      look(point.clientX < width / 2 ? 'left' : 'up');
+    };
+    const touchMove = (event) => {
+      if (!touch || event.touches?.length !== 1) { touch = null; return; }
+      const point = event.touches[0];
+      if (point.identifier !== touch.id) return;
+      activity();
+      const dx = point.clientX - touch.x;
+      const dy = point.clientY - touch.y;
+      const now = win.performance.now();
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 6 || now - lastTouchAt < 80) return;
+      // Vertical swipe direction matches the resulting content scroll.
+      look(Math.abs(dy) >= Math.abs(dx) ? (dy < 0 ? 'down' : 'up') : (dx < 0 ? 'left' : 'right'));
+      lastTouchAt = now;
+      touch = { x: point.clientX, y: point.clientY, id: point.identifier };
+    };
+    const touchEnd = () => { touch = null; };
+    bindings.push(listen(guideDoc, 'touchstart', touchStart, { passive: true }));
+    bindings.push(listen(guideDoc, 'touchmove', touchMove, { passive: true }));
+    bindings.push(listen(guideDoc, 'touchend', touchEnd, { passive: true }));
+    bindings.push(listen(guideDoc, 'touchcancel', touchEnd, { passive: true }));
 
     const explain = (text, topic) => {
       showBubble(text, true);
@@ -320,17 +396,16 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
       if (Math.abs(delta) > 2 && (elapsed > 80 || root.dataset.look !== (delta > 0 ? 'down' : 'up'))) {
         lastScrollAt = now;
         const direction = delta > 0 ? 'down' : 'up';
-        root.dataset.look = direction;
         // Deliberate scrolling wins over ambient/hover reactions, but never
         // interrupts a direct mascot click or a success/error acknowledgement.
-        if (!pending || pending.priority <= 2) react(`look-${direction}`, 2);
+        look(direction);
       }
       refreshCandidate();
     };
     bindings.push(listen(guideWin, 'scroll', onScroll, { passive: true }));
     bindings.push(listen(guideDoc, 'scroll', onScroll, { passive: true, capture: true }));
     bindings.push(listen(guideWin, 'resize', refreshCandidate, { passive: true }));
-    if (guideWin !== win) for (const event of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart']) {
+    if (guideWin !== win) for (const event of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'touchmove']) {
       bindings.push(listen(guideWin, event, activity, { passive: true }));
     }
     guideDoc.querySelectorAll('.btn-primary').forEach((cta) => {

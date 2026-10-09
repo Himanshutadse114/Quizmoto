@@ -1,13 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { validateAvatarDefinition, playAvatarAnimation, advanceAvatarPlayback } from '@bible-strong/avatar-core';
+import { validateAvatarDefinition, playAvatarAnimation, advanceAvatarPlayback, renderAvatarDefinition, renderAvatarFrame } from '@bible-strong/avatar-core';
 import { mountGenny, prepareGennyDefinition, GENNY_TIPS } from '../src/components/mascot/genny-runtime.js';
 import { GENNY_TOPICS, topicForPath, topicsForAccess, tourForAccess, searchTopics, topicForElement, actionTipForElement } from '../src/components/mascot/genny-knowledge.js';
 import { SCORM_FEATURES } from '../src/pages/Scorm/scormFeatureCatalog.js';
 import { mountSiteGuide } from '../src/components/mascot/genny-site-guide.js';
 import { watchGuideViewport } from '../src/components/mascot/genny-viewport.js';
 import { GENNY_DEMO_GUIDANCE, demoGuidanceFor, demoTopics } from '../src/components/mascot/genny-demo-guidance.js';
+import { GENNY_PERSONAS, GENNY_WEBSITE_TOPICS, GENNY_WEBSITE_TOUR } from '../src/components/mascot/genny-personas.js';
 
 const definition = JSON.parse(readFileSync(new URL('../src/components/mascot/genny.avatar.json', import.meta.url)));
 
@@ -61,7 +62,7 @@ function fixture(t, { reduced = false, greeted = true, dismissed = false, ...run
   function makeDocument() {
     const win = new Events();
     Object.assign(win, {
-      innerHeight: 800, scrollY: 0, performance: { now: () => time },
+      innerWidth: 390, innerHeight: 800, scrollY: 0, performance: { now: () => time },
       matchMedia: () => media,
       sessionStorage: { getItem: (key) => flags.get(key), setItem: (key, value) => flags.set(key, value) },
       setTimeout: (fn, ms) => { const id = ++nextId; timers.set(id, { at: time + ms, fn }); return id; },
@@ -138,7 +139,9 @@ test('direct clicks preempt waking and CTA reactions, including repeated clicks'
   const count = f.plays.length;
   f.root.querySelector('.lmsgen-mascot-btn').emit('click'); assert.equal(f.plays.length, count + 1);
   f.options.onAnimationEnd('excited'); assert.equal(f.root.dataset.mode, 'busy');
-  f.options.onAnimationEnd('laughing'); assert.equal(f.root.dataset.mode, 'idle');
+  f.options.onAnimationEnd('laughing');
+  assert.equal(f.root.dataset.mode, 'busy'); // exit the renderer frame before replay
+  f.tick(0); assert.equal(f.root.dataset.mode, 'idle');
 });
 
 test('blocked section tips retry without another scroll or observer callback', (t) => {
@@ -308,7 +311,7 @@ test('static guide opens, searches, resumes its tour, closes with Escape and cle
   const button = (text) => find((node) => node.textContent === text);
   const panel = find((node) => node.id === 'genny-guide-panel');
   assert.equal(panel.hidden, true); guide.open(); assert.equal(opened, 1); assert.equal(panel.hidden, false);
-  button('Start / resume tour').emit('click'); assert.equal(saved.get('lmsgen-genny-tour-v1:website'), 'overview');
+  button('Take a product tour').emit('click'); assert.equal(saved.get('lmsgen-genny-tour-v1:website'), 'overview');
   button('Next').emit('click'); assert.equal(saved.get('lmsgen-genny-tour-v1:website'), 'author');
   const search = find((node) => node.type === 'search'); search.value = 'CSV'; search.emit('input');
   const card = find((node) => node.className === 'genny-topic-card'); assert.equal(card.dataset.gennyCard, 'roster');
@@ -317,6 +320,83 @@ test('static guide opens, searches, resumes its tour, closes with Escape and cle
   f.doc.emit('keydown', { key: 'Escape' }); assert.equal(panel.hidden, true);
   const listenersBefore = f.doc.count(); guide.destroy(); assert.equal(f.doc.count(), listenersBefore - 1);
   assert.equal(f.doc.body.children.length, 1);
+});
+
+test('website explorer and workspace coach have distinct validated artwork and knowledge', () => {
+  const original = JSON.stringify(definition);
+  const website = prepareGennyDefinition(definition);
+  const platform = prepareGennyDefinition(definition, { platform: true });
+  assert.equal(validateAvatarDefinition(platform).ok, true);
+  assert.notDeepEqual(website.colors, platform.colors);
+  assert.notDeepEqual(website.animations.idle.steps, platform.animations.idle.steps);
+  assert.notEqual(GENNY_PERSONAS.website.title, GENNY_PERSONAS.platform.title);
+  assert.equal(GENNY_WEBSITE_TOUR.length, 8);
+  assert.ok(GENNY_WEBSITE_TOUR.every((topic) => !topic.adminOnly));
+  assert.ok(!GENNY_WEBSITE_TOPICS.some((topic) => topic.adminOnly));
+  for (const topic of GENNY_WEBSITE_TOPICS) {
+    const canonical = GENNY_TOPICS.find((item) => item.id === topic.id);
+    assert.notEqual(topic.explanation, canonical.explanation, topic.id);
+    assert.equal(topic.route, canonical.route);
+    assert.notDeepEqual(topic.steps, canonical.steps);
+  }
+  assert.equal(JSON.stringify(definition), original);
+});
+
+test('real renderer changes eye geometry in four directions and animates idle without hover', () => {
+  for (const platform of [false, true]) {
+    const tuned = prepareGennyDefinition(definition, { platform });
+    const neutral = renderAvatarDefinition(tuned, 'neutral').geometry;
+    const poses = ['up', 'down', 'left', 'right'].map((direction) => {
+      const pose = renderAvatarDefinition(tuned, `genny-look-${direction}`).geometry;
+      assert.notEqual(pose.leftPath, neutral.leftPath, `${direction}:left eye`);
+      assert.notEqual(pose.rightPath, neutral.rightPath, `${direction}:right eye`);
+      assert.equal(pose.leftVisible, true); assert.equal(pose.rightVisible, true);
+      return JSON.stringify([pose.leftPath, pose.rightPath]);
+    });
+    assert.equal(new Set(poses).size, 4);
+    const start = playAvatarAnimation(tuned, 'idle', 0).value;
+    const moved = advanceAvatarPlayback(tuned, start, 2100, { random: () => 0.5 });
+    assert.notDeepEqual(renderAvatarFrame(tuned, start, 0, { random: () => 0.5 }).geometry,
+      renderAvatarFrame(tuned, moved, 2100, { random: () => 0.5 }).geometry);
+  }
+});
+
+test('passive mobile touch follows vertical and horizontal swipes, releases and cleans up', (t) => {
+  const f = fixture(t); const frame = f.makeDocument(); f.mascot.bindDocument(frame); f.tick(1500);
+  const target = new Element();
+  const event = (x, y) => ({ target, touches: [{ identifier: 1, clientX: x, clientY: y }],
+    preventDefault() { assert.fail('must not block native mobile scrolling'); } });
+  frame.emit('touchstart', event(40, 600)); assert.equal(f.plays.at(-1), 'look-left');
+  f.tick(100); frame.emit('touchmove', event(40, 450)); assert.equal(f.plays.at(-1), 'look-down');
+  f.tick(100); frame.emit('touchmove', event(40, 550)); assert.equal(f.plays.at(-1), 'look-up');
+  f.tick(100); frame.emit('touchmove', event(140, 550)); assert.equal(f.plays.at(-1), 'look-right');
+  frame.emit('touchcancel'); const count = f.plays.length;
+  f.tick(100); frame.emit('touchmove', event(40, 550)); assert.equal(f.plays.length, count);
+  frame.emit('touchstart', event(40, 600));
+  frame.emit('touchmove', { target, touches: [{}, {}] });
+  f.tick(100); frame.emit('touchmove', event(40, 450)); assert.equal(f.plays.at(-1), 'look-left');
+  f.tick(1200); assert.equal(f.plays.at(-1), 'idle');
+  f.mascot.bindDocument(f.doc); assert.equal(frame.count(), 0); assert.equal(frame.defaultView.count(), 0);
+});
+
+test('ongoing scrolling holds gaze until the swipe settles, not midway through it', (t) => {
+  const f = fixture(t); f.mascot.bindDocument(f.doc); f.tick(1500);
+  f.doc.defaultView.scrollY = 100; f.doc.defaultView.emit('scroll');
+  f.tick(800); f.doc.defaultView.scrollY = 200; f.doc.defaultView.emit('scroll');
+  f.options.onAnimationEnd('look-down');
+  f.tick(900); assert.equal(f.plays.at(-1), 'look-down');
+  f.tick(250); assert.equal(f.plays.at(-1), 'idle'); assert.equal(f.root.dataset.look, undefined);
+});
+
+test('touch gaze respects reduced motion and higher-priority explicit interactions', (t) => {
+  const reduced = fixture(t, { reduced: true }); reduced.mascot.bindDocument(reduced.doc);
+  const target = new Element(); const touches = [{ identifier: 1, clientX: 40, clientY: 500 }];
+  reduced.doc.emit('touchstart', { target, touches });
+  reduced.doc.emit('touchmove', { target, touches: [{ ...touches[0], clientY: 200 }] });
+  assert.equal(reduced.plays.length, 0);
+  const f = fixture(t); f.mascot.bindDocument(f.doc);
+  f.root.querySelector('.lmsgen-mascot-btn').emit('click');
+  f.doc.emit('touchstart', { target, touches }); assert.equal(f.plays.at(-1), 'laughing');
 });
 
 test('demo guidance covers every visible demo topic without widening route access', () => {

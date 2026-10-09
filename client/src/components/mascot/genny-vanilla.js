@@ -5,6 +5,7 @@ import mascotCss from './mascot.css';
 import guideCss from './genny-guide.css';
 import { mountGenny } from './genny-runtime.js';
 import { mountSiteGuide } from './genny-site-guide.js';
+import { GENNY_WEBSITE_TOPICS } from './genny-personas.js';
 
 if (window.self === window.top && !document.querySelector('.lmsgen-mascot')) {
   const style = document.createElement('style');
@@ -17,7 +18,7 @@ if (window.self === window.top && !document.querySelector('.lmsgen-mascot')) {
   try { hoverEnabled = localStorage.getItem('lmsgen-genny-hover') !== 'off'; } catch { /* optional storage */ }
   const mountMascot = () => {
     mascot?.destroy();
-    mascot = mountGenny({ document, createAvatar, definition, hoverEnabled, onActivate: () => guide.open(), onTopic: (topic) => guide.select(topic) });
+    mascot = mountGenny({ document, createAvatar, definition, topics: GENNY_WEBSITE_TOPICS, hoverEnabled, onActivate: () => guide.open(), onTopic: (topic) => guide.select(topic) });
     document.querySelector('.lmsgen-mascot')?.classList.add('lmsgen-mascot-site');
     mascot.bindDocument(document);
   };
