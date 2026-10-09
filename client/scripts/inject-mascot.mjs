@@ -7,6 +7,7 @@
 // so both the /landing/** physical copies and the clean-URL entry points get it.
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -41,7 +42,18 @@ const ENTRY_POINTS = [
   ...BLOG_SLUGS.map((slug) => `blog/${slug}/index.html`),
 ];
 
-const MASCOT_TAG = '<script type="module" src="/landing/js/genny-mascot.js"></script>';
+const MASCOT_JS = '/landing/js/genny-mascot.js';
+
+// Cache-bust the bundle: a content hash in the query string means browsers
+// fetch the new file the moment it changes instead of serving a stale copy.
+let mascotTag = `<script type="module" src="${MASCOT_JS}"></script>`;
+try {
+  const bundle = await fs.readFile(path.join(distRoot, 'landing/js/genny-mascot.js'));
+  const hash = createHash('sha256').update(bundle).digest('hex').slice(0, 8);
+  mascotTag = `<script type="module" src="${MASCOT_JS}?v=${hash}"></script>`;
+} catch {
+  console.warn('[inject-mascot] could not hash mascot bundle, using unversioned tag');
+}
 
 let injected = 0;
 let skipped = 0;
@@ -62,7 +74,7 @@ for (const rel of [...PHYSICAL_PAGES, ...ENTRY_POINTS]) {
     skipped += 1;
     continue;
   }
-  html = html.replace('</body>', `  ${MASCOT_TAG}\n</body>`);
+  html = html.replace('</body>', `  ${mascotTag}\n</body>`);
   await fs.writeFile(filePath, html, 'utf8');
   injected += 1;
 }
