@@ -11,7 +11,8 @@
 }
 
 .lmsgen-mascot-btn,
-.lmsgen-mascot-dismiss {
+.lmsgen-mascot-dismiss,
+.lmsgen-mascot-bubble {
   pointer-events: auto;
 }
 
@@ -27,7 +28,8 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.lmsgen-mascot-btn:focus-visible {
+.lmsgen-mascot-btn:focus-visible,
+.lmsgen-mascot-dismiss:focus-visible {
   outline: 3px solid #0aa184;
   outline-offset: 4px;
 }
@@ -41,12 +43,21 @@
   line-height: 0;
 }
 
+.lmsgen-mascot[data-mode="idle"] .lmsgen-mascot-mount {
+  animation: lmsgen-mascot-breathe 4s ease-in-out infinite;
+}
+
+@keyframes lmsgen-mascot-breathe {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-3px) rotate(1deg); }
+}
+
 .lmsgen-mascot-dismiss {
   position: absolute;
   top: -8px;
   right: -8px;
-  width: 26px;
-  height: 26px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   border: 1px solid rgba(2, 48, 42, 0.14);
   background: #ffffff;
@@ -66,9 +77,14 @@
 
 .lmsgen-mascot-bubble {
   position: absolute;
+  border: 0;
+  text-align: left;
+  font-family: inherit;
   right: 4px;
   bottom: calc(100% + 12px);
-  max-width: 200px;
+  width: max-content;
+  max-width: min(240px, calc(100vw - 32px));
+  box-sizing: border-box;
   background: #ffffff;
   color: #0f172a;
   font-size: 14px;
@@ -81,6 +97,9 @@
   animation: lmsgen-mascot-pop 0.35s ease-out;
   cursor: pointer;
 }
+
+.lmsgen-mascot-bubble[hidden] { display: none !important; }
+.lmsgen-mascot-bubble:focus-visible { outline: 3px solid #0aa184; outline-offset: 4px; }
 
 @keyframes lmsgen-mascot-pop {
   from {
@@ -107,14 +126,17 @@
   }
 
   .lmsgen-mascot-dismiss {
-    width: 22px;
-    height: 22px;
+    width: 44px;
+    height: 44px;
+    top: -20px;
+    right: -4px;
     font-size: 13px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lmsgen-mascot-bubble {
+  .lmsgen-mascot-bubble,
+  .lmsgen-mascot[data-mode="idle"] .lmsgen-mascot-mount {
     animation: none;
   }
 }

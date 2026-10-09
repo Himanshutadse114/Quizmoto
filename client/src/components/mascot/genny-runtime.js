@@ -1,0 +1,299 @@
+// One behavior implementation for static pages and the React marketing iframe.
+// Inject the renderer to allow deterministic lifecycle/timing regression tests.
+// Art/animation engine: Bible Strong Avatar Lab, Stephane Montlouis-Calixte
+// (AGPL-3.0, https://github.com/smontlouis/bible-strong-avatar-lab).
+const DISMISS_KEY = 'lmsgen-mascot-dismissed';
+const GREETED_KEY = 'lmsgen-mascot-greeted';
+const TIP_GAP = 9000;
+const TIP_DWELL = 1200;
+
+export const GENNY_TIPS = [
+  { sel: '.lmsgen-pain-section', text: 'Create, deliver and track learning from one workspace.', anim: 'happy' },
+  { sel: '.hp-platform-s', text: 'Start with a topic or source material, then review your AI-generated course.', anim: 'happy' },
+  { sel: '.lmsgen-pdf-course-section', text: 'Publica turns PDFs into shareable flipbooks with reading analytics.', anim: 'playful' },
+  { sel: '.hp-trust-s', text: 'Explore tools for course creation, delivery and reporting.', anim: 'happy' },
+  { sel: '.hp-advg-s', text: 'Courses, learner campaigns and reports work together in LMSGEN.', anim: 'happy' },
+  { sel: '.hp-insights-s', text: 'Explore the platform modules to find the right tools for your team.', anim: 'happy' },
+  { sel: '.lmsgen-faq-section', text: 'These answers cover common questions about the platform.', anim: 'thinking' },
+  { sel: '.sl-hero-s', text: 'Create, deliver and track training in one workspace.', anim: 'happy' },
+  { sel: '.sl-feat-templ-s', text: 'Build a course, then assign it to your learners.', anim: 'happy' },
+  { sel: '.nsl-local-s', text: 'Organise learners for your training programmes.', anim: 'happy' },
+  { sel: '.nsol-manage-s', text: 'See learner completions, scores and progress in reports.', anim: 'happy' },
+  { sel: '.ct-main-s', text: 'Tell the team about your training needs and learner count.', anim: 'happy' },
+  { sel: '.book-demo-s', text: 'Explore LMSGEN to see the platform for yourself.', anim: 'excited' },
+  { sel: '#quizmoto', text: 'Host a live Quizmoto quiz. Players join with a code or link.', anim: 'excited' },
+];
+
+// Preserve the artwork, but give reactions a real end and a short wake sequence.
+export function prepareGennyDefinition(source) {
+  const animations = Object.fromEntries(Object.entries(source.animations).map(([name, animation]) => {
+    const looping = name === 'idle' || name === 'sleeping';
+    let steps = animation.steps.map((step, index) => ({
+      ...step,
+      holdMs: looping ? (name === 'idle' ? 1100 + index * 300 : step.holdMs) : 320,
+      transitionMs: looping ? 450 : 200,
+    }));
+    if (name === 'waking') steps = [
+      { expression: 'eyes-closed', holdMs: 100, transitionMs: 150, transition: 'smooth' },
+      { expression: 'neutral', holdMs: 450, transitionMs: 250, transition: 'smooth' },
+    ];
+    return [name, {
+      ...animation, steps, playbackMode: looping ? 'loop' : 'once',
+      blink: name === 'idle' ? { ...animation.blink, initialDelayMs: 1400, minIntervalMs: 2200, maxIntervalMs: 4000 } : animation.blink,
+    }];
+  }));
+  return { ...source, animations };
+}
+
+export function mountGenny({ document: doc, createAvatar, definition, container = doc.body }) {
+  const win = doc.defaultView;
+  const media = win.matchMedia('(prefers-reduced-motion: reduce)');
+  const readFlag = (key) => { try { return win.sessionStorage.getItem(key) === '1'; } catch { return false; } };
+  const writeFlag = (key) => { try { win.sessionStorage.setItem(key, '1'); } catch { /* optional storage */ } };
+  if (readFlag(DISMISS_KEY)) return { bindDocument: () => {}, destroy: () => {} };
+
+  const avatarDefinition = prepareGennyDefinition(definition);
+  const root = doc.createElement('div');
+  root.className = 'lmsgen-mascot';
+  root.innerHTML = '<button type="button" class="lmsgen-mascot-bubble" aria-live="polite" aria-atomic="true" hidden></button>' +
+    '<button type="button" class="lmsgen-mascot-btn" title="Genny"><span class="lmsgen-mascot-mount"></span></button>' +
+    '<button type="button" class="lmsgen-mascot-dismiss" aria-label="Hide Genny the mascot for this visit" title="Hide">&times;</button>';
+  container.appendChild(root);
+  const button = root.querySelector('.lmsgen-mascot-btn');
+  const bubble = root.querySelector('.lmsgen-mascot-bubble');
+  const cleanups = [];
+  const timers = new Set();
+  let destroyed = false;
+  let controller;
+  let mode = 'idle';
+  let pending = null;
+  let queued = null;
+  let reactionTimer;
+  let idleTimer;
+  let bubbleTimer;
+  let greetingTimer;
+  let unbindGuide = () => {};
+  let retryTip = () => {};
+  let lastTipAt = -Infinity;
+
+  function later(fn, ms) {
+    const id = win.setTimeout(() => { timers.delete(id); if (!destroyed) fn(); }, ms);
+    timers.add(id);
+    return id;
+  }
+  function cancel(id) { win.clearTimeout(id); timers.delete(id); }
+  function listen(target, event, fn, options) {
+    target.addEventListener(event, fn, options);
+    return () => target.removeEventListener(event, fn, options);
+  }
+  function setMode(next) { mode = next; root.dataset.mode = next; }
+  function play(name) {
+    if (destroyed) return false;
+    try { return Boolean(controller?.play(name)?.ok); } catch { return false; }
+  }
+  function hideBubble() { cancel(bubbleTimer); bubble.hidden = true; }
+  function showBubble(text) {
+    cancel(greetingTimer);
+    hideBubble();
+    bubble.textContent = text;
+    bubble.hidden = false;
+    bubbleTimer = later(hideBubble, 6500);
+  }
+  function settle() {
+    if (!pending || destroyed) return;
+    const { next } = pending;
+    pending = null;
+    cancel(reactionTimer);
+    setMode(next === 'sleeping' ? 'asleep' : 'idle');
+    play(next);
+    if (queued) {
+      const reaction = queued;
+      queued = null;
+      react(reaction.name, reaction.priority);
+    }
+    retryTip();
+  }
+  function react(name, priority = 1, next = 'idle') {
+    if (destroyed || media.matches || doc.hidden) return false;
+    if (pending && priority < pending.priority) {
+      if (!queued || priority >= queued.priority) queued = { name, priority };
+      return false;
+    }
+    if (pending?.name === name && priority < 4) return true;
+    cancel(reactionTimer);
+    pending = { name, next, priority };
+    setMode('busy');
+    if (!play(name)) { settle(); return false; }
+    const duration = avatarDefinition.animations[name].steps.reduce((sum, step) => sum + step.holdMs + step.transitionMs, 0);
+    // Safety only: once animations normally return via onAnimationEnd.
+    reactionTimer = later(settle, duration + 250);
+    return true;
+  }
+  function armIdle() {
+    cancel(idleTimer);
+    if (destroyed || media.matches || doc.hidden) return;
+    idleTimer = later(() => {
+      if (pending) armIdle();
+      else react('drowsy', 0, 'sleeping');
+    }, 30000);
+  }
+  function activity() {
+    if (destroyed || media.matches || doc.hidden) return;
+    if (mode === 'asleep') react('waking', 0);
+    else if (pending?.next === 'sleeping') {
+      pending = null;
+      cancel(reactionTimer);
+      setMode('idle');
+      play('idle');
+    }
+    armIdle();
+  }
+  function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    unbindGuide();
+    cleanups.splice(0).forEach((cleanup) => cleanup());
+    timers.forEach((id) => win.clearTimeout(id));
+    timers.clear();
+    pending = queued = null;
+    controller?.destroy();
+    root.remove();
+  }
+  function motionChanged() {
+    cancel(reactionTimer);
+    cancel(idleTimer);
+    cancel(greetingTimer);
+    hideBubble();
+    pending = queued = null;
+    setMode('idle');
+    button.setAttribute('aria-label', media.matches ? 'Genny, the LMSGEN mascot' : 'Genny, the LMSGEN mascot. Select to make Genny laugh.');
+    controller?.stop();
+    if (media.matches) controller?.setExpression('neutral');
+    else { play('idle'); armIdle(); retryTip(); }
+  }
+
+  try {
+    controller = createAvatar(root.querySelector('.lmsgen-mascot-mount'), {
+      definition: avatarDefinition,
+      defaultAnimation: media.matches ? undefined : 'idle',
+      defaultExpression: media.matches ? 'neutral' : undefined,
+      size: '100%', ariaLabel: 'Genny, the LMSGEN mascot',
+      onAnimationEnd: (name) => { if (pending?.name === name) settle(); },
+    });
+  } catch { destroy(); return { bindDocument: () => {}, destroy }; }
+
+  cleanups.push(listen(button, 'click', () => { hideBubble(); cancel(greetingTimer); queued = null; react('laughing', 4); armIdle(); }));
+  cleanups.push(listen(bubble, 'click', hideBubble));
+  cleanups.push(listen(root.querySelector('.lmsgen-mascot-dismiss'), 'click', () => { writeFlag(DISMISS_KEY); destroy(); }));
+  cleanups.push(listen(media, 'change', motionChanged));
+  for (const event of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll']) {
+    cleanups.push(listen(win, event, activity, { passive: true }));
+  }
+  cleanups.push(listen(doc, 'visibilitychange', () => {
+    if (doc.hidden) { cancel(reactionTimer); cancel(idleTimer); hideBubble(); pending = queued = null; controller.pause(); }
+    else motionChanged();
+  }));
+  motionChanged();
+  if (!media.matches) {
+    react('waking', 0);
+    if (!readFlag(GREETED_KEY)) greetingTimer = later(() => {
+      if (media.matches || doc.hidden) return;
+      writeFlag(GREETED_KEY);
+      showBubble("Hi, I'm Genny! I'll help you explore LMSGEN.");
+    }, 1500);
+  }
+
+  function bindDocument(guideDoc) {
+    unbindGuide();
+    retryTip = () => {};
+    if (!guideDoc || destroyed) return;
+    const guideWin = guideDoc.defaultView;
+    const bindings = [];
+    const shown = new Set();
+    const targets = GENNY_TIPS.flatMap((tip, index) => [...guideDoc.querySelectorAll(tip.sel)].map((el) => ({ el, tip, index })));
+    let candidate = null;
+    let dwellUntil = 0;
+    let tipTimer;
+    let lastY = guideWin.scrollY;
+    let lastScrollAt = win.performance.now();
+    let lastPlayfulAt = -Infinity;
+
+    function attemptTip() {
+      cancel(tipTimer);
+      if (!candidate || shown.has(candidate.index) || destroyed || media.matches || doc.hidden || guideDoc.hidden) return;
+      const remaining = Math.max(dwellUntil - Date.now(), lastTipAt + TIP_GAP - Date.now());
+      if (remaining > 0 || pending || !bubble.hidden) {
+        tipTimer = later(attemptTip, Math.max(remaining, 250));
+        return;
+      }
+      shown.add(candidate.index);
+      lastTipAt = Date.now();
+      showBubble(candidate.tip.text);
+      react(candidate.tip.anim, 1);
+      armIdle();
+    }
+    function refreshCandidate() {
+      const middle = guideWin.innerHeight / 2;
+      const visible = targets.filter(({ el }) => {
+        const rect = el.getBoundingClientRect();
+        return rect.height > 0 && rect.top < guideWin.innerHeight && rect.bottom > 0;
+      });
+      visible.sort((a, b) => {
+        const distance = ({ el }) => { const r = el.getBoundingClientRect(); return Math.abs((r.top + r.bottom) / 2 - middle); };
+        return distance(a) - distance(b);
+      });
+      const next = visible[0] || null;
+      if (candidate?.el !== next?.el) { cancel(tipTimer); dwellUntil = Date.now() + TIP_DWELL; candidate = next; }
+      if (candidate && !timers.has(tipTimer)) attemptTip();
+    }
+    retryTip = refreshCandidate;
+    const onScroll = () => {
+      activity();
+      const now = win.performance.now();
+      const elapsed = now - lastScrollAt;
+      const velocity = elapsed > 0 ? Math.abs(guideWin.scrollY - lastY) / elapsed * 1000 : 0;
+      lastY = guideWin.scrollY;
+      lastScrollAt = now;
+      if (velocity > 2600 && now - lastPlayfulAt > 22000 && !pending && bubble.hidden) {
+        if (react('playful', 0)) lastPlayfulAt = now;
+      }
+      refreshCandidate();
+    };
+    bindings.push(listen(guideWin, 'scroll', onScroll, { passive: true }));
+    bindings.push(listen(guideWin, 'resize', refreshCandidate, { passive: true }));
+    if (guideWin !== win) for (const event of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart']) {
+      bindings.push(listen(guideWin, event, activity, { passive: true }));
+    }
+    guideDoc.querySelectorAll('.btn-primary').forEach((cta) => {
+      bindings.push(listen(cta, 'mouseenter', () => { react('excited', 1); armIdle(); }));
+      bindings.push(listen(cta, 'click', () => { react('excited', 3); armIdle(); }));
+    });
+    guideDoc.querySelectorAll('.w-form').forEach((form) => {
+      let wasDone = false;
+      let wasFailed = false;
+      const observer = new guideWin.MutationObserver(() => {
+        const visible = (el) => Boolean(el && guideWin.getComputedStyle(el).display !== 'none' && el.getClientRects().length);
+        const done = visible(form.querySelector('.w-form-done'));
+        const failed = visible(form.querySelector('.w-form-fail'));
+        if (done && !wasDone) react('celebrate', 3);
+        if (failed && !wasFailed) react('confused', 3);
+        wasDone = done; wasFailed = failed;
+      });
+      observer.observe(form, { attributes: true, subtree: true, attributeFilter: ['style', 'class', 'hidden'], childList: true });
+      bindings.push(() => observer.disconnect());
+    });
+    if (guideWin.IntersectionObserver) {
+      const observer = new guideWin.IntersectionObserver(refreshCandidate, { threshold: [0, 0.5] });
+      targets.forEach(({ el }) => observer.observe(el));
+      bindings.push(() => observer.disconnect());
+    }
+    unbindGuide = () => {
+      cancel(tipTimer);
+      bindings.forEach((cleanup) => cleanup());
+      retryTip = () => {};
+      candidate = null;
+    };
+    refreshCandidate();
+  }
+  return { bindDocument, destroy };
+}

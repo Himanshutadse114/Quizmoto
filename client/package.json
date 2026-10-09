@@ -12,6 +12,7 @@
     "build": "vite build",
     "postbuild": "node scripts/postbuild.mjs",
     "lint": "eslint .",
+    "test:mascot": "node --test scripts/genny-runtime.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
