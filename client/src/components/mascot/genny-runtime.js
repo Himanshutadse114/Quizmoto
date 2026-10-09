@@ -4,6 +4,7 @@
 // (AGPL-3.0, https://github.com/smontlouis/bible-strong-avatar-lab).
 import { GENNY_TOPICS, topicForElement, actionTipForElement } from './genny-knowledge.js';
 import { GENNY_PERSONAS } from './genny-personas.js';
+import { motionEnabled } from './genny-motion.js';
 const DISMISS_KEY = 'lmsgen-mascot-dismissed';
 const GREETED_KEY = 'lmsgen-mascot-greeted';
 const TIP_GAP = 9000;
@@ -73,9 +74,10 @@ export function prepareGennyDefinition(source, { platform = false } = {}) {
     animations, animationOrder: [...source.animationOrder, ...directions.map((direction) => `look-${direction}`)] };
 }
 
-export function mountGenny({ document: doc, createAvatar, definition, container = doc.body, onActivate, onTopic, onDismiss, topics = GENNY_TOPICS, currentTopic, platform = false, hoverEnabled = true }) {
+export function mountGenny({ document: doc, createAvatar, definition, container = doc.body, onActivate, onTopic, onDismiss, topics = GENNY_TOPICS, currentTopic, platform = false, hoverEnabled = true, motionPreference = 'auto' }) {
   const win = doc.defaultView;
   const media = win.matchMedia('(prefers-reduced-motion: reduce)');
+  const motionOff = () => !motionEnabled(motionPreference, media.matches);
   const greetKey = platform ? 'lmsgen-genny-platform-welcomed-v2' : GREETED_KEY;
   const readFlag = (key) => { try { return win.sessionStorage.getItem(key) === '1'; } catch { return false; } };
   const writeFlag = (key) => { try { win.sessionStorage.setItem(key, '1'); } catch { /* optional storage */ } };
@@ -109,6 +111,8 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
   let retryTip = () => {};
   let lastTipAt = -Infinity;
   let gazeUntil = 0;
+  let playbackTimer;
+  let lastProgressAt = Date.now();
 
   function later(fn, ms) {
     const id = win.setTimeout(() => { timers.delete(id); if (!destroyed) fn(); }, ms);
@@ -123,6 +127,7 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
   function setMode(next) { mode = next; root.dataset.mode = next; }
   function play(name) {
     if (destroyed) return false;
+    lastProgressAt = Date.now();
     try { return Boolean(controller?.play(name)?.ok); } catch { return false; }
   }
   function hideBubble() { cancel(bubbleTimer); bubble.hidden = true; }
@@ -156,7 +161,7 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     retryTip();
   }
   function react(name, priority = 1, next = 'idle') {
-    if (destroyed || media.matches || doc.hidden) return false;
+    if (destroyed || motionOff() || doc.hidden) return false;
     if (pending && priority < pending.priority) {
       if (!queued || priority >= queued.priority) queued = { name, priority };
       return false;
@@ -172,21 +177,21 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     return true;
   }
   function look(direction) {
-    if (media.matches || doc.hidden || (pending && pending.priority > 2)) return;
+    if (motionOff() || doc.hidden || (pending && pending.priority > 2)) return;
     gazeUntil = Date.now() + 1100;
     root.dataset.look = direction;
     react(`look-${direction}`, 2);
   }
   function armIdle() {
     cancel(idleTimer);
-    if (destroyed || media.matches || doc.hidden) return;
+    if (destroyed || motionOff() || doc.hidden) return;
     idleTimer = later(() => {
       if (pending) armIdle();
       else react('drowsy', 0, 'sleeping');
     }, 30000);
   }
   function activity() {
-    if (destroyed || media.matches || doc.hidden) return;
+    if (destroyed || motionOff() || doc.hidden) return;
     if (mode === 'asleep') react('waking', 0);
     else if (pending?.next === 'sleeping') {
       pending = null;
@@ -208,6 +213,7 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     root.remove();
   }
   function motionChanged() {
+    cancel(playbackTimer);
     cancel(reactionTimer);
     cancel(idleTimer);
     cancel(greetingTimer);
@@ -216,17 +222,31 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     setMode('idle');
     gazeUntil = 0;
     delete root.dataset.look;
-    button.setAttribute('aria-label', onActivate ? persona.title : media.matches ? 'Genny, the LMSGEN mascot' : 'Genny, the LMSGEN mascot. Select to make Genny laugh.');
+    root.dataset.motion = motionOff() ? 'off' : 'on';
+    button.setAttribute('aria-label', onActivate ? persona.title : motionOff() ? 'Genny, the LMSGEN mascot' : 'Genny, the LMSGEN mascot. Select to make Genny laugh.');
     controller?.stop();
-    if (media.matches) controller?.setExpression('neutral');
-    else { play('idle'); armIdle(); retryTip(); }
+    if (motionOff() || doc.hidden) controller?.setExpression('neutral');
+    else { play('idle'); armIdle(); retryTip(); watchPlayback(); }
+  }
+  function watchPlayback() {
+    cancel(playbackTimer);
+    if (destroyed || motionOff() || doc.hidden) return;
+    playbackTimer = later(() => {
+      // A queued RAF can be lost when a mobile browser suspends a page. Eye
+      // poses normally change within 2 seconds; only recover a stalled idle.
+      if (mode === 'idle' && !pending && Date.now() - lastProgressAt > 5000) {
+        controller?.stop(); // clears the renderer's stale RAF handle
+        play('idle');
+      }
+      watchPlayback();
+    }, 2000);
   }
 
   try {
     controller = createAvatar(root.querySelector('.lmsgen-mascot-mount'), {
       definition: avatarDefinition,
-      defaultAnimation: media.matches ? undefined : 'idle',
-      defaultExpression: media.matches ? 'neutral' : undefined,
+      defaultAnimation: motionOff() ? undefined : 'idle',
+      defaultExpression: motionOff() ? 'neutral' : undefined,
       size: '100%', ariaLabel: 'Genny, the LMSGEN mascot',
       onAnimationEnd: (name) => {
         if (pending?.name !== name) return;
@@ -235,7 +255,7 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
         cancel(reactionTimer);
         reactionTimer = later(() => { if (pending?.name === name) settle(); }, 0);
       },
-      onExpressionChange: (name) => { root.dataset.expression = name; },
+      onExpressionChange: (name) => { root.dataset.expression = name; lastProgressAt = Date.now(); },
     });
   } catch { destroy(); return { bindDocument: () => {}, destroy }; }
 
@@ -243,19 +263,21 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
   cleanups.push(listen(bubble, 'click', () => { hideBubble(); retryTip(); }));
   cleanups.push(listen(root.querySelector('.lmsgen-mascot-dismiss'), 'click', () => { if (!platform) writeFlag(DISMISS_KEY); destroy(); onDismiss?.(); }));
   cleanups.push(listen(media, 'change', motionChanged));
+  cleanups.push(listen(win, 'pageshow', () => { if (!doc.hidden) motionChanged(); }));
+  cleanups.push(listen(doc, 'resume', () => { if (!doc.hidden) motionChanged(); }));
   cleanups.push(listen(doc, 'keydown', (event) => { if (event.key === 'Escape') { hideBubble(); retryTip(); } }));
   for (const event of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'touchmove', 'scroll']) {
     cleanups.push(listen(win, event, activity, { passive: true }));
   }
   cleanups.push(listen(doc, 'visibilitychange', () => {
-    if (doc.hidden) { cancel(reactionTimer); cancel(idleTimer); hideBubble(); pending = queued = null; controller.pause(); }
+    if (doc.hidden) { cancel(playbackTimer); cancel(reactionTimer); cancel(idleTimer); hideBubble(); pending = queued = null; controller.pause(); }
     else motionChanged();
   }));
   motionChanged();
-  if (!media.matches) {
+  if (!motionOff()) {
     react('waking', 0);
     if (!readFlag(greetKey)) greetingTimer = later(() => {
-      if (media.matches || doc.hidden) return;
+      if (motionOff() || doc.hidden) return;
       writeFlag(greetKey);
       showBubble(persona.greeting);
     }, 1500);
@@ -275,6 +297,8 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     let lastY = guideWin.scrollY;
     let lastScrollAt = win.performance.now();
     const scrollPositions = new WeakMap();
+    const scrollDeltas = new WeakMap();
+    let windowDelta = 0;
     let hoverTimer;
     let hoverTarget = null;
     let hoverIdentity = null;
@@ -352,7 +376,7 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
 
     function attemptTip() {
       cancel(tipTimer);
-      if (!candidate || shown.has(candidate.index) || destroyed || media.matches || doc.hidden || guideDoc.hidden) return;
+      if (!candidate || shown.has(candidate.index) || destroyed || motionOff() || doc.hidden || guideDoc.hidden) return;
       // Persistent hover help waits for a real dismissal, not a polling loop.
       if (!bubble.hidden) return;
       const remaining = Math.max(dwellUntil - Date.now(), lastTipAt + TIP_GAP - Date.now());
@@ -387,10 +411,12 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
       const elapsed = now - lastScrollAt;
       const target = event?.target;
       if (target?.closest?.('.genny-guide')) return;
-      const nested = target && target !== guideDoc && target !== guideDoc.documentElement && typeof target.scrollTop === 'number';
+      const nested = target && target !== guideDoc && target !== guideDoc.documentElement && target !== guideDoc.body && typeof target.scrollTop === 'number';
       const position = nested ? target.scrollTop : guideWin.scrollY;
       const previous = nested ? (scrollPositions.get(target) ?? 0) : lastY;
-      const delta = position - previous;
+      const step = position - previous;
+      let delta = nested ? (scrollDeltas.get(target) || 0) : windowDelta;
+      delta = step && Math.sign(step) !== Math.sign(delta) ? step : delta + step;
       if (nested) scrollPositions.set(target, position);
       else lastY = position;
       if (Math.abs(delta) > 2 && (elapsed > 80 || root.dataset.look !== (delta > 0 ? 'down' : 'up'))) {
@@ -399,7 +425,10 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
         // Deliberate scrolling wins over ambient/hover reactions, but never
         // interrupts a direct mascot click or a success/error acknowledgement.
         look(direction);
+        delta = 0;
       }
+      if (nested) scrollDeltas.set(target, delta);
+      else windowDelta = delta;
       refreshCandidate();
     };
     bindings.push(listen(guideWin, 'scroll', onScroll, { passive: true }));

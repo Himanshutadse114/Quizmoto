@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { validateAvatarDefinition, playAvatarAnimation, advanceAvatarPlayback, renderAvatarDefinition, renderAvatarFrame } from '@bible-strong/avatar-core';
+import { createAvatar as createWebAvatar } from '@bible-strong/avatar-web';
 import { mountGenny, prepareGennyDefinition, GENNY_TIPS } from '../src/components/mascot/genny-runtime.js';
 import { GENNY_TOPICS, topicForPath, topicsForAccess, tourForAccess, searchTopics, topicForElement, actionTipForElement } from '../src/components/mascot/genny-knowledge.js';
 import { SCORM_FEATURES } from '../src/pages/Scorm/scormFeatureCatalog.js';
@@ -29,6 +30,7 @@ class Element extends Events {
   attributes = {};
   classList = { add() {}, remove() {} };
   appendChild(child) { this.children.push(child); child.parent = this; }
+  append(...children) { children.forEach((child) => this.appendChild(child)); }
   replaceChildren(...children) { this.children = children; }
   focus() { this.focused = true; }
   remove() { this.parent.children = this.parent.children.filter((child) => child !== this); }
@@ -49,10 +51,11 @@ class Element extends Events {
   getClientRects() { return this.hidden ? [] : [this.rect]; }
 }
 
-function fixture(t, { reduced = false, greeted = true, dismissed = false, ...runtimeOptions } = {}) {
+function fixture(t, { reduced = false, greeted = true, dismissed = false, realRenderer = false, ...runtimeOptions } = {}) {
   let time = 100000;
   let nextId = 0;
   const timers = new Map();
+  const frames = new Map();
   t.mock.method(Date, 'now', () => time);
   const media = new Events(); media.matches = reduced;
   const flags = new Map();
@@ -72,14 +75,32 @@ function fixture(t, { reduced = false, greeted = true, dismissed = false, ...run
       IntersectionObserver: class { constructor(fn) { this.fn = fn; observers.push(this); } observe() {} disconnect() { this.disconnected = true; } },
     });
     const doc = new Element(); doc.hidden = false; doc.body = new Element(); doc.defaultView = win;
-    doc.createElement = () => { const element = new Element(); element.ownerDocument = doc; return element; };
+    doc.createElement = (tag) => { const element = new Element(); element.tagName = tag; element.ownerDocument = doc; return element; };
+    doc.createElementNS = (_namespace, tag) => doc.createElement(tag);
     return doc;
   }
   const doc = makeDocument();
   const plays = [];
-  const controller = { play: (name) => { plays.push(name); return { ok: true }; }, stop() {}, pause() { this.paused = true; }, setExpression(name) { this.expression = name; }, destroy() { this.destroyed = true; } };
+  let controller = { play: (name) => { plays.push(name); return { ok: true }; }, stop() {}, pause() { this.paused = true; }, setExpression(name) { this.expression = name; }, destroy() { this.destroyed = true; } };
+  const globals = new Map();
+  if (realRenderer) {
+    // Exercise the installed SVG renderer and its RAF lifecycle, not a fake
+    // controller. This DOM harness doesn't launch or automate a browser.
+    for (const [key, value] of Object.entries({ document: doc, window: doc.defaultView,
+      requestAnimationFrame: (fn) => { const id = ++nextId; frames.set(id, fn); return id; },
+      cancelAnimationFrame: (id) => frames.delete(id) })) {
+      globals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
+      Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
+    }
+    t.mock.method(performance, 'now', () => time);
+    t.mock.method(Math, 'random', () => 0.5);
+  }
   let options;
-  const mascot = mountGenny({ document: doc, definition, ...runtimeOptions, createAvatar: (_target, opts) => { options = opts; return controller; } });
+  const mascot = mountGenny({ document: doc, definition, ...runtimeOptions, createAvatar: (target, opts) => {
+    options = opts;
+    if (realRenderer) controller = createWebAvatar(target, opts);
+    return controller;
+  } });
   const root = doc.body.children[0];
   const tick = (ms) => {
     const end = time + ms;
@@ -90,8 +111,19 @@ function fixture(t, { reduced = false, greeted = true, dismissed = false, ...run
     }
     time = end;
   };
-  t.after(() => mascot.destroy());
-  return { doc, root, mascot, controller, options, plays, timers, tick, media, makeDocument, observers, flags };
+  const frame = (ms = 16) => {
+    tick(ms); const callbacks = [...frames.values()]; frames.clear();
+    callbacks.forEach((fn) => fn(time));
+  };
+  const animate = (ms) => { for (let elapsed = 0; elapsed < ms; elapsed += 16) frame(Math.min(16, ms - elapsed)); };
+  t.after(() => {
+    mascot.destroy();
+    for (const [key, descriptor] of globals) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
+    }
+  });
+  return { doc, root, mascot, controller, options, plays, timers, tick, media, makeDocument, observers, flags, frames, frame, animate };
 }
 
 test('reactions are once-only, short, non-mutating and waking opens its eyes', () => {
@@ -322,12 +354,12 @@ test('static guide opens, searches, resumes its tour, closes with Escape and cle
   assert.equal(f.doc.body.children.length, 1);
 });
 
-test('website explorer and workspace coach have distinct validated artwork and knowledge', () => {
+test('website and workspace share Genny colours while keeping distinct guidance', () => {
   const original = JSON.stringify(definition);
   const website = prepareGennyDefinition(definition);
   const platform = prepareGennyDefinition(definition, { platform: true });
   assert.equal(validateAvatarDefinition(platform).ok, true);
-  assert.notDeepEqual(website.colors, platform.colors);
+  assert.deepEqual(website.colors, platform.colors);
   assert.notDeepEqual(website.animations.idle.steps, platform.animations.idle.steps);
   assert.notEqual(GENNY_PERSONAS.website.title, GENNY_PERSONAS.platform.title);
   assert.equal(GENNY_WEBSITE_TOUR.length, 8);
@@ -472,4 +504,122 @@ test('static guide collapses mobile details on breakpoint changes and preserves 
   assert.equal(find(root, 'genny-detail genny-workflow').open, true);
   assert.equal(find(root, 'genny-guide-footer'), footer);
   guide.destroy(); assert.equal(compact.count(), 0);
+});
+
+function renderedEyes(root) {
+  const all = (node) => [node, ...node.children.flatMap(all)];
+  return all(root.querySelector('.lmsgen-mascot-mount'))
+    .filter((node) => node.tagName === 'path' && node.getAttribute('fill') === GENNY_PERSONAS.website.eyes)
+    .map((node) => node.getAttribute('d'));
+}
+
+for (const platform of [false, true]) test(`real SVG eyes move on phone-width ${platform ? 'workspace' : 'website'} and recover suspended playback`, (t) => {
+  const f = fixture(t, { realRenderer: true, platform });
+  f.mascot.bindDocument(f.doc);
+  f.animate(1200); const neutral = renderedEyes(f.root);
+  assert.equal(neutral.length, 2);
+  f.animate(2200); assert.notDeepEqual(renderedEyes(f.root), neutral);
+  assert.equal(f.frames.size, 1, 'exactly one renderer loop');
+  const target = new Element();
+  f.doc.emit('touchstart', { target, touches: [{ identifier: 1, clientX: 30, clientY: 600 }] });
+  f.animate(250); const left = renderedEyes(f.root);
+  f.doc.emit('touchmove', { target, touches: [{ identifier: 1, clientX: 30, clientY: 350 }] });
+  f.animate(250); assert.notDeepEqual(renderedEyes(f.root), left);
+  assert.equal(f.root.dataset.look, 'down');
+  f.doc.emit('touchend'); f.animate(1500);
+  assert.equal(f.root.dataset.mode, 'idle');
+  assert.equal(f.frames.size, 1);
+  // Simulate a browser discarding a queued frame without notifying renderer.
+  f.frames.clear(); f.tick(8000);
+  assert.equal(f.frames.size, 1, 'stalled RAF was cleared and restarted');
+  const beforeRecovery = renderedEyes(f.root);
+  let recoveredMotion = false;
+  for (let elapsed = 0; elapsed < 4000; elapsed += 160) {
+    f.animate(160);
+    recoveredMotion ||= JSON.stringify(renderedEyes(f.root)) !== JSON.stringify(beforeRecovery);
+  }
+  assert.equal(recoveredMotion, true, 'SVG eye paths move again after recovery');
+  f.doc.hidden = true; f.doc.emit('visibilitychange'); assert.equal(f.frames.size, 0);
+  f.tick(8000); assert.equal(f.frames.size, 0, 'no background recovery/rendering');
+  f.doc.hidden = false; f.doc.emit('visibilitychange'); f.animate(2200);
+  assert.equal(f.frames.size, 1);
+  f.frames.clear(); f.doc.defaultView.emit('pageshow'); assert.equal(f.frames.size, 1);
+  f.mascot.destroy(); assert.equal(f.frames.size, 0); assert.equal(f.timers.size, 0);
+});
+
+test('motion follows device by default, but explicit eye-motion opt-in and opt-out work', (t) => {
+  const enabled = fixture(t, { reduced: true, motionPreference: 'on' });
+  enabled.mascot.bindDocument(enabled.doc); enabled.tick(1500);
+  enabled.doc.defaultView.scrollY = 30; enabled.doc.defaultView.emit('scroll');
+  assert.equal(enabled.plays.at(-1), 'look-down'); assert.equal(enabled.root.dataset.motion, 'on');
+  const disabled = fixture(t, { motionPreference: 'off' });
+  disabled.tick(8000); assert.equal(disabled.plays.length, 0); assert.equal(disabled.timers.size, 0);
+  assert.equal(disabled.root.dataset.motion, 'off');
+});
+
+test('explicit motion opt-in moves actual SVG eyes even when the OS reduces motion', (t) => {
+  const f = fixture(t, { reduced: true, motionPreference: 'on', realRenderer: true });
+  f.animate(1200); const before = renderedEyes(f.root);
+  let changed = false;
+  for (let elapsed = 0; elapsed < 4000; elapsed += 160) {
+    f.animate(160);
+    changed ||= JSON.stringify(renderedEyes(f.root)) !== JSON.stringify(before);
+  }
+  assert.equal(changed, true);
+  assert.equal(f.frames.size, 1);
+});
+
+test('slow mobile scroll accumulates small deltas and body scroll uses the document position', (t) => {
+  const f = fixture(t); f.mascot.bindDocument(f.doc); f.tick(1500);
+  f.doc.body.scrollTop = 0;
+  for (let position = 1; position <= 4; position++) {
+    f.doc.defaultView.scrollY = position; f.doc.emit('scroll', { target: f.doc.body }); f.tick(20);
+  }
+  assert.equal(f.root.dataset.look, 'down');
+  f.tick(100);
+  for (let position = 3; position >= 0; position--) {
+    f.doc.defaultView.scrollY = position; f.doc.emit('scroll', { target: f.doc.body }); f.tick(20);
+  }
+  assert.equal(f.root.dataset.look, 'up');
+});
+
+test('guide measures visible width/right offset on zoom as well as keyboard height', (t) => {
+  const f = fixture(t); const win = f.doc.defaultView;
+  const viewport = new Events(); Object.assign(viewport, { height: 600, width: 260, offsetTop: 20, offsetLeft: 30, scale: 1.5 });
+  win.visualViewport = viewport;
+  const panel = f.doc.createElement('section'); const stop = watchGuideViewport(panel);
+  assert.equal(panel.style.values.get('--genny-visible-width'), '260px');
+  assert.equal(panel.style.values.get('--genny-visible-right'), '100px');
+  viewport.offsetLeft = 100; viewport.emit('scroll');
+  assert.equal(panel.style.values.get('--genny-visible-right'), '30px');
+  stop(); assert.equal(viewport.count(), 0);
+});
+
+test('static guide offers explicit motion choice, persists it, and follows system changes by default', (t) => {
+  const f = fixture(t, { reduced: true }); const saved = new Map();
+  f.doc.defaultView.localStorage = { getItem: (key) => saved.get(key), setItem: (key, value) => saved.set(key, value) };
+  let preference;
+  const guide = mountSiteGuide(f.doc, { onMotionChange: (value) => { preference = value; } });
+  const all = (node) => [node, ...node.children.flatMap(all)];
+  const label = all(f.doc.body.children.at(-1)).find((node) => node.children.some((child) => child.textContent === 'Move Genny’s eyes'));
+  const checkbox = label.children[0]; assert.equal(checkbox.checked, false);
+  f.media.matches = false; f.media.emit('change'); assert.equal(checkbox.checked, true);
+  checkbox.checked = false; checkbox.emit('change');
+  assert.equal(preference, 'off'); assert.equal(saved.get('lmsgen-genny-motion'), 'off');
+  f.media.matches = false; f.media.emit('change'); assert.equal(checkbox.checked, false);
+  checkbox.checked = true; checkbox.emit('change'); assert.equal(preference, 'on');
+  guide.destroy();
+});
+
+test('guide sizing and layering stay scoped; platform artwork has no alternate uniform', () => {
+  const css = readFileSync(new URL('../src/components/mascot/genny-guide.css', import.meta.url), 'utf8');
+  assert.match(css, /width: min\(340px, calc\(var\(--genny-visible-width/);
+  assert.match(css, /max-height: min\(480px,/);
+  assert.match(css, /width: min\(320px,/);
+  assert.match(css, /max-height: min\(400px,/);
+  assert.match(css, /\.genny-website \.genny-guide \{ z-index: 2147483005; \}/);
+  assert.match(css, /\.genny-guide-header \{[^}]*flex: 0 0 auto/);
+  assert.match(css, /\.genny-guide-footer \{[^}]*flex: 0 0 auto/);
+  const mascotCss = readFileSync(new URL('../src/components/mascot/mascot.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(mascotCss, /#164e63|#ecfeff|distinct uniform/);
 });

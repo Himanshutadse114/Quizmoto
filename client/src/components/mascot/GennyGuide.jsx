@@ -6,6 +6,7 @@ import { mountGenny } from './genny-runtime.js';
 import { searchTopics, topicForPath, topicsForAccess, tourForAccess } from './genny-knowledge.js';
 import { demoGuidanceFor, demoTopics } from './genny-demo-guidance.js';
 import { watchGuideViewport } from './genny-viewport.js';
+import { GENNY_MOTION_KEY, readMotionPreference, motionEnabled } from './genny-motion.js';
 import { GENNY_PERSONAS, GENNY_WEBSITE_TOPICS, GENNY_WEBSITE_TOUR } from './genny-personas.js';
 import './mascot.css';
 import './genny-guide.css';
@@ -30,6 +31,8 @@ export default function GennyGuide({ platform = false, frameRef, pageSrc, allowe
   const [tourIndex, setTourIndex] = useState(null);
   const [query, setQuery] = useState('');
   const [compact, setCompact] = useState(() => window.matchMedia('(max-width: 767px)').matches);
+  const [motionPreference, setMotionPreference] = useState(() => readMotionPreference(window));
+  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [hoverEnabled, setHoverEnabled] = useState(() => {
     try { return localStorage.getItem('lmsgen-genny-hover') !== 'off'; } catch { return true; }
   });
@@ -47,6 +50,13 @@ export default function GennyGuide({ platform = false, frameRef, pageSrc, allowe
   const results = searchTopics(query, topics);
   const progressKey = `lmsgen-genny-tour-v1:${accountKey}`;
   const guidance = isDemo ? demoGuidanceFor(selected) : null;
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setReducedMotion(media.matches);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 767px)');
@@ -76,7 +86,7 @@ export default function GennyGuide({ platform = false, frameRef, pageSrc, allowe
   useEffect(() => {
     if (hidden || suspended) return undefined;
     const mascot = mountGenny({ document, container: containerRef.current, createAvatar, definition,
-      onActivate: activate, onTopic: hovered, onDismiss: dismissMascot, topics, currentTopic: pageTopic, platform, hoverEnabled });
+      onActivate: activate, onTopic: hovered, onDismiss: dismissMascot, topics, currentTopic: pageTopic, platform, hoverEnabled, motionPreference });
     mascotRef.current = mascot;
     if (platform) mascot.bindDocument(document);
     const frame = frameRef?.current;
@@ -92,7 +102,7 @@ export default function GennyGuide({ platform = false, frameRef, pageSrc, allowe
     frame?.addEventListener('load', wireFrame);
     wireFrame();
     return () => { frame?.removeEventListener('load', wireFrame); mascot.destroy(); mascotRef.current = null; };
-  }, [activate, hovered, dismissMascot, hidden, suspended, topics, pageTopic, platform, hoverEnabled, frameRef, pageSrc, restoreKey]);
+  }, [activate, hovered, dismissMascot, hidden, suspended, topics, pageTopic, platform, hoverEnabled, motionPreference, frameRef, pageSrc, restoreKey]);
 
   useEffect(() => {
     if (suspended) return undefined;
@@ -175,6 +185,12 @@ export default function GennyGuide({ platform = false, frameRef, pageSrc, allowe
         }}>{tourIndex + 1 === tour.length ? 'Finish tour' : 'Next'}</button><button type="button" onClick={() => { setTourIndex(null); }}>End tour</button></nav>}
         <details className="genny-detail genny-topics-disclosure" open={!!query || !compact}><summary>Browse features · {results.length}</summary><div className="genny-topic-list" aria-label="Genny topics">{results.map((topic) => <button key={topic.id} type="button" aria-pressed={selected?.id === topic.id} onClick={() => { setSelection(topic.id); setTourIndex(null); }}>{topic.label}</button>)}{!results.length && <><p>No matching feature yet. Try a module name.</p><button type="button" onClick={() => setQuery('')}>Show all topics</button></>}</div></details>
         <label className="genny-hover-toggle"><input type="checkbox" checked={hoverEnabled} onChange={toggleHover} /> Explain topics on hover or keyboard focus</label>
+        <label className="genny-hover-toggle"><input type="checkbox" checked={motionEnabled(motionPreference, reducedMotion)} onChange={(event) => {
+          const preference = event.target.checked ? 'on' : 'off';
+          setMotionPreference(preference);
+          try { localStorage.setItem(GENNY_MOTION_KEY, preference); } catch { /* optional storage */ }
+        }} /> Move Genny’s eyes</label>
+        {motionPreference === 'auto' && reducedMotion && <p className="genny-safety-note">Eye motion is off to follow your device setting. Enable it above if you prefer.</p>}
         <p className="genny-safety-note">Verified product guidance—not an AI chat. I explain and navigate; I never change your data.</p>
       </div>
       {selected && <footer className="genny-guide-footer"><button type="button" className="genny-primary" onClick={visit}>{platform ? `Show me ${selected.label}` : 'Explore the platform'} <span aria-hidden="true">→</span></button></footer>}

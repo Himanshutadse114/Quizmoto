@@ -1,12 +1,15 @@
 import { searchTopics } from './genny-knowledge.js';
 import { GENNY_PERSONAS, GENNY_WEBSITE_TOPICS, GENNY_WEBSITE_TOUR } from './genny-personas.js';
 import { watchGuideViewport } from './genny-viewport.js';
+import { GENNY_MOTION_KEY, readMotionPreference, motionEnabled } from './genny-motion.js';
 
 // Static and React marketing pages share the explorer persona and product data.
 // DOM text nodes only: search text is never interpolated into HTML.
-export function mountSiteGuide(doc, { onOpen, onHoverChange } = {}) {
+export function mountSiteGuide(doc, { onOpen, onHoverChange, onMotionChange } = {}) {
   const win = doc.defaultView;
   const compactMedia = win.matchMedia('(max-width: 767px)');
+  const motionMedia = win.matchMedia('(prefers-reduced-motion: reduce)');
+  let motionPreference = readMotionPreference(win);
   const topics = GENNY_WEBSITE_TOPICS;
   const tour = GENNY_WEBSITE_TOUR;
   const persona = GENNY_PERSONAS.website;
@@ -87,6 +90,22 @@ export function mountSiteGuide(doc, { onOpen, onHoverChange } = {}) {
     onHoverChange?.(hover.checked);
   });
   el('p', 'genny-safety-note', 'Verified product guidance—not an AI chat. I explain and navigate; I never change your data.', body);
+  const motionLabel = el('label', 'genny-hover-toggle', '', body);
+  const motion = el('input', '', '', motionLabel);
+  motion.type = 'checkbox';
+  el('span', '', 'Move Genny’s eyes', motionLabel);
+  const motionNote = el('p', 'genny-safety-note', 'Eye motion is off to follow your device setting. Enable it above if you prefer.', body);
+  const updateMotion = () => {
+    motion.checked = motionEnabled(motionPreference, motionMedia.matches);
+    motionNote.hidden = motionPreference !== 'auto' || !motionMedia.matches;
+  };
+  listen(motionMedia, 'change', updateMotion);
+  listen(motion, 'change', () => {
+    motionPreference = motion.checked ? 'on' : 'off';
+    try { win.localStorage.setItem(GENNY_MOTION_KEY, motionPreference); } catch { /* optional storage */ }
+    updateMotion(); onMotionChange?.(motionPreference);
+  });
+  updateMotion();
   const footer = el('footer', 'genny-guide-footer', '', panel);
   const link = el('a', 'genny-primary genny-visit', 'Explore the platform →', footer);
   link.href = '/login';

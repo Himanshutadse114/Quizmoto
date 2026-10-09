@@ -15,14 +15,19 @@
 .genny-guide {
   position: fixed; z-index: 45; right: 20px; bottom: 62px;
   box-sizing: border-box;
-  width: min(380px, calc(100% - 32px)); max-height: min(690px, calc(var(--genny-visible-height, 100dvh) - 100px));
+  width: min(340px, calc(var(--genny-visible-width, 100vw) - 32px));
+  max-height: min(480px, calc(var(--genny-visible-height, 100dvh) * .6), calc(var(--genny-visible-height, 100dvh) - 86px));
+  right: calc(20px + var(--genny-visible-right, 0px));
   bottom: calc(62px + var(--genny-visible-bottom, 0px));
   display: flex; flex-direction: column; overflow: hidden;
   background: var(--scorm-surface, #fff); border: 1px solid var(--scorm-line, #c2d5d0);
   border-radius: 18px; box-shadow: 0 16px 52px #001f1830;
   text-align: left; line-height: 1.5;
 }
-.genny-guide-header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--scorm-line, #d6e2df); }
+/* The marketing navbar uses 2147483004. Keep website help above it, without
+   raising the workspace guide over application modals. */
+.genny-website .genny-guide { z-index: 2147483005; }
+.genny-guide-header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--scorm-line, #d6e2df); }
 .genny-guide-header > div { min-width: 0; }
 .genny-guide-footer { flex: 0 0 auto; padding: 10px 14px; border-top: 1px solid var(--scorm-line, #d6e2df); }
 .genny-guide-footer > .genny-primary { width: 100%; justify-content: center; }
@@ -39,7 +44,8 @@
 .genny-close-icon { display: block; position: relative; width: 14px; height: 14px; }
 .genny-close-icon::before, .genny-close-icon::after { content: ''; position: absolute; top: 0; left: 6px; width: 2px; height: 14px; background: currentColor; border-radius: 2px; transform: rotate(45deg); }
 .genny-close-icon::after { transform: rotate(-45deg); }
-.genny-guide-body { min-height: 0; padding: 16px 18px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; overflow-wrap: anywhere; }
+.genny-guide-body { min-height: 0; padding: 12px 14px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; overflow-wrap: anywhere; }
+.genny-guide .genny-intro { display: none; }
 .genny-guide *, .genny-guide *::before, .genny-guide *::after { box-sizing: border-box; }
 .genny-detail { margin: 0 0 10px; border-bottom: 1px solid var(--scorm-line, #d6e2df); }
 .genny-detail > summary { display: list-item; padding: 10px 0; font-size: 12px; font-weight: 650; line-height: 1.5; cursor: pointer; }
@@ -80,10 +86,10 @@ body:has(.genny-website.genny-is-open) > .lmsgen-mascot-site { visibility: hidde
   .genny-is-open .genny-launcher { visibility: hidden; }
   .genny-guide {
     --genny-bottom-gap: 12px;
-    left: auto; right: max(12px, env(safe-area-inset-right));
-    width: min(340px, calc(100% - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    left: auto; right: calc(max(12px, env(safe-area-inset-right)) + var(--genny-visible-right, 0px));
+    width: min(320px, calc(var(--genny-visible-width, 100vw) - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));
     bottom: calc(var(--genny-bottom-gap) + var(--genny-visible-bottom, 0px) + env(safe-area-inset-bottom));
-    max-height: min(460px, calc(var(--genny-visible-height, 100dvh) * .58), calc(var(--genny-visible-height, 100dvh) - var(--genny-bottom-gap) - 12px - env(safe-area-inset-bottom)));
+    max-height: min(400px, calc(var(--genny-visible-height, 100dvh) * .55), calc(var(--genny-visible-height, 100dvh) - var(--genny-bottom-gap) - 12px - env(safe-area-inset-bottom)));
     border-radius: 14px;
   }
   .genny-platform .genny-guide { --genny-bottom-gap: 94px; }

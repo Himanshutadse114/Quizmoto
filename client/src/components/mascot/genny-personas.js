@@ -17,7 +17,7 @@ export const GENNY_PERSONAS = {
     tour: 'Start / resume tour', search: 'Find a workflow', placeholder: 'Try: CSV, publish, quizzes, reports…',
     greeting: 'I’m your workspace Genny. Tap me for page-specific steps, demo access and practical examples.',
     complete: 'Tour complete! Pick a module and put your next step into action.',
-    body: '#164e63', eyes: '#ecfeff',
+    body: '#0aa184', eyes: '#111316',
   },
 };
 

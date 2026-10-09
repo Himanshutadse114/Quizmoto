@@ -5,8 +5,12 @@ export function watchGuideViewport(panel) {
   const viewport = win.visualViewport;
   const update = () => {
     const height = viewport?.height || win.innerHeight;
+    const width = viewport?.width || win.innerWidth;
     const bottom = Math.max(0, win.innerHeight - height - (viewport?.offsetTop || 0));
+    const right = Math.max(0, win.innerWidth - width - (viewport?.offsetLeft || 0));
     panel.style.setProperty('--genny-visible-height', `${height}px`);
+    panel.style.setProperty('--genny-visible-width', `${width}px`);
+    panel.style.setProperty('--genny-visible-right', `${right}px`);
     panel.style.setProperty('--genny-visible-bottom', `${bottom}px`);
     panel.dataset.gennyKeyboard = String(bottom > 100 && (viewport?.scale || 1) === 1);
   };
