@@ -43,12 +43,17 @@ function loadService() {
     };
     const addGrant = sinon.stub().resolves({});
     const removeGrantByEmail = sinon.stub().resolves({ removed: true });
+    const getEntitlement = sinon.stub().resolves({ maxStaff: null });
+    const updateEntitlement = sinon.stub().resolves({
+        permissions: { avatarStudioFreeExports: true }
+    });
     const ScormAccessRequest = { findAll: sinon.stub().resolves([]), update: sinon.stub().resolves([1]) };
     const service = proxyquire('../services/scorm/ScormPlatformUserService', {
         '../../models/User': User,
         '../../models/ScormAccessGrant': { findAll: sinon.stub().resolves([]) },
         '../../models/ScormAccessRequest': ScormAccessRequest,
         '../../models/FlipbookLibrary': { findAll: sinon.stub().resolves([]) },
+        '../../models/scorm/ScormUserEntitlement': { findAll: sinon.stub().resolves([]) },
         '../../models/scorm': { ScormWorkspace, ScormWorkspaceMember },
         './ScormAccessService': {
             normalizeEmail: (value) => String(value || '').trim().toLowerCase(),
@@ -57,7 +62,7 @@ function loadService() {
             addGrant,
             removeGrantByEmail
         },
-        './ScormEntitlementService': { getEntitlement: sinon.stub().resolves({ maxStaff: null }) },
+        './ScormEntitlementService': { getEntitlement, updateEntitlement },
         '../AccountProfileService': {
             accountStatus: (value) => value?.accountStatus || 'active',
             cleanAvatar: (value) => value,
@@ -68,7 +73,8 @@ function loadService() {
     });
     return {
         service, user, membership, successor, workspace, User,
-        ScormWorkspace, ScormWorkspaceMember, addGrant, removeGrantByEmail
+        ScormWorkspace, ScormWorkspaceMember, addGrant, removeGrantByEmail,
+        getEntitlement, updateEntitlement
     };
 }
 
@@ -119,5 +125,22 @@ describe('ScormPlatformUserService account lifecycle', () => {
         expect(caught).to.be.an('error');
         expect(caught.code).to.equal('SCORM_TENANT_PROTECTED');
         expect(ctx.ScormWorkspaceMember.findOne.called).to.equal(false);
+    });
+
+    it('stores an individual free Avatar Studio export grant', async () => {
+        const ctx = loadService();
+        const result = await ctx.service.setPlatformUserAvatarStudioAccess({
+            userId: ctx.user.id,
+            enabled: true,
+            actorUserId: 1,
+            actorEmail: 'super@example.com'
+        });
+
+        expect(ctx.updateEntitlement.calledOnce).to.equal(true);
+        expect(ctx.updateEntitlement.firstCall.args[0]).to.equal(ctx.user.email);
+        expect(ctx.updateEntitlement.firstCall.args[1]).to.deep.equal({
+            permissions: { avatarStudioFreeExports: true }
+        });
+        expect(result.avatarStudioFreeExportsPersonal).to.equal(true);
     });
 });

@@ -62,17 +62,17 @@ describe('avatar studio translations', () => {
       '运行时 JSON + createAvatar'
     )
     expect(translateStudioText('JavaScript / ESM', 'en')).toBe('JavaScript / ESM')
-    expect(translateStudioText('JSON runtime + avatar-web', 'zh-CN')).toBe(
-      '运行时 JSON + avatar-web'
+    expect(translateStudioText('Démo + runtime LMSGEN local', 'zh-CN')).toBe(
+      '演示 + 本地 LMSGEN 运行时'
     )
     expect(translateStudioText('Guide d’utilisation de l’avatar JavaScript', 'en')).toBe(
       'JavaScript avatar usage guide'
     )
-    expect(translateStudioText('Copier les instructions pour l’IA', 'en')).toBe(
-      'Copy instruction for AI'
+    expect(translateStudioText('Composant + runtime LMSGEN local', 'en')).toBe(
+      'Component + local LMSGEN runtime'
     )
-    expect(translateStudioText('Copier les instructions pour l’IA', 'zh-CN')).toBe(
-      '复制 AI 使用说明'
+    expect(translateStudioText('Composant + runtime LMSGEN local', 'zh-CN')).toBe(
+      '组件 + 本地 LMSGEN 运行时'
     )
     expect(translateStudioText('Preview de la définition exportée', 'en')).toBe(
       'Exported definition preview'

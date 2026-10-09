@@ -113,6 +113,12 @@ export const chinese: Record<string, string> = {
   'Le paiement de 100 ₹ n’a pas pu être confirmé. Réessaie ou contacte LMSGEN.':
     '无法确认 ₹100 付款。请重试或联系 LMSGEN。',
   'Paiement unique pour télécharger les fichiers de cet avatar.': '一次付款即可下载此头像的文件。',
+  Inclus: '已包含',
+  Payé: '已支付',
+  'Export gratuit inclus pour le Super Admin.': '超级管理员可免费导出。',
+  'Export gratuit accordé à ce tenant.': '此租户已启用免费导出。',
+  'Export gratuit accordé à cet utilisateur.': '此用户已启用免费导出。',
+  'Le téléchargement de cet avatar est déjà débloqué.': '此头像的下载权限已解锁。',
   'Copier le JSON formaté': '复制格式化的 JSON',
   'Copier le JSON': '复制 JSON',
   'JSON runtime copié dans le presse-papiers.': '运行时 JSON 已复制到剪贴板。',

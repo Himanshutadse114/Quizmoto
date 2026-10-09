@@ -385,6 +385,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
     activeState,
     avatarDragOrigin,
     avatarDragPreview,
+    avatarExportEntitlement,
     avatars,
     avatarsRef,
     blink,
@@ -1737,9 +1738,25 @@ export function StudioInspector({ controller }: { controller: StudioController }
 
                     {import.meta.env.VITE_LMSGEN_PAID_EXPORTS === '1' && (
                       <div className="avatar-export-purchase-note">
-                        <strong>₹100</strong>
+                        <strong>
+                          {avatarExportEntitlement?.complimentary
+                            ? t('Inclus')
+                            : avatarExportEntitlement?.purchased
+                              ? t('Payé')
+                              : '₹100'}
+                        </strong>
                         <span>
-                          {t('Paiement unique pour télécharger les fichiers de cet avatar.')}
+                          {t(
+                            avatarExportEntitlement?.complimentary
+                              ? avatarExportEntitlement.source === 'super_admin'
+                                ? 'Export gratuit inclus pour le Super Admin.'
+                                : avatarExportEntitlement.source === 'tenant'
+                                  ? 'Export gratuit accordé à ce tenant.'
+                                  : 'Export gratuit accordé à cet utilisateur.'
+                              : avatarExportEntitlement?.purchased
+                                ? 'Le téléchargement de cet avatar est déjà débloqué.'
+                                : 'Paiement unique pour télécharger les fichiers de cet avatar.'
+                          )}
                         </span>
                       </div>
                     )}

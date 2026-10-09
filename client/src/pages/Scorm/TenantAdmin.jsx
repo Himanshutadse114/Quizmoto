@@ -36,10 +36,12 @@ const DEFAULT_PERMISSIONS = {
   contentEditor: true,
   teamManagement: true,
   ssoManagement: true,
-  geometryPhysicsFullAccess: false
+  geometryPhysicsFullAccess: false,
+  avatarStudioFreeExports: false
 };
 
 const PERMISSION_LABELS = [
+  ['avatarStudioFreeExports', 'Free Avatar Studio mascot exports'],
   ['geometryPhysicsFullAccess', 'Geometry Physics full access (Levels 26–132)'],
   ['courseAuthoring', 'AI course authoring'],
   ['contentEditor', 'Course content editor'],

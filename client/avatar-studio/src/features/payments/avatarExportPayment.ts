@@ -4,10 +4,21 @@ const PAID_EXPORTS_ENABLED = import.meta.env.VITE_LMSGEN_PAID_EXPORTS === '1'
 
 type PurchaseOrder = {
   purchased?: boolean
+  complimentary?: boolean
+  source?: AvatarExportAccessSource | null
   keyId?: string
   orderId?: string
   amount?: number
   currency?: string
+}
+
+export type AvatarExportAccessSource =
+  'super_admin' | 'tenant' | 'user' | 'purchase' | 'development'
+
+export type AvatarExportEntitlement = {
+  purchased: boolean
+  complimentary: boolean
+  source: AvatarExportAccessSource | null
 }
 
 type CheckoutResult = {
@@ -82,6 +93,28 @@ export const avatarExportFingerprint = async (source: unknown) => {
   return Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, '0')).join('')
 }
 
+export async function getAvatarExportEntitlement({ avatarId }: { avatarId: string }) {
+  if (!PAID_EXPORTS_ENABLED) {
+    return {
+      purchased: true,
+      complimentary: true,
+      source: 'development',
+    } satisfies AvatarExportEntitlement
+  }
+  const { token } = readSession()
+  if (!token) throw new Error('PAYMENT_LOGIN_REQUIRED')
+  const fingerprint = await avatarExportFingerprint({ avatarId })
+  const entitlement = await request<Partial<AvatarExportEntitlement>>(
+    `/entitlement?fingerprint=${encodeURIComponent(fingerprint)}`,
+    token
+  )
+  return {
+    purchased: entitlement.purchased === true,
+    complimentary: entitlement.complimentary === true,
+    source: entitlement.source ?? null,
+  } satisfies AvatarExportEntitlement
+}
+
 export async function ensureAvatarExportPurchased({
   avatarId,
   avatarName,
@@ -94,10 +127,7 @@ export async function ensureAvatarExportPurchased({
   if (!token) throw new Error('PAYMENT_LOGIN_REQUIRED')
 
   const fingerprint = await avatarExportFingerprint({ avatarId })
-  const entitlement = await request<{ purchased: boolean }>(
-    `/entitlement?fingerprint=${encodeURIComponent(fingerprint)}`,
-    token
-  )
+  const entitlement = await getAvatarExportEntitlement({ avatarId })
   if (entitlement.purchased) return true
 
   const order = await request<PurchaseOrder>('/orders', token, {

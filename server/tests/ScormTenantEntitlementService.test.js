@@ -67,6 +67,14 @@ describe('Scorm tenant entitlements', () => {
         expect(entitlement.maxCourses).to.equal(0);
         expect(entitlement.maxActiveCourses).to.equal(0);
         expect(entitlement.maxQuizPlayers).to.equal(10);
+        expect(entitlement.permissions.avatarStudioFreeExports).to.equal(false);
+    });
+
+    it('always includes free Avatar Studio exports for the Super Admin', async () => {
+        const { service } = loadService();
+        const entitlement = await service.getEntitlement('super@example.com', 'super_admin');
+
+        expect(entitlement.permissions.avatarStudioFreeExports).to.equal(true);
     });
 
     it('blocks course authoring until the Super Admin assigns an allowance', async () => {

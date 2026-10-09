@@ -2,6 +2,10 @@ const express = require('express');
 const auth = require('../middleware');
 const AvatarExportPurchase = require('../../models/scorm/AvatarExportPurchase');
 const {
+    avatarExportBuyerId,
+    complimentaryAvatarExportSource
+} = require('../../services/scorm/AvatarStudioAccessService');
+const {
     AVATAR_EXPORT_AMOUNT,
     AVATAR_EXPORT_CURRENCY,
     configuredCredentials,
@@ -27,10 +31,18 @@ router.get('/entitlement', async (req, res) => {
     if (!FINGERPRINT.test(fingerprint)) {
         return res.status(400).json({ message: 'A valid avatar fingerprint is required.' });
     }
+    const complimentarySource = await complimentaryAvatarExportSource(req);
+    if (complimentarySource) {
+        return res.json({ purchased: true, complimentary: true, source: complimentarySource });
+    }
     const purchase = await AvatarExportPurchase.findOne({
-        where: { userId: req.userId, avatarFingerprint: fingerprint, status: 'paid' }
+        where: { userId: avatarExportBuyerId(req), avatarFingerprint: fingerprint, status: 'paid' }
     });
-    return res.json({ purchased: Boolean(purchase) });
+    return res.json({
+        purchased: Boolean(purchase),
+        complimentary: false,
+        source: purchase ? 'purchase' : null
+    });
 });
 
 router.post('/orders', async (req, res, next) => {
@@ -41,19 +53,24 @@ router.post('/orders', async (req, res, next) => {
             return res.status(400).json({ message: 'Avatar name and fingerprint are required.' });
         }
 
+        const complimentarySource = await complimentaryAvatarExportSource(req);
+        if (complimentarySource) {
+            return res.json({ purchased: true, complimentary: true, source: complimentarySource });
+        }
+        const buyerId = avatarExportBuyerId(req);
         const paid = await AvatarExportPurchase.findOne({
-            where: { userId: req.userId, avatarFingerprint: fingerprint, status: 'paid' }
+            where: { userId: buyerId, avatarFingerprint: fingerprint, status: 'paid' }
         });
-        if (paid) return res.json({ purchased: true });
+        if (paid) return res.json({ purchased: true, complimentary: false, source: 'purchase' });
 
         const { keyId } = configuredCredentials();
         const order = await createAvatarExportOrder({
-            userId: req.userId,
+            userId: buyerId,
             avatarName,
             fingerprint
         });
         const purchase = await AvatarExportPurchase.create({
-            userId: req.userId,
+            userId: buyerId,
             avatarFingerprint: fingerprint,
             avatarName,
             razorpayOrderId: order.id,
@@ -85,7 +102,7 @@ router.post('/verify', async (req, res, next) => {
         }
 
         const purchase = await AvatarExportPurchase.findOne({
-            where: { userId: req.userId, razorpayOrderId: orderId }
+            where: { userId: avatarExportBuyerId(req), razorpayOrderId: orderId }
         });
         if (!purchase) return res.status(404).json({ message: 'Avatar export order was not found.' });
         if (purchase.status === 'paid') return res.json({ purchased: true });

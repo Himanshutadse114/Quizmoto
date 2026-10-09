@@ -6,6 +6,7 @@ const {
     assignPlatformUser,
     unassignPlatformUser,
     updatePlatformUserProfile,
+    setPlatformUserAvatarStudioAccess,
     setPlatformUserStatus
 } = require('../../services/scorm/ScormPlatformUserService');
 
@@ -83,6 +84,30 @@ router.patch('/:userId/profile', async (req, res) => {
         console.error('[scorm-platform-users] profile update failed', err);
         res.status(err.status || 500).json({
             message: err.message || 'Could not update this platform user.',
+            code: err.code
+        });
+    }
+});
+
+router.patch('/:userId/avatar-studio-access', async (req, res) => {
+    try {
+        if (typeof req.body?.enabled !== 'boolean') {
+            return res.status(400).json({
+                message: 'Choose whether free Avatar Studio exports are enabled.',
+                code: 'SCORM_AVATAR_STUDIO_ACCESS_INVALID'
+            });
+        }
+        const result = await setPlatformUserAvatarStudioAccess({
+            userId: req.params.userId,
+            enabled: req.body.enabled,
+            actorUserId: req.authenticatedUserId || req.userId,
+            actorEmail: req.scormEmail
+        });
+        res.json({ ok: true, ...result });
+    } catch (err) {
+        console.error('[scorm-platform-users] avatar studio access update failed', err);
+        res.status(err.status || 500).json({
+            message: err.message || 'Could not update Avatar Studio export access.',
             code: err.code
         });
     }

@@ -145,6 +145,13 @@ const english: Record<string, string> = {
     'The ₹100 payment could not be confirmed. Try again or contact LMSGEN.',
   'Paiement unique pour télécharger les fichiers de cet avatar.':
     'One-time payment to download this avatar’s files.',
+  Inclus: 'Included',
+  Payé: 'Paid',
+  'Export gratuit inclus pour le Super Admin.': 'Free exports are included for the Super Admin.',
+  'Export gratuit accordé à ce tenant.': 'Free exports are enabled for this tenant.',
+  'Export gratuit accordé à cet utilisateur.': 'Free exports are enabled for this user.',
+  'Le téléchargement de cet avatar est déjà débloqué.':
+    'This avatar download has already been unlocked.',
   'Copier le JSON formaté': 'Copy formatted JSON',
   'Copier le JSON': 'Copy JSON',
   'JSON runtime copié dans le presse-papiers.': 'Runtime JSON copied to the clipboard.',

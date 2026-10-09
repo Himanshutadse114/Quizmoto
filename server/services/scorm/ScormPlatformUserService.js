@@ -2,6 +2,7 @@ const User = require('../../models/User');
 const ScormAccessGrant = require('../../models/ScormAccessGrant');
 const ScormAccessRequest = require('../../models/ScormAccessRequest');
 const FlipbookLibrary = require('../../models/FlipbookLibrary');
+const ScormUserEntitlement = require('../../models/scorm/ScormUserEntitlement');
 const {
     ScormWorkspace,
     ScormWorkspaceMember
@@ -13,7 +14,7 @@ const {
     addGrant,
     removeGrantByEmail
 } = require('./ScormAccessService');
-const { getEntitlement } = require('./ScormEntitlementService');
+const { getEntitlement, updateEntitlement } = require('./ScormEntitlementService');
 const {
     accountStatus,
     cleanAvatar,
@@ -54,13 +55,14 @@ function isSyntheticTenantHost(user) {
 }
 
 async function listPlatformUsers({ search = '', scope = 'all' } = {}) {
-    const [users, memberships, workspaces, grants, requests, libraries] = await Promise.all([
+    const [users, memberships, workspaces, grants, requests, libraries, entitlements] = await Promise.all([
         User.findAll({ order: [['createdAt', 'DESC']], limit: 2500 }),
         ScormWorkspaceMember.findAll(),
         ScormWorkspace.findAll(),
         ScormAccessGrant.findAll(),
         ScormAccessRequest.findAll(),
-        FlipbookLibrary.findAll()
+        FlipbookLibrary.findAll(),
+        ScormUserEntitlement.findAll()
     ]);
 
     const membershipByUserId = new Map();
@@ -73,6 +75,10 @@ async function listPlatformUsers({ search = '', scope = 'all' } = {}) {
     const grantByEmail = new Map(grants.map((grant) => [normalizeEmail(grant.email), grant]));
     const requestByEmail = new Map(requests.map((request) => [normalizeEmail(request.email), request]));
     const libraryByUserId = new Map(libraries.map((library) => [String(library.ownerUserId), library]));
+    const entitlementByEmail = new Map(
+        entitlements.map((entitlement) => [normalizeEmail(entitlement.email), entitlement])
+    );
+    const userById = new Map(users.map((user) => [String(user.id), user]));
     const query = String(search || '').trim().toLowerCase();
     const wantedScope = ['assigned', 'unassigned'].includes(String(scope || '').toLowerCase())
         ? String(scope).toLowerCase()
@@ -87,6 +93,15 @@ async function listPlatformUsers({ search = '', scope = 'all' } = {}) {
             const grant = grantByEmail.get(email) || null;
             const request = requestByEmail.get(email) || null;
             const protectedUser = isSuperAdminEmail(email) || normalizeScormRole(grant?.role) === 'super_admin';
+            const personalAvatarStudioFreeExports =
+                protectedUser || entitlementByEmail.get(email)?.permissions?.avatarStudioFreeExports === true;
+            const workspaceHost = workspace ? userById.get(String(workspace.ownerUserId)) : null;
+            const tenantAvatarStudioFreeExports = Boolean(
+                workspaceHost && (
+                    isSuperAdminEmail(workspaceHost.email) ||
+                    entitlementByEmail.get(normalizeEmail(workspaceHost.email))?.permissions?.avatarStudioFreeExports === true
+                )
+            );
             return {
                 id: user.id,
                 username: user.displayName || user.username || null,
@@ -102,6 +117,9 @@ async function listPlatformUsers({ search = '', scope = 'all' } = {}) {
                 protected: protectedUser,
                 accessRole: protectedUser ? 'super_admin' : (grant ? normalizeScormRole(grant.role) : null),
                 requestStatus: request?.status || null,
+                avatarStudioFreeExports: personalAvatarStudioFreeExports || tenantAvatarStudioFreeExports,
+                avatarStudioFreeExportsPersonal: personalAvatarStudioFreeExports,
+                avatarStudioFreeExportsTenant: tenantAvatarStudioFreeExports,
                 tenant: workspace ? {
                     id: workspace.id,
                     name: workspace.name,
@@ -119,6 +137,42 @@ async function listPlatformUsers({ search = '', scope = 'all' } = {}) {
             return [item.username, item.email, item.authMethod, item.tenant?.name]
                 .some((value) => String(value || '').toLowerCase().includes(query));
         });
+}
+
+async function setPlatformUserAvatarStudioAccess({
+    userId,
+    enabled,
+    actorUserId = null,
+    actorEmail = null
+}) {
+    const user = await User.findByPk(userId);
+    if (!user || isSyntheticTenantHost(user)) {
+        throw fail('Platform user not found.', 'SCORM_PLATFORM_USER_NOT_FOUND', 404);
+    }
+    const email = normalizeEmail(user.email);
+    if (!email) {
+        throw fail('This account does not have an email address.', 'SCORM_PLATFORM_USER_EMAIL_REQUIRED', 400);
+    }
+    if (isSuperAdminEmail(email)) {
+        throw fail(
+            'The platform Super Admin always has free Avatar Studio exports.',
+            'SCORM_PLATFORM_USER_PROTECTED',
+            400
+        );
+    }
+
+    const entitlement = await updateEntitlement(email, {
+        permissions: { avatarStudioFreeExports: enabled === true }
+    }, {
+        userId: actorUserId,
+        email: actorEmail
+    });
+    return {
+        userId: user.id,
+        email,
+        avatarStudioFreeExportsPersonal:
+            entitlement?.permissions?.avatarStudioFreeExports === true
+    };
 }
 
 async function assertTenantSeatAvailable(workspace, existingMembership = null) {
@@ -357,5 +411,6 @@ module.exports = {
     assignPlatformUser,
     unassignPlatformUser,
     updatePlatformUserProfile,
+    setPlatformUserAvatarStudioAccess,
     setPlatformUserStatus
 };

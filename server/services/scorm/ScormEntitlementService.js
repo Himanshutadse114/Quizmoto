@@ -34,7 +34,8 @@ const DEFAULT_PERMISSIONS = Object.freeze({
     contentEditor: true,
     teamManagement: true,
     ssoManagement: true,
-    geometryPhysicsFullAccess: false
+    geometryPhysicsFullAccess: false,
+    avatarStudioFreeExports: false
 });
 
 function normalizeEmail(value) {
@@ -75,7 +76,11 @@ function serializeEntitlement(row, role = 'user') {
             maxCampaigns: null,
             maxAssignments: null,
             maxQuizPlayers: null,
-            permissions: { ...DEFAULT_PERMISSIONS, geometryPhysicsFullAccess: true },
+            permissions: {
+                ...DEFAULT_PERMISSIONS,
+                geometryPhysicsFullAccess: true,
+                avatarStudioFreeExports: true
+            },
             unlimited: true,
             protected: true
         };
@@ -102,7 +107,8 @@ function serializeEntitlement(row, role = 'user') {
                 contentEditor: false,
                 teamManagement: false,
                 ssoManagement: false,
-                geometryPhysicsFullAccess: false
+                geometryPhysicsFullAccess: false,
+                avatarStudioFreeExports: false
             },
             unlimited: false,
             protected: true,

@@ -107,7 +107,11 @@ import {
   defaultSnapshotComposition,
   normalizeSnapshotComposition,
 } from '@/features/export/snapshotComposition'
-import { ensureAvatarExportPurchased } from '@/features/payments/avatarExportPayment'
+import {
+  ensureAvatarExportPurchased,
+  getAvatarExportEntitlement,
+  type AvatarExportEntitlement,
+} from '@/features/payments/avatarExportPayment'
 import {
   resetBodyEditorView,
   resolveCanvasPreviewExpression,
@@ -178,6 +182,8 @@ export function useStudioController() {
     status: 'idle' | 'success' | 'error'
     source?: readonly unknown[]
   }>({ status: 'idle' })
+  const [avatarExportEntitlement, setAvatarExportEntitlement] =
+    useState<AvatarExportEntitlement | null>(null)
   useEffect(() => {
     if (runtimeCopyFeedback.status === 'idle') return
     const timeout = window.setTimeout(
@@ -1535,6 +1541,20 @@ export function useStudioController() {
     })
   }
   const activeAvatar = avatars.find(avatar => avatar.id === activeAvatarId) ?? avatars[0]
+  useEffect(() => {
+    let active = true
+    setAvatarExportEntitlement(null)
+    void getAvatarExportEntitlement({ avatarId: activeAvatar.id })
+      .then(entitlement => {
+        if (active) setAvatarExportEntitlement(entitlement)
+      })
+      .catch(() => {
+        if (active) setAvatarExportEntitlement(null)
+      })
+    return () => {
+      active = false
+    }
+  }, [activeAvatar.id])
   const runtimeCopySource = [activeAvatar, exportAnimationIds, expressions, sequences] as const
   const runtimeCopyStatus =
     runtimeCopyFeedback.source?.length === runtimeCopySource.length &&
@@ -1639,10 +1659,16 @@ export function useStudioController() {
   const confirmPaidExport = async () => {
     if (!runtimeDefinitionResult.ok) return false
     try {
-      return await ensureAvatarExportPurchased({
+      const allowed = await ensureAvatarExportPurchased({
         avatarId: activeAvatar.id,
         avatarName: activeAvatar.name,
       })
+      if (allowed) {
+        void getAvatarExportEntitlement({ avatarId: activeAvatar.id })
+          .then(setAvatarExportEntitlement)
+          .catch(() => undefined)
+      }
+      return allowed
     } catch (error) {
       if (error instanceof Error && error.message === 'PAYMENT_CANCELLED') return false
       window.alert(t('Le paiement de 100 ₹ n’a pas pu être confirmé. Réessaie ou contacte LMSGEN.'))
@@ -1981,6 +2007,7 @@ export function useStudioController() {
     animationsAffectedByExpressionDeletion,
     avatarDragOrigin,
     avatarDragPreview,
+    avatarExportEntitlement,
     avatars,
     avatarsRef,
     blink,

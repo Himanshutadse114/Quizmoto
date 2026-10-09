@@ -3,6 +3,7 @@ import axios from 'axios';
 import {
   Building2,
   CheckCircle2,
+  Download,
   KeyRound,
   Link2,
   Pencil,
@@ -172,6 +173,17 @@ export default function PlatformUsersAdmin() {
     } finally { setSaving(false); }
   };
 
+  const setAvatarStudioAccess = async (user, enabled) => {
+    setSaving(true); setError(''); setMessage('');
+    try {
+      await axios.patch(apiUrl(`/api/scorm/platform-users/${user.id}/avatar-studio-access`), { enabled }, { headers });
+      setMessage(`${user.email} ${enabled ? 'can now export Avatar Studio mascots without payment' : 'will now pay ₹100 per mascot export'}.`);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not update Avatar Studio export access.');
+    } finally { setSaving(false); }
+  };
+
   const assign = async () => {
     if (!editingUser || !assignment.workspaceId) return;
     const moving = Boolean(editingUser.tenant && editingUser.tenant.id !== assignment.workspaceId);
@@ -273,14 +285,16 @@ export default function PlatformUsersAdmin() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 min-w-0">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 min-w-0">
                     <div className="rounded-lg border px-3 py-2 min-w-0"><div className="text-[8px] uppercase opacity-45">Sign-in</div><div className="mt-1 text-[10px] font-semibold flex items-center gap-1.5 min-w-0"><KeyRound size={11} className="shrink-0" /><span className="truncate">{user.authMethod}</span></div></div>
                     <div className="rounded-lg border px-3 py-2"><div className="text-[8px] uppercase opacity-45">Tenant</div><div className="mt-1 text-[10px] font-semibold truncate">{user.tenant?.name || 'Unassigned'}</div></div>
                     <div className="rounded-lg border px-3 py-2"><div className="text-[8px] uppercase opacity-45">Role</div><div className="mt-1 text-[10px] font-semibold truncate">{roleLabel(user.tenant?.role || user.accessRole)}</div></div>
+                    <div className="rounded-lg border px-3 py-2"><div className="text-[8px] uppercase opacity-45">Mascot exports</div><div className={`mt-1 text-[10px] font-semibold truncate ${user.avatarStudioFreeExports ? 'text-[#4FC9BF]' : ''}`}>{user.protected ? 'Always free' : user.avatarStudioFreeExportsTenant ? 'Free via tenant' : user.avatarStudioFreeExportsPersonal ? 'Free for user' : '₹100 each'}</div></div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 xl:w-[330px]">
                     <button type="button" onClick={() => openProfile(user)} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap"><Pencil size={13} /> Edit profile</button>
+                    {user.accountStatus === 'active' && !user.protected && <button type="button" onClick={() => setAvatarStudioAccess(user, !user.avatarStudioFreeExportsPersonal)} disabled={saving} className={`${user.avatarStudioFreeExportsPersonal ? 'scorm-button-primary' : 'scorm-button-secondary'} min-h-9 px-3 text-[10px] font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-50`}><Download size={13} /> {user.avatarStudioFreeExportsPersonal ? 'Revoke personal free exports' : 'Grant personal free exports'}</button>}
                     {user.accountStatus === 'active' && !user.protected && <button type="button" onClick={() => openManage(user)} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap"><Link2 size={13} /> {user.tenant ? 'Manage assignment' : 'Assign user'}</button>}
                     {user.accountStatus === 'active' && user.tenant && user.tenant.role !== 'admin' && !user.protected && <button type="button" onClick={() => unassign(user)} disabled={saving} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-50"><Unlink size={13} /> Unassign</button>}
                     {user.accountStatus === 'active' && !user.protected && <button type="button" onClick={() => changeAccountStatus(user, 'remove')} disabled={saving} className="scorm-button-secondary min-h-9 px-3 text-[10px] font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-50"><Trash2 size={13} /> Remove</button>}
