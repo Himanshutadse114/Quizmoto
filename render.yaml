@@ -39,6 +39,10 @@ services:
         generateValue: true
       - key: OPENAI_API_KEY
         sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
       - key: OPENAI_TEXT_MODEL
         value: "gpt-5.6-luna"
       - key: OPENAI_IMAGE_MODEL
@@ -130,7 +134,15 @@ services:
     name: kahoot-awareness-frontend
     env: static
     rootDir: client
-    buildCommand: npm install && npm run build
+    buildCommand: >-
+      npm install &&
+      corepack enable &&
+      cd avatar-studio &&
+      pnpm install --frozen-lockfile &&
+      VITE_LMSGEN_PAID_EXPORTS=1 pnpm build &&
+      cd .. &&
+      npm run build &&
+      cp -R avatar-studio/dist dist/avatar-studio
     staticPublishPath: ./dist
     envVars:
       - key: VITE_BACKEND_URL
