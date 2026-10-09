@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/build-mascot-bundle.mjs",
     "build": "vite build",
     "postbuild": "node scripts/postbuild.mjs",
     "lint": "eslint .",
@@ -15,6 +16,7 @@
   },
   "dependencies": {
     "@bible-strong/avatar-react": "^0.1.0",
+    "@bible-strong/avatar-web": "^0.1.0",
     "@react-oauth/google": "^0.13.5",
     "axios": "^1.13.5",
     "canvas-confetti": "^1.9.4",

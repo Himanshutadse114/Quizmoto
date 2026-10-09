@@ -8,6 +8,7 @@ const steps = [
   './stabilize-marketing-ui.mjs',
   './route-marketing-ctas.mjs',
   './prepare-static-entrypoints.mjs',
+  './inject-mascot.mjs',
   './marketing-seo-guard.mjs',
   './audit-marketing-ui.mjs',
 ];

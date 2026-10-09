@@ -32,6 +32,15 @@
   outline-offset: 4px;
 }
 
+/* Mount point for the vanilla (static-page) bundle: the avatar renderer
+   fills its target, so the mount defines the box. */
+.lmsgen-mascot-mount {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  line-height: 0;
+}
+
 .lmsgen-mascot-dismiss {
   position: absolute;
   top: -8px;
