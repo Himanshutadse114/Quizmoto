@@ -9,8 +9,6 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
-# Build the independently licensed Avatar Studio bundle under /avatar-studio/.
-RUN cd avatar-studio && pnpm install --frozen-lockfile && VITE_LMSGEN_PAID_EXPORTS=1 pnpm build
 RUN npm run build -- --base=/
 
 # Production stage

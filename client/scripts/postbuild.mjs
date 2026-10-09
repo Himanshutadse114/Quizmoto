@@ -11,6 +11,7 @@ const steps = [
   './inject-mascot.mjs',
   './marketing-seo-guard.mjs',
   './audit-marketing-ui.mjs',
+  './publish-avatar-studio.mjs',
 ];
 
 const totalStartedAt = performance.now();

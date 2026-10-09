@@ -134,15 +134,7 @@ services:
     name: kahoot-awareness-frontend
     env: static
     rootDir: client
-    buildCommand: >-
-      npm install &&
-      corepack enable &&
-      cd avatar-studio &&
-      pnpm install --frozen-lockfile &&
-      VITE_LMSGEN_PAID_EXPORTS=1 pnpm build &&
-      cd .. &&
-      npm run build &&
-      cp -R avatar-studio/dist dist/avatar-studio
+    buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     envVars:
       - key: VITE_BACKEND_URL
