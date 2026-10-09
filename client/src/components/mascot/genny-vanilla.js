@@ -2,19 +2,41 @@
 import { createAvatar } from '@bible-strong/avatar-web';
 import definition from './genny.avatar.json';
 import mascotCss from './mascot.css';
+import guideCss from './genny-guide.css';
 import { mountGenny } from './genny-runtime.js';
+import { mountSiteGuide } from './genny-site-guide.js';
 
 if (window.self === window.top && !document.querySelector('.lmsgen-mascot')) {
   const style = document.createElement('style');
   style.id = 'genny-mascot-styles';
-  style.textContent = mascotCss;
+  style.textContent = mascotCss + guideCss;
   document.head.appendChild(style);
-  let mascot = mountGenny({ document, createAvatar, definition });
-  mascot.bindDocument(document);
-  window.addEventListener('pagehide', () => mascot.destroy());
+  let mascot;
+  let guide;
+  let hoverEnabled = true;
+  try { hoverEnabled = localStorage.getItem('lmsgen-genny-hover') !== 'off'; } catch { /* optional storage */ }
+  const mountMascot = () => {
+    mascot?.destroy();
+    mascot = mountGenny({ document, createAvatar, definition, hoverEnabled, onActivate: () => guide.open(), onTopic: (topic) => guide.select(topic) });
+    document.querySelector('.lmsgen-mascot')?.classList.add('lmsgen-mascot-site');
+    mascot.bindDocument(document);
+  };
+  const mount = () => {
+    guide = mountSiteGuide(document, {
+      onOpen: () => {
+        if (!document.querySelector('.lmsgen-mascot')) {
+          try { sessionStorage.removeItem('lmsgen-mascot-dismissed'); } catch { /* optional storage */ }
+          mountMascot();
+        }
+      },
+      onHoverChange: (enabled) => { hoverEnabled = enabled; mountMascot(); },
+    });
+    mountMascot();
+  };
+  mount();
+  window.addEventListener('pagehide', () => { mascot.destroy(); guide.destroy(); });
   window.addEventListener('pageshow', (event) => {
     if (!event.persisted) return;
-    mascot = mountGenny({ document, createAvatar, definition });
-    mascot.bindDocument(document);
+    mount();
   });
 }

@@ -273,7 +273,7 @@ export default function ScormAuth() {
             : 'Set new password';
 
   const description = isLogin
-    ? 'Sign in to your tenant, or open the complete interactive LMSGEN product tour before activation.'
+    ? 'Welcome back. Sign in to continue.'
     : isRegister
       ? 'Create your account and verify your email before registration is completed.'
       : mode === 'register-otp'
@@ -311,12 +311,6 @@ export default function ScormAuth() {
           <section className="sa-form-panel">
             <h2 className="sa-form-title">{title}</h2>
             <p className="mt-2 mb-5 text-xs opacity-70 leading-relaxed">{description}</p>
-
-            {isLogin && (
-              <div className="sa-product-preview" aria-label="LMSGEN platform capabilities">
-                <span>AI course authoring</span><span>SCORM library</span><span>Learner campaigns</span><span>Tracking & reports</span><span>Quizmoto</span><span>Publica</span>
-              </div>
-            )}
 
             {error && <div className="sa-error">{error}</div>}
             {notice && !error && (
@@ -466,9 +460,6 @@ export default function ScormAuth() {
                   />
                 </div>
 
-                <p className="mt-3 text-[10px] opacity-60 leading-relaxed text-center">
-                  Assigned identities open their tenant and role. Unassigned accounts open a safe product demo; Quizmoto and paid operations remain locked until activation.
-                </p>
               </>
             )}
 

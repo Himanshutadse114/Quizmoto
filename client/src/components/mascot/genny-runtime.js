@@ -2,6 +2,7 @@
 // Inject the renderer to allow deterministic lifecycle/timing regression tests.
 // Art/animation engine: Bible Strong Avatar Lab, Stephane Montlouis-Calixte
 // (AGPL-3.0, https://github.com/smontlouis/bible-strong-avatar-lab).
+import { GENNY_TOPICS, topicForElement, actionTipForElement } from './genny-knowledge.js';
 const DISMISS_KEY = 'lmsgen-mascot-dismissed';
 const GREETED_KEY = 'lmsgen-mascot-greeted';
 const TIP_GAP = 9000;
@@ -42,19 +43,33 @@ export function prepareGennyDefinition(source) {
       blink: name === 'idle' ? { ...animation.blink, initialDelayMs: 1400, minIntervalMs: 2200, maxIntervalMs: 4000 } : animation.blink,
     }];
   }));
-  return { ...source, animations };
+  const expressions = { ...source.expressions };
+  for (const [direction, offset] of [['up', -16], ['down', 16]]) {
+    const neutral = source.expressions.neutral;
+    expressions[`genny-look-${direction}`] = {
+      ...neutral, head: { ...neutral.head, x: -offset / 2 },
+      eyes: { ...neutral.eyes, left: { ...neutral.eyes.left, y: offset }, right: { ...neutral.eyes.right, y: offset } },
+    };
+    animations[`look-${direction}`] = {
+      playbackMode: 'once', steps: [{ expression: `genny-look-${direction}`, holdMs: 600, transitionMs: 150, transition: 'smooth' }],
+      blink: { ...source.animations.idle.blink, enabled: false },
+    };
+  }
+  return { ...source, expressions, expressionOrder: [...source.expressionOrder, 'genny-look-up', 'genny-look-down'], animations, animationOrder: [...source.animationOrder, 'look-up', 'look-down'] };
 }
 
-export function mountGenny({ document: doc, createAvatar, definition, container = doc.body }) {
+export function mountGenny({ document: doc, createAvatar, definition, container = doc.body, onActivate, onTopic, onDismiss, topics = GENNY_TOPICS, currentTopic, platform = false, hoverEnabled = true }) {
   const win = doc.defaultView;
   const media = win.matchMedia('(prefers-reduced-motion: reduce)');
+  const greetKey = platform ? 'lmsgen-genny-platform-welcomed-v2' : GREETED_KEY;
   const readFlag = (key) => { try { return win.sessionStorage.getItem(key) === '1'; } catch { return false; } };
   const writeFlag = (key) => { try { win.sessionStorage.setItem(key, '1'); } catch { /* optional storage */ } };
-  if (readFlag(DISMISS_KEY)) return { bindDocument: () => {}, destroy: () => {} };
+  if (!platform && readFlag(DISMISS_KEY)) return { bindDocument: () => {}, destroy: () => {}, explain: () => {} };
 
   const avatarDefinition = prepareGennyDefinition(definition);
   const root = doc.createElement('div');
   root.className = 'lmsgen-mascot';
+  if (platform) root.className += ' lmsgen-mascot-platform';
   root.innerHTML = '<button type="button" class="lmsgen-mascot-bubble" aria-live="polite" aria-atomic="true" hidden></button>' +
     '<button type="button" class="lmsgen-mascot-btn" title="Genny"><span class="lmsgen-mascot-mount"></span></button>' +
     '<button type="button" class="lmsgen-mascot-dismiss" aria-label="Hide Genny the mascot for this visit" title="Hide">&times;</button>';
@@ -92,12 +107,12 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     try { return Boolean(controller?.play(name)?.ok); } catch { return false; }
   }
   function hideBubble() { cancel(bubbleTimer); bubble.hidden = true; }
-  function showBubble(text) {
+  function showBubble(text, persistent = false) {
     cancel(greetingTimer);
     hideBubble();
     bubble.textContent = text;
     bubble.hidden = false;
-    bubbleTimer = later(hideBubble, 6500);
+    if (!persistent) bubbleTimer = later(() => { hideBubble(); retryTip(); }, 6500);
   }
   function settle() {
     if (!pending || destroyed) return;
@@ -166,7 +181,7 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     hideBubble();
     pending = queued = null;
     setMode('idle');
-    button.setAttribute('aria-label', media.matches ? 'Genny, the LMSGEN mascot' : 'Genny, the LMSGEN mascot. Select to make Genny laugh.');
+    button.setAttribute('aria-label', onActivate ? 'Ask Genny, your platform guide' : media.matches ? 'Genny, the LMSGEN mascot' : 'Genny, the LMSGEN mascot. Select to make Genny laugh.');
     controller?.stop();
     if (media.matches) controller?.setExpression('neutral');
     else { play('idle'); armIdle(); retryTip(); }
@@ -182,10 +197,11 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     });
   } catch { destroy(); return { bindDocument: () => {}, destroy }; }
 
-  cleanups.push(listen(button, 'click', () => { hideBubble(); cancel(greetingTimer); queued = null; react('laughing', 4); armIdle(); }));
-  cleanups.push(listen(bubble, 'click', hideBubble));
-  cleanups.push(listen(root.querySelector('.lmsgen-mascot-dismiss'), 'click', () => { writeFlag(DISMISS_KEY); destroy(); }));
+  cleanups.push(listen(button, 'click', () => { hideBubble(); cancel(greetingTimer); queued = null; react('laughing', 4); armIdle(); onActivate?.(); }));
+  cleanups.push(listen(bubble, 'click', () => { hideBubble(); retryTip(); }));
+  cleanups.push(listen(root.querySelector('.lmsgen-mascot-dismiss'), 'click', () => { if (!platform) writeFlag(DISMISS_KEY); destroy(); onDismiss?.(); }));
   cleanups.push(listen(media, 'change', motionChanged));
+  cleanups.push(listen(doc, 'keydown', (event) => { if (event.key === 'Escape') { hideBubble(); retryTip(); } }));
   for (const event of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll']) {
     cleanups.push(listen(win, event, activity, { passive: true }));
   }
@@ -196,10 +212,10 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
   motionChanged();
   if (!media.matches) {
     react('waking', 0);
-    if (!readFlag(GREETED_KEY)) greetingTimer = later(() => {
+    if (!readFlag(greetKey)) greetingTimer = later(() => {
       if (media.matches || doc.hidden) return;
-      writeFlag(GREETED_KEY);
-      showBubble("Hi, I'm Genny! I'll help you explore LMSGEN.");
+      writeFlag(greetKey);
+      showBubble(platform ? "New here? Tap me for a guided tour. I'll show you where to start." : "Hi, I'm Genny! Hover a topic or tap me to explore.");
     }, 1500);
   }
 
@@ -216,13 +232,55 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     let tipTimer;
     let lastY = guideWin.scrollY;
     let lastScrollAt = win.performance.now();
-    let lastPlayfulAt = -Infinity;
+    const scrollPositions = new WeakMap();
+    let hoverTimer;
+    let hoverTarget = null;
+    let hoverIdentity = null;
+    let hoverDismissed = false;
+
+    const explain = (text, topic) => {
+      showBubble(text, true);
+      if (topic) onTopic?.(topic);
+      react('thinking', 2);
+      armIdle();
+    };
+    function explainTarget(event) {
+      if (!hoverEnabled) return;
+      if (event.type === 'pointerover' && event.pointerType === 'touch') return;
+      const target = event.target;
+      const topic = topicForElement(target, topics);
+      const tip = actionTipForElement(target, currentTopic);
+      if (!topic && !tip) return;
+      const identity = tip || topic.id;
+      if (hoverIdentity === identity && (hoverDismissed || !bubble.hidden)) return;
+      cancel(hoverTimer);
+      hoverTarget = target.closest('[data-genny-topic], a[href], h1, h2, h3, button, [data-genny-tip]');
+      hoverIdentity = identity;
+      hoverDismissed = false;
+      hoverTimer = later(() => explain(tip || `${topic.punch} ${topic.explanation}`, topic), event.type === 'focusin' ? 0 : 550);
+    }
+    function leaveTarget(event) {
+      if (hoverTarget?.contains?.(event.relatedTarget) || event.relatedTarget === bubble) return;
+      cancel(hoverTimer);
+      hoverIdentity = null;
+      hoverTarget = null;
+      hoverDismissed = false;
+      // Keep the explanation until explicitly dismissed. The user can move
+      // across the page to the bubble without racing an auto-hide timer.
+    }
+    bindings.push(listen(guideDoc, 'pointerover', explainTarget));
+    bindings.push(listen(guideDoc, 'focusin', explainTarget));
+    bindings.push(listen(guideDoc, 'pointerout', leaveTarget));
+    bindings.push(listen(guideDoc, 'focusout', leaveTarget));
+    bindings.push(listen(guideDoc, 'keydown', (event) => { if (event.key === 'Escape') { hoverDismissed = true; cancel(hoverTimer); hideBubble(); retryTip(); } }));
 
     function attemptTip() {
       cancel(tipTimer);
       if (!candidate || shown.has(candidate.index) || destroyed || media.matches || doc.hidden || guideDoc.hidden) return;
+      // Persistent hover help waits for a real dismissal, not a polling loop.
+      if (!bubble.hidden) return;
       const remaining = Math.max(dwellUntil - Date.now(), lastTipAt + TIP_GAP - Date.now());
-      if (remaining > 0 || pending || !bubble.hidden) {
+      if (remaining > 0 || pending) {
         tipTimer = later(attemptTip, Math.max(remaining, 250));
         return;
       }
@@ -247,19 +305,30 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
       if (candidate && !timers.has(tipTimer)) attemptTip();
     }
     retryTip = refreshCandidate;
-    const onScroll = () => {
+    const onScroll = (event) => {
       activity();
       const now = win.performance.now();
       const elapsed = now - lastScrollAt;
-      const velocity = elapsed > 0 ? Math.abs(guideWin.scrollY - lastY) / elapsed * 1000 : 0;
-      lastY = guideWin.scrollY;
-      lastScrollAt = now;
-      if (velocity > 2600 && now - lastPlayfulAt > 22000 && !pending && bubble.hidden) {
-        if (react('playful', 0)) lastPlayfulAt = now;
+      const target = event?.target;
+      if (target?.closest?.('.genny-guide')) return;
+      const nested = target && target !== guideDoc && target !== guideDoc.documentElement && typeof target.scrollTop === 'number';
+      const position = nested ? target.scrollTop : guideWin.scrollY;
+      const previous = nested ? (scrollPositions.get(target) ?? 0) : lastY;
+      const delta = position - previous;
+      if (nested) scrollPositions.set(target, position);
+      else lastY = position;
+      if (Math.abs(delta) > 2 && (elapsed > 80 || root.dataset.look !== (delta > 0 ? 'down' : 'up'))) {
+        lastScrollAt = now;
+        const direction = delta > 0 ? 'down' : 'up';
+        root.dataset.look = direction;
+        // Deliberate scrolling wins over ambient/hover reactions, but never
+        // interrupts a direct mascot click or a success/error acknowledgement.
+        if (!pending || pending.priority <= 2) react(`look-${direction}`, 2);
       }
       refreshCandidate();
     };
     bindings.push(listen(guideWin, 'scroll', onScroll, { passive: true }));
+    bindings.push(listen(guideDoc, 'scroll', onScroll, { passive: true, capture: true }));
     bindings.push(listen(guideWin, 'resize', refreshCandidate, { passive: true }));
     if (guideWin !== win) for (const event of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart']) {
       bindings.push(listen(guideWin, event, activity, { passive: true }));
@@ -289,11 +358,12 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     }
     unbindGuide = () => {
       cancel(tipTimer);
+      cancel(hoverTimer);
       bindings.forEach((cleanup) => cleanup());
       retryTip = () => {};
       candidate = null;
     };
     refreshCandidate();
   }
-  return { bindDocument, destroy };
+  return { bindDocument, destroy, explain: (text) => showBubble(text, true) };
 }

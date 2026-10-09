@@ -30,6 +30,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import ScormGenerationNotifier from '../../components/ScormGenerationNotifier';
 import ScormWorkspaceSearch from './ScormWorkspaceSearch';
+import GennyGuide from '../../components/mascot/GennyGuide';
+import { topicForPath } from '../../components/mascot/genny-knowledge';
 import { readScormPlatformTheme, saveScormPlatformTheme } from './platformTheme';
 import './scormEditorialTheme.css';
 import './scormDashboard.css';
@@ -201,6 +203,7 @@ function Navigation({ onNavigate, isSuperAdmin, scormAccess, role }) {
                 <NavLink
                   key={to}
                   to={to}
+                  data-genny-topic={topicForPath(to)?.id}
                   end={end}
                   onClick={onNavigate}
                   className={({ isActive }) => `scorm-nav-item ${isActive ? 'scorm-nav-active' : ''} ${locked ? 'is-locked' : ''} group flex items-center font-medium ${scormAccess ? 'gap-3 px-3 py-2.5 text-[13px]' : 'gap-2.5 px-2.5 py-1.5 text-[11px]'}`}
@@ -379,6 +382,17 @@ export default function ScormPlatformShell() {
       </div>
       {scormAccess && !analyticsOnly && <ScormGenerationNotifier />}
       <MobileTabBar scormAccess={scormAccess} role={role} />
+      <GennyGuide key={`${role}-${scormAccess}-${isSuperAdmin}`} platform scormAccess={scormAccess} isSuperAdmin={isSuperAdmin}
+        allowedRoutes={navigationGroups({ isSuperAdmin, scormAccess, role }).flatMap((group) => group.items.map((item) => item.to))}
+        accountKey={gennyAccountKey(user)} suspended={mobileOpen} />
     </div>
   );
+}
+
+// Local tour preferences use an opaque per-account key, never an email address.
+function gennyAccountKey(user) {
+  const identity = `${user?.workspaceId || 'demo'}:${user?.email || user?.username || 'member'}`;
+  let hash = 0;
+  for (const char of identity) hash = (Math.imul(hash, 31) + char.charCodeAt(0)) | 0;
+  return `platform-${(hash >>> 0).toString(36)}`;
 }
