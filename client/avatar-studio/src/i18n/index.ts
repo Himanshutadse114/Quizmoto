@@ -174,8 +174,6 @@ const english: Record<string, string> = {
   'Expression de départ': 'Starting expression',
   'Aucune animation sélectionnée': 'No animation selected',
   'Guide d’utilisation': 'Usage guide',
-  'Voir le guide complet': 'View full usage guide',
-  'Copier les instructions pour l’IA': 'Copy instruction for AI',
   'Guide d’utilisation copié dans le presse-papiers.': 'Usage guide copied to the clipboard.',
   'Impossible de copier le guide d’utilisation.': 'Could not copy the usage guide.',
   'Guide d’utilisation de l’avatar React': 'React avatar usage guide',
@@ -221,8 +219,6 @@ const english: Record<string, string> = {
   'Affiche une expression avec une transition courte.':
     'Displays an expression with a short transition.',
   'Arrête la lecture et revient à neutral.': 'Stops playback and returns to neutral.',
-  'Annule la frame planifiée et retire uniquement le conteneur créé par avatar-web.':
-    'Cancels the scheduled frame and removes only the container created by avatar-web.',
   'Navigateur sans bundler': 'Browser without a bundler',
   'Utilise une URL ESM via un CDN ou une import map, puis charge la définition avec fetch.':
     'Use an ESM URL through a CDN or import map, then load the definition with fetch.',
@@ -294,6 +290,8 @@ const english: Record<string, string> = {
     'Choose animations, then export runtime JSON or a standalone package.',
   'Choisis les animations puis utilise la même définition JSON avec React ou JavaScript.':
     'Choose animations, then use the same JSON definition with React or JavaScript.',
+  'Choisis les animations puis télécharge un pack LMSGEN autonome.':
+    'Choose animations, then download a self-contained LMSGEN package.',
   'Avatar sélectionné': 'Selected avatar',
   Format: 'Format',
   'Choisis l’intégration correspondant à ton projet.':
@@ -301,7 +299,8 @@ const english: Record<string, string> = {
   'Composant TSX autonome': 'Standalone TSX component',
   'Package React local (.zip)': 'Local React package (.zip)',
   'JavaScript / ESM': 'JavaScript / ESM',
-  'JSON runtime + avatar-web': 'Runtime JSON + avatar-web',
+  'Composant + runtime LMSGEN local': 'Component + local LMSGEN runtime',
+  'Démo + runtime LMSGEN local': 'Demo + local LMSGEN runtime',
   'Module ES autonome': 'Standalone ES module',
   'Projet HTML + module JS (.zip)': 'HTML project + JS module (.zip)',
   sélectionnées: 'selected',
@@ -313,14 +312,17 @@ const english: Record<string, string> = {
   'Télécharger le composant TSX': 'Download TSX component',
   'Télécharger le package React': 'Download React package',
   'Télécharger le module': 'Download module',
-  'Intégration ESM avec le package avatar-web': 'ESM integration with the avatar-web package',
-  'Le ZIP contient le JSON exporté, une démo index.html et son README. La démo charge avatar-web depuis un CDN.':
-    'The ZIP contains the exported JSON, an index.html demo and its README. The demo loads avatar-web from a CDN.',
-  'Le ZIP contient le JSON exporté et un projet Vite React TypeScript prêt à lancer avec npm install puis npm run dev.':
-    'The ZIP contains the exported JSON and a ready-to-run Vite React TypeScript project. Start it with npm install, then npm run dev.',
   'Télécharger l’intégration ESM (.zip)': 'Download ESM integration (.zip)',
-  'Télécharger la démo React (.zip)': 'Download React demo (.zip)',
-  'Télécharger la démo ESM (.zip)': 'Download ESM demo (.zip)',
+  'Export LMSGEN autonome': 'Self-contained LMSGEN export',
+  'Aucune dépendance externe requise': 'No external dependency required',
+  'Après le paiement de 100 ₹, le ZIP contient le personnage et son moteur local. Aucun dépôt ou paquet tiers n’est nécessaire.':
+    'After the ₹100 payment, the ZIP contains the character and its local engine. No third-party repository or package is required.',
+  'Le ZIP contient une démo index.html et le runtime JavaScript LMSGEN local.':
+    'The ZIP contains an index.html demo and the local LMSGEN JavaScript runtime.',
+  'Le ZIP contient un composant React TypeScript, les données du personnage et le runtime LMSGEN local.':
+    'The ZIP contains a React TypeScript component, the character data and the local LMSGEN runtime.',
+  'Télécharger le pack LMSGEN JavaScript (.zip)': 'Download LMSGEN JavaScript package (.zip)',
+  'Télécharger le pack LMSGEN React (.zip)': 'Download LMSGEN React package (.zip)',
   'Télécharger le JSON': 'Download JSON',
   'Utilisation minimale': 'Minimal usage',
   'Utiliser cet avatar': 'Use this avatar',

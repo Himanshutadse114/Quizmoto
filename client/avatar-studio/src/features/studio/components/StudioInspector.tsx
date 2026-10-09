@@ -59,12 +59,7 @@ import {
   StatePlayer,
 } from '@/app/components/common'
 import { ColorField, LinkButton, NumericField } from '@/app/components/controls'
-import {
-  COPY_FEEDBACK_DURATION_MS,
-  formatSeconds,
-  type Side,
-  type SnapshotFormat,
-} from '@/app/studio-utils'
+import { formatSeconds, type Side, type SnapshotFormat } from '@/app/studio-utils'
 import { SequenceWorkspace } from '@/features/animation/components/SequenceWorkspace'
 import { groupSequences, resolveSequenceExpression } from '@/features/animation/sequences'
 import { defaultAvatarEyes } from '@/features/avatar/avatars'
@@ -78,37 +73,9 @@ import { randomSnapshotPalette } from '@/features/export/snapshotPalette'
 import { type SnapshotBackground } from '@/features/export/snapshotExporter'
 import { AvatarPage } from '@/features/studio/components/AvatarDrawer'
 import { BodyConstructionAccordion } from '@/features/studio/components/BodyConstructionAccordion'
-import { HighlightedRuntimeCode } from '@/features/studio/components/HighlightedRuntimeCode'
-import {
-  buildRuntimeGuideText,
-  RuntimeGuideDialog,
-} from '@/features/studio/components/RuntimeGuideDialog'
 import { RuntimePreviewDialog } from '@/features/studio/components/RuntimePreviewDialog'
 import { StudioIdentity } from '@/features/studio/components/StudioIdentity'
 import type { StudioController } from '@/features/studio/useStudioController'
-
-const reactQuickStartInstall = 'npm install @bible-strong/avatar-react react react-dom'
-const webQuickStartInstall = 'npm install @bible-strong/avatar-web'
-
-const reactQuickStartExample = (animationKey: string | undefined) =>
-  `import { createAvatar } from '@bible-strong/avatar-react'
-import '@bible-strong/avatar-react/styles.css'
-import definition from './avatar.avatar.json'
-
-const Avatar = createAvatar(definition)
-
-export function App() {
-  return <Avatar ${animationKey ? `defaultAnimation="${animationKey}"` : 'defaultExpression="neutral"'} />
-}`
-
-const webQuickStartExample = (animationKey: string | undefined) =>
-  `import { createAvatar } from '@bible-strong/avatar-web'
-import definition from './avatar.avatar.json'
-
-const avatar = createAvatar('#avatar', {
-  definition,
-  ${animationKey ? `defaultAnimation: '${animationKey}',` : `defaultExpression: 'neutral',`}
-})`
 
 function PoseControls({ controller }: { controller: StudioController }) {
   const {
@@ -406,16 +373,6 @@ function PoseControls({ controller }: { controller: StudioController }) {
 
 export function StudioInspector({ controller }: { controller: StudioController }) {
   const [runtimePreviewOpen, setRuntimePreviewOpen] = useState(false)
-  const [guideOpen, setGuideOpen] = useState(false)
-  const [guideCopyFeedback, setGuideCopyFeedback] = useState<{
-    format: 'react' | 'javascript'
-    status: 'success' | 'error'
-  } | null>(null)
-  useEffect(() => {
-    if (!guideCopyFeedback) return
-    const timeout = window.setTimeout(() => setGuideCopyFeedback(null), COPY_FEEDBACK_DURATION_MS)
-    return () => window.clearTimeout(timeout)
-  }, [guideCopyFeedback])
   const [exportAnimationsOpen, setExportAnimationsOpen] = useState(false)
   const {
     activateAvatar,
@@ -560,29 +517,9 @@ export function StudioInspector({ controller }: { controller: StudioController }
     workspaceBackButtonRef,
   } = controller
 
-  const copyRuntimeGuide = async () => {
-    if (!navigator.clipboard) {
-      setGuideCopyFeedback({ format: exportFormat, status: 'error' })
-      return
-    }
-    try {
-      await navigator.clipboard.writeText(
-        buildRuntimeGuideText({
-          animationKey: runtimePreviewAnimation,
-          integration: exportFormat,
-          t,
-        })
-      )
-      setGuideCopyFeedback({ format: exportFormat, status: 'success' })
-    } catch {
-      setGuideCopyFeedback({ format: exportFormat, status: 'error' })
-    }
-  }
   const runtimePreviewAnimation = runtimeDefinitionResult.ok
     ? runtimeDefinitionResult.value.animationOrder[0]
     : undefined
-  const guideCopyStatus =
-    guideCopyFeedback?.format === exportFormat ? guideCopyFeedback.status : 'idle'
   const updateSnapshotComposition = (patch: Partial<typeof snapshotComposition>) =>
     setSnapshotComposition(current => ({ ...current, ...patch }))
   const playbackFooterY = useMotionValue(0)
@@ -1599,7 +1536,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
                 <ExportSection
                   value="avatar"
                   title="Exporter l’avatar"
-                  subtitle="Choisis les animations puis utilise la même définition JSON avec React ou JavaScript."
+                  subtitle="Choisis les animations puis télécharge un pack LMSGEN autonome."
                 >
                   <InspectorCard>
                     <div className="export-avatar-summary">
@@ -1634,7 +1571,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
                         <FileCode2 />
                         <span>
                           <strong>React / TypeScript</strong>
-                          <small>{t('JSON runtime + createAvatar')}</small>
+                          <small>{t('Composant + runtime LMSGEN local')}</small>
                         </span>
                       </Button>
                       <Button
@@ -1646,7 +1583,7 @@ export function StudioInspector({ controller }: { controller: StudioController }
                         <FileCode2 />
                         <span>
                           <strong>{t('JavaScript / ESM')}</strong>
-                          <small>{t('JSON runtime + avatar-web')}</small>
+                          <small>{t('Démo + runtime LMSGEN local')}</small>
                         </span>
                       </Button>
                     </div>
@@ -1766,52 +1703,15 @@ export function StudioInspector({ controller }: { controller: StudioController }
                   <InspectorCard className="runtime-quick-start-card">
                     <div className="runtime-quick-start-heading">
                       <div>
-                        <p className="eyebrow">{t('Démarrage rapide')}</p>
+                        <p className="eyebrow">{t('Export LMSGEN autonome')}</p>
+                        <strong>{t('Aucune dépendance externe requise')}</strong>
                       </div>
                     </div>
-                    <div className="runtime-quick-start-actions">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        aria-label={
-                          guideCopyStatus === 'success'
-                            ? t('Guide d’utilisation copié dans le presse-papiers.')
-                            : guideCopyStatus === 'error'
-                              ? t('Impossible de copier le guide d’utilisation.')
-                              : undefined
-                        }
-                        onClick={() => void copyRuntimeGuide()}
-                      >
-                        {guideCopyStatus === 'success' ? <Check /> : <Copy />}
-                        {t('Copier les instructions pour l’IA')}
-                      </Button>
-                      <Button type="button" variant="ghost" onClick={() => setGuideOpen(true)}>
-                        {t('Voir le guide complet')}
-                        <ArrowRight />
-                      </Button>
-                    </div>
-
-                    <div className="runtime-quick-start-step">
-                      <span>{t('Installation')}</span>
-                      <code>
-                        <HighlightedRuntimeCode>
-                          {exportFormat === 'react' ? reactQuickStartInstall : webQuickStartInstall}
-                        </HighlightedRuntimeCode>
-                      </code>
-                    </div>
-
-                    <div className="runtime-quick-start-step">
-                      <span>{t('Utilisation minimale')}</span>
-                      <pre tabIndex={0}>
-                        <code>
-                          <HighlightedRuntimeCode>
-                            {exportFormat === 'react'
-                              ? reactQuickStartExample(runtimePreviewAnimation)
-                              : webQuickStartExample(runtimePreviewAnimation)}
-                          </HighlightedRuntimeCode>
-                        </code>
-                      </pre>
-                    </div>
+                    <p className="runtime-export-description">
+                      {t(
+                        'Après le paiement de 100 ₹, le ZIP contient le personnage et son moteur local. Aucun dépôt ou paquet tiers n’est nécessaire.'
+                      )}
+                    </p>
                   </InspectorCard>
 
                   <InspectorCard className="runtime-export-card">
@@ -1829,8 +1729,8 @@ export function StudioInspector({ controller }: { controller: StudioController }
                       <p className="runtime-export-description">
                         {t(
                           exportFormat === 'javascript'
-                            ? 'Le ZIP contient le JSON exporté, une démo index.html et son README. La démo charge avatar-web depuis un CDN.'
-                            : 'Le ZIP contient le JSON exporté et un projet Vite React TypeScript prêt à lancer avec npm install puis npm run dev.'
+                            ? 'Le ZIP contient une démo index.html et le runtime JavaScript LMSGEN local.'
+                            : 'Le ZIP contient un composant React TypeScript, les données du personnage et le runtime LMSGEN local.'
                         )}
                       </p>
                     </div>
@@ -1862,8 +1762,8 @@ export function StudioInspector({ controller }: { controller: StudioController }
                         <Download />
                         {t(
                           exportFormat === 'javascript'
-                            ? 'Télécharger la démo ESM (.zip)'
-                            : 'Télécharger la démo React (.zip)'
+                            ? 'Télécharger le pack LMSGEN JavaScript (.zip)'
+                            : 'Télécharger le pack LMSGEN React (.zip)'
                         )}
                       </Button>
                       <div className="runtime-export-secondary-actions">
@@ -1900,12 +1800,6 @@ export function StudioInspector({ controller }: { controller: StudioController }
                     initialAnimation={runtimePreviewAnimation}
                     open={runtimePreviewOpen}
                     onOpenChange={setRuntimePreviewOpen}
-                  />
-                  <RuntimeGuideDialog
-                    animationKey={runtimePreviewAnimation}
-                    integration={exportFormat}
-                    open={guideOpen}
-                    onOpenChange={setGuideOpen}
                   />
                 </ExportSection>
 

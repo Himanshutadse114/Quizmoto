@@ -93,8 +93,9 @@ import { defaultExpression } from '@/features/avatar/presets'
 import { type SurfaceConfig } from '@/features/avatar/surfaces'
 import {
   avatarDemoFileName,
-  generateJavaScriptEsmPackage,
-  generateReactVitePackage,
+  createAvatarExportPayload,
+  generateJavaScriptAvatarPackage,
+  generateReactAvatarPackage,
 } from '@/features/export/exporter'
 import {
   serializeAvatarSnapshot,
@@ -1586,6 +1587,11 @@ export function useStudioController() {
   const selectedExportAnimations = sequences.filter(animation =>
     exportAnimationIdSet.has(animation.id)
   )
+  const standaloneExportPayload = createAvatarExportPayload(
+    activeAvatar,
+    expressions,
+    selectedExportAnimations
+  )
   const runtimeDefinitionResult = createAvatarDefinition({
     avatar: activeAvatar,
     behavior: { expressions, sequences: selectedExportAnimations },
@@ -1648,8 +1654,8 @@ export function useStudioController() {
     if (!(await confirmPaidExport())) return
     downloadBlob(
       exportFormat === 'javascript'
-        ? generateJavaScriptEsmPackage(runtimeDefinitionResult.value, activeAvatar.name)
-        : generateReactVitePackage(runtimeDefinitionResult.value, activeAvatar.name),
+        ? generateJavaScriptAvatarPackage(standaloneExportPayload, language)
+        : generateReactAvatarPackage(standaloneExportPayload),
       avatarDemoFileName(activeAvatar.name, exportFormat)
     )
   }

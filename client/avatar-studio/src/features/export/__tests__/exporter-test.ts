@@ -6,17 +6,10 @@ import {
   generateJavaScriptAvatarHtml,
   generateJavaScriptAvatarModule,
   generateJavaScriptAvatarPackage,
-  generateJavaScriptEsmHtml,
-  generateJavaScriptEsmPackage,
   generateReactAvatarComponent,
   generateReactAvatarPackage,
   generateReactAvatarRuntime,
-  generateReactViteMain,
-  generateReactVitePackage,
 } from '@/features/export/exporter'
-import { createAvatarDefinition } from '@/features/avatar/avatarDefinition'
-import { resolveAvatarBehavior } from '@/features/avatar/avatars'
-import { loadStudioDocument } from '@/features/studio/studioDocument'
 import { initialExpressions } from '@/features/avatar/presets'
 import { createInitialSequences } from '@/features/animation/sequences'
 
@@ -151,77 +144,7 @@ describe('avatar export', () => {
 
     expect(contents).toContain('index.html')
     expect(contents).toContain('avatar.js')
-  })
-
-  it('generates a lightweight ESM integration backed by avatar-web', async () => {
-    const document = loadStudioDocument({ getItem: () => null })
-    const studioAvatar = document.library.avatars[0]
-    const definition = createAvatarDefinition({
-      avatar: studioAvatar,
-      behavior: resolveAvatarBehavior(studioAvatar, {
-        expressions: document.expressions,
-        sequences: document.sequences,
-      }),
-    })
-    expect(definition.ok).toBe(true)
-    if (!definition.ok) return
-
-    const source = generateJavaScriptEsmHtml('strobi.avatar.json', 'Strobi')
-    expect(source).toContain("from 'https://esm.sh/@bible-strong/avatar-web@0.1.0'")
-    expect(source).toContain("fetch('./strobi.avatar.json')")
-    expect(source).not.toContain('AvatarProceduralEngine')
-
-    const archive = new Uint8Array(
-      await generateJavaScriptEsmPackage(definition.value, 'Strobi').arrayBuffer()
-    )
-    const contents = new TextDecoder().decode(archive)
-    expect(storedZipFileNames(archive)).toEqual(['strobi.avatar.json', 'index.html', 'README.md'])
-    expect(contents).toContain('esm.sh/@bible-strong/avatar-web@0.1.0')
-    expect(contents).not.toContain('AvatarProceduralEngine')
-  })
-
-  it('generates a ready-to-run React TypeScript demo backed by avatar-react', async () => {
-    const document = loadStudioDocument({ getItem: () => null })
-    const studioAvatar = document.library.avatars[0]
-    const definition = createAvatarDefinition({
-      avatar: studioAvatar,
-      behavior: resolveAvatarBehavior(studioAvatar, {
-        expressions: document.expressions,
-        sequences: document.sequences,
-      }),
-    })
-    expect(definition.ok).toBe(true)
-    if (!definition.ok) return
-
-    const source = generateReactViteMain('../strobi.avatar.json', 'Strobi')
-    expect(source).toContain("from '@bible-strong/avatar-react'")
-    expect(source).toContain("from '../strobi.avatar.json'")
-    expect(source).toContain('createAvatar(definition)')
-    expect(source).toContain("kind: 'animation'")
-    expect(source).toContain("kind: 'expression'")
-    expect(() =>
-      parse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'] })
-    ).not.toThrow()
-
-    const archive = new Uint8Array(
-      await generateReactVitePackage(definition.value, 'Strobi').arrayBuffer()
-    )
-    const contents = new TextDecoder().decode(archive)
-    expect(storedZipFileNames(archive)).toEqual([
-      'strobi.avatar.json',
-      'package.json',
-      'index.html',
-      'tsconfig.json',
-      'vite.config.ts',
-      'src/main.tsx',
-      'src/vite-env.d.ts',
-      'src/styles.css',
-      'README.md',
-    ])
-    expect(contents).toContain('"@bible-strong/avatar-react": "0.1.0"')
-    expect(contents).toContain('npm install')
-    expect(contents).toContain('npm run dev')
-    expect(contents).not.toContain('AvatarProceduralEngine')
+    expect(contents).not.toContain('@bible-strong')
   })
 
   it('generates a typed React component backed by the local runtime', () => {
@@ -252,6 +175,7 @@ describe('avatar export', () => {
     expect(contents).toContain('Strobi.tsx')
     expect(contents).toContain('strobi.index.ts')
     expect(contents).toContain("from './avatar-runtime'")
+    expect(contents).not.toContain('@bible-strong')
   })
 
   it('generates one avatar-independent and versioned React runtime', () => {

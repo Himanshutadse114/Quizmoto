@@ -142,8 +142,6 @@ export const chinese: Record<string, string> = {
   'Expression de départ': '起始表情',
   'Aucune animation sélectionnée': '未选择动画',
   'Guide d’utilisation': '使用指南',
-  'Voir le guide complet': '查看完整使用指南',
-  'Copier les instructions pour l’IA': '复制 AI 使用说明',
   'Guide d’utilisation copié dans le presse-papiers.': '使用指南已复制到剪贴板。',
   'Impossible de copier le guide d’utilisation.': '无法复制使用指南。',
   'Guide d’utilisation de l’avatar React': 'React 头像使用指南',
@@ -184,8 +182,6 @@ export const chinese: Record<string, string> = {
   'Lance ou reprend une animation par sa clé.': '通过键启动或恢复动画。',
   'Affiche une expression avec une transition courte.': '使用短暂过渡显示表情。',
   'Arrête la lecture et revient à neutral.': '停止播放并返回 neutral。',
-  'Annule la frame planifiée et retire uniquement le conteneur créé par avatar-web.':
-    '取消已计划的帧，并仅移除 avatar-web 创建的容器。',
   'Navigateur sans bundler': '不使用打包工具的浏览器',
   'Utilise une URL ESM via un CDN ou une import map, puis charge la définition avec fetch.':
     '通过 CDN 或 import map 使用 ESM URL，然后通过 fetch 加载定义。',
@@ -255,13 +251,16 @@ export const chinese: Record<string, string> = {
     '选择动画，然后导出运行时 JSON 或独立包。',
   'Choisis les animations puis utilise la même définition JSON avec React ou JavaScript.':
     '选择动画，然后在 React 或 JavaScript 中使用同一份 JSON 定义。',
+  'Choisis les animations puis télécharge un pack LMSGEN autonome.':
+    '选择动画，然后下载独立的 LMSGEN 软件包。',
   'Avatar sélectionné': '已选头像',
   Format: '格式',
   'Choisis l’intégration correspondant à ton projet.': '选择适合项目的集成方式。',
   'Composant TSX autonome': '独立 TSX 组件',
   'Package React local (.zip)': '本地 React 包（.zip）',
   'JavaScript / ESM': 'JavaScript / ESM',
-  'JSON runtime + avatar-web': '运行时 JSON + avatar-web',
+  'Composant + runtime LMSGEN local': '组件 + 本地 LMSGEN 运行时',
+  'Démo + runtime LMSGEN local': '演示 + 本地 LMSGEN 运行时',
   'Module ES autonome': '独立 ES 模块',
   'Projet HTML + module JS (.zip)': 'HTML 项目 + JS 模块（.zip）',
   sélectionnées: '已选择',
@@ -273,14 +272,17 @@ export const chinese: Record<string, string> = {
   'Télécharger le composant TSX': '下载 TSX 组件',
   'Télécharger le package React': '下载 React 包',
   'Télécharger le module': '下载模块',
-  'Intégration ESM avec le package avatar-web': '使用 avatar-web 包的 ESM 集成',
-  'Le ZIP contient le JSON exporté, une démo index.html et son README. La démo charge avatar-web depuis un CDN.':
-    'ZIP 包含导出的 JSON、index.html 演示和 README。演示会从 CDN 加载 avatar-web。',
-  'Le ZIP contient le JSON exporté et un projet Vite React TypeScript prêt à lancer avec npm install puis npm run dev.':
-    'ZIP 包含导出的 JSON 和一个可直接运行的 Vite React TypeScript 项目。先运行 npm install，再运行 npm run dev。',
   'Télécharger l’intégration ESM (.zip)': '下载 ESM 集成（.zip）',
-  'Télécharger la démo React (.zip)': '下载 React 演示（.zip）',
-  'Télécharger la démo ESM (.zip)': '下载 ESM 演示（.zip）',
+  'Export LMSGEN autonome': '独立 LMSGEN 导出',
+  'Aucune dépendance externe requise': '无需外部依赖',
+  'Après le paiement de 100 ₹, le ZIP contient le personnage et son moteur local. Aucun dépôt ou paquet tiers n’est nécessaire.':
+    '支付 ₹100 后，ZIP 将包含角色及其本地引擎，无需第三方代码库或软件包。',
+  'Le ZIP contient une démo index.html et le runtime JavaScript LMSGEN local.':
+    'ZIP 包含 index.html 演示和本地 LMSGEN JavaScript 运行时。',
+  'Le ZIP contient un composant React TypeScript, les données du personnage et le runtime LMSGEN local.':
+    'ZIP 包含 React TypeScript 组件、角色数据和本地 LMSGEN 运行时。',
+  'Télécharger le pack LMSGEN JavaScript (.zip)': '下载 LMSGEN JavaScript 软件包（.zip）',
+  'Télécharger le pack LMSGEN React (.zip)': '下载 LMSGEN React 软件包（.zip）',
   'Télécharger le JSON': '下载 JSON',
   'Utilisation minimale': '最简用法',
   'Utiliser cet avatar': '使用此头像',
