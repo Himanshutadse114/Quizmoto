@@ -1,9 +1,11 @@
 import { topicsForAccess, tourForAccess, searchTopics } from './genny-knowledge.js';
+import { watchGuideViewport } from './genny-viewport.js';
 
 // Static marketing pages use the same product data as the React platform guide.
 // DOM text nodes only: search text is never interpolated into HTML.
 export function mountSiteGuide(doc, { onOpen, onHoverChange } = {}) {
   const win = doc.defaultView;
+  const compactMedia = win.matchMedia('(max-width: 767px)');
   const topics = topicsForAccess();
   const tour = tourForAccess();
   const wrapper = doc.createElement('div');
@@ -42,7 +44,8 @@ export function mountSiteGuide(doc, { onOpen, onHoverChange } = {}) {
   const heading = el('div', '', '', header);
   el('span', 'genny-eyebrow', 'YOUR LEARNING SIDEKICK', heading);
   el('h2', '', 'Ask Genny', heading);
-  const closeButton = button('×', header, close);
+  const closeButton = button('', header, close, 'genny-close');
+  el('span', 'genny-close-icon', '', closeButton).setAttribute('aria-hidden', 'true');
   closeButton.setAttribute('aria-label', 'Close Genny guide');
   const body = el('div', 'genny-guide-body', '', panel);
   el('p', 'genny-intro', 'Big platform. Simple next steps. Choose a feature or let me show you around.', body);
@@ -68,7 +71,9 @@ export function mountSiteGuide(doc, { onOpen, onHoverChange } = {}) {
     else { index = null; try { win.localStorage.setItem('lmsgen-genny-tour-v1:website', 'complete'); } catch { /* optional storage */ } render(); }
   }, 'genny-primary');
   button('End tour', controls, () => { index = null; render(); });
-  const list = el('div', 'genny-topic-list', '', body);
+  const topicDisclosure = el('details', 'genny-detail genny-topics-disclosure', '', body);
+  const topicSummary = el('summary', '', '', topicDisclosure);
+  const list = el('div', 'genny-topic-list', '', topicDisclosure);
   list.setAttribute('aria-label', 'Genny topics');
   const hoverLabel = el('label', 'genny-hover-toggle', '', body);
   const hover = el('input', '', '', hoverLabel);
@@ -80,6 +85,9 @@ export function mountSiteGuide(doc, { onOpen, onHoverChange } = {}) {
     onHoverChange?.(hover.checked);
   });
   el('p', 'genny-safety-note', 'Verified product guidance—not an AI chat. I explain and navigate; I never change your data.', body);
+  const footer = el('footer', 'genny-guide-footer', '', panel);
+  const link = el('a', 'genny-primary genny-visit', 'Explore the platform →', footer);
+  link.href = '/login';
 
   function record(step) {
     index = Math.max(0, Math.min(step, tour.length - 1));
@@ -93,13 +101,14 @@ export function mountSiteGuide(doc, { onOpen, onHoverChange } = {}) {
     el('span', 'genny-eyebrow', selected.label, card);
     el('h3', '', selected.punch, card);
     el('p', '', selected.explanation, card);
-    const steps = el('ol', '', '', card);
+    const workflow = el('details', 'genny-detail genny-workflow', '', card);
+    workflow.open = !compactMedia.matches;
+    el('summary', '', `How it works · ${selected.steps.length} steps`, workflow);
+    const steps = el('ol', '', '', workflow);
     selected.steps.forEach(([title, detail]) => {
       const item = el('li', '', '', steps);
       el('strong', '', title, item); el('span', '', detail, item);
     });
-    const link = el('a', 'genny-primary genny-visit', 'Explore the platform →', card);
-    link.href = '/login';
     controls.hidden = index === null;
     progress.hidden = index === null;
     if (index !== null) {
@@ -110,6 +119,8 @@ export function mountSiteGuide(doc, { onOpen, onHoverChange } = {}) {
     }
     list.replaceChildren();
     const results = searchTopics(query, topics);
+    topicDisclosure.open = !!query || !compactMedia.matches;
+    topicSummary.textContent = `Browse features · ${results.length}`;
     for (const topic of results) {
       const item = el('button', '', topic.label, list);
       item.type = 'button'; item.dataset.topicId = topic.id;
@@ -130,9 +141,12 @@ export function mountSiteGuide(doc, { onOpen, onHoverChange } = {}) {
   }
   function close() {
     panel.hidden = true; wrapper.classList.remove('genny-is-open');
-    launcher.setAttribute('aria-expanded', 'false'); previousFocus?.focus?.();
+    launcher.setAttribute('aria-expanded', 'false');
+    (previousFocus?.isConnected && previousFocus !== doc.body ? previousFocus : launcher).focus();
   }
   listen(doc, 'keydown', (event) => { if (event.key === 'Escape' && !panel.hidden) close(); });
+  listen(compactMedia, 'change', render);
   render(); doc.body.appendChild(wrapper);
+  removers.push(watchGuideViewport(panel));
   return { open, select(topic) { if (index === null && panel.hidden) { selected = topic; render(); } }, destroy() { removers.forEach((remove) => remove()); wrapper.remove(); } };
 }

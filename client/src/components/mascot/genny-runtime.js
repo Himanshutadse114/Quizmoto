@@ -72,7 +72,7 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
   if (platform) root.className += ' lmsgen-mascot-platform';
   root.innerHTML = '<button type="button" class="lmsgen-mascot-bubble" aria-live="polite" aria-atomic="true" hidden></button>' +
     '<button type="button" class="lmsgen-mascot-btn" title="Genny"><span class="lmsgen-mascot-mount"></span></button>' +
-    '<button type="button" class="lmsgen-mascot-dismiss" aria-label="Hide Genny the mascot for this visit" title="Hide">&times;</button>';
+    '<button type="button" class="lmsgen-mascot-dismiss" aria-label="Hide Genny the mascot for this visit" title="Hide"><span class="lmsgen-mascot-dismiss-icon" aria-hidden="true"></span></button>';
   container.appendChild(root);
   const button = root.querySelector('.lmsgen-mascot-btn');
   const bubble = root.querySelector('.lmsgen-mascot-bubble');

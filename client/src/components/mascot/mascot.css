@@ -98,6 +98,14 @@
   cursor: pointer;
 }
 
+/* Draw the cross independently of page button typography. */
+.lmsgen-mascot-dismiss-icon { position: relative; display: block; width: 12px; height: 12px; }
+.lmsgen-mascot-dismiss-icon::before, .lmsgen-mascot-dismiss-icon::after {
+  content: ''; position: absolute; left: 5px; top: 0; width: 2px; height: 12px;
+  background: currentColor; border-radius: 2px; transform: rotate(45deg);
+}
+.lmsgen-mascot-dismiss-icon::after { transform: rotate(-45deg); }
+
 .lmsgen-mascot-bubble[hidden] { display: none !important; }
 .lmsgen-mascot-bubble:focus-visible { outline: 3px solid #0aa184; outline-offset: 4px; }
 
@@ -113,7 +121,7 @@
 }
 
 /* Phones: smaller, tucked in — never covering buttons (guide rule). */
-@media (max-width: 480px) {
+@media (max-width: 767px) {
   .lmsgen-mascot {
     width: 76px;
     right: 12px;
@@ -126,11 +134,13 @@
   }
 
   .lmsgen-mascot-dismiss {
-    width: 44px;
-    height: 44px;
-    top: -20px;
-    right: -4px;
-    font-size: 13px;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    top: -12px;
+    right: 0;
+    box-sizing: border-box;
   }
 }
 

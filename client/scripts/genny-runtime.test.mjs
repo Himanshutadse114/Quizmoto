@@ -6,6 +6,8 @@ import { mountGenny, prepareGennyDefinition, GENNY_TIPS } from '../src/component
 import { GENNY_TOPICS, topicForPath, topicsForAccess, tourForAccess, searchTopics, topicForElement, actionTipForElement } from '../src/components/mascot/genny-knowledge.js';
 import { SCORM_FEATURES } from '../src/pages/Scorm/scormFeatureCatalog.js';
 import { mountSiteGuide } from '../src/components/mascot/genny-site-guide.js';
+import { watchGuideViewport } from '../src/components/mascot/genny-viewport.js';
+import { GENNY_DEMO_GUIDANCE, demoGuidanceFor, demoTopics } from '../src/components/mascot/genny-demo-guidance.js';
 
 const definition = JSON.parse(readFileSync(new URL('../src/components/mascot/genny.avatar.json', import.meta.url)));
 
@@ -17,6 +19,7 @@ class Events {
   count() { return [...this.listeners.values()].reduce((sum, set) => sum + set.size, 0); }
 }
 class Element extends Events {
+  style = { values: new Map(), setProperty(key, value) { this.values.set(key, value); } };
   dataset = {};
   children = [];
   selectors = new Map();
@@ -68,7 +71,7 @@ function fixture(t, { reduced = false, greeted = true, dismissed = false, ...run
       IntersectionObserver: class { constructor(fn) { this.fn = fn; observers.push(this); } observe() {} disconnect() { this.disconnected = true; } },
     });
     const doc = new Element(); doc.hidden = false; doc.body = new Element(); doc.defaultView = win;
-    doc.createElement = () => new Element();
+    doc.createElement = () => { const element = new Element(); element.ownerDocument = doc; return element; };
     return doc;
   }
   const doc = makeDocument();
@@ -314,4 +317,79 @@ test('static guide opens, searches, resumes its tour, closes with Escape and cle
   f.doc.emit('keydown', { key: 'Escape' }); assert.equal(panel.hidden, true);
   const listenersBefore = f.doc.count(); guide.destroy(); assert.equal(f.doc.count(), listenersBefore - 1);
   assert.equal(f.doc.body.children.length, 1);
+});
+
+test('demo guidance covers every visible demo topic without widening route access', () => {
+  const visible = topicsForAccess();
+  assert.equal(Object.keys(GENNY_DEMO_GUIDANCE).length, visible.length);
+  for (const topic of visible) {
+    const guide = demoGuidanceFor(topic);
+    for (const field of ['detail', 'available', 'example', 'tip', 'answer']) assert.ok(guide[field]?.length > 35, `${topic.id}:${field}`);
+    assert.ok(guide.question.length > 15 && guide.question.endsWith('?'), topic.id);
+    assert.ok(guide.next.every((id) => visible.some((item) => item.id === id)));
+  }
+  const limited = topicsForAccess({ allowedRoutes: ['/scorm/publica', '/scorm/settings'] });
+  assert.deepEqual(demoTopics(limited).map((topic) => topic.route), limited.map((topic) => topic.route));
+  assert.equal(demoGuidanceFor({ id: 'danger' }), null);
+  assert.ok(searchTopics('handbook', demoTopics(visible)).some((topic) => topic.id === 'publica'));
+  assert.ok(searchTopics('phishing', demoTopics(visible)).some((topic) => topic.id === 'author'));
+  assert.ok(!visible.some((topic) => topic.searchDetail)); // no mutation of approved/website data
+});
+
+test('demo explanations distinguish allowance, private evidence and locked live operations', () => {
+  assert.match(GENNY_DEMO_GUIDANCE.publica.available, /account limits/);
+  assert.match(GENNY_DEMO_GUIDANCE.courses.available, /does not create tenant learner assignments/);
+  assert.match(GENNY_DEMO_GUIDANCE.quizmoto.available, /locked/);
+  assert.match(GENNY_DEMO_GUIDANCE.reports.tip, /not Publica reader analytics/);
+  assert.match(GENNY_DEMO_GUIDANCE.team.answer, /analytics viewer remains read-only/);
+  const source = readFileSync(new URL('../src/components/mascot/GennyGuide.jsx', import.meta.url), 'utf8');
+  assert.match(source, /const isDemo = platform && !scormAccess/);
+  assert.match(source, /article key=\{selected.id\}/); // topic changes reset disclosures
+  assert.match(source, /open=\{!compact\}/); // mobile workflow starts collapsed
+});
+
+test('guide tracks keyboard viewport, scroll offsets, fallback and cleans every listener', (t) => {
+  const f = fixture(t);
+  const win = f.doc.defaultView;
+  const viewport = new Events(); Object.assign(viewport, { height: 800, offsetTop: 0, scale: 1 });
+  win.visualViewport = viewport;
+  const panel = f.doc.createElement('section');
+  const before = win.count();
+  const stop = watchGuideViewport(panel);
+  assert.equal(panel.style.values.get('--genny-visible-height'), '800px');
+  assert.equal(panel.dataset.gennyKeyboard, 'false');
+  viewport.height = 360; viewport.emit('resize');
+  assert.equal(panel.style.values.get('--genny-visible-bottom'), '440px');
+  assert.equal(panel.dataset.gennyKeyboard, 'true');
+  viewport.offsetTop = 50; viewport.emit('scroll');
+  assert.equal(panel.style.values.get('--genny-visible-bottom'), '390px');
+  viewport.scale = 2; viewport.emit('resize');
+  assert.equal(panel.dataset.gennyKeyboard, 'false'); // zoom is not treated as a keyboard
+  viewport.height = 800; viewport.offsetTop = 0; viewport.scale = 1; viewport.emit('resize');
+  assert.equal(panel.style.values.get('--genny-visible-bottom'), '0px');
+  stop(); assert.equal(win.count(), before); assert.equal(viewport.count(), 0);
+  delete win.visualViewport;
+  const fallback = watchGuideViewport(panel);
+  win.innerHeight = 500; win.emit('resize');
+  assert.equal(panel.style.values.get('--genny-visible-height'), '500px');
+  fallback(); assert.equal(win.count(), before);
+});
+
+test('static guide collapses mobile details on breakpoint changes and preserves its footer', (t) => {
+  const f = fixture(t);
+  const compact = new Events(); compact.matches = false;
+  f.doc.defaultView.matchMedia = () => compact;
+  const guide = mountSiteGuide(f.doc);
+  const root = f.doc.body.children.at(-1);
+  const find = (node, className) => node.className === className ? node : node.children.map((child) => find(child, className)).find(Boolean);
+  assert.equal(find(root, 'genny-detail genny-workflow').open, true);
+  compact.matches = true; compact.emit('change');
+  assert.equal(find(root, 'genny-detail genny-workflow').open, false);
+  assert.equal(find(root, 'genny-detail genny-topics-disclosure').open, false);
+  const footer = find(root, 'genny-guide-footer');
+  assert.equal(footer.children[0].href, '/login');
+  compact.matches = false; compact.emit('change');
+  assert.equal(find(root, 'genny-detail genny-workflow').open, true);
+  assert.equal(find(root, 'genny-guide-footer'), footer);
+  guide.destroy(); assert.equal(compact.count(), 0);
 });

@@ -15,13 +15,17 @@
 .genny-guide {
   position: fixed; z-index: 45; right: 20px; bottom: 62px;
   box-sizing: border-box;
-  width: min(380px, calc(100vw - 32px)); max-height: min(690px, calc(100dvh - 160px));
+  width: min(380px, calc(100% - 32px)); max-height: min(690px, calc(var(--genny-visible-height, 100dvh) - 100px));
+  bottom: calc(62px + var(--genny-visible-bottom, 0px));
   display: flex; flex-direction: column; overflow: hidden;
   background: var(--scorm-surface, #fff); border: 1px solid var(--scorm-line, #c2d5d0);
   border-radius: 18px; box-shadow: 0 16px 52px #001f1830;
   text-align: left; line-height: 1.5;
 }
-.genny-guide-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--scorm-line, #d6e2df); }
+.genny-guide-header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--scorm-line, #d6e2df); }
+.genny-guide-header > div { min-width: 0; }
+.genny-guide-footer { flex: 0 0 auto; padding: 10px 14px; border-top: 1px solid var(--scorm-line, #d6e2df); }
+.genny-guide-footer > .genny-primary { width: 100%; justify-content: center; }
 .genny-guide h2 { font-family: inherit !important; font-size: 20px !important; font-weight: 700; line-height: 1.3; margin: 3px 0 0 !important; text-transform: none; letter-spacing: normal; }
 .genny-guide h3 { font-family: inherit !important; font-size: 17px !important; font-weight: 700; line-height: 1.4; margin: 5px 0 8px !important; text-transform: none; letter-spacing: normal; }
 .genny-guide p { font-size: 13px; margin: 0 0 12px; line-height: 1.6; color: var(--scorm-ink-soft, #46605a); }
@@ -31,12 +35,25 @@
 .genny-guide .genny-primary { background: #097d6a; color: #fff; border-color: #097d6a; }
 .genny-guide .genny-visit { display: inline-flex; align-items: center; min-height: 40px; box-sizing: border-box; padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: 650; text-decoration: none; }
 .genny-guide[hidden], .genny-guide [hidden] { display: none !important; }
-.genny-guide-header > button { width: 40px; padding: 0; font-size: 24px; background: transparent; }
-.genny-guide-body { padding: 16px 18px; overflow-y: auto; overscroll-behavior: contain; }
+.genny-guide-header > .genny-close { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; min-height: 40px; padding: 0; background: transparent; }
+.genny-close-icon { display: block; position: relative; width: 14px; height: 14px; }
+.genny-close-icon::before, .genny-close-icon::after { content: ''; position: absolute; top: 0; left: 6px; width: 2px; height: 14px; background: currentColor; border-radius: 2px; transform: rotate(45deg); }
+.genny-close-icon::after { transform: rotate(-45deg); }
+.genny-guide-body { min-height: 0; padding: 16px 18px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; overflow-wrap: anywhere; }
+.genny-guide *, .genny-guide *::before, .genny-guide *::after { box-sizing: border-box; }
+.genny-detail { margin: 0 0 10px; border-bottom: 1px solid var(--scorm-line, #d6e2df); }
+.genny-detail > summary { display: list-item; padding: 10px 0; font-size: 12px; font-weight: 650; line-height: 1.5; cursor: pointer; }
+.genny-detail > summary:focus-visible { outline: 3px solid #0aa184; outline-offset: 2px; border-radius: 4px; }
+.genny-detail > summary::marker { color: var(--scorm-accent-strong, #097d6a); }
+.genny-detail p { margin-bottom: 10px; }
+.genny-detail ul { padding-left: 18px; margin: 10px 0; }
+.genny-detail-label { display: block; font-size: 12px; margin: 8px 0 4px; }
+.genny-next { margin-top: 10px; margin-bottom: 0; border: 0; }
 .genny-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .08em; color: var(--scorm-accent-strong, #097d6a); }
 .genny-guide-toolbar, .genny-tour-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
 .genny-search { display: block; font-size: 11px; font-weight: 650; margin-bottom: 14px; }
 .genny-search input { display: block; box-sizing: border-box; width: 100%; min-height: 42px; margin-top: 5px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--scorm-line, #c2d5d0); background: var(--scorm-surface-soft, #f6faf8); color: inherit; font: inherit; font-size: 13px; }
+.genny-search input::placeholder { color: var(--scorm-ink-soft, #46605a); opacity: 1; }
 .genny-topic-card { border: 1px solid var(--scorm-line, #d6e2df); border-radius: 12px; padding: 14px; margin-bottom: 14px; background: var(--scorm-surface-soft, #f6faf8); }
 .genny-topic-card ol { padding-left: 19px; margin: 12px 0 14px; }
 .genny-topic-card li { padding-left: 3px; margin: 0 0 10px; font-size: 12px; }
@@ -57,12 +74,40 @@ body:has(.genny-website.genny-is-open) > .lmsgen-mascot-site { visibility: hidde
 .lmsgen-mascot-platform { width: 88px; bottom: 60px; z-index: 39; }
 .genny-platform[hidden], .genny-website[hidden] { display: none; }
 @media (max-width: 767px) {
-  .genny-platform .genny-launcher { bottom: 94px; right: 12px; }
-  .lmsgen-mascot-platform { width: 76px; bottom: 144px; right: 12px; }
-  .genny-guide { left: 12px; right: 12px; width: auto; bottom: 60px; max-height: calc(100dvh - 150px); }
-  .genny-platform .genny-guide { bottom: 144px; max-height: calc(100dvh - 230px); }
-  .genny-guide-body { padding: 14px; }
-  .genny-guide button { min-height: 44px; }
-  .genny-topic-list button { min-height: 40px; }
+  .genny-launcher { min-height: 40px; right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); }
+  .genny-platform .genny-launcher { bottom: calc(94px + env(safe-area-inset-bottom)); }
+  .lmsgen-mascot-platform { width: 72px; bottom: calc(144px + env(safe-area-inset-bottom)); right: max(12px, env(safe-area-inset-right)); }
+  .genny-is-open .genny-launcher { visibility: hidden; }
+  .genny-guide {
+    --genny-bottom-gap: 12px;
+    left: auto; right: max(12px, env(safe-area-inset-right));
+    width: min(340px, calc(100% - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    bottom: calc(var(--genny-bottom-gap) + var(--genny-visible-bottom, 0px) + env(safe-area-inset-bottom));
+    max-height: min(460px, calc(var(--genny-visible-height, 100dvh) * .58), calc(var(--genny-visible-height, 100dvh) - var(--genny-bottom-gap) - 12px - env(safe-area-inset-bottom)));
+    border-radius: 14px;
+  }
+  .genny-platform .genny-guide { --genny-bottom-gap: 94px; }
+  .genny-guide[data-genny-keyboard="true"] { --genny-bottom-gap: 12px; max-height: calc(var(--genny-visible-height, 100dvh) - 24px - env(safe-area-inset-bottom)); }
+  .genny-guide-header { padding: 8px 12px; gap: 8px; }
+  .genny-guide h2 { font-size: 17px !important; margin-top: 1px !important; }
+  .genny-guide h3 { font-size: 15px !important; }
+  .genny-guide-header > .genny-close { flex-basis: 40px; }
+  .genny-guide-body { padding: 10px 12px; }
+  .genny-guide .genny-intro { display: none; }
+  .genny-guide-toolbar { gap: 6px; margin-bottom: 10px; }
+  .genny-guide-toolbar > button { flex: 1 1 0; min-width: 0; padding: 6px 8px; }
+  .genny-guide button { min-height: 40px; }
+  .genny-search { margin-bottom: 10px; }
+  .genny-search input { min-height: 40px; font-size: 16px; } /* avoids focus-zoom on iOS */
+  .genny-topic-card { padding: 10px; margin-bottom: 10px; }
+  .genny-guide-footer { padding: 8px 12px; }
+  .genny-detail > summary { min-height: 40px; padding: 9px 0; }
+  .genny-topic-list button { min-height: 36px; }
+  .genny-guide .genny-hover-toggle { min-height: 40px; }
+  .genny-tour-controls { gap: 6px; }
+  .genny-tour-controls button { flex: 1 1 0; min-width: 0; }
+}
+@media (max-width: 767px) and (max-height: 480px) {
+  .genny-guide { max-height: min(320px, calc(var(--genny-visible-height, 100dvh) - var(--genny-bottom-gap) - 12px - env(safe-area-inset-bottom))); }
 }
 @media (prefers-reduced-motion: reduce) { .genny-guide *, .genny-launcher { scroll-behavior: auto; } }

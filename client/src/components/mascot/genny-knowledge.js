@@ -52,7 +52,7 @@ export function searchTopics(query, topics = GENNY_TOPICS) {
   if (!words.length) return topics;
   return topics.map((topic) => {
     const title = normaliseTopicText(`${topic.label} ${topic.aliases.join(' ')}`);
-    const body = normaliseTopicText(`${topic.explanation} ${(topic.capabilities || []).join(' ')} ${topic.steps.flat().join(' ')}`);
+    const body = normaliseTopicText(`${topic.explanation} ${(topic.capabilities || []).join(' ')} ${topic.steps.flat().join(' ')} ${topic.searchDetail || ''}`);
     return { topic, score: words.reduce((sum, word) => sum + (title.includes(word) ? 3 : body.includes(word) ? 1 : 0), 0) };
   }).filter(({ score }) => score > 0).sort((a, b) => b.score - a.score).map(({ topic }) => topic);
 }
