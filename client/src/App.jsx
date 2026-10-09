@@ -70,6 +70,7 @@ const ScormAwarenessEmailCampaignDetail = lazy(() => import('./pages/Scorm/Aware
 const ScormPresentationEditor = lazy(() => import('./pages/Scorm/PresentationEditor'));
 const ScormReports = lazy(() => import('./pages/Scorm/Reports'));
 const ScormVisualStudio = lazy(() => import('./pages/Scorm/VisualStudio'));
+const AvatarStudio = lazy(() => import('./pages/Scorm/AvatarStudio'));
 const ScormAccessAdmin = lazy(() => import('./pages/Scorm/AccessAdmin'));
 const ScormTeamAccess = lazy(() => import('./pages/Scorm/TeamAccess'));
 
@@ -185,6 +186,13 @@ function LegacyPublicaShareRedirect({ library = false }) {
   return <Navigate to={`${library ? '/publica-library' : '/publica'}/${shareToken || ''}${search}`} replace />;
 }
 
+function LegacyAteloraRedirect() {
+  const location = useLocation();
+  if (location.pathname === '/atelora/login') return <Navigate to="/login" replace />;
+  const suffix = location.pathname.replace(/^\/atelora/, '');
+  return <Navigate to={`/scorm${suffix}${location.search}${location.hash}`} replace />;
+}
+
 function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
@@ -248,6 +256,7 @@ function AppRoutes() {
           <Route path="awareness-templates/campaigns/:campaignId" element={<ScormFeatureGate featureId="awareness"><ScormAwarenessEmailCampaignDetail /></ScormFeatureGate>} />
           <Route path="presentation/edit/:packageId" element={<ScormFeatureGate featureId="author"><ScormPresentationEditor /></ScormFeatureGate>} />
           <Route path="visual-studio" element={<ScormFeatureGate featureId="visualStudio"><ScormVisualStudio /></ScormFeatureGate>} />
+          <Route path="avatar-studio" element={<AvatarStudio />} />
           <Route path="reports" element={<ScormFeatureGate featureId="reports" analyticsAllowed><ScormReports /></ScormFeatureGate>} />
           <Route path="team" element={<WorkspaceAdminGate featureId="team"><ScormTeamAccess /></WorkspaceAdminGate>} />
           <Route path="learner-access" element={<WorkspaceAdminGate featureId="sso"><ScormLearnerAccessSettings /></WorkspaceAdminGate>} />
@@ -263,6 +272,7 @@ function AppRoutes() {
         <Route path="/scorm/live-quiz/lobby/:pin" element={<LegacyQuizRedirect kind="lobby" />} />
         <Route path="/scorm/live-quiz/game/:pin" element={<LegacyQuizRedirect kind="game" />} />
 
+        <Route path="/atelora/*" element={<LegacyAteloraRedirect />} />
         <Route path="/dashboard" element={<LegacyQuizRedirect kind="dashboard" />} />
         <Route path="/create-quiz" element={<LegacyQuizRedirect kind="create" />} />
         <Route path="/edit-quiz/:id" element={<LegacyQuizRedirect kind="edit" />} />

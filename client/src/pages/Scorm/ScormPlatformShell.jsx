@@ -25,7 +25,8 @@ import {
   Users,
   Megaphone,
   Mail,
-  Settings
+  Settings,
+  Bot
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import ScormGenerationNotifier from '../../components/ScormGenerationNotifier';
@@ -63,6 +64,7 @@ const OPERATIONAL_NAV_GROUPS = [
       { to: '/scorm/roster', label: 'Learner Roster', icon: UserCheck, requiresScorm: true },
       { to: '/scorm/assignments', label: 'Campaigns', icon: Megaphone, requiresScorm: true },
       { to: '/scorm/visual-studio', label: 'Content Editor', icon: Palette, requiresScorm: true },
+      { to: '/scorm/avatar-studio', label: 'Avatar Studio', icon: Bot, unlocked: true },
       { to: '/scorm/library', label: 'Course Library', icon: Library, requiresScorm: true },
       { to: '/scorm/tracking', label: 'Learner Tracking', icon: Activity, requiresScorm: true },
       { to: '/scorm/reports', label: 'Reports & Insights', icon: BarChart3, requiresScorm: true }
@@ -73,7 +75,10 @@ const OPERATIONAL_NAV_GROUPS = [
 const ANALYTICS_NAV_GROUPS = [
   {
     label: 'Free tools',
-    items: [{ to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck, unlocked: true }]
+    items: [
+      { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck, unlocked: true },
+      { to: '/scorm/avatar-studio', label: 'Avatar Studio', icon: Bot, unlocked: true }
+    ]
   },
   {
     label: 'Analytics',
@@ -111,6 +116,7 @@ const DEMO_NAV_GROUPS = [
       { to: '/scorm/author', label: 'AI Course Author', icon: Sparkles, requiresScorm: true },
       { to: '/scorm/awareness-templates', label: 'Awareness Emails', icon: Mail, requiresScorm: true },
       { to: '/scorm/visual-studio', label: 'Content Editor', icon: Palette, requiresScorm: true },
+      { to: '/scorm/avatar-studio', label: 'Avatar Studio', icon: Bot, unlocked: true },
       { to: '/scorm/library', label: 'Course Library', icon: Library, requiresScorm: true }
     ]
   },
@@ -254,21 +260,24 @@ function MobileTabBar({ scormAccess, role }) {
         { to: '/scorm', end: true, label: 'Tour', icon: LayoutDashboard },
         { to: '/scorm/courses', label: 'Course', icon: BookOpen },
         { to: '/scorm/quizmoto', label: 'Quizmoto', icon: LockKeyhole },
-        { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck }
+        { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck },
+        { to: '/scorm/avatar-studio', label: 'Avatars', icon: Bot }
       ]
     : analyticsOnly
       ? [
           { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck },
           { to: '/scorm/tracking', label: 'Tracking', icon: Activity },
-          { to: '/scorm/reports', label: 'Reports', icon: BarChart3 }
+          { to: '/scorm/reports', label: 'Reports', icon: BarChart3 },
+          { to: '/scorm/avatar-studio', label: 'Avatars', icon: Bot }
         ]
       : [
           { to: '/scorm', end: true, label: 'Home', icon: LayoutDashboard },
           { to: '/scorm/quizmoto', label: 'Quizmoto', icon: Gamepad2 },
           { to: '/scorm/publica', label: 'Publica', icon: BookOpenCheck },
+          { to: '/scorm/avatar-studio', label: 'Avatars', icon: Bot },
           { to: '/scorm/author', label: scormAccess ? 'Create' : 'Locked', icon: scormAccess ? Sparkles : LockKeyhole }
         ];
-  const gridClass = analyticsOnly ? 'grid-cols-3' : 'grid-cols-4';
+  const gridClass = analyticsOnly ? 'grid-cols-4' : 'grid-cols-5';
   return <div className={`scorm-mobile-tabbar lg:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40 grid ${gridClass} p-1.5`}>{items.map(({ to, end, label, icon }) => <NavLink key={to} to={to} end={end} className={({ isActive }) => `scorm-mobile-tab ${isActive ? 'is-active' : ''} flex flex-col items-center justify-center gap-1 px-3 py-2`}>{React.createElement(icon, { size: 17, strokeWidth: 2 })}<span>{label}</span></NavLink>)}</div>;
 }
 

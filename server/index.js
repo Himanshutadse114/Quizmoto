@@ -271,6 +271,7 @@ const startServer = async () => {
         // the SCORM administrator middleware. Every learner operation has its own
         // assignment-bound JWT checks in ScormLearnerAuthService.
         app.use('/api/scorm-learner', require('./routes/scormLearner'));
+        app.use('/api/avatar-studio/payments', require('./routes/scorm/avatarStudioPayments'));
 
         // SCORM World LMS (flag-gated inside router — returns 404 when SCORM_LMS=false)
         app.use('/api/scorm', require('./routes/scorm'));

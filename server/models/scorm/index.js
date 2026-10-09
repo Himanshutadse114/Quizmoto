@@ -29,6 +29,7 @@ const ScormAwarenessEmailCampaign = require('./ScormAwarenessEmailCampaign');
 const ScormAwarenessEmailCampaignRecipient = require('./ScormAwarenessEmailCampaignRecipient');
 const ScormCourseCatalogGrant = require('./ScormCourseCatalogGrant');
 const ScormCourseProvision = require('./ScormCourseProvision');
+const AvatarExportPurchase = require('./AvatarExportPurchase');
 
 ScormPackage.hasMany(ScormCourse, { foreignKey: 'packageId', as: 'courses' });
 ScormCourse.belongsTo(ScormPackage, { foreignKey: 'packageId', as: 'package' });
@@ -127,7 +128,8 @@ const models = {
     ScormAwarenessEmailCampaign,
     ScormAwarenessEmailCampaignRecipient,
     ScormCourseCatalogGrant,
-    ScormCourseProvision
+    ScormCourseProvision,
+    AvatarExportPurchase
 };
 
 module.exports = models;

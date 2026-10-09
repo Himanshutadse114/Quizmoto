@@ -1,18 +1,23 @@
 # Build stage
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /app
+
+RUN corepack enable
 
 COPY package*.json ./
 RUN npm install
 
 COPY . .
+# Build the independently licensed Avatar Studio bundle under /avatar-studio/.
+RUN cd avatar-studio && pnpm install --frozen-lockfile && VITE_LMSGEN_PAID_EXPORTS=1 pnpm build
 RUN npm run build -- --base=/
 
 # Production stage
 FROM nginx:stable-alpine
 
 COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/avatar-studio/dist /usr/share/nginx/html/avatar-studio
 
 # Serve public marketing pages directly from the prepared /landing output while
 # keeping the authenticated LMS on the preserved React app shell (app.html).
