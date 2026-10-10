@@ -139,14 +139,18 @@ test('reactions are once-only, short, non-mutating and waking opens its eyes', (
     if (['idle', 'sleeping'].includes(name)) assert.equal(animation.playbackMode, 'loop');
     else {
       assert.equal(animation.playbackMode, 'once');
-      assert.ok(animation.steps.reduce((sum, step) => sum + step.holdMs + step.transitionMs, 0) < 3000);
+      const duration = animation.steps.reduce((sum, step) => sum + step.holdMs + step.transitionMs, 0);
+      if (['afraid', 'angry'].includes(name)) assert.equal(duration, 4000, name);
+      else assert.ok(duration < 3000, name);
     }
   }
   assert.equal(tuned.animations.waking.steps.at(-1).expression, 'neutral');
   assert.equal(definition.animations.laughing.playbackMode, 'loop');
   assert.ok(tuned.animations.idle.steps[0].holdMs < 2000);
   for (const mood of ['listening', 'searching', 'bored', 'suspicious', 'angry', 'surprised', 'afraid', 'curious', 'proud', 'shy', 'sad']) assert.ok(tuned.animations[mood], mood);
-  assert.ok(tuned.animations.afraid.steps.reduce((sum, step) => sum + step.holdMs + step.transitionMs, 0) >= 2200);
+  for (const mood of ['afraid', 'angry']) {
+    assert.equal(tuned.animations[mood].steps.reduce((sum, step) => sum + step.holdMs + step.transitionMs, 0), 4000);
+  }
 });
 
 test('the real avatar engine completes each transient reaction naturally', () => {
@@ -155,7 +159,7 @@ test('the real avatar engine completes each transient reaction naturally', () =>
     const start = playAvatarAnimation(tuned, name, 0);
     assert.equal(start.ok, true);
     let state = start.value;
-    for (let time = 20; time <= 3500; time += 20) state = advanceAvatarPlayback(tuned, state, time, { random: () => 0.5 });
+    for (let time = 20; time <= 4500; time += 20) state = advanceAvatarPlayback(tuned, state, time, { random: () => 0.5 });
     assert.equal(state.status, 'stopped', name);
   }
 });
@@ -270,6 +274,8 @@ test('mobile dragging stays inside the visual viewport and above workspace navig
   const button = f.root.querySelector('.lmsgen-mascot-btn');
   button.emit('pointerdown', { pointerId: 8, button: 0, clientX: 220, clientY: 220 });
   button.emit('pointermove', { pointerId: 8, clientX: 900, clientY: 900, preventDefault() {} });
+  assert.equal(f.plays.at(-1), 'afraid');
+  assert.equal(f.root.dataset.mode, 'busy');
   button.emit('pointerup', { pointerId: 8 });
   assert.equal(f.root.style.values.get('--genny-left'), '250px');
   assert.equal(f.root.style.values.get('--genny-top'), '354px');

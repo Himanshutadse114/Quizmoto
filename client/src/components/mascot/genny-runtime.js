@@ -68,13 +68,18 @@ export function prepareGennyDefinition(source, { platform = false } = {}) {
     if (animations[name]) continue;
     const available = expressionNames.filter((expression) => expressions[expression]);
     if (!available.length) continue;
+    const sustained = name === 'afraid' || name === 'angry';
+    const transitionMs = sustained ? 200 : 180;
+    const sustainedHoldBudget = 4000 - available.length * transitionMs;
+    const sustainedHoldMs = Math.floor(sustainedHoldBudget / available.length);
+    const sustainedRemainder = sustainedHoldBudget % available.length;
     animations[name] = {
       playbackMode: 'once',
       blink: { ...source.animations.idle.blink, enabled: name !== 'angry' },
-      steps: available.map((expression) => ({
+      steps: available.map((expression, index) => ({
         expression,
-        holdMs: name === 'afraid' ? 600 : 260,
-        transitionMs: name === 'afraid' ? 200 : 180,
+        holdMs: sustained ? sustainedHoldMs + (index < sustainedRemainder ? 1 : 0) : 260,
+        transitionMs,
         transition: 'snappy',
       })),
     };
