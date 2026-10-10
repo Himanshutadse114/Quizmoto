@@ -10,6 +10,7 @@ import { mountSiteGuide } from '../src/components/mascot/genny-site-guide.js';
 import { watchGuideViewport } from '../src/components/mascot/genny-viewport.js';
 import { GENNY_DEMO_GUIDANCE, demoGuidanceFor, demoTopics } from '../src/components/mascot/genny-demo-guidance.js';
 import { GENNY_PERSONAS, GENNY_WEBSITE_TOPICS, GENNY_WEBSITE_TOUR } from '../src/components/mascot/genny-personas.js';
+import { GENNY_EMOTION_PROFILES, emotionDuration } from '../src/components/mascot/genny-emotion-model.js';
 
 const definition = JSON.parse(readFileSync(new URL('../src/components/mascot/genny.avatar.json', import.meta.url)));
 
@@ -147,11 +148,15 @@ test('reactions are once-only, short, non-mutating and waking opens its eyes', (
   assert.equal(tuned.animations.waking.steps.at(-1).expression, 'neutral');
   assert.equal(definition.animations.laughing.playbackMode, 'loop');
   assert.ok(tuned.animations.idle.steps[0].holdMs < 2000);
-  for (const mood of ['listening', 'searching', 'bored', 'suspicious', 'angry', 'surprised', 'afraid', 'curious', 'proud', 'shy', 'sad']) assert.ok(tuned.animations[mood], mood);
-  for (const mood of ['afraid', 'angry']) {
-    assert.equal(tuned.animations[mood].steps.reduce((sum, step) => sum + step.holdMs + step.transitionMs, 0), 4000);
+  for (const [mood, profile] of Object.entries(GENNY_EMOTION_PROFILES)) {
+    assert.ok(tuned.animations[mood], mood);
+    if (!definition.animations[mood]) assert.equal(emotionDuration(tuned.animations[mood]), profile.durationMs, mood);
   }
-  assert.equal(tuned.animations.shy.steps.reduce((sum, step) => sum + step.holdMs + step.transitionMs, 0), 2400);
+  assert.equal(emotionDuration(tuned.animations.afraid), 4000);
+  assert.equal(emotionDuration(tuned.animations.angry), 4000);
+  assert.equal(emotionDuration(tuned.animations.shy), 2400);
+  const usedExpressions = new Set(Object.values(tuned.animations).flatMap((animation) => animation.steps.map((step) => step.expression)));
+  assert.deepEqual(tuned.expressionOrder.filter((expression) => !usedExpressions.has(expression)), []);
 });
 
 test('the real avatar engine completes each transient reaction naturally', () => {
@@ -271,6 +276,8 @@ test('fear flows directly into a shy recovery without flashing the normal idle p
   assert.deepEqual(f.plays.slice(beforeRecovery), ['shy']);
   assert.equal(f.root.dataset.mode, 'busy');
   f.options.onAnimationEnd('shy'); f.tick(0);
+  assert.equal(f.plays.at(-1), 'relieved');
+  f.options.onAnimationEnd('relieved'); f.tick(0);
   assert.equal(f.plays.at(-1), 'idle');
 });
 
@@ -370,10 +377,31 @@ test('dynamic form and disclosure interactions use the expanded mood set', (t) =
   const field = new Element(); field.matches = (selector) => selector.includes('input');
   f.doc.emit('focusin', { target: field }); assert.equal(f.plays.at(-1), 'listening');
   f.doc.emit('input', { target: field }); assert.equal(f.plays.at(-1), 'working');
-  f.doc.emit('invalid', { target: field }); assert.equal(f.plays.at(-1), 'sad');
+  f.doc.emit('invalid', { target: field }); assert.equal(f.plays.at(-1), 'disappointed');
   const details = new Element(); details.open = true; details.matches = (selector) => selector === 'details';
-  f.doc.emit('toggle', { target: details }); f.options.onAnimationEnd('sad'); f.tick(0);
+  f.doc.emit('toggle', { target: details }); f.options.onAnimationEnd('disappointed'); f.tick(0);
   assert.equal(f.plays.at(-1), 'curious');
+});
+
+test('pointer gaze follows the cursor and becomes happy after four playful side sweeps', (t) => {
+  const f = fixture(t); f.mascot.bindDocument(f.doc); f.tick(1500);
+  for (const x of [20, 350, 20]) {
+    f.doc.emit('pointermove', { pointerType: 'mouse', clientX: x, clientY: 160 }); f.tick(150);
+    assert.notEqual(f.plays.at(-1), 'happy');
+  }
+  f.doc.emit('pointermove', { pointerType: 'mouse', clientX: 350, clientY: 160 });
+  assert.equal(f.plays.at(-1), 'happy');
+});
+
+test('platform events can request valid emotions while invalid names are ignored', (t) => {
+  const f = fixture(t); f.mascot.bindDocument(f.doc);
+  f.doc.emit('genny:emotion', { detail: { name: 'grateful', message: 'Saved safely.' } });
+  assert.equal(f.plays.at(-1), 'grateful');
+  assert.equal(f.root.dataset.emotion, 'grateful');
+  assert.equal(f.root.querySelector('.lmsgen-mascot-bubble').textContent, 'Saved safely.');
+  const count = f.plays.length;
+  f.doc.emit('genny:emotion', { detail: { name: 'not-real' } });
+  assert.equal(f.plays.length, count);
 });
 
 test('touch and opt-out skip hover; reduced motion still permits explicit guidance', (t) => {
@@ -737,5 +765,8 @@ test('guide sizing and layering stay scoped; platform artwork has no alternate u
   assert.match(mascotCss, /safe-area-inset-right/);
   assert.match(mascotCss, /--genny-visible-width/);
   assert.match(mascotCss, /width: 40px/);
+  assert.match(mascotCss, /data-emotion="afraid"/);
+  assert.match(mascotCss, /lmsgen-mascot-tremble/);
+  assert.match(mascotCss, /prefers-reduced-motion:[\s\S]*data-emotion/);
   assert.doesNotMatch(mascotCss, /#164e63|#ecfeff|distinct uniform/);
 });
