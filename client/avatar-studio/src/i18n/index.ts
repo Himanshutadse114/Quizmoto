@@ -150,6 +150,10 @@ const english: Record<string, string> = {
   'Export gratuit inclus pour le Super Admin.': 'Free exports are included for the Super Admin.',
   'Export gratuit accordé à ce tenant.': 'Free exports are enabled for this tenant.',
   'Export gratuit accordé à cet utilisateur.': 'Free exports are enabled for this user.',
+  'Option d’accès gratuit': 'Free access option',
+  'Suis la page LinkedIn de LMSGEN et commente « I followed » sur n’importe quelle publication. Demande ensuite au Super Admin d’activer ton compte ou ton tenant.':
+    'Follow the LMSGEN LinkedIn page and comment “I followed” on any post. Then ask the Super Admin to enable your account or tenant.',
+  'Suivre LMSGEN sur LinkedIn': 'Follow LMSGEN on LinkedIn',
   'Le téléchargement de cet avatar est déjà débloqué.':
     'This avatar download has already been unlocked.',
   'Copier le JSON formaté': 'Copy formatted JSON',

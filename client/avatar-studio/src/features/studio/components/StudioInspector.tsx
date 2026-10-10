@@ -7,6 +7,7 @@ import {
   ChevronUp,
   Copy,
   Download,
+  ExternalLink,
   FileCode2,
   Move3D,
   Pencil,
@@ -1737,28 +1738,49 @@ export function StudioInspector({ controller }: { controller: StudioController }
                     </div>
 
                     {import.meta.env.VITE_LMSGEN_PAID_EXPORTS === '1' && (
-                      <div className="avatar-export-purchase-note">
-                        <strong>
-                          {avatarExportEntitlement?.complimentary
-                            ? t('Inclus')
-                            : avatarExportEntitlement?.purchased
-                              ? t('Payé')
-                              : '₹100'}
-                        </strong>
-                        <span>
-                          {t(
-                            avatarExportEntitlement?.complimentary
-                              ? avatarExportEntitlement.source === 'super_admin'
-                                ? 'Export gratuit inclus pour le Super Admin.'
-                                : avatarExportEntitlement.source === 'tenant'
-                                  ? 'Export gratuit accordé à ce tenant.'
-                                  : 'Export gratuit accordé à cet utilisateur.'
+                      <>
+                        <div className="avatar-export-purchase-note">
+                          <strong>
+                            {avatarExportEntitlement?.complimentary
+                              ? t('Inclus')
                               : avatarExportEntitlement?.purchased
-                                ? 'Le téléchargement de cet avatar est déjà débloqué.'
-                                : 'Paiement unique pour télécharger les fichiers de cet avatar.'
-                          )}
-                        </span>
-                      </div>
+                                ? t('Payé')
+                                : '₹100'}
+                          </strong>
+                          <span>
+                            {t(
+                              avatarExportEntitlement?.complimentary
+                                ? avatarExportEntitlement.source === 'super_admin'
+                                  ? 'Export gratuit inclus pour le Super Admin.'
+                                  : avatarExportEntitlement.source === 'tenant'
+                                    ? 'Export gratuit accordé à ce tenant.'
+                                    : 'Export gratuit accordé à cet utilisateur.'
+                                : avatarExportEntitlement?.purchased
+                                  ? 'Le téléchargement de cet avatar est déjà débloqué.'
+                                  : 'Paiement unique pour télécharger les fichiers de cet avatar.'
+                            )}
+                          </span>
+                        </div>
+                        {!avatarExportEntitlement?.purchased && (
+                          <div className="avatar-export-free-note">
+                            <strong>{t('Option d’accès gratuit')}</strong>
+                            <span>
+                              {t(
+                                'Suis la page LinkedIn de LMSGEN et commente « I followed » sur n’importe quelle publication. Demande ensuite au Super Admin d’activer ton compte ou ton tenant.'
+                              )}
+                            </span>
+                            <a
+                              className="avatar-export-linkedin-link"
+                              href="https://www.linkedin.com/company/lmsgen"
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              <ExternalLink aria-hidden="true" />
+                              {t('Suivre LMSGEN sur LinkedIn')}
+                            </a>
+                          </div>
+                        )}
+                      </>
                     )}
                     <div className="runtime-export-actions">
                       <Button

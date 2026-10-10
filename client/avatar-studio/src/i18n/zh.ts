@@ -118,6 +118,10 @@ export const chinese: Record<string, string> = {
   'Export gratuit inclus pour le Super Admin.': '超级管理员可免费导出。',
   'Export gratuit accordé à ce tenant.': '此租户已启用免费导出。',
   'Export gratuit accordé à cet utilisateur.': '此用户已启用免费导出。',
+  'Option d’accès gratuit': '免费访问选项',
+  'Suis la page LinkedIn de LMSGEN et commente « I followed » sur n’importe quelle publication. Demande ensuite au Super Admin d’activer ton compte ou ton tenant.':
+    '关注 LMSGEN 的 LinkedIn 页面，并在任意帖子下评论“I followed”。然后请超级管理员为你的账户或租户启用访问权限。',
+  'Suivre LMSGEN sur LinkedIn': '在 LinkedIn 上关注 LMSGEN',
   'Le téléchargement de cet avatar est déjà débloqué.': '此头像的下载权限已解锁。',
   'Copier le JSON formaté': '复制格式化的 JSON',
   'Copier le JSON': '复制 JSON',

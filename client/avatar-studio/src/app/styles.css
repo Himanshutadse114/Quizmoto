@@ -746,6 +746,47 @@ input {
   font-size: 14px;
   white-space: nowrap;
 }
+.avatar-export-free-note {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 11px 12px;
+  border: 1px dashed color-mix(in srgb, var(--primary) 38%, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--primary) 5%, var(--card));
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.avatar-export-free-note strong {
+  color: var(--foreground);
+}
+.avatar-export-linkedin-link {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px solid color-mix(in srgb, var(--primary) 48%, var(--border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--primary) 14%, var(--card));
+  color: var(--primary);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+}
+.avatar-export-linkedin-link:hover {
+  background: color-mix(in srgb, var(--primary) 21%, var(--card));
+}
+.avatar-export-linkedin-link svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
 .runtime-export-actions {
   display: grid;
   gap: 8px;
@@ -3638,6 +3679,20 @@ p {
 }
 
 @media (max-width: 600px) {
+  .studio-root {
+    --mobile-mode-tabs-height: calc(70px + env(safe-area-inset-bottom));
+  }
+
+  .inspector.expression-workspace-active,
+  .inspector.sequence-workspace-active,
+  .inspector.body-workspace {
+    --app-footer-clearance: 220px;
+  }
+
+  .inspector.state-player-active {
+    --app-footer-clearance: 290px;
+  }
+
   .dialog-content {
     width: calc(100vw - 20px);
     max-height: 90dvh;
@@ -4694,6 +4749,8 @@ h3,
   }
 
   .mobile-mode-tabs {
+    min-height: var(--mobile-mode-tabs-height);
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
     border-top-color: #1b3340;
     background: rgb(5 13 21 / 96%);
   }
@@ -4773,8 +4830,13 @@ h3,
   }
 
   .workspace-footer {
+    bottom: 0;
     flex-wrap: wrap;
     padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .state-playback-footer {
+    bottom: var(--mobile-mode-tabs-height);
   }
 
   .workspace-footer-secondary,
