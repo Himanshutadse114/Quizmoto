@@ -151,6 +151,7 @@ test('reactions are once-only, short, non-mutating and waking opens its eyes', (
   for (const mood of ['afraid', 'angry']) {
     assert.equal(tuned.animations[mood].steps.reduce((sum, step) => sum + step.holdMs + step.transitionMs, 0), 4000);
   }
+  assert.equal(tuned.animations.shy.steps.reduce((sum, step) => sum + step.holdMs + step.transitionMs, 0), 2400);
 });
 
 test('the real avatar engine completes each transient reaction naturally', () => {
@@ -257,6 +258,20 @@ test('dragging repositions Genny, shows fear, persists the position and suppress
   assert.equal(opened, 0); assert.equal(f.root.dataset.dragging, undefined);
   assert.equal(button.getAttribute('aria-grabbed'), 'false');
   assert.ok(f.localStorage.get('lmsgen-genny-position-v1:website'));
+});
+
+test('fear flows directly into a shy recovery without flashing the normal idle pose', (t) => {
+  const f = fixture(t);
+  const button = f.root.querySelector('.lmsgen-mascot-btn');
+  button.emit('pointerdown', { pointerId: 9, button: 0, clientX: 150, clientY: 150 });
+  button.emit('pointermove', { pointerId: 9, clientX: 220, clientY: 230, preventDefault() {} });
+  button.emit('pointerup', { pointerId: 9 });
+  const beforeRecovery = f.plays.length;
+  f.options.onAnimationEnd('afraid'); f.tick(0);
+  assert.deepEqual(f.plays.slice(beforeRecovery), ['shy']);
+  assert.equal(f.root.dataset.mode, 'busy');
+  f.options.onAnimationEnd('shy'); f.tick(0);
+  assert.equal(f.plays.at(-1), 'idle');
 });
 
 test('Alt plus arrow keys provide a precise non-drag placement option', (t) => {

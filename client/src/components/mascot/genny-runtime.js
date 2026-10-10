@@ -71,16 +71,18 @@ export function prepareGennyDefinition(source, { platform = false } = {}) {
     const available = expressionNames.filter((expression) => expressions[expression]);
     if (!available.length) continue;
     const sustained = name === 'afraid' || name === 'angry';
-    const transitionMs = sustained ? 200 : 180;
-    const sustainedHoldBudget = 4000 - available.length * transitionMs;
-    const sustainedHoldMs = Math.floor(sustainedHoldBudget / available.length);
-    const sustainedRemainder = sustainedHoldBudget % available.length;
+    const recovery = name === 'shy';
+    const timedDuration = sustained ? 4000 : recovery ? 2400 : 0;
+    const transitionMs = timedDuration ? 200 : 180;
+    const timedHoldBudget = timedDuration - available.length * transitionMs;
+    const timedHoldMs = Math.floor(timedHoldBudget / available.length);
+    const timedRemainder = timedHoldBudget % available.length;
     animations[name] = {
       playbackMode: 'once',
       blink: { ...source.animations.idle.blink, enabled: name !== 'angry' },
       steps: available.map((expression, index) => ({
         expression,
-        holdMs: sustained ? sustainedHoldMs + (index < sustainedRemainder ? 1 : 0) : 260,
+        holdMs: timedDuration ? timedHoldMs + (index < timedRemainder ? 1 : 0) : 260,
         transitionMs,
         transition: 'snappy',
       })),
@@ -322,14 +324,15 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     const { next } = pending;
     pending = null;
     cancel(reactionTimer);
-    setMode(next === 'sleeping' ? 'asleep' : 'idle');
-    play(next);
     delete root.dataset.look;
     if (queued) {
       const reaction = queued;
       queued = null;
       react(reaction.name, reaction.priority);
+      return;
     }
+    setMode(next === 'sleeping' ? 'asleep' : 'idle');
+    play(next);
     retryTip();
   }
   function react(name, priority = 1, next = 'idle') {
