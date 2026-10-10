@@ -37,9 +37,7 @@ const ENTRY_POINTS = [
   'index.html',
   'solutions/index.html',
   'about/index.html',
-  'blog/index.html',
   'contact/index.html',
-  ...BLOG_SLUGS.map((slug) => `blog/${slug}/index.html`),
 ];
 
 const MASCOT_JS = '/landing/js/genny-mascot.js';

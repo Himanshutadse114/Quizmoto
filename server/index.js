@@ -272,6 +272,7 @@ const startServer = async () => {
         // assignment-bound JWT checks in ScormLearnerAuthService.
         app.use('/api/scorm-learner', require('./routes/scormLearner'));
         app.use('/api/avatar-studio/payments', require('./routes/scorm/avatarStudioPayments'));
+        app.use('/api/blog', require('./routes/blog'));
 
         // SCORM World LMS (flag-gated inside router — returns 404 when SCORM_LMS=false)
         app.use('/api/scorm', require('./routes/scorm'));

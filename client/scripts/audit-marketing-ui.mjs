@@ -81,6 +81,12 @@ for (const page of pages) {
   const label = page.landing;
 
   for (const [kind, html] of [['physical', physical], ['canonical', canonical]]) {
+    if (kind === 'canonical' && (page.type === 'blog' || page.type === 'article')) {
+      check(html.includes('<div id="root"></div>'), `${label} canonical copy is missing the React root.`);
+      check(/<script[^>]+type="module"[^>]+src="\/assets\//i.test(html), `${label} canonical copy is missing the React application bundle.`);
+      check(!html.includes('blog-hero-s'), `${label} canonical copy still contains the retired static blog.`);
+      continue;
+    }
     check(html.includes(`lmsgen-page-${page.type}`), `${label} ${kind} copy is missing lmsgen-page-${page.type}.`);
     check(html.includes('lmsgen-unified-ui.css'), `${label} ${kind} copy is missing the unified UI stylesheet.`);
     check(html.includes('lmsgen-nav.js'), `${label} ${kind} copy is missing the stable nav script.`);

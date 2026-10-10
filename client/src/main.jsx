@@ -22,17 +22,6 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   })
 }
 
-const BLOG_POST_TITLES = {
-  'why-scorm-courses-go-unfinished': 'Why Most Online Courses Go Unfinished (And How to Fix It)',
-  'live-quizzes-vs-static-assessments': 'Live Quizzes vs. Static Assessments: What Actually Improves Retention',
-  'scorm-1-2-vs-scorm-2004': 'Trackable Course Formats: What Matters for Course Authors',
-  'ai-assisted-authoring-course-timeline': 'How AI-Assisted Authoring Changes the Course Creation Timeline',
-  'signs-security-awareness-training-needs-refresh': '5 Signs Your Security Awareness Training Needs a Refresh',
-  'slide-deck-to-scorm-migration-guide': 'From Slide Deck to Trackable Course: A Practical Guide',
-  'quizmoto-as-a-full-learning-platform': 'What We Learned Building Quizmoto Into a Full Learning Platform',
-  'designing-knowledge-checks-that-dont-feel-like-a-test': "Designing Knowledge Checks That Don't Feel Like a Test",
-}
-
 function normalisePath(pathname) {
   if (!pathname || pathname === '/') return '/'
   return pathname.replace(/\/+$/, '') || '/'
@@ -56,11 +45,6 @@ function getMarketingPage(pathname) {
       title: 'About LMSGEN',
       tabTitle: 'About LMSGEN: Learning Platform for L&D and Security Awareness Teams',
     },
-    '/blog': {
-      src: '/landing/blog/index.html',
-      title: 'LMSGEN blog',
-      tabTitle: 'LMSGEN Blog: Insights on Learning & Security Awareness',
-    },
     '/contact': {
       src: '/landing/contact/index.html',
       title: 'Contact LMSGEN',
@@ -69,17 +53,6 @@ function getMarketingPage(pathname) {
   }
 
   if (staticPages[path]) return staticPages[path]
-
-  if (path.startsWith('/blog/')) {
-    const slug = path.slice('/blog/'.length)
-    const title = BLOG_POST_TITLES[slug]
-    if (!title) return null
-    return {
-      src: `/landing/blog/${slug}.html`,
-      title,
-      tabTitle: `${title} | LMSGEN Blog`,
-    }
-  }
 
   return null
 }
@@ -134,6 +107,8 @@ function loadPlatformFonts() {
 }
 
 const marketingPage = getMarketingPage(window.location.pathname)
+const reactMarketingPage = normalisePath(window.location.pathname) === '/blog'
+  || normalisePath(window.location.pathname).startsWith('/blog/')
 
 if (marketingPage) {
   setRobots('index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1')
@@ -164,7 +139,7 @@ if (marketingPage) {
     )
   })
 } else {
-  setRobots('noindex,nofollow,noarchive')
+  setRobots(reactMarketingPage ? 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1' : 'noindex,nofollow,noarchive')
   loadPlatformFonts()
   addStylesheet('/campaign-layout-fix.css', 'lmsgen-campaign-layout-fix')
 

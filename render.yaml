@@ -149,38 +149,16 @@ services:
         destination: /landing/about/index.html
       - type: rewrite
         source: /blog
-        destination: /landing/blog/index.html
+        destination: /app.html
+      - type: rewrite
+        source: /blog/*
+        destination: /app.html
       - type: rewrite
         source: /contact
         destination: /landing/contact/index.html
       - type: rewrite
         source: /checklist
         destination: /checklist/index.html
-      - type: rewrite
-        source: /blog/why-scorm-courses-go-unfinished
-        destination: /landing/blog/why-scorm-courses-go-unfinished.html
-      - type: rewrite
-        source: /blog/live-quizzes-vs-static-assessments
-        destination: /landing/blog/live-quizzes-vs-static-assessments.html
-      - type: rewrite
-        source: /blog/scorm-1-2-vs-scorm-2004
-        destination: /landing/blog/scorm-1-2-vs-scorm-2004.html
-      - type: rewrite
-        source: /blog/ai-assisted-authoring-course-timeline
-        destination: /landing/blog/ai-assisted-authoring-course-timeline.html
-      - type: rewrite
-        source: /blog/signs-security-awareness-training-needs-refresh
-        destination: /landing/blog/signs-security-awareness-training-needs-refresh.html
-      - type: rewrite
-        source: /blog/slide-deck-to-scorm-migration-guide
-        destination: /landing/blog/slide-deck-to-scorm-migration-guide.html
-      - type: rewrite
-        source: /blog/quizmoto-as-a-full-learning-platform
-        destination: /landing/blog/quizmoto-as-a-full-learning-platform.html
-      - type: rewrite
-        source: /blog/designing-knowledge-checks-that-dont-feel-like-a-test
-        destination: /landing/blog/designing-knowledge-checks-that-dont-feel-like-a-test.html
-
       # Sign-in alias and authenticated LMS routes use the preserved React shell.
       - type: rewrite
         source: /app

@@ -6,6 +6,8 @@ import LiveQuizAudioDirector from './components/LiveQuizAudioDirector';
 import ClipboardFeedback from './components/ClipboardFeedback';
 import PlatformStartupGate from './components/PlatformStartupGate';
 import MarketingSite from './pages/Marketing/MarketingSite';
+import BlogPage from './pages/Marketing/BlogPage';
+import BlogArticle from './pages/Marketing/BlogArticle';
 import './pages/Host/liveQuizTheme.css';
 import './pages/Host/classicQuizmoto.css';
 import './pages/Host/quizmotoHostWorkbench.css';
@@ -73,6 +75,7 @@ const ScormVisualStudio = lazy(() => import('./pages/Scorm/VisualStudio'));
 const AvatarStudio = lazy(() => import('./pages/Scorm/AvatarStudio'));
 const ScormAccessAdmin = lazy(() => import('./pages/Scorm/AccessAdmin'));
 const ScormTeamAccess = lazy(() => import('./pages/Scorm/TeamAccess'));
+const BlogAdmin = lazy(() => import('./pages/Scorm/BlogAdmin'));
 
 function RouteFallback() {
   return (
@@ -135,22 +138,10 @@ function WorkspaceAdminGate({ featureId, children }) {
     : <Navigate to={isAnalyticsViewer(user) ? '/scorm/tracking' : '/scorm'} replace />;
 }
 
-const BLOG_POST_TITLES = {
-  'why-scorm-courses-go-unfinished': 'Why Most Online Courses Go Unfinished (And How to Fix It)',
-  'live-quizzes-vs-static-assessments': 'Live Quizzes vs. Static Assessments: What Actually Improves Retention',
-  'scorm-1-2-vs-scorm-2004': 'Trackable Course Formats: What Actually Matters for Course Authors',
-  'ai-assisted-authoring-course-timeline': 'How AI-Assisted Authoring Changes the Course Creation Timeline',
-  'signs-security-awareness-training-needs-refresh': '5 Signs Your Security Awareness Training Needs a Refresh',
-  'slide-deck-to-scorm-migration-guide': 'From Slide Deck to Trackable Course: A Practical Guide',
-  'quizmoto-as-a-full-learning-platform': 'What We Learned Building Quizmoto Into a Full Learning Platform',
-  'designing-knowledge-checks-that-dont-feel-like-a-test': "Designing Knowledge Checks That Don't Feel Like a Test",
-};
-
-function BlogPost() {
-  const { slug } = useParams();
-  if (!Object.prototype.hasOwnProperty.call(BLOG_POST_TITLES, slug)) return <Navigate to="/blog" replace />;
-  const title = BLOG_POST_TITLES[slug];
-  return <MarketingSite src={`/landing/blog/${slug}.html`} title={title} tabTitle={`${title} | LMSGEN Blog`} />;
+function SuperAdminGate({ children }) {
+  const { scormAccess, user } = useAuth();
+  const isSuperAdmin = Boolean(scormAccess && (user?.isSuperAdmin || user?.role === 'super_admin'));
+  return isSuperAdmin ? children : <Navigate to="/scorm" replace />;
 }
 
 function LegacyQuizRedirect({ kind }) {
@@ -200,8 +191,8 @@ function AppRoutes() {
         <Route path="/" element={<MarketingSite src="/landing/index.html" title="LMSGEN" tabTitle="LMSGEN | AI-Powered Learning Platform" />} />
         <Route path="/solutions" element={<MarketingSite src="/landing/solutions/index.html" title="LMSGEN solutions" tabTitle="AI Course Authoring, Trackable Learning & Live Quizzes | LMSGEN" />} />
         <Route path="/about" element={<MarketingSite src="/landing/about/index.html" title="About LMSGEN" tabTitle="About LMSGEN: Learning Platform for L&D and Security Awareness Teams" />} />
-        <Route path="/blog" element={<MarketingSite src="/landing/blog/index.html" title="LMSGEN blog" tabTitle="LMSGEN Blog: Insights on Trackable Learning & Security Awareness" />} />
-        <Route path="/blog/:slug" element={<BlogPost />} />
+        <Route path="/blog" element={<BlogPage />} />
+        <Route path="/blog/:slug" element={<BlogArticle />} />
         <Route path="/contact" element={<MarketingSite src="/landing/contact/index.html" title="Contact LMSGEN" tabTitle="Contact LMSGEN | Learning Platform" />} />
         <Route path="/login" element={<PlatformEntry />} />
         <Route path="/app" element={<PlatformEntry />} />
@@ -262,6 +253,7 @@ function AppRoutes() {
           <Route path="learner-access" element={<WorkspaceAdminGate featureId="sso"><ScormLearnerAccessSettings /></WorkspaceAdminGate>} />
           <Route path="access" element={<AccessAdminGate />} />
           <Route path="access/danger" element={<AccessAdminGate initialTab="danger" />} />
+          <Route path="blog" element={<SuperAdminGate><BlogAdmin /></SuperAdminGate>} />
           <Route path="settings" element={<ScormAccountSettings />} />
         </Route>
 

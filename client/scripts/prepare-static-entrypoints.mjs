@@ -52,13 +52,7 @@ const marketingCopies = [
   { source: path.join(landingRoot, 'index.html'), destination: path.join(distRoot, 'index.html'), canonical: '/' },
   { source: path.join(landingRoot, 'solutions', 'index.html'), destination: path.join(distRoot, 'solutions', 'index.html'), canonical: '/solutions' },
   { source: path.join(landingRoot, 'about', 'index.html'), destination: path.join(distRoot, 'about', 'index.html'), canonical: '/about' },
-  { source: path.join(landingRoot, 'blog', 'index.html'), destination: path.join(distRoot, 'blog', 'index.html'), canonical: '/blog' },
   { source: path.join(landingRoot, 'contact', 'index.html'), destination: path.join(distRoot, 'contact', 'index.html'), canonical: '/contact' },
-  ...BLOG_SLUGS.map((slug) => ({
-    source: path.join(landingRoot, 'blog', `${slug}.html`),
-    destination: path.join(distRoot, 'blog', slug, 'index.html'),
-    canonical: `/blog/${slug}`,
-  })),
 ];
 
 // Give every physical /landing page a clean canonical URL after it loads. This
@@ -71,17 +65,26 @@ for (const entry of marketingCopies) {
   await copyFile(entry.source, entry.destination);
 }
 
+// Blog listing and article routes are native React pages backed by the Blog API.
+// Copy the preserved app shell into the known physical locations too, so hosts
+// that prefer an existing index.html cannot accidentally serve the retired
+// Webflow-style blog. Unknown CMS slugs are handled by the host wildcard route.
+await copyFile(path.join(distRoot, 'app.html'), path.join(distRoot, 'blog', 'index.html'));
+for (const slug of BLOG_SLUGS) {
+  await copyFile(path.join(distRoot, 'app.html'), path.join(distRoot, 'blog', slug, 'index.html'));
+}
+
 // Host-independent recovery for public routes. Some static hosting setups apply
 // an unconditional SPA catch-all and serve the homepage for /about, /blog, etc.
 // If that happens, jump to the real physical marketing file; the script injected
 // above immediately restores the clean canonical URL with history.replaceState.
-const publicRecoveryScript = `<script id="lmsgen-public-route-recovery">(function(){try{var p=location.pathname.replace(/\\/+$/,'')||'/';var routes={'/solutions':'/landing/solutions/index.html','/about':'/landing/about/index.html','/blog':'/landing/blog/index.html','/contact':'/landing/contact/index.html'};var target=routes[p];if(!target){var m=p.match(/^\\/blog\\/([a-z0-9-]+)$/);if(m)target='/landing/blog/'+m[1]+'.html';}if(target){location.replace(target+location.search+location.hash);}}catch(e){}})();</script>`;
+const publicRecoveryScript = `<script id="lmsgen-public-route-recovery">(function(){try{var p=location.pathname.replace(/\\/+$/,'')||'/';var routes={'/solutions':'/landing/solutions/index.html','/about':'/landing/about/index.html','/contact':'/landing/contact/index.html'};var target=routes[p];if(target){location.replace(target+location.search+location.hash);}}catch(e){}})();</script>`;
 
 // If a host-level catch-all sends an authenticated/app route to the marketing
 // homepage, move it to app.html and preserve the original path for React. Public
 // Publica links and their legacy aliases are also handed to React so shared URLs
 // open the correct reader or library instead of the marketing homepage.
-const appHandoffScript = `<script id="lmsgen-static-app-handoff">(function(){try{var p=location.pathname;var app=/^\\/(?:app(?:\\/|$)|signin(?:\\/|$)|login(?:\\/|$)|auth(?:\\/|$)|scorm(?:\\/|$)|publica(?:\\/|$)|publica-library(?:\\/|$)|flipbook(?:\\/|$)|flipbook-library(?:\\/|$)|player(?:\\/|$)|join(?:\\/|$)|host(?:\\/|$)|dashboard(?:\\/|$)|create-quiz(?:\\/|$)|edit-quiz(?:\\/|$)|reports(?:\\/|$)|learn(?:\\/|$)|campaign(?:\\/|$))/.test(p);if(!app)return;var route=p+location.search+location.hash;if(/^\\/signin(?:\\/|$)/.test(p))route='/login'+location.search+location.hash;location.replace('/app.html?__lmsgen_route='+encodeURIComponent(route));}catch(e){}})();</script>`;
+const appHandoffScript = `<script id="lmsgen-static-app-handoff">(function(){try{var p=location.pathname;var app=/^\\/(?:app(?:\\/|$)|signin(?:\\/|$)|login(?:\\/|$)|auth(?:\\/|$)|scorm(?:\\/|$)|blog(?:\\/|$)|publica(?:\\/|$)|publica-library(?:\\/|$)|flipbook(?:\\/|$)|flipbook-library(?:\\/|$)|player(?:\\/|$)|join(?:\\/|$)|host(?:\\/|$)|dashboard(?:\\/|$)|create-quiz(?:\\/|$)|edit-quiz(?:\\/|$)|reports(?:\\/|$)|learn(?:\\/|$)|campaign(?:\\/|$))/.test(p);if(!app)return;var route=p+location.search+location.hash;if(/^\\/signin(?:\\/|$)/.test(p))route='/login'+location.search+location.hash;location.replace('/app.html?__lmsgen_route='+encodeURIComponent(route));}catch(e){}})();</script>`;
 
 let rootMarketing = await fs.readFile(path.join(distRoot, 'index.html'), 'utf8');
 if (!rootMarketing.includes('id="lmsgen-public-route-recovery"')) {

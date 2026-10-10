@@ -26,7 +26,8 @@ import {
   Megaphone,
   Mail,
   Settings,
-  Bot
+  Bot,
+  Newspaper
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import ScormGenerationNotifier from '../../components/ScormGenerationNotifier';
@@ -177,6 +178,7 @@ function navigationGroups({ isSuperAdmin, scormAccess, role }) {
         label: 'Platform Administration',
         items: [
           { to: '/scorm/access', end: true, label: 'Tenant Management', icon: ShieldCheck, requiresScorm: true },
+          { to: '/scorm/blog', end: true, label: 'Blog Management', icon: Newspaper, requiresScorm: true },
           { to: '/scorm/access/danger', end: true, label: 'Danger Zone', icon: ShieldAlert, requiresScorm: true }
         ]
       }
