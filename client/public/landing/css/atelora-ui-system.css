@@ -453,6 +453,8 @@ body.atelora-public-site [class*="chip"] {
 
   body.atelora-home-page .hp-hero-h1 {
     max-width: 36rem !important;
+    font-size: clamp(3rem, 8.4vw, 3.55rem) !important;
+    line-height: 1.07 !important;
   }
 
   body.atelora-home-page .hp-hero-p {
@@ -477,5 +479,12 @@ body.atelora-public-site [class*="chip"] {
   body.atelora-blog-post-page .blog-post-prose p,
   body.atelora-blog-post-page .blog-post-prose li {
     font-size: 1.65rem !important;
+  }
+}
+
+@media screen and (max-width: 479px) {
+  body.atelora-public-site.atelora-home-page .hp-hero-h1 {
+    font-size: clamp(2.8rem, 8.2vw, 3.2rem) !important;
+    line-height: 1.08 !important;
   }
 }

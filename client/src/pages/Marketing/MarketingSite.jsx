@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import SiteMascot from '../../components/mascot/SiteMascot';
 import MarketingHeader from './MarketingHeader';
@@ -331,26 +331,29 @@ function applySharedMarketingUi(frame, src) {
 function syncMarketingFrameViewport(frame) {
   if (!frame) return;
   const viewport = window.visualViewport;
-  const widthCandidates = [
-    viewport?.width,
-    window.innerWidth,
-    document.documentElement?.clientWidth,
-  ].filter((value) => Number.isFinite(value) && value > 0);
-  const heightCandidates = [
-    viewport?.height,
-    window.innerHeight,
-    document.documentElement?.clientHeight,
-  ].filter((value) => Number.isFinite(value) && value > 0);
-  // Mobile Chromium can briefly retain the wider fullscreen viewport after the
-  // quiz exits. The smallest live measurement is the visible page and prevents
-  // desktop media queries from being applied inside a portrait phone iframe.
-  const width = Math.max(1, Math.round(widthCandidates.length ? Math.min(...widthCandidates) : 1));
-  const height = Math.max(1, Math.round(heightCandidates.length ? Math.min(...heightCandidates) : 1));
+  // Use the layout viewport for the iframe width. visualViewport.width shrinks
+  // when a visitor zooms and can briefly retain that shrunken value after a
+  // history/navigation change, which previously squeezed the homepage into a
+  // narrow column after returning from the blog.
+  const width = Math.max(1, Math.round(
+    document.documentElement?.clientWidth
+      || window.innerWidth
+      || viewport?.width
+      || 1,
+  ));
+  const height = Math.max(1, Math.round(
+    window.innerHeight
+      || document.documentElement?.clientHeight
+      || viewport?.height
+      || 1,
+  ));
   const headerHeight = window.matchMedia('(max-width: 900px)').matches ? 68 : 76;
   frame.style.width = `${width}px`;
   frame.style.height = `${Math.max(1, height - headerHeight)}px`;
   frame.style.top = `${headerHeight}px`;
-  frame.style.maxWidth = '100vw';
+  frame.style.left = '0';
+  frame.style.right = 'auto';
+  frame.style.maxWidth = 'none';
   frame.style.maxHeight = '100dvh';
   try {
     frame.contentWindow?.dispatchEvent(new Event('resize'));
@@ -362,6 +365,7 @@ function syncMarketingFrameViewport(frame) {
 export default function MarketingSite({ src, title, tabTitle }) {
   const { hash } = useLocation();
   const frameRef = useRef(null);
+  const [readyFrameSrc, setReadyFrameSrc] = useState('');
 
   useEffect(() => {
     if (!tabTitle) return;
@@ -396,7 +400,16 @@ export default function MarketingSite({ src, title, tabTitle }) {
   return (
     <>
       <MarketingHeader fixed />
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#0d3b37',
+        }}
+      />
       <iframe
+        key={src}
         ref={frameRef}
         src={hash ? `${src}${hash}` : src}
         title={title}
@@ -411,6 +424,9 @@ export default function MarketingSite({ src, title, tabTitle }) {
           window.setTimeout(() => {
             if (frame.isConnected) syncMarketingFrameViewport(frame);
           }, 520);
+          window.requestAnimationFrame(() => {
+            if (frame.isConnected) setReadyFrameSrc(src);
+          });
         }}
         style={{
           position: 'fixed',
@@ -421,8 +437,9 @@ export default function MarketingSite({ src, title, tabTitle }) {
           width: '100dvw',
           height: 'calc(100dvh - 76px)',
           border: 0,
-          background: '#0A0F0E',
-          opacity: 1,
+          background: '#0d3b37',
+          opacity: readyFrameSrc === src ? 1 : 0,
+          transition: 'opacity 180ms ease',
         }}
       />
       <SiteMascot frameRef={frameRef} pageSrc={src} />
