@@ -145,6 +145,7 @@ test('reactions are once-only, short, non-mutating and waking opens its eyes', (
   assert.equal(definition.animations.laughing.playbackMode, 'loop');
   assert.ok(tuned.animations.idle.steps[0].holdMs < 2000);
   for (const mood of ['listening', 'searching', 'bored', 'suspicious', 'angry', 'surprised', 'afraid', 'curious', 'proud', 'shy', 'sad']) assert.ok(tuned.animations[mood], mood);
+  assert.ok(tuned.animations.afraid.steps.reduce((sum, step) => sum + step.holdMs + step.transitionMs, 0) >= 2200);
 });
 
 test('the real avatar engine completes each transient reaction naturally', () => {

@@ -71,7 +71,12 @@ export function prepareGennyDefinition(source, { platform = false } = {}) {
     animations[name] = {
       playbackMode: 'once',
       blink: { ...source.animations.idle.blink, enabled: name !== 'angry' },
-      steps: available.map((expression) => ({ expression, holdMs: 260, transitionMs: 180, transition: 'snappy' })),
+      steps: available.map((expression) => ({
+        expression,
+        holdMs: name === 'afraid' ? 600 : 260,
+        transitionMs: name === 'afraid' ? 200 : 180,
+        transition: 'snappy',
+      })),
     };
     extraMoodNames.push(name);
   }
