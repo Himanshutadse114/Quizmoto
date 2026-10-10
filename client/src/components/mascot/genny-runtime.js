@@ -7,8 +7,12 @@ import { GENNY_PERSONAS } from './genny-personas.js';
 import { motionEnabled } from './genny-motion.js';
 const DISMISS_KEY = 'lmsgen-mascot-dismissed';
 const GREETED_KEY = 'lmsgen-mascot-greeted';
+const POSITION_KEY = 'lmsgen-genny-position-v1';
 const TIP_GAP = 9000;
 const TIP_DWELL = 1200;
+const DRAG_THRESHOLD = 5;
+const POSITION_MARGIN = 8;
+const SCROLL_MOOD_WINDOW = 1200;
 
 export const GENNY_TIPS = [
   { sel: '.lmsgen-pain-section', text: 'Create, deliver and track learning from one workspace.', anim: 'happy' },
@@ -46,6 +50,31 @@ export function prepareGennyDefinition(source, { platform = false } = {}) {
     }];
   }));
   const expressions = { ...source.expressions };
+  const extraMoodExpressions = {
+    listening: ['small-attentive', 'downward-gaze', 'gentle-downward-gaze'],
+    searching: ['far-right-glance', 'asymmetric-down-right', 'surprised-left', 'wide-down-left', 'attentive-left', 'asymmetric-up-left'],
+    bored: ['sleepy-squint', 'drowsy-closed', 'upward-side-glance'],
+    suspicious: ['skeptical-left', 'skeptical-right', 'suspicious-right'],
+    angry: ['angry-right', 'angry-left', 'angry-brows'],
+    surprised: ['surprised-left', 'surprised-wide-left'],
+    afraid: ['surprised-wide-left', 'uneasy-left', 'surprised-left'],
+    curious: ['surprised-left', 'surprised-wide-left', 'upward-side-glance', 'far-right-glance'],
+    proud: ['far-right-glance', 'curious-left', 'joyful-down-right'],
+    shy: ['upward-side-glance', 'shy-downward', 'eyes-closed'],
+    sad: ['sleepy-squint', 'eyes-closed', 'drowsy-closed'],
+  };
+  const extraMoodNames = [];
+  for (const [name, expressionNames] of Object.entries(extraMoodExpressions)) {
+    if (animations[name]) continue;
+    const available = expressionNames.filter((expression) => expressions[expression]);
+    if (!available.length) continue;
+    animations[name] = {
+      playbackMode: 'once',
+      blink: { ...source.animations.idle.blink, enabled: name !== 'angry' },
+      steps: available.map((expression) => ({ expression, holdMs: 260, transitionMs: 180, transition: 'snappy' })),
+    };
+    extraMoodNames.push(name);
+  }
   // 32 avatar units remain visible at the phone's 72px mascot size. Coordinates
   // are relative to the neutral pose, not an accidental replacement of its y.
   for (const [direction, x, y] of [['up', 0, -32], ['down', 0, 32], ['left', -32, 0], ['right', 32, 0]]) {
@@ -71,7 +100,7 @@ export function prepareGennyDefinition(source, { platform = false } = {}) {
   const persona = GENNY_PERSONAS[platform ? 'platform' : 'website'];
   return { ...source, colors: { ...source.colors, body: persona.body, eyes: persona.eyes }, expressions,
     expressionOrder: [...source.expressionOrder, ...directions.map((direction) => `genny-look-${direction}`)],
-    animations, animationOrder: [...source.animationOrder, ...directions.map((direction) => `look-${direction}`)] };
+    animations, animationOrder: [...source.animationOrder, ...extraMoodNames, ...directions.map((direction) => `look-${direction}`)] };
 }
 
 export function mountGenny({ document: doc, createAvatar, definition, container = doc.body, onActivate, onTopic, onDismiss, topics = GENNY_TOPICS, currentTopic, platform = false, hoverEnabled = true, motionPreference = 'auto' }) {
@@ -113,6 +142,10 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
   let gazeUntil = 0;
   let playbackTimer;
   let lastProgressAt = Date.now();
+  let drag = null;
+  let suppressClick = false;
+  let position = null;
+  const positionKey = `${POSITION_KEY}:${platform ? 'platform' : 'website'}`;
 
   function later(fn, ms) {
     const id = win.setTimeout(() => { timers.delete(id); if (!destroyed) fn(); }, ms);
@@ -123,6 +156,85 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
   function listen(target, event, fn, options) {
     target.addEventListener(event, fn, options);
     return () => target.removeEventListener(event, fn, options);
+  }
+  function mascotSize() {
+    const rectangle = root.getBoundingClientRect();
+    return { width: rectangle.width || (win.innerWidth <= 767 ? 76 : 120), height: rectangle.height || (win.innerWidth <= 767 ? 76 : 120) };
+  }
+  function applyPosition(left, top) {
+    const size = mascotSize();
+    const maxLeft = Math.max(POSITION_MARGIN, win.innerWidth - size.width - POSITION_MARGIN);
+    const maxTop = Math.max(POSITION_MARGIN, win.innerHeight - size.height - POSITION_MARGIN);
+    position = { left: Math.max(POSITION_MARGIN, Math.min(left, maxLeft)), top: Math.max(POSITION_MARGIN, Math.min(top, maxTop)) };
+    root.style.setProperty('--genny-left', `${position.left}px`);
+    root.style.setProperty('--genny-top', `${position.top}px`);
+    root.dataset.positioned = 'true';
+    root.dataset.horizontal = position.left + size.width / 2 < win.innerWidth / 2 ? 'left' : 'right';
+    root.dataset.vertical = position.top + size.height / 2 < win.innerHeight / 2 ? 'top' : 'bottom';
+  }
+  function savePosition() {
+    if (!position) return;
+    const size = mascotSize();
+    const width = Math.max(1, win.innerWidth - size.width - POSITION_MARGIN * 2);
+    const height = Math.max(1, win.innerHeight - size.height - POSITION_MARGIN * 2);
+    const stored = { x: (position.left - POSITION_MARGIN) / width, y: (position.top - POSITION_MARGIN) / height };
+    try { win.localStorage.setItem(positionKey, JSON.stringify(stored)); } catch { /* optional storage */ }
+  }
+  function restorePosition() {
+    let stored;
+    try { stored = JSON.parse(win.localStorage.getItem(positionKey)); } catch { return; }
+    if (!stored || !Number.isFinite(stored.x) || !Number.isFinite(stored.y)) return;
+    const size = mascotSize();
+    const width = Math.max(1, win.innerWidth - size.width - POSITION_MARGIN * 2);
+    const height = Math.max(1, win.innerHeight - size.height - POSITION_MARGIN * 2);
+    applyPosition(POSITION_MARGIN + stored.x * width, POSITION_MARGIN + stored.y * height);
+  }
+  function moveWithKeyboard(event) {
+    if (!event.altKey || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home'].includes(event.key)) return;
+    event.preventDefault();
+    const rectangle = root.getBoundingClientRect();
+    const left = position?.left ?? rectangle.left;
+    const top = position?.top ?? rectangle.top;
+    if (event.key === 'Home') applyPosition(win.innerWidth - mascotSize().width - 20, win.innerHeight - mascotSize().height - 20);
+    else applyPosition(left + (event.key === 'ArrowLeft' ? -24 : event.key === 'ArrowRight' ? 24 : 0), top + (event.key === 'ArrowUp' ? -24 : event.key === 'ArrowDown' ? 24 : 0));
+    savePosition();
+    react('curious', 3);
+  }
+  function beginDrag(event) {
+    if (event.button !== undefined && event.button !== 0) return;
+    const rectangle = root.getBoundingClientRect();
+    drag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, left: position?.left ?? rectangle.left, top: position?.top ?? rectangle.top, moved: false };
+    button.setPointerCapture?.(event.pointerId);
+  }
+  function moveDrag(event) {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const deltaX = event.clientX - drag.startX;
+    const deltaY = event.clientY - drag.startY;
+    if (!drag.moved && Math.hypot(deltaX, deltaY) < DRAG_THRESHOLD) return;
+    if (!drag.moved) {
+      drag.moved = true;
+      root.dataset.dragging = 'true';
+      button.setAttribute('aria-grabbed', 'true');
+      hideBubble();
+      cancel(greetingTimer);
+    }
+    event.preventDefault?.();
+    applyPosition(drag.left + deltaX, drag.top + deltaY);
+    react('afraid', 5);
+    armIdle();
+  }
+  function finishDrag(event) {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const moved = drag.moved;
+    button.releasePointerCapture?.(event.pointerId);
+    drag = null;
+    delete root.dataset.dragging;
+    button.setAttribute('aria-grabbed', 'false');
+    if (!moved) return;
+    savePosition();
+    suppressClick = true;
+    react('shy', 4);
+    later(() => { suppressClick = false; }, 0);
   }
   function setMode(next) { mode = next; root.dataset.mode = next; }
   function play(name) {
@@ -259,11 +371,22 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     });
   } catch { destroy(); return { bindDocument: () => {}, destroy }; }
 
-  cleanups.push(listen(button, 'click', () => { hideBubble(); cancel(greetingTimer); queued = null; react('laughing', 4); armIdle(); onActivate?.(); }));
+  button.setAttribute('aria-grabbed', 'false');
+  button.setAttribute('title', `${persona.title}. Drag to move Genny; Alt + arrow keys also move her.`);
+  cleanups.push(listen(button, 'pointerdown', beginDrag));
+  cleanups.push(listen(button, 'pointermove', moveDrag));
+  cleanups.push(listen(button, 'pointerup', finishDrag));
+  cleanups.push(listen(button, 'pointercancel', finishDrag));
+  cleanups.push(listen(button, 'keydown', moveWithKeyboard));
+  cleanups.push(listen(button, 'click', () => {
+    if (suppressClick) { suppressClick = false; return; }
+    hideBubble(); cancel(greetingTimer); queued = null; react('laughing', 4); armIdle(); onActivate?.();
+  }));
   cleanups.push(listen(bubble, 'click', () => { hideBubble(); retryTip(); }));
   cleanups.push(listen(root.querySelector('.lmsgen-mascot-dismiss'), 'click', () => { if (!platform) writeFlag(DISMISS_KEY); destroy(); onDismiss?.(); }));
   cleanups.push(listen(media, 'change', motionChanged));
   cleanups.push(listen(win, 'pageshow', () => { if (!doc.hidden) motionChanged(); }));
+  cleanups.push(listen(win, 'resize', () => { if (!drag) restorePosition(); }, { passive: true }));
   cleanups.push(listen(doc, 'resume', () => { if (!doc.hidden) motionChanged(); }));
   cleanups.push(listen(doc, 'keydown', (event) => { if (event.key === 'Escape') { hideBubble(); retryTip(); } }));
   for (const event of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'touchmove', 'scroll']) {
@@ -274,6 +397,7 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     else motionChanged();
   }));
   motionChanged();
+  restorePosition();
   if (!motionOff()) {
     react('waking', 0);
     if (!readFlag(greetKey)) greetingTimer = later(() => {
@@ -296,6 +420,7 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     let tipTimer;
     let lastY = guideWin.scrollY;
     let lastScrollAt = win.performance.now();
+    let scrollMoodSamples = [];
     const scrollPositions = new WeakMap();
     const scrollDeltas = new WeakMap();
     let windowDelta = 0;
@@ -422,9 +547,18 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
       if (Math.abs(delta) > 2 && (elapsed > 80 || root.dataset.look !== (delta > 0 ? 'down' : 'up'))) {
         lastScrollAt = now;
         const direction = delta > 0 ? 'down' : 'up';
-        // Deliberate scrolling wins over ambient/hover reactions, but never
-        // interrupts a direct mascot click or a success/error acknowledgement.
-        look(direction);
+        scrollMoodSamples = scrollMoodSamples.filter((sample) => now - sample.time <= SCROLL_MOOD_WINDOW);
+        if (scrollMoodSamples.at(-1)?.direction !== direction) scrollMoodSamples.push({ direction, time: now });
+        // Repeatedly pulling Genny's gaze in opposite directions makes her
+        // visibly annoyed. A normal one-direction page scroll remains a gaze.
+        if (scrollMoodSamples.length >= 3) {
+          scrollMoodSamples = [];
+          react('angry', 3);
+        } else {
+          // Deliberate scrolling wins over ambient/hover reactions, but never
+          // interrupts a direct mascot click or a success/error acknowledgement.
+          look(direction);
+        }
         delta = 0;
       }
       if (nested) scrollDeltas.set(target, delta);
@@ -441,6 +575,19 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
       bindings.push(listen(cta, 'mouseenter', () => { react('excited', 1); armIdle(); }));
       bindings.push(listen(cta, 'click', () => { react('excited', 3); armIdle(); }));
     });
+    const editable = (target) => Boolean(target?.matches?.('input, textarea, select, [contenteditable="true"]'));
+    bindings.push(listen(guideDoc, 'focusin', (event) => {
+      if (editable(event.target)) { react('listening', 1); armIdle(); }
+    }));
+    bindings.push(listen(guideDoc, 'input', (event) => {
+      if (editable(event.target)) { react('working', 1); armIdle(); }
+    }));
+    bindings.push(listen(guideDoc, 'invalid', (event) => {
+      if (editable(event.target)) { react('sad', 3); armIdle(); }
+    }, true));
+    bindings.push(listen(guideDoc, 'toggle', (event) => {
+      if (event.target?.matches?.('details') && event.target.open) { react('curious', 1); armIdle(); }
+    }, true));
     guideDoc.querySelectorAll('.w-form').forEach((form) => {
       let wasDone = false;
       let wasFailed = false;

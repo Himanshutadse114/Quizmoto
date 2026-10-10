@@ -26,7 +26,7 @@ class Element extends Events {
   children = [];
   selectors = new Map();
   hidden = false;
-  rect = { top: 100, bottom: 500, height: 400 };
+  rect = { left: 100, top: 100, right: 220, bottom: 220, width: 120, height: 120 };
   attributes = {};
   classList = { add() {}, remove() {} };
   appendChild(child) { this.children.push(child); child.parent = this; }
@@ -36,6 +36,8 @@ class Element extends Events {
   remove() { this.parent.children = this.parent.children.filter((child) => child !== this); }
   setAttribute(key, value) { this.attributes[key] = value; }
   getAttribute(key) { return this.attributes[key] || null; }
+  setPointerCapture(pointerId) { this.capturedPointer = pointerId; }
+  releasePointerCapture(pointerId) { if (this.capturedPointer === pointerId) this.capturedPointer = null; }
   closest(selector) {
     if (selector.includes('.lmsgen-mascot') || selector === '.genny-guide') return null;
     return this;
@@ -59,6 +61,7 @@ function fixture(t, { reduced = false, greeted = true, dismissed = false, realRe
   t.mock.method(Date, 'now', () => time);
   const media = new Events(); media.matches = reduced;
   const flags = new Map();
+  const localStorage = new Map();
   if (greeted) flags.set('lmsgen-mascot-greeted', '1');
   if (dismissed) flags.set('lmsgen-mascot-dismissed', '1');
   const observers = [];
@@ -68,6 +71,7 @@ function fixture(t, { reduced = false, greeted = true, dismissed = false, realRe
       innerWidth: 390, innerHeight: 800, scrollY: 0, performance: { now: () => time },
       matchMedia: () => media,
       sessionStorage: { getItem: (key) => flags.get(key), setItem: (key, value) => flags.set(key, value) },
+      localStorage: { getItem: (key) => localStorage.get(key), setItem: (key, value) => localStorage.set(key, value) },
       setTimeout: (fn, ms) => { const id = ++nextId; timers.set(id, { at: time + ms, fn }); return id; },
       clearTimeout: (id) => timers.delete(id),
       getComputedStyle: (el) => ({ display: el.hidden ? 'none' : 'block' }),
@@ -123,7 +127,7 @@ function fixture(t, { reduced = false, greeted = true, dismissed = false, realRe
       else delete globalThis[key];
     }
   });
-  return { doc, root, mascot, controller, options, plays, timers, tick, media, makeDocument, observers, flags, frames, frame, animate };
+  return { doc, root, mascot, controller, options, plays, timers, tick, media, makeDocument, observers, flags, localStorage, frames, frame, animate };
 }
 
 test('reactions are once-only, short, non-mutating and waking opens its eyes', () => {
@@ -140,6 +144,7 @@ test('reactions are once-only, short, non-mutating and waking opens its eyes', (
   assert.equal(tuned.animations.waking.steps.at(-1).expression, 'neutral');
   assert.equal(definition.animations.laughing.playbackMode, 'loop');
   assert.ok(tuned.animations.idle.steps[0].holdMs < 2000);
+  for (const mood of ['listening', 'searching', 'bored', 'suspicious', 'angry', 'surprised', 'afraid', 'curious', 'proud', 'shy', 'sad']) assert.ok(tuned.animations[mood], mood);
 });
 
 test('the real avatar engine completes each transient reaction naturally', () => {
@@ -232,6 +237,31 @@ test('reduced motion stays still, responds to preference changes and cancels gre
   f.media.matches = true; f.media.emit('change'); assert.equal(f.timers.size, 0);
 });
 
+test('dragging repositions Genny, shows fear, persists the position and suppresses the guide click', (t) => {
+  let opened = 0;
+  const f = fixture(t, { onActivate: () => opened++ });
+  const button = f.root.querySelector('.lmsgen-mascot-btn');
+  button.emit('pointerdown', { pointerId: 7, button: 0, clientX: 150, clientY: 150 });
+  button.emit('pointermove', { pointerId: 7, clientX: 210, clientY: 230, preventDefault() {} });
+  assert.equal(f.root.dataset.dragging, 'true');
+  assert.equal(f.root.style.values.get('--genny-left'), '160px');
+  assert.equal(f.root.style.values.get('--genny-top'), '180px');
+  assert.equal(f.plays.at(-1), 'afraid');
+  button.emit('pointerup', { pointerId: 7 }); button.emit('click');
+  assert.equal(opened, 0); assert.equal(f.root.dataset.dragging, undefined);
+  assert.equal(button.getAttribute('aria-grabbed'), 'false');
+  assert.ok(f.localStorage.get('lmsgen-genny-position-v1:website'));
+});
+
+test('Alt plus arrow keys provide a precise non-drag placement option', (t) => {
+  const f = fixture(t); let prevented = false;
+  f.root.querySelector('.lmsgen-mascot-btn').emit('keydown', {
+    altKey: true, key: 'ArrowLeft', preventDefault() { prevented = true; },
+  });
+  assert.equal(prevented, true); assert.equal(f.root.style.values.get('--genny-left'), '76px');
+  assert.equal(f.plays.at(-1), 'curious');
+});
+
 test('session dismissal never mounts an avatar', (t) => {
   const f = fixture(t, { dismissed: true }); assert.equal(f.doc.body.children.length, 0); assert.equal(f.options, undefined);
 });
@@ -248,6 +278,14 @@ test('scroll direction follows window and nested mobile/sidebar scrolling', (t) 
   f.doc.emit('scroll', { target: nested }); assert.equal(f.root.dataset.look, 'up');
 });
 
+test('repeated up-down scrolling changes Genny from gaze tracking to angry', (t) => {
+  const f = fixture(t); f.mascot.bindDocument(f.doc); f.tick(1500);
+  f.doc.defaultView.scrollY = 100; f.doc.defaultView.emit('scroll');
+  f.tick(200); f.doc.defaultView.scrollY = 0; f.doc.defaultView.emit('scroll');
+  f.tick(200); f.doc.defaultView.scrollY = 100; f.doc.defaultView.emit('scroll');
+  assert.equal(f.plays.at(-1), 'angry');
+});
+
 test('curated hover explanations dwell, persist and stay dismissed until leaving', (t) => {
   let selected;
   const f = fixture(t, { onTopic: (topic) => { selected = topic; } }); f.mascot.bindDocument(f.doc);
@@ -261,6 +299,17 @@ test('curated hover explanations dwell, persist and stay dismissed until leaving
   f.doc.emit('pointerover', { target: title }); f.tick(1000); assert.equal(bubble.hidden, true);
   f.doc.emit('pointerout', { relatedTarget: null });
   f.doc.emit('focusin', { target: title }); f.tick(1); assert.equal(bubble.hidden, false);
+});
+
+test('dynamic form and disclosure interactions use the expanded mood set', (t) => {
+  const f = fixture(t); f.mascot.bindDocument(f.doc);
+  const field = new Element(); field.matches = (selector) => selector.includes('input');
+  f.doc.emit('focusin', { target: field }); assert.equal(f.plays.at(-1), 'listening');
+  f.doc.emit('input', { target: field }); assert.equal(f.plays.at(-1), 'working');
+  f.doc.emit('invalid', { target: field }); assert.equal(f.plays.at(-1), 'sad');
+  const details = new Element(); details.open = true; details.matches = (selector) => selector === 'details';
+  f.doc.emit('toggle', { target: details }); f.options.onAnimationEnd('sad'); f.tick(0);
+  assert.equal(f.plays.at(-1), 'curious');
 });
 
 test('touch and opt-out skip hover; reduced motion still permits explicit guidance', (t) => {

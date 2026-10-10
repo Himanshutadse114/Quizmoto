@@ -315,7 +315,6 @@ export default function ScormPlatformShell() {
   const isWorkspaceAdmin = Boolean(scormAccess && (role === 'admin' || isSuperAdmin));
   const analyticsOnly = Boolean(scormAccess && role === 'analytics_viewer');
   const demoAccess = !scormAccess;
-  const avatarStudioActive = location.pathname.startsWith('/scorm/avatar-studio');
   const roleName = displayRole(role, isSuperAdmin, scormAccess);
 
   return (
@@ -395,7 +394,7 @@ export default function ScormPlatformShell() {
       <MobileTabBar scormAccess={scormAccess} role={role} />
       <GennyGuide key={`${role}-${scormAccess}-${isSuperAdmin}`} platform scormAccess={scormAccess} isSuperAdmin={isSuperAdmin}
         allowedRoutes={navigationGroups({ isSuperAdmin, scormAccess, role }).flatMap((group) => group.items.map((item) => item.to))}
-        accountKey={gennyAccountKey(user)} suspended={mobileOpen || avatarStudioActive} />
+        accountKey={gennyAccountKey(user)} suspended={mobileOpen} />
     </div>
   );
 }
