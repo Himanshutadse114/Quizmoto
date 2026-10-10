@@ -12,7 +12,9 @@ const TIP_GAP = 9000;
 const TIP_DWELL = 1200;
 const DRAG_THRESHOLD = 5;
 const POSITION_MARGIN = 8;
-const SCROLL_MOOD_WINDOW = 1200;
+const SCROLL_ANGER_WINDOW = 1800;
+const SCROLL_ANGER_STROKE = 48;
+const SCROLL_ANGER_STROKES = 4;
 
 export const GENNY_TIPS = [
   { sel: '.lmsgen-pain-section', text: 'Create, deliver and track learning from one workspace.', anim: 'happy' },
@@ -488,7 +490,11 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     let tipTimer;
     let lastY = guideWin.scrollY;
     let lastScrollAt = win.performance.now();
-    let scrollMoodSamples = [];
+    let scrollAngerSamples = [];
+    let scrollAngerSource = null;
+    let scrollAngerDirection = 0;
+    let scrollAngerDistance = 0;
+    let scrollAngerQualified = false;
     const scrollPositions = new WeakMap();
     const scrollDeltas = new WeakMap();
     let windowDelta = 0;
@@ -608,6 +614,31 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
       const position = nested ? target.scrollTop : guideWin.scrollY;
       const previous = nested ? (scrollPositions.get(target) ?? 0) : lastY;
       const step = position - previous;
+      const source = nested ? target : guideWin;
+      if (source !== scrollAngerSource) {
+        scrollAngerSource = source;
+        scrollAngerSamples = [];
+        scrollAngerDirection = 0;
+        scrollAngerDistance = 0;
+        scrollAngerQualified = false;
+      }
+      const stepDirection = Math.sign(step);
+      if (stepDirection && stepDirection !== scrollAngerDirection) {
+        scrollAngerDirection = stepDirection;
+        scrollAngerDistance = Math.abs(step);
+        scrollAngerQualified = false;
+      } else if (stepDirection) {
+        scrollAngerDistance += Math.abs(step);
+      }
+      let forcefulAlternatingScroll = false;
+      if (!scrollAngerQualified && scrollAngerDistance >= SCROLL_ANGER_STROKE) {
+        scrollAngerQualified = true;
+        scrollAngerSamples = scrollAngerSamples.filter((sample) => now - sample.time <= SCROLL_ANGER_WINDOW);
+        if (scrollAngerSamples.at(-1)?.direction !== scrollAngerDirection) {
+          scrollAngerSamples.push({ direction: scrollAngerDirection, time: now });
+        }
+        forcefulAlternatingScroll = scrollAngerSamples.length >= SCROLL_ANGER_STROKES;
+      }
       let delta = nested ? (scrollDeltas.get(target) || 0) : windowDelta;
       delta = step && Math.sign(step) !== Math.sign(delta) ? step : delta + step;
       if (nested) scrollPositions.set(target, position);
@@ -615,12 +646,12 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
       if (Math.abs(delta) > 2 && (elapsed > 80 || root.dataset.look !== (delta > 0 ? 'down' : 'up'))) {
         lastScrollAt = now;
         const direction = delta > 0 ? 'down' : 'up';
-        scrollMoodSamples = scrollMoodSamples.filter((sample) => now - sample.time <= SCROLL_MOOD_WINDOW);
-        if (scrollMoodSamples.at(-1)?.direction !== direction) scrollMoodSamples.push({ direction, time: now });
-        // Repeatedly pulling Genny's gaze in opposite directions makes her
-        // visibly annoyed. A normal one-direction page scroll remains a gaze.
-        if (scrollMoodSamples.length >= 3) {
-          scrollMoodSamples = [];
+        // Only a deliberate, forceful up/down shake makes Genny angry. Normal
+        // scrolling, momentum bounce and a single correction remain a gaze.
+        if (forcefulAlternatingScroll) {
+          scrollAngerSamples = [];
+          scrollAngerDistance = 0;
+          scrollAngerQualified = false;
           react('angry', 3);
         } else {
           // Deliberate scrolling wins over ambient/hover reactions, but never

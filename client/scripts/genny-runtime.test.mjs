@@ -311,12 +311,27 @@ test('scroll direction follows window and nested mobile/sidebar scrolling', (t) 
   f.doc.emit('scroll', { target: nested }); assert.equal(f.root.dataset.look, 'up');
 });
 
-test('repeated up-down scrolling changes Genny from gaze tracking to angry', (t) => {
+test('only forceful repeated up-down scrolling changes Genny from gaze tracking to angry', (t) => {
   const f = fixture(t); f.mascot.bindDocument(f.doc); f.tick(1500);
   f.doc.defaultView.scrollY = 100; f.doc.defaultView.emit('scroll');
   f.tick(200); f.doc.defaultView.scrollY = 0; f.doc.defaultView.emit('scroll');
   f.tick(200); f.doc.defaultView.scrollY = 100; f.doc.defaultView.emit('scroll');
+  assert.notEqual(f.plays.at(-1), 'angry');
+  f.tick(200); f.doc.defaultView.scrollY = 0; f.doc.defaultView.emit('scroll');
   assert.equal(f.plays.at(-1), 'angry');
+});
+
+test('normal mobile scrolling and a small momentum correction never make Genny angry', (t) => {
+  const f = fixture(t, { viewport: { width: 390, height: 700, offsetLeft: 0, offsetTop: 0, scale: 1 } });
+  f.mascot.bindDocument(f.doc); f.tick(1500);
+  for (const position of [15, 45, 90, 150, 220, 280, 330]) {
+    f.doc.defaultView.scrollY = position; f.doc.defaultView.emit('scroll'); f.tick(100);
+  }
+  for (const position of [326, 323, 321]) {
+    f.doc.defaultView.scrollY = position; f.doc.defaultView.emit('scroll'); f.tick(100);
+  }
+  assert.notEqual(f.plays.at(-1), 'angry');
+  assert.equal(f.root.dataset.look, 'up');
 });
 
 test('curated hover explanations dwell, persist and stay dismissed until leaving', (t) => {
