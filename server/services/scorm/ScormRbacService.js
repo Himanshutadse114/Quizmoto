@@ -19,9 +19,19 @@ function isAnalyticsReadRoute(url) {
     return false;
 }
 
+function isAvatarStudioPaymentRoute(method, url) {
+    const verb = String(method || 'GET').toUpperCase();
+    const path = String(url || '').split('?')[0];
+    if (verb === 'GET') return path === '/api/avatar-studio/payments/entitlement';
+    if (verb !== 'POST') return false;
+    return path === '/api/avatar-studio/payments/orders'
+        || path === '/api/avatar-studio/payments/verify';
+}
+
 function isTrialRoute(method, url) {
     const verb = String(method || 'GET').toUpperCase();
     const path = String(url || '').split('?')[0];
+    if (isAvatarStudioPaymentRoute(verb, path)) return true;
     if (path === '/api/scorm/features') return verb === 'GET';
     if (path.startsWith('/api/scorm/flipbooks')) return true;
     if (path === '/api/scorm/courses') return verb === 'GET';
@@ -32,6 +42,7 @@ function isTrialRoute(method, url) {
 }
 
 function assertScormRouteAllowed({ role, method, url }) {
+    if (isAvatarStudioPaymentRoute(method, url)) return true;
     const normalizedRole = normalizeScormRole(role);
     if (normalizedRole === 'trial') {
         if (isTrialRoute(method, url)) return true;
@@ -52,6 +63,7 @@ function assertScormRouteAllowed({ role, method, url }) {
 
 module.exports = {
     isAnalyticsReadRoute,
+    isAvatarStudioPaymentRoute,
     isTrialRoute,
     assertScormRouteAllowed
 };

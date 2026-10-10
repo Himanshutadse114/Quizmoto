@@ -20,7 +20,7 @@ const FINGERPRINT = /^[a-f0-9]{64}$/;
 
 router.use(auth);
 router.use((req, res, next) => {
-    if (req.authScope !== 'scorm') {
+    if (!['scorm', 'trial'].includes(req.authScope)) {
         return res.status(401).json({ message: 'LMSGEN platform login required.' });
     }
     return next();

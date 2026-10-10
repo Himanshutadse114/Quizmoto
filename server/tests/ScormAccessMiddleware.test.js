@@ -23,7 +23,7 @@ describe('SCORM access middleware', () => {
         process.env.NODE_ENV = originalNodeEnv;
     });
 
-    function buildMiddleware({ decoded, user, role, staffPolicy = null }) {
+    function buildMiddleware({ decoded, user, role, staffPolicy = null, entitlement = null }) {
         const jwt = {
             verify() {
                 return decoded;
@@ -69,7 +69,10 @@ describe('SCORM access middleware', () => {
                 async getStaffPolicyForEmail() { return staffPolicy; }
             },
             '../services/scorm/ScormEntitlementService': {
-                async enforceRequestEntitlement() { return null; }
+                async enforceRequestEntitlement(req) {
+                    req.scormEntitlement = entitlement;
+                    return entitlement;
+                }
             },
             '../services/scorm/ScormRbacService': {
                 assertScormRouteAllowed() { return true; }
@@ -196,6 +199,54 @@ describe('SCORM access middleware', () => {
         const req = {
             header: () => 'Bearer quizmoto-token',
             originalUrl: '/api/scorm/courses'
+        };
+        const res = makeResponse();
+        let nextCalled = false;
+
+        await middleware(req, res, () => { nextCalled = true; });
+
+        expect(nextCalled).to.equal(false);
+        expect(res.statusCode).to.equal(401);
+        expect(res.body.code).to.equal('SCORM_AUTH_REQUIRED');
+    });
+
+    it('accepts a trial LMSGEN session for Avatar Studio payment endpoints', async () => {
+        process.env.NODE_ENV = 'production';
+        const entitlement = { permissions: { avatarStudioFreeExports: false } };
+        const middleware = buildMiddleware({
+            decoded: { userId: 31, scope: 'trial' },
+            user: { id: 31, email: 'trial@example.com' },
+            role: null,
+            entitlement
+        });
+        const req = {
+            header: () => 'Bearer trial-token',
+            originalUrl: '/api/avatar-studio/payments/orders',
+            method: 'POST'
+        };
+        const res = makeResponse();
+        let nextCalled = false;
+
+        await middleware(req, res, () => { nextCalled = true; });
+
+        expect(nextCalled).to.equal(true);
+        expect(req.authScope).to.equal('trial');
+        expect(req.scormRole).to.equal('trial');
+        expect(req.scormEmail).to.equal('trial@example.com');
+        expect(req.scormEntitlement).to.equal(entitlement);
+    });
+
+    it('rejects a Quizmoto-only token from Avatar Studio payment endpoints', async () => {
+        process.env.NODE_ENV = 'production';
+        const middleware = buildMiddleware({
+            decoded: { userId: 32, scope: 'quizmoto' },
+            user: { id: 32, email: 'quizmoto@example.com' },
+            role: 'user'
+        });
+        const req = {
+            header: () => 'Bearer quizmoto-token',
+            originalUrl: '/api/avatar-studio/payments/orders',
+            method: 'POST'
         };
         const res = makeResponse();
         let nextCalled = false;

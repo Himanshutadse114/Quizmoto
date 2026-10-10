@@ -4,6 +4,7 @@ const {
 } = require('../services/scorm/ScormAccessService');
 const {
     isAnalyticsReadRoute,
+    isAvatarStudioPaymentRoute,
     assertScormRouteAllowed
 } = require('../services/scorm/ScormRbacService');
 
@@ -70,7 +71,10 @@ describe('SCORM workspace RBAC', () => {
             ['GET', '/api/scorm/courses'],
             ['GET', '/api/scorm/courses/course-1'],
             ['POST', '/api/scorm/courses/course-1/preview'],
-            ['GET', '/api/scorm/preview/course/course-1']
+            ['GET', '/api/scorm/preview/course/course-1'],
+            ['GET', '/api/avatar-studio/payments/entitlement?fingerprint=abc'],
+            ['POST', '/api/avatar-studio/payments/orders'],
+            ['POST', '/api/avatar-studio/payments/verify']
         ];
         for (const [method, url] of allowed) {
             expect(() => assertScormRouteAllowed({ role: 'trial', method, url }), `${method} ${url}`).not.to.throw();
@@ -89,5 +93,13 @@ describe('SCORM workspace RBAC', () => {
         for (const [method, url] of blocked) {
             expect(() => assertScormRouteAllowed({ role: 'trial', method, url }), `${method} ${url}`).to.throw(/not included in free access/);
         }
+    });
+
+    it('allows only the three intended Avatar Studio payment operations', () => {
+        expect(isAvatarStudioPaymentRoute('GET', '/api/avatar-studio/payments/entitlement')).to.equal(true);
+        expect(isAvatarStudioPaymentRoute('POST', '/api/avatar-studio/payments/orders')).to.equal(true);
+        expect(isAvatarStudioPaymentRoute('POST', '/api/avatar-studio/payments/verify')).to.equal(true);
+        expect(isAvatarStudioPaymentRoute('DELETE', '/api/avatar-studio/payments/orders')).to.equal(false);
+        expect(isAvatarStudioPaymentRoute('POST', '/api/avatar-studio/payments/entitlement')).to.equal(false);
     });
 });

@@ -93,6 +93,8 @@ module.exports = async (req, res, next) => {
         const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         const url = String(req.originalUrl || req.baseUrl || '');
         const isScormAdminRequest = url.startsWith('/api/scorm/');
+        const isAvatarStudioPaymentRequest = url.startsWith('/api/avatar-studio/payments');
+        const requiresScormContext = isScormAdminRequest || isAvatarStudioPaymentRequest;
         const isSessionStatusRequest = url.startsWith('/api/auth/session-status');
         const mutatingScormRequest = isScormAdminRequest && !SAFE_METHODS.has(String(req.method || 'GET').toUpperCase());
         if (mutatingScormRequest
@@ -145,11 +147,11 @@ module.exports = async (req, res, next) => {
             });
         }
 
-        if (isScormAdminRequest && process.env.NODE_ENV !== 'test' && !['scorm', 'trial'].includes(decoded.scope)) {
+        if (requiresScormContext && process.env.NODE_ENV !== 'test' && !['scorm', 'trial'].includes(decoded.scope)) {
             return res.status(401).json({ message: 'LMSGEN login required', code: 'SCORM_AUTH_REQUIRED' });
         }
 
-        if (decoded.scope === 'trial' && isScormAdminRequest && !isSessionStatusRequest) {
+        if (decoded.scope === 'trial' && requiresScormContext && !isSessionStatusRequest) {
             req.scormRole = 'trial';
             req.scormTrial = true;
             req.scormEmail = authenticatedUser.email || null;
@@ -214,7 +216,7 @@ module.exports = async (req, res, next) => {
                 }
             }
 
-            if (isScormAdminRequest) {
+            if (requiresScormContext) {
                 req.userId = workspaceContext.hostId;
 
                 assertScormRouteAllowed({
