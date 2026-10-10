@@ -164,25 +164,68 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
   }
   function mascotSize() {
     const rectangle = root.getBoundingClientRect();
-    return { width: rectangle.width || (win.innerWidth <= 767 ? 76 : 120), height: rectangle.height || (win.innerWidth <= 767 ? 76 : 120) };
+    const viewport = visibleViewport();
+    return { width: rectangle.width || (viewport.width <= 767 ? 76 : 120), height: rectangle.height || (viewport.width <= 767 ? 76 : 120) };
+  }
+  function visibleViewport() {
+    const viewport = win.visualViewport;
+    const width = viewport?.width || win.innerWidth;
+    const height = viewport?.height || win.innerHeight;
+    const visible = {
+      left: viewport?.offsetLeft || 0,
+      top: viewport?.offsetTop || 0,
+      width,
+      height,
+    };
+    root.style.setProperty('--genny-visible-width', `${width}px`);
+    root.style.setProperty('--genny-visible-height', `${height}px`);
+    return visible;
+  }
+  function positionBounds(size = mascotSize()) {
+    const viewport = visibleViewport();
+    const compact = viewport.width <= 767;
+    // Keep the dismiss control on-screen and, in the workspace, keep Genny
+    // above the fixed mobile navigation/action strip after she is dragged.
+    const topMargin = compact ? 14 : POSITION_MARGIN;
+    const bottomMargin = platform && compact ? 94 : POSITION_MARGIN;
+    const minLeft = viewport.left + POSITION_MARGIN;
+    const minTop = viewport.top + topMargin;
+    return {
+      minLeft,
+      minTop,
+      maxLeft: Math.max(minLeft, viewport.left + viewport.width - size.width - POSITION_MARGIN),
+      maxTop: Math.max(minTop, viewport.top + viewport.height - size.height - bottomMargin),
+    };
+  }
+  function placeBubble() {
+    if (bubble.hidden) return;
+    const viewport = visibleViewport();
+    const mascot = root.getBoundingClientRect();
+    const message = bubble.getBoundingClientRect();
+    const rightEdge = viewport.left + viewport.width - POSITION_MARGIN;
+    const topEdge = viewport.top + POSITION_MARGIN;
+    root.dataset.horizontal = mascot.left + message.width <= rightEdge ? 'left' : 'right';
+    root.dataset.vertical = mascot.top - message.height - 12 >= topEdge ? 'bottom' : 'top';
   }
   function applyPosition(left, top) {
     const size = mascotSize();
-    const maxLeft = Math.max(POSITION_MARGIN, win.innerWidth - size.width - POSITION_MARGIN);
-    const maxTop = Math.max(POSITION_MARGIN, win.innerHeight - size.height - POSITION_MARGIN);
-    position = { left: Math.max(POSITION_MARGIN, Math.min(left, maxLeft)), top: Math.max(POSITION_MARGIN, Math.min(top, maxTop)) };
+    const bounds = positionBounds(size);
+    position = {
+      left: Math.max(bounds.minLeft, Math.min(left, bounds.maxLeft)),
+      top: Math.max(bounds.minTop, Math.min(top, bounds.maxTop)),
+    };
     root.style.setProperty('--genny-left', `${position.left}px`);
     root.style.setProperty('--genny-top', `${position.top}px`);
     root.dataset.positioned = 'true';
-    root.dataset.horizontal = position.left + size.width / 2 < win.innerWidth / 2 ? 'left' : 'right';
-    root.dataset.vertical = position.top + size.height / 2 < win.innerHeight / 2 ? 'top' : 'bottom';
+    placeBubble();
   }
   function savePosition() {
     if (!position) return;
     const size = mascotSize();
-    const width = Math.max(1, win.innerWidth - size.width - POSITION_MARGIN * 2);
-    const height = Math.max(1, win.innerHeight - size.height - POSITION_MARGIN * 2);
-    const stored = { x: (position.left - POSITION_MARGIN) / width, y: (position.top - POSITION_MARGIN) / height };
+    const bounds = positionBounds(size);
+    const width = Math.max(1, bounds.maxLeft - bounds.minLeft);
+    const height = Math.max(1, bounds.maxTop - bounds.minTop);
+    const stored = { x: (position.left - bounds.minLeft) / width, y: (position.top - bounds.minTop) / height };
     try { win.localStorage.setItem(positionKey, JSON.stringify(stored)); } catch { /* optional storage */ }
   }
   function restorePosition() {
@@ -190,9 +233,10 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     try { stored = JSON.parse(win.localStorage.getItem(positionKey)); } catch { return; }
     if (!stored || !Number.isFinite(stored.x) || !Number.isFinite(stored.y)) return;
     const size = mascotSize();
-    const width = Math.max(1, win.innerWidth - size.width - POSITION_MARGIN * 2);
-    const height = Math.max(1, win.innerHeight - size.height - POSITION_MARGIN * 2);
-    applyPosition(POSITION_MARGIN + stored.x * width, POSITION_MARGIN + stored.y * height);
+    const bounds = positionBounds(size);
+    const width = Math.max(1, bounds.maxLeft - bounds.minLeft);
+    const height = Math.max(1, bounds.maxTop - bounds.minTop);
+    applyPosition(bounds.minLeft + stored.x * width, bounds.minTop + stored.y * height);
   }
   function moveWithKeyboard(event) {
     if (!event.altKey || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home'].includes(event.key)) return;
@@ -200,7 +244,10 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     const rectangle = root.getBoundingClientRect();
     const left = position?.left ?? rectangle.left;
     const top = position?.top ?? rectangle.top;
-    if (event.key === 'Home') applyPosition(win.innerWidth - mascotSize().width - 20, win.innerHeight - mascotSize().height - 20);
+    if (event.key === 'Home') {
+      const bounds = positionBounds();
+      applyPosition(bounds.maxLeft, bounds.maxTop);
+    }
     else applyPosition(left + (event.key === 'ArrowLeft' ? -24 : event.key === 'ArrowRight' ? 24 : 0), top + (event.key === 'ArrowUp' ? -24 : event.key === 'ArrowDown' ? 24 : 0));
     savePosition();
     react('curious', 3);
@@ -253,6 +300,7 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
     hideBubble();
     bubble.textContent = text;
     bubble.hidden = false;
+    placeBubble();
     if (!persistent) bubbleTimer = later(() => { hideBubble(); retryTip(); }, 6500);
   }
   function settle() {
@@ -391,7 +439,17 @@ export function mountGenny({ document: doc, createAvatar, definition, container 
   cleanups.push(listen(root.querySelector('.lmsgen-mascot-dismiss'), 'click', () => { if (!platform) writeFlag(DISMISS_KEY); destroy(); onDismiss?.(); }));
   cleanups.push(listen(media, 'change', motionChanged));
   cleanups.push(listen(win, 'pageshow', () => { if (!doc.hidden) motionChanged(); }));
-  cleanups.push(listen(win, 'resize', () => { if (!drag) restorePosition(); }, { passive: true }));
+  const viewportChanged = () => {
+    if (drag) return;
+    if (position) applyPosition(position.left, position.top);
+    restorePosition();
+    placeBubble();
+  };
+  cleanups.push(listen(win, 'resize', viewportChanged, { passive: true }));
+  if (win.visualViewport) {
+    cleanups.push(listen(win.visualViewport, 'resize', viewportChanged, { passive: true }));
+    cleanups.push(listen(win.visualViewport, 'scroll', viewportChanged, { passive: true }));
+  }
   cleanups.push(listen(doc, 'resume', () => { if (!doc.hidden) motionChanged(); }));
   cleanups.push(listen(doc, 'keydown', (event) => { if (event.key === 'Escape') { hideBubble(); retryTip(); } }));
   for (const event of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'touchmove', 'scroll']) {

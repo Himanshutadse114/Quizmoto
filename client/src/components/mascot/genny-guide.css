@@ -76,7 +76,7 @@
 .genny-tour-progress progress { display: block; accent-color: #097d6a; width: 100%; height: 5px; margin-top: 5px; }
 .genny-is-open .lmsgen-mascot { visibility: hidden; }
 body:has(.genny-website.genny-is-open) > .lmsgen-mascot-site { visibility: hidden; }
-.genny-website .lmsgen-mascot, .lmsgen-mascot-site { bottom: 58px; }
+.genny-website .lmsgen-mascot, .lmsgen-mascot-site { bottom: calc(58px + env(safe-area-inset-bottom)); }
 .lmsgen-mascot-platform { width: 88px; bottom: 60px; z-index: 39; }
 .genny-platform[hidden], .genny-website[hidden] { display: none; }
 @media (max-width: 767px) {

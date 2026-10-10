@@ -53,7 +53,7 @@ class Element extends Events {
   getClientRects() { return this.hidden ? [] : [this.rect]; }
 }
 
-function fixture(t, { reduced = false, greeted = true, dismissed = false, realRenderer = false, ...runtimeOptions } = {}) {
+function fixture(t, { reduced = false, greeted = true, dismissed = false, realRenderer = false, viewport = null, ...runtimeOptions } = {}) {
   let time = 100000;
   let nextId = 0;
   const timers = new Map();
@@ -78,6 +78,7 @@ function fixture(t, { reduced = false, greeted = true, dismissed = false, realRe
       MutationObserver: class { constructor(fn) { this.fn = fn; observers.push(this); } observe() {} disconnect() { this.disconnected = true; } },
       IntersectionObserver: class { constructor(fn) { this.fn = fn; observers.push(this); } observe() {} disconnect() { this.disconnected = true; } },
     });
+    if (viewport) win.visualViewport = Object.assign(new Events(), viewport);
     const doc = new Element(); doc.hidden = false; doc.body = new Element(); doc.defaultView = win;
     doc.createElement = (tag) => { const element = new Element(); element.tagName = tag; element.ownerDocument = doc; return element; };
     doc.createElementNS = (_namespace, tag) => doc.createElement(tag);
@@ -261,6 +262,31 @@ test('Alt plus arrow keys provide a precise non-drag placement option', (t) => {
   });
   assert.equal(prevented, true); assert.equal(f.root.style.values.get('--genny-left'), '76px');
   assert.equal(f.plays.at(-1), 'curious');
+});
+
+test('mobile dragging stays inside the visual viewport and above workspace navigation', (t) => {
+  const f = fixture(t, { platform: true, viewport: { width: 320, height: 420, offsetLeft: 10, offsetTop: 100, scale: 1 } });
+  f.root.rect = { left: 200, top: 200, right: 272, bottom: 272, width: 72, height: 72 };
+  const button = f.root.querySelector('.lmsgen-mascot-btn');
+  button.emit('pointerdown', { pointerId: 8, button: 0, clientX: 220, clientY: 220 });
+  button.emit('pointermove', { pointerId: 8, clientX: 900, clientY: 900, preventDefault() {} });
+  button.emit('pointerup', { pointerId: 8 });
+  assert.equal(f.root.style.values.get('--genny-left'), '250px');
+  assert.equal(f.root.style.values.get('--genny-top'), '354px');
+  const viewport = f.doc.defaultView.visualViewport;
+  viewport.height = 300; viewport.offsetTop = 140; viewport.emit('resize');
+  assert.ok(Number.parseFloat(f.root.style.values.get('--genny-top')) <= 274);
+  assert.ok(f.localStorage.get('lmsgen-genny-position-v1:platform'));
+});
+
+test('mobile bubbles open toward available visual viewport space', (t) => {
+  const f = fixture(t, { viewport: { width: 320, height: 500, offsetLeft: 0, offsetTop: 80, scale: 1 } });
+  f.root.rect = { left: 8, top: 90, right: 84, bottom: 166, width: 76, height: 76 };
+  const bubble = f.root.querySelector('.lmsgen-mascot-bubble');
+  bubble.rect = { left: 0, top: 0, right: 240, bottom: 100, width: 240, height: 100 };
+  f.mascot.explain('A useful explanation that must remain visible on a phone.');
+  assert.equal(f.root.dataset.horizontal, 'left');
+  assert.equal(f.root.dataset.vertical, 'top');
 });
 
 test('session dismissal never mounts an avatar', (t) => {
@@ -671,5 +697,8 @@ test('guide sizing and layering stay scoped; platform artwork has no alternate u
   assert.match(css, /\.genny-guide-header \{[^}]*flex: 0 0 auto/);
   assert.match(css, /\.genny-guide-footer \{[^}]*flex: 0 0 auto/);
   const mascotCss = readFileSync(new URL('../src/components/mascot/mascot.css', import.meta.url), 'utf8');
+  assert.match(mascotCss, /safe-area-inset-right/);
+  assert.match(mascotCss, /--genny-visible-width/);
+  assert.match(mascotCss, /width: 40px/);
   assert.doesNotMatch(mascotCss, /#164e63|#ecfeff|distinct uniform/);
 });
