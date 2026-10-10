@@ -12,9 +12,9 @@ const TIP_GAP = 9000;
 const TIP_DWELL = 1200;
 const DRAG_THRESHOLD = 5;
 const POSITION_MARGIN = 8;
-const SCROLL_ANGER_WINDOW = 1800;
+const SCROLL_ANGER_WINDOW = 3000;
 const SCROLL_ANGER_STROKE = 48;
-const SCROLL_ANGER_STROKES = 4;
+const SCROLL_ANGER_STROKES = 6;
 
 export const GENNY_TIPS = [
   { sel: '.lmsgen-pain-section', text: 'Create, deliver and track learning from one workspace.', anim: 'happy' },

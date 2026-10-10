@@ -313,11 +313,12 @@ test('scroll direction follows window and nested mobile/sidebar scrolling', (t) 
 
 test('only forceful repeated up-down scrolling changes Genny from gaze tracking to angry', (t) => {
   const f = fixture(t); f.mascot.bindDocument(f.doc); f.tick(1500);
-  f.doc.defaultView.scrollY = 100; f.doc.defaultView.emit('scroll');
-  f.tick(200); f.doc.defaultView.scrollY = 0; f.doc.defaultView.emit('scroll');
-  f.tick(200); f.doc.defaultView.scrollY = 100; f.doc.defaultView.emit('scroll');
-  assert.notEqual(f.plays.at(-1), 'angry');
-  f.tick(200); f.doc.defaultView.scrollY = 0; f.doc.defaultView.emit('scroll');
+  for (const position of [100, 0, 100, 0, 100]) {
+    f.doc.defaultView.scrollY = position; f.doc.defaultView.emit('scroll'); f.tick(250);
+    assert.notEqual(f.plays.at(-1), 'angry');
+  }
+  assert.equal(f.root.dataset.look, 'down');
+  f.doc.defaultView.scrollY = 0; f.doc.defaultView.emit('scroll');
   assert.equal(f.plays.at(-1), 'angry');
 });
 
