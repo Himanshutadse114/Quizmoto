@@ -325,6 +325,7 @@
       const label = (sourceLink.textContent || "").replace(/\s+/g, " ").trim();
       if (!href || !label || seen.has(href)) return;
       if (sourceLink.closest(".mobile-btn-c")) return;
+      if (sourceLink.closest(".w-locales-list") || sourceLink.hasAttribute("hreflang")) return;
       if (sourceLink.classList.contains("lmsgen-install-nav-link")) return;
       if (href === "/login") return;
       seen.add(href);
