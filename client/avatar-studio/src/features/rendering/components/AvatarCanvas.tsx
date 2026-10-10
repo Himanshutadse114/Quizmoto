@@ -24,8 +24,10 @@ import {
   isUpsetDeparture,
   isUpsetLongPress,
   registerReactionTap,
+  registerReactionWheel,
   type AvatarReaction,
   type ReactionPointerSample,
+  type ReactionWheelSample,
 } from '@/features/avatar/avatarReactions'
 import { type BodyNode } from '@/features/avatar/body'
 import { scaleEye, updateEyeDimension } from '@/features/avatar/expressionEditing'
@@ -558,6 +560,7 @@ export function AvatarCanvas({
     enabled: boolean
     active: AvatarReaction | null
     onTrigger: (reaction: AvatarReaction) => void
+    onScroll?: (deltaY: number) => void
   }
 }) {
   const { t } = useStudioLanguage()
@@ -602,6 +605,7 @@ export function AvatarCanvas({
   const canvasManipulation = useRef<ManipulationSession<Expression> | null>(null)
   const reactionSamples = useRef<ReactionPointerSample[]>([])
   const reactionTapTimes = useRef<number[]>([])
+  const reactionWheelSamples = useRef<ReactionWheelSample[]>([])
   const reactionEnteredAt = useRef<number | null>(null)
   const reactionPointerStart = useRef<{
     x: number
@@ -803,6 +807,7 @@ export function AvatarCanvas({
     lastReactionAt.current = time
     reactionSamples.current = []
     reactionTapTimes.current = []
+    reactionWheelSamples.current = []
     pendingReaction.current = null
     reaction.onTrigger(next)
   }
@@ -862,6 +867,15 @@ export function AvatarCanvas({
     reactionTapTimes.current = result.tapTimes
     if (result.reaction) triggerReaction(result.reaction, now)
   }
+  const trackReactionWheel = (event: React.WheelEvent<SVGSVGElement>) => {
+    if (!reaction?.enabled) return
+    event.preventDefault()
+    const now = performance.now()
+    reaction.onScroll?.(event.deltaY)
+    const result = registerReactionWheel(reactionWheelSamples.current, event.deltaY, now)
+    reactionWheelSamples.current = result.samples
+    if (result.reaction) triggerReaction(result.reaction, now)
+  }
   const leaveReactionArea = (event: React.PointerEvent<SVGSVGElement>) => {
     reactionSamples.current = []
     const enteredAt = reactionEnteredAt.current
@@ -909,7 +923,7 @@ export function AvatarCanvas({
           <span title={t('Bouge de gauche à droite')}>↔ {t('Heureux')}</span>
           <span title={t('Bouge de haut en bas')}>↕ {t('Effrayé')}</span>
           <span title={t('Maintiens ou éloigne-toi')}>◷ {t('Contrarié')}</span>
-          <span title={t('Clique ou touche trois fois')}>×3 {t('Fâché')}</span>
+          <span title={t('Fais défiler vers le haut et le bas')}>↕ {t('Fâché')}</span>
         </div>
       )}
       {reactionLabel && (
@@ -942,6 +956,7 @@ export function AvatarCanvas({
         onPointerUp={finishReactionPointer}
         onPointerCancel={cancelReactionPointer}
         onClick={trackReactionTap}
+        onWheel={trackReactionWheel}
       >
         <defs>
           <clipPath id="avatar-head-clip">

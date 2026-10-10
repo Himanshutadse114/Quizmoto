@@ -34,6 +34,7 @@ export const chinese: Record<string, string> = {
   'Bouge de haut en bas': '上下移动',
   'Maintiens ou éloigne-toi': '长按或移开指针',
   'Clique ou touche trois fois': '点击或轻触三次',
+  'Fais défiler vers le haut et le bas': '上下滚动',
   Heureux: '开心',
   Effrayé: '害怕',
   Contrarié: '难过',

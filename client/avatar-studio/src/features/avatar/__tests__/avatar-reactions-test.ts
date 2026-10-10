@@ -6,6 +6,7 @@ import {
   isUpsetDeparture,
   isUpsetLongPress,
   registerReactionTap,
+  registerReactionWheel,
   type ReactionPointerSample,
 } from '@/features/avatar/avatarReactions'
 
@@ -71,5 +72,17 @@ describe('avatar reactions', () => {
     expect(isUpsetLongPress(760, 5)).toBe(true)
     expect(isUpsetLongPress(760, 30)).toBe(false)
     expect(isUpsetDeparture(1_700)).toBe(true)
+  })
+
+  it('maps repeated up-down wheel changes to angry', () => {
+    const down = registerReactionWheel([], 120, 0)
+    const up = registerReactionWheel(down.samples, -120, 250)
+    const downAgain = registerReactionWheel(up.samples, 120, 500)
+    expect(downAgain.reaction).toBe('angry')
+
+    const oneDirection = registerReactionWheel([], 120, 0)
+    const sameDirection = registerReactionWheel(oneDirection.samples, 80, 250)
+    expect(sameDirection.reaction).toBeNull()
+    expect(sameDirection.samples).toHaveLength(1)
   })
 })

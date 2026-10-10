@@ -33,6 +33,7 @@ export function StudioStage({ controller }: { controller: StudioController }) {
     photoTool,
     playbackStatus,
     previewCanvasExpression,
+    previewAvatarScroll,
     previewExpressionDraft,
     previewSelectedBodyNode,
     renderedColors,
@@ -108,9 +109,14 @@ export function StudioStage({ controller }: { controller: StudioController }) {
       }
       onManipulationStart={freezeLivePreviewForManipulation}
       reaction={{
-        enabled: mode === 'avatars' && !bodyEditing && !editing && playbackStatus === 'stopped',
+        enabled:
+          (mode === 'avatars' || mode === 'export') &&
+          !bodyEditing &&
+          !editing &&
+          playbackStatus === 'stopped',
         active: avatarReaction,
         onTrigger: triggerAvatarReaction,
+        onScroll: previewAvatarScroll,
       }}
     />
   )

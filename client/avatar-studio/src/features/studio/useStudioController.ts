@@ -189,6 +189,8 @@ export function useStudioController() {
   const avatarReactionTimer = useRef<number | null>(null)
   const avatarReactionRestore = useRef<Expression | null>(null)
   const avatarReactionTransitioning = useRef(false)
+  const avatarScrollTimer = useRef<number | null>(null)
+  const avatarScrollRestore = useRef<Expression | null>(null)
   useEffect(() => {
     if (runtimeCopyFeedback.status === 'idle') return
     const timeout = window.setTimeout(
@@ -503,13 +505,16 @@ export function useStudioController() {
 
   const clearAvatarReaction = () => {
     if (avatarReactionTimer.current !== null) window.clearTimeout(avatarReactionTimer.current)
+    if (avatarScrollTimer.current !== null) window.clearTimeout(avatarScrollTimer.current)
     avatarReactionTimer.current = null
+    avatarScrollTimer.current = null
     avatarReactionRestore.current = null
+    avatarScrollRestore.current = null
     setAvatarReaction(null)
   }
 
   const freezeLivePreviewForManipulation = () => {
-    const reactionRestore = avatarReactionRestore.current
+    const reactionRestore = avatarReactionRestore.current ?? avatarScrollRestore.current
     clearAvatarReaction()
     if (statePlaying) pauseState()
     const renderedExpression = { ...(reactionRestore ?? displayedPose.current.expression) }
@@ -748,9 +753,47 @@ export function useStudioController() {
     transitionFrame.current = requestAnimationFrame(tick)
   }
 
+  const previewAvatarScroll = (deltaY: number) => {
+    if (
+      (modeRef.current !== 'avatars' && modeRef.current !== 'export') ||
+      bodyEditing ||
+      editing ||
+      sequenceEditing ||
+      playbackStatus !== 'stopped' ||
+      avatarReactionTimer.current !== null ||
+      Math.abs(deltaY) < 1
+    ) {
+      return
+    }
+
+    if (!avatarScrollRestore.current) {
+      avatarScrollRestore.current = { ...displayedPose.current.expression }
+      stopTransition(true)
+      stopColorTransitions()
+    }
+    const restore = avatarScrollRestore.current
+    const eyeShift = Math.sign(deltaY) * 18
+    const preview = {
+      ...restore,
+      positionYLeft: bounded(restore.positionYLeft + eyeShift, -48, 48),
+      positionYRight: bounded(restore.positionYRight + eyeShift, -48, 48),
+    }
+    transitionTarget.current = restore
+    canonicalTarget.current = restore
+    paintPose(poseFromExpression(preview))
+
+    if (avatarScrollTimer.current !== null) window.clearTimeout(avatarScrollTimer.current)
+    avatarScrollTimer.current = window.setTimeout(() => {
+      const base = avatarScrollRestore.current
+      avatarScrollTimer.current = null
+      avatarScrollRestore.current = null
+      if (base) paintPose(poseFromExpression(base))
+    }, 260)
+  }
+
   const triggerAvatarReaction = (reaction: AvatarReaction) => {
     if (
-      modeRef.current !== 'avatars' ||
+      (modeRef.current !== 'avatars' && modeRef.current !== 'export') ||
       bodyEditing ||
       editing ||
       sequenceEditing ||
@@ -764,9 +807,13 @@ export function useStudioController() {
       .find((item): item is Expression => Boolean(item))
     if (!target) return
 
-    if (!avatarReactionRestore.current) {
-      avatarReactionRestore.current = { ...displayedPose.current.expression }
-    }
+    if (!avatarReactionRestore.current)
+      avatarReactionRestore.current = {
+        ...(avatarScrollRestore.current ?? displayedPose.current.expression),
+      }
+    if (avatarScrollTimer.current !== null) window.clearTimeout(avatarScrollTimer.current)
+    avatarScrollTimer.current = null
+    avatarScrollRestore.current = null
     if (avatarReactionTimer.current !== null) window.clearTimeout(avatarReactionTimer.current)
     setAvatarReaction(reaction)
     avatarReactionTransitioning.current = true
@@ -794,6 +841,7 @@ export function useStudioController() {
   useEffect(
     () => () => {
       if (avatarReactionTimer.current !== null) window.clearTimeout(avatarReactionTimer.current)
+      if (avatarScrollTimer.current !== null) window.clearTimeout(avatarScrollTimer.current)
     },
     []
   )
@@ -2161,6 +2209,7 @@ export function useStudioController() {
     playbackVisual,
     prepareStudioProjectImport,
     previewAvatarMove,
+    previewAvatarScroll,
     previewCanvasExpression,
     previewExpressionDraft,
     previewExpressionMove,

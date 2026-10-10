@@ -6,9 +6,14 @@ export type ReactionPointerSample = {
   time: number
 }
 
+export type ReactionWheelSample = {
+  direction: -1 | 1
+  time: number
+}
+
 const GESTURE_WINDOW_MS = 1_100
 const SAMPLE_DISTANCE = 6
-const REQUIRED_REVERSALS = 3
+const REQUIRED_REVERSALS = 2
 
 const analyzeAxis = (
   samples: readonly ReactionPointerSample[],
@@ -41,8 +46,8 @@ export const detectDirectionalReaction = (
   if (samples.length < 5) return null
   const horizontal = analyzeAxis(samples, 'horizontal')
   const vertical = analyzeAxis(samples, 'vertical')
-  const horizontalReady = horizontal.reversals >= REQUIRED_REVERSALS && horizontal.travel >= 110
-  const verticalReady = vertical.reversals >= REQUIRED_REVERSALS && vertical.travel >= 95
+  const horizontalReady = horizontal.reversals >= REQUIRED_REVERSALS && horizontal.travel >= 80
+  const verticalReady = vertical.reversals >= REQUIRED_REVERSALS && vertical.travel >= 75
 
   if (horizontalReady && (!verticalReady || horizontal.travel >= vertical.travel)) return 'happy'
   if (verticalReady) return 'scared'
@@ -67,6 +72,19 @@ export const registerReactionTap = (tapTimes: readonly number[], time: number) =
     tapTimes: recent.length >= 3 ? [] : recent,
     reaction: recent.length >= 3 ? ('angry' as const) : null,
   }
+}
+
+export const registerReactionWheel = (
+  samples: readonly ReactionWheelSample[],
+  deltaY: number,
+  time: number
+) => {
+  if (Math.abs(deltaY) < 1) return { samples: [...samples], reaction: null }
+  const direction = Math.sign(deltaY) as -1 | 1
+  const recent = samples.filter(item => time - item.time <= 1_200)
+  if (recent.at(-1)?.direction !== direction) recent.push({ direction, time })
+  const reaction = recent.length >= 3 ? ('angry' as const) : null
+  return { samples: reaction ? [] : recent, reaction }
 }
 
 export const isUpsetLongPress = (durationMs: number, movement: number) =>

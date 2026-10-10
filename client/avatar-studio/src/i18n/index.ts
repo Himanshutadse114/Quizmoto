@@ -61,6 +61,7 @@ const english: Record<string, string> = {
   'Bouge de haut en bas': 'Move up and down',
   'Maintiens ou éloigne-toi': 'Press and hold or move away',
   'Clique ou touche trois fois': 'Click or tap three times',
+  'Fais défiler vers le haut et le bas': 'Scroll up and down',
   Heureux: 'Happy',
   Effrayé: 'Scared',
   Contrarié: 'Upset',
