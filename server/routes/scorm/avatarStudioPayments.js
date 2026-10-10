@@ -128,8 +128,16 @@ router.post('/verify', async (req, res, next) => {
 router.use((error, req, res, next) => {
     if (res.headersSent) return next(error);
     const status = Number(error?.status) || 500;
+    console.error('[avatar-studio-payments]', {
+        code: error?.code || 'UNEXPECTED_PAYMENT_ERROR',
+        message: error?.message || 'Unknown payment error',
+        path: req.originalUrl,
+        status
+    });
     return res.status(status).json({
-        message: status >= 500 ? 'Avatar export payment is temporarily unavailable.' : error.message
+        message: error?.expose === true || status < 500
+            ? error.message
+            : 'Avatar export payment is temporarily unavailable.'
     });
 });
 

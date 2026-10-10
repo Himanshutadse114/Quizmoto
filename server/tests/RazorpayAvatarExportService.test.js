@@ -3,6 +3,7 @@ const crypto = require('crypto');
 
 const {
     AVATAR_EXPORT_AMOUNT,
+    configuredCredentials,
     verifyCheckoutSignature,
     assertCapturedPayment
 } = require('../services/payments/RazorpayAvatarExportService');
@@ -10,6 +11,24 @@ const {
 describe('Razorpay avatar export payments', () => {
     it('charges exactly ₹100 in paise', () => {
         assert.equal(AVATAR_EXPORT_AMOUNT, 10_000);
+    });
+
+    it('normalizes credentials copied into Render with wrapping quotes', () => {
+        const previousKeyId = process.env.RAZORPAY_KEY_ID;
+        const previousKeySecret = process.env.RAZORPAY_KEY_SECRET;
+        try {
+            process.env.RAZORPAY_KEY_ID = '"rzp_live_example"';
+            process.env.RAZORPAY_KEY_SECRET = "'secret_example'";
+            assert.deepEqual(configuredCredentials(), {
+                keyId: 'rzp_live_example',
+                keySecret: 'secret_example'
+            });
+        } finally {
+            if (previousKeyId === undefined) delete process.env.RAZORPAY_KEY_ID;
+            else process.env.RAZORPAY_KEY_ID = previousKeyId;
+            if (previousKeySecret === undefined) delete process.env.RAZORPAY_KEY_SECRET;
+            else process.env.RAZORPAY_KEY_SECRET = previousKeySecret;
+        }
     });
 
     it('verifies the signed checkout response', () => {

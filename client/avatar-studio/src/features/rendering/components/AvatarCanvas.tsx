@@ -18,6 +18,15 @@ import {
   type AvatarEyeDefaults,
   type AvatarRenderStyle,
 } from '@/features/avatar/avatars'
+import {
+  appendReactionPointerSample,
+  detectDirectionalReaction,
+  isUpsetDeparture,
+  isUpsetLongPress,
+  registerReactionTap,
+  type AvatarReaction,
+  type ReactionPointerSample,
+} from '@/features/avatar/avatarReactions'
 import { type BodyNode } from '@/features/avatar/body'
 import { scaleEye, updateEyeDimension } from '@/features/avatar/expressionEditing'
 import {
@@ -518,6 +527,7 @@ export function AvatarCanvas({
   onEyeChange,
   playback,
   onManipulationStart,
+  reaction,
 }: {
   expression: Expression
   avatarEyes: AvatarEyeDefaults
@@ -544,6 +554,11 @@ export function AvatarCanvas({
   onEyeChange?: (next: Expression) => void
   playback: { name: string; status: Exclude<PlaybackStatus, 'stopped'> } | null
   onManipulationStart: () => Expression
+  reaction?: {
+    enabled: boolean
+    active: AvatarReaction | null
+    onTrigger: (reaction: AvatarReaction) => void
+  }
 }) {
   const { t } = useStudioLanguage()
   const {
@@ -585,6 +600,17 @@ export function AvatarCanvas({
     | null
   >(null)
   const canvasManipulation = useRef<ManipulationSession<Expression> | null>(null)
+  const reactionSamples = useRef<ReactionPointerSample[]>([])
+  const reactionTapTimes = useRef<number[]>([])
+  const reactionEnteredAt = useRef<number | null>(null)
+  const reactionPointerStart = useRef<{
+    x: number
+    y: number
+    time: number
+    movement: number
+  } | null>(null)
+  const pendingReaction = useRef<AvatarReaction | null>(null)
+  const lastReactionAt = useRef(-Infinity)
   const editor =
     selectedSide === null
       ? null
@@ -772,9 +798,93 @@ export function AvatarCanvas({
     setActiveDragType(null)
     onHighlightChange(null)
   }
+  const triggerReaction = (next: AvatarReaction, time = performance.now()) => {
+    if (!reaction?.enabled || time - lastReactionAt.current < 900) return
+    lastReactionAt.current = time
+    reactionSamples.current = []
+    reactionTapTimes.current = []
+    pendingReaction.current = null
+    reaction.onTrigger(next)
+  }
+  const trackReactionMove = (event: React.PointerEvent<SVGSVGElement>) => {
+    if (!reaction?.enabled) return
+    const now = performance.now()
+    if (reactionPointerStart.current) {
+      reactionPointerStart.current.movement = Math.max(
+        reactionPointerStart.current.movement,
+        Math.hypot(
+          event.clientX - reactionPointerStart.current.x,
+          event.clientY - reactionPointerStart.current.y
+        )
+      )
+    }
+    reactionSamples.current = appendReactionPointerSample(reactionSamples.current, {
+      x: event.clientX,
+      y: event.clientY,
+      time: now,
+    })
+    const detected = detectDirectionalReaction(reactionSamples.current)
+    if (!detected) return
+    if (drag.current) pendingReaction.current = detected
+    else triggerReaction(detected, now)
+  }
+  const beginReactionPointer = (event: React.PointerEvent<SVGSVGElement>) => {
+    if (!reaction?.enabled) return
+    reactionPointerStart.current = {
+      x: event.clientX,
+      y: event.clientY,
+      time: performance.now(),
+      movement: 0,
+    }
+  }
+  const finishReactionPointer = () => {
+    const now = performance.now()
+    const pointerStart = reactionPointerStart.current
+    const queued = pendingReaction.current
+    reactionPointerStart.current = null
+    pendingReaction.current = null
+    commitDrag()
+    if (queued) triggerReaction(queued, now)
+    else if (pointerStart && isUpsetLongPress(now - pointerStart.time, pointerStart.movement)) {
+      triggerReaction('upset', now)
+    }
+  }
+  const cancelReactionPointer = () => {
+    reactionPointerStart.current = null
+    pendingReaction.current = null
+    reactionSamples.current = []
+    cancelDrag()
+  }
+  const trackReactionTap = () => {
+    if (!reaction?.enabled) return
+    const now = performance.now()
+    const result = registerReactionTap(reactionTapTimes.current, now)
+    reactionTapTimes.current = result.tapTimes
+    if (result.reaction) triggerReaction(result.reaction, now)
+  }
+  const leaveReactionArea = (event: React.PointerEvent<SVGSVGElement>) => {
+    reactionSamples.current = []
+    const enteredAt = reactionEnteredAt.current
+    reactionEnteredAt.current = null
+    if (!reaction?.enabled || event.pointerType !== 'mouse' || drag.current) return
+    if (enteredAt !== null && isUpsetDeparture(performance.now() - enteredAt)) {
+      triggerReaction('upset')
+    }
+  }
+  const reactionLabel = reaction?.active
+    ? {
+        happy: t('Heureux'),
+        upset: t('Contrarié'),
+        angry: t('Fâché'),
+        scared: t('Effrayé'),
+      }[reaction.active]
+    : null
   useEscapeToCancel(cancelDrag)
   return (
-    <div className={`avatar-wrap${renderStyle.type === 'pixel' ? ' is-pixel-rendered' : ''}`}>
+    <div
+      className={`avatar-wrap${renderStyle.type === 'pixel' ? ' is-pixel-rendered' : ''}`}
+      data-reaction={reaction?.active ?? undefined}
+    >
       {playback && (
         <motion.div
           className="stage-playback-status"
@@ -793,15 +903,45 @@ export function AvatarCanvas({
           className="avatar-pixel-canvas"
         />
       )}
+      {reaction?.enabled && (
+        <div className="avatar-reaction-guide" aria-label={t('Gestes de réaction')}>
+          <strong>{t('Fais réagir')}</strong>
+          <span title={t('Bouge de gauche à droite')}>↔ {t('Heureux')}</span>
+          <span title={t('Bouge de haut en bas')}>↕ {t('Effrayé')}</span>
+          <span title={t('Maintiens ou éloigne-toi')}>◷ {t('Contrarié')}</span>
+          <span title={t('Clique ou touche trois fois')}>×3 {t('Fâché')}</span>
+        </div>
+      )}
+      {reactionLabel && (
+        <motion.div
+          className="avatar-reaction-status"
+          key={reaction?.active}
+          role="status"
+          initial={{ opacity: 0, scale: 0.88, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: 'spring', duration: 0.32, bounce: 0.18 }}
+        >
+          {reactionLabel}
+        </motion.div>
+      )}
       <svg
         ref={svgRef}
         className="avatar"
         viewBox="-150 -150 300 300"
         role="img"
         aria-label={t('Avatar procédural')}
-        onPointerMove={move}
-        onPointerUp={commitDrag}
-        onPointerCancel={cancelDrag}
+        onPointerEnter={() => {
+          reactionEnteredAt.current = performance.now()
+        }}
+        onPointerLeave={leaveReactionArea}
+        onPointerDownCapture={beginReactionPointer}
+        onPointerMove={event => {
+          trackReactionMove(event)
+          move(event)
+        }}
+        onPointerUp={finishReactionPointer}
+        onPointerCancel={cancelReactionPointer}
+        onClick={trackReactionTap}
       >
         <defs>
           <clipPath id="avatar-head-clip">

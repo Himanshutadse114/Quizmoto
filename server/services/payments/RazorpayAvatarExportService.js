@@ -4,12 +4,22 @@ const AVATAR_EXPORT_AMOUNT = 10_000;
 const AVATAR_EXPORT_CURRENCY = 'INR';
 const RAZORPAY_API = 'https://api.razorpay.com/v1';
 
+function normalizeCredential(value) {
+    const credential = String(value || '').trim();
+    const wrapped = credential.match(/^(['"])(.*)\1$/s);
+    return (wrapped ? wrapped[2] : credential).trim();
+}
+
 function configuredCredentials() {
-    const keyId = String(process.env.RAZORPAY_KEY_ID || '').trim();
-    const keySecret = String(process.env.RAZORPAY_KEY_SECRET || '').trim();
+    const keyId = normalizeCredential(process.env.RAZORPAY_KEY_ID);
+    const keySecret = normalizeCredential(process.env.RAZORPAY_KEY_SECRET);
     if (!keyId || !keySecret) {
-        const error = new Error('Avatar export payments are not configured.');
+        const error = new Error(
+            'Avatar export payments are not configured. Add both RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to the Render backend service.'
+        );
         error.status = 503;
+        error.code = 'RAZORPAY_NOT_CONFIGURED';
+        error.expose = true;
         throw error;
     }
     return { keyId, keySecret };
@@ -29,6 +39,8 @@ async function razorpayRequest(path, init = {}) {
     if (!response.ok) {
         const error = new Error(payload?.error?.description || 'Payment provider request failed.');
         error.status = 502;
+        error.code = 'RAZORPAY_REQUEST_FAILED';
+        error.expose = true;
         throw error;
     }
     return payload;

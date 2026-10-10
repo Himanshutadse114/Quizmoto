@@ -49,6 +49,7 @@ import {
   applyAmbientBodyMotion,
   hasAmbientMotion,
 } from '@/features/avatar/ambientMotion'
+import { reactionSemanticKeys, type AvatarReaction } from '@/features/avatar/avatarReactions'
 import {
   avatarDefinitionFileName,
   createAvatarDefinition,
@@ -184,6 +185,10 @@ export function useStudioController() {
   }>({ status: 'idle' })
   const [avatarExportEntitlement, setAvatarExportEntitlement] =
     useState<AvatarExportEntitlement | null>(null)
+  const [avatarReaction, setAvatarReaction] = useState<AvatarReaction | null>(null)
+  const avatarReactionTimer = useRef<number | null>(null)
+  const avatarReactionRestore = useRef<Expression | null>(null)
+  const avatarReactionTransitioning = useRef(false)
   useEffect(() => {
     if (runtimeCopyFeedback.status === 'idle') return
     const timeout = window.setTimeout(
@@ -496,9 +501,18 @@ export function useStudioController() {
     eyeColorAnimation.current = null
   }
 
+  const clearAvatarReaction = () => {
+    if (avatarReactionTimer.current !== null) window.clearTimeout(avatarReactionTimer.current)
+    avatarReactionTimer.current = null
+    avatarReactionRestore.current = null
+    setAvatarReaction(null)
+  }
+
   const freezeLivePreviewForManipulation = () => {
+    const reactionRestore = avatarReactionRestore.current
+    clearAvatarReaction()
     if (statePlaying) pauseState()
-    const renderedExpression = { ...displayedPose.current.expression }
+    const renderedExpression = { ...(reactionRestore ?? displayedPose.current.expression) }
     stopTransition(true)
     stopColorTransitions()
     activeSequenceTransition.current = null
@@ -506,7 +520,10 @@ export function useStudioController() {
     transitionTarget.current = renderedExpression
     canonicalTarget.current = renderedExpression
     setExpression(renderedExpression)
+    const avatar = avatarsRef.current.find(item => item.id === activeAvatarIdRef.current)
+    if (avatar) setDisplayColors(resolveColors(renderedExpression, avatar.colors))
     setActiveExpression(null)
+    paintPose(poseFromExpression(renderedExpression))
     return renderedExpression
   }
 
@@ -536,6 +553,7 @@ export function useStudioController() {
     index: number | null = null,
     transitionSettings?: Pick<SequenceStep, 'transitionMs' | 'transition'>
   ) => {
+    if (!avatarReactionTransitioning.current) clearAvatarReaction()
     if (!transitionSettings && statePlaying) pauseState()
     sequenceTransitionRef.current = transitionSettings ?? {
       transitionMs: 500,
@@ -729,6 +747,56 @@ export function useStudioController() {
     }
     transitionFrame.current = requestAnimationFrame(tick)
   }
+
+  const triggerAvatarReaction = (reaction: AvatarReaction) => {
+    if (
+      modeRef.current !== 'avatars' ||
+      bodyEditing ||
+      editing ||
+      sequenceEditing ||
+      playbackStatus !== 'stopped'
+    ) {
+      return
+    }
+    const semanticKeys = reactionSemanticKeys[reaction]
+    const target = semanticKeys
+      .map(key => expressionsRef.current.find(item => item.semanticKey === key))
+      .find((item): item is Expression => Boolean(item))
+    if (!target) return
+
+    if (!avatarReactionRestore.current) {
+      avatarReactionRestore.current = { ...displayedPose.current.expression }
+    }
+    if (avatarReactionTimer.current !== null) window.clearTimeout(avatarReactionTimer.current)
+    setAvatarReaction(reaction)
+    avatarReactionTransitioning.current = true
+    try {
+      transitionToExpression(target, null, { transitionMs: 260, transition: 'snappy' })
+    } finally {
+      avatarReactionTransitioning.current = false
+    }
+
+    avatarReactionTimer.current = window.setTimeout(() => {
+      const restore = avatarReactionRestore.current
+      avatarReactionTimer.current = null
+      avatarReactionRestore.current = null
+      setAvatarReaction(null)
+      if (!restore) return
+      avatarReactionTransitioning.current = true
+      try {
+        transitionToExpression(restore, null, { transitionMs: 420, transition: 'smooth' })
+      } finally {
+        avatarReactionTransitioning.current = false
+      }
+    }, 1_900)
+  }
+
+  useEffect(
+    () => () => {
+      if (avatarReactionTimer.current !== null) window.clearTimeout(avatarReactionTimer.current)
+    },
+    []
+  )
 
   const blink = (durationMs?: number) => {
     blinkControls.current?.stop()
@@ -1671,7 +1739,21 @@ export function useStudioController() {
       return allowed
     } catch (error) {
       if (error instanceof Error && error.message === 'PAYMENT_CANCELLED') return false
-      window.alert(t('Le paiement de 100 ₹ n’a pas pu être confirmé. Réessaie ou contacte LMSGEN.'))
+      const fallback = t(
+        'Le paiement de 100 ₹ n’a pas pu être confirmé. Réessaie ou contacte LMSGEN.'
+      )
+      const internalPaymentErrors = new Set([
+        'PAYMENT_REQUEST_FAILED',
+        'PAYMENT_CHECKOUT_UNAVAILABLE',
+        'PAYMENT_FAILED',
+        'PAYMENT_LOGIN_REQUIRED',
+        'PAYMENT_NOT_CONFIGURED',
+        'PAYMENT_VERIFICATION_FAILED',
+      ])
+      const detail = error instanceof Error ? error.message.trim() : ''
+      window.alert(
+        detail && !internalPaymentErrors.has(detail) ? `${fallback}\n\n${detail}` : fallback
+      )
       return false
     }
   }
@@ -2008,6 +2090,7 @@ export function useStudioController() {
     avatarDragOrigin,
     avatarDragPreview,
     avatarExportEntitlement,
+    avatarReaction,
     avatars,
     avatarsRef,
     blink,
@@ -2154,6 +2237,7 @@ export function useStudioController() {
     toggleExportAnimation,
     toggleStatePlayback,
     transitionToExpression,
+    triggerAvatarReaction,
     updateAvatarColors,
     updateAvatarEyeDimension,
     updateAvatarEyePosition,

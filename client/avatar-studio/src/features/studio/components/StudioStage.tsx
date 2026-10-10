@@ -17,6 +17,7 @@ export function StudioStage({ controller }: { controller: StudioController }) {
     activeAvatar,
     activeAvatarEyes,
     activeSequenceLabel,
+    avatarReaction,
     bodyEditing,
     canvasExpression,
     commitBodyNode,
@@ -55,6 +56,7 @@ export function StudioStage({ controller }: { controller: StudioController }) {
     t,
     takePicture,
     transitionToExpression,
+    triggerAvatarReaction,
     updateHighlight,
     updateImmediate,
   } = controller
@@ -105,6 +107,11 @@ export function StudioStage({ controller }: { controller: StudioController }) {
           : null
       }
       onManipulationStart={freezeLivePreviewForManipulation}
+      reaction={{
+        enabled: mode === 'avatars' && !bodyEditing && !editing && playbackStatus === 'stopped',
+        active: avatarReaction,
+        onTrigger: triggerAvatarReaction,
+      }}
     />
   )
   return (
