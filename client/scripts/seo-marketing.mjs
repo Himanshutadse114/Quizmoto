@@ -66,6 +66,11 @@ const PAGES = [
 ];
 
 const HOME_HERO_HEADING = 'AI-powered LMS for SCORM course creation, delivery and learner tracking.';
+const HOME_HERO_HEADING_MARKUP = [
+  '<span class="lmsgen-hero-heading-line">AI-powered LMS for SCORM</span>',
+  '<span class="lmsgen-hero-heading-line">course creation, delivery</span>',
+  '<span class="lmsgen-hero-heading-line">and learner tracking.</span>',
+].join(' ');
 const HOME_HERO_EYEBROW = 'For L&D, compliance and security awareness teams';
 const HOME_HERO_DESCRIPTION = 'Turn policies, documents and ideas into structured learning, publish visual content through LMSGEN Publica, launch learner campaigns, run live Quizmoto sessions and measure engagement from one connected workspace.';
 
@@ -579,7 +584,7 @@ function prepareHome(html) {
   );
   html = html.replace(
     /<h1 class="hp-hero-h1">[\s\S]*?<\/h1>/,
-    `<h1 class="hp-hero-h1">${HOME_HERO_HEADING}</h1>`,
+    `<h1 class="hp-hero-h1" aria-label="${HOME_HERO_HEADING}">${HOME_HERO_HEADING_MARKUP}</h1>`,
   );
   html = html.replace(
     /<p class="hp-hero-p">[\s\S]*?<\/p>/,

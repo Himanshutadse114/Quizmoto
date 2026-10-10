@@ -236,6 +236,40 @@ body.lmsgen-page-home .hp-hero-c {
   margin-top: 4rem !important;
 }
 
+/* Keep the homepage promise as a deliberate, balanced three-line lockup on
+   desktop. On smaller screens the spans become inline again and wrap naturally. */
+@media (min-width: 992px) {
+  body.lmsgen-page-home .hp-hero-s > .container {
+    width: min(124rem, calc(100% - 4.8rem)) !important;
+    max-width: 124rem !important;
+  }
+
+  body.lmsgen-page-home .hp-hero-c,
+  body.lmsgen-page-home .hp-hero-w {
+    width: 100% !important;
+    max-width: 118rem !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  body.lmsgen-page-home .hp-hero-h1 {
+    width: 100% !important;
+    max-width: 118rem !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    font-size: clamp(6.4rem, 5.2vw, 8.6rem) !important;
+    line-height: 1.02 !important;
+    letter-spacing: -0.045em !important;
+    text-align: center !important;
+    text-wrap: initial;
+  }
+
+  body.lmsgen-page-home .lmsgen-hero-heading-line {
+    display: block;
+    white-space: nowrap;
+  }
+}
+
 /* ---------- Solutions ---------- */
 body.lmsgen-page-solutions,
 body.lmsgen-page-solutions main {
