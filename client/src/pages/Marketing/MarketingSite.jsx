@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import SiteMascot from '../../components/mascot/SiteMascot';
+import MarketingHeader from './MarketingHeader';
 
 const MARKETING_UI_STYLESHEETS = [
   {
@@ -309,6 +310,13 @@ function applySharedMarketingUi(frame, src) {
     doc.documentElement.classList.add('atelora-ui-root');
     doc.body.classList.add('atelora-public-site', ...getMarketingPageClasses(src));
 
+    if (!doc.getElementById('lmsgen-react-shared-header')) {
+      const style = doc.createElement('style');
+      style.id = 'lmsgen-react-shared-header';
+      style.textContent = '.global-header-c.w-nav, body > .global-header-c { display: none !important; }';
+      doc.head.appendChild(style);
+    }
+
     getMarketingStylesheets(src).forEach((stylesheet) => ensureStylesheet(doc, stylesheet));
     installMarketingMobileNavigation(frame);
     installEfficientPlatformHeadlineTracking(frame);
@@ -338,8 +346,10 @@ function syncMarketingFrameViewport(frame) {
   // desktop media queries from being applied inside a portrait phone iframe.
   const width = Math.max(1, Math.round(widthCandidates.length ? Math.min(...widthCandidates) : 1));
   const height = Math.max(1, Math.round(heightCandidates.length ? Math.min(...heightCandidates) : 1));
+  const headerHeight = window.matchMedia('(max-width: 900px)').matches ? 68 : 76;
   frame.style.width = `${width}px`;
-  frame.style.height = `${height}px`;
+  frame.style.height = `${Math.max(1, height - headerHeight)}px`;
+  frame.style.top = `${headerHeight}px`;
   frame.style.maxWidth = '100vw';
   frame.style.maxHeight = '100dvh';
   try {
@@ -385,6 +395,7 @@ export default function MarketingSite({ src, title, tabTitle }) {
 
   return (
     <>
+      <MarketingHeader fixed />
       <iframe
         ref={frameRef}
         src={hash ? `${src}${hash}` : src}
@@ -403,9 +414,12 @@ export default function MarketingSite({ src, title, tabTitle }) {
         }}
         style={{
           position: 'fixed',
-          inset: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+          top: '76px',
           width: '100dvw',
-          height: '100dvh',
+          height: 'calc(100dvh - 76px)',
           border: 0,
           background: '#0A0F0E',
           opacity: 1,

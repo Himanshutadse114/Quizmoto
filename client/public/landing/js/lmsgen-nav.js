@@ -253,7 +253,7 @@
           align-items: stretch;
           overflow-y: auto;
           overscroll-behavior: contain;
-          background: #ffffff;
+          background: #f6f7f2;
           color: #003f3a;
           border-top: 1px solid rgba(0, 63, 58, 0.12);
           box-shadow: 0 18px 42px rgba(0, 63, 58, 0.16);
@@ -280,9 +280,9 @@
           align-items: center;
           color: #003f3a !important;
           border-bottom: 1px solid rgba(0, 63, 58, 0.12);
-          font-family: "Montserrat", Arial, sans-serif;
-          font-size: 17px;
-          font-weight: 600;
+          font-family: "Plus Jakarta Sans", "Montserrat", Arial, sans-serif;
+          font-size: 13px;
+          font-weight: 700;
           line-height: 1.3;
           text-decoration: none !important;
           text-transform: none;
@@ -304,9 +304,9 @@
           border-radius: 999px;
           background: #004b45;
           color: #ffffff !important;
-          font-family: "Montserrat", Arial, sans-serif;
-          font-size: 16px;
-          font-weight: 600;
+          font-family: "Plus Jakarta Sans", "Montserrat", Arial, sans-serif;
+          font-size: 12px;
+          font-weight: 800;
           line-height: 1.2;
           text-decoration: none !important;
         }
@@ -326,6 +326,7 @@
       if (!href || !label || seen.has(href)) return;
       if (sourceLink.closest(".mobile-btn-c")) return;
       if (sourceLink.classList.contains("lmsgen-install-nav-link")) return;
+      if (href === "/login") return;
       seen.add(href);
 
       const link = document.createElement("a");
@@ -345,9 +346,8 @@
 
     const cta = document.createElement("a");
     cta.className = "lmsgen-mobile-nav-cta";
-    cta.href = "/app";
-    cta.textContent = "Download app";
-    cta.addEventListener("click", installLmsgenApp);
+    cta.href = "/login";
+    cta.textContent = "Explore platform →";
     dropdown.appendChild(cta);
 
     document.body.appendChild(dropdown);
@@ -436,7 +436,12 @@
     });
   }
 
-  ensureInstallMenuAction();
+  const desktopCta = document.querySelector(".btn-primary.nav-bar");
+  if (desktopCta) {
+    desktopCta.href = "/login";
+    desktopCta.textContent = "Explore platform";
+    desktopCta.removeAttribute("cd");
+  }
   initialiseMobileNavigation();
 
   window.addEventListener("scroll", () => {
