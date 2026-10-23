@@ -255,6 +255,14 @@ const startServer = async () => {
             }
         }
 
+        // One-off recovery for hosts without shell access (e.g. Render free plan):
+        // set RECOVER_HOST_EMAIL to list what is still in storage, and also
+        // RECOVER_APPLY=1 to rebuild the records. Remove the variables afterwards.
+        if (process.env.NODE_ENV !== 'test' && process.env.RECOVER_HOST_EMAIL) {
+            require('./scripts/recoverScormFromStorage').main()
+                .catch((e) => logger.warn('scorm_storage_recovery_failed', { module: 'scorm', error: e.message }));
+        }
+
         if (process.env.NODE_ENV === 'test') {
             const { seedTestFixtures } = require('./tests/fixtures');
             await seedTestFixtures();
