@@ -77,8 +77,9 @@ describe('SCORM player local-first persistence', () => {
         expect(source).to.not.include('id="btnExit"');
     });
 
-    it('fits uploaded SCORM as a desktop canvas on phones without rewriting its internal DOM', () => {
-        expect(source).to.include("const scaleUploadedCourse = pkg.source === 'upload'");
+    it('fits every course as a desktop canvas on phones without rewriting its internal DOM', () => {
+        expect(source).to.include('const scaleUploadedCourse = true;');
+        expect(source).to.not.include("scaleUploadedCourse = pkg.source === 'upload'");
         expect(source).to.include('scaleUploadedCourse,');
         expect(source).to.include('function syncUploadedCourseDesktopFit()');
         expect(source).to.include('root.classList.toggle("qmx-upload-desktop-fit",mobile)');

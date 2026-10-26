@@ -75,7 +75,9 @@ router.get('/:regId', async (req, res) => {
         const learnerName = reg.learnerName || 'Learner';
         const courseTitle = reg.course.title || 'Course Player';
         const presentationLight = pkg.source === 'presentation_import';
-        const scaleUploadedCourse = pkg.source === 'upload';
+        // Every course (uploaded, AI-authored, presentation or video) is shown as
+        // the desktop layout scaled down on phones, never as a reflowed mobile page.
+        const scaleUploadedCourse = true;
         // Every course autosaves through the parent runtime. Course-specific
         // navigation stays inside the player so no floating controls obscure it.
         const shellTheme = presentationLight
